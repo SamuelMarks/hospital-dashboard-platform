@@ -1,0 +1,10 @@
+"PiCSN","Location","Clinical_Service","Entry_Point","Visit_Type","Midnight_Census_DateTime","Care_Level","Unit_Category","Clinical_Focus","Admit_DT","Discharge_DT"
+3.1415100037,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-03-19 23:59:00,"Well Infant Care","PCU","Nursery",2077-03-17 21:15:38,2077-03-21 16:01:16
+3.1415100037,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-03-18 23:59:00,"Well Infant Care","PCU","Nursery",2077-03-17 21:15:38,2077-03-21 16:01:16
+3.1415100037,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-03-17 23:59:00,"Well Infant Care","PCU","Nursery",2077-03-17 21:15:38,2077-03-21 16:01:16
+3.1415100037,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-03-20 23:59:00,"Well Infant Care","PCU","Nursery",2077-03-17 21:15:38,2077-03-21 16:01:16
+3.1415100166,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-10-10 23:59:00,"Well Infant Care","PCU","Nursery",2077-10-09 22:56:18,2077-10-11 15:50:54
+3.1415100166,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-10-09 23:59:00,"Well Infant Care","PCU","Nursery",2077-10-09 22:56:18,2077-10-11 15:50:54
+3.1415100183,"PCU_Mixed_A","Trauma","Emergency Room Other (not Partner Hospital)","Emergent/EMTALA",2077-04-06 23:59:00,"Acute Care","PCU","Mixed",2077-04-05 04:14:00,2077-04-07 11:47:06
+3.1415100183,"PCU_Mixed_A","Trauma","Emergency Room Other (not Partner Hospital)","Emergent/EMTALA",2077-04-05 23:59:00,"Acute Care","PCU","Mixed",2077-04-05 04:14:00,2077-04-07 11:47:06
+3.1415100241,"PCU_Nursery_A","Gen_Peds","Newborn Inside In Hospital","Newborn",2077-11-08 23:59:00,"Well Infant Care","PCU","Nursery",2077-11-08 11:19:38,2077-11-10 13:27:02

@@ -1,0 +1,93 @@
+<div class="scenario-layout">
+  
+  <!-- Left: Configuration Pane -->
+  <div class="config-pane mat-elevation-z2">
+    <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+      <mat-icon class="text-primary">tune</mat-icon> 
+      Configuration
+    </h2>
+
+    <div class="section">
+      <h3 class="section-title">Unit Capacities (Beds)</h3>
+      <div class="capacity-list">
+        @for (unit of units(); track unit) { 
+          <div class="capacity-row">
+            <span class="unit-label">{{ unit }}</span>
+            <div class="slider-group">
+              <mat-slider min="0" max="50" step="1" discrete showTickMarks>
+                <input matSliderThumb [value]="getCapacity(unit)" (valueChange)="setCapacity(unit, $event)">
+              </mat-slider>
+              <span class="val-badge">{{ getCapacity(unit) }}</span>
+            </div>
+          </div>
+        } 
+      </div>
+    </div>
+
+    <div class="section mt-6">
+      <h3 class="section-title">Demand Source</h3>
+      <mat-form-field appearance="outline" class="w-full text-xs">
+        <mat-label>SQL Query</mat-label>
+        <textarea matInput [value]="store.demandSql()" rows="4" readonly class="font-mono text-gray-500"></textarea>
+      </mat-form-field>
+    </div>
+
+    <div class="action-footer mt-auto pt-4">
+      <button 
+        mat-flat-button 
+        color="accent" 
+        class="w-full h-12 text-lg" 
+        (click)="store.runScenario()" 
+        [disabled]="store.isRunning()" 
+      >
+        @if (store.isRunning()) { 
+          <div class="flex items-center justify-center">
+            <mat-spinner diameter="24" class="mr-2"></mat-spinner> Simulating...
+          </div>
+        } @else { 
+          <ng-container>
+            <mat-icon>play_circle</mat-icon> Run Simulation
+          </ng-container>
+        } 
+      </button>
+    </div>
+  </div>
+
+  <!-- Right: Results Pane -->
+  <div class="results-pane p-6">
+    <div class="flex justify-between items-end mb-4">
+      <div>
+        <h1 class="text-2xl font-light">Scenario Results</h1>
+        <p class="text-gray-500 text-sm">Optimization based on current input parameters.</p>
+      </div>
+      @if (store.results()) { 
+        <div class="kpi-badge">
+          Allocated: <strong>{{ totalAllocated() }}</strong> Patients
+        </div>
+      } 
+    </div>
+
+    @if (store.error()) { 
+      <div class="p-4 bg-red-50 text-red-700 border-l-4 border-red-500 rounded mb-4">
+        <strong>Simulation Error:</strong> {{ store.error() }} 
+      </div>
+    } 
+
+    @if (!store.results() && !store.isRunning()) { 
+      <div class="empty-state">
+        <mat-icon class="text-6xl text-gray-300 mb-4">analytics</mat-icon>
+        <p>Adjust parameters and click Run to see optimization results.</p>
+      </div>
+    } @else if (store.isRunning()) { 
+      <div class="empty-state">
+        <mat-spinner diameter="50"></mat-spinner>
+        <p class="mt-4 text-gray-500">Processing Optimization Model...</p>
+      </div>
+    } @else { 
+      <div class="viz-wrapper mat-elevation-z1">
+        <viz-table [dataSet]="tableData()" class="h-full block w-full"></viz-table>
+      </div>
+    } 
+  </div>
+
+</div>

@@ -1,0 +1,147 @@
+<h2 mat-dialog-title>Add Widget from Marketplace</h2>
+
+<!-- WRAPPER: Flex -->
+<div class="flex flex-col h-full overflow-hidden">
+
+  <mat-dialog-content class="flex-grow">
+    <mat-stepper [linear]="true" #stepper class="h-full">
+      
+      <!-- STEP 1: Selection -->
+      <mat-step [stepControl]="selectionForm">
+        <ng-template matStepLabel>Select Template</ng-template>
+        
+        <div class="step-content pt-4">
+          <form [formGroup]="selectionForm">
+            <mat-radio-group formControlName="mode" class="flex gap-6 mb-4">
+              <mat-radio-button value="predefined">Marketplace</mat-radio-button>
+              <mat-radio-button value="custom">Custom SQL</mat-radio-button>
+            </mat-radio-group>
+          </form>
+
+          <!-- Predefined -->
+          @if (selectionForm.get('mode')?.value === 'predefined') { 
+            <div class="marketplace-container flex flex-col gap-4">
+              <!-- Filters -->
+              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                <mat-icon matPrefix>search</mat-icon>
+                <input matInput placeholder="Search..." (input)="updateSearch($event)">
+              </mat-form-field>
+
+              <mat-chip-set class="mb-2">
+                @for (cat of categories(); track cat) {
+                  <mat-chip [highlighted]="selectedCategory() === cat" (click)="toggleCategory(cat)">{{ cat }}</mat-chip>
+                }
+              </mat-chip-set>
+
+              @if (loadingTemplates()) { <mat-spinner diameter="40" class="self-center"></mat-spinner> } 
+
+              <!-- Grid -->
+              <div class="template-grid bg-gray-50 rounded border p-2 overflow-y-auto" style="height: 400px; border-color: var(--sys-surface-border)">
+                @for (t of templates(); track t.id) { 
+                  <mat-card 
+                    class="template-card mb-2" 
+                    [class.selected-card]="selectedTemplateId() === t.id" 
+                    (click)="selectTemplate(t)" 
+                    tabindex="0"
+                    (keydown.enter)="selectTemplate(t)"
+                  >
+                    <mat-card-header>
+                      <mat-card-title class="text-sm font-medium">{{ t.title }}</mat-card-title>
+                      <mat-card-subtitle class="text-xs">{{ t.category }}</mat-card-subtitle>
+                    </mat-card-header>
+                    <mat-card-content class="mt-2 text-xs text-gray-600 line-clamp-3">
+                      {{ t.description }} 
+                    </mat-card-content>
+                  </mat-card>
+                } 
+              </div>
+            </div>
+          } 
+
+          <!-- Custom -->
+          @if (selectionForm.get('mode')?.value === 'custom') { 
+            <div class="flex flex-col gap-2 mt-4" [formGroup]="selectionForm">
+              <label class="text-sm font-medium">Custom Logic (SQL)</label>
+              <textarea 
+                matInput 
+                formControlName="rawSql" 
+                class="sql-preview h-64 border p-2 font-mono text-sm rounded bg-gray-50" 
+                [placeholder]="placeholderText" 
+                aria-label="SQL Code Editor"
+              ></textarea>
+            </div>
+          } 
+        </div>
+      </mat-step>
+
+      <!-- STEP 2: Parameters -->
+      <mat-step [completed]="paramsValid()">
+        <ng-template matStepLabel>Configure Parameters</ng-template>
+        <div class="step-content pt-4 h-96 overflow-y-auto">
+          <p class="text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-100 mb-6">
+            Fill in the values below to generate your report. 
+          </p>
+          <app-dynamic-form 
+            [jsonSchema]="paramsSchema()" 
+            (formValueChange)="handleFormChange($event)" 
+            (statusChange)="handleStatusChange($event)" 
+          ></app-dynamic-form>
+        </div>
+      </mat-step>
+
+      <!-- STEP 3: Preview -->
+      <mat-step>
+        <ng-template matStepLabel>Preview & Save</ng-template>
+        <div class="step-content pt-4 h-full flex flex-col">
+          
+          <div class="flex flex-col gap-2 mb-4">
+            <label class="text-sm font-bold">Generated Query</label>
+            <div class="editor-wrapper shadow-inner h-48 border rounded overflow-hidden relative">
+              <div class="highlight-layer absolute inset-0 p-4" [innerHTML]="highlightedSql()"></div>
+              <textarea 
+                class="raw-input absolute inset-0 w-full h-full p-4" 
+                readonly 
+                [value]="finalSql()" 
+                (scroll)="syncScroll($event)" 
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="results-container relative flex-grow border rounded overflow-hidden" style="min-height: 250px;">
+             @if (isRunning()) { 
+               <div class="absolute inset-0 z-10 bg-white/80 flex items-center justify-center">
+                 <mat-spinner diameter="32"></mat-spinner>
+               </div>
+             } 
+             
+             @if (executionResult(); as res) { 
+               @if (res.error) { 
+                  <div class="p-4 text-red-600 flex items-center justify-center"><mat-icon>error</mat-icon> {{ res.error }}</div>
+               } @else { 
+                 <!-- Optimization: Defer loading visualization until this step is reached -->
+                 @defer {
+                   <viz-table [dataSet]="asTableData(res)" class="h-full block w-full"></viz-table>
+                 } @loading {
+                   <span>Loading Table...</span>
+                 }
+               } 
+             } 
+          </div>
+        </div>
+      </mat-step>
+
+    </mat-stepper>
+  </mat-dialog-content>
+
+  <!-- ACTIONS -->
+  <div class="bg-gray-100 p-4 border-t flex justify-end items-center gap-3 flex-none z-10">
+    <button mat-button (click)="cancel()">Cancel</button>
+    @if (stepper.selectedIndex > 0) { <button mat-button (click)="stepper.previous()">Back</button> } 
+
+    @switch (stepper.selectedIndex) { 
+      @case (0) { <button mat-flat-button color="primary" (click)="parseParams(); stepper.next()" [disabled]="selectionForm.invalid">Next: Configure</button> } 
+      @case (1) { <button mat-flat-button color="primary" (click)="renderPreview(); stepper.next()" [disabled]="!paramsValid()">Render & Preview</button> } 
+      @case (2) { <button mat-flat-button color="accent" (click)="saveWidget()" [disabled]="isRunning()">Add Widget</button> } 
+    } 
+  </div>
+</div>

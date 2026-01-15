@@ -1,0 +1,67 @@
+"""
+Main Application Entry Point.
+
+(Modified to include Simulation Router)
+"""
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.api.routers import auth, dashboards, execution, ai, templates, simulation  # Added
+from app.database.postgres import engine, Base
+from app.database.duckdb_init import init_duckdb_on_startup
+from app.services.template_seeder import TemplateSeeder
+from app.services.data_ingestion import data_ingestion_service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+  """
+  Lifespan context manager for the FastAPI application.
+  """
+  # 1. Postgres Initialization (Keys/Schema)
+  async with engine.begin() as conn:
+    await conn.run_sync(Base.metadata.create_all)
+
+  # 2. DuckDB Auto-Ingestion (Data Layer)
+  data_ingestion_service.ingest_all_csvs()
+
+  # 3. Seed Content (Template Registry)
+  await TemplateSeeder.seed_defaults()
+
+  # 4. DuckDB Initialization (Macros/Functions)
+  init_duckdb_on_startup()
+
+  yield
+
+  await engine.dispose()
+
+
+app = FastAPI(
+  title=settings.PROJECT_NAME,
+  openapi_url=f"{settings.API_V1_STR}/openapi.json",
+  description="Backend API for the Hospital Analytics Platform.",
+  lifespan=lifespan,
+)
+
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["*"],
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
+
+app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+app.include_router(dashboards.router, prefix=f"{settings.API_V1_STR}/dashboards", tags=["dashboards"])
+app.include_router(execution.router, prefix=f"{settings.API_V1_STR}/dashboards", tags=["execution"])
+app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["ai"])
+app.include_router(templates.router, prefix=f"{settings.API_V1_STR}/templates", tags=["templates"])
+app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])  # Added
+
+
+@app.get("/")
+def root() -> dict[str, str]:
+  return {"message": "Hospital Analytics Platform API is running"}

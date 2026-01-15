@@ -1,0 +1,65 @@
+[
+  {
+    "title": "Utilization Spikes",
+    "description": "Find all 3-day consecutive windows where unit utilization exceeded 100% of capacity (assumed 20 beds).",
+    "category": "Predictive",
+    "sql_template": "WITH daily_util AS (\n  SELECT \n    CAST(Midnight_Census_DateTime as DATE) as dt,\n    Location,\n    COUNT(*) / 20.0 as util_rate\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1, 2\n),\nwindows AS (\n  SELECT \n    dt,\n    util_rate,\n    LEAD(util_rate, 1) OVER (ORDER BY dt) as next_day,\n    LEAD(util_rate, 2) OVER (ORDER BY dt) as next_next_day\n  FROM daily_util\n)\nSELECT \n  dt as spike_start_date,\n  util_rate as day_1_util,\n  next_day as day_2_util,\n  next_next_day as day_3_util\nFROM windows\nWHERE util_rate > 1.0 AND next_day > 1.0 AND next_next_day > 1.0\nORDER BY dt DESC;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_name": { "type": "string", "default": "ICU_General", "title": "Unit Name" }
+      },
+      "required": ["unit_name"]
+    }
+  },
+  {
+    "title": "Seasonal Growth",
+    "description": "Month-over-Month percentage census growth to determine seasonal staffing needs.",
+    "category": "Financial",
+    "sql_template": "WITH monthly_counts AS (\n  SELECT \n    date_trunc('month', Midnight_Census_DateTime) as mth,\n    Clinical_Service,\n    count(*) as census\n  FROM synthetic_hospital_data\n  WHERE Clinical_Service IN ('{{service_a}}', '{{service_b}}')\n  GROUP BY 1, 2\n)\nSELECT \n  mth,\n  Clinical_Service,\n  census,\n  LAG(census) OVER (PARTITION BY Clinical_Service ORDER BY mth) as prev_month,\n  ((census - LAG(census) OVER (PARTITION BY Clinical_Service ORDER BY mth)) / NULLIF(LAG(census) OVER (PARTITION BY Clinical_Service ORDER BY mth), 0)::FLOAT) * 100 as mom_growth_pct\nFROM monthly_counts\nORDER BY mth DESC, Clinical_Service;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "service_a": { "type": "string", "default": "Gen_Peds" },
+        "service_b": { "type": "string", "default": "Trauma" }
+      },
+      "required": ["service_a", "service_b"]
+    }
+  },
+  {
+    "title": "Bed Turnover Time",
+    "description": "Average time (minutes) between one patient's Discharge and the next patient's Admit in the same unit.",
+    "category": "Capacity",
+    "sql_template": "WITH unit_flow AS (\n  SELECT \n    Location,\n    Discharge_DT,\n    LEAD(Admit_DT) OVER (PARTITION BY Location ORDER BY Admit_DT) as next_admit\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n)\nSELECT \n  AVG(date_diff('minute', Discharge_DT, next_admit)) as avg_turnover_minutes\nFROM unit_flow\nWHERE next_admit > Discharge_DT -- Ensure sequential validity\n  AND date_diff('hour', Discharge_DT, next_admit) < 24; -- Filter out long empty spells",
+    "parameters_schema": {
+      "type": "object",
+      "properties": { "unit_name": { "type": "string", "default": "ICU_General" } },
+      "required": ["unit_name"]
+    }
+  },
+  {
+    "title": "Conditional Overstay Risk",
+    "description": "Given a patient has stayed 4 days, probability they stay at least another 3 days.",
+    "category": "Predictive",
+    "sql_template": "WITH stays AS (\n  SELECT date_diff('day', Admit_DT, Discharge_DT) as los\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%{{unit_type}}%'\n)\nSELECT \n  (COUNT(*) FILTER (WHERE los >= 7) * 100.0 / NULLIF(COUNT(*) FILTER (WHERE los >= 4), 0)) as conditional_probability\nFROM stays;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": { "unit_type": { "type": "string", "default": "Cardiology" } },
+      "required": ["unit_type"]
+    }
+  },
+  {
+    "title": "Maternity-Nursery Link",
+    "description": "Correlation between Maternity Ward census and Nursery Census (synchronization pressure).",
+    "category": "Capacity",
+    "sql_template": "WITH mat AS (\n  SELECT CAST(Midnight_Census_DateTime as DATE) as dt, count(*) as cnt \n  FROM synthetic_hospital_data WHERE Location = '{{maternity_unit}}' GROUP BY 1\n),\nnur AS (\n  SELECT CAST(Midnight_Census_DateTime as DATE) as dt, count(*) as cnt \n  FROM synthetic_hospital_data WHERE Location = '{{nursery_unit}}' GROUP BY 1\n)\nSELECT \n  corr(mat.cnt, nur.cnt) as correlation_coefficient\nFROM mat \nJOIN nur ON mat.dt = nur.dt;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "maternity_unit": { "type": "string", "default": "PCU_Maternity_B" },
+        "nursery_unit": { "type": "string", "default": "PCU_Nursery_A" }
+      },
+      "required": ["maternity_unit", "nursery_unit"]
+    }
+  }
+]

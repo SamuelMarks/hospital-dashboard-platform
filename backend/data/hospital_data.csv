@@ -1,0 +1,10 @@
+visit_id,patient_id,admission_date,discharge_date,diagnosis,department,billing_amount,age,insurance_provider
+VIS-10000,PAT-125,2025-08-03,2025-08-07,Hypertension,Orthopedics,18347.68,70,BlueCross
+VIS-10001,PAT-250,2025-05-29,2025-06-03,Cardiomyopathy,Emergency,49749.29,63,Medicare
+VIS-10002,PAT-469,2025-07-31,2025-08-10,Appendicitis,Emergency,21485.54,33,BlueCross
+VIS-10003,PAT-102,2025-04-02,2025-04-14,Type 2 Diabetes,Neurology,10731.95,24,Medicare
+VIS-10004,PAT-494,2025-12-27,2025-12-31,Fracture,Orthopedics,47773.63,88,Self-Pay
+VIS-10005,PAT-284,2025-07-11,2025-07-19,Hypertension,Cardiology,31337.8,40,Self-Pay
+VIS-10006,PAT-203,2025-02-12,2025-02-13,Appendicitis,General Practice,37702.98,85,Medicare
+VIS-10007,PAT-121,2025-10-21,2025-10-24,Type 2 Diabetes,Orthopedics,5497.84,44,Medicare
+VIS-10008,PAT-424,2025-01-27,2025-02-07,Appendicitis,Neurology,14346.41,81,Aetna

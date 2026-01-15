@@ -1,0 +1,44 @@
+services:
+  # Application Database (Users, Dashboards, Widget Configs)
+  db:
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=app_db
+    expose:
+      - "5432"
+    ports:
+      - "5433:5432"
+#    network_mode: host
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    networks:
+#      - analytics_net
+
+  # Optional: Adminer for easy DB inspection
+#  adminer:
+ #   image: adminer
+#    restart: always
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      - db
+#    networks:
+#      - analytics_net
+
+  # Placeholder for future LLM Service (e.g., vLLM)
+  # Keeping the volume definition here ensures we have a dedicated spot for weights
+  # llm-service:
+  #   image: vllm/vllm-openai
+  #   volumes:
+  #     - llm_models:/root/.cache/huggingface
+
+#volumes:
+#  postgres_data:
+#  llm_models:
+
+#networks:
+#  analytics_net:
+#    driver: bridge
