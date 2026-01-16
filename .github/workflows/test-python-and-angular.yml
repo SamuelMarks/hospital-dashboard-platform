@@ -75,5 +75,5 @@ jobs:
         working-directory: pulse-query-ng-web
 
       - name: Angular tests
-        run: ng test --watch=false --browsers=ChromeHeadless
+        run: ng test --watch=false
         working-directory: pulse-query-ng-web
