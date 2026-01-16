@@ -1,5 +1,7 @@
 Pulse Query: Hospital Analytics Platform
 ========================================
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Test Python and Angular](https://github.com/SamuelMarks/hospital-dashboard-platform/actions/workflows/test-python-and-angular.yml/badge.svg)](https://github.com/SamuelMarks/hospital-dashboard-platform/actions/workflows/test-python-and-angular.yml)
 
 **Pulse Query** is an enterprise-grade analytics platform designed for healthcare data. It enables users to create dynamic dashboards, execute raw SQL queries against an OLAP engine (DuckDB), and leverage AI-assisted query building, all wrapped in a strictly typed, modern architecture.
 

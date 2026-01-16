@@ -22,12 +22,12 @@ dependencies = [
 ] 
 
 [dependency-groups] 
-dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "black>=24.1.0",
-    "isort>=5.13.0",
-    "respx>=0.22.0",
+dev = [ 
+    "pytest>=8.0.0", 
+    "pytest-asyncio>=0.23.0", 
+    "black>=24.1.0", 
+    "isort>=5.13.0", 
+    "respx>=0.22.0", 
 ] 
 
 [build-system] 
@@ -80,5 +80,11 @@ pythonpath = ["src"]
 testpaths = ["tests"] 
 markers = ["asyncio: mark test as async"] 
 # Configure pytest-asyncio for auto-discovery and session-wide loop to support session fixtures
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "session"
+asyncio_mode = "auto" 
+asyncio_default_fixture_loop_scope = "session" 
+# Suppress known warnings from 3rd party libraries and pytest config artifacts
+filterwarnings = [
+    "ignore:'crypt' is deprecated:DeprecationWarning",
+    "ignore:Accessing argon2.__version__ is deprecated:DeprecationWarning",
+    "ignore:Unknown config option:pytest.PytestConfigWarning"
+]

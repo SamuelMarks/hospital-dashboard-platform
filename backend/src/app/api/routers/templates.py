@@ -32,6 +32,16 @@ async def list_templates(
 ) -> List[WidgetTemplate]:
   """
   Retrieve a list of available widget templates with filtering and pagination.
+
+  Args:
+      db (AsyncSession): Database session dependency.
+      category (Optional[str]): Filter templates by category name.
+      search (Optional[str]): Case-insensitive search term for title or description.
+      limit (int): Maximum number of records to return.
+      current_user (User): Authenticated user dependency.
+
+  Returns:
+      List[WidgetTemplate]: Filtered list of templates.
   """
   query = select(WidgetTemplate)
 
@@ -39,13 +49,17 @@ async def list_templates(
   if category:
     query = query.where(WidgetTemplate.category == category)
 
-  # Apply Text Search (Case Insensitive ILIKE)
+  # Apply Text Search
   if search:
-    search_term = f"%{search}%"
+    term = search.strip()
+    pattern = f"%{term}%"
+
+    # Search against Title and Description using case-insensitive ILIKE
+    # OR logic automatically handles NULL values in description
     query = query.where(
       or_(
-        WidgetTemplate.title.ilike(search_term),
-        WidgetTemplate.description.ilike(search_term),
+        WidgetTemplate.title.ilike(pattern),
+        WidgetTemplate.description.ilike(pattern),
       )
     )
 
@@ -64,6 +78,14 @@ async def create_template(
 ) -> WidgetTemplate:
   """
   Register a new analytics template in the system.
+
+  Args:
+      template_in (TemplateCreate): Validated template payload.
+      db (AsyncSession): Database session.
+      current_user (User): Authenticated user.
+
+  Returns:
+      WidgetTemplate: The persisted template object.
   """
   template = WidgetTemplate(
     title=template_in.title,
@@ -86,6 +108,17 @@ async def get_template(
 ) -> WidgetTemplate:
   """
   Retrieve details for a specific template.
+
+  Args:
+      template_id (UUID): The unique ID of the template.
+      db (AsyncSession): Database session.
+      current_user (User): Authenticated user.
+
+  Returns:
+      WidgetTemplate: The requested template.
+
+  Raises:
+      HTTPException: 404 if not found.
   """
   result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
   template = result.scalars().first()
@@ -103,6 +136,18 @@ async def update_template(
 ) -> WidgetTemplate:
   """
   Update an existing template's definition.
+
+  Args:
+      template_id (UUID): The unique ID of the template.
+      template_in (TemplateUpdate): Partial update payload.
+      db (AsyncSession): Database session.
+      current_user (User): Authenticated user.
+
+  Returns:
+      WidgetTemplate: The updated template.
+
+  Raises:
+      HTTPException: 404 if not found.
   """
   result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
   template = result.scalars().first()
@@ -127,6 +172,14 @@ async def delete_template(
 ) -> None:
   """
   Hard delete a template from the registry.
+
+  Args:
+      template_id (UUID): The unique ID of the template.
+      db (AsyncSession): Database session.
+      current_user (User): Authenticated user.
+
+  Raises:
+      HTTPException: 404 if not found.
   """
   result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
   template = result.scalars().first()

@@ -5,9 +5,6 @@ on:
     branches:
       - master
 
-env:
-  UV_SYSTEM_PYTHON: 1
-
 jobs:
   python_and_angular:
     name: Test Python and Angular
@@ -15,7 +12,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -39,14 +36,23 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          python-version: '3.12'
           enable-cache: true
 
+      - name: Python venv setup
+        run: uv venv --python 3.12 "$GITHUB_WORKSPACE"/venv
+
       - name: Python dependencies and package install
-        run: uv pip install . && uv pip install pytest
+        run: |
+          uv pip install .
+          uv pip install pytest
         working-directory: backend
 
       - name: Python tests
-        run: pytest
+        run: |
+          cp .env.tpl .env
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
+          pytest
         working-directory: backend
 
       - name: Angular dependencies install
