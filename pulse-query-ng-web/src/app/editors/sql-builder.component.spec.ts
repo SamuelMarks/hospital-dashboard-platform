@@ -1,6 +1,8 @@
-/**
- * @fileoverview Unit tests for SqlBuilderComponent.
- */
+/** 
+ * @fileoverview Unit tests for SqlBuilderComponent. 
+ * Tests logic integration. Note: CodeMirror DOM rendering is not fully simulated in basic jsdom unit tests
+ * but we check the integration points. 
+ */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { SqlBuilderComponent } from './sql-builder.component'; 
@@ -66,8 +68,12 @@ describe('SqlBuilderComponent', () => {
     expect(component.availableParams()).toContain('dept'); 
   }); 
 
-  it('should insert parameter token into text using signal updates', () => { 
+  it('should fallback update signal if editor not ready on insert', () => { 
+    // Simulate no editor view (component created but not viewed/attached fully in test env) 
     component.currentSql.set("SELECT "); 
+    // Force editorView null to test fallback
+    (component as any).editorView = null; 
+    
     component.insertParam('dept'); 
     expect(component.currentSql()).toBe("SELECT  {{dept}}"); 
   }); 

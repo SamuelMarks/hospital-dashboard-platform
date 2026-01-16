@@ -2,14 +2,11 @@
 Dashboards API Router.
 
 Handles CRUD operations for Dashboards and Widgets.
-Features:
-- CRUD for Dashboards.
-- CRUD for Widgets.
-- **SQL Validation**: Automatically verifies SQL syntax via DuckDB 'PREPARE'
-  statements before saving to PostgreSQL. This prevents broken dashboards.
+Allows users to create, list, update, and delete their analytics workspaces.
+Also provides the ability to restore the default content pack.
 """
 
-from typing import Annotated, List, Any, Dict
+from typing import Annotated, List, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,6 +26,7 @@ from app.schemas.dashboard import (
   WidgetResponse,
   WidgetUpdate,
 )
+from app.services.provisioning import provisioning_service
 
 router = APIRouter()
 
@@ -91,6 +89,22 @@ async def create_dashboard(
   """Create a new empty dashboard."""
   dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
   db.add(dashboard)
+  await db.commit()
+  await db.refresh(dashboard)
+  return dashboard
+
+
+@router.post("/restore-defaults", response_model=DashboardResponse)
+async def restore_default_dashboard(
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+):
+  """
+  Re-creates the standard 'Hospital Command Center' dashboard.
+  If the dashboard already exists, creates a copy with a suffix to prevent data loss.
+  Populates the dashboard with all currently active templates in the registry.
+  """
+  dashboard = await provisioning_service.restore_defaults(db, current_user)
   await db.commit()
   await db.refresh(dashboard)
   return dashboard

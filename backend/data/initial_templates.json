@@ -1,9 +1,9 @@
 [
   {
     "title": "Predictive Availability",
-    "description": "Calculate the probability of bed availability on a specific future day given current high utilization. Useful for weekend staffing planning based on mid-week census.",
-    "category": "Predictive",
-    "sql_template": "WITH daily_stats AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date, \n    dayofweek(Midnight_Census_DateTime) as dow_idx, \n    COUNT(*) as current_census\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%{{target_ward}}%'\n  GROUP BY 1, 2\n),\nscenarios AS (\n  SELECT \n    t1.census_date as condition_date,\n    t1.current_census as condition_load,\n    t2.current_census as outcome_load,\n    ({{capacity}} - t2.current_census) as outcome_available\n  FROM daily_stats t1\n  JOIN daily_stats t2 ON t2.census_date = t1.census_date + INTERVAL {{days_gap}} DAY\n  WHERE t1.dow_idx = {{start_dow}} -- Filter for condition day (e.g. Thursday = 4)\n)\nSELECT \n  COALESCE(\n    (COUNT(*) FILTER (WHERE outcome_available >= {{target_beds}}) * 100.0 / NULLIF(COUNT(*), 0)), \n    0\n  ) as probability_pct,\n  COUNT(*) as sample_size\nFROM scenarios\nWHERE (condition_load::FLOAT / {{capacity}}) > {{util_threshold}};",
+    "description": "Calculate probability of bed availability on a specific future day given current high utilization. Useful for weekend staffing planning.",
+    "category": "Availability",
+    "sql_template": "WITH daily_stats AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date, \n    dayofweek(Midnight_Census_DateTime) as dow_idx, \n    COUNT(*) as current_census\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%{{target_ward}}%'\n  GROUP BY 1, 2\n),\nscenarios AS (\n  SELECT \n    t1.census_date as condition_date,\n    t1.current_census as condition_load,\n    t2.current_census as outcome_load,\n    ({{capacity}} - t2.current_census) as outcome_available\n  FROM daily_stats t1\n  JOIN daily_stats t2 ON t2.census_date = t1.census_date + INTERVAL {{days_gap}} DAY\n  WHERE t1.dow_idx = {{start_dow}}\n)\nSELECT \n  COALESCE(PROBABILITY(outcome_available >= {{target_beds}}), 0) as probability_pct,\n  COUNT(*) as sample_size\nFROM scenarios\nWHERE (condition_load::FLOAT / {{capacity}}) > {{util_threshold}};",
     "parameters_schema": {
       "type": "object",
       "properties": {
@@ -11,99 +11,339 @@
         "start_dow": { "type": "integer", "default": 4, "title": "Current Day (0=Sun, 4=Thu)" },
         "days_gap": { "type": "integer", "default": 3, "title": "Days until Target" },
         "capacity": { "type": "integer", "default": 20, "title": "Ward Capacity" },
-        "util_threshold": { "type": "number", "default": 0.9, "title": "Utilization Threshold (0.0-1.0)" },
-        "target_beds": { "type": "integer", "default": 2, "title": "Target Available Beds" }
+        "util_threshold": { "type": "number", "default": 0.9, "title": "Utili Threshold (0.0-1.0)" },
+        "target_beds": { "type": "integer", "default": 2, "title": "Target Avail Beds" }
       },
-      "required": ["target_ward", "start_dow", "days_gap", "capacity"]
+      "required": ["target_ward", "start_dow", "capacity"]
     }
   },
   {
     "title": "Bottleneck Analysis",
-    "description": "Identify specific hours where clinical services experience higher admission volumes than discharges, creating patient flow backlogs.",
-    "category": "Capacity",
-    "sql_template": "WITH hourly_admits AS (\n  SELECT \n    Clinical_Service, \n    hour(Admit_DT) as hr, \n    count(*) as admit_vol\n  FROM synthetic_hospital_data\n  WHERE Clinical_Service IS NOT NULL AND Admit_DT IS NOT NULL\n  GROUP BY 1, 2\n),\nhourly_discharges AS (\n  SELECT \n    Clinical_Service, \n    hour(Discharge_DT) as hr, \n    count(*) as discharge_vol\n  FROM synthetic_hospital_data\n  WHERE Clinical_Service IS NOT NULL AND Discharge_DT IS NOT NULL\n  GROUP BY 1, 2\n)\nSELECT \n  COALESCE(a.Clinical_Service, d.Clinical_Service) as service,\n  COALESCE(a.hr, d.hr) as hour_of_day,\n  COALESCE(a.admit_vol, 0) as admits,\n  COALESCE(d.discharge_vol, 0) as discharges,\n  (COALESCE(a.admit_vol, 0) - COALESCE(d.discharge_vol, 0)) as net_bottleneck\nFROM hourly_admits a\nFULL OUTER JOIN hourly_discharges d \n  ON a.Clinical_Service = d.Clinical_Service \n  AND a.hr = d.hr\nWHERE (COALESCE(a.admit_vol, 0) - COALESCE(d.discharge_vol, 0)) > {{min_threshold}}\nORDER BY net_bottleneck DESC, service, hour_of_day;",
+    "description": "Identify specific hours where clinical services experience higher admission volumes than discharges.",
+    "category": "Bottlenecks",
+    "sql_template": "WITH flow_events AS (\n  SELECT Clinical_Service, hour(Admit_DT) as hr, 1 as admit_count, 0 as discharge_count\n  FROM synthetic_hospital_data WHERE Admit_DT IS NOT NULL\n  UNION ALL\n  SELECT Clinical_Service, hour(Discharge_DT) as hr, 0 as admit_count, 1 as discharge_count\n  FROM synthetic_hospital_data WHERE Discharge_DT IS NOT NULL\n),\naggregated AS (\n  SELECT \n    Clinical_Service,\n    hr,\n    SUM(admit_count) as admits,\n    SUM(discharge_count) as discharges\n  FROM flow_events\n  GROUP BY 1, 2\n)\nSELECT \n  Clinical_Service,\n  hr as hour_of_day,\n  admits,\n  discharges,\n  (admits - discharges) as net_bottleneck\nFROM aggregated\nWHERE (admits - discharges) > {{min_threshold}}\nORDER BY net_bottleneck DESC;",
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "min_threshold": { "type": "integer", "default": 0, "title": "Minimum Net Patient Delta" }
+        "min_threshold": { "type": "integer", "default": 0, "title": "Minimum Net Flow" }
       },
       "required": ["min_threshold"]
     }
   },
   {
     "title": "Day-of-Week Volatility",
-    "description": "Rank units by the standard deviation of their daily census counts to identify the most unpredictable staffing environments.",
-    "category": "Staffing",
-    "sql_template": "WITH daily_counts AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date,\n    Location,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  GROUP BY 1, 2\n)\nSELECT \n  Location,\n  ROUND(AVG(census), 1) as avg_census,\n  ROUND(STDDEV(census), 2) as census_std_dev,\n  -- Coefficient of Variation (Relative Volatility)\n  ROUND((STDDEV(census) / NULLIF(AVG(census), 0)) * 100, 1) as volatility_index\nFROM daily_counts\nGROUP BY 1\nHAVING AVG(census) >= {{min_avg_census}}\nORDER BY census_std_dev DESC\nLIMIT 20;",
+    "description": "Rank units by the standard deviation of their daily census counts to identify unpredictable staffing needs.",
+    "category": "Volatility",
+    "sql_template": "WITH daily_counts AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date,\n    Location,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  GROUP BY 1, 2\n)\nSELECT \n  Location,\n  ROUND(AVG(census), 1) as avg_census,\n  ROUND(STDDEV(census), 2) as census_std_dev,\n  ROUND((STDDEV(census) / NULLIF(AVG(census), 0)) * 100, 1) as variance_index\nFROM daily_counts\nGROUP BY 1\nHAVING AVG(census) >= {{min_avg_census}}\nORDER BY census_std_dev DESC\nLIMIT 20;",
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "min_avg_census": { "type": "integer", "default": 5, "title": "Min Avg Census (Filter Small Units)" }
+        "min_avg_census": { "type": "integer", "default": 5, "title": "Min Avg Census" }
       },
       "required": ["min_avg_census"]
     }
   },
   {
-    "title": "Utilization Spikes",
-    "description": "Find all 3-day consecutive windows where unit utilization exceeded 100% of capacity (assumed 20 beds).",
-    "category": "Predictive",
-    "sql_template": "WITH daily_util AS (\n  SELECT \n    CAST(Midnight_Census_DateTime as DATE) as dt,\n    Location,\n    COUNT(*) / 20.0 as util_rate\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1, 2\n),\nwindows AS (\n  SELECT \n    dt,\n    util_rate,\n    LEAD(util_rate, 1) OVER (ORDER BY dt) as next_day,\n    LEAD(util_rate, 2) OVER (ORDER BY dt) as next_next_day\n  FROM daily_util\n)\nSELECT \n  dt as spike_start_date,\n  util_rate as day_1_util,\n  next_day as day_2_util,\n  next_next_day as day_3_util\nFROM windows\nWHERE util_rate > 1.0 AND next_day > 1.0 AND next_next_day > 1.0\nORDER BY dt DESC;",
+    "title": "Weekend Effect",
+    "description": "Compare Average Length of Stay (ALOS) for patients admitted on Friday/Saturday vs Tuesday.",
+    "category": "Availability",
+    "sql_template": "WITH stays AS (\n  SELECT \n    Unit_Category,\n    Admit_DT,\n    date_diff('hour', Admit_DT, Discharge_DT) / 24.0 as los_days\n  FROM synthetic_hospital_data\n  WHERE val(Discharge_DT) IS NOT NULL\n)\nSELECT \n  Unit_Category,\n  AVG(CASE WHEN WEEKEND_LAG(Admit_DT) THEN los_days END) as avg_los_weekend_admit,\n  AVG(CASE WHEN dayofweek(Admit_DT) = 2 THEN los_days END) as avg_los_tuesday_admit\nFROM stays\nGROUP BY 1\nORDER BY 1;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Throughput Velocity",
+    "description": "Calculate 'Churn Rate' (Admissions + Discharges) per unit for every calendar day.",
+    "category": "Bottlenecks",
+    "sql_template": "WITH flow_events AS (\n  SELECT CAST(Admit_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE val(Admit_DT) IS NOT NULL\n  UNION ALL\n  SELECT CAST(Discharge_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE val(Discharge_DT) IS NOT NULL\n)\nSELECT \n  dt as activity_date,\n  Location,\n  SUM(event_count) as total_churn\nFROM flow_events\nGROUP BY 1, 2\nORDER BY total_churn DESC\nLIMIT 10;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Service Dominance",
+    "description": "Calculate the percentage breakdown of Clinical Services within Mixed units over time.",
+    "category": "Volatility",
+    "sql_template": "WITH daily AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    Clinical_Service,\n    COUNT(*) as cnt\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1, 2\n)\nSELECT \n  dt,\n  Clinical_Service,\n  cnt,\n  SAFE_DIV(cnt, SUM(cnt) OVER (PARTITION BY dt)) * 100 as pct_share\nFROM daily\nORDER BY dt DESC, pct_share DESC;",
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "unit_name": { "type": "string", "default": "ICU_General", "title": "Unit Name" }
+        "unit_name": { "type": "string", "default": "PCU_Mixed_A", "title": "Mixed Unit Name" }
       },
       "required": ["unit_name"]
     }
   },
-  { 
-    "title": "Seasonal Growth", 
-    "description": "Month-over-Month percentage census growth to determine seasonal staffing needs.", 
-    "category": "Financial", 
-    "sql_template": "WITH monthly_counts AS (\n  SELECT \n    date_trunc('month', Midnight_Census_DateTime) as mth,\n    Clinical_Service,\n    count(*) as census\n  FROM synthetic_hospital_data\n  WHERE Clinical_Service IN ('{{service_a}}', '{{service_b}}')\n  GROUP BY 1, 2\n)\nSELECT \n  mth,\n  Clinical_Service,\n  census,\n  LAG(census) OVER (PARTITION BY Clinical_Service ORDER BY mth) as prev_month,\n  ((census - LAG(census) OVER (PARTITION BY Clinical_Service ORDER BY mth)) / NULLIF(LAG(census) OVER (PARTITION BY Clinical_Service ORDER BY mth), 0)::FLOAT) * 100 as mom_growth_pct\nFROM monthly_counts\nORDER BY mth DESC, Clinical_Service;", 
-    "parameters_schema": { 
-      "type": "object", 
-      "properties": { 
-        "service_a": { "type": "string", "default": "Gen_Peds" }, 
-        "service_b": { "type": "string", "default": "Trauma" } 
-      }, 
-      "required": ["service_a", "service_b"] 
-    } 
-  }, 
-  { 
-    "title": "Bed Turnover Time", 
-    "description": "Average time (minutes) between one patient's Discharge and the next patient's Admit in the same unit.", 
-    "category": "Capacity", 
-    "sql_template": "WITH unit_flow AS (\n  SELECT \n    Location,\n    Discharge_DT,\n    LEAD(Admit_DT) OVER (PARTITION BY Location ORDER BY Admit_DT) as next_admit\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n)\nSELECT \n  AVG(date_diff('minute', Discharge_DT, next_admit)) as avg_turnover_minutes\nFROM unit_flow\nWHERE next_admit > Discharge_DT -- Ensure sequential validity\n  AND date_diff('hour', Discharge_DT, next_admit) < 24; -- Filter out long empty spells", 
-    "parameters_schema": { 
-      "type": "object", 
-      "properties": { "unit_name": { "type": "string", "default": "ICU_General" } }, 
-      "required": ["unit_name"] 
-    } 
-  }, 
-  { 
-    "title": "Conditional Overstay Risk", 
-    "description": "Given a patient has stayed 4 days, probability they stay at least another 3 days.", 
-    "category": "Predictive", 
-    "sql_template": "WITH stays AS (\n  SELECT date_diff('day', Admit_DT, Discharge_DT) as los\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%{{unit_type}}%'\n)\nSELECT \n  (COUNT(*) FILTER (WHERE los >= 7) * 100.0 / NULLIF(COUNT(*) FILTER (WHERE los >= 4), 0)) as conditional_probability\nFROM stays;", 
-    "parameters_schema": { 
-      "type": "object", 
-      "properties": { "unit_type": { "type": "string", "default": "Cardiology" } }, 
-      "required": ["unit_type"] 
-    } 
-  }, 
-  { 
-    "title": "Maternity-Nursery Link", 
-    "description": "Correlation between Maternity Ward census and Nursery Census (synchronization pressure).", 
-    "category": "Capacity", 
-    "sql_template": "WITH mat AS (\n  SELECT CAST(Midnight_Census_DateTime as DATE) as dt, count(*) as cnt \n  FROM synthetic_hospital_data WHERE Location = '{{maternity_unit}}' GROUP BY 1\n),\nnur AS (\n  SELECT CAST(Midnight_Census_DateTime as DATE) as dt, count(*) as cnt \n  FROM synthetic_hospital_data WHERE Location = '{{nursery_unit}}' GROUP BY 1\n)\nSELECT \n  corr(mat.cnt, nur.cnt) as correlation_coefficient\nFROM mat \nJOIN nur ON mat.dt = nur.dt;", 
-    "parameters_schema": { 
-      "type": "object", 
-      "properties": { 
-        "maternity_unit": { "type": "string", "default": "PCU_Maternity_B" }, 
-        "nursery_unit": { "type": "string", "default": "PCU_Nursery_A" } 
-      }, 
-      "required": ["maternity_unit", "nursery_unit"] 
-    } 
+  {
+    "title": "Utilization Spikes",
+    "description": "Find 3-day consecutive windows where utilization exceeded 100% capacity.",
+    "category": "Availability",
+    "sql_template": "WITH daily_census AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1\n)\nSELECT \n  dt as spike_start_date,\n  census as day_1_load,\n  LEAD(census, 1) OVER (ORDER BY dt) as day_2_load,\n  LEAD(census, 2) OVER (ORDER BY dt) as day_3_load\nFROM daily_census\nWHERE CONSECUTIVE_OVERLOAD(census, LEAD(census, 1) OVER (ORDER BY dt), LEAD(census, 2) OVER (ORDER BY dt), {{capacity}})\nORDER BY dt DESC;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_name": { "type": "string", "default": "ICU_General", "title": "Unit Name" },
+        "capacity": { "type": "integer", "default": 20, "title": "Unit Capacity" }
+      },
+      "required": ["unit_name", "capacity"]
+    }
+  },
+  {
+    "title": "Admission Lag",
+    "description": "Average time gap between ER Admission and appearance in Midnight Census.",
+    "category": "Bottlenecks",
+    "sql_template": "SELECT \n  Clinical_Focus,\n  AVG(date_diff('hour', Admit_DT, Midnight_Census_DateTime)) as avg_lag_hours\nFROM synthetic_hospital_data\nWHERE Entry_Point = 'Emergency Room'\nGROUP BY 1\nORDER BY 2 DESC;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Holiday Decompression",
+    "description": "Days required for census to return to seasonal average following a major holiday.",
+    "category": "Volatility",
+    "sql_template": "WITH baseline AS (\n  SELECT AVG(cnt) as avg_census \n  FROM (SELECT CAST(Midnight_Census_DateTime AS DATE) as d, COUNT(*) as cnt FROM synthetic_hospital_data GROUP BY 1) a\n),\ndaily AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as census \n  FROM synthetic_hospital_data \n  GROUP BY 1\n)\nSELECT \n  MIN(dt) as recovery_date,\n  HOLIDAY_DIFF(MIN(dt), 01, 15) as days_to_recover\nFROM daily, baseline\nWHERE dt > make_date(year(dt), 01, 15)\n  AND census <= baseline.avg_census\nGROUP BY year(dt);",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "month": { "type": "integer", "default": 12 },
+        "day": { "type": "integer", "default": 25 }
+      },
+      "required": ["month", "day"]
+    }
+  },
+  {
+    "title": "Step-Down Flow",
+    "description": "Average time spent in ICU before transfer to PCU.",
+    "category": "Flow",
+    "sql_template": "SELECT \n  AVG(date_diff('hour', t1.Transfer_DateTime, t2.Transfer_DateTime)) as avg_hours_icu_before_stepdown\nFROM synthetic_hospital_data_transfers t1\nJOIN synthetic_hospital_data_transfers t2 ON t1.CSN = t2.CSN\nWHERE t1.Transfer_In_Unit LIKE '%ICU%'\n  AND t2.Transfer_In_Unit LIKE '%PCU%'\n  AND t2.Transfer_DateTime > t1.Transfer_DateTime;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Elective Impact",
+    "description": "Correlate Monday Elective volume with Wednesday Bed Scarcity.",
+    "category": "Availability",
+    "sql_template": "WITH mon_vol AS (\n  SELECT date_trunc('week', Admit_DT) as wk, COUNT(*) as vol \n  FROM synthetic_hospital_data \n  WHERE dayofweek(Admit_DT) = 1 AND Entry_Point LIKE '%Elective%'\n  GROUP BY 1\n),\nwed_util AS (\n  SELECT date_trunc('week', Midnight_Census_DateTime) as wk, COUNT(*) as census\n  FROM synthetic_hospital_data \n  WHERE dayofweek(Midnight_Census_DateTime) = 3\n  GROUP BY 1\n)\nSELECT \n  CORRELATION_MATRIX(m.vol, w.census) as correlation_coef\nFROM mon_vol m\nJOIN wed_util w ON m.wk = w.wk;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Long-Stayers",
+    "description": "Percentage of bed-days occupied by Outliers (>2 Standard Deviations above average LoS).",
+    "category": "Bottlenecks",
+    "sql_template": "WITH stays AS (\n  SELECT \n    date_diff('day', Admit_DT, Discharge_DT) as los\n  FROM synthetic_hospital_data\n  WHERE Discharge_DT IS NOT NULL\n),\nstats AS (\n  SELECT AVG(los) as mu, STDDEV(los) as sigma FROM stays\n)\nSELECT \n  (SUM(los) FILTER (WHERE IS_OUTLIER(los, stats.mu, sigma)) / NULLIF(SUM(los), 0)::FLOAT) * 100 as outlier_resource_pct\nFROM stays, stats;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Shift Change Stress",
+    "description": "Units with highest frequency of discharges between 6:00 PM and 8:00 PM.",
+    "category": "Volatility",
+    "sql_template": "SELECT \n  Location,\n  COUNT(*) as shift_change_discharges\nFROM synthetic_hospital_data\nWHERE SHIFT_CHANGE(Discharge_DT)\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 5;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Seasonal Growth",
+    "description": "Month-over-Month percentage growth in census.",
+    "category": "Volatility",
+    "sql_template": "WITH monthly AS (\n  SELECT \n    date_trunc('month', Midnight_Census_DateTime) as mth,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Clinical_Service = '{{service}}'\n  GROUP BY 1\n)\nSELECT \n  mth,\n  census,\n  ((census - LAG(census) OVER (ORDER BY mth)) / NULLIF(LAG(census) OVER (ORDER BY mth), 0)::FLOAT) * 100 as mom_growth\nFROM monthly\nORDER BY mth DESC;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "service": { "type": "string", "default": "Gen_Peds" }
+      },
+      "required": ["service"]
+    }
+  },
+  {
+    "title": "Capacity Forecasting",
+    "description": "7-day Simple Moving Average (SMA) forecast for unit census.",
+    "category": "Availability",
+    "sql_template": "WITH daily AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1\n)\nSELECT \n  dt,\n  census as actual,\n  MOVING_AVERAGE(census, dt) as forecast_sma_7\nFROM daily\nORDER BY dt DESC\nLIMIT 30;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_name": { "type": "string", "default": "PCU_Nursery_A", "title": "Target Unit" }
+      },
+      "required": ["unit_name"]
+    }
+  },
+  {
+    "title": "Cohort Isolation",
+    "description": "Comparison of Daily Census for 'Emergency Room' vs 'Physician Referral' entry points.",
+    "category": "Demographics",
+    "sql_template": "SELECT \n  CAST(Midnight_Census_DateTime AS DATE) as dt, \n  Entry_Point, \n  COUNT(*) as census\nFROM synthetic_hospital_data\nWHERE Entry_Point IN ('Emergency Room', 'Physician Referral')\nGROUP BY 1, 2 \nORDER BY 1 DESC, 2\nLIMIT 100;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Bed Turnover Time",
+    "description": "Average time difference (minutes) between one patient's Discharge and the next patient's Admit in the same unit.",
+    "category": "Flow",
+    "sql_template": "WITH flow AS (\n  SELECT \n    Location, \n    Discharge_DT, \n    LEAD(Admit_DT) OVER (PARTITION BY Location ORDER BY Admit_DT) as next_admit\n  FROM synthetic_hospital_data \n  WHERE Location = '{{unit_name}}'\n)\nSELECT \n  AVG(date_diff('minute', Discharge_DT, next_admit)) as avg_turnover_minutes\nFROM flow \nWHERE next_admit > Discharge_DT \n  AND date_diff('hour', Discharge_DT, next_admit) < 24;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_name": { "type": "string", "default": "ICU_General" }
+      },
+      "required": ["unit_name"]
+    }
+  },
+  {
+    "title": "Clinical Service 'Rent'",
+    "description": "Which Clinical Service consumes the most bed-hours in mixed units.",
+    "category": "Utilization",
+    "sql_template": "SELECT \n  Clinical_Service, \n  SUM(date_diff('hour', Admit_DT, COALESCE(Discharge_DT, CURRENT_TIMESTAMP))) as total_bed_hours\nFROM synthetic_hospital_data \nWHERE Location LIKE '%Mixed%'\nGROUP BY 1 \nORDER BY 2 DESC\nLIMIT 10;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Wait-list Probability",
+    "description": "Historical likelihood that Nursery is full on a specific day of week (e.g. Tuesday).",
+    "category": "Predictive",
+    "sql_template": "WITH daily AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt, \n    COUNT(*) as cnt\n  FROM synthetic_hospital_data \n  WHERE Location = '{{unit_name}}' \n    AND dayofweek(Midnight_Census_DateTime) = {{dow}}\n  GROUP BY 1\n)\nSELECT \n  PROBABILITY(cnt >= {{capacity}}) as full_probability_pct\nFROM daily;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_name": { "type": "string", "default": "PCU_Nursery_A" },
+        "dow": { "type": "integer", "default": 2, "description": "0=Sun, 2=Tue" },
+        "capacity": { "type": "integer", "default": 20 }
+      },
+      "required": ["unit_name", "dow", "capacity"]
+    }
+  },
+  {
+    "title": "Midnight vs. Noon",
+    "description": "Compare official Midnight Census against calculated Noon Census (12:00 PM) to see active day load difference.",
+    "category": "Operations",
+    "sql_template": "WITH dates AS (\n  SELECT DISTINCT CAST(Midnight_Census_DateTime AS DATE) as d FROM synthetic_hospital_data\n)\nSELECT \n  d as census_date,\n  (SELECT COUNT(*) FROM synthetic_hospital_data WHERE CAST(Midnight_Census_DateTime AS DATE) = d) as midnight_count,\n  (SELECT COUNT(*) FROM synthetic_hospital_data WHERE Admit_DT <= (d + INTERVAL 12 HOUR) AND (Discharge_DT >= (d + INTERVAL 12 HOUR) OR Discharge_DT IS NULL)) as noon_count\nFROM dates\nORDER BY d DESC\nLIMIT 30;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Conditional Overstay Risk",
+    "description": "Given a patient has stayed X days, probability they stay at least Y days.",
+    "category": "Risk",
+    "sql_template": "WITH stays AS (\n  SELECT date_diff('day', Admit_DT, Discharge_DT) as los \n  FROM synthetic_hospital_data \n  WHERE Location LIKE '%{{unit_pattern}}%'\n)\nSELECT \n  (COUNT(*) FILTER (WHERE los >= {{target_days}}) / NULLIF(COUNT(*) FILTER (WHERE los >= {{current_days}}), 0)::FLOAT) * 100 as probability_pct\nFROM stays;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_pattern": { "type": "string", "default": "Cardiology" },
+        "current_days": { "type": "integer", "default": 4 },
+        "target_days": { "type": "integer", "default": 7 }
+      },
+      "required": ["unit_pattern", "current_days", "target_days"]
+    }
+  },
+  {
+    "title": "Step-Down Availability",
+    "description": "Probability PCU has space available specifically when ICU is at capacity.",
+    "category": "Flow",
+    "sql_template": "WITH icu AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='{{icu_unit}}' GROUP BY 1\n),\npcu AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='{{pcu_unit}}' GROUP BY 1\n)\nSELECT \n  PROBABILITY(p.cnt < {{pcu_cap}}) as pcu_open_when_icu_full\nFROM icu i \nJOIN pcu p ON i.dt = p.dt \nWHERE i.cnt >= {{icu_cap}};",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "icu_unit": { "type": "string", "default": "ICU_Mixed_A" },
+        "pcu_unit": { "type": "string", "default": "PCU_Mixed_A" },
+        "icu_cap": { "type": "integer", "default": 15 },
+        "pcu_cap": { "type": "integer", "default": 20 }
+      },
+      "required": ["icu_unit", "pcu_unit", "icu_cap", "pcu_cap"]
+    }
+  },
+  {
+    "title": "Service-Adjusted LoS",
+    "description": "Compare 'Overstay' risk (>120% of median) for different entry points within the same service.",
+    "category": "Risk",
+    "sql_template": "WITH data AS (\n  SELECT Entry_Point, date_diff('day', Admit_DT, Discharge_DT) as los \n  FROM synthetic_hospital_data \n  WHERE Clinical_Service='{{service}}'\n),\nstats AS (\n  SELECT median(los) as med FROM data\n)\nSELECT \n  Entry_Point, \n  PROBABILITY(data.los > (stats.med * 1.2)) as overstay_risk_pct\nFROM data, stats \nGROUP BY 1 \nORDER BY 2 DESC;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "service": { "type": "string", "default": "Orthopedics" }
+      },
+      "required": ["service"]
+    }
+  },
+  {
+    "title": "Maternity-Nursery Link",
+    "description": "Synchronization risk: Likelihood Nursery is FULL (>90%) when Maternity is FULL (>90%).",
+    "category": "Correlations",
+    "sql_template": "WITH mat AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='{{maternity_unit}}' GROUP BY 1\n),\nnur AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='{{nursery_unit}}' GROUP BY 1\n)\nSELECT \n  PROBABILITY(n.cnt > ({{nursery_cap}} * 0.9)) as nursery_full_prob\nFROM mat m \nJOIN nur n ON m.dt = n.dt \nWHERE m.cnt > ({{maternity_cap}} * 0.9);",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "maternity_unit": { "type": "string", "default": "PCU_Maternity_B" },
+        "nursery_unit": { "type": "string", "default": "PCU_Nursery_A" },
+        "maternity_cap": { "type": "integer", "default": 20 },
+        "nursery_cap": { "type": "integer", "default": 20 }
+      },
+      "required": ["maternity_unit", "nursery_unit", "maternity_cap", "nursery_cap"]
+    }
+  },
+  {
+    "title": "The '2 AM' Indicator",
+    "description": "Compare Probability of Overstaying Average LoS for Night vs Day admissions.",
+    "category": "Operations",
+    "sql_template": "SELECT \n  CASE WHEN hour(Admit_DT) BETWEEN 0 AND 5 THEN 'Night (00-05)' ELSE 'Standard Hours' END as shift,\n  PROBABILITY(date_diff('day', Admit_DT, Discharge_DT) > {{avg_los}}) as overstay_prob\nFROM synthetic_hospital_data \nWHERE Discharge_DT IS NOT NULL \nGROUP BY 1;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "avg_los": { "type": "integer", "default": 4 }
+      },
+      "required": ["avg_los"]
+    }
+  },
+  {
+    "title": "Paired Bottlenecks",
+    "description": "Identify dates where two competing wards were simultaneously full.",
+    "category": "Bottlenecks",
+    "sql_template": "WITH u1 AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt \n  FROM synthetic_hospital_data WHERE Location='{{unit_1}}' \n  GROUP BY 1 HAVING COUNT(*) >= {{cap_1}}\n),\nu2 AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt \n  FROM synthetic_hospital_data WHERE Location='{{unit_2}}' \n  GROUP BY 1 HAVING COUNT(*) >= {{cap_2}}\n)\nSELECT \n  u1.dt as blockage_date\nFROM u1 \nJOIN u2 ON u1.dt = u2.dt\nORDER BY 1 DESC\nLIMIT 20;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit_1": { "type": "string", "default": "PCU_Trauma" },
+        "unit_2": { "type": "string", "default": "PCU_Neurosurgery" },
+        "cap_1": { "type": "integer", "default": 20 },
+        "cap_2": { "type": "integer", "default": 20 }
+      },
+      "required": ["unit_1", "unit_2", "cap_1", "cap_2"]
+    }
+  },
+  {
+    "title": "Discharge Efficiency",
+    "description": "Average minutes after 8:00 AM until the first bed becomes free on full days.",
+    "category": "Efficiency",
+    "sql_template": "WITH full_days AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt \n  FROM synthetic_hospital_data WHERE Location='{{unit}}' \n  GROUP BY 1 HAVING COUNT(*) >= {{cap}}\n),\ndischarges AS (\n  SELECT \n    CAST(Discharge_DT AS DATE) as dt, \n    MIN(Discharge_DT) as first_out \n  FROM synthetic_hospital_data WHERE Location='{{unit}}' \n  GROUP BY 1\n)\nSELECT \n  AVG(date_diff('minute', make_timestamp(year(f.dt), month(f.dt), day(f.dt), 8, 0, 0), d.first_out)) as avg_delay_minutes\nFROM full_days f \nJOIN discharges d ON f.dt = d.dt \nWHERE d.first_out > make_timestamp(year(f.dt), month(f.dt), day(f.dt), 8, 0, 0);",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "unit": { "type": "string", "default": "ICU_General" },
+        "cap": { "type": "integer", "default": 20 }
+      },
+      "required": ["unit", "cap"]
+    }
+  },
+  {
+    "title": "The 'NICU Cliff'",
+    "description": "Probability that a Newborn staying >48 hours will become a Long Stay (>10 days).",
+    "category": "Clinical",
+    "sql_template": "WITH newborns AS (\n  SELECT \n    date_diff('hour', Admit_DT, Discharge_DT) as hours, \n    date_diff('day', Admit_DT, Discharge_DT) as los_days \n  FROM synthetic_hospital_data \n  WHERE Clinical_Service='Newborn'\n)\nSELECT \n  PROBABILITY(los_days > 10) as prob_long_stay_if_exceed_48h\nFROM newborns \nWHERE hours > 48;",
+    "parameters_schema": { "type": "object", "properties": {} }
+  },
+  {
+    "title": "Overflow Predictor",
+    "description": "Probability that a patient is placed off-service when their primary unit is full.",
+    "category": "Predictive",
+    "sql_template": "WITH cap AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='{{primary_unit}}' \n  GROUP BY 1\n)\nSELECT \n  PROBABILITY(s.Location != '{{primary_unit}}') as off_service_prob\nFROM synthetic_hospital_data s\nJOIN cap c ON CAST(s.Midnight_Census_DateTime AS DATE) = c.dt\nWHERE c.cnt >= {{capacity}} \n  AND s.Clinical_Service = '{{service}}';",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "primary_unit": { "type": "string", "default": "PCU_Cardiology_A" },
+        "service": { "type": "string", "default": "Cardiology" },
+        "capacity": { "type": "integer", "default": 20 }
+      },
+      "required": ["primary_unit", "service", "capacity"]
+    }
+  },
+  {
+    "title": "Weekend Discharge Lag",
+    "description": "Probability of overstaying Average LoS on Weekends vs Tuesdays.",
+    "category": "Efficiency",
+    "sql_template": "SELECT \n  dayname(Discharge_DT) as day_of_discharge, \n  PROBABILITY(date_diff('day', Admit_DT, Discharge_DT) > {{avg_los}}) as overstay_risk\nFROM synthetic_hospital_data \nWHERE dayofweek(Discharge_DT) IN (2, 6) \n  AND Discharge_DT IS NOT NULL\nGROUP BY 1\nORDER BY 1;",
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "avg_los": { "type": "integer", "default": 4 }
+      },
+      "required": ["avg_los"]
+    }
   }
 ]

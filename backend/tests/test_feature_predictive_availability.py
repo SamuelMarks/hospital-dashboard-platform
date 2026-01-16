@@ -10,6 +10,7 @@ import os
 import pytest
 import duckdb
 from typing import Dict, Any
+from app.database.duckdb_init import create_hospital_macros  # Fixed import
 
 # Path to the templates definition
 DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
@@ -41,12 +42,15 @@ def db_conn() -> duckdb.DuckDBPyConnection:
   """
   conn = duckdb.connect(":memory:")
 
+  # Register Macros (Fix for failures)
+  create_hospital_macros(conn)
+
   # Schema: Just enough columns for the query
-  conn.execute("""
-        CREATE TABLE synthetic_hospital_data (
-            Location VARCHAR,
+  conn.execute(""" 
+        CREATE TABLE synthetic_hospital_data ( 
+            Location VARCHAR, 
             Midnight_Census_DateTime TIMESTAMP
-        )
+        ) 
     """)
 
   # --- Seeding Strategy ---
@@ -86,6 +90,7 @@ def db_conn() -> duckdb.DuckDBPyConnection:
   conn.close()
 
 
+# ... Tests remain unchanged ...
 def test_predictive_availability_logic(db_conn: duckdb.DuckDBPyConnection, predictive_template: Dict[str, Any]) -> None:
   """
   Injects parameters into the SQL template and verifies the statistical output.

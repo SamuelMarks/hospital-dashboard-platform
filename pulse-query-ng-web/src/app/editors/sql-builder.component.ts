@@ -1,19 +1,41 @@
-/**
- * @fileoverview SQL Builder Component with Syntax Highlighting and Parameter Injection.
+/** 
+ * @fileoverview SQL Builder Component with CodeMirror Integration. 
  * 
- * Features:
- * - Code Editor with simple SQL syntax highlighting.
- * - Reactive SQL execution via API.
- * - Integration with Global Dashboard Parameters (e.g. {{dept}}).
- * - Result Preview Table.
- */
+ * Features: 
+ * - Full SQL Syntax Highlighting via CodeMirror 6. 
+ * - Dark Theme (One Dark). 
+ * - Reactive SQL execution via API. 
+ * - Integration with Global Dashboard Parameters (e.g. {{dept}}). 
+ * - Result Preview Table. 
+ */ 
 
-import { Component, input, output, inject, signal, ChangeDetectionStrategy, model, OnInit, computed } from '@angular/core'; 
+import { 
+  Component, 
+  input, 
+  output, 
+  inject, 
+  signal, 
+  ChangeDetectionStrategy, 
+  model, 
+  OnInit, 
+  computed, 
+  ViewChild, 
+  ElementRef, 
+  AfterViewInit, 
+  OnDestroy 
+} from '@angular/core'; 
 import { CommonModule } from '@angular/common'; 
 import { FormsModule } from '@angular/forms'; 
 import { HttpErrorResponse } from '@angular/common/http'; 
 import { finalize } from 'rxjs/operators'; 
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser'; 
+
+// CodeMirror Imports
+import { EditorState, Extension } from '@codemirror/state'; 
+import { EditorView, basicSetup } from 'codemirror'; 
+import { sql } from '@codemirror/lang-sql'; 
+import { oneDark } from '@codemirror/theme-one-dark'; 
+import { keymap } from '@codemirror/view'; 
+import { defaultKeymap } from '@codemirror/commands'; 
 
 // Material
 import { MatTabsModule } from '@angular/material/tabs'; 
@@ -21,23 +43,21 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon'; 
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'; 
 import { MatMenuModule } from '@angular/material/menu'; 
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatTooltipModule } from '@angular/material/tooltip'; 
 
 import { DashboardsService, ExecutionService, WidgetUpdate } from '../api-client'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
 import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-table/viz-table.component'; 
 
-/**
- * SQL Builder Editor.
+/** 
+ * SQL Editor Component. 
  * 
- * **Accessibility (a11y):** 
- * - The raw `textarea` is now labeled via `aria-label="SQL Code Editor"`.
- * - Line numbers are hidden from screen readers (`aria-hidden="true"`) to prevent verbose readout interference.
- */
+ * Replaces the basic specific syntax highlighter with a full CodeMirror 6 instance. 
+ * Handles bidirectional binding between the EditorView and the `currentSql` signal. 
+ */ 
 @Component({ 
   selector: 'app-sql-builder', 
-  // 'standalone: true' removed (default).
-  imports: [
+  imports: [ 
     CommonModule, 
     FormsModule, 
     MatTabsModule, 
@@ -45,52 +65,26 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
     MatIconModule, 
     MatProgressSpinnerModule, 
     MatMenuModule, 
-    MatTooltipModule,
+    MatTooltipModule, 
     VizTableComponent
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; min-height: 0; } 
     .wrapper { display: flex; flex-direction: column; height: 100%; overflow: hidden; } 
-    /* Editor Configuration */ 
-    .editor-wrapper { 
-      position: relative; 
-      background: #1e1e1e; 
-      color: #d4d4d4; 
-      font-family: 'Consolas', 'Monaco', monospace; 
-      font-size: 14px; 
-      line-height: 1.5; 
+    
+    /* CodeMirror Container */ 
+    .cm-wrapper { 
+      flex: 0 0 220px; /* Fixed height for editor area */ 
+      border: 1px solid var(--sys-surface-border); 
       border-radius: 4px; 
       overflow: hidden; 
-      margin-bottom: 1px; 
-      flex: 0 0 220px; 
-      display: flex; 
+      position: relative; 
+      font-size: 14px; 
     } 
-    .line-numbers { 
-      padding: 10px 5px; 
-      background: #252526; 
-      color: #858585; 
-      text-align: right; 
-      min-width: 40px; 
-      border-right: 1px solid #333; 
-      user-select: none; 
-    } 
-    .code-area { flex: 1; position: relative; } 
-    textarea.raw-input { 
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 10px; 
-      background: transparent; color: transparent; caret-color: white; 
-      border: none; resize: none; outline: none; z-index: 2; overflow: auto; white-space: pre; 
-    } 
-    .highlight-layer { 
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 10px; 
-      z-index: 1; overflow: hidden; white-space: pre; pointer-events: none; 
-    } 
-    /* Syntax Colors */ 
-    .kwd { color: #569cd6; font-weight: bold; } 
-    .str { color: #ce9178; } 
-    .num { color: #b5cea8; } 
-    .param-token { color: #d7ba7d; font-weight: bold; } 
-    
+    /* CodeMirror Host Element */ 
+    .cm-host { height: 100%; width: 100%; display: block; } 
+
     /* Result Area */ 
     .result-container { 
       flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; 
@@ -124,23 +118,9 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
               </div>
             } 
 
-            <!-- 1. Editor Region -->
-            <div class="editor-wrapper shadow-inner">
-              <div class="line-numbers" aria-hidden="true">
-                @for (n of lineNumbers(); track n) { <div>{{n}}</div> } 
-              </div>
-              <div class="code-area">
-                <div class="highlight-layer" [innerHTML]="highlightedCode()"></div>
-                <textarea
-                  class="raw-input" 
-                  [(ngModel)]="currentSql" 
-                  (input)="syncScroll($event)" 
-                  (scroll)="syncScroll($event)" 
-                  spellcheck="false" 
-                  placeholder="SELECT * FROM table..." 
-                  aria-label="SQL Code Editor"
-                ></textarea>
-              </div>
+            <!-- 1. CodeMirror Editor Region -->
+            <div class="cm-wrapper shadow-inner">
+              <div #editorHost class="cm-host"></div>
             </div>
 
             <!-- 2. Action Bar -->
@@ -163,7 +143,6 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
               </mat-menu>
 
               <div class="flex gap-2">
-                <button mat-stroked-button (click)="formatSql()">Format</button>
                 <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
                    @if (isRunning()) { <mat-spinner diameter="20" class="mr-2"></mat-spinner> } 
                    Run Query
@@ -191,7 +170,7 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
         <!-- AI Tab -->
         <mat-tab label="AI Assistant">
            <div class="p-4 flex flex-col h-full overflow-hidden ai-placeholder">
-             <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">AI Chat Placeholder</div>
+             <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">AI Integration Placeholder</div>
            </div>
         </mat-tab>
 
@@ -199,10 +178,9 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
     </div>
   `
 }) 
-export class SqlBuilderComponent implements OnInit { 
+export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy { 
   private readonly boardsApi = inject(DashboardsService); 
   private readonly executionApi = inject(ExecutionService); 
-  private readonly sanitizer = inject(DomSanitizer); 
   private readonly store = inject(DashboardStore); 
 
   readonly dashboardId = input.required<string>(); 
@@ -220,41 +198,74 @@ export class SqlBuilderComponent implements OnInit {
 
   selectedTabIndex = signal(0); 
 
-  ngOnInit() { if(this.initialSql()) this.currentSql.set(this.initialSql()); } 
+  // CodeMirror References
+  @ViewChild('editorHost') editorHost!: ElementRef<HTMLDivElement>; 
+  private editorView?: EditorView; 
 
-  lineNumbers() { return Array.from({ length: this.currentSql().split('\n').length }, (_, i) => i + 1); } 
+  ngOnInit() { 
+    if (this.initialSql()) this.currentSql.set(this.initialSql()); 
+  } 
 
-  syncScroll(e: Event) { 
-    const target = e.target as HTMLTextAreaElement; 
-    const highlight = target.parentElement?.querySelector('.highlight-layer'); 
-    if (highlight) { 
-      highlight.scrollTop = target.scrollTop; 
-      highlight.scrollLeft = target.scrollLeft; 
+  ngAfterViewInit(): void { 
+    this.initEditor(); 
+  } 
+
+  ngOnDestroy(): void { 
+    if (this.editorView) { 
+      this.editorView.destroy(); 
     } 
   } 
 
-  /** Formats SQL Code for highlight layer (Visual only) */
-  highlightedCode(): SafeHtml { 
-    let code = this.currentSql() || ''; 
-    code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); 
-    const keywords = /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|INNER|ON|AND|OR|AS|COUNT|SUM|AVG|MAX|MIN)\b/gi; 
-    code = code.replace(keywords, '<span class="kwd">$1</span>'); 
-    code = code.replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>'); 
-    code = code.replace(/\b(\d+)\b/g, '<span class="num">$1</span>'); 
-    // Highlight Params {{param}} 
-    code = code.replace(/(\{\{\s*[a-zA-Z0-9_]+\s*\}\})/g, '<span class="param-token">$1</span>'); 
-    return this.sanitizer.bypassSecurityTrustHtml(code + '<br>'); 
+  private initEditor(): void { 
+    if (!this.editorHost) return; 
+
+    const startState = EditorState.create({ 
+      doc: this.currentSql(), 
+      extensions: [ 
+        basicSetup, 
+        keymap.of(defaultKeymap), 
+        sql(), // SQL Language support
+        oneDark, // Dark Theme
+        EditorView.updateListener.of((update) => { 
+          if (update.docChanged) { 
+            const newCode = update.state.doc.toString(); 
+            this.currentSql.set(newCode); 
+          } 
+        }), 
+        // Custom styling for host to ensure full height fill
+        EditorView.theme({ 
+          "&": { height: "100%" }, 
+          ".cm-scroller": { overflow: "auto" } 
+        }) 
+      ] 
+    }); 
+
+    this.editorView = new EditorView({ 
+      state: startState, 
+      parent: this.editorHost.nativeElement
+    }); 
   } 
 
-  formatSql() { 
-    let sql = this.currentSql(); 
-    sql = sql.replace(/\s+/g, ' ').replace(/\s(FROM|WHERE|GROUP|ORDER|LIMIT)\s/gi, '\n$1 '); 
-    this.currentSql.set(sql); 
-  } 
-
-  insertParam(key: string) { 
+  /** 
+   * Inserts text at the current cursor position in the editor. 
+   */ 
+  insertParam(key: string): void { 
     const token = `{{${key}}}`; 
-    this.currentSql.update(current => current + ' ' + token); 
+    
+    if (this.editorView) { 
+      const state = this.editorView.state; 
+      const range = state.selection.main; 
+      
+      this.editorView.dispatch({ 
+        changes: { from: range.from, to: range.to, insert: token }, 
+        selection: { anchor: range.from + token.length } 
+      }); 
+      // Focus back 
+      this.editorView.focus(); 
+    } else { 
+      // Fallback if view not ready
+      this.currentSql.update(current => current + ' ' + token); 
+    } 
   } 
 
   /** 

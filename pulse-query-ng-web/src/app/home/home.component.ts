@@ -21,9 +21,7 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
  * 
  * Serves as the landing page for authenticated users. 
  * Displays a grid of Dashboard Cards and allows creation, renaming, and deletion. 
- * 
- * **Constraint Fulfillment:**
- * - Implements **Optimistic UI Updates** for Delete and Rename operations.
+ * Allows Quick Restoration of the "Default" template. 
  */ 
 @Component({ 
   selector: 'app-home', 
@@ -106,11 +104,19 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
       border-radius: 8px; 
       border: 2px dashed #e0e0e0; 
       color: #757575; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      gap: 16px; 
     } 
     .loading-container { 
       display: flex; 
       justify-content: center; 
       padding-top: 64px; 
+    } 
+    .btn-group { 
+      display: flex; 
+      gap: 12px; 
     } 
   `], 
   template: `
@@ -121,15 +127,29 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
         <p>Manage and view your analytics workspaces</p>
       </div>
       
-      <button 
-        mat-flat-button 
-        color="primary" 
-        (click)="openCreateDialog()" 
-        data-testid="btn-create" 
-      >
-        <mat-icon>add</mat-icon>
-        New Dashboard
-      </button>
+      <div class="btn-group">
+        <button 
+          mat-stroked-button
+          color="primary" 
+          (click)="restoreDefaults()" 
+          [disabled]="isRestoring()" 
+          matTooltip="Recreate the standard Hospial Command Center dashboard" 
+        >
+          @if (isRestoring()) { <mat-spinner diameter="18"></mat-spinner> } 
+          @else { <mat-icon>restore</mat-icon> } 
+          <span class="ml-2">Restore Defaults</span>
+        </button>
+
+        <button 
+          mat-flat-button 
+          color="primary" 
+          (click)="openCreateDialog()" 
+          data-testid="btn-create" 
+        >
+          <mat-icon>add</mat-icon>
+          New Dashboard
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -197,9 +217,15 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
           <div class="empty-state" data-testid="empty-state">
             <mat-icon class="text-4xl text-gray-300 mb-2">dashboard</mat-icon>
             <p>You haven't created any analytics dashboards yet.</p>
-            <button mat-button color="primary" (click)="openCreateDialog()">
-              Create your first dashboard
-            </button>
+            
+            <div class="flex gap-4">
+              <button mat-stroked-button color="primary" (click)="restoreDefaults()" [disabled]="isRestoring()">
+                Create Default Dashboard
+              </button>
+              <button mat-button color="accent" (click)="openCreateDialog()">
+                Create Empty Custom
+              </button>
+            </div>
           </div>
         } 
         
@@ -215,6 +241,7 @@ export class HomeComponent implements OnInit {
 
   readonly dashboards = signal<DashboardResponse[]>([]); 
   readonly isLoading = signal(true); 
+  readonly isRestoring = signal(false); 
 
   ngOnInit(): void { 
     this.loadDashboards(); 
@@ -228,7 +255,7 @@ export class HomeComponent implements OnInit {
         next: (data) => this.dashboards.set(data), 
         error: (err) => { 
           console.error(err); 
-          this.snackBar.open('Failed to load dashboards', 'Retry', { duration: 5000 })
+          this.snackBar.open('Failed to load dashboards', 'Retry', { duration: 5000 }) 
             .onAction().subscribe(() => this.loadDashboards()); 
         } 
       }); 
@@ -249,26 +276,40 @@ export class HomeComponent implements OnInit {
   } 
 
   /** 
-   * Optimistically rename a dashboard. 
-   * Updates UI immediately, reverts on error. 
+   * Triggers the backend Provisioning service to re-create the default dashboard. 
+   * If successful, appends it to the list (and navigates). 
    */ 
+  restoreDefaults(): void { 
+    this.isRestoring.set(true); 
+    this.dashboardsApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost() 
+      .pipe(finalize(() => this.isRestoring.set(false))) 
+      .subscribe({ 
+        next: (newDash: DashboardResponse) => { 
+          this.dashboards.update(curr => [newDash, ...curr]); // Add to top
+          this.router.navigate(['/dashboard', newDash.id]); 
+          this.snackBar.open('Default dashboard created.', 'Close', { duration: 3000 }); 
+        }, 
+        error: (err) => { 
+          console.error(err); 
+          this.snackBar.open('Failed to restore defaults.', 'Close'); 
+        } 
+      }); 
+  } 
+
   renameDashboard(dash: DashboardResponse): void { 
     const newName = window.prompt("Enter new dashboard name:", dash.name); 
     
     if (newName && newName.trim() !== "" && newName !== dash.name) { 
       const originalName = dash.name; 
       
-      // 1. Optimistic Update
       this.dashboards.update(items => 
         items.map(d => d.id === dash.id ? { ...d, name: newName } : d) 
       ); 
 
-      // 2. API Call
       this.dashboardsApi.updateDashboardApiV1DashboardsDashboardIdPut(dash.id, { name: newName }) 
         .subscribe({ 
           error: (err) => { 
             console.error(err); 
-            // 3. Rollback on Failure
             this.dashboards.update(items => 
               items.map(d => d.id === dash.id ? { ...d, name: originalName } : d) 
             ); 
@@ -278,23 +319,16 @@ export class HomeComponent implements OnInit {
     } 
   } 
 
-  /** 
-   * Optimistically delete a dashboard. 
-   * Removes from UI immediately, restores on error. 
-   */ 
   deleteDashboard(dash: DashboardResponse): void { 
     if (window.confirm(`Are you sure you want to delete "${dash.name}"? This cannot be undone.`)) { 
       
-      // 1. Optimistic Removal
       const originalList = this.dashboards(); 
       this.dashboards.update(items => items.filter(d => d.id !== dash.id)); 
 
-      // 2. API Call
       this.dashboardsApi.deleteDashboardApiV1DashboardsDashboardIdDelete(dash.id) 
         .subscribe({ 
           error: (err) => { 
             console.error(err); 
-            // 3. Rollback on Failure
             this.dashboards.set(originalList); 
             this.snackBar.open(`Failed to delete "${dash.name}". Restored item.`, 'Close', { duration: 5000 }); 
           } 

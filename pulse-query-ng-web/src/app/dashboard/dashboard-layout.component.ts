@@ -1,73 +1,65 @@
-/**
- * @fileoverview Dashboard Grid Layout.
+/** 
+ * @fileoverview Dashboard Grid Layout. 
  * 
- * Renders drag-and-drop swimlanes containing widgets.
- * Handles the "Ghost Grid" loading state and orchestration of child widgets.
- */
+ * Renders drag-and-drop swimlanes containing widgets. 
+ * Handles the "Ghost Grid" loading state and orchestration of child widgets. 
+ */ 
 
-import { Component, OnInit, inject, ChangeDetectionStrategy, computed, Signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { Component, OnInit, inject, ChangeDetectionStrategy, computed, Signal } from '@angular/core'; 
+import { CommonModule } from '@angular/common'; 
+import { ActivatedRoute } from '@angular/router'; 
 import { 
   CdkDragDrop, 
   DragDropModule
-} from '@angular/cdk/drag-drop';
+} from '@angular/cdk/drag-drop'; 
 
 // Material Imports
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog'; 
+import { MatIconModule } from '@angular/material/icon'; 
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar'; 
+import { MatButtonModule } from '@angular/material/button'; 
+import { MatChipsModule } from '@angular/material/chips'; 
 
-import { DashboardStore } from './dashboard.store';
-import { DashboardsService, WidgetResponse } from '../api-client';
-import { ToolbarComponent } from './toolbar.component';
-import { WidgetComponent } from '../widget/widget.component';
-import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog';
-import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component';
+import { DashboardStore } from './dashboard.store'; 
+import { DashboardsService, WidgetResponse } from '../api-client'; 
+import { ToolbarComponent } from './toolbar.component'; 
+import { WidgetComponent } from '../widget/widget.component'; 
+import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog'; 
+import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component'; 
 
 /** 
  * Represents a visual swimlane containing a subset of widgets. 
- */
-interface DashboardLane {
-  name: string;
-  id: string;
-  widgets: WidgetResponse[];
-}
+ */ 
+interface DashboardLane { 
+  name: string; 
+  id: string; 
+  widgets: WidgetResponse[]; 
+} 
 
-/**
- * Main Dashboard Layout Component.
- * 
- * **Performance Strategy:**
- * Uses `OnPush` detection. The view only updates when the `store` signals emit new values.
- * Drag-and-Drop mutations are delegated to the `DashboardStore` to ensure pure state updates.
- * 
- * **Accessibility:**
- * Ensure high contrast borders in Styles.
- * Uses `cdkDropListGroup` for managing accessible drag interactions across lists.
- */
-@Component({
-  selector: 'app-dashboard-layout',
-  imports: [
-    CommonModule,
-    DragDropModule,
-    ToolbarComponent,
-    WidgetComponent,
-    MatDialogModule,
-    MatIconModule,
-    MatSnackBarModule,
-    MatButtonModule,
-    MatChipsModule,
+/** 
+ * Main Dashboard Layout Component. 
+ */ 
+@Component({ 
+  selector: 'app-dashboard-layout', 
+  imports: [ 
+    CommonModule, 
+    DragDropModule, 
+    ToolbarComponent, 
+    WidgetComponent, 
+    MatDialogModule, 
+    MatIconModule, 
+    MatSnackBarModule, 
+    MatButtonModule, 
+    MatChipsModule, 
     SkeletonLoaderComponent
-  ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  ], 
+  changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`
     :host { 
       display: flex; 
       flex-direction: column; 
       min-height: 100vh; 
-      background-color: var(--sys-background); /* Theme aware */
+      background-color: var(--sys-background); /* Theme aware */ 
     } 
     .view-port { 
       padding: 16px; 
@@ -82,12 +74,12 @@ interface DashboardLane {
       margin-bottom: 32px; 
       border-radius: 12px; 
       padding: 16px; 
-      border: 1px solid var(--sys-surface-border);
-      background-color: rgba(255, 255, 255, 0.02); /* Subtle tint */
+      border: 1px solid var(--sys-surface-border); 
+      background-color: rgba(255, 255, 255, 0.02); /* Subtle tint */ 
       transition: background-color 0.2s; 
     } 
     .cdk-drop-list-dragging .swimlane:hover { 
-      background: var(--sys-hover);
+      background: var(--sys-hover); 
       border-color: var(--sys-primary); 
     } 
     .swimlane-header { 
@@ -162,6 +154,11 @@ interface DashboardLane {
       border-radius: 12px; 
       background: var(--sys-surface); 
       margin-top: 24px; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      gap: 16px; 
     } 
     .error-container { 
       background-color: #ffebee; 
@@ -199,7 +196,7 @@ interface DashboardLane {
       .swimlane { padding: 8px; background: transparent; border: none; } 
       .ghost-card { flex-basis: 100% !important; max-width: 100% !important; } 
     } 
-  `],
+  `], 
   template: `
     <app-toolbar></app-toolbar>
 
@@ -278,117 +275,127 @@ interface DashboardLane {
           <div class="empty-state">
             <mat-icon class="text-6xl mb-4 text-gray-300">dashboard_customize</mat-icon>
             <h3 class="text-lg font-medium text-gray-700">Canvas is Empty</h3>
-            <p class="text-sm mb-6">Start by adding widgets or applying a template.</p>
+            <p class="text-sm">Start by adding widgets or applying a template.</p>
+            
+            <!-- Quick Start Action -->
+            <button 
+              mat-stroked-button 
+              color="primary" 
+              (click)="store.createDefaultDashboard()" 
+              [disabled]="store.isLoading()" 
+            >
+              <mat-icon>restore</mat-icon> Create Default Dashboard
+            </button>
           </div>
         } 
       } 
     </div>
   `
-})
-export class DashboardLayoutComponent implements OnInit {
-  /** The centralized State Store for the Dashboard. */
-  public readonly store = inject(DashboardStore);
-  private readonly route = inject(ActivatedRoute);
-  private readonly dashboardApi = inject(DashboardsService);
-  private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
+}) 
+export class DashboardLayoutComponent implements OnInit { 
+  /** The centralized State Store for the Dashboard. */ 
+  public readonly store = inject(DashboardStore); 
+  private readonly route = inject(ActivatedRoute); 
+  private readonly dashboardApi = inject(DashboardsService); 
+  private readonly dialog = inject(MatDialog); 
+  private readonly snackBar = inject(MatSnackBar); 
 
-  /**
-   * Computed View Model: Transforms the flat widget list into groupings (Lanes).
-   * Note: This calculation is pure.
-   */
-  readonly lanes: Signal<DashboardLane[]> = computed(() => {
-    const allWidgets = [...this.store.widgets()];
-    const groups: Record<string, WidgetResponse[]> = {};
+  /** 
+   * Computed View Model: Transforms the flat widget list into groupings (Lanes). 
+   * Note: This calculation is pure. 
+   */ 
+  readonly lanes: Signal<DashboardLane[]> = computed(() => { 
+    const allWidgets = [...this.store.widgets()]; 
+    const groups: Record<string, WidgetResponse[]> = {}; 
 
-    for (const w of allWidgets) {
-      const gName = (w.config['group'] as string) || 'General';
-      if (!groups[gName]) groups[gName] = [];
-      groups[gName].push(w);
-    }
+    for (const w of allWidgets) { 
+      const gName = (w.config['group'] as string) || 'General'; 
+      if (!groups[gName]) groups[gName] = []; 
+      groups[gName].push(w); 
+    } 
 
-    return Object.keys(groups)
-      .sort((a, b) => a === 'General' ? -1 : a.localeCompare(b))
-      .map(name => ({
-        name,
-        id: name,
-        widgets: groups[name].sort((a, b) => {
-          const orderA = (a.config['order'] as number) || 0;
-          const orderB = (b.config['order'] as number) || 0;
-          return orderA - orderB;
-        })
-      }));
-  });
+    return Object.keys(groups) 
+      .sort((a, b) => a === 'General' ? -1 : a.localeCompare(b)) 
+      .map(name => ({ 
+        name, 
+        id: name, 
+        widgets: groups[name].sort((a, b) => { 
+          const orderA = (a.config['order'] as number) || 0; 
+          const orderB = (b.config['order'] as number) || 0; 
+          return orderA - orderB; 
+        }) 
+      })); 
+  }); 
 
-  ngOnInit(): void {
-    this.route.paramMap.subscribe(params => {
-      const id = params.get('id');
-      if (id) {
-        this.store.reset();
-        this.store.loadDashboard(id);
-      }
-    });
-  }
+  ngOnInit(): void { 
+    this.route.paramMap.subscribe(params => { 
+      const id = params.get('id'); 
+      if (id) { 
+        this.store.reset(); 
+        this.store.loadDashboard(id); 
+      } 
+    }); 
+  } 
 
-  /**
-   * Handles Drop events from CDK Drag-Drop.
-   * Delegates the actual array manipulation and API persistence to the Store.
+  /** 
+   * Handles Drop events from CDK Drag-Drop. 
+   * Delegates the actual array manipulation and API persistence to the Store. 
    * 
-   * @param {CdkDragDrop<WidgetResponse[]>} event - The drop event containing source/target info.
-   * @param {string} targetGroupId - The ID of the lane (group) the item was dropped into.
-   */
-  dragDropped(event: CdkDragDrop<WidgetResponse[]>, targetGroupId: string): void {
+   * @param {CdkDragDrop<WidgetResponse[]>} event - The drop event containing source/target info. 
+   * @param {string} targetGroupId - The ID of the lane (group) the item was dropped into. 
+   */ 
+  dragDropped(event: CdkDragDrop<WidgetResponse[]>, targetGroupId: string): void { 
     // Delegate complex movement logic to the Store Action
-    this.store.handleWidgetDrop(
-      event.previousContainer === event.container,
-      targetGroupId,
-      event.previousIndex,
-      event.currentIndex,
-      event.container.data,
+    this.store.handleWidgetDrop( 
+      event.previousContainer === event.container, 
+      targetGroupId, 
+      event.previousIndex, 
+      event.currentIndex, 
+      event.container.data, 
       event.previousContainer.data
-    );
-  }
+    ); 
+  } 
 
-  /**
-   * Helper to calculate CSS Flexbox basis based on widget column width configuration.
+  /** 
+   * Helper to calculate CSS Flexbox basis based on widget column width configuration. 
    * 
-   * @param {WidgetResponse} widget - The widget config.
-   * @returns {Record<string, string>} Style object for bindings.
-   */
-  getFlexStyle(widget: WidgetResponse): Record<string, string> {
-    const config = widget.config || {};
-    const cols = Math.max(1, Math.min(12, config['w'] || 6));
-    const pct = `${(cols / 12) * 100}%`;
-    return {
-      'flex-basis': `calc(${pct} - 12px)`,
+   * @param {WidgetResponse} widget - The widget config. 
+   * @returns {Record<string, string>} Style object for bindings. 
+   */ 
+  getFlexStyle(widget: WidgetResponse): Record<string, string> { 
+    const config = widget.config || {}; 
+    const cols = Math.max(1, Math.min(12, config['w'] || 6)); 
+    const pct = `${(cols / 12) * 100}%`; 
+    return { 
+      'flex-basis': `calc(${pct} - 12px)`, 
       'max-width': pct
-    };
-  }
+    }; 
+  } 
 
-  getHeightClass(widget: WidgetResponse): string {
-    const h = widget.config['h'] || 2;
-    const clamped = Math.max(1, Math.min(4, h));
-    return `h-${clamped}`;
-  }
+  getHeightClass(widget: WidgetResponse): string { 
+    const h = widget.config['h'] || 2; 
+    const clamped = Math.max(1, Math.min(4, h)); 
+    return `h-${clamped}`; 
+  } 
 
-  moveOrEditWidget(widget: WidgetResponse): void {
-    const dashboardId = this.store.dashboard()?.id;
-    if (!dashboardId) return;
-    const data: WidgetEditorData = { dashboardId, widget };
-    const ref = this.dialog.open(WidgetEditorDialog, {
-      data, width: '90vw', maxWidth: '1200px', height: '90vh', panelClass: 'no-padding-dialog'
-    });
-    ref.afterClosed().subscribe(res => { if (res) this.store.loadDashboard(dashboardId); });
-  }
+  moveOrEditWidget(widget: WidgetResponse): void { 
+    const dashboardId = this.store.dashboard()?.id; 
+    if (!dashboardId) return; 
+    const data: WidgetEditorData = { dashboardId, widget }; 
+    const ref = this.dialog.open(WidgetEditorDialog, { 
+      data, width: '90vw', maxWidth: '1200px', height: '90vh', panelClass: 'no-padding-dialog' 
+    }); 
+    ref.afterClosed().subscribe(res => { if (res) this.store.loadDashboard(dashboardId); }); 
+  } 
 
-  confirmDeleteWidget(widget: WidgetResponse): void {
-    if (!confirm(`Delete "${widget.title}"?`)) return;
-    this.store.optimisticRemoveWidget(widget.id);
-    this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widget.id).subscribe({
-      error: () => {
-        this.store.optimisticRestoreWidget(widget);
-        this.snackBar.open('Failed to delete.', 'Close');
-      }
-    });
-  }
+  confirmDeleteWidget(widget: WidgetResponse): void { 
+    if (!confirm(`Delete "${widget.title}"?`)) return; 
+    this.store.optimisticRemoveWidget(widget.id); 
+    this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widget.id).subscribe({ 
+      error: () => { 
+        this.store.optimisticRestoreWidget(widget); 
+        this.snackBar.open('Failed to delete.', 'Close'); 
+      } 
+    }); 
+  } 
 }

@@ -1,15 +1,20 @@
 """
 Provisioning Service.
 
-This module orchestrates the initialization of user environments upon registration.
+This module orchestrates the initialization of user environments.
 It serves as the bridge between the Template Registry and the User's personal dashboard,
 automatically instantiating specific widgets based on the 'Standard Content Pack'.
+
+It handles:
+1. New User Registration (Default Dashboard).
+2. Restore Defaults (Re-creating the default dashboard on demand).
 """
 
 import uuid
 import logging
-from typing import List, Dict, Any
-from sqlalchemy import select
+import re
+from typing import List, Dict, Any, Optional
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dashboard import Dashboard, Widget
@@ -21,60 +26,129 @@ logger = logging.getLogger("provisioning")
 
 class ProvisioningService:
   """
-  Service responsible for creating default asset structures for new users.
+  Service responsible for creating default asset structures for users.
   """
+
+  DEFAULT_DASHBOARD_NAME = "Hospital Command Center"
 
   async def provision_new_user(self, db: AsyncSession, user: User) -> None:
     """
-    Creates a default 'Hospital Command Center' dashboard and populates it with
-    widgets derived from the global template registry.
-
-    This method should be called within the registration transaction context
-    to ensure atomicity (User + Dashboard + Widgets commit together).
+    Creates the default 'Hospital Command Center' dashboard for a new user.
+    This is called during the Registration transaction.
 
     Args:
         db (AsyncSession): The active database session.
-        user (User): The newly created user entity (must have an ID, even if not committed).
+        user (User): The newly created user entity.
     """
-    logger.info(f"Starting provisioning for user: {user.email}")
+    logger.info(f"Starting initial provisioning for user: {user.id}")
+    await self._create_dashboard_from_templates(db, user, self.DEFAULT_DASHBOARD_NAME)
 
-    # 1. Create the Default Dashboard
+  async def restore_defaults(self, db: AsyncSession, user: User) -> Dashboard:
+    """
+    Re-creates the default dashboard for an existing user.
+    Handles name collisions by appending '(Restored)' or version numbers to prevent data loss.
+
+    Args:
+        db (AsyncSession): The active database session.
+        user (User): The authenticated user requesting the restore.
+
+    Returns:
+        Dashboard: The newly created dashboard entity.
+    """
+    logger.info(f"Restoring defaults for user: {user.id}")
+
+    # 1. Determine safe name
+    target_name = await self._get_safe_dashboard_name(db, user.id, self.DEFAULT_DASHBOARD_NAME)
+
+    # 2. Create logic
+    dashboard = await self._create_dashboard_from_templates(db, user, target_name)
+    return dashboard
+
+  async def _get_safe_dashboard_name(self, db: AsyncSession, user_id: uuid.UUID, base_name: str) -> str:
+    """
+    Calculates a non-conflicting name for the new dashboard.
+    E.g. "Hospital Command Center" -> "Hospital Command Center (Restored)" -> "Hospital Command Center (Restored 1)"
+
+    Args:
+        db (AsyncSession): Database session.
+        user_id (uuid.UUID): Owner ID.
+        base_name (str): The desired starting name.
+
+    Returns:
+        str: A unique name.
+    """
+    # Check exact match first
+    query = select(Dashboard).where(Dashboard.owner_id == user_id, Dashboard.name == base_name)
+    result = await db.execute(query)
+    if not result.scalars().first():
+      return base_name
+
+    # If base exists, try "(Restored)"
+    restored_base = f"{base_name} (Restored)"
+    query = select(Dashboard).where(Dashboard.owner_id == user_id, Dashboard.name == restored_base)
+    result = await db.execute(query)
+    if not result.scalars().first():
+      return restored_base
+
+    # If that exists, find the highest suffix number
+    # Pattern: "Name (Restored X)"
+    pattern = f"{base_name} (Restored %)%"
+    query = select(Dashboard.name).where(Dashboard.owner_id == user_id, Dashboard.name.like(pattern))
+    result = await db.execute(query)
+    existing_names = result.scalars().all()
+
+    max_suffix = 0
+    # Match: "Name (Restored 1)"
+    regex = re.compile(rf"{re.escape(base_name)} \(Restored (\d+)\)")
+
+    for name in existing_names:
+      match = regex.fullmatch(name)
+      if match:
+        max_suffix = max(max_suffix, int(match.group(1)))
+
+    return f"{base_name} (Restored {max_suffix + 1})"
+
+  async def _create_dashboard_from_templates(self, db: AsyncSession, user: User, title: str) -> Dashboard:
+    """
+    Internal helper to instantiate a dashboard and populate it with widgets from the Template Registry.
+
+    Args:
+        db (AsyncSession): Database session.
+        user (User): Owner.
+        title (str): The final determined name for the dashboard.
+
+    Returns:
+        Dashboard: The created entity (added to session, not committed).
+    """
+    # 1. Create Dashboard Header
     dashboard_id = uuid.uuid4()
-    dashboard = Dashboard(id=dashboard_id, name="Hospital Command Center", owner_id=user.id)
+    dashboard = Dashboard(id=dashboard_id, name=title, owner_id=user.id)
     db.add(dashboard)
 
-    # 2. Fetch All Available Templates
-    # We order by category to group similar widgets together visually
+    # 2. Fetch Templates
     query = select(WidgetTemplate).order_by(WidgetTemplate.category, WidgetTemplate.title)
     result = await db.execute(query)
     templates: List[WidgetTemplate] = result.scalars().all()
 
     if not templates:
-      logger.warning("No templates found in registry. Dashboard will be empty.")
-      return
+      logger.warning("No templates found during provisioning.")
+      return dashboard  # Return empty dashboard
 
     # 3. Instantiate Widgets
-    # Layout Strategy: 2 Column Grid (Width 6 per widget)
-    # Allows for readable charts and tables on standard screens.
-    valid_widgets = 0
-
     for idx, template in enumerate(templates):
-      # Calculate Grid Position
-      # Grid system is 12-column. w=6 means 2 widgets per row.
+      # Layout Strategy: 2 Column Grid (Width 6 per widget)
       widgets_per_row = 2
       col_width = 6
 
       row_index = idx // widgets_per_row
       col_index = (idx % widgets_per_row) * col_width
 
-      # Determine suitable visualization
       viz_type = self._determine_visual_type(template)
-
-      # Inject default values for variables to ensure widget is runnable immediately
-      # E.g., {{ unit_name }} -> 'ICU'
       config = self._build_config(template, viz_type)
+
+      # Inject Layout
       config["x"] = col_index
-      config["y"] = row_index * 4  # Height unit is roughly 1 row height
+      config["y"] = row_index * 4
       config["w"] = col_width
       config["h"] = 4
 
@@ -87,9 +161,9 @@ class ProvisioningService:
         config=config,
       )
       db.add(widget)
-      valid_widgets += 1
 
-    logger.info(f"Provisioned {valid_widgets} widgets for Dashboard {dashboard_id}.")
+    logger.info(f"Provisioned dashboard '{title}' with {len(templates)} widgets.")
+    return dashboard
 
   def _determine_visual_type(self, template: WidgetTemplate) -> str:
     """
@@ -105,9 +179,7 @@ class ProvisioningService:
     title_lower = template.title.lower()
 
     # 1. Scalar / Single Number -> Metric
-    # Checks for singular probability or extremely focused queries
     if "probability" in title_lower or "rate" in title_lower or "growth" in title_lower:
-      # If it groups by something, it's a chart, otherwise it might be a single KPI
       if "group by" not in sql_lower:
         return "metric"
 
@@ -123,7 +195,6 @@ class ProvisioningService:
     if "compare" in title_lower or "versus" in title_lower:
       return "bar_chart"
 
-    # Default fallback for complex datasets
     return "table"
 
   def _build_config(self, template: WidgetTemplate, viz_type: str) -> Dict[str, Any]:
@@ -149,27 +220,14 @@ class ProvisioningService:
         default_val = prop_def["default"]
         # Must handle string quotes for SQL
         if isinstance(default_val, str):
-          clean_val = str(default_val).replace("'", "''")  # Basic escape
-          # Usually template placeholders don't have quotes in SQL, so we just inject
-          # Note: Our templates assume {{var}} is injected directly.
-          # If var is string, logic usually handles it or SQL has quotes around {{var}}.
-          # For safety in this MVP, we assume SQL handles quotes: "WHERE x = '{{var}}'"
+          clean_val = str(default_val).replace("'", "''")
           processed_sql = processed_sql.replace(f"{{{{{key}}}}}", str(clean_val))
-          # Also support spacing {{ key }}
           processed_sql = processed_sql.replace(f"{{{{ {key} }}}}", str(clean_val))
         else:
-          # Numbers/Ints directly
           processed_sql = processed_sql.replace(f"{{{{{key}}}}}", str(default_val))
           processed_sql = processed_sql.replace(f"{{{{ {key} }}}}", str(default_val))
 
     config = {"query": processed_sql}
-
-    # Add Visualization Hints
-    if viz_type == "bar_chart":
-      # Simple heuristic for X/Y keys if not mapped manually
-      # This relies on the convention that first column is dimension, second is measure
-      pass
-
     return config
 
 
