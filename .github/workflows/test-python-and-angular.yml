@@ -58,8 +58,8 @@ jobs:
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           cp .env.tpl .env
           export $(grep -v '^#' .env | xargs -d '\n')
-          uv run alembic upgrade head
-          uv run python scripts/ingest.py
+          alembic upgrade head
+          python3 scripts/ingest.py
         working-directory: backend
 
       - name: Python tests
