@@ -11,24 +11,24 @@ def test_sql_cleaning_logic():
   Synchronous Unit Test.
   """
   # Case 1: Pure SQL response
-  raw_1 = "SELECT * FROM hospital_visits LIMIT 10;"
+  raw_1 = "SELECT * FROM hospital_data LIMIT 10;"
   assert sql_generator._clean_sql_response(raw_1) == raw_1
 
   # Case 2: Markdown wrapped
   raw_2 = """```sql
-    SELECT count(*) FROM hospital_visits; 
+    SELECT count(*) FROM hospital_data; 
     ```"""
   cleaned_2 = sql_generator._clean_sql_response(raw_2)
-  assert cleaned_2 == "SELECT count(*) FROM hospital_visits;"
+  assert cleaned_2 == "SELECT count(*) FROM hospital_data;"
 
   # Case 3: Markdown with text description (Edge case)
   raw_3 = """Here is the query: 
     ```
-    SELECT avg(billing_amount) FROM hospital_visits; 
+    SELECT avg(billing_amount) FROM hospital_data; 
     ```
     """
   cleaned_3 = sql_generator._clean_sql_response(raw_3)
-  assert cleaned_3 == "SELECT avg(billing_amount) FROM hospital_visits;"
+  assert cleaned_3 == "SELECT avg(billing_amount) FROM hospital_data;"
 
 
 @pytest.mark.asyncio
@@ -37,7 +37,7 @@ async def test_generation_flow_mocked():
   Simulate a full flow using a mock for the actual HTTP call.
   Async test using asyncio.
   """
-  mock_sql = "SELECT department, COUNT(*) FROM hospital_visits GROUP BY department"
+  mock_sql = "SELECT department, COUNT(*) FROM hospital_data GROUP BY department"
 
   # We patch the 'generate_response' method of the llm_client instance imported inside sql_generator
   with patch("app.services.sql_generator.llm_client.generate_response", new_callable=AsyncMock) as mock_llm:
@@ -54,4 +54,5 @@ async def test_generation_flow_mocked():
     user_content = messages[1]["content"]
 
     assert "Database Schema" in user_content
-    assert "hospital_visits" in user_content  # From our actual schema service
+    # The default ingestion created 'hospital_data', not 'hospital_visits'
+    assert "hospital_data" in user_content

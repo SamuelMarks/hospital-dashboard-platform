@@ -36,12 +36,13 @@ async def test_dashboard_crud_flow(client: AsyncClient) -> None:
   dash_id = dash_res.json()["id"]
 
   # 3. Add Widget
+  # NOTE: We use 'hospital_data' table which corresponds to the default CSV ingest
   widget_payload = {
     "title": "Visits Count",
     "type": "SQL",
     "visualization": "metric",
     "config": {
-      "query": "SELECT count(*) FROM hospital_visits",
+      "query": "SELECT count(*) FROM hospital_data",
       "x": 0,
       "y": 0,
       "w": 4,
@@ -53,7 +54,8 @@ async def test_dashboard_crud_flow(client: AsyncClient) -> None:
     json=widget_payload,
     headers=headers,
   )
-  assert widget_res.status_code == 200
+  # If validation fails due to missing table (local vs CI), check ingestion logs.
+  assert widget_res.status_code == 200, f"Widget creation failed: {widget_res.text}"
   assert widget_res.json()["title"] == "Visits Count"
 
   # 4. List Dashboards (Verify widget presence)

@@ -1,24 +1,27 @@
-Maintenance & Contribution Guide
-================================
+Maintenance
+===========
 
-This document outlines the workflows for extending, testing, and deploying the **pulse-query** platform.
+This document outlines the workflows for extending, testing, and deploying the **Pulse Query** platform. It provides specific instructions for maintaining the split-stack architecture (Angular + FastAPI) and the data engineering pipelines.
 
 ---
 
 ## 🛠️ Development Workflow
 
-The project relies heavily on **Contract-First Development**. Changes to the Backend API must be synchronized with the Frontend via the generator script.
+The project strictly adheres to **Contract-First Development**. The Frontend API client is **generated**, not written manually.
 
-### Adding a New Feature
-
-1.  **Backend:**
-    *   Define Pydantic models in `backend/app/schemas`.
-    *   Create API routes in `backend/app/api/routers`.
-    *   Register router in `backend/app/main.py`.
-2.  **Sync:**
-    *   Run `./generate_client.sh` from the root. This updates `frontend/src/app/api-client`.
-3.  **Frontend:**
-    *   Use the new Service in your Angular components (e.g., `inject(NewService)`).
+### 1. Adding a New Feature
+1.  **Backend Implementation:**
+    *   Define Pydantic schema in `backend/src/app/schemas`.
+    *   Implement logic in `backend/src/app/api/routers`.
+    *   Register the router in `backend/src/app/main.py`.
+2.  **Synchronize Contract:**
+    *   From the root directory, run the generation script: (Requires Backend to be running or importable)
+        ```bash
+        ./generate_client.sh
+        ```
+    *   *Action:* This updates `pulse-query-ng-web/src/app/api-client` with new TypeScript interfaces and Services.
+3.  **Frontend Implementation:**
+    *   Inject the generated Service (e.g., `ExecutionService`) into your Angular components or Stores.
 
 ---
 
@@ -27,33 +30,34 @@ The project relies heavily on **Contract-First Development**. Changes to the Bac
 We employ a pyramid testing strategy covering Unit, Integration, and End-to-End tests.
 
 ### 1. Backend Tests (Pytest)
-Located in `backend/tests`. Focuses on API logic and Runner stability.
+Located in `backend/tests`. Focuses on API logic, SQL Security AST validation, and MPAX solver integration.
 
-*   **Run all tests:**
+*   **Command:**
     ```bash
     cd backend
     uv run pytest
     ```
-*   **Specific Execution Logic:**
-    *   `test_execution_api.py`: Mocks the DuckDB execution to ensure widgets are parsed correctly.
-    *   `test_runner_sql.py`: Validates SQL execution against an in-memory database.
+*   **Critical Suites:**
+    *   `test_runner_sql_security.py`: Ensures `sqlglot` effectively blocks destructive queries (DROP, DELETE).
+    *   `test_mpax_bridge.py`: Verifies the JAX optimization solver logic.
+    *   `test_execution_api_caching.py`: Validates that the custom LRU cache prevents redundant OLAP queries.
 
-### 2. Frontend Tests (Jasmine/Karma)
-Located in `frontend/src/**/*.spec.ts`. Focuses on Component rendering and Store state changes.
+### 2. Frontend Tests (Vitest)
+Located in `pulse-query-ng-web/src/**/*.spec.ts`. Focuses on Signal-based state management and Component rendering.
 
-*   **Run tests:**
+*   **Command:**
     ```bash
-    cd frontend
+    cd pulse-query-ng-web
     npm test
     ```
-*   **Key Specs:**
-    *   `dashboard.store.spec.ts`: Critical for verifying data loading states.
-    *   `sql-builder.component.spec.ts`: Tests the interaction between Code view and AI Chat.
+*   **Critical Specs:**
+    *   `dashboard.store.spec.ts`:  Verifies the RxJS `switchMap` pipelines handling race conditions during data refreshing.
+    *   `global-error.handler.spec.ts`: Ensures the global error bus correctly captures and displays SnackBar notifications.
 
 ### 3. E2E Tests (Playwright)
-Located in `e2e/`. Simulates real user flows against a running stack.
+Located in `e2e/`. Simulates critical user journeys against a running full-stack environment.
 
-*   **Run E2E:**
+*   **Command:**
     ```bash
     # Ensure Backend (port 8000) and Frontend (port 4200) are running
     npx playwright test
@@ -61,88 +65,122 @@ Located in `e2e/`. Simulates real user flows against a running stack.
 
 ---
 
-## 📦 Extending Logic
+## 📦 Data & Schema Management
 
-### Adding a New Visualization
-To add a new visualization type (e.g., `PieChart`):
-
-1.  **Frontend:** Create `viz-pie.component.ts` in `frontend/src/app/shared/visualizations`.
-2.  **Frontend:** Update `widget.component.ts`:
-    ```typescript
-    // Import component
-    import { VizPieComponent } from '...';
-
-    // In template [ngSwitch]
-    <viz-pie *ngSwitchCase="'pie'" [data]="typedData()"></viz-pie>
+### Analytical Data (DuckDB)
+The OLAP store is a file-based database (`hospital_analytics.duckdb`).
+*   **Ingestion:** The system automatically ingests CSV files from `backend/data/` on startup.
+*   **Manual Reset:**
+    To force a complete data rebuild:
+    ```bash
+    cd backend
+    rm hospital_analytics.duckdb
+    uv run python scripts/ingest.py
     ```
-3.  **Backend:** No changes needed unless specific data formatting is required by the SQL Runner.
+*   **Schema Safety:** The `DataIngestionService` sanitizes filenames to create SQL-safe table names. If adding new CSVs, ensure columns do not contain special characters to simplify SQL generation.
 
-### Extending the Database Schema
-1.  **Edit Models:** Update `backend/app/models/`.
+### Metadata Schema (PostgreSQL)
+Application state (Users, Dashboards) is managed via Alembic.
+1.  **Modify Models:** Edit `backend/src/app/models/`.
 2.  **Generate Migration:**
     ```bash
     cd backend
-    uv run alembic revision --autogenerate -m "Add description"
+    uv run alembic revision --autogenerate -m "Describe change"
     ```
-3.  **Apply:**
+3.  **Apply Migration:**
     ```bash
     uv run alembic upgrade head
     ```
 
-### Managing DuckDB Data
-The OLAP file is located at `backend/hospital_analytics.duckdb`.
-*   **Reset Data:** Delete the file and run `uv run python scripts/ingest.py`.
-*   **Schema Changes:** If the CSV structure changes, update validity checks in `ingest.py`.
+### Template Registry
+Standard analytical templates are defined in `backend/data/initial_templates.json`.
+*   **Updates:** Edit the JSON file directly. The `TemplateSeeder` service runs on startup and performs an **Idempotent Upsert** based on the Template Title. Changes to SQL or Descriptions in JSON will propagate to the DB on the next restart.
 
 ---
 
-## 🚢 Deployment
+## 🎨 Frontend Architecture Maintenance
 
-### Production Build
-The application is designed to be containerized.
+### Adding a New Visualization
+The frontend uses a "Dumb Component" strategy for visualizations. To add a new type (e.g., `RadarChart`):
 
-1.  **Frontend Build:**
-    ```bash
-    cd frontend
-    npm run build --prod
-    # Output located in dist/pulse-query
+1.  **Create Component:** `pulse-query-ng-web/src/app/shared/visualizations/viz-radar/viz-radar.component.ts`.
+2.  **Register in Switch:** Update `pulse-query-ng-web/src/app/widget/widget.component.ts`:
+    ```typescript
+    // Import
+    import { VizRadarComponent } from '../shared/visualizations/viz-radar/viz-radar.component';
+
+    // In @Component.imports
+    imports: [ ..., VizRadarComponent ]
+
+    // In Template @switch
+    @case ('radar') { <viz-radar [dataSet]="typedDataAsTable()"></viz-radar> }
     ```
-2.  **Backend Build:**
-    Ensure `production` settings in `backend/app/core/config.py` are used via Environment Variables.
+3.  **Update Wizard:** Add the option to `widget-creation.dialog.ts` so users can select it.
 
-### Docker Compose (Sample Production)
-To deploy, map the Frontend build to an Nginx container and the Backend to a Python container.
+### Zoneless Architecture
+The application uses **Experimental Zoneless Change Detection**.
+*   **Do not** rely on `NgZone.run()`.
+*   **Do** use `signal`, `computed`, and `AsyncPipe` (or `@if` with observables).
+*   If integrating 3rd party libraries that detach from Angular, manually trigger Change Detection via `ChangeDetectorRef` is usually not needed if Signals are used correctly.
+
+---
+
+## 🚢 Deployment Topology
+
+The system is designed for containerized deployment.
 
 ```mermaid
 flowchart TD
-%% Nodes
-    NGINX[Nginx / Frontend]
-    API[FastAPI / Backend]
-    DB[(Postgres)]
-    VOL[DuckDB Volume]
+    %% ---------------------------------------------------------
+    %% Design Constraints & Styling
+    %% ---------------------------------------------------------
+    classDef blue font-family:'Google Sans Medium',fill:#4285f4,color:#ffffff,stroke:#20344b,stroke-width:0px;
+    classDef green font-family:'Google Sans Medium',fill:#34a853,color:#ffffff,stroke:#20344b,stroke-width:0px;
+    classDef yellow font-family:'Google Sans Medium',fill:#f9ab00,color:#ffffff,stroke:#20344b,stroke-width:0px;
+    classDef navy font-family:'Google Sans Medium',fill:#20344b,color:#ffffff,stroke:#57caff,stroke-width:2px;
+    classDef white font-family:'Roboto Mono Normal',fill:#ffffff,color:#20344b,stroke:#20344b,stroke-width:1px,stroke-dasharray: 5 5;
 
-%% Edges
-    NGINX -- "/api/*" --> API
-    API --> DB
-    API --> VOL
+    %% ---------------------------------------------------------
+    %% Nodes
+    %% ---------------------------------------------------------
+    Browser[User Browser]
+    
+    subgraph Host ["Docker Host / K8s Pod"]
+        NGINX[Nginx Reverse Proxy]
+        API[FastAPI Backend]
+        
+        subgraph Persistence ["Data Volumes"]
+            PG[(Postgres DB)]
+            Duck[DuckDB File]
+        end
+    end
 
-%% Font Styling
-%% Body: Google Sans Normal
-%% Subheads (Edge Labels): Roboto Mono Normal
-    classDef default font-family:'Google Sans Normal',sans-serif,stroke:#20344b,stroke-width:2px;
+    %% ---------------------------------------------------------
+    %% Connections
+    %% ---------------------------------------------------------
+    Browser -- "HTTPS / 443" --> NGINX
+    NGINX -- "Static Assets" --> Browser
+    NGINX -- "Proxy /api/*" --> API
+    
+    API -- "SQLAlchemy (Async)" --> PG
+    API -- "DuckDB Native C++" --> Duck
 
-%% Color Classes based on Design Constraints
-classDef blue fill:#4285f4,color:#ffffff;
-classDef green fill:#34a853,color:#ffffff;
-classDef navy fill:#20344b,color:#ffffff;
-classDef yellow fill:#f9ab00,color:#ffffff;
+    %% ---------------------------------------------------------
+    %% Styling Application
+    %% ---------------------------------------------------------
+    class Browser yellow;
+    class NGINX blue;
+    class API green;
+    class PG,Duck navy;
+    class Host,Persistence white;
 
-%% Apply Styles
-class NGINX blue;
-class API green;
-class DB navy;
-class VOL yellow;
-
-%% Link Styling
-linkStyle 0,1,2 stroke:#20344b,stroke-width:2px,fill:none,font-family:'Roboto Mono Normal',monospace;
+    %% Edge Styling
+    linkStyle default font-family:'Roboto Mono Normal',stroke:#20344b,stroke-width:2px;
 ```
+
+### Production Checklist
+1.  **Environment Variables:** Ensure `SECRET_KEY` and `POSTGRES_PASSWORD` are set in the production environment (e.g., `.env` or K8s Secrets), overriding defaults in `config.py`.
+2.  **Build:**
+    *   Frontend: `npm run build` (Output: `dist/pulse-query-ng-web/browser`).
+    *   Backend: Copy `src/` and `alembic/`.
+3.  **Reverse Proxy:** Configure Nginx to serve the Static Frontend files for root requests and proxy `/api` requests to the Uvicorn worker running the FastAPI app.
