@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Ingestion Script Wrapper.
 
@@ -13,7 +14,7 @@ import os
 import logging
 
 # Ensure backend modules are resolvable
-sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from app.services.data_ingestion import data_ingestion_service
 
