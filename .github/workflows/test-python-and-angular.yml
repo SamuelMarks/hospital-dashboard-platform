@@ -32,6 +32,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          cache: 'npm'
+          cache-dependency-path: ./pulse-query-ng-web/package-lock.json
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -52,13 +54,15 @@ jobs:
       - name: Database setup
         run: |
           . "$GITHUB_WORKSPACE"/venv/bin/activate
+          cp .env.tpl .env
+          export $(grep -v '^#' .env | xargs -d '\n')
           uv run alembic upgrade head
           uv run python scripts/ingest.py
         working-directory: backend
 
       - name: Python tests
         run: |
-          cp .env.tpl .env
+          export $(grep -v '^#' .env | xargs -d '\n')
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           pytest
         working-directory: backend
@@ -68,5 +72,5 @@ jobs:
         working-directory: pulse-query-ng-web
 
       - name: Angular tests
-        run: npm test
+        run: ng test --watch=false --browsers=ChromeHeadless
         working-directory: pulse-query-ng-web
