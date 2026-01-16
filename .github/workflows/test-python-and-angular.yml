@@ -44,8 +44,16 @@ jobs:
 
       - name: Python dependencies and package install
         run: |
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
           uv pip install .
           uv pip install pytest
+        working-directory: backend
+
+      - name: Database setup
+        run: |
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
+          uv run alembic upgrade head
+          uv run python scripts/ingest.py
         working-directory: backend
 
       - name: Python tests
