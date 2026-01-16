@@ -2,6 +2,7 @@ import asyncio
 from typing import AsyncGenerator
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -19,14 +20,13 @@ from app.main import app
 engine = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(loop_scope="function")
 async def init_db():
   """
   Initialize the database schema for the test.
   Drops existing tables to ensure a clean slate, then creates all tables.
 
-  Changed from session scope to default (function) scope to ensure compatibility
-  with pytest-anyio which manages event loops per test.
+  Using pytest_asyncio.fixture explicitly resolves warnings in strict mode.
   """
   async with engine.begin() as conn:
     await conn.run_sync(Base.metadata.drop_all)

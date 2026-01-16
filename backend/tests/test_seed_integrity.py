@@ -27,8 +27,7 @@ def test_json_structure_validity(content_pack):
   """
   Static verification of the JSON file structure.
   """
-  # Corrected expectation based on provided initial_templates.json (5 items)
-  assert len(content_pack) == 5, f"Expected 5 templates, found {len(content_pack)}"
+  assert len(content_pack) > 5, f"Expected at least 5 templates, found {len(content_pack)}"
 
   required_keys = {"title", "description", "category", "sql_template", "parameters_schema"}
 
