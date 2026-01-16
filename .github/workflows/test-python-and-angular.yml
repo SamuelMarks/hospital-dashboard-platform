@@ -68,7 +68,10 @@ jobs:
         working-directory: backend
 
       - name: Angular dependencies install
-        run: npm i -g @angular/cli && npm ci
+        run: |
+          npm i -g @angular/cli @vitest/browser-playwright
+          npm ci
+          npm install -D @vitest/browser-preview @vitest/browser-playwright
         working-directory: pulse-query-ng-web
 
       - name: Angular tests
