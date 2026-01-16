@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "app"
-version = "0.1.0"
-description = "Enterprise Analytics Platform Backend"
-authors = [{ name = "Architect", email = "architect@example.com" }]
+version = "0.0.1"
+description = "Backend for the dashboard platform focussing on hospital resource allocation (esp. bed allocation)"
+authors = [{ name = "Samuel Marks", email = "807580+SamuelMarks@users.noreply.github.com" }]
 requires-python = ">=3.12"
-dynamic = ["dependencies"]
+dynamic = ["dependencies", "optional-dependencies"]
 
 [tool.hatch.metadata.hooks.requirements_txt]
 files = ["requirements.txt"]
