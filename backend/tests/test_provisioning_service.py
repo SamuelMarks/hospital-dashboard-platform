@@ -27,13 +27,13 @@ MOCK_TEMPLATES = [
 ]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_provision_new_user_creates_dashboard(db_session):
   """
   Test that a dashboard is created for the user.
   Uses the real db_session from conftest (in-memory SQLite/Postgres).
 
-  Marked with anyio to handle async DB session.
+  Marked with asyncio to handle async DB session.
   """
   # 1. Setup User
   user = User(id=MOCK_USER_ID, email="new@test.com", hashed_password="pw", is_active=True)

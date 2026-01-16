@@ -13,7 +13,7 @@ from app.models.template import WidgetTemplate
 # Note: The 'client' and 'db_session' fixtures are provided by conftest.py
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_register_flow_provisions_dashboard(client: AsyncClient, db_session):
   """
   Test that registration creates a user AND triggers provisioning.
@@ -48,7 +48,7 @@ async def test_register_flow_provisions_dashboard(client: AsyncClient, db_sessio
   assert dash.name == "Hospital Command Center"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_register_duplicate_email(client: AsyncClient):
   """
   Test that registering with an existing email returns 400.
@@ -66,7 +66,7 @@ async def test_register_duplicate_email(client: AsyncClient):
   assert "already exists" in response.json()["detail"]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_login_flow(client: AsyncClient):
   """
   Test registration followed by login creates a valid token.
@@ -87,7 +87,7 @@ async def test_login_flow(client: AsyncClient):
   assert token_data["token_type"] == "bearer"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_login_failure(client: AsyncClient):
   """
   Test invalid credentials.
@@ -98,7 +98,7 @@ async def test_login_failure(client: AsyncClient):
   assert response.json()["detail"] == "Incorrect email or password"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_me_protected(client: AsyncClient):
   """
   Test the /me endpoint requires authentication.

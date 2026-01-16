@@ -1,72 +1,70 @@
-[build-system]
-requires = ["hatchling", "hatch-requirements-txt"]
-build-backend = "hatchling.build"
+[build-system] 
+requires = ["hatchling", "hatch-requirements-txt"] 
+build-backend = "hatchling.build" 
 
-[project]
-name = "app"
-version = "0.0.1"
-description = "Backend for the dashboard platform focussing on hospital resource allocation (esp. bed allocation)"
-authors = [{ name = "Samuel Marks", email = "807580+SamuelMarks@users.noreply.github.com" }]
-requires-python = ">=3.12"
-dynamic = ["dependencies", "optional-dependencies"]
+[project] 
+name = "app" 
+version = "0.0.1" 
+description = "Backend for the dashboard platform focussing on hospital resource allocation (esp. bed allocation)" 
+authors = [{ name = "Samuel Marks", email = "807580+SamuelMarks@users.noreply.github.com" }] 
+requires-python = ">=3.12" 
+dynamic = ["dependencies", "optional-dependencies"] 
 
-[tool.hatch.metadata.hooks.requirements_txt]
-files = ["requirements.txt"]
+[tool.hatch.metadata.hooks.requirements_txt] 
+files = ["requirements.txt"] 
 
-[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies]
-dev = ["requirements-dev.txt"]
+[tool.hatch.metadata.hooks.requirements_txt.optional-dependencies] 
+dev = ["requirements-dev.txt"] 
 
-[tool.ruff]
-exclude = [
-    ".eggs",
-    ".git",
-    ".ipynb_checkpoints",
-    ".pyenv",
-    ".pytest_cache",
-    ".pytype",
-    ".ruff_cache",
-    ".tox",
-    ".venv",
-    ".vscode",
-    "_build",
-    "build",
-    "dist",
-    "site-packages",
-    "venv",
-]
+[tool.ruff] 
+exclude = [ 
+    ".eggs", 
+    ".git", 
+    ".ipynb_checkpoints", 
+    ".pyenv", 
+    ".pytest_cache", 
+    ".pytype", 
+    ".ruff_cache", 
+    ".tox", 
+    ".venv", 
+    ".vscode", 
+    "_build", 
+    "build", 
+    "dist", 
+    "site-packages", 
+    "venv", 
+] 
 line-length = 122
 indent-width = 2
 
-[tool.ruff.lint]
-select = ["E4", "E7", "E9", "F"]
-ignore = []
-fixable = ["ALL"]
-unfixable = []
+[tool.ruff.lint] 
+select = ["E4", "E7", "E9", "F"] 
+ignore = [] 
+fixable = ["ALL"] 
+unfixable = [] 
 
 # Allow unused variables when underscore-prefixed. 
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$" 
 
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
+[tool.ruff.format] 
+quote-style = "double" 
+indent-style = "space" 
 skip-magic-trailing-comma = false
-line-ending = "auto"
+line-ending = "auto" 
 docstring-code-format = false
-docstring-code-line-length = "dynamic"
+docstring-code-line-length = "dynamic" 
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/app"]
+[tool.hatch.build.targets.wheel] 
+packages = ["src/app"] 
 
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
-markers = ["asyncio: mark test as async"]
-# Configure pytest-asyncio for auto-discovery and session-wide loop to support session fixtures
+[tool.pytest.ini_options] 
+pythonpath = ["src"] 
+testpaths = ["tests"] 
+markers = ["asyncio: mark test as async"] 
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "session"
-# Suppress known warnings from 3rd party libraries and pytest config artifacts
+asyncio_default_fixture_loop_scope = "function" 
 filterwarnings = [
-    "ignore:'crypt' is deprecated:DeprecationWarning",
-    "ignore:Accessing argon2.__version__ is deprecated:DeprecationWarning",
-    "ignore:Unknown config option:pytest.PytestConfigWarning"
+    "ignore:'crypt' is deprecated:DeprecationWarning", 
+    "ignore:Accessing argon2.__version__ is deprecated:DeprecationWarning", 
+    "ignore:Unknown config option:pytest.PytestConfigWarning" 
 ]

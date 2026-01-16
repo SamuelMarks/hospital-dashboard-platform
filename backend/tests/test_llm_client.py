@@ -1,8 +1,9 @@
 import pytest
+import httpx
 from app.services.llm_client import llm_client
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_llm_connection_error():
   """
   Test that the client raises a clear error when no LLM is running.
@@ -20,5 +21,6 @@ async def test_llm_connection_error():
     await llm_client.generate_response(messages)
   except Exception as e:
     # We just want to ensure it doesn't crash the whole app silently
-    assert isinstance(e, (RuntimeError, TimeoutError, IOError))
+    # Includes httpx.RequestError to catch ConnectError, protocol errors, etc.
+    assert isinstance(e, (RuntimeError, TimeoutError, IOError, httpx.RequestError))
     print(f"\n✅ LLM Client correctly caught error: {e}")

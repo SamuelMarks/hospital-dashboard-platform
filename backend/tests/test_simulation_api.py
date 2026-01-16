@@ -15,7 +15,7 @@ from app.api.deps import get_current_user  # Import dependency
 SIMULATION_URL = "/api/v1/simulation"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_simulation_success() -> None:
   """
   Test a valid simulation scenario.
@@ -65,7 +65,7 @@ async def test_run_simulation_success() -> None:
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_simulation_sql_failure() -> None:
   """
   Test handling of SQL errors during demand fetching.

@@ -48,7 +48,7 @@ def mock_dashboard_data():
   return dashboard
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_refresh_dashboard_success(mock_dashboard_data) -> None:
   """
   Test the happy path execution of a dashboard with mixed widgets.
@@ -121,7 +121,7 @@ async def test_refresh_dashboard_success(mock_dashboard_data) -> None:
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_refresh_dashboard_not_found() -> None:
   """
   Test 404 behavior when dashboard does not exist or user is not owner.
@@ -148,7 +148,7 @@ async def test_refresh_dashboard_not_found() -> None:
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_refresh_dashboard_unknown_widget_type(mock_dashboard_data) -> None:
   """
   Test that unknown widget types are handled gracefully without crashing.

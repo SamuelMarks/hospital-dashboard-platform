@@ -10,7 +10,7 @@ from httpx import Response
 from app.services.runners.http import run_http_widget
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_success_get() -> None:
   """
   Test a successful GET request returning JSON data.
@@ -31,7 +31,7 @@ async def test_run_http_widget_success_get() -> None:
     assert result["data"] == expected_data
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_success_post_with_auth() -> None:
   """
   Test a POST request with body and forwarded auth token.
@@ -59,7 +59,7 @@ async def test_run_http_widget_success_post_with_auth() -> None:
     assert params.read().decode() == '{"key":"value"}'
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_missing_url() -> None:
   """
   Test that missing URL config returns an appropriate error immediately.
@@ -71,7 +71,7 @@ async def test_run_http_widget_missing_url() -> None:
   assert "Missing URL" in result["error"]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_timeout() -> None:
   """
   Test proper handling of request timeouts.
@@ -91,7 +91,7 @@ async def test_run_http_widget_timeout() -> None:
     assert result["error"] is not None
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_404_error() -> None:
   """
   Test handling of HTTP 4xx client errors.
@@ -111,7 +111,7 @@ async def test_run_http_widget_404_error() -> None:
     assert result["data"] == {"detail": "Not Found"}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_non_json_response() -> None:
   """
   Test handling of valid HTTP responses that are not JSON.
@@ -129,7 +129,7 @@ async def test_run_http_widget_non_json_response() -> None:
     assert result["data"]["raw_content"] == "Plain Success"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_run_http_widget_exception_safety() -> None:
   """
   Test that unexpected exceptions (e.g., config types) are caught safely.

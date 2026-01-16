@@ -14,7 +14,7 @@ from app.main import app
 TEMPLATES_URL = "/api/v1/templates"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_search_functionality(client: AsyncClient) -> None:
   """
   Test server-side text searching.
@@ -90,7 +90,7 @@ async def test_search_functionality(client: AsyncClient) -> None:
   assert data_search[0]["title"] == "Discharge Metrics"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_limit_pagination(client: AsyncClient) -> None:
   """
   Test that limit restricts the result size.

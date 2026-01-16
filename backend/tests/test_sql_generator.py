@@ -31,11 +31,11 @@ def test_sql_cleaning_logic():
   assert cleaned_3 == "SELECT avg(billing_amount) FROM hospital_visits;"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_generation_flow_mocked():
   """
   Simulate a full flow using a mock for the actual HTTP call.
-  Async test using anyio.
+  Async test using asyncio.
   """
   mock_sql = "SELECT department, COUNT(*) FROM hospital_visits GROUP BY department"
 

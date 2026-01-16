@@ -3,7 +3,7 @@ from httpx import AsyncClient
 from app.api.routers.dashboards import router  # Validates router import
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_dashboard_crud_flow(client: AsyncClient) -> None:
   """
   Test the Dashboard Creation, Widget Addition, and Listing flow.

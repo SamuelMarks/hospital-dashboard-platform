@@ -39,7 +39,7 @@ def mock_dashboard() -> MagicMock:
   return d
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_refresh_dashboard_caching_flow(mock_dashboard: MagicMock) -> None:
   """
   Test the Hit/Miss lifecycle logic in the batch refresh endpoint.
@@ -102,7 +102,7 @@ async def test_refresh_dashboard_caching_flow(mock_dashboard: MagicMock) -> None
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_single_widget_force_refresh(mock_dashboard: MagicMock) -> None:
   """
   Test that ?force_refresh=true bypasses the cache retrieval.

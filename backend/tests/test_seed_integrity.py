@@ -42,7 +42,7 @@ def test_json_structure_validity(content_pack):
       assert "unit_name" in template["parameters_schema"]["properties"]
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_seeding_service_execution(db_session, content_pack):
   """
   Integration test: Run the Seeder Service against the test DB
@@ -59,7 +59,7 @@ async def test_seeding_service_execution(db_session, content_pack):
   assert count_res.scalar() == 3
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_idempotency(db_session, content_pack):
   """
   Verify that running the seed logic twice doesn't duplicate records

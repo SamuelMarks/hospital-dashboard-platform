@@ -16,7 +16,7 @@ BASE_URL = "http://test"
 AI_ENDPOINT = "/api/v1/ai/generate"
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_generate_sql_success() -> None:
   """
   Test the happy path for Text-to-SQL generation.
@@ -48,7 +48,7 @@ async def test_generate_sql_success() -> None:
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_generate_sql_empty_prompt() -> None:
   """
   Test that empty prompts are rejected with 400 Bad Request.
@@ -66,7 +66,7 @@ async def test_generate_sql_empty_prompt() -> None:
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_generate_sql_unauthorized() -> None:
   """
   Test that the endpoint requires authentication.
@@ -81,7 +81,7 @@ async def test_generate_sql_unauthorized() -> None:
   assert response.status_code == 401
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_generate_sql_timeout_error() -> None:
   """
   Test mapping of TimeoutError from service to 503 Service Unavailable.
@@ -102,7 +102,7 @@ async def test_generate_sql_timeout_error() -> None:
   app.dependency_overrides = {}
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_generate_sql_generic_error() -> None:
   """
   Test general exception handling (500 Internal Server Error).

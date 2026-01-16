@@ -11,7 +11,7 @@ from app.api.deps import get_current_user
 from app.database.postgres import get_db
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_refresh_dashboard_injects_global_params() -> None:
   """
   Verify that {{global_service}} is replaced by the value in the request body.

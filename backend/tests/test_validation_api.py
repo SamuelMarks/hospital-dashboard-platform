@@ -16,7 +16,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 # --- Success Case ---
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_update_widget_valid_sql_dry_run() -> None:
   """Test that a valid query passes validation and saves."""
   mock_user = MagicMock()
@@ -60,7 +60,7 @@ async def test_update_widget_valid_sql_dry_run() -> None:
 # --- Failure Case ---
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_update_widget_invalid_sql_returns_400() -> None:
   """Test that an invalid query raises 400 Bad Request."""
   mock_user = MagicMock()
