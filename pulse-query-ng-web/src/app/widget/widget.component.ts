@@ -1,12 +1,12 @@
-/**
- * @fileoverview Generic Wrapper Component for Dashboard Widgets.
+/** 
+ * @fileoverview Generic Wrapper Component for Dashboard Widgets. 
  * 
- * Orchestrates:
- * - Data fetching status (Loading/Error/Success).
- * - Visualization switching (Chart/Table/Metric).
- * - Standardized Header/Actions (Edit/Delete).
- * - Error Safety via ErrorBoundary.
- */
+ * Orchestrates: 
+ * - Data fetching status (Loading/Error/Success). 
+ * - Visualization switching (Chart/Table/Metric). 
+ * - Standardized Header/Actions (Edit/Delete/Focus). 
+ * - Error Safety via ErrorBoundary. 
+ */ 
 
 import { 
   Component, 
@@ -36,19 +36,19 @@ import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metr
 import { VizChartComponent, ChartConfig } from '../shared/visualizations/viz-chart/viz-chart.component'; 
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component'; 
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component'; 
-import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
+import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component'; 
+import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component'; 
 
-/**
- * Main Widget Wrapper.
+/** 
+ * Main Widget Wrapper. 
  * 
- * **Best Practices Applied:**
- * - **Host Metadata:** Events like `keydown.escape` are bound in component metadata, avoiding decorators.
- * - **Focus Management:** The host element is focusable (`tabindex="0"`) to allow keyboard shortcuts.
- * - **Bindings:** Replaced structural directives with native control flow (`@if`, `@switch`).
- * - **Style Bindings:** Direct usage of `[class.x]` instead of `ngClass`.
- */
+ * **Features:** 
+ * - **Focus Mode:** Allows users to expand the widget to full-screen via store dispatch. 
+ * - **Error Boundaries:** Catches render errors. 
+ * - **In-Place Recovery:** Provides direct "Fix Query" actions on error states. 
+ */ 
 @Component({ 
-  selector: 'app-widget',
+  selector: 'app-widget', 
   imports: [ 
     CommonModule, 
     MatCardModule, 
@@ -63,29 +63,30 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
     VizChartComponent, 
     VizPieComponent, 
     VizHeatmapComponent, 
-    VizScalarComponent
+    VizScalarComponent, 
+    VizMarkdownComponent
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   // Bind host events and attributes here
-  host: {
-    'tabindex': '0',
-    'class': 'widget-host',
-    '(keydown.escape)': 'onEscape($event)',
-    '(focus)': 'onFocus()'
-  },
+  host: { 
+    'tabindex': '0', 
+    'class': 'widget-host', 
+    '(keydown.escape)': 'onEscape($event)', 
+    '(focus)': 'onFocus()' 
+  }, 
   styles: [`
     :host { 
       display: block; 
       height: 100%; 
       outline: none; 
-      border-radius: 8px; /* Match card radius for focus ring */
+      border-radius: 8px; /* Match card radius for focus ring */ 
     } 
-    /* Accessibility Focus Ring */
+    /* Accessibility Focus Ring */ 
     :host(:focus-visible) mat-card { 
       box-shadow: 0 0 0 3px var(--sys-primary); 
     } 
     :host:focus-within mat-card { 
-      border-color: var(--sys-primary);
+      border-color: var(--sys-primary); 
       box-shadow: 0px 4px 8px rgba(0,0,0,0.15); 
     } 
     mat-card { 
@@ -115,7 +116,7 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
     
     .viz-container { height: 100%; width: 100%; overflow: auto; } 
     
-    /* Overlay States */
+    /* Overlay States */ 
     .center-overlay { 
       position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; 
       background: rgba(255,255,255,0.8); 
@@ -124,17 +125,17 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
     } 
     .skeleton-wrapper { padding: 16px; height: 100%; box-sizing: border-box; } 
 
-    /* Safe Mode / Error Boundary Style */
+    /* Safe Mode / Error Boundary Style */ 
     .safe-mode-container { 
       display: flex; flex-direction: column; align-items: center; justify-content: center; 
       height: 100%; background-color: #fff3e0; color: #e65100; padding: 16px; text-align: center; 
     } 
     .safe-mode-title { font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; } 
-    .safe-mode-desc { font-size: 12px; margin-bottom: 16px; opacity: 0.8; max-width: 90%; word-break: break-word; }
+    .safe-mode-desc { font-size: 12px; margin-bottom: 16px; opacity: 0.8; max-width: 90%; word-break: break-word; } 
     
-    /* Utility */
-    .animate-spin { animation: spin 1s linear infinite; }
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    /* Utility */ 
+    .animate-spin { animation: spin 1s linear infinite; } 
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } 
   `], 
   template: `
     <mat-card appearance="outlined">
@@ -146,7 +147,7 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
                 {{ widgetInput().title }} 
              </span>
              <mat-chip-set>
-                <mat-chip class="widget-type-chip" [color]="widgetInput().type === 'SQL' ? 'primary' : 'accent'" highlighted>
+                <mat-chip class="widget-type-chip" [color]="getChipColor()" highlighted>
                   {{ widgetInput().type }} 
                 </mat-chip>
              </mat-chip-set>
@@ -154,25 +155,61 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
           
           <!-- Right: Actions -->
           <div class="action-group">
-            <button mat-icon-button class="icon-btn-compact" (click)="edit.emit()" matTooltip="Edit" data-testid="btn-edit" aria-label="Edit Widget" style="color: var(--sys-text-secondary)">
-              <mat-icon>edit</mat-icon>
+            
+            <!-- Focus / Maximize Button (Always visible) -->
+            <button 
+              mat-icon-button 
+              class="icon-btn-compact" 
+              (click)="toggleFocus()" 
+              [matTooltip]="isFocused() ? 'Minimize' : 'Full Screen'" 
+              [attr.aria-label]="isFocused() ? 'Close Fullscreen View' : 'Open Fullscreen View'" 
+              style="color: var(--sys-text-secondary)" 
+              data-testid="btn-focus" 
+            >
+              <mat-icon>{{ isFocused() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
             </button>
-            <button mat-icon-button class="icon-btn-compact" (click)="delete.emit()" matTooltip="Delete" data-testid="btn-delete" aria-label="Delete Widget" style="color: var(--sys-warn)">
-              <mat-icon>delete</mat-icon>
-            </button>
-            <button mat-icon-button class="icon-btn-compact" (click)="manualRefresh()" [disabled]="isLoadingLocal()" matTooltip="Refresh" aria-label="Refresh Data" style="color: var(--sys-primary)">
-               <mat-icon [class.animate-spin]="isLoadingLocal()">refresh</mat-icon>
-            </button>
+
+            <!-- Edit/Delete only in Edit Mode -->
+            @if (isEditMode()) { 
+              <button mat-icon-button class="icon-btn-compact" (click)="duplicate.emit()" matTooltip="Duplicate" data-testid="btn-duplicate" aria-label="Duplicate Widget" style="color: var(--sys-text-secondary)">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+              <button mat-icon-button class="icon-btn-compact" (click)="edit.emit()" matTooltip="Edit" data-testid="btn-edit" aria-label="Edit Widget" style="color: var(--sys-text-secondary)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button class="icon-btn-compact" (click)="delete.emit()" matTooltip="Delete" data-testid="btn-delete" aria-label="Delete Widget" style="color: var(--sys-warn)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            } 
+            
+            @if (widgetInput().type !== 'TEXT') { 
+              <button mat-icon-button class="icon-btn-compact" (click)="manualRefresh()" [disabled]="isLoadingLocal()" matTooltip="Refresh" aria-label="Refresh Data" style="color: var(--sys-primary)">
+                 <mat-icon [class.animate-spin]="isLoadingLocal()">refresh</mat-icon>
+              </button>
+            } 
           </div>
         </div>
       </mat-card-header>
 
       <mat-card-content>
-        <!-- 1. Error State -->
+        <!-- 1. Error State (API / SQL Errors) -->
         @if (errorMessage(); as error) { 
           <div class="center-overlay p-4" data-testid="error-state" style="color: var(--sys-warn)">
              <mat-icon class="text-4xl mb-2">warning</mat-icon>
              <span class="text-sm font-medium text-center">{{ error }}</span>
+             
+             <!-- In-Place Recovery Action -->
+             @if (isEditMode()) { 
+               <button 
+                 mat-stroked-button 
+                 color="warn" 
+                 class="mt-4" 
+                 (click)="edit.emit()" 
+                 data-testid="btn-fix-query" 
+               >
+                 <mat-icon>build</mat-icon> Fix Query
+               </button>
+             } 
           </div>
         } 
         
@@ -194,6 +231,8 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
               @case ('line_graph') { <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart> } 
               @case ('pie') { <viz-pie [dataSet]="typedDataAsTable()"></viz-pie> } 
               @case ('heatmap') { <viz-heatmap [dataSet]="typedDataAsTable()"></viz-heatmap> } 
+              <!-- Markdown Support -->
+              @case ('markdown') { <viz-markdown [content]="widgetInput().config['content']"></viz-markdown> } 
               @default { <div class="center-overlay" style="color: var(--sys-text-secondary)">Unknown Viz: {{ visualizationType() }}</div> } 
             } 
           </div>
@@ -201,7 +240,7 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
       </mat-card-content>
     </mat-card>
 
-    <!-- Error Boundary Fallback Template -->
+    <!-- Error Boundary Fallback Template (Client-Side Rendering Crashes) -->
     <ng-template #safeModeTpl let-error let-retry="retry">
       <div class="safe-mode-container" data-testid="safe-mode">
         <div class="safe-mode-title">
@@ -211,7 +250,15 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
           Error rendering visualization.<br>
           <span class="font-mono text-xs">{{ error?.message || error }}</span>
         </div>
-        <button mat-stroked-button color="warn" (click)="retry()">Retry</button>
+        
+        <div class="flex gap-2">
+          <button mat-stroked-button color="warn" (click)="retry()">Retry</button>
+          
+          <!-- Recovery Action for Config Crashes -->
+          @if (isEditMode()) { 
+            <button mat-stroked-button color="warn" (click)="edit.emit()">Fix Configuration</button>
+          } 
+        </div>
       </div>
     </ng-template>
   `
@@ -219,32 +266,43 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
 export class WidgetComponent { 
   private readonly store = inject(DashboardStore); 
   
-  /** Widget configuration input signal */
+  /** Widget configuration input signal */ 
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' }); 
   
-  /** Emits when edit button is clicked */
+  /** Emits when edit button is clicked */ 
   readonly edit = output<void>(); 
-  /** Emits when delete button is clicked or Escape key pressed */
+  /** Emits when duplicate button is clicked */ 
+  readonly duplicate = output<void>(); 
+  /** Emits when delete button is clicked or Escape key pressed */ 
   readonly delete = output<void>(); 
 
-  // --- Computed Selectors ---
+  // --- Computed Selectors --- 
 
-  /** True if this specific widget is pending API result. */
+  /** True if this specific widget is pending API result. */ 
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id)); 
   
-  /** Raw data result for this widget from the store map. */
+  /** Raw data result for this widget from the store map. */ 
   readonly rawResult = computed(() => this.store.dataMap()[this.widgetInput().id]); 
   
-  /** Errors extracted from the result set if any. */
+  /** Exposed state from store. */ 
+  readonly isEditMode = this.store.isEditMode; 
+
+  /** Check if this specific widget is focused. */ 
+  readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id); 
+
+  /** Errors extracted from the result set if any. */ 
   readonly errorMessage = computed(() => { 
     const res = this.rawResult(); 
     return (res && res.error) ? res.error : null; 
   }); 
 
-  /** Normalized visualization type identifier. */
-  readonly visualizationType = computed(() => (this.widgetInput().visualization || 'table').toLowerCase()); 
+  /** Normalized visualization type identifier. */ 
+  readonly visualizationType = computed(() => { 
+    if (this.widgetInput().type === 'TEXT') return 'markdown'; 
+    return (this.widgetInput().visualization || 'table').toLowerCase(); 
+  }); 
   
-  /** Determines which skeleton loader variant to show. */
+  /** Determines which skeleton loader variant to show. */ 
   readonly skeletonType = computed<SkeletonVariant>(() => { 
     const viz = this.visualizationType(); 
     if (viz.includes('chart') || viz.includes('graph') || viz === 'pie' || viz === 'heatmap') return 'chart'; 
@@ -253,31 +311,51 @@ export class WidgetComponent {
     return 'card'; 
   }); 
 
-  /** Convenience casts for typed consumption in template. */
+  /** Convenience casts for typed consumption in template. */ 
   readonly typedDataAsTable = computed(() => this.rawResult() as TableDataSet); 
   readonly chartConfig = computed(() => this.widgetInput().config as ChartConfig); 
 
-  /** Manual reload trigger. */
+  /** Manual reload trigger. */ 
   manualRefresh(): void { this.store.refreshWidget(this.widgetInput().id); } 
 
-  // --- Host Listener Handlers (Called via metadata map) ---
+  /** Toggles the focus status of this widget in the global store. */ 
+  toggleFocus(): void { 
+    const id = this.widgetInput().id; 
+    const current = this.store.focusedWidgetId(); 
+    this.store.setFocusedWidget(current === id ? null : id); 
+  } 
+
+  getChipColor(): string { 
+    const type = this.widgetInput().type; 
+    if (type === 'SQL') return 'primary'; 
+    if (type === 'TEXT') return 'warn'; 
+    return 'accent'; 
+  } 
+
+  // --- Host Listener Handlers (Called via metadata map) --- 
 
   /** 
-   * Handles Escape key press interaction.
-   * Stops propagation to prevent closing parent dialogs accidentally.
-   * Triggers Delete output as a shortcut action.
+   * Handles Escape key press interaction. 
+   * - If Focused: Closes focus mode. 
+   * - If Editing: Deletes widget (shortcut). 
+   * Stops propagation to prevent closing parent dialogs accidentally. 
    * 
-   * @param {Event} event - The keyboard event.
-   */
+   * @param {Event} event - The keyboard event. 
+   */ 
   onEscape(event: Event): void { 
     (event as KeyboardEvent).stopPropagation(); 
-    this.delete.emit(); 
-  }
+    
+    if (this.isFocused()) { 
+        this.store.setFocusedWidget(null); 
+    } else if (this.isEditMode()) { 
+        this.delete.emit(); 
+    } 
+  } 
 
-  /**
-   * Tracks focus gain for accessibility debugging (optional hook).
-   */
-  onFocus(): void {
+  /** 
+   * Tracks focus gain for accessibility debugging (optional hook). 
+   */ 
+  onFocus(): void { 
     // Hook for analytics or auto-selection logic if needed
-  }
+  } 
 }

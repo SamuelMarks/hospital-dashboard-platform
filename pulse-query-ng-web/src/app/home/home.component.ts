@@ -196,6 +196,10 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
                   <mat-icon>edit</mat-icon>
                   <span>Rename</span>
                 </button>
+                <button mat-menu-item (click)="cloneDashboard(dash)">
+                  <mat-icon>content_copy</mat-icon>
+                  <span>Duplicate</span>
+                </button>
                 <button mat-menu-item (click)="deleteDashboard(dash)" class="text-red-600">
                   <mat-icon color="warn">delete</mat-icon>
                   <span>Delete</span>
@@ -317,6 +321,20 @@ export class HomeComponent implements OnInit {
           } 
         }); 
     } 
+  } 
+
+  cloneDashboard(dash: DashboardResponse): void { 
+    this.dashboardsApi.cloneDashboardApiV1DashboardsDashboardIdClonePost(dash.id) 
+      .subscribe({ 
+        next: (clonedDash: DashboardResponse) => { 
+          this.dashboards.update(curr => [...curr, clonedDash]); 
+          this.snackBar.open(`Cloned "${dash.name}" successfully`, 'Close', { duration: 3000 }); 
+        }, 
+        error: (err) => { 
+          console.error(err); 
+          this.snackBar.open(`Failed to clone "${dash.name}".`, 'Close', { duration: 5000 }); 
+        } 
+      }); 
   } 
 
   deleteDashboard(dash: DashboardResponse): void { 

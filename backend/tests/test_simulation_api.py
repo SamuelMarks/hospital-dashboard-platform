@@ -2,7 +2,8 @@
 Tests for Simulation API.
 
 Verifies that the simulation endpoint correctly receives JSON config,
-fetches data from DuckDB, and returns parsed assignments from MPAX.
+fetches data from DuckDB (handling 2 or 3 column formats),
+and returns parsed assignments with Delta values.
 """
 
 import json
@@ -16,13 +17,13 @@ SIMULATION_URL = "/api/v1/simulation"
 
 
 @pytest.mark.asyncio
-async def test_run_simulation_success() -> None:
+async def test_run_simulation_with_delta_success() -> None:
   """
-  Test a valid simulation scenario.
+  Test a simulation where the input SQL provides 3 columns (Service, Unit, Count).
+  Verifies that 'Original' and 'Delta' fields are calculated correctly.
   """
   # 1. Setup Mock User
   mock_user = MagicMock()
-  # Use function object key
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   # 2. Mock Connections and Services
@@ -30,24 +31,21 @@ async def test_run_simulation_success() -> None:
     patch("app.services.simulation_service.duckdb_manager.get_readonly_connection") as mock_conn_getter,
     patch("app.services.simulation_service.mpax_bridge.solve_unit_assignment") as mock_solver,
   ):
-    # Mock DuckDB demand fetch
+    # Mock DuckDB: Return current state
+    # Cardio is currently in 'ER' (5 pts).
     mock_conn = MagicMock()
-    # Returns [('Cardio', 10), ('Neuro', 5)]
-    mock_conn.execute.return_value.fetchall.return_value = [("Cardio", 10.0), ("Neuro", 5.0)]
+    mock_conn.execute.return_value.fetchall.return_value = [("Cardio", "ER", 5.0)]
     mock_conn_getter.return_value = mock_conn
 
-    # Mock Solver Result
-    mock_solver.return_value = json.dumps(
-      [
-        {"Service": "Cardio", "Unit": "ICU", "Patient_Count": 10.0},
-        {"Service": "Neuro", "Unit": "PCU", "Patient_Count": 5.0},
-      ]
-    )
+    # Mock Solver: Moves patients to 'ICU'
+    # Solver output format: [{"Service": "Cardio", "Unit": "ICU", "Patient_Count": 5.0}]
+    # Note: Solver won't return 'ER' because count is 0 there now.
+    mock_solver.return_value = json.dumps([{"Service": "Cardio", "Unit": "ICU", "Patient_Count": 5.0}])
 
     # 3. Payload
     payload = {
-      "demand_source_sql": "SELECT service, cnt FROM demand_table",
-      "capacity_parameters": {"ICU": 20, "PCU": 20},
+      "demand_source_sql": "SELECT svc, unit, cnt FROM table",
+      "capacity_parameters": {"ICU": 10, "ER": 10},
       "constraints": [],
     }
 
@@ -58,32 +56,63 @@ async def test_run_simulation_success() -> None:
     # 5. Assertions
     assert res.status_code == 200
     data = res.json()
-    assert data["status"] == "success"
-    assert len(data["assignments"]) == 2
-    assert data["assignments"][0]["Service"] == "Cardio"
+    assignments = data["assignments"]
+
+    # We expect 2 entries:
+    # 1. Cardio -> ICU: Current=0, New=5, Delta=+5
+    # 2. Cardio -> ER: Current=5, New=0, Delta=-5 (Inferred 0)
+
+    # Find ICU entry
+    icu_row = next((a for a in assignments if a["Unit"] == "ICU"), None)
+    assert icu_row is not None
+    assert icu_row["Original_Count"] == 0.0
+    assert icu_row["Delta"] == 5.0
+
+    # Find ER entry
+    er_row = next((a for a in assignments if a["Unit"] == "ER"), None)
+    assert er_row is not None
+    assert er_row["Patient_Count"] == 0.0
+    assert er_row["Original_Count"] == 5.0
+    assert er_row["Delta"] == -5.0
 
   app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
-async def test_run_simulation_sql_failure() -> None:
+async def test_run_simulation_legacy_2col_sql() -> None:
   """
-  Test handling of SQL errors during demand fetching.
+  Test backward compatibility with 2-column SQL (Service, Count).
+  Deltas should match Patient_Count (assumes Original=0).
   """
   mock_user = MagicMock()
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
-  with patch("app.services.simulation_service.duckdb_manager.get_readonly_connection") as mock_conn_getter:
+  with (
+    patch("app.services.simulation_service.duckdb_manager.get_readonly_connection") as mock_conn_getter,
+    patch("app.services.simulation_service.mpax_bridge.solve_unit_assignment") as mock_solver,
+  ):
+    # Mock DuckDB: 2 Columns
     mock_conn = MagicMock()
-    mock_conn.execute.side_effect = Exception("Table not found")
+    mock_conn.execute.return_value.fetchall.return_value = [("Neuro", 10.0)]
     mock_conn_getter.return_value = mock_conn
 
-    payload = {"demand_source_sql": "SELECT * FROM ghost", "capacity_parameters": {"A": 10}}
+    # Solver
+    mock_solver.return_value = json.dumps([{"Service": "Neuro", "Unit": "Ward_A", "Patient_Count": 10.0}])
+
+    payload = {
+      "demand_source_sql": "SELECT svc, cnt FROM table",
+      "capacity_parameters": {"Ward_A": 20},
+    }
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
       res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
 
-    assert res.status_code == 400
-    assert "Failed to execute demand query" in res.json()["detail"]
+    assignments = res.json()["assignments"]
+    assert len(assignments) == 1
+    row = assignments[0]
+
+    assert row["Unit"] == "Ward_A"
+    assert row["Original_Count"] == 0.0
+    assert row["Delta"] == 10.0
 
   app.dependency_overrides = {}

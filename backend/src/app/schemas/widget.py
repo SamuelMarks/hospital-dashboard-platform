@@ -9,6 +9,7 @@ Classes:
     WidgetLayout: Base grid positioning.
     SqlConfig: Specific validation for SQL-based widgets (requires query).
     HttpConfig: Specific validation for HTTP-based widgets (requires URL).
+    TextConfig: Specific validation for Static Text widgets (requires content).
     WidgetCreate: A Discriminated Union that selects the correct config schema
                   based on the `type` field.
     WidgetUpdate: Loose schema for partial updates.
@@ -78,6 +79,17 @@ class HttpConfig(WidgetLayout):
   yKey: Optional[str] = Field(None, description="JSON path for Y-Axis/Values")
 
 
+class TextConfig(WidgetLayout):
+  """
+  Configuration schema for Static Text/Markdown widgets.
+
+  Attributes:
+      content (str): The static text content (Markdown supported).
+  """
+
+  content: str = Field(..., description="Markdown text content.")
+
+
 # --- Polymorphic Creation Models ---
 
 
@@ -105,11 +117,21 @@ class WidgetCreateHttp(BaseModel):
   config: HttpConfig = Field(..., description="HTTP-specific configuration")
 
 
+class WidgetCreateText(BaseModel):
+  """
+  Payload for creating a Text Widget.
+  Strictly enforces `type="TEXT"` and `config` matching TextConfig.
+  """
+
+  title: str = Field(..., min_length=1, max_length=100)
+  type: Literal["TEXT"]
+  visualization: Literal["markdown"] = Field("markdown", description="Fixed visualization ID for text.")
+  config: TextConfig = Field(..., description="Text-specific configuration")
+
+
 # Discriminated Union: This is the primary type used in API routes.
 # Pydantic will check the 'type' field.
-# If 'SQL', it strictly validates 'config' against SqlConfig.
-# If 'HTTP', it strictly validates 'config' against HttpConfig.
-WidgetCreate = Annotated[Union[WidgetCreateSql, WidgetCreateHttp], Field(discriminator="type")]
+WidgetCreate = Annotated[Union[WidgetCreateSql, WidgetCreateHttp, WidgetCreateText], Field(discriminator="type")]
 
 
 class WidgetUpdate(BaseModel):

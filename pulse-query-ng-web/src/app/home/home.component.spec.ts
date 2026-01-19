@@ -25,7 +25,8 @@ describe('HomeComponent', () => {
     mockDashApi = { 
       listDashboardsApiV1DashboardsGet: vi.fn(), 
       updateDashboardApiV1DashboardsDashboardIdPut: vi.fn(), 
-      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn() 
+      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn(), 
+      cloneDashboardApiV1DashboardsDashboardIdClonePost: vi.fn() // Updated with clone
     }; 
     mockDialog = { open: vi.fn() }; 
     
@@ -127,6 +128,33 @@ describe('HomeComponent', () => {
       // Rollback check
       expect(component.dashboards()[0].name).toBe('Finance'); 
       expect(mockSnackBar.open).toHaveBeenCalled(); 
+    }); 
+  }); 
+
+  describe('Cloning', () => { 
+    it('should call clone API and update list', () => { 
+      const newDash = { id: 'd3', name: 'Copy of Finance', owner_id: 'u1', widgets: [] }; 
+      mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue(of(newDash)); 
+
+      component.cloneDashboard(mockDashboardList[0]); 
+
+      expect(mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost).toHaveBeenCalledWith('d1'); 
+      // Verify list update (dashboards signal is array of Dashboards) 
+      const currentList = component.dashboards(); 
+      expect(currentList.length).toBe(3); 
+      expect(currentList[2]).toEqual(newDash); // Appended
+      expect(mockSnackBar.open).toHaveBeenCalledWith(expect.stringContaining('Cloned'), 'Close', expect.anything()); 
+    }); 
+
+    it('should handle clone failure', () => { 
+      mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue( 
+          throwError(() => new Error('Clone Fail')) 
+      ); 
+
+      component.cloneDashboard(mockDashboardList[0]); 
+
+      expect(component.dashboards().length).toBe(2); 
+      expect(mockSnackBar.open).toHaveBeenCalledWith(expect.stringContaining('Failed to clone'), 'Close', expect.anything()); 
     }); 
   }); 
 });

@@ -117,3 +117,98 @@ async def test_restore_defaults_endpoint(client: AsyncClient, db_session) -> Non
   # User should have: Original, Restored, Restored 1, Restored 2 (4 total)
   list_res = await client.get("/api/v1/dashboards/", headers=headers)
   assert len(list_res.json()) == 4
+
+
+@pytest.mark.asyncio
+async def test_reorder_endpoint(client: AsyncClient) -> None:
+  """
+  Test the bulk reordering endpoint.
+  Verifies that drag-and-drop actions persist the new 'order' and 'group' values.
+  """
+  email = f"reorder_{uuid.uuid4()}@example.com"
+  pwd = "pw"
+  await client.post("/api/v1/auth/register", json={"email": email, "password": pwd})
+  token = (await client.post("/api/v1/auth/login", data={"username": email, "password": pwd})).json()["access_token"]
+  headers = {"Authorization": f"Bearer {token}"}
+
+  # Create Dash
+  dash = (await client.post("/api/v1/dashboards/", json={"name": "Sort"}, headers=headers)).json()
+  did = dash["id"]
+
+  # Create 2 Widgets with VALID SQL (Validation middleware is active)
+  # Using "SELECT 1" ensures validation passes.
+  w1_res = await client.post(
+    f"/api/v1/dashboards/{did}/widgets",
+    json={"title": "W1", "type": "SQL", "visualization": "t", "config": {"query": "SELECT 1"}},
+    headers=headers,
+  )
+  assert w1_res.status_code == 200
+  w1 = w1_res.json()
+
+  w2_res = await client.post(
+    f"/api/v1/dashboards/{did}/widgets",
+    json={"title": "W2", "type": "SQL", "visualization": "t", "config": {"query": "SELECT 2"}},
+    headers=headers,
+  )
+  assert w2_res.status_code == 200
+  w2 = w2_res.json()
+
+  # Reorder Logic: Swap index 0 and 1
+  # Assign them explicit groups
+  payload = {"items": [{"id": w1["id"], "order": 1, "group": "B"}, {"id": w2["id"], "order": 0, "group": "A"}]}
+
+  res = await client.post(f"/api/v1/dashboards/{did}/reorder", json=payload, headers=headers)
+  assert res.status_code == 200
+  assert res.json()["updated"] == 2
+
+  # Verify persistence via GET
+  dash_updated = (await client.get(f"/api/v1/dashboards/{did}", headers=headers)).json()
+  widgets = {w["id"]: w for w in dash_updated["widgets"]}
+
+  assert widgets[w1["id"]]["config"]["order"] == 1
+  assert widgets[w1["id"]]["config"]["group"] == "B"
+  assert widgets[w2["id"]]["config"]["order"] == 0
+  assert widgets[w2["id"]]["config"]["group"] == "A"
+
+
+@pytest.mark.asyncio
+async def test_clone_dashboard_endpoint(client: AsyncClient, db_session) -> None:
+  """
+  Test the 'Clone Dashboard' functionality.
+  Verifies that a deep copy of the dashboard and its widgets is created.
+  """
+  # 1. Setup: Register and Create Dashboard
+  email = f"clone_{uuid.uuid4()}@example.com"
+  pwd = "pw"
+  await client.post("/api/v1/auth/register", json={"email": email, "password": pwd})
+  token_res = await client.post("/api/v1/auth/login", data={"username": email, "password": pwd})
+  headers = {"Authorization": f"Bearer {token_res.json()['access_token']}"}
+
+  # Create Source Dash
+  source_res = await client.post("/api/v1/dashboards/", json={"name": "Source"}, headers=headers)
+  source_id = source_res.json()["id"]
+
+  # Add Widget to Source
+  widget_config = {"query": "SELECT 1", "x": 5}
+  await client.post(
+    f"/api/v1/dashboards/{source_id}/widgets",
+    json={"title": "Widget A", "type": "SQL", "visualization": "table", "config": widget_config},
+    headers=headers,
+  )
+
+  # 2. Perform Clone
+  clone_res = await client.post(f"/api/v1/dashboards/{source_id}/clone", headers=headers)
+  assert clone_res.status_code == 200
+  clone_data = clone_res.json()
+
+  # 3. Verification
+  # ID should be different
+  assert clone_data["id"] != source_id
+  # Name should be prefixed
+  assert clone_data["name"] == "Copy of Source"
+  # Widgets should be cloned
+  assert len(clone_data["widgets"]) == 1
+  assert clone_data["widgets"][0]["title"] == "Widget A"
+  assert clone_data["widgets"][0]["config"]["x"] == 5
+  # Widget ID should be different (Deep Copy)
+  assert clone_data["widgets"][0]["id"] != source_res.json().get("widgets", [])

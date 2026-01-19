@@ -4,7 +4,7 @@ Tests for Widget Schema Validation.
 
 import pytest
 from pydantic import ValidationError, TypeAdapter
-from app.schemas.widget import WidgetCreate, SqlConfig, HttpConfig
+from app.schemas.widget import WidgetCreate, SqlConfig, HttpConfig, TextConfig
 
 
 def test_sql_config_valid() -> None:
@@ -73,6 +73,24 @@ def test_polymorphic_create_http() -> None:
   assert model.type == "HTTP"
   assert model.config.method == "POST"
   assert model.config.meta_forward_auth is True
+
+
+def test_polymorphic_create_text() -> None:
+  """
+  Test creation of the Union model with type='TEXT'.
+  """
+  payload = {
+    "title": "Instructions",
+    "type": "TEXT",
+    "visualization": "markdown",
+    "config": {"content": "**Bold** note"},
+  }
+  adapter = TypeAdapter(WidgetCreate)
+  model = adapter.validate_python(payload)
+
+  assert model.type == "TEXT"
+  assert isinstance(model.config, TextConfig)
+  assert model.config.content == "**Bold** note"
 
 
 def test_polymorphic_discriminator_mismatch() -> None:

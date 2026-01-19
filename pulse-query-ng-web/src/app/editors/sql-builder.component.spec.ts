@@ -1,12 +1,10 @@
 /** 
  * @fileoverview Unit tests for SqlBuilderComponent. 
- * Tests logic integration. Note: CodeMirror DOM rendering is not fully simulated in basic jsdom unit tests
- * but we check the integration points. 
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { SqlBuilderComponent } from './sql-builder.component'; 
-import { DashboardsService, ExecutionService, BASE_PATH } from '../api-client'; 
+import { DashboardsService, ExecutionService, SchemaService, BASE_PATH } from '../api-client'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
 import { provideHttpClient } from '@angular/common/http'; 
 import { provideHttpClientTesting } from '@angular/common/http/testing'; 
@@ -20,11 +18,13 @@ describe('SqlBuilderComponent', () => {
   
   let mockDashApi: any; 
   let mockExecApi: any; 
+  let mockSchemaApi: any; 
   let mockStore: any; 
 
   beforeEach(async () => { 
     mockDashApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn() }; 
     mockExecApi = { refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn() }; 
+    mockSchemaApi = { getDatabaseSchemaApiV1SchemaGet: vi.fn().mockReturnValue(of([])) }; 
     
     mockStore = { 
       globalParams: signal<Record<string, any>>({ dept: 'Cardiology' }) 
@@ -37,6 +37,7 @@ describe('SqlBuilderComponent', () => {
         provideHttpClientTesting(), 
         { provide: DashboardsService, useValue: mockDashApi }, 
         { provide: ExecutionService, useValue: mockExecApi }, 
+        { provide: SchemaService, useValue: mockSchemaApi }, 
         { provide: DashboardStore, useValue: mockStore }, 
         { provide: BASE_PATH, useValue: 'http://api' } 
       ] 
@@ -48,6 +49,11 @@ describe('SqlBuilderComponent', () => {
     fixture.componentRef.setInput('widgetId', 'w1'); 
     fixture.componentRef.setInput('initialSql', "SELECT * FROM t WHERE d='{{dept}}'"); 
     fixture.detectChanges(); 
+  }); 
+
+  it('should fetch schema on view init for autocomplete', () => { 
+    // Schema fetch happens in ngAfterViewInit
+    expect(mockSchemaApi.getDatabaseSchemaApiV1SchemaGet).toHaveBeenCalled(); 
   }); 
 
   it('should inject parameters into SQL before run', () => { 

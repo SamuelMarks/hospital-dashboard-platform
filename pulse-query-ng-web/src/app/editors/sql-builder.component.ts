@@ -3,6 +3,7 @@
  * 
  * Features: 
  * - Full SQL Syntax Highlighting via CodeMirror 6. 
+ * - **Schema-Aware Autocomplete**: Fetches DB schema for table/column suggestions. 
  * - Dark Theme (One Dark). 
  * - Reactive SQL execution via API. 
  * - Integration with Global Dashboard Parameters (e.g. {{dept}}). 
@@ -30,9 +31,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators'; 
 
 // CodeMirror Imports
-import { EditorState, Extension } from '@codemirror/state'; 
+import { EditorState, Compartment } from '@codemirror/state'; 
 import { EditorView, basicSetup } from 'codemirror'; 
-import { sql } from '@codemirror/lang-sql'; 
+import { sql, PostgreSQL } from '@codemirror/lang-sql'; 
 import { oneDark } from '@codemirror/theme-one-dark'; 
 import { keymap } from '@codemirror/view'; 
 import { defaultKeymap } from '@codemirror/commands'; 
@@ -45,7 +46,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu'; 
 import { MatTooltipModule } from '@angular/material/tooltip'; 
 
-import { DashboardsService, ExecutionService, WidgetUpdate } from '../api-client'; 
+import { DashboardsService, ExecutionService, WidgetUpdate, SchemaService } from '../api-client'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
 import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-table/viz-table.component'; 
 
@@ -54,6 +55,9 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
  * 
  * Replaces the basic specific syntax highlighter with a full CodeMirror 6 instance. 
  * Handles bidirectional binding between the EditorView and the `currentSql` signal. 
+ * 
+ * **Update**: Implements Schema-Aware Autocomplete by fetching metadata from 
+ * `SchemaService` and reconfiguring the CodeMirror `sql()` extension dynamically. 
  */ 
 @Component({ 
   selector: 'app-sql-builder', 
@@ -181,6 +185,7 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
 export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy { 
   private readonly boardsApi = inject(DashboardsService); 
   private readonly executionApi = inject(ExecutionService); 
+  private readonly schemaApi = inject(SchemaService); 
   private readonly store = inject(DashboardStore); 
 
   readonly dashboardId = input.required<string>(); 
@@ -201,6 +206,9 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   // CodeMirror References
   @ViewChild('editorHost') editorHost!: ElementRef<HTMLDivElement>; 
   private editorView?: EditorView; 
+  
+  // Compartment to allow dynamic reconfiguration of extensions
+  private languageConf = new Compartment(); 
 
   ngOnInit() { 
     if (this.initialSql()) this.currentSql.set(this.initialSql()); 
@@ -208,6 +216,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void { 
     this.initEditor(); 
+    this.loadSchemaForAutocomplete(); 
   } 
 
   ngOnDestroy(): void { 
@@ -219,12 +228,16 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private initEditor(): void { 
     if (!this.editorHost) return; 
 
+    // Initial state setup with default SQL language
     const startState = EditorState.create({ 
       doc: this.currentSql(), 
       extensions: [ 
         basicSetup, 
         keymap.of(defaultKeymap), 
-        sql(), // SQL Language support
+        
+        // Use Compartment to wrap SQL extension for future updates
+        this.languageConf.of(sql({ dialect: PostgreSQL })), 
+        
         oneDark, // Dark Theme
         EditorView.updateListener.of((update) => { 
           if (update.docChanged) { 
@@ -243,6 +256,35 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editorView = new EditorView({ 
       state: startState, 
       parent: this.editorHost.nativeElement
+    }); 
+  } 
+
+  /** 
+   * Fetches the database schema and updates CodeMirror's autocomplete configuration. 
+   */ 
+  private loadSchemaForAutocomplete(): void { 
+    this.schemaApi.getDatabaseSchemaApiV1SchemaGet().subscribe({ 
+      next: (tables) => { 
+        if (!this.editorView) return; 
+
+        // Transform backend format to CodeMirror schema object
+        // Format: { [tableName]: [col1, col2, ...] } 
+        const schemaConfig: { [key: string]: string[] } = {}; 
+        
+        tables.forEach(t => { 
+          schemaConfig[t.table_name] = t.columns.map(c => c.name); 
+        }); 
+
+        // Reconfigure the SQL language extension with schema knowledge
+        this.editorView.dispatch({ 
+          effects: this.languageConf.reconfigure(sql({ 
+            dialect: PostgreSQL, // Analysis syntax resembles PG
+            schema: schemaConfig, 
+            upperCaseKeywords: true
+          })) 
+        }); 
+      }, 
+      error: (err) => console.warn('Failed to load schema for autocomplete', err) 
     }); 
   } 
 

@@ -1,7 +1,7 @@
 """
 Main Application Entry Point.
 
-(Modified to include Simulation Router)
+(Updated to include Schema Router)
 """
 
 from contextlib import asynccontextmanager
@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.routers import auth, dashboards, execution, ai, templates, simulation  # Added
+from app.api.routers import auth, dashboards, execution, ai, templates, simulation, schema
 from app.database.postgres import engine, Base
 from app.database.duckdb_init import init_duckdb_on_startup
 from app.services.template_seeder import TemplateSeeder
@@ -59,7 +59,8 @@ app.include_router(dashboards.router, prefix=f"{settings.API_V1_STR}/dashboards"
 app.include_router(execution.router, prefix=f"{settings.API_V1_STR}/dashboards", tags=["execution"])
 app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["ai"])
 app.include_router(templates.router, prefix=f"{settings.API_V1_STR}/templates", tags=["templates"])
-app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])  # Added
+app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
+app.include_router(schema.router, prefix=f"{settings.API_V1_STR}/schema", tags=["schema"])
 
 
 @app.get("/")

@@ -29,7 +29,7 @@ class ScenarioRunRequest(BaseModel):
   """
 
   demand_source_sql: str = Field(
-    ..., description="SQL Query to fetch current demand. Must return 'service' and 'count' columns."
+    ..., description="SQL Query. Supports 2 cols (Service, Count) or 3 cols (Service, CurrentUnit, Count)."
   )
   capacity_parameters: Dict[str, float] = Field(..., description="Map of Unit Name to available bed capacity.")
   constraints: List[ScenarioConstraint] = Field(default_factory=list, description="List of hard constraints to apply.")
@@ -46,6 +46,10 @@ class SimulationAssignment(BaseModel):
   Service: str
   Unit: str
   Patient_Count: float
+
+  # Diff/Delta Fields
+  Original_Count: float = Field(0.0, description="Count in this unit before optimization (if provided).")
+  Delta: float = Field(0.0, description="Net change (Proposed - Original).")
 
 
 class ScenarioResult(BaseModel):

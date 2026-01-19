@@ -17,6 +17,7 @@ import { DashboardResponse } from '../model/dashboard-response';
 import { WidgetCreate } from '../model/widget-create'; 
 import { WidgetResponse } from '../model/widget-response'; 
 import { WidgetUpdate } from '../model/widget-update'; 
+import { WidgetReorderRequest } from '../model/widget-reorder-request'; 
 
 // Base
 import { BASE_PATH } from '../variables'; 
@@ -52,6 +53,28 @@ export class DashboardsService extends BaseService {
         return this.httpClient.request<DashboardResponse>('post', `${this.configuration.basePath}/api/v1/dashboards/`, 
             { 
                 body: dashboardCreate, 
+                headers: localVarHeaders, 
+                observe: observe, 
+                reportProgress: reportProgress
+            } 
+        ); 
+    } 
+
+    /** 
+     * Clone Dashboard
+     * Creates a deep copy of an existing dashboard. 
+     * @param dashboardId UUID of the dashboard to clone
+     */ 
+    public cloneDashboardApiV1DashboardsDashboardIdClonePost(dashboardId: string, observe: any = 'body', reportProgress: boolean = false): Observable<any> { 
+        if (dashboardId === null || dashboardId === undefined) { 
+            throw new Error('Required parameter dashboardId was null or undefined.'); 
+        } 
+
+        let localVarHeaders = this.defaultHeaders; 
+        localVarHeaders = this.configuration.addCredentialToHeaders('OAuth2PasswordBearer', 'Authorization', localVarHeaders, 'Bearer '); 
+
+        return this.httpClient.request<DashboardResponse>('post', `${this.configuration.basePath}/api/v1/dashboards/${dashboardId}/clone`, 
+            { 
                 headers: localVarHeaders, 
                 observe: observe, 
                 reportProgress: reportProgress
@@ -213,6 +236,26 @@ export class DashboardsService extends BaseService {
         return this.httpClient.request<DashboardResponse>('put', `${this.configuration.basePath}/api/v1/dashboards/${dashboardId}`, 
             { 
                 body: dashboardUpdate, 
+                headers: localVarHeaders, 
+                observe: observe, 
+                reportProgress: reportProgress
+            } 
+        ); 
+    } 
+
+    /** 
+     * Reorder Widgets
+     * Bulk update orders and groups. 
+     */ 
+    public reorderWidgetsApiV1DashboardsDashboardIdReorderPost(dashboardId: string, request: WidgetReorderRequest, observe: any = 'body', reportProgress: boolean = false): Observable<any> { 
+        if (!dashboardId || !request) throw new Error('Missing params'); 
+
+        let localVarHeaders = this.defaultHeaders; 
+        localVarHeaders = this.configuration.addCredentialToHeaders('OAuth2PasswordBearer', 'Authorization', localVarHeaders, 'Bearer '); 
+
+        return this.httpClient.request('post', `${this.configuration.basePath}/api/v1/dashboards/${dashboardId}/reorder`, 
+            { 
+                body: request, 
                 headers: localVarHeaders, 
                 observe: observe, 
                 reportProgress: reportProgress

@@ -2,7 +2,7 @@
  * @fileoverview Dashboard Grid Layout. 
  * 
  * Renders drag-and-drop swimlanes containing widgets. 
- * Handles the "Ghost Grid" loading state and orchestration of child widgets. 
+ * Handles synchronization between URL Query Params and Store Global Params. 
  */ 
 
 import { Component, OnInit, inject, ChangeDetectionStrategy, computed, Signal } from '@angular/core'; 
@@ -115,9 +115,11 @@ interface DashboardLane {
       flex-basis: 100%; 
       min-width: 0; 
       transition: flex-basis 0.2s ease; 
-      cursor: grab; 
+      cursor: default; /* Default cursor for read-mode */ 
     } 
-    .widget-wrapper:active { cursor: grabbing; } 
+    /* Drag handles active only in edit mode via class binding logic if needed, but CDK handles events */ 
+    .widget-wrapper.draggable { cursor: grab; } 
+    .widget-wrapper.draggable:active { cursor: grabbing; } 
     
     .h-1 { height: 150px; } 
     .h-2 { height: 320px; } 
@@ -145,6 +147,30 @@ interface DashboardLane {
     .widget-flow-container.cdk-drop-list-dragging .widget-wrapper:not(.cdk-drag-placeholder) { 
       transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); 
     } 
+
+    /* --- Focus Overlay --- */ 
+    .focus-overlay { 
+      position: fixed; 
+      inset: 0; 
+      z-index: 10000; 
+      background-color: rgba(0, 0, 0, 0.7); 
+      backdrop-filter: blur(4px); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 32px; 
+      animation: fadeIn 0.2s ease-out; 
+    } 
+    .focus-container { 
+      width: 100%; 
+      height: 100%; 
+      background-color: var(--sys-background); 
+      border-radius: 8px; 
+      box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.2); 
+      overflow: hidden; 
+      position: relative; 
+    } 
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } } 
 
     .empty-state { 
       padding: 64px; 
@@ -195,6 +221,8 @@ interface DashboardLane {
       .view-port { padding: 8px; } 
       .swimlane { padding: 8px; background: transparent; border: none; } 
       .ghost-card { flex-basis: 100% !important; max-width: 100% !important; } 
+      .focus-overlay { padding: 0; } /* Full screen mobile */ 
+      .focus-container { border-radius: 0; } 
     } 
   `], 
   template: `
@@ -245,24 +273,29 @@ interface DashboardLane {
             <div 
               class="widget-flow-container" 
               cdkDropList
+              [cdkDropListDisabled]="!store.isEditMode()" 
               [cdkDropListData]="lane.widgets" 
               (cdkDropListDropped)="dragDropped($event, lane.id)" 
               [id]="'list-' + lane.id" 
             >
               @for (widget of lane.widgets; track widget.id) { 
+                <!-- If this widget is focused, we optionally hide it from grid or keep it. Keeping it prevents layout shift. -->
                 <div
                   class="widget-wrapper" 
+                  [class.draggable]="store.isEditMode()" 
                   [ngStyle]="getFlexStyle(widget)" 
                   [class]="getHeightClass(widget)" 
                   [attr.data-testid]="'widget-wrapper-' + widget.id" 
                   cdkDrag
                   [cdkDragData]="widget" 
+                  [cdkDragDisabled]="!store.isEditMode()" 
                 >
                   <app-widget
                     [widget]="widget" 
                     class="h-full block" 
                     (edit)="moveOrEditWidget(widget)" 
                     (delete)="confirmDeleteWidget(widget)" 
+                    (duplicate)="store.duplicateWidget(widget)" 
                   ></app-widget>
                   <div *cdkDragPlaceholder class="cdk-drag-placeholder" [style.min-height]="'100%'"></div>
                 </div>
@@ -275,21 +308,45 @@ interface DashboardLane {
           <div class="empty-state">
             <mat-icon class="text-6xl mb-4 text-gray-300">dashboard_customize</mat-icon>
             <h3 class="text-lg font-medium text-gray-700">Canvas is Empty</h3>
-            <p class="text-sm">Start by adding widgets or applying a template.</p>
+            <p class="text-sm">Switch to Edit Mode to add widgets.</p>
             
-            <!-- Quick Start Action -->
-            <button 
-              mat-stroked-button 
-              color="primary" 
-              (click)="store.createDefaultDashboard()" 
-              [disabled]="store.isLoading()" 
-            >
-              <mat-icon>restore</mat-icon> Create Default Dashboard
-            </button>
+            <!-- Quick Start Action (Only if editable, or instruct to edit) -->
+            @if (store.isEditMode()) { 
+              <button 
+                mat-stroked-button 
+                color="primary" 
+                (click)="store.createDefaultDashboard()" 
+                [disabled]="store.isLoading()" 
+              >
+                <mat-icon>restore</mat-icon> Create Default Dashboard
+              </button>
+            } 
           </div>
         } 
       } 
     </div>
+
+    <!-- FOCUS OVERLAY -->
+    @if (store.focusedWidget(); as focused) { 
+      <div 
+        class="focus-overlay" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-label="Focused Widget View" 
+        (click)="store.setFocusedWidget(null)" 
+      >
+        <!-- Stop propagation to prevent overlay click closing -->
+        <div class="focus-container" (click)="$event.stopPropagation()">
+           <app-widget
+             [widget]="focused" 
+             class="h-full block" 
+             (edit)="moveOrEditWidget(focused)" 
+             (delete)="confirmDeleteWidget(focused)" 
+             (duplicate)="store.duplicateWidget(focused)" 
+           ></app-widget>
+        </div>
+      </div>
+    } 
   `
 }) 
 export class DashboardLayoutComponent implements OnInit { 
@@ -328,12 +385,23 @@ export class DashboardLayoutComponent implements OnInit {
   }); 
 
   ngOnInit(): void { 
+    // Listen for Dashboard ID Change (Switch Dashboards) 
     this.route.paramMap.subscribe(params => { 
       const id = params.get('id'); 
       if (id) { 
         this.store.reset(); 
         this.store.loadDashboard(id); 
       } 
+    }); 
+
+    // Listen for Query Params (Sync Global Filters) 
+    this.route.queryParamMap.subscribe(qParams => { 
+      // Convert ParamMap to Record<string, any> 
+      const paramsObj: Record<string, any> = {}; 
+      qParams.keys.forEach(key => { 
+        paramsObj[key] = qParams.get(key); 
+      }); 
+      this.store.setGlobalParams(paramsObj); 
     }); 
   } 
 
@@ -379,6 +447,7 @@ export class DashboardLayoutComponent implements OnInit {
   } 
 
   moveOrEditWidget(widget: WidgetResponse): void { 
+    // If focused, temporarily close focus? No, editor opens over it (z-index higher dialog). 
     const dashboardId = this.store.dashboard()?.id; 
     if (!dashboardId) return; 
     const data: WidgetEditorData = { dashboardId, widget }; 
@@ -390,6 +459,10 @@ export class DashboardLayoutComponent implements OnInit {
 
   confirmDeleteWidget(widget: WidgetResponse): void { 
     if (!confirm(`Delete "${widget.title}"?`)) return; 
+    // Close focus if active
+    if (this.store.focusedWidgetId() === widget.id) { 
+        this.store.setFocusedWidget(null); 
+    } 
     this.store.optimisticRemoveWidget(widget.id); 
     this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widget.id).subscribe({ 
       error: () => { 

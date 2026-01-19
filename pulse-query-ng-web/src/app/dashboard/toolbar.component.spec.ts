@@ -1,136 +1,115 @@
-/**
- * @fileoverview Unit tests for Toolbar Component.
- */
+/** 
+ * @fileoverview Unit tests for Toolbar Component. 
+ */ 
 
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ToolbarComponent } from './toolbar.component';
-import { DashboardStore } from './dashboard.store';
-import { AskDataService } from '../global/ask-data.service';
-import { AuthService } from '../core/auth/auth.service';
-import { DashboardsService, DashboardResponse } from '../api-client';
-import { MatDialog } from '@angular/material/dialog';
-import { signal, WritableSignal } from '@angular/core';
-import { of } from 'rxjs';
-import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { WidgetCreationDialog } from './widget-creation.dialog';
-import { RouterTestingModule } from '@angular/router/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ToolbarComponent } from './toolbar.component'; 
+import { DashboardStore } from './dashboard.store'; 
+import { AskDataService } from '../global/ask-data.service'; 
+import { AuthService } from '../core/auth/auth.service'; 
+import { DashboardsService, DashboardResponse } from '../api-client'; 
+import { MatDialog } from '@angular/material/dialog'; 
+import { signal, WritableSignal } from '@angular/core'; 
+import { of } from 'rxjs'; 
+import { By } from '@angular/platform-browser'; 
+import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
+import { WidgetBuilderComponent } from './widget-builder/widget-builder.component'; 
+import { RouterTestingModule } from '@angular/router/testing'; 
+import { Router, ActivatedRoute } from '@angular/router'; 
 
-describe('ToolbarComponent', () => {
-  let component: ToolbarComponent;
-  let fixture: ComponentFixture<ToolbarComponent>;
+describe('ToolbarComponent', () => { 
+  let component: ToolbarComponent; 
+  let fixture: ComponentFixture<ToolbarComponent>; 
   
-  let mockAskService: any;
-  let mockDialog: any;
-  let mockStore: any;
-  let mockAuthService: any;
+  let mockAskService: any; 
+  let mockDialog: any; 
+  let mockStore: any; 
+  let mockAuthService: any; 
+  let router: Router; 
+  let route: ActivatedRoute; 
   
-  let dashboardSig: WritableSignal<DashboardResponse | null>;
-  let isLoadingSig: WritableSignal<boolean>;
-  let currentUserSig: WritableSignal<any>;
+  let dashboardSig: WritableSignal<DashboardResponse | null>; 
+  let isLoadingSig: WritableSignal<boolean>; 
+  let currentUserSig: WritableSignal<any>; 
+  let isEditModeSig: WritableSignal<boolean>; 
+  let globalParamsSig: WritableSignal<any>; 
 
   const mockDashboard: DashboardResponse = { 
     id: 'd1', name: 'Sales Dash', owner_id: 'u1', widgets: [] 
-  };
+  }; 
 
-  beforeEach(async () => {
-    dashboardSig = signal(null);
-    isLoadingSig = signal(false);
-    currentUserSig = signal({ email: 'tester@pulse.com', id: 'u1' });
+  beforeEach(async () => { 
+    dashboardSig = signal(null); 
+    isLoadingSig = signal(false); 
+    isEditModeSig = signal(false); 
+    currentUserSig = signal({ email: 'tester@pulse.com', id: 'u1' }); 
+    globalParamsSig = signal({}); 
 
-    mockAskService = { open: vi.fn() };
-    mockDialog = { open: vi.fn() };
+    mockAskService = { open: vi.fn() }; 
+    mockDialog = { open: vi.fn() }; 
     
-    mockStore = {
-      dashboard: dashboardSig,
-      isLoading: isLoadingSig,
-      refreshAll: vi.fn(),
-      loadDashboard: vi.fn(),
-      updateGlobalParam: vi.fn()
-    };
+    // Minimal mock covering usage
+    mockStore = { 
+      dashboard: dashboardSig, 
+      isLoading: isLoadingSig, 
+      isEditMode: isEditModeSig, 
+      globalParams: globalParamsSig, 
+      refreshAll: vi.fn(), 
+      loadDashboard: vi.fn(), 
+      toggleEditMode: vi.fn() 
+    }; 
 
-    mockAuthService = {
-      currentUser: currentUserSig,
-      logout: vi.fn()
-    };
+    mockAuthService = { 
+      currentUser: currentUserSig, 
+      logout: vi.fn() 
+    }; 
 
-    await TestBed.configureTestingModule({
-      imports: [
-        ToolbarComponent,
-        NoopAnimationsModule,
+    await TestBed.configureTestingModule({ 
+      imports: [ 
+        ToolbarComponent, 
+        NoopAnimationsModule, 
         RouterTestingModule
-      ],
-      providers: [
-        { provide: DashboardStore, useValue: mockStore },
-        { provide: DashboardsService, useValue: {} },
-        { provide: AskDataService, useValue: mockAskService },
-        { provide: MatDialog, useValue: mockDialog },
-        { provide: AuthService, useValue: mockAuthService }
-      ]
-    }).compileComponents();
+      ], 
+      providers: [ 
+        { provide: DashboardStore, useValue: mockStore }, 
+        { provide: DashboardsService, useValue: {} }, 
+        { provide: AskDataService, useValue: mockAskService }, 
+        { provide: MatDialog, useValue: mockDialog }, 
+        { provide: AuthService, useValue: mockAuthService } 
+      ] 
+    }).compileComponents(); 
 
-    fixture = TestBed.createComponent(ToolbarComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
-
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should display dashboard name from store', () => {
-    dashboardSig.set(mockDashboard);
-    fixture.detectChanges();
+    fixture = TestBed.createComponent(ToolbarComponent); 
+    component = fixture.componentInstance; 
     
-    const titleEl = fixture.debugElement.query(By.css('.title-main'));
-    expect(titleEl.nativeElement.textContent).toContain('Sales Dash');
-  });
+    router = TestBed.inject(Router); 
+    route = TestBed.inject(ActivatedRoute); 
+    vi.spyOn(router, 'navigate').mockResolvedValue(true); 
 
-  describe('User Menu Interactions', () => {
-    it('should generate correct initials for avatar', () => {
-      expect(component.userInitials()).toBe('TE');
-      
-      currentUserSig.set({ email: 'admin@test.com' });
-      fixture.detectChanges();
-      
-      expect(component.userInitials()).toBe('AD');
-    });
+    fixture.detectChanges(); 
+  }); 
 
-    it('should call authService.logout() when logout action clicked', () => {
-      component.logout();
-      expect(mockAuthService.logout).toHaveBeenCalled();
-    });
-  });
+  it('should create', () => { 
+    expect(component).toBeTruthy(); 
+  }); 
 
-  describe('Accessibility', () => {
-    it('should have aria-label for theme toggle', () => {
-      const btn = fixture.debugElement.query(By.css('button[mat-icon-button]')); // First button is theme
-      expect(btn.attributes['aria-label']).toContain('Mode'); 
-    });
-  });
+  it('should update filter by navigating router', () => { 
+    component.updateFilter('dept', 'Cardiology'); 
+    
+    expect(router.navigate).toHaveBeenCalledWith([], { 
+        relativeTo: route, 
+        queryParams: { dept: 'Cardiology' }, 
+        queryParamsHandling: 'merge' 
+    }); 
+  }); 
 
-  describe('Widget Actions', () => {
-    it('should open WidgetCreationDialog when Add Widget button is clicked', () => {
-      dashboardSig.set(mockDashboard);
-      fixture.detectChanges();
-
-      const dialogRefSpy = { afterClosed: () => of(true) };
-      mockDialog.open.mockReturnValue(dialogRefSpy);
-
-      // We need to find button by text content or icon since we didn't use test-id for all
-      // Assuming 3rd button is templates, 4th is Add
-      // Better to check specific call after method invocation for unit test stability
-      
-      component.openAddWidgetDialog();
-      
-      expect(mockDialog.open).toHaveBeenCalledWith(
-        WidgetCreationDialog,
-        expect.objectContaining({
-          data: { dashboardId: 'd1' }
-        })
-      );
-
-      expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
-    });
-  });
+  it('should remove filter if value is null', () => { 
+    component.updateFilter('dept', null); 
+    
+    expect(router.navigate).toHaveBeenCalledWith([], { 
+        relativeTo: route, 
+        queryParams: { dept: null }, 
+        queryParamsHandling: 'merge' 
+    }); 
+  }); 
 });

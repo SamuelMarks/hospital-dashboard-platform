@@ -7,7 +7,7 @@
 
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core'; 
 import { CommonModule } from '@angular/common'; 
-import { Router, RouterModule } from '@angular/router'; 
+import { Router, RouterModule, ActivatedRoute } from '@angular/router'; 
 import { FormsModule } from '@angular/forms'; 
 
 // Material Imports
@@ -22,13 +22,13 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field'; 
 import { MatSelectModule } from '@angular/material/select'; 
 import { MatInputModule } from '@angular/material/input'; 
+import { MatSlideToggleModule } from '@angular/material/slide-toggle'; 
 
 import { AuthService } from '../core/auth/auth.service'; 
 import { DashboardStore } from './dashboard.store'; 
 import { AskDataService } from '../global/ask-data.service'; 
 import { ThemeService } from '../core/theme/theme.service'; 
-import { WidgetCreationDialog } from './widget-creation.dialog'; 
-import { TemplateWizardComponent } from './template-wizard/template-wizard.component'; 
+import { WidgetBuilderComponent } from './widget-builder/widget-builder.component'; 
 
 @Component({ 
   selector: 'app-toolbar', 
@@ -45,7 +45,8 @@ import { TemplateWizardComponent } from './template-wizard/template-wizard.compo
     MatDividerModule, 
     MatFormFieldModule, 
     MatSelectModule, 
-    MatInputModule
+    MatInputModule, 
+    MatSlideToggleModule
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`
@@ -83,7 +84,6 @@ import { TemplateWizardComponent } from './template-wizard/template-wizard.compo
       <div class="gap-2 items-center">
         
         <!-- Theme Toggle -->
-        <!-- Accessibility: Label describes action -->
         <button 
           mat-icon-button 
           (click)="themeService.toggle()" 
@@ -95,10 +95,22 @@ import { TemplateWizardComponent } from './template-wizard/template-wizard.compo
 
         <span class="border-l h-8 mx-1 border-gray-300"></span>
 
+        <!-- Edit Mode Toggle -->
+        <mat-slide-toggle 
+          color="primary" 
+          [checked]="store.isEditMode()" 
+          (change)="store.toggleEditMode()" 
+          class="mr-2" 
+          aria-label="Toggle Dashboard Editing" 
+        >
+          <span class="text-sm">Edit</span>
+        </mat-slide-toggle>
+
         <!-- Global Filter -->
         <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
           <mat-select 
             placeholder="Department" 
+            [ngModel]="store.globalParams()['dept']" 
             (selectionChange)="updateFilter('dept', $event.value)" 
             aria-label="Filter by Department" 
           >
@@ -112,22 +124,22 @@ import { TemplateWizardComponent } from './template-wizard/template-wizard.compo
           <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
         </button>
 
-        <button mat-stroked-button color="accent" (click)="openTemplateWizard()" [disabled]="!store.dashboard()">
-          <mat-icon>dynamic_form</mat-icon> <span class="hidden sm:inline">Templates</span>
-        </button>
-
-        <button mat-stroked-button (click)="openAddWidgetDialog()" [disabled]="!store.dashboard()">
-          <mat-icon>add</mat-icon> <span>Add</span>
-        </button>
+        <!-- Action: Add Widget (Using Unified Builder) -->
+        <!-- Only visible in Edit Mode -->
+        @if (store.isEditMode()) { 
+          <button mat-stroked-button color="accent" (click)="openWidgetBuilder()" [disabled]="!store.dashboard()" data-testid="btn-add-widget">
+            <mat-icon>add</mat-icon> <span>Add Widget</span>
+          </button>
+        } 
 
         <!-- Refresh Action -->
-        <!-- Accessibility: Dynamic Label for busy state -->
         <button 
           mat-icon-button 
           color="primary" 
           (click)="store.refreshAll()" 
           [disabled]="store.isLoading()" 
           [attr.aria-label]="store.isLoading() ? 'Refreshing Data' : 'Refresh Dashboard'" 
+          data-testid="btn-refresh" 
         >
           @if (store.isLoading()) { <mat-spinner diameter="18"></mat-spinner> } 
           @else { <mat-icon>refresh</mat-icon> } 
@@ -163,10 +175,8 @@ export class ToolbarComponent {
   readonly askDataService = inject(AskDataService); 
   readonly authService = inject(AuthService); 
   readonly themeService = inject(ThemeService); 
-  
-  // Fix: Correct injection token for Router service
   readonly router = inject(Router); 
-  
+  readonly route = inject(ActivatedRoute); 
   private readonly dialog = inject(MatDialog); 
 
   userInitials(): string { 
@@ -175,23 +185,34 @@ export class ToolbarComponent {
   } 
 
   logout(): void { this.authService.logout(); } 
-  updateFilter(key: string, value: any): void { this.store.updateGlobalParam(key, value); } 
-
-  openAddWidgetDialog(): void { 
-    const currentDash = this.store.dashboard(); 
-    if (!currentDash) return; 
-    const ref = this.dialog.open(WidgetCreationDialog, { 
-      data: { dashboardId: currentDash.id }, width: '90vw', maxWidth: '1200px', maxHeight: '95vh', panelClass: 'no-padding-dialog' 
+  
+  /** 
+   * Updates global filtering state via URL Query Parameters. 
+   * The DashboardLayoutComponent listens to these changes and syncs the Store. 
+   * 
+   * @param {string} key - Parameter key (e.g. 'dept'). 
+   * @param {any} value - Value to set. Null removes the param. 
+   */ 
+  updateFilter(key: string, value: any): void { 
+    this.router.navigate([], { 
+        relativeTo: this.route, 
+        queryParams: { [key]: value || null }, 
+        queryParamsHandling: 'merge', // Preserve other params
     }); 
-    ref.afterClosed().subscribe((res: boolean) => { if (res) this.store.loadDashboard(currentDash.id); }); 
   } 
 
-  openTemplateWizard(): void { 
+  openWidgetBuilder(): void { 
     const currentDash = this.store.dashboard(); 
     if (!currentDash) return; 
-    const ref = this.dialog.open(TemplateWizardComponent, { 
-        data: { dashboardId: currentDash.id }, width: '900px', maxHeight: '90vh' 
+    
+    const ref = this.dialog.open(WidgetBuilderComponent, { 
+      data: { dashboardId: currentDash.id }, 
+      width: '1200px', 
+      maxWidth: '95vw', 
+      height: '90vh', 
+      panelClass: 'no-padding-dialog', 
+      disableClose: true // Prevent accidental close loosing draft
     }); 
-    ref.afterClosed().subscribe((res) => { if (res) this.store.loadDashboard(currentDash.id); }); 
+    ref.afterClosed().subscribe((res: boolean) => { if (res) this.store.loadDashboard(currentDash.id); }); 
   } 
 }

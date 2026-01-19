@@ -7,7 +7,7 @@ Integrates the strict polymorphic `WidgetCreate` definition from the widget modu
 
 from typing import List, Dict, Any, Optional
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # Import the strict definition
 from app.schemas.widget import WidgetCreate, WidgetUpdate
@@ -62,3 +62,24 @@ class DashboardResponse(DashboardBase):
   widgets: List[WidgetResponse] = []
 
   model_config = ConfigDict(from_attributes=True)
+
+
+# --- Reordering Schemas ---
+
+
+class WidgetReorderItem(BaseModel):
+  """
+  Represents a single widget's new position.
+  """
+
+  id: UUID
+  order: int
+  group: Optional[str] = None
+
+
+class WidgetReorderRequest(BaseModel):
+  """
+  Bulk update payload for persisting drag-and-drop results.
+  """
+
+  items: List[WidgetReorderItem]

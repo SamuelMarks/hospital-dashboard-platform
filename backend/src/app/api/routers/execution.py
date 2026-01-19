@@ -23,7 +23,7 @@ from app.models.user import User
 from app.services.runners.http import run_http_widget
 from app.services.runners.sql import run_sql_widget
 from app.services.cache_service import cache_service
-from app.services.sql_generator import sql_generator  # New Import
+from app.services.sql_generator import sql_generator
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,11 @@ async def refresh_dashboard(
   http_widgets_to_run: List[Tuple[Widget, str]] = []
 
   for widget in dashboard.widgets:
+    # Skip processing for Static Text widgets immediately
+    if widget.type == "TEXT":
+      results_map[widget.id] = {"status": "success", "data": None}
+      continue
+
     # Pre-process Config to inject Globals
     # We create a COPY of the config so we don't mutate the DB object
     run_config = widget.config.copy()
@@ -126,6 +131,10 @@ async def refresh_widget(
 
   if not widget:
     raise HTTPException(status_code=404, detail="Widget not found")
+
+  # Optimization: Return immediately for TEXT widgets
+  if widget.type == "TEXT":
+    return {widget.id: {"status": "success", "data": None}}
 
   forward_token = _extract_token(authorization)
 

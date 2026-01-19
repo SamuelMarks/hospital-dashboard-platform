@@ -5,7 +5,9 @@
  * - Dashboard Metadata & Widget Configuration. 
  * - Execution Data (Results of SQL/HTTP queries). 
  * - Layout State (Drag & Drop positioning). 
- * - Global Filtering Parameters. 
+ * - Global Filtering Parameters (Synced with URL). 
+ * - UI Mode (Edit vs Read-Only). 
+ * - **Focus Mode**: Tracks which widget is currently maximized. 
  */ 
 
 import { Injectable, signal, computed, inject, Signal } from '@angular/core'; 
@@ -13,7 +15,15 @@ import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http'; 
 import { Subject, of } from 'rxjs'; 
 import { switchMap, catchError, takeUntil, tap } from 'rxjs/operators'; 
-import { DashboardsService, ExecutionService, DashboardResponse, WidgetResponse, WidgetUpdate } from '../api-client'; 
+import { 
+  DashboardsService, 
+  ExecutionService, 
+  DashboardResponse, 
+  WidgetResponse, 
+  WidgetReorderRequest, 
+  WidgetReorderItem, 
+  WidgetCreate
+} from '../api-client'; 
 
 /** 
  * Normalized State Interface. 
@@ -33,6 +43,10 @@ export interface DashboardState {
   error: string | null; 
   /** Dictionary of active global filters (e.g. { dept: 'Cardiology' }). */ 
   globalParams: Record<string, any>; 
+  /** Toggle for Edit Mode (Enables Drag/Drop and Widget configuration). */ 
+  isEditMode: boolean; 
+  /** The ID of the widget currently in "Focus" (Full-screen) mode. Null if none. */ 
+  focusedWidgetId: string | null; 
 } 
 
 const initialState: DashboardState = { 
@@ -42,7 +56,9 @@ const initialState: DashboardState = {
   isLoading: false, 
   loadingWidgetIds: new Set(), 
   error: null, 
-  globalParams: {} 
+  globalParams: {}, 
+  isEditMode: false, 
+  focusedWidgetId: null
 }; 
 
 @Injectable({ providedIn: 'root' }) 
@@ -68,12 +84,23 @@ export class DashboardStore {
   readonly isLoading = computed(() => this._state().isLoading); 
   readonly error = computed(() => this._state().error); 
   readonly globalParams = computed(() => this._state().globalParams); 
+  readonly isEditMode = computed(() => this._state().isEditMode); 
+  readonly focusedWidgetId = computed(() => this._state().focusedWidgetId); 
 
   /** 
    * Computed Selector Factory: Check if specific widget is loading. 
    * Usage: `store.isWidgetLoading()(id)`
    */ 
   readonly isWidgetLoading = computed(() => (id: string) => this._state().loadingWidgetIds.has(id)); 
+
+  /** 
+   * Computed: Returns the full widget object for the currently focused ID options. 
+   */ 
+  readonly focusedWidget = computed(() => { 
+    const id = this.focusedWidgetId(); 
+    if (!id) return null; 
+    return this.widgets().find(w => w.id === id) || null; 
+  }); 
 
   constructor() { 
     this.setupRefreshPipeline(); 
@@ -117,7 +144,7 @@ export class DashboardStore {
    * Triggers an automatic data refresh upon success. 
    */ 
   loadDashboard(dashboardId: string): void { 
-    this.patch({ isLoading: true, error: null }); 
+    this.patch({ isLoading: true, error: null, focusedWidgetId: null }); // Reset focus on nav
     this.dashboardApi.getDashboardApiV1DashboardsDashboardIdGet(dashboardId) 
       .subscribe({ 
         next: (res) => { 
@@ -137,6 +164,68 @@ export class DashboardStore {
   } 
 
   /** 
+   * Create a deep copy of an existing widget and add it to the dashboard. 
+   * 
+   * Logic: 
+   * 1. Constructs a new title "Copy of X". 
+   * 2. Offsets position by (1, 1). 
+   * 3. Performs optimistic UI update via temporary widget. 
+   * 4. Persists to backend. 
+   * 
+   * @param {WidgetResponse} source - The source widget to clone. 
+   */ 
+  duplicateWidget(source: WidgetResponse): void { 
+    const dash = this.dashboard(); 
+    if (!dash) return; 
+
+    // 1. Deep Copy Config from immutable response
+    const newConfig = structuredClone(source.config); 
+    
+    // 2. Adjust Layout (x+1, y+1) 
+    // Grid assumes 12 columns max. 
+    const currentX = (newConfig['x'] as number) || 0; 
+    const currentY = (newConfig['y'] as number) || 0; 
+    
+    newConfig['x'] = Math.min(11, currentX + 1); 
+    newConfig['y'] = currentY + 1; 
+
+    const payload: WidgetCreate = { 
+      title: `Copy of ${source.title}`, 
+      type: source.type, 
+      visualization: source.visualization, 
+      config: newConfig 
+    }; 
+
+    // 3. Optimistic Update 
+    const tempId = `temp-${Date.now()}`; 
+    const tempWidget: WidgetResponse = { 
+        id: tempId, 
+        dashboard_id: dash.id, 
+        ...payload 
+    }; 
+    
+    // Insert into state immediately 
+    this.patch({ widgets: [...this.widgets(), tempWidget] }); 
+
+    // 4. API Persist 
+    this.dashboardApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(dash.id, payload) 
+      .subscribe({ 
+        next: (realWidget: WidgetResponse) => { 
+          // Replace temp with real 
+          const updatedWidgets = this.widgets().map(w => w.id === tempId ? realWidget : w); 
+          this.patch({ widgets: updatedWidgets }); 
+          // Fetch data for the new widget 
+          this.refreshWidget(realWidget.id); 
+        }, 
+        error: (err) => { 
+          this.handleError(err); 
+          // Rollback 
+          this.optimisticRemoveWidget(tempId); 
+        } 
+      }); 
+  } 
+
+  /** 
    * Creates a new dashboard populated with defaults via the Restore endpoint. 
    * Transitions the user to the new dashboard upon success. 
    */ 
@@ -145,7 +234,7 @@ export class DashboardStore {
     this.dashboardApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost() 
       .subscribe({ 
         next: (newDash: DashboardResponse) => { 
-          this.patch({ isLoading: false });
+          this.patch({ isLoading: false }); 
           // Reset current state locally to avoid glitching 
           this.reset(); 
           // Navigate to the newly created dashboard
@@ -156,30 +245,50 @@ export class DashboardStore {
              this.refreshAll(); 
           }); 
         }, 
-        error: (err) => {
-          this.handleError(err);
-          this.patch({ isLoading: false });
+        error: (err) => { 
+          this.handleError(err); 
+          this.patch({ isLoading: false }); 
         } 
       }); 
   } 
 
   /** 
-   * Updates a specific global parameter. 
-   * Automatically triggers a data refresh via the pipeline. 
-   * 
-   * @param {string} key - The parameter name (e.g., 'dept'). 
-   * @param {any} value - The value. Null/Empty removes the key. 
+   * Toggles the Dashboard Edit Mode. 
    */ 
-  updateGlobalParam(key: string, value: any): void { 
-    const current = { ...this._state().globalParams }; 
-    if (value === null || value === '' || value === undefined) { 
-        delete current[key]; 
-    } else { 
-        current[key] = value; 
+  toggleEditMode(): void { 
+    this.patch({ isEditMode: !this._state().isEditMode }); 
+  } 
+
+  /** 
+   * Sets the specified widget as maximized/focused. 
+   * Pass `null` to exit focus mode. 
+   * 
+   * @param {string | null} id - The UUID of the widget. 
+   */ 
+  setFocusedWidget(id: string | null): void { 
+    this.patch({ focusedWidgetId: id }); 
+  } 
+
+  /** 
+   * Syncs global parameters from an external source (e.g. Router QueryParams). 
+   * Only triggers refresh if the value actually changed. 
+   * 
+   * @param {Record<string, any>} params - The new dictionary of params. 
+   */ 
+  setGlobalParams(params: Record<string, any>): void { 
+    const current = this._state().globalParams; 
+    
+    // Simple shallow comparison check
+    const keysA = Object.keys(current); 
+    const keysB = Object.keys(params); 
+    
+    const hasChanged = keysA.length !== keysB.length || 
+        keysB.some(key => current[key] !== params[key]); 
+
+    if (hasChanged) { 
+        this.patch({ globalParams: params }); 
+        this.refreshTrigger$.next(); 
     } 
-    this.patch({ globalParams: current }); 
-    // Trigger pipeline
-    this.refreshTrigger$.next(); 
   } 
 
   /** 
@@ -192,7 +301,6 @@ export class DashboardStore {
   /** 
    * Refreshes a single widget. 
    * Currently triggers a full refresh to ensure consistency with global filters. 
-   * Future optimization: Add endpoint for single-widget execution if supported. 
    */ 
   refreshWidget(widgetId: string): void { 
     // Currently triggers full refresh for consistency
@@ -208,14 +316,7 @@ export class DashboardStore {
 
   /** 
    * Handles drag-and-drop reordering logic. 
-   * Updates local state immediately (Optimistic UI) and syncs with backend. 
-   * 
-   * @param {boolean} sameContainer - True if sorting within same list. 
-   * @param {string} targetGroupId - The ID of the lane dropped into. 
-   * @param {number} prevIndex - Previous index in array. 
-   * @param {number} currIndex - New index in array. 
-   * @param {WidgetResponse[]} containerData - The target array state. 
-   * @param {WidgetResponse[]} prevContainerData - The source array if different. 
+   * Updates local state immediately (Optimistic UI) and syncs with backend via Bulk Update. 
    */ 
   handleWidgetDrop( 
     sameContainer: boolean, 
@@ -225,33 +326,78 @@ export class DashboardStore {
     containerData: WidgetResponse[], 
     prevContainerData: WidgetResponse[] 
   ): void { 
-    // CDK modifies the arrays passed to it by reference if connected via [cdkDropListData]. 
-    // Since we receive the *result* arrays, we need to persist these changes. 
-    
-    // 1. Identify modified widget
-    const movedWidget = containerData[currIndex]; 
-    if (!movedWidget) return; 
+    const currentDashboard = this.dashboard(); 
+    if (!currentDashboard) return; 
 
-    // 2. Optimistic Update
-    const updatedWidgets = this._state().widgets.map(w => { 
-      if (w.id === movedWidget.id) { 
-        return { 
-          ...w, 
-          config: { ...w.config, group: targetGroupId } 
-        }; 
-      } 
-      return w; 
-    }); 
-    
-    this.patch({ widgets: updatedWidgets }); 
+    // Note: 'containerData' from CDK is the visual state of the target lane. 
+    // However, CDK mutates these arrays by reference usually. 
+    // To be safe and purely reactive, we rebuild from the Store's Master List. 
+    // But since the Component passes us the event result which might be the SOURCE of truth for the dropped item, 
+    // let's locate the item first. 
 
-    // 3. API Persist
-    const update: WidgetUpdate = { 
-      config: { ...movedWidget.config, group: targetGroupId } 
+    const movedWidget = sameContainer ? containerData[currIndex] : containerData[currIndex]; 
+    
+    // We need to construct the new Master List 
+    let allWidgets = [...this._state().widgets]; 
+    
+    // Remove moved widget from list 
+    allWidgets = allWidgets.filter(w => w.id !== movedWidget.id); 
+
+    // Update moved widget config 
+    const updatedWidget = { 
+        ...movedWidget, 
+        config: { ...movedWidget.config, group: targetGroupId } 
     }; 
+
+    // Re-insert into master list. 
+    // To do this correctly, we need to know where it fits relative to others in the Target Group. 
+    // The 'currIndex' is relative to the Target Group array. 
     
-    this.dashboardApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(movedWidget.id, update) 
-      .subscribe({ error: (e) => this.handleError(e) }); 
+    // 1. Get other widgets in target group, sorted by current order 
+    const targetGroupWidgets = allWidgets 
+        .filter(w => (w.config['group'] || 'General') === targetGroupId) 
+        .sort((a, b) => (a.config['order'] || 0) - (b.config['order'] || 0)); 
+    
+    // 2. Insert at specific index 
+    targetGroupWidgets.splice(currIndex, 0, updatedWidget); 
+
+    // 3. Re-assign Order Indices for Target Group 
+    const updates: WidgetReorderItem[] = []; 
+    targetGroupWidgets.forEach((w, index) => { 
+        w.config['order'] = index; 
+        updates.push({ id: w.id, order: index, group: targetGroupId }); 
+    }); 
+
+    // 4. If moved across groups, we might need to re-index Source Group to fill gaps 
+    if (!sameContainer) { 
+        const sourceGroupId = movedWidget.config['group'] || 'General'; 
+        const sourceGroupWidgets = allWidgets 
+            .filter(w => (w.config['group'] || 'General') === sourceGroupId) 
+            .sort((a, b) => (a.config['order'] || 0) - (b.config['order'] || 0)); 
+        
+        sourceGroupWidgets.forEach((w, index) => { 
+            w.config['order'] = index; 
+            updates.push({ id: w.id, order: index, group: sourceGroupId }); 
+        }); 
+    } 
+
+    // 5. Merge updates back into Master List for Optimistic UI 
+    const widgetMap = new Map(allWidgets.map(w => [w.id, w])); 
+    targetGroupWidgets.forEach(w => widgetMap.set(w.id, w)); 
+    
+    const finalWidgets = Array.from(widgetMap.values()); 
+    this.patch({ widgets: finalWidgets }); 
+
+    // 6. API Bulk Update 
+    const request: WidgetReorderRequest = { items: updates }; 
+    this.dashboardApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost(currentDashboard.id, request) 
+        .subscribe({ 
+            error: (e) => { 
+                this.handleError(e); 
+                // Revert or reload on error would be ideal here 
+                this.loadDashboard(currentDashboard.id); 
+            } 
+        }); 
   } 
 
   /** 

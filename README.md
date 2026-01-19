@@ -122,7 +122,12 @@ cd backend
 
 # 1. Start Infrastructure (Postgres)
 docker-compose up -d
-
+# or
+docker run -d --rm --name run-postgres \
+  -e POSTGRES_USER='postgres' \
+  -e POSTGRES_PASSWORD='postgres' \
+  -e POSTGRES_DB='app_db' \
+  -p 5433:5432 postgres:alpine
 # 2. Install Dependencies
 uv sync
 

@@ -3,9 +3,10 @@ Dashboards API Router.
 
 Handles CRUD operations for Dashboards and Widgets.
 Allows users to create, list, update, and delete their analytics workspaces.
-Also provides the ability to restore the default content pack.
+Also provides the ability to restore the default content pack and clone existing dashboards.
 """
 
+import copy
 from typing import Annotated, List, Any
 from uuid import UUID
 
@@ -25,6 +26,7 @@ from app.schemas.dashboard import (
   WidgetCreate,
   WidgetResponse,
   WidgetUpdate,
+  WidgetReorderRequest,
 )
 from app.services.provisioning import provisioning_service
 
@@ -92,6 +94,63 @@ async def create_dashboard(
   await db.commit()
   await db.refresh(dashboard)
   return dashboard
+
+
+@router.post("/{dashboard_id}/clone", response_model=DashboardResponse)
+async def clone_dashboard(
+  dashboard_id: UUID,
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+):
+  """
+  Creates a deep copy of an existing dashboard and all its widgets.
+  The new dashboard will have the name "Copy of {original_name}".
+
+  Args:
+      dashboard_id (UUID): The ID of the dashboard to clone.
+      current_user (User): Authenticated user (must own the dashboard).
+      db (AsyncSession): Database session.
+
+  Returns:
+      DashboardResponse: The newly created dashboard populated with cloned widgets.
+  """
+  # 1. Fetch Source with Widgets
+  result = await db.execute(
+    select(Dashboard)
+    .where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id)
+    .options(selectinload(Dashboard.widgets))
+  )
+  source_dashboard = result.scalars().first()
+
+  if not source_dashboard:
+    raise HTTPException(status_code=404, detail="Dashboard not found")
+
+  # 2. Create Destination Dashboard
+  new_dashboard = Dashboard(name=f"Copy of {source_dashboard.name}", owner_id=current_user.id)
+  db.add(new_dashboard)
+  # Flush to generate ID for widget foreign keys
+  await db.flush()
+
+  # 3. Clone Widgets (Deep Copy of Config)
+  # We use copy.deepcopy on the config dictionary to ensure no shared references
+  # between the old and new widget if the config is mutable in memory.
+  for widget in source_dashboard.widgets:
+    new_widget = Widget(
+      dashboard_id=new_dashboard.id,
+      title=widget.title,
+      type=widget.type,
+      visualization=widget.visualization,
+      config=copy.deepcopy(widget.config) if widget.config else {},
+    )
+    db.add(new_widget)
+
+  await db.commit()
+
+  # 4. Return full object (Reload to get new widgets)
+  result = await db.execute(
+    select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
+  )
+  return result.scalars().first()
 
 
 @router.post("/restore-defaults", response_model=DashboardResponse)
@@ -181,8 +240,6 @@ async def create_widget(
     raise HTTPException(status_code=404, detail="Dashboard not found")
 
   # 2. SQL Validation
-  # NOTE: widget_in is a discriminated Union (WidgetCreateSql | WidgetCreateHttp)
-  # If type is SQL, config is a Pydantic Model (SqlConfig), NOT a dict.
   if widget_in.type == "SQL":
     query = widget_in.config.query
     _validate_sql_query(query)
@@ -193,7 +250,6 @@ async def create_widget(
     title=widget_in.title,
     type=widget_in.type,
     visualization=widget_in.visualization,
-    # Convert nested Pydantic model to Dict for JSONB storage
     config=widget_in.config.model_dump(),
   )
   db.add(widget)
@@ -210,7 +266,6 @@ async def update_widget(
   db: Annotated[AsyncSession, Depends(get_db)],
 ):
   """Update widget configuration (e.g., resize, change query) with Dry-Run."""
-  # 1. Fetch
   result = await db.execute(
     select(Widget).join(Dashboard).where(Widget.id == widget_id, Dashboard.owner_id == current_user.id)
   )
@@ -218,20 +273,15 @@ async def update_widget(
   if not widget:
     raise HTTPException(status_code=404, detail="Widget not found")
 
-  # 2. Validation (If query is changing on a SQL widget)
-  # Check if we are updating config, and if type matches
-  # NOTE: WidgetUpdate is valid to be partial / loose dict
   updating_sql = False
   if widget.type == "SQL" and widget_in.config and "query" in widget_in.config:
     updating_sql = True
-  # Also valid if type is being switched TO SQL during this update (though rare)
-  # But schema doesn't allow changing 'type' in Update model (only create)
 
   if updating_sql:
     current_query = widget_in.config["query"]  # New Query
     _validate_sql_query(current_query)
 
-  # 3. Update fields
+  # Update fields
   update_data = widget_in.model_dump(exclude_unset=True)
   for key, value in update_data.items():
     setattr(widget, key, value)
@@ -257,3 +307,44 @@ async def delete_widget(
   await db.delete(widget)
   await db.commit()
   return None
+
+
+@router.post("/{dashboard_id}/reorder", status_code=200)
+async def reorder_widgets(
+  dashboard_id: UUID,
+  request: WidgetReorderRequest,
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+  """
+  Bulk update widget positions and groups.
+  Used for Drag-and-Drop persistence.
+  """
+  # 1. Verify Dashboard Ownership
+  result = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id))
+  if not result.scalars().first():
+    raise HTTPException(status_code=404, detail="Dashboard not found")
+
+  # 2. Fetch all widgets in this dashboard
+  result = await db.execute(select(Widget).where(Widget.dashboard_id == dashboard_id))
+  widgets_db = {w.id: w for w in result.scalars().all()}
+
+  # 3. Apply updates
+  updated_count = 0
+  for item in request.items:
+    if item.id in widgets_db:
+      widget = widgets_db[item.id]
+
+      # We must modify the config dictionary carefully.
+      # SQLAlchemy creates a new dict reference if we modify in place for JSONB tracking usually,
+      # but explicit assignment is safer.
+      new_config = widget.config.copy()
+      new_config["order"] = item.order
+      if item.group is not None:
+        new_config["group"] = item.group
+
+      widget.config = new_config
+      updated_count += 1
+
+  await db.commit()
+  return {"updated": updated_count}

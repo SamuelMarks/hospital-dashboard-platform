@@ -10,7 +10,9 @@ export * from './execution.service';
 import { ExecutionService } from './execution.service'; 
 export * from './templates.service'; 
 import { TemplatesService } from './templates.service'; 
-export * from './simulation.service'; // Added
-import { SimulationService } from './simulation.service'; // Added
+export * from './simulation.service'; 
+import { SimulationService } from './simulation.service'; 
+export * from './schema.service'; // Added
+import { SchemaService } from './schema.service'; // Added
 
-export const APIS = [AiService, AuthService, DashboardsService, DefaultService, ExecutionService, TemplatesService, SimulationService];
+export const APIS = [AiService, AuthService, DashboardsService, DefaultService, ExecutionService, TemplatesService, SimulationService, SchemaService];
