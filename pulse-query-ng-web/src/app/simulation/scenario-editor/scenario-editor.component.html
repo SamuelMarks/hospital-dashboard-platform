@@ -8,6 +8,7 @@
 
     <div class="section">
       <h3 class="section-title">Unit Capacities (Beds)</h3>
+      <!-- ... (Capacities List) -->
       <div class="capacity-list">
         @for (unit of units(); track unit) { 
           <div class="capacity-row">
@@ -23,13 +24,45 @@
       </div>
     </div>
 
-    <div class="section mt-6">
-      <h3 class="section-title">Demand Source</h3>
-      <mat-form-field appearance="outline" class="w-full text-xs">
-        <mat-label>SQL Query</mat-label>
-        <textarea matInput [value]="store.demandSql()" rows="4" readonly class="font-mono text-gray-500"></textarea>
-        <mat-hint>Include 'Unit' column for Delta calculation.</mat-hint>
-      </mat-form-field>
+    <!-- NEW: Constraints UI -->
+    <div class="section mt-6 border-t pt-4">
+      <h3 class="section-title flex justify-between items-center">
+        Constraints
+        <button mat-icon-button color="primary" (click)="addConstraint()" matTooltip="Add Rule"><mat-icon>add_circle</mat-icon></button>
+      </h3>
+      
+      <div class="constraints-list flex flex-col gap-2">
+        @for (c of constraints(); track $index) { 
+          <div class="constraint-card p-2 bg-gray-50 border rounded text-xs flex flex-col gap-2 relative">
+            <button mat-icon-button class="absolute top-0 right-0 scale-75 text-gray-400" (click)="removeConstraint($index)"><mat-icon>close</mat-icon></button>
+            <div class="font-bold text-gray-600">Force Flow</div>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                <mat-label>Service</mat-label>
+                <input matInput [(ngModel)]="c.service" placeholder="Svc">
+              </mat-form-field>
+              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                <mat-label>Unit</mat-label>
+                <input matInput [(ngModel)]="c.unit" placeholder="Unit">
+              </mat-form-field>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                <mat-label>Min</mat-label>
+                <input matInput type="number" [(ngModel)]="c.min">
+              </mat-form-field>
+              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                <mat-label>Max</mat-label>
+                <input matInput type="number" [(ngModel)]="c.max">
+              </mat-form-field>
+            </div>
+          </div>
+        } 
+        @if (constraints().length === 0) { 
+          <div class="text-xs text-gray-400 italic text-center p-2">No active constraints</div>
+        } 
+      </div>
     </div>
 
     <div class="action-footer mt-auto pt-4">
@@ -54,7 +87,9 @@
   </div>
 
   <div class="results-pane p-6 overflow-y-auto">
+    <!-- ... Results Rendering (unchanged) -->
     <div class="flex justify-between items-end mb-4">
+      <!-- ... -->
       <div>
         <h1 class="text-2xl font-light">Scenario Results</h1>
         <p class="text-gray-500 text-sm">Optimization based on current input parameters.</p>
@@ -72,40 +107,34 @@
       </div>
     } 
 
+    <!-- ... Charts/Table ... -->
     @if (!store.results() && !store.isRunning()) { 
       <div class="empty-state">
         <mat-icon class="text-6xl text-gray-300 mb-4">analytics</mat-icon>
         <p>Adjust parameters and click Run to see optimization results.</p>
       </div>
-    } 
-    
-    @else if (store.isRunning()) { 
+    } @else if (store.isRunning()) { 
       <div class="empty-state">
         <mat-spinner diameter="50"></mat-spinner>
         <p class="mt-4 text-gray-500">Processing Optimization Model...</p>
       </div>
-    } 
-    
-    @else { 
-      <!-- Charts Row -->
+    } @else { 
+      <!-- ... Charts ... --> 
       <div class="grid grid-cols-2 gap-4 mb-4" style="min-height: 250px;">
         <div class="viz-wrapper mat-elevation-z1 p-2">
            <h4 class="text-xs font-bold uppercase text-gray-400 mb-1 ml-2">Recommended Allocation</h4>
            <viz-chart [dataSet]="allocationData()" [config]="{stackBy:'Service', xKey: 'Unit', yKey: 'Patients'}"></viz-chart>
         </div>
-        
         <div class="viz-wrapper mat-elevation-z1 p-2">
-           <h4 class="text-xs font-bold uppercase text-gray-400 mb-1 ml-2">Net Deviation (Proposed - Current)</h4>
+           <h4 class="text-xs font-bold uppercase text-gray-400 mb-1 ml-2">Net Deviation</h4>
            <viz-chart [dataSet]="deviationData()" [config]="{xKey: 'Unit', yKey: 'Delta', stackBy:'Service'}"></viz-chart>
         </div>
       </div>
-
-      <!-- Detail Table -->
+      <!-- Table -->
       <div class="viz-wrapper mat-elevation-z1 flex-grow" style="min-height: 300px;">
         <h4 class="text-xs font-bold uppercase text-gray-400 p-3 bg-gray-50 border-b">Detailed Assignments</h4>
         <viz-table [dataSet]="tableData()" class="h-full block w-full"></viz-table>
       </div>
     } 
   </div>
-
 </div>

@@ -12,14 +12,18 @@ describe('ScenarioEditorComponent', () => {
   let mockStore: any; 
 
   beforeEach(async () => { 
+    // Mock Store updated to include 'constraints' signal required by template
     mockStore = { 
       capacityMap: signal({ 'ICU': 10 }), 
       demandSql: signal('SELECT 1'), 
       results: signal(null), 
+      constraints: signal([]), // Added missing signal
       isRunning: signal(false), 
       error: signal(null), 
       updateCapacity: vi.fn(), 
-      runScenario: vi.fn() 
+      runScenario: vi.fn(), 
+      addConstraint: vi.fn(), 
+      removeConstraint: vi.fn() 
     }; 
 
     await TestBed.configureTestingModule({ 

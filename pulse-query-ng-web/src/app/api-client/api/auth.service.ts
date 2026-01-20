@@ -43,7 +43,7 @@ export class AuthService extends BaseService {
 
     /**
      * Login Access Token
-     * OAuth2 compatible token login, get an access token for future requests.
+     * OAuth2 compatible token login, get an access token for future requests.  Args:     form_data (OAuth2PasswordRequestForm): Login credentials (username&#x3D;email).     db (AsyncSession): Database session.  Returns:     Token: Access token and type.
      * @endpoint post /api/v1/auth/login
      * @param username 
      * @param password 
@@ -143,7 +143,7 @@ export class AuthService extends BaseService {
 
     /**
      * Read Users Me
-     * Fetch the current logged in user.
+     * Fetch the current logged in user profile.
      * @endpoint get /api/v1/auth/me
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -199,7 +199,7 @@ export class AuthService extends BaseService {
 
     /**
      * Register User
-     * Create new user.
+     * Register a new user in the system.  Steps: 1. Verify email uniqueness. 2. Create User record. 3. Flush session (to generate User ID). 4. Call Provisioning Service to create default dashboard/widgets. 5. Commit transaction.  Args:     user_in (UserCreate): The payload containing email and password.     db (AsyncSession): Database session.  Returns:     User: The newly created user object.  Raises:     HTTPException: If email already exists.
      * @endpoint post /api/v1/auth/register
      * @param userCreate 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

@@ -136,7 +136,7 @@ uv run alembic upgrade head
 
 # 4. Ingest Sample Data (DuckDB)
 # Loads CSVs from /data into the local DuckDB file
-uv run python scripts/ingest.py
+uv run python3 scripts/ingest.py
 
 # 5. Start the Server
 uv run uvicorn --app-dir src app.main:app --reload

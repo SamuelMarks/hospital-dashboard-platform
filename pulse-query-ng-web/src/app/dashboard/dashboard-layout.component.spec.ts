@@ -16,6 +16,7 @@ import { WidgetComponent } from '../widget/widget.component';
 import { DragDropModule } from '@angular/cdk/drag-drop'; 
 import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component'; 
 import { By } from '@angular/platform-browser'; 
+import { ProvisioningService } from './provisioning.service'; // Added Dependency
 
 @Component({ selector: 'app-widget', template: '' }) 
 class MockWidgetComponent { 
@@ -24,6 +25,10 @@ class MockWidgetComponent {
   delete = output<void>(); 
   duplicate = output<void>(); 
 } 
+
+// Mock Empty State for component test usage
+@Component({ selector: 'app-empty-state', template: '' }) 
+class MockEmptyStateComponent {}
 
 describe('DashboardLayoutComponent', () => { 
   let component: DashboardLayoutComponent; 
@@ -39,6 +44,8 @@ describe('DashboardLayoutComponent', () => {
   let paramMapSub: BehaviorSubject<any>; 
   let queryParamMapSub: BehaviorSubject<any>; 
 
+  let mockProvisioning: any; 
+
   beforeEach(async () => { 
     isLoadingSig = signal(false); 
     dashboardSig = signal(null); 
@@ -53,7 +60,9 @@ describe('DashboardLayoutComponent', () => {
       widgets: signal([]), 
       focusedWidget: focusedWidgetSig, 
       isEditMode: isEditModeSig, 
+      sortedWidgets: signal([]), // Added required selector
       globalParams: globalParamsSig, // Used in Toolbar
+      lastUpdated: signal(new Date()), 
       loadDashboard: vi.fn(), 
       reset: vi.fn(), 
       handleWidgetDrop: vi.fn(), 
@@ -62,6 +71,10 @@ describe('DashboardLayoutComponent', () => {
       setFocusedWidget: vi.fn(), 
       setGlobalParams: vi.fn(), 
       duplicateWidget: vi.fn() 
+    }; 
+
+    mockProvisioning = { 
+      provisionWidget: vi.fn().mockReturnValue(of({})) 
     }; 
 
     paramMapSub = new BehaviorSubject({ get: () => 'd1' }); 
@@ -74,6 +87,7 @@ describe('DashboardLayoutComponent', () => {
         { provide: DashboardsService, useValue: { deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn() } }, 
         { provide: MatSnackBar, useValue: { open: vi.fn() } }, 
         { provide: MatDialog, useValue: { open: vi.fn() } }, 
+        { provide: ProvisioningService, useValue: mockProvisioning }, 
         { 
             provide: ActivatedRoute, 
             useValue: { 
@@ -85,7 +99,7 @@ describe('DashboardLayoutComponent', () => {
     }) 
     .overrideComponent(DashboardLayoutComponent, { 
        remove: { imports: [WidgetComponent] }, 
-       add: { imports: [MockWidgetComponent] } 
+       add: { imports: [MockWidgetComponent, MockEmptyStateComponent] } 
     }).compileComponents(); 
 
     fixture = TestBed.createComponent(DashboardLayoutComponent); 

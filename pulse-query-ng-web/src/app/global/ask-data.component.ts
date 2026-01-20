@@ -18,7 +18,7 @@ import { AuthService } from '../core/auth/auth.service';
  * The content definition for the Global "Ask Data" Sidenav. 
  * 
  * Responsibilities: 
- * 1. Manages the lifecycle of a "Scratchpad" Dashboard (create on login, check existing, reuse). 
+ * 1. Manages the lifecycle of a "Scratchpad" Dashboard (create checking on load). 
  * 2. Hosts the `SqlBuilderComponent` for ad-hoc analysis. 
  * 3. Provides a header with a Close action (delegates to Service). 
  */ 
@@ -93,11 +93,13 @@ import { AuthService } from '../core/auth/auth.service';
       } 
 
       <!-- Builder Instance -->
+      <!-- The builder component naturally fetches schema on init. 
+           We render it immediately once scratchpad ID is known. -->
       @if (scratchpadIds(); as ids) { 
          <app-sql-builder
            [dashboardId]="ids.dashboardId" 
            [widgetId]="ids.widgetId" 
-           [initialSql]="'SELECT * FROM hospital_visits LIMIT 5'" 
+           [initialSql]="'SELECT * FROM hospital_data LIMIT 5'" 
            class="h-full w-full block" 
          ></app-sql-builder>
       } 
@@ -105,7 +107,6 @@ import { AuthService } from '../core/auth/auth.service';
   `
 }) 
 export class AskDataComponent implements OnDestroy { 
-  /** Public visibility service for template access (closing). */ 
   public readonly vis = inject(AskDataService); 
   
   private readonly dashboardsApi = inject(DashboardsService); 
@@ -120,16 +121,15 @@ export class AskDataComponent implements OnDestroy {
 
   constructor() { 
     if (isPlatformBrowser(this.platformId)) { 
+      // Initialize immediately on construction (App startup), independent of visibility
       effect(() => { 
         const isAuthenticated = this.auth.isAuthenticated(); 
         const hasContext = !!this.scratchpadIds(); 
 
-        // 1. Initialize if Logged In and context missing
         if (isAuthenticated && !hasContext) { 
            this.initializeScratchpad(); 
         } 
 
-        // 2. Clear context on Logout
         if (!isAuthenticated && hasContext) { 
            this.scratchpadIds.set(null); 
            this.loadingContext.set(true); 
@@ -141,10 +141,6 @@ export class AskDataComponent implements OnDestroy {
     } 
   } 
 
-  /** 
-   * Cleaning up via API is best-effort on destroy. 
-   * Browsers often cancel pending requests on page unload. 
-   */ 
   ngOnDestroy(): void { 
     if (isPlatformBrowser(this.platformId)) { 
       const ids = this.scratchpadIds(); 
@@ -161,7 +157,6 @@ export class AskDataComponent implements OnDestroy {
     this.loadingContext.set(true); 
     this.contextError.set(null); 
 
-    // Step 1: Check if one already exists (from a previous session that wasn't cleaned up) 
     this.dashboardsApi.listDashboardsApiV1DashboardsGet().subscribe({ 
       next: (dashboards: DashboardResponse[]) => { 
         const existing = dashboards.find(d => d.name === this.SCRATCHPAD_NAME); 
@@ -193,7 +188,7 @@ export class AskDataComponent implements OnDestroy {
         title: this.WIDGET_TITLE, 
         type: 'SQL', 
         visualization: 'table', 
-        config: { query: 'SELECT * FROM hospital_visits LIMIT 5' } 
+        config: { query: 'SELECT * FROM hospital_data LIMIT 5' } 
       }).subscribe({ 
         next: (widget) => this.setContext(dashboardId, widget.id), 
         error: (err) => this.handleError('Failed to create scratchpad widget.', err) 
@@ -206,11 +201,6 @@ export class AskDataComponent implements OnDestroy {
     this.loadingContext.set(false); 
   } 
 
-  /** 
-   * Handles generic errors during initialization. 
-   * @param msg User friendly message. 
-   * @param error Actual error object. 
-   */ 
   private handleError(msg: string, error: any): void { 
     console.error(error); 
     this.contextError.set(msg); 

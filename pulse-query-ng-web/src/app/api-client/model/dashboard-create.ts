@@ -9,6 +9,9 @@
  */
 
 
+/**
+ * Payload for creating a Dashboard.
+ */
 export interface DashboardCreate { 
     name: string;
 }

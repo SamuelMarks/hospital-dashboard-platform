@@ -34,6 +34,14 @@ if [ ! -f "$SCHEMA_FILE" ]; then
     exit 1
 fi
 
+# 1a. Validate Critical Types Exist (Pydantic Sync Check)
+# We grep for specific nested models to ensure recursion worked during export
+if ! grep -q "ScenarioConstraint" "$SCHEMA_FILE"; then
+    echo "❌ Error: Schema is missing critical type 'ScenarioConstraint'."
+    echo "   Ensure backend Pydantic models are correctly exported/referenced in the Router."
+    exit 1
+fi
+
 # 2. Clean Previous Client
 echo ""
 echo "🔹 Step 2: Cleaning old client files..."

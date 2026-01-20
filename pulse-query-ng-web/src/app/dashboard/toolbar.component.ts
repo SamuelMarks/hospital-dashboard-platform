@@ -3,12 +3,15 @@
  * 
  * Contains Global Navigation, Action Buttons (Add Widget, Theme Toggle), 
  * and User Profile management. 
+ * 
+ * **Change Log**: 
+ * - EXTRACTED data filters (Date Range, Department) to `FilterRibbonComponent`. 
+ * - Minimized redundant form imports. 
  */ 
 
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core'; 
 import { CommonModule } from '@angular/common'; 
-import { Router, RouterModule, ActivatedRoute } from '@angular/router'; 
-import { FormsModule } from '@angular/forms'; 
+import { Router, RouterModule } from '@angular/router'; 
 
 // Material Imports
 import { MatToolbarModule } from '@angular/material/toolbar'; 
@@ -19,9 +22,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu'; 
 import { MatDividerModule } from '@angular/material/divider'; 
 import { MatDialog } from '@angular/material/dialog'; 
-import { MatFormFieldModule } from '@angular/material/form-field'; 
-import { MatSelectModule } from '@angular/material/select'; 
-import { MatInputModule } from '@angular/material/input'; 
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'; 
 
 import { AuthService } from '../core/auth/auth.service'; 
@@ -35,7 +35,6 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
   imports: [ 
     CommonModule, 
     RouterModule, 
-    FormsModule, 
     MatToolbarModule, 
     MatButtonModule, 
     MatIconModule, 
@@ -43,9 +42,6 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
     MatProgressSpinnerModule, 
     MatMenuModule, 
     MatDividerModule, 
-    MatFormFieldModule, 
-    MatSelectModule, 
-    MatInputModule, 
     MatSlideToggleModule
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
@@ -59,10 +55,6 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
     .user-avatar { background-color: var(--sys-primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; } 
     .menu-header { padding: 16px; display: flex; flex-direction: column; align-items: center; background-color: var(--sys-background); border-bottom: 1px solid var(--sys-surface-border); } 
     .menu-email { margin-top: 8px; font-weight: 500; color: var(--sys-text-primary); font-size: 14px; } 
-    
-    .filter-field { font-size: 12px; width: 140px; } 
-    ::ng-deep .filter-field .mat-mdc-text-field-wrapper { height: 36px; padding-top: 0; } 
-    ::ng-deep .filter-field .mat-mdc-form-field-flex { height: 36px; align-items: center; } 
   `], 
   template: `
     <mat-toolbar color="surface" class="mat-elevation-z2" style="background-color: var(--sys-surface); color: var(--sys-text-primary);">
@@ -106,33 +98,18 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
           <span class="text-sm">Edit</span>
         </mat-slide-toggle>
 
-        <!-- Global Filter -->
-        <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
-          <mat-select 
-            placeholder="Department" 
-            [ngModel]="store.globalParams()['dept']" 
-            (selectionChange)="updateFilter('dept', $event.value)" 
-            aria-label="Filter by Department" 
-          >
-            <mat-option [value]="null">All</mat-option>
-            <mat-option value="Cardiology">Cardiology</mat-option>
-            <mat-option value="Neurology">Neurology</mat-option>
-          </mat-select>
-        </mat-form-field>
+        <!-- NOTE: Data Filters moved to Filter Ribbon Component below -->
 
         <button mat-stroked-button color="primary" (click)="askDataService.open()">
           <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
         </button>
 
-        <!-- Action: Add Widget (Using Unified Builder) -->
-        <!-- Only visible in Edit Mode -->
         @if (store.isEditMode()) { 
           <button mat-stroked-button color="accent" (click)="openWidgetBuilder()" [disabled]="!store.dashboard()" data-testid="btn-add-widget">
             <mat-icon>add</mat-icon> <span>Add Widget</span>
           </button>
         } 
 
-        <!-- Refresh Action -->
         <button 
           mat-icon-button 
           color="primary" 
@@ -176,7 +153,6 @@ export class ToolbarComponent {
   readonly authService = inject(AuthService); 
   readonly themeService = inject(ThemeService); 
   readonly router = inject(Router); 
-  readonly route = inject(ActivatedRoute); 
   private readonly dialog = inject(MatDialog); 
 
   userInitials(): string { 
@@ -186,21 +162,6 @@ export class ToolbarComponent {
 
   logout(): void { this.authService.logout(); } 
   
-  /** 
-   * Updates global filtering state via URL Query Parameters. 
-   * The DashboardLayoutComponent listens to these changes and syncs the Store. 
-   * 
-   * @param {string} key - Parameter key (e.g. 'dept'). 
-   * @param {any} value - Value to set. Null removes the param. 
-   */ 
-  updateFilter(key: string, value: any): void { 
-    this.router.navigate([], { 
-        relativeTo: this.route, 
-        queryParams: { [key]: value || null }, 
-        queryParamsHandling: 'merge', // Preserve other params
-    }); 
-  } 
-
   openWidgetBuilder(): void { 
     const currentDash = this.store.dashboard(); 
     if (!currentDash) return; 
@@ -211,7 +172,7 @@ export class ToolbarComponent {
       maxWidth: '95vw', 
       height: '90vh', 
       panelClass: 'no-padding-dialog', 
-      disableClose: true // Prevent accidental close loosing draft
+      disableClose: true 
     }); 
     ref.afterClosed().subscribe((res: boolean) => { if (res) this.store.loadDashboard(currentDash.id); }); 
   } 

@@ -47,14 +47,14 @@
     "title": "Weekend Effect",
     "description": "Compare Average Length of Stay (ALOS) for patients admitted on Friday/Saturday vs Tuesday.",
     "category": "Availability",
-    "sql_template": "WITH stays AS (\n  SELECT \n    Unit_Category,\n    Admit_DT,\n    date_diff('hour', Admit_DT, Discharge_DT) / 24.0 as los_days\n  FROM synthetic_hospital_data\n  WHERE val(Discharge_DT) IS NOT NULL\n)\nSELECT \n  Unit_Category,\n  AVG(CASE WHEN WEEKEND_LAG(Admit_DT) THEN los_days END) as avg_los_weekend_admit,\n  AVG(CASE WHEN dayofweek(Admit_DT) = 2 THEN los_days END) as avg_los_tuesday_admit\nFROM stays\nGROUP BY 1\nORDER BY 1;",
+    "sql_template": "WITH stays AS (\n  SELECT \n    Clinical_Service,\n    Admit_DT,\n    date_diff('hour', Admit_DT, Discharge_DT) / 24.0 as los_days\n  FROM synthetic_hospital_data\n  WHERE Discharge_DT IS NOT NULL\n)\nSELECT \n  Clinical_Service,\n  AVG(CASE WHEN WEEKEND_LAG(Admit_DT) THEN los_days END) as avg_los_weekend_admit,\n  AVG(CASE WHEN dayofweek(Admit_DT) = 2 THEN los_days END) as avg_los_tuesday_admit\nFROM stays\nGROUP BY 1\nORDER BY 1;",
     "parameters_schema": { "type": "object", "properties": {} }
   },
   {
     "title": "Throughput Velocity",
     "description": "Calculate 'Churn Rate' (Admissions + Discharges) per unit for every calendar day.",
     "category": "Bottlenecks",
-    "sql_template": "WITH flow_events AS (\n  SELECT CAST(Admit_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE val(Admit_DT) IS NOT NULL\n  UNION ALL\n  SELECT CAST(Discharge_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE val(Discharge_DT) IS NOT NULL\n)\nSELECT \n  dt as activity_date,\n  Location,\n  SUM(event_count) as total_churn\nFROM flow_events\nGROUP BY 1, 2\nORDER BY total_churn DESC\nLIMIT 10;",
+    "sql_template": "WITH flow_events AS (\n  SELECT CAST(Admit_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE Admit_DT IS NOT NULL\n  UNION ALL\n  SELECT CAST(Discharge_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE Discharge_DT IS NOT NULL\n)\nSELECT \n  dt as activity_date,\n  Location,\n  SUM(event_count) as total_churn\nFROM flow_events\nGROUP BY 1, 2\nORDER BY total_churn DESC\nLIMIT 10;",
     "parameters_schema": { "type": "object", "properties": {} }
   },
   {
@@ -74,7 +74,7 @@
     "title": "Utilization Spikes",
     "description": "Find 3-day consecutive windows where utilization exceeded 100% capacity.",
     "category": "Availability",
-    "sql_template": "WITH daily_census AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1\n)\nSELECT \n  dt as spike_start_date,\n  census as day_1_load,\n  LEAD(census, 1) OVER (ORDER BY dt) as day_2_load,\n  LEAD(census, 2) OVER (ORDER BY dt) as day_3_load\nFROM daily_census\nWHERE CONSECUTIVE_OVERLOAD(census, LEAD(census, 1) OVER (ORDER BY dt), LEAD(census, 2) OVER (ORDER BY dt), {{capacity}})\nORDER BY dt DESC;",
+    "sql_template": "WITH daily_census AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Location = '{{unit_name}}'\n  GROUP BY 1\n),\nwindows AS (\n  SELECT \n    dt,\n    census as day_1_load,\n    LEAD(census, 1) OVER (ORDER BY dt) as day_2_load,\n    LEAD(census, 2) OVER (ORDER BY dt) as day_3_load\n  FROM daily_census\n)\nSELECT \n  dt as spike_start_date,\n  day_1_load,\n  day_2_load,\n  day_3_load\nFROM windows\nWHERE CONSECUTIVE_OVERLOAD(day_1_load, day_2_load, day_3_load, {{capacity}})\nORDER BY dt DESC;",
     "parameters_schema": {
       "type": "object",
       "properties": {
@@ -86,9 +86,9 @@
   },
   {
     "title": "Admission Lag",
-    "description": "Average time gap between ER Admission and appearance in Midnight Census.",
+    "description": "Average time gap between ER Admission and appearance in Midnight Census. Filters for specific visits to ensure long-stay patients don't skew the average.",
     "category": "Bottlenecks",
-    "sql_template": "SELECT \n  Clinical_Focus,\n  AVG(date_diff('hour', Admit_DT, Midnight_Census_DateTime)) as avg_lag_hours\nFROM synthetic_hospital_data\nWHERE Entry_Point = 'Emergency Room'\nGROUP BY 1\nORDER BY 2 DESC;",
+    "sql_template": "WITH first_appearances AS (\n  SELECT \n    Visit_ID, \n    Clinical_Service, \n    Admit_DT, \n    MIN(Midnight_Census_DateTime) as first_census_dt\n  FROM synthetic_hospital_data\n  WHERE Entry_Point = 'Emergency Room'\n  GROUP BY 1, 2, 3\n)\nSELECT \n  Clinical_Service,\n  AVG(date_diff('hour', Admit_DT, first_census_dt)) as avg_lag_hours\nFROM first_appearances\nGROUP BY 1\nORDER BY 2 DESC;",
     "parameters_schema": { "type": "object", "properties": {} }
   },
   {
@@ -130,7 +130,7 @@
     "title": "Shift Change Stress",
     "description": "Units with highest frequency of discharges between 6:00 PM and 8:00 PM.",
     "category": "Volatility",
-    "sql_template": "SELECT \n  Location,\n  COUNT(*) as shift_change_discharges\nFROM synthetic_hospital_data\nWHERE SHIFT_CHANGE(Discharge_DT)\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 5;",
+    "sql_template": "SELECT \n  Location,\n  COUNT(*) as shift_change_discharges\nFROM synthetic_hospital_data\nWHERE SHIFT_CHANGE(Discharge_DT, 18, 20)\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 5;",
     "parameters_schema": { "type": "object", "properties": {} }
   },
   {

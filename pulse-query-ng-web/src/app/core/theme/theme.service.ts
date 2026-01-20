@@ -5,12 +5,12 @@ import { isPlatformBrowser } from '@angular/common';
 export type ThemeMode = 'light' | 'dark';
 
 /**
- * Service to manage Application Theme (Light/Dark).
+ * Service to manage Application Theme (Light/Dark) and Display Modes (TV/Kiosk).
  *
  * Responsibilities:
- * 1. Toggles specific CSS classes (`light-theme` / `dark-theme`) on `document.body` to activate Material Themes.
- * 2. Persists user preference to `localStorage` to remember choice across sessions.
- * 3. Exposes reactive signals (`mode`, `isDark`) for components to adapt logic (e.g., Chart coloring).
+ * 1. Toggles specific CSS classes (`light-theme`, `dark-theme`, `mode-tv`) on `document.body`.
+ * 2. Persists user preference for Light/Dark mode.
+ * 3. Exposes reactive signals (`mode`, `isDark`, `isTvMode`) for components.
  * 4. Automatically detects OS System Preference on first load.
  */
 @Injectable({
@@ -20,11 +20,17 @@ export class ThemeService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly STORAGE_KEY = 'pulse_theme_preference';
 
-  /** Internal mutable state signal. */
+  /** Internal mutable state signal for color theme. */
   private readonly _mode = signal<ThemeMode>('light');
+  
+  /** Internal mutable state signal for TV Kiosk Mode. */
+  private readonly _tvMode = signal<boolean>(false);
 
   /** Read-only signal for UI binding. */
   readonly mode: Signal<ThemeMode> = this._mode.asReadonly();
+
+  /** Read-only signal indicating if Kiosk Mode is active. */
+  readonly isTvMode: Signal<boolean> = this._tvMode.asReadonly();
 
   /** Boolean computed helper for templates (e.g., `[class.dark]="isDark()"`). */
   readonly isDark: Signal<boolean> = computed(() => this._mode() === 'dark');
@@ -51,6 +57,27 @@ export class ThemeService {
   setMode(mode: ThemeMode): void {
     this._mode.set(mode);
     this.applyTheme(mode);
+  }
+
+  /**
+   * Activates or Deactivates TV Kiosk Mode.
+   * In TV mode, chrome is hidden and fonts are scaled.
+   * 
+   * @param active - Whether TV mode is on.
+   */
+  setTvMode(active: boolean): void {
+    this._tvMode.set(active);
+    
+    if (isPlatformBrowser(this.platformId)) {
+      const body = document.body;
+      if (active) {
+        body.classList.add('mode-tv');
+        // TV Mode usually implies Dark Theme for better contrast/battery on OLEDs
+        if (this._mode() !== 'dark') this.setMode('dark');
+      } else {
+        body.classList.remove('mode-tv');
+      }
+    }
   }
 
   /**

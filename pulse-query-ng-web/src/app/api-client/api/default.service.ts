@@ -35,7 +35,6 @@ export class DefaultService extends BaseService {
 
     /**
      * Root
-     * Root Health Check Endpoint.  Returns:     dict[str, str]: A simple JSON status message indicating the API is online.
      * @endpoint get /
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.

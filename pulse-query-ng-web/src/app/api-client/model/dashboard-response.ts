@@ -10,6 +10,9 @@
 import { WidgetResponse } from './widget-response';
 
 
+/**
+ * API Response model for a Dashboard. Includes the nested list of Widgets.
+ */
 export interface DashboardResponse { 
     name: string;
     id: string;

@@ -1,6 +1,7 @@
-import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core'; 
-import { CommonModule } from '@angular/common'; 
+import { Component, input, computed, ChangeDetectionStrategy, inject, effect, signal } from '@angular/core'; 
+import { CommonModule, DOCUMENT } from '@angular/common'; 
 import { TableDataSet } from '../viz-table/viz-table.component'; 
+import { ThemeService } from '../../../core/theme/theme.service'; 
 
 export interface ChartReferenceLine { 
   y: number; 
@@ -16,7 +17,7 @@ export interface ChartConfig {
     referenceLines?: ChartReferenceLine[]; 
 } 
 
-/** Internal representation for template rendering */
+/** Internal representation for template rendering */ 
 interface ChartItem { 
   segments?: { 
     label: string; 
@@ -32,18 +33,6 @@ interface ChartItem {
   isNegative: boolean; 
   isStacked: boolean; 
 } 
-
-interface ReferenceLineStyles { 
-  bottomPct: string; 
-  label: string; 
-  color: string; 
-  borderStyle: string; 
-} 
-
-const COLORS = [ 
-  '#1976d2', '#d32f2f', '#388e3c', '#fbc02d', 
-  '#7b1fa2', '#e64a19', '#0288d1', '#c2185b'  
-]; 
 
 @Component({ 
   selector: 'viz-chart', 
@@ -133,6 +122,33 @@ const COLORS = [
 export class VizChartComponent { 
   readonly dataSet = input.required<TableDataSet | null>(); 
   readonly config = input<ChartConfig>(); 
+  
+  private readonly document = inject(DOCUMENT); 
+  private readonly themeService = inject(ThemeService); // Included to trigger reactivity
+  
+  // Palette is now reactive to theme changes
+  private readonly palette = signal<string[]>([]); 
+
+  constructor() { 
+    // Effect runs whenever theme mode changes
+    effect(() => { 
+      // Register dependency on theme mode 
+      const mode = this.themeService.isDark(); 
+      // Read CSS variables
+      this.updatePalette(); 
+    }); 
+  } 
+
+  private updatePalette(): void { 
+    if (!this.document) return; 
+    const style = getComputedStyle(this.document.body); 
+    this.palette.set([ 
+      style.getPropertyValue('--chart-color-1').trim() || '#1976d2', 
+      style.getPropertyValue('--chart-color-2').trim() || '#d32f2f', 
+      style.getPropertyValue('--chart-color-3').trim() || '#388e3c', 
+      '#fbc02d', '#7b1fa2', '#e64a19', '#0288d1', '#c2185b' 
+    ]); 
+  } 
 
   readonly axisKeys = computed(() => { 
     const ds = this.dataSet(); 
@@ -155,10 +171,13 @@ export class VizChartComponent {
   readonly processedData = computed<ChartItem[]>(() => { 
     const ds = this.dataSet(); 
     const { x, y, stack } = this.axisKeys(); 
+    // Dependency on palette ensures re-calc on theme change
+    const colors = this.palette(); 
+
     if (!ds || !x || !y) return []; 
 
     if (stack) { 
-        return this.processStackedData(ds.data, x, y, stack); 
+        return this.processStackedData(ds.data, x, y, stack, colors); 
     } 
     return this.processSimpleData(ds.data, x, y); 
   }); 
@@ -192,7 +211,7 @@ export class VizChartComponent {
     }); 
   } 
 
-  private processStackedData(rows: Record<string, any>[], xKey: string, yKey: string, stackKey: string): ChartItem[] { 
+  private processStackedData(rows: Record<string, any>[], xKey: string, yKey: string, stackKey: string, colors: string[]): ChartItem[] { 
     const groups: Record<string, {label: string, val: number, color: string }[]> = {}; 
     const colorMap: Record<string, string> = {}; 
     let ci = 0; 
@@ -203,7 +222,7 @@ export class VizChartComponent {
         const yVal = Math.max(0, Number(r[yKey]) || 0); 
 
         if (!groups[xVal]) groups[xVal] = []; 
-        if (!colorMap[stackVal]) { colorMap[stackVal] = COLORS[ci % COLORS.length]; ci++; } 
+        if (!colorMap[stackVal]) { colorMap[stackVal] = colors[ci % colors.length]; ci++; } 
 
         groups[xVal].push({ label: stackVal, val: yVal, color: colorMap[stackVal] }); 
     }); 

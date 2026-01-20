@@ -5,8 +5,8 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 function generateData(count: number): TableDataSet {
   return {
-    columns: ['id', 'value'],
-    data: Array.from({ length: count }, (_, k) => ({ id: k + 1, value: `Row ${k + 1}` }))
+    columns: ['id', 'value', 'census'],
+    data: Array.from({ length: count }, (_, k) => ({ id: k + 1, value: `Row ${k + 1}`, census: k * 10 }))
   };
 }
 
@@ -34,7 +34,7 @@ describe('VizTableComponent', () => {
     fixture.detectChanges();
 
     expect(component.dataSource.data.length).toBe(5);
-    expect(component.finalColumns()).toEqual(['id', 'value']);
+    expect(component.finalColumns()).toEqual(['id', 'value', 'census']);
   });
 
   it('should render mat-table rows', () => {
@@ -53,7 +53,6 @@ describe('VizTableComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // Ensure link is established manually if effect didn't settle (common in simpler test envs)
     if (component.dataSource.paginator === undefined) {
         component.dataSource.paginator = component.paginator;
     }
@@ -62,10 +61,35 @@ describe('VizTableComponent', () => {
     expect(component.dataSource.paginator?.length).toBe(20);
   });
 
-  it('should handle formatting', () => {
-    const obj = { start: 'now' };
-    const row = { id: 1, meta: obj };
-    expect(component.getCellValue(row, 'meta')).toBe(JSON.stringify(obj));
-    expect(component.getCellValue(row, 'missing')).toBe('-');
+  it('should apply warning class to cells exceeding threshold', () => {
+    const row = { id: 1, census: 85 }; // > 80
+    component.dataSource.data = [row];
+    fixture.componentRef.setInput('dataSet', { columns: ['census'], data: [row] });
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
+    
+    // census contains 'census' string so heuristic should pick it up
+    const classes = component.getCellClass(row, 'census');
+    expect(classes).toContain('cell-warn');
+    expect(classes).not.toContain('cell-critical');
+  });
+
+  it('should apply critical class to cells exceeding critical threshold', () => {
+    const row = { id: 1, census: 95 }; // > 90
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
+    
+    const classes = component.getCellClass(row, 'census');
+    expect(classes).toContain('cell-critical');
+  });
+
+  it('should respect manual thresholdColumn config', () => {
+    const row = { id: 1, custom_val: 100 };
+    // 'custom_val' doesn't match heuristics, so we must specify it
+    fixture.componentRef.setInput('config', { 
+        thresholds: { critical: 50 },
+        thresholdColumn: 'custom_val'
+    });
+
+    const classes = component.getCellClass(row, 'custom_val');
+    expect(classes).toContain('cell-critical');
   });
 });

@@ -6,7 +6,8 @@ Unlike standard widget execution, this service performs a multi-step process:
 1. Executes raw SQL to fetch live clinical demand.
 2. Transforms tabular SQL results into the JSON structure required by the Solver.
 3. Injects user-defined capacity/constraint parameters.
-4. Executes the Solver and returns ephemeral results.
+4. Executes the Solver (which includes virtual Overflow logic).
+5. Calculates Deltas to show the user exactly where patients moved.
 """
 
 import json
@@ -15,7 +16,11 @@ from typing import List, Dict, Any, Tuple
 
 from app.database.duckdb import duckdb_manager
 from app.services.mpax_bridge import mpax_bridge
-from app.schemas.simulation import ScenarioRunRequest, ScenarioResult, SimulationAssignment
+from app.schemas.simulation import (
+  ScenarioRunRequest,
+  ScenarioResult,
+  SimulationAssignment,
+)
 
 logger = logging.getLogger("simulation_service")
 
@@ -28,6 +33,10 @@ class SimulationService:
   def run_scenario(self, request: ScenarioRunRequest) -> ScenarioResult:
     """
     Executes a simulation based on the provided configuration.
+
+    The process includes a "Virtual Overflow" safety net. If demand exceeds
+    capacity, the optimization will not fail but will allocate patients
+    to an "Overflow" unit, which will appear in the assignments list.
 
     Args:
         request (ScenarioRunRequest): The scenario definition.
@@ -49,7 +58,10 @@ class SimulationService:
     # 3. Run Optimization
     # This calls the JAX/MPAX solver via the bridge
     raw_result = mpax_bridge.solve_unit_assignment(
-      demand_json=demand_json, capacity_json=capacity_json, affinity_json=affinity_json, constraints_json=constraints_json
+      demand_json=demand_json,
+      capacity_json=capacity_json,
+      affinity_json=affinity_json,
+      constraints_json=constraints_json,
     )
 
     # 4. Parse Result & Calculate Delta
@@ -65,10 +77,13 @@ class SimulationService:
     1. 2 Columns: (Service, Count) -> Baseline assumes 0 distribution.
     2. 3 Columns: (Service, Unit, Count) -> Baseline built from this distribution.
 
+    Args:
+        query (str): The SQL query string to run against DuckDB.
+
     Returns:
         Tuple containing:
-        - JSON string for solver: `{"Service": TotalCount}`
-        - Baseline Map: `{(Service, Unit): Count}`
+        - str: JSON string for solver: `{"Service": TotalCount}`
+        - dict: Baseline Map: `{(Service, Unit): Count}`
     """
     try:
       conn = duckdb_manager.get_readonly_connection()
@@ -112,9 +127,17 @@ class SimulationService:
     """
     Converts MPAX JSON into Pydantic models and injects Delta values.
 
+    Logic:
+    - Iterates over Solver assignments (New State).
+    - Compares against `current_state` (Old State) to calculate `Delta`.
+    - Adds implicit "Negative Delta" rows for patients moved completely OUT of a unit.
+
     Args:
-        raw_json: JSON string from solver.
-        current_state: Map of `(Service, Unit) -> OriginalCount`.
+        raw_json (str): JSON string from solver.
+        current_state (Dict): Map of `(Service, Unit) -> OriginalCount`.
+
+    Returns:
+        List[SimulationAssignment]: List of allocation results with change metrics.
     """
     try:
       data = json.loads(raw_json)
@@ -124,8 +147,6 @@ class SimulationService:
       result_list = []
 
       # Process solver outputs
-      # Note: Solver might output assignments for units/services that weren't in current_state
-      # and vice-versa.
       processed_keys = set()
 
       for item in data:
@@ -140,22 +161,27 @@ class SimulationService:
         delta = new_count - original
 
         result_list.append(
-          SimulationAssignment(Service=service, Unit=unit, Patient_Count=new_count, Original_Count=original, Delta=delta)
+          SimulationAssignment(
+            Service=service,
+            Unit=unit,
+            Patient_Count=new_count,
+            Original_Count=original,
+            Delta=delta,
+          )
         )
 
-      # Optional: Add entries for things that existed in Current but became 0 in Proposed?
-      # The solver usually allocates all demand, so if it moved, the new unit gets the count.
-      # However, if the solver didn't output a row for (Service A, Unit Old) because it assigned 0,
-      # we might want to show that as a negative delta row.
-      # MPAX bridge filters > 0.1. So 0s are hidden.
-
+      # Detect "Evictions":
+      # If a unit/service pair existed in Current State but is NOT in Solver Output,
+      # it means the count went to 0 (solver filtered it). We must document this removal.
       for (svc, unit), old_count in current_state.items():
         if (svc, unit) not in processed_keys and old_count > 0.1:
-          # This implies the solver moved everyone OUT of this unit.
-          # Create a record showing 0 assigned, negative delta.
           result_list.append(
             SimulationAssignment(
-              Service=svc, Unit=unit, Patient_Count=0.0, Original_Count=old_count, Delta=-1.0 * old_count
+              Service=svc,
+              Unit=unit,
+              Patient_Count=0.0,
+              Original_Count=old_count,
+              Delta=-1.0 * old_count,
             )
           )
 
