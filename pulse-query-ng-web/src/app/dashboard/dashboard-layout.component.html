@@ -12,12 +12,14 @@
   @if (store.isLoading()) { <mat-progress-bar mode="indeterminate" color="accent" style="height: 4px"></mat-progress-bar> } 
 } 
 
-<!-- MAIN CONTENT WRAPPER: Flex Row to hold Grid and Sidebar -->
-<div class="layout-flex-wrapper h-full flex overflow-hidden relative">
-
+<!-- MAIN CONTENT WRAPPER: Sidenav Layout for Editor -->
+<mat-sidenav-container class="dashboard-sidnav-container h-full" autosize>
+  
   <!-- LEFT: Dashboard Grid Viewport -->
-  <div class="view-port flex-1 overflow-y-auto" [class.tv-view]="isTvMode()">
-    
+  <mat-sidenav-content 
+    class="view-port overflow-y-auto" 
+    [class.tv-view]="isTvMode()" 
+  >
     <!-- Skeleton -->
     @if (store.isLoading() && !store.dashboard()) { 
       <div class="ghost-grid" data-testid="skeleton-grid">
@@ -32,6 +34,7 @@
         cdkDropList
         id="dashboard-grid" 
         [cdkDropListDisabled]="!store.isEditMode() || isTvMode()" 
+        [cdkDropListOrientation]="'mixed'" 
         (cdkDropListDropped)="onDrop($event)" 
         class="dashboard-grid" 
       >
@@ -68,15 +71,21 @@
         <app-empty-state class="h-full block"></app-empty-state>
       } 
     } 
-  </div>
+  </mat-sidenav-content>
 
   <!-- RIGHT: Edit Sidebar (Gallery) -->
-  <!-- Only visible in Edit Mode -->
-  @if (store.isEditMode() && !isTvMode()) { 
-    <app-widget-gallery class="gallery-sidebar mat-elevation-z4"></app-widget-gallery>
-  } 
+  <!-- Automatically opens in Edit Mode unless TV mode is on -->
+  <mat-sidenav 
+    mode="side" 
+    position="end" 
+    [opened]="store.isEditMode() && !isTvMode()" 
+    class="editor-sidenav" 
+    class="mat-elevation-z4" 
+  >
+    <app-widget-gallery class="h-full"></app-widget-gallery>
+  </mat-sidenav>
 
-</div>
+</mat-sidenav-container>
 
 <!-- Focus Overlay -->
 @if (store.focusedWidget(); as focused) { 

@@ -1,45 +1,46 @@
 """
-AI API Router.
+AI API Router (Arena Edition).
 
-This module exposes endpoints for AI-assisted features, primarily the conversion
-of Natural Language prompts into executable SQL queries compatible with the
-internal DuckDB schema.
+Exposes the endpoint for generating SQL.
+Now returns an `ExperimentResponse` containing multiple candidates for user comparison.
 """
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
+from app.database.postgres import get_db
 from app.models.user import User
-from app.schemas.ai import SQLGenerationRequest, SQLGenerationResponse
+from app.schemas.ai import SQLGenerationRequest
+from app.schemas.feedback import ExperimentResponse
 from app.services.sql_generator import sql_generator
 
 router = APIRouter()
 
 
-@router.post("/generate", response_model=SQLGenerationResponse)
-async def generate_sql_query(
+@router.post("/generate", response_model=ExperimentResponse)
+async def generate_sql_comparison(
   request: SQLGenerationRequest,
   current_user: Annotated[User, Depends(deps.get_current_user)],
-) -> SQLGenerationResponse:
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> ExperimentResponse:
   """
-  Generates a SQL query based on a natural language prompt.
+  Generates SQL usage the Multi-LLM Arena.
 
-  This endpoint uses the registered LLM service to interpret the user's intent
-  against the current database schema.
+  This endpoint:
+  1. Broadcasts the prompt to all configured LLMs.
+  2. Persists the results as an Experiment.
+  3. Returns a list of candidates so the frontend can display a comparison view.
 
   Args:
-      request (SQLGenerationRequest): The payload containing the natural language prompt.
-      current_user (User): The authenticated user (required to access this feature).
+      request (SQLGenerationRequest): The prompt payload.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Database session for logging.
 
   Returns:
-      SQLGenerationResponse: The generated SQL query string.
-
-  Raises:
-      HTTPException:
-          - 400: If the prompt is empty.
-          - 503: If the LLM service is unavailable or times out.
+      ExperimentResponse: Object containing experiment ID and list of candidate SQLs.
   """
   if not request.prompt.strip():
     raise HTTPException(
@@ -48,16 +49,18 @@ async def generate_sql_query(
     )
 
   try:
-    generated_sql = await sql_generator.generate_sql(request.prompt)
-    return SQLGenerationResponse(sql=generated_sql)
-  except TimeoutError:
+    # Use the new Swarm-capable method
+    response = await sql_generator.run_arena_experiment(user_query=request.prompt, db=db, user=current_user)
+    return response
+
+  except RuntimeError as e:
+    # If the Swarm has 0 providers configured
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-      detail="The AI assistant timed out. Please try again later.",
+      detail=str(e),
     )
   except Exception as e:
-    # Log the actual error internally in a real app
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail=f"AI Generation failed: {str(e)}",
+      detail=f"Arena Generation failed: {str(e)}",
     )

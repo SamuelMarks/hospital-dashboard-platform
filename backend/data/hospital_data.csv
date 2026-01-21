@@ -8,3 +8,994 @@ VIS-10005,PAT-284,2025-07-11,2025-07-19,Hypertension,Cardiology,31337.8,40,Self-
 VIS-10006,PAT-203,2025-02-12,2025-02-13,Appendicitis,General Practice,37702.98,85,Medicare
 VIS-10007,PAT-121,2025-10-21,2025-10-24,Type 2 Diabetes,Orthopedics,5497.84,44,Medicare
 VIS-10008,PAT-424,2025-01-27,2025-02-07,Appendicitis,Neurology,14346.41,81,Aetna
+VIS-10009,PAT-149,2025-04-28,2025-04-30,Hypertension,Neurology,36617.07,67,Aetna
+VIS-10010,PAT-493,2025-04-19,2025-04-20,Cardiomyopathy,General Practice,26851.22,86,BlueCross
+VIS-10011,PAT-278,2025-03-25,2025-04-08,Hypertension,Emergency,14813.42,38,Aetna
+VIS-10012,PAT-376,2025-06-04,2025-06-09,Appendicitis,General Practice,41193.16,19,Medicare
+VIS-10013,PAT-476,2025-05-25,2025-05-27,Viral Infection,Neurology,8626.2,79,BlueCross
+VIS-10014,PAT-412,2025-10-29,2025-11-09,Viral Infection,Orthopedics,6344.27,78,Self-Pay
+VIS-10015,PAT-498,2025-12-09,2025-12-10,Hypertension,Orthopedics,14004.29,76,Aetna
+VIS-10016,PAT-246,2025-05-20,2025-05-28,Cardiomyopathy,Neurology,31055.81,57,Medicare
+VIS-10017,PAT-352,2025-04-18,2025-04-28,Cardiomyopathy,General Practice,2878.25,35,Medicare
+VIS-10018,PAT-449,2025-09-19,2025-09-25,Hypertension,Orthopedics,32276.04,65,Aetna
+VIS-10019,PAT-400,2025-09-04,2025-09-13,Fracture,Orthopedics,2421.69,67,Aetna
+VIS-10020,PAT-488,2025-09-12,2025-09-22,Fracture,Orthopedics,1445.6,74,Medicare
+VIS-10021,PAT-389,2025-12-15,2025-12-19,Viral Infection,Orthopedics,25628.69,85,Medicare
+VIS-10022,PAT-116,2025-09-01,2025-09-05,Appendicitis,Orthopedics,39574.67,49,BlueCross
+VIS-10023,PAT-281,2025-11-07,2025-11-13,Appendicitis,Cardiology,16163.65,46,Medicare
+VIS-10024,PAT-233,2025-04-12,2025-04-14,Type 2 Diabetes,Cardiology,31808.14,86,Aetna
+VIS-10025,PAT-106,2025-04-29,2025-05-06,Type 2 Diabetes,Emergency,14022.17,87,Aetna
+VIS-10026,PAT-358,2025-10-09,2025-10-20,Fracture,Emergency,48980.29,70,Aetna
+VIS-10027,PAT-246,2025-06-09,2025-06-10,Appendicitis,Cardiology,37413.26,41,Aetna
+VIS-10028,PAT-365,2025-05-15,2025-05-25,Cardiomyopathy,Cardiology,44807.89,57,Self-Pay
+VIS-10029,PAT-353,2025-05-01,2025-05-06,Viral Infection,Emergency,47239.68,59,Self-Pay
+VIS-10030,PAT-425,2025-04-29,2025-05-13,Cardiomyopathy,Cardiology,41751.47,62,Self-Pay
+VIS-10031,PAT-266,2025-03-14,2025-03-24,Hypertension,Cardiology,31086.84,37,Aetna
+VIS-10032,PAT-113,2025-11-21,2025-11-29,Viral Infection,Neurology,29056.77,43,BlueCross
+VIS-10033,PAT-207,2025-02-09,2025-02-16,Type 2 Diabetes,Orthopedics,29479.37,79,BlueCross
+VIS-10034,PAT-464,2025-02-02,2025-02-05,Cardiomyopathy,Orthopedics,13350.57,68,BlueCross
+VIS-10035,PAT-146,2025-06-27,2025-07-11,Fracture,Cardiology,35482.89,30,Aetna
+VIS-10036,PAT-305,2025-04-17,2025-04-23,Hypertension,Emergency,30234.75,83,Medicare
+VIS-10037,PAT-136,2025-03-06,2025-03-09,Hypertension,Neurology,35808.8,67,Aetna
+VIS-10038,PAT-239,2025-05-05,2025-05-19,Viral Infection,General Practice,4448.3,36,Aetna
+VIS-10039,PAT-104,2025-01-24,2025-01-30,Cardiomyopathy,Neurology,31809.37,74,Self-Pay
+VIS-10040,PAT-143,2025-08-25,2025-09-08,Hypertension,General Practice,21012.92,47,Self-Pay
+VIS-10041,PAT-202,2026-01-01,2026-01-05,Viral Infection,Orthopedics,16713.27,44,Medicare
+VIS-10042,PAT-480,2025-07-07,2025-07-17,Cardiomyopathy,Neurology,31885.86,30,Medicare
+VIS-10043,PAT-437,2025-10-15,2025-10-21,Type 2 Diabetes,General Practice,32003.81,58,BlueCross
+VIS-10044,PAT-119,2025-09-10,2025-09-19,Fracture,General Practice,12075.77,37,Medicare
+VIS-10045,PAT-390,2025-02-23,2025-02-28,Viral Infection,Emergency,18537.39,19,Self-Pay
+VIS-10046,PAT-123,2025-09-27,2025-10-06,Cardiomyopathy,General Practice,17214.34,75,Aetna
+VIS-10047,PAT-129,2025-04-28,2025-05-10,Cardiomyopathy,Neurology,37925.73,78,BlueCross
+VIS-10048,PAT-131,2025-07-12,2025-07-22,Viral Infection,Neurology,39047.97,24,Aetna
+VIS-10049,PAT-381,2025-03-30,2025-04-12,Fracture,General Practice,1551.07,68,Self-Pay
+VIS-10050,PAT-485,2025-02-27,2025-03-10,Cardiomyopathy,Cardiology,36824.36,28,BlueCross
+VIS-10051,PAT-127,2025-04-05,2025-04-15,Cardiomyopathy,Emergency,41000.95,34,BlueCross
+VIS-10052,PAT-391,2025-07-29,2025-08-05,Type 2 Diabetes,Orthopedics,41562.25,43,BlueCross
+VIS-10053,PAT-453,2025-06-25,2025-06-27,Fracture,Neurology,46420.45,68,BlueCross
+VIS-10054,PAT-257,2025-10-26,2025-10-29,Fracture,Orthopedics,36419.41,69,Medicare
+VIS-10055,PAT-407,2025-08-13,2025-08-26,Cardiomyopathy,Emergency,41920.43,66,BlueCross
+VIS-10056,PAT-453,2025-06-25,2025-06-29,Hypertension,Orthopedics,21751.19,21,Aetna
+VIS-10057,PAT-246,2025-08-10,2025-08-23,Appendicitis,Emergency,22939.88,83,BlueCross
+VIS-10058,PAT-471,2025-06-06,2025-06-13,Fracture,Cardiology,7389.03,72,BlueCross
+VIS-10059,PAT-371,2025-09-03,2025-09-06,Hypertension,Neurology,41862.16,20,Aetna
+VIS-10060,PAT-312,2025-09-29,2025-10-11,Fracture,Emergency,13031.0,39,BlueCross
+VIS-10061,PAT-131,2025-03-12,2025-03-18,Type 2 Diabetes,Emergency,31528.1,35,Medicare
+VIS-10062,PAT-292,2025-03-09,2025-03-20,Fracture,Orthopedics,37187.18,27,Medicare
+VIS-10063,PAT-416,2025-11-07,2025-11-09,Appendicitis,General Practice,36646.71,65,Self-Pay
+VIS-10064,PAT-174,2025-05-20,2025-05-29,Cardiomyopathy,Neurology,47312.16,20,BlueCross
+VIS-10065,PAT-121,2025-02-08,2025-02-11,Type 2 Diabetes,Emergency,48170.26,58,Aetna
+VIS-10066,PAT-227,2025-03-12,2025-03-20,Viral Infection,General Practice,31126.49,64,Aetna
+VIS-10067,PAT-485,2025-07-20,2025-07-22,Type 2 Diabetes,General Practice,21761.19,21,Aetna
+VIS-10068,PAT-326,2025-09-25,2025-10-08,Viral Infection,Emergency,26768.68,86,Aetna
+VIS-10069,PAT-357,2025-06-19,2025-07-01,Type 2 Diabetes,Cardiology,35697.94,82,Aetna
+VIS-10070,PAT-218,2025-06-30,2025-07-14,Fracture,Orthopedics,46129.47,72,Aetna
+VIS-10071,PAT-302,2025-05-08,2025-05-16,Appendicitis,General Practice,14752.1,78,Medicare
+VIS-10072,PAT-228,2025-08-13,2025-08-16,Fracture,Orthopedics,26966.84,19,Self-Pay
+VIS-10073,PAT-457,2025-05-31,2025-06-13,Type 2 Diabetes,Cardiology,9547.34,85,Medicare
+VIS-10074,PAT-358,2025-11-20,2025-12-04,Fracture,Orthopedics,18870.37,56,Self-Pay
+VIS-10075,PAT-283,2025-12-02,2025-12-04,Fracture,Cardiology,10042.47,21,Medicare
+VIS-10076,PAT-226,2025-06-23,2025-06-24,Cardiomyopathy,Emergency,32996.15,87,Self-Pay
+VIS-10077,PAT-371,2025-10-11,2025-10-23,Hypertension,Cardiology,34442.1,71,Aetna
+VIS-10078,PAT-103,2025-12-29,2026-01-03,Type 2 Diabetes,Orthopedics,24787.05,21,Self-Pay
+VIS-10079,PAT-160,2025-07-21,2025-07-23,Viral Infection,General Practice,17640.76,89,Medicare
+VIS-10080,PAT-141,2025-04-21,2025-05-03,Viral Infection,Cardiology,27301.19,61,Medicare
+VIS-10081,PAT-109,2025-03-20,2025-03-29,Appendicitis,General Practice,9106.18,76,BlueCross
+VIS-10082,PAT-180,2025-10-11,2025-10-15,Type 2 Diabetes,General Practice,48248.01,29,Aetna
+VIS-10083,PAT-473,2025-05-05,2025-05-16,Fracture,Neurology,12227.78,86,BlueCross
+VIS-10084,PAT-437,2025-04-28,2025-05-11,Type 2 Diabetes,Neurology,22727.6,21,Medicare
+VIS-10085,PAT-203,2025-10-24,2025-10-28,Viral Infection,General Practice,30624.74,71,Medicare
+VIS-10086,PAT-299,2025-05-14,2025-05-28,Hypertension,Neurology,31958.08,86,Medicare
+VIS-10087,PAT-368,2025-10-21,2025-11-01,Cardiomyopathy,General Practice,26113.68,56,BlueCross
+VIS-10088,PAT-341,2025-04-05,2025-04-06,Fracture,Cardiology,41241.43,59,Aetna
+VIS-10089,PAT-156,2025-12-23,2025-12-24,Viral Infection,Orthopedics,49292.23,40,BlueCross
+VIS-10090,PAT-485,2025-07-29,2025-08-05,Type 2 Diabetes,Cardiology,4275.24,42,Aetna
+VIS-10091,PAT-445,2025-11-04,2025-11-13,Type 2 Diabetes,Cardiology,27258.65,87,Medicare
+VIS-10092,PAT-258,2025-03-19,2025-03-22,Type 2 Diabetes,General Practice,31166.99,34,Aetna
+VIS-10093,PAT-441,2025-08-02,2025-08-16,Type 2 Diabetes,Emergency,32425.09,55,Self-Pay
+VIS-10094,PAT-375,2025-08-08,2025-08-18,Type 2 Diabetes,Emergency,30562.8,75,Medicare
+VIS-10095,PAT-288,2025-08-01,2025-08-02,Hypertension,Cardiology,7530.25,37,Medicare
+VIS-10096,PAT-263,2025-09-28,2025-10-04,Appendicitis,General Practice,634.83,21,BlueCross
+VIS-10097,PAT-254,2025-12-24,2026-01-07,Appendicitis,Emergency,49582.46,50,BlueCross
+VIS-10098,PAT-399,2025-04-18,2025-04-25,Hypertension,Cardiology,12694.89,35,Self-Pay
+VIS-10099,PAT-126,2025-10-10,2025-10-20,Fracture,Orthopedics,15832.85,82,Aetna
+VIS-10100,PAT-114,2025-01-18,2025-01-27,Type 2 Diabetes,Orthopedics,44066.02,22,BlueCross
+VIS-10101,PAT-458,2025-04-09,2025-04-13,Viral Infection,Neurology,26469.87,39,Aetna
+VIS-10102,PAT-306,2025-02-20,2025-02-23,Viral Infection,Cardiology,41305.9,30,Self-Pay
+VIS-10103,PAT-207,2025-11-11,2025-11-13,Appendicitis,Orthopedics,17054.8,57,BlueCross
+VIS-10104,PAT-282,2025-08-11,2025-08-15,Type 2 Diabetes,Neurology,19292.33,88,Aetna
+VIS-10105,PAT-338,2025-11-01,2025-11-04,Hypertension,Emergency,24907.3,68,BlueCross
+VIS-10106,PAT-212,2025-07-21,2025-07-22,Viral Infection,Orthopedics,4955.69,84,Aetna
+VIS-10107,PAT-325,2025-05-02,2025-05-03,Type 2 Diabetes,Emergency,29533.45,44,Self-Pay
+VIS-10108,PAT-443,2025-03-04,2025-03-17,Cardiomyopathy,Neurology,41336.85,89,Self-Pay
+VIS-10109,PAT-146,2025-11-01,2025-11-14,Fracture,Emergency,22235.7,49,BlueCross
+VIS-10110,PAT-154,2025-12-14,2025-12-16,Cardiomyopathy,Emergency,47704.13,19,BlueCross
+VIS-10111,PAT-119,2025-08-27,2025-09-03,Type 2 Diabetes,Neurology,34035.38,31,Self-Pay
+VIS-10112,PAT-342,2025-12-24,2025-12-31,Appendicitis,Emergency,24488.56,81,Aetna
+VIS-10113,PAT-359,2025-11-09,2025-11-23,Viral Infection,Orthopedics,3417.86,19,Medicare
+VIS-10114,PAT-422,2025-04-12,2025-04-24,Cardiomyopathy,General Practice,22211.55,18,Self-Pay
+VIS-10115,PAT-228,2025-08-01,2025-08-03,Hypertension,Neurology,17282.01,75,Aetna
+VIS-10116,PAT-374,2025-09-17,2025-09-24,Viral Infection,Orthopedics,17423.15,76,BlueCross
+VIS-10117,PAT-314,2025-06-05,2025-06-06,Viral Infection,Orthopedics,6029.12,84,Aetna
+VIS-10118,PAT-315,2025-06-26,2025-07-05,Type 2 Diabetes,Emergency,4785.27,40,Self-Pay
+VIS-10119,PAT-284,2025-11-16,2025-11-21,Viral Infection,Emergency,48185.45,66,Aetna
+VIS-10120,PAT-283,2025-05-07,2025-05-08,Cardiomyopathy,Orthopedics,32780.07,33,Self-Pay
+VIS-10121,PAT-380,2025-10-30,2025-11-11,Viral Infection,Emergency,46658.64,89,Self-Pay
+VIS-10122,PAT-299,2025-08-02,2025-08-10,Cardiomyopathy,General Practice,24020.09,25,Aetna
+VIS-10123,PAT-106,2025-08-31,2025-09-14,Appendicitis,General Practice,49098.94,37,BlueCross
+VIS-10124,PAT-230,2025-01-14,2025-01-20,Fracture,Emergency,26741.86,30,Medicare
+VIS-10125,PAT-360,2025-03-11,2025-03-15,Fracture,General Practice,43303.54,82,BlueCross
+VIS-10126,PAT-101,2025-03-04,2025-03-10,Appendicitis,General Practice,8067.49,38,BlueCross
+VIS-10127,PAT-357,2025-10-13,2025-10-21,Fracture,Cardiology,3188.46,77,BlueCross
+VIS-10128,PAT-495,2025-07-01,2025-07-15,Hypertension,General Practice,36874.12,88,Self-Pay
+VIS-10129,PAT-490,2025-06-16,2025-06-20,Viral Infection,Emergency,48206.49,20,Self-Pay
+VIS-10130,PAT-242,2025-07-02,2025-07-12,Appendicitis,Orthopedics,24699.4,76,Medicare
+VIS-10131,PAT-292,2025-01-20,2025-01-29,Fracture,Cardiology,40007.18,80,Self-Pay
+VIS-10132,PAT-128,2025-10-21,2025-10-31,Cardiomyopathy,Cardiology,22066.97,40,BlueCross
+VIS-10133,PAT-118,2025-05-20,2025-05-29,Appendicitis,Cardiology,26109.61,43,Medicare
+VIS-10134,PAT-147,2025-02-24,2025-03-04,Type 2 Diabetes,General Practice,4412.86,40,BlueCross
+VIS-10135,PAT-161,2025-06-25,2025-06-29,Appendicitis,General Practice,9051.37,74,BlueCross
+VIS-10136,PAT-442,2025-12-01,2025-12-06,Fracture,Emergency,37011.58,62,BlueCross
+VIS-10137,PAT-122,2025-12-22,2026-01-02,Appendicitis,Orthopedics,32681.89,24,Self-Pay
+VIS-10138,PAT-248,2025-09-01,2025-09-14,Fracture,Orthopedics,26777.17,75,BlueCross
+VIS-10139,PAT-288,2025-04-03,2025-04-07,Viral Infection,Orthopedics,28286.23,27,Aetna
+VIS-10140,PAT-481,2025-02-01,2025-02-03,Viral Infection,Neurology,7992.24,85,Self-Pay
+VIS-10141,PAT-248,2025-06-17,2025-06-25,Cardiomyopathy,General Practice,43625.72,51,BlueCross
+VIS-10142,PAT-288,2025-10-11,2025-10-12,Viral Infection,Neurology,26365.74,61,BlueCross
+VIS-10143,PAT-356,2025-09-25,2025-10-09,Fracture,Emergency,45025.44,52,Aetna
+VIS-10144,PAT-447,2025-12-16,2025-12-29,Viral Infection,General Practice,15119.23,25,Aetna
+VIS-10145,PAT-195,2025-10-02,2025-10-08,Appendicitis,Cardiology,47987.69,71,Medicare
+VIS-10146,PAT-464,2025-06-26,2025-06-27,Cardiomyopathy,Orthopedics,29237.52,71,BlueCross
+VIS-10147,PAT-404,2025-06-24,2025-07-03,Viral Infection,Neurology,13263.94,55,Self-Pay
+VIS-10148,PAT-120,2025-06-18,2025-06-20,Hypertension,Orthopedics,13083.67,30,Self-Pay
+VIS-10149,PAT-212,2025-08-06,2025-08-19,Appendicitis,General Practice,21698.29,41,Aetna
+VIS-10150,PAT-272,2025-07-27,2025-08-05,Hypertension,Neurology,32494.24,81,Self-Pay
+VIS-10151,PAT-212,2025-04-26,2025-05-05,Hypertension,General Practice,39052.52,79,Self-Pay
+VIS-10152,PAT-299,2025-05-19,2025-05-20,Viral Infection,Cardiology,25635.39,51,Aetna
+VIS-10153,PAT-415,2025-06-22,2025-06-23,Viral Infection,Neurology,48769.83,39,Self-Pay
+VIS-10154,PAT-388,2025-09-21,2025-09-26,Fracture,Neurology,45469.46,76,Aetna
+VIS-10155,PAT-208,2025-11-29,2025-12-04,Fracture,Neurology,31977.9,21,Self-Pay
+VIS-10156,PAT-294,2025-12-07,2025-12-12,Hypertension,Neurology,39073.64,45,BlueCross
+VIS-10157,PAT-200,2025-11-13,2025-11-19,Hypertension,Neurology,27346.8,64,Aetna
+VIS-10158,PAT-491,2025-03-28,2025-04-01,Fracture,General Practice,1264.41,36,Medicare
+VIS-10159,PAT-206,2025-04-13,2025-04-20,Viral Infection,Cardiology,19998.29,32,Self-Pay
+VIS-10160,PAT-326,2025-01-19,2025-01-21,Fracture,Neurology,48746.53,21,BlueCross
+VIS-10161,PAT-442,2025-09-11,2025-09-21,Cardiomyopathy,Emergency,12944.28,66,Medicare
+VIS-10162,PAT-152,2025-03-01,2025-03-05,Fracture,Cardiology,11084.61,72,Medicare
+VIS-10163,PAT-167,2025-03-19,2025-03-27,Hypertension,General Practice,6169.94,74,Aetna
+VIS-10164,PAT-482,2025-02-16,2025-02-26,Cardiomyopathy,General Practice,38515.95,58,Medicare
+VIS-10165,PAT-124,2025-11-17,2025-11-25,Fracture,Emergency,28247.03,86,BlueCross
+VIS-10166,PAT-460,2025-08-29,2025-09-07,Viral Infection,Emergency,3415.15,19,Aetna
+VIS-10167,PAT-195,2025-09-29,2025-10-05,Viral Infection,Cardiology,6534.01,43,BlueCross
+VIS-10168,PAT-425,2025-03-12,2025-03-23,Type 2 Diabetes,Emergency,42468.27,67,Aetna
+VIS-10169,PAT-357,2025-05-15,2025-05-26,Type 2 Diabetes,Orthopedics,19107.32,41,Aetna
+VIS-10170,PAT-338,2025-01-22,2025-02-03,Cardiomyopathy,General Practice,31332.78,79,Medicare
+VIS-10171,PAT-225,2025-08-06,2025-08-08,Fracture,Emergency,6294.18,66,Self-Pay
+VIS-10172,PAT-165,2025-03-15,2025-03-25,Fracture,General Practice,24980.46,27,Medicare
+VIS-10173,PAT-263,2025-06-12,2025-06-24,Cardiomyopathy,General Practice,2284.65,66,Self-Pay
+VIS-10174,PAT-284,2025-04-12,2025-04-18,Hypertension,Emergency,11100.16,30,Aetna
+VIS-10175,PAT-325,2025-03-21,2025-03-26,Appendicitis,Neurology,7765.56,19,BlueCross
+VIS-10176,PAT-133,2025-10-21,2025-10-30,Cardiomyopathy,Neurology,21201.1,34,BlueCross
+VIS-10177,PAT-335,2025-12-18,2025-12-21,Cardiomyopathy,Neurology,17256.59,48,Aetna
+VIS-10178,PAT-396,2025-07-18,2025-08-01,Fracture,General Practice,4608.24,20,Self-Pay
+VIS-10179,PAT-129,2025-09-03,2025-09-08,Appendicitis,Neurology,15819.02,69,Aetna
+VIS-10180,PAT-331,2025-05-22,2025-05-31,Viral Infection,Cardiology,42529.14,90,BlueCross
+VIS-10181,PAT-379,2025-07-07,2025-07-17,Appendicitis,General Practice,13205.18,47,Medicare
+VIS-10182,PAT-332,2025-06-24,2025-06-28,Fracture,Emergency,27125.95,71,Self-Pay
+VIS-10183,PAT-231,2025-10-11,2025-10-17,Appendicitis,General Practice,27192.93,64,Self-Pay
+VIS-10184,PAT-244,2025-08-06,2025-08-15,Fracture,Orthopedics,9722.68,90,BlueCross
+VIS-10185,PAT-308,2025-09-20,2025-10-01,Cardiomyopathy,Cardiology,23928.0,21,Medicare
+VIS-10186,PAT-248,2025-12-17,2025-12-18,Cardiomyopathy,Cardiology,10599.75,72,BlueCross
+VIS-10187,PAT-463,2025-03-31,2025-04-07,Appendicitis,Neurology,13141.47,66,Self-Pay
+VIS-10188,PAT-399,2025-03-28,2025-04-08,Cardiomyopathy,Emergency,47851.54,50,Medicare
+VIS-10189,PAT-498,2025-01-18,2025-01-20,Appendicitis,General Practice,3111.6,27,BlueCross
+VIS-10190,PAT-318,2025-06-29,2025-07-01,Viral Infection,General Practice,46555.14,51,Aetna
+VIS-10191,PAT-107,2025-04-23,2025-04-26,Type 2 Diabetes,Orthopedics,36991.15,79,BlueCross
+VIS-10192,PAT-176,2025-05-01,2025-05-03,Fracture,Orthopedics,28709.97,42,Aetna
+VIS-10193,PAT-169,2025-07-09,2025-07-17,Viral Infection,Neurology,34011.08,18,Medicare
+VIS-10194,PAT-252,2025-11-14,2025-11-23,Type 2 Diabetes,Orthopedics,32985.02,56,BlueCross
+VIS-10195,PAT-498,2025-05-31,2025-06-07,Appendicitis,Neurology,13201.66,80,Aetna
+VIS-10196,PAT-351,2026-01-07,2026-01-16,Fracture,Neurology,21928.02,90,Medicare
+VIS-10197,PAT-229,2025-01-14,2025-01-21,Cardiomyopathy,Cardiology,33083.82,67,Medicare
+VIS-10198,PAT-427,2025-06-10,2025-06-13,Hypertension,Cardiology,45990.64,33,Aetna
+VIS-10199,PAT-446,2025-07-18,2025-07-24,Cardiomyopathy,Emergency,11430.31,53,Self-Pay
+VIS-10200,PAT-336,2025-05-14,2025-05-19,Fracture,Cardiology,17285.6,63,BlueCross
+VIS-10201,PAT-179,2025-08-08,2025-08-19,Fracture,General Practice,33998.78,76,Aetna
+VIS-10202,PAT-170,2025-08-18,2025-08-30,Cardiomyopathy,Neurology,15402.31,68,Medicare
+VIS-10203,PAT-260,2025-09-21,2025-09-27,Hypertension,Orthopedics,10242.7,68,BlueCross
+VIS-10204,PAT-467,2025-10-23,2025-10-24,Type 2 Diabetes,Emergency,25019.18,66,Self-Pay
+VIS-10205,PAT-347,2025-10-29,2025-11-05,Cardiomyopathy,Orthopedics,11931.83,45,Aetna
+VIS-10206,PAT-316,2025-08-08,2025-08-21,Fracture,Orthopedics,1347.82,26,Aetna
+VIS-10207,PAT-311,2025-04-18,2025-04-28,Appendicitis,Orthopedics,13611.27,36,Aetna
+VIS-10208,PAT-218,2025-11-25,2025-12-05,Cardiomyopathy,General Practice,2246.97,57,BlueCross
+VIS-10209,PAT-130,2025-02-06,2025-02-14,Viral Infection,Neurology,43822.03,43,Aetna
+VIS-10210,PAT-107,2025-11-07,2025-11-17,Cardiomyopathy,Emergency,25333.42,72,Medicare
+VIS-10211,PAT-290,2025-07-12,2025-07-22,Cardiomyopathy,Cardiology,10565.25,70,Self-Pay
+VIS-10212,PAT-157,2025-01-17,2025-01-28,Cardiomyopathy,Emergency,24714.4,74,Aetna
+VIS-10213,PAT-323,2025-03-20,2025-03-24,Hypertension,Cardiology,30237.58,43,Self-Pay
+VIS-10214,PAT-456,2025-10-30,2025-11-07,Fracture,Cardiology,13520.53,49,BlueCross
+VIS-10215,PAT-227,2025-05-01,2025-05-06,Viral Infection,Emergency,29682.19,82,Medicare
+VIS-10216,PAT-376,2025-05-23,2025-06-03,Viral Infection,Cardiology,35326.72,21,Aetna
+VIS-10217,PAT-442,2026-01-03,2026-01-17,Hypertension,Orthopedics,19911.32,83,Self-Pay
+VIS-10218,PAT-469,2025-10-01,2025-10-03,Appendicitis,General Practice,12672.56,33,Medicare
+VIS-10219,PAT-174,2025-12-08,2025-12-15,Type 2 Diabetes,Cardiology,28007.15,44,Self-Pay
+VIS-10220,PAT-262,2025-05-07,2025-05-13,Viral Infection,Orthopedics,26643.92,48,Self-Pay
+VIS-10221,PAT-445,2025-11-09,2025-11-17,Fracture,Emergency,16120.62,83,Medicare
+VIS-10222,PAT-214,2025-10-12,2025-10-15,Hypertension,General Practice,20360.86,47,BlueCross
+VIS-10223,PAT-391,2025-08-06,2025-08-15,Fracture,Orthopedics,46951.57,29,Aetna
+VIS-10224,PAT-360,2025-06-19,2025-06-20,Cardiomyopathy,Orthopedics,20775.77,22,BlueCross
+VIS-10225,PAT-221,2025-05-29,2025-06-11,Fracture,Emergency,34154.48,69,Self-Pay
+VIS-10226,PAT-431,2025-12-13,2025-12-21,Cardiomyopathy,Orthopedics,4339.01,55,Aetna
+VIS-10227,PAT-395,2025-11-27,2025-12-08,Hypertension,Neurology,17835.48,76,Medicare
+VIS-10228,PAT-133,2025-08-26,2025-08-30,Hypertension,Emergency,43003.15,22,Medicare
+VIS-10229,PAT-123,2025-12-26,2025-12-29,Appendicitis,Neurology,21526.13,76,BlueCross
+VIS-10230,PAT-306,2025-06-26,2025-07-08,Cardiomyopathy,Orthopedics,46612.83,75,Self-Pay
+VIS-10231,PAT-116,2025-03-24,2025-04-05,Cardiomyopathy,General Practice,48890.87,49,Self-Pay
+VIS-10232,PAT-105,2025-08-25,2025-09-03,Type 2 Diabetes,Emergency,10091.64,23,BlueCross
+VIS-10233,PAT-339,2025-10-18,2025-10-29,Hypertension,General Practice,34455.77,51,BlueCross
+VIS-10234,PAT-413,2025-03-13,2025-03-25,Appendicitis,Cardiology,31007.0,43,Self-Pay
+VIS-10235,PAT-281,2025-11-02,2025-11-10,Type 2 Diabetes,Emergency,49058.96,31,Self-Pay
+VIS-10236,PAT-120,2025-07-03,2025-07-08,Type 2 Diabetes,Cardiology,2875.62,51,BlueCross
+VIS-10237,PAT-205,2025-04-30,2025-05-09,Type 2 Diabetes,Orthopedics,46715.63,57,BlueCross
+VIS-10238,PAT-425,2025-01-29,2025-02-08,Type 2 Diabetes,Neurology,27658.3,61,Aetna
+VIS-10239,PAT-126,2025-06-08,2025-06-13,Hypertension,Orthopedics,29119.4,38,Self-Pay
+VIS-10240,PAT-278,2025-11-27,2025-12-02,Hypertension,Emergency,37349.83,21,BlueCross
+VIS-10241,PAT-328,2025-10-22,2025-11-04,Viral Infection,Orthopedics,43015.29,74,Medicare
+VIS-10242,PAT-482,2025-06-15,2025-06-23,Cardiomyopathy,General Practice,14227.33,44,Medicare
+VIS-10243,PAT-449,2025-06-04,2025-06-17,Appendicitis,General Practice,8405.01,41,Aetna
+VIS-10244,PAT-375,2025-07-30,2025-08-10,Appendicitis,Orthopedics,35506.94,31,Self-Pay
+VIS-10245,PAT-318,2025-05-22,2025-05-24,Viral Infection,General Practice,39671.94,77,Medicare
+VIS-10246,PAT-371,2025-01-22,2025-02-02,Cardiomyopathy,General Practice,28459.7,71,Medicare
+VIS-10247,PAT-400,2025-12-25,2026-01-02,Hypertension,Cardiology,47893.43,57,Aetna
+VIS-10248,PAT-361,2025-11-15,2025-11-28,Cardiomyopathy,Emergency,46916.25,67,Medicare
+VIS-10249,PAT-183,2025-08-22,2025-09-04,Fracture,Neurology,12129.46,56,BlueCross
+VIS-10250,PAT-458,2025-02-03,2025-02-14,Fracture,Cardiology,13405.32,70,Medicare
+VIS-10251,PAT-294,2025-04-17,2025-04-27,Appendicitis,Neurology,42534.96,55,BlueCross
+VIS-10252,PAT-233,2025-02-25,2025-03-04,Appendicitis,Cardiology,12757.23,75,Aetna
+VIS-10253,PAT-404,2025-09-30,2025-10-07,Fracture,Cardiology,27989.22,28,Medicare
+VIS-10254,PAT-472,2025-02-01,2025-02-11,Hypertension,Emergency,30173.46,60,Self-Pay
+VIS-10255,PAT-250,2025-10-20,2025-10-31,Appendicitis,Neurology,36341.24,68,Self-Pay
+VIS-10256,PAT-405,2025-10-13,2025-10-20,Hypertension,Neurology,1862.59,44,Self-Pay
+VIS-10257,PAT-360,2025-04-23,2025-04-30,Cardiomyopathy,General Practice,15968.24,62,Medicare
+VIS-10258,PAT-229,2025-05-18,2025-06-01,Viral Infection,Emergency,33325.05,71,Self-Pay
+VIS-10259,PAT-258,2025-09-28,2025-09-30,Fracture,General Practice,40705.84,71,Medicare
+VIS-10260,PAT-430,2025-12-05,2025-12-10,Viral Infection,Emergency,11738.65,27,BlueCross
+VIS-10261,PAT-336,2025-07-22,2025-07-27,Type 2 Diabetes,Neurology,37721.17,81,Self-Pay
+VIS-10262,PAT-180,2025-06-20,2025-07-01,Hypertension,Neurology,9333.42,79,Aetna
+VIS-10263,PAT-490,2025-02-28,2025-03-09,Hypertension,Neurology,33261.56,20,Aetna
+VIS-10264,PAT-429,2025-07-15,2025-07-24,Appendicitis,General Practice,17489.74,68,Medicare
+VIS-10265,PAT-229,2025-05-17,2025-05-22,Cardiomyopathy,Cardiology,10293.37,53,Medicare
+VIS-10266,PAT-372,2025-07-31,2025-08-12,Appendicitis,Orthopedics,1853.48,56,Medicare
+VIS-10267,PAT-107,2025-11-07,2025-11-14,Cardiomyopathy,Emergency,35698.37,79,BlueCross
+VIS-10268,PAT-224,2025-03-27,2025-04-02,Hypertension,Emergency,49906.11,88,BlueCross
+VIS-10269,PAT-112,2025-07-29,2025-08-11,Viral Infection,Neurology,31003.95,90,Aetna
+VIS-10270,PAT-444,2025-03-02,2025-03-07,Fracture,Emergency,39829.46,78,Aetna
+VIS-10271,PAT-252,2025-03-18,2025-03-22,Fracture,Orthopedics,28186.99,21,Medicare
+VIS-10272,PAT-424,2025-09-01,2025-09-11,Fracture,Neurology,4796.9,77,Aetna
+VIS-10273,PAT-141,2025-02-16,2025-03-01,Hypertension,General Practice,46948.71,78,Medicare
+VIS-10274,PAT-152,2025-05-01,2025-05-04,Appendicitis,Orthopedics,6521.42,50,Aetna
+VIS-10275,PAT-122,2025-02-23,2025-03-07,Appendicitis,Orthopedics,21787.25,89,Medicare
+VIS-10276,PAT-260,2025-04-08,2025-04-10,Viral Infection,Orthopedics,21314.61,23,Aetna
+VIS-10277,PAT-163,2025-08-25,2025-09-07,Appendicitis,General Practice,24655.39,89,BlueCross
+VIS-10278,PAT-170,2025-07-08,2025-07-17,Appendicitis,General Practice,28068.04,79,Aetna
+VIS-10279,PAT-475,2025-11-20,2025-11-23,Type 2 Diabetes,General Practice,34669.39,89,Self-Pay
+VIS-10280,PAT-446,2025-08-21,2025-08-25,Viral Infection,Neurology,5493.25,50,Aetna
+VIS-10281,PAT-148,2025-03-11,2025-03-18,Type 2 Diabetes,Emergency,35112.1,61,BlueCross
+VIS-10282,PAT-493,2025-09-29,2025-10-10,Cardiomyopathy,Orthopedics,13698.96,24,Self-Pay
+VIS-10283,PAT-389,2025-07-30,2025-08-03,Hypertension,Emergency,4905.78,70,BlueCross
+VIS-10284,PAT-459,2025-10-22,2025-10-27,Type 2 Diabetes,Neurology,42959.32,53,BlueCross
+VIS-10285,PAT-373,2025-06-14,2025-06-26,Hypertension,Emergency,14498.19,62,Medicare
+VIS-10286,PAT-381,2025-02-10,2025-02-15,Type 2 Diabetes,General Practice,2622.17,27,Self-Pay
+VIS-10287,PAT-156,2025-08-01,2025-08-12,Appendicitis,Emergency,34637.96,59,Medicare
+VIS-10288,PAT-139,2025-12-26,2026-01-09,Type 2 Diabetes,Neurology,29272.06,40,Aetna
+VIS-10289,PAT-113,2025-11-03,2025-11-13,Cardiomyopathy,Orthopedics,47285.44,83,Aetna
+VIS-10290,PAT-108,2025-03-18,2025-04-01,Hypertension,Cardiology,36676.35,19,Self-Pay
+VIS-10291,PAT-487,2025-08-30,2025-09-07,Fracture,Orthopedics,29516.07,24,Self-Pay
+VIS-10292,PAT-387,2025-08-18,2025-08-29,Fracture,Neurology,20069.69,33,Medicare
+VIS-10293,PAT-107,2025-02-21,2025-02-24,Appendicitis,General Practice,25614.82,20,BlueCross
+VIS-10294,PAT-175,2025-07-11,2025-07-21,Appendicitis,Cardiology,4876.87,61,Medicare
+VIS-10295,PAT-192,2025-01-28,2025-02-07,Appendicitis,Orthopedics,6701.35,41,Self-Pay
+VIS-10296,PAT-447,2025-12-13,2025-12-16,Hypertension,Orthopedics,26351.93,72,Self-Pay
+VIS-10297,PAT-280,2025-10-22,2025-10-31,Cardiomyopathy,Orthopedics,22028.03,49,BlueCross
+VIS-10298,PAT-446,2025-12-06,2025-12-20,Hypertension,Cardiology,13725.02,57,Self-Pay
+VIS-10299,PAT-251,2025-09-18,2025-09-21,Type 2 Diabetes,Neurology,33395.87,43,Self-Pay
+VIS-10300,PAT-343,2025-03-19,2025-03-23,Type 2 Diabetes,Neurology,2461.26,61,Aetna
+VIS-10301,PAT-427,2025-04-23,2025-05-02,Hypertension,Neurology,14026.77,54,Aetna
+VIS-10302,PAT-357,2025-11-01,2025-11-06,Cardiomyopathy,Emergency,36364.93,46,Aetna
+VIS-10303,PAT-234,2025-10-01,2025-10-11,Viral Infection,General Practice,2025.62,61,Self-Pay
+VIS-10304,PAT-399,2026-01-01,2026-01-14,Appendicitis,Emergency,41360.14,33,Self-Pay
+VIS-10305,PAT-245,2025-06-18,2025-06-26,Type 2 Diabetes,Emergency,32362.68,74,Medicare
+VIS-10306,PAT-193,2025-06-23,2025-07-01,Hypertension,Orthopedics,21612.75,73,BlueCross
+VIS-10307,PAT-223,2025-01-15,2025-01-26,Fracture,Emergency,37679.2,49,Self-Pay
+VIS-10308,PAT-436,2025-07-28,2025-08-02,Viral Infection,General Practice,17348.27,90,BlueCross
+VIS-10309,PAT-101,2025-03-08,2025-03-14,Type 2 Diabetes,Orthopedics,9181.51,88,BlueCross
+VIS-10310,PAT-284,2025-02-18,2025-02-19,Cardiomyopathy,Emergency,15552.84,64,BlueCross
+VIS-10311,PAT-129,2025-02-28,2025-03-08,Type 2 Diabetes,Emergency,42134.46,78,Self-Pay
+VIS-10312,PAT-375,2025-03-31,2025-04-03,Viral Infection,General Practice,18589.87,33,BlueCross
+VIS-10313,PAT-413,2025-07-21,2025-07-25,Type 2 Diabetes,Orthopedics,23233.11,37,Medicare
+VIS-10314,PAT-292,2025-02-14,2025-02-28,Fracture,Orthopedics,35499.83,76,Aetna
+VIS-10315,PAT-172,2025-07-15,2025-07-26,Cardiomyopathy,Neurology,39313.18,44,Medicare
+VIS-10316,PAT-135,2025-06-01,2025-06-10,Fracture,General Practice,18608.65,83,BlueCross
+VIS-10317,PAT-317,2025-09-15,2025-09-17,Type 2 Diabetes,General Practice,30537.95,33,Self-Pay
+VIS-10318,PAT-156,2025-07-28,2025-08-01,Viral Infection,Orthopedics,43019.23,89,Aetna
+VIS-10319,PAT-354,2025-07-25,2025-07-29,Viral Infection,Neurology,35841.61,28,Aetna
+VIS-10320,PAT-309,2025-06-03,2025-06-08,Fracture,Cardiology,19272.64,66,Aetna
+VIS-10321,PAT-297,2025-11-18,2025-11-25,Type 2 Diabetes,Cardiology,14378.23,35,Aetna
+VIS-10322,PAT-323,2025-02-23,2025-03-08,Type 2 Diabetes,Emergency,31612.44,68,Aetna
+VIS-10323,PAT-163,2025-08-29,2025-09-05,Type 2 Diabetes,Neurology,27088.58,21,BlueCross
+VIS-10324,PAT-301,2025-02-09,2025-02-18,Fracture,Cardiology,8585.14,48,Aetna
+VIS-10325,PAT-100,2025-05-14,2025-05-20,Fracture,Emergency,8209.84,22,BlueCross
+VIS-10326,PAT-275,2025-01-20,2025-01-26,Hypertension,Emergency,46282.92,24,Medicare
+VIS-10327,PAT-426,2026-01-04,2026-01-18,Hypertension,Orthopedics,991.59,25,BlueCross
+VIS-10328,PAT-134,2025-03-12,2025-03-15,Hypertension,Neurology,40726.22,31,Medicare
+VIS-10329,PAT-407,2025-07-10,2025-07-19,Cardiomyopathy,General Practice,41456.59,82,BlueCross
+VIS-10330,PAT-479,2025-06-01,2025-06-02,Appendicitis,Neurology,11132.0,60,Aetna
+VIS-10331,PAT-436,2025-12-08,2025-12-16,Viral Infection,General Practice,31117.16,80,Medicare
+VIS-10332,PAT-459,2025-08-13,2025-08-21,Viral Infection,Cardiology,21241.38,87,Medicare
+VIS-10333,PAT-135,2025-04-29,2025-05-09,Hypertension,Cardiology,3647.19,66,Medicare
+VIS-10334,PAT-362,2025-11-05,2025-11-08,Appendicitis,Neurology,15148.93,22,Aetna
+VIS-10335,PAT-198,2025-12-25,2025-12-27,Appendicitis,Cardiology,47891.52,51,BlueCross
+VIS-10336,PAT-273,2025-06-08,2025-06-16,Fracture,Orthopedics,32550.92,69,Self-Pay
+VIS-10337,PAT-474,2025-12-01,2025-12-15,Type 2 Diabetes,Cardiology,45151.85,84,BlueCross
+VIS-10338,PAT-462,2025-04-14,2025-04-25,Viral Infection,Cardiology,49387.87,75,BlueCross
+VIS-10339,PAT-187,2025-11-12,2025-11-19,Hypertension,Neurology,14800.89,61,Medicare
+VIS-10340,PAT-167,2025-11-14,2025-11-28,Viral Infection,Orthopedics,29398.05,24,Self-Pay
+VIS-10341,PAT-135,2025-06-29,2025-07-04,Type 2 Diabetes,Cardiology,11719.12,38,Self-Pay
+VIS-10342,PAT-467,2025-03-08,2025-03-18,Viral Infection,Orthopedics,23232.87,75,Self-Pay
+VIS-10343,PAT-391,2025-01-29,2025-02-01,Cardiomyopathy,Cardiology,38461.24,30,Aetna
+VIS-10344,PAT-138,2026-01-06,2026-01-20,Cardiomyopathy,Emergency,30499.81,60,BlueCross
+VIS-10345,PAT-127,2025-08-29,2025-09-08,Fracture,Emergency,31852.1,83,Self-Pay
+VIS-10346,PAT-313,2025-03-24,2025-04-04,Viral Infection,Emergency,953.08,38,Aetna
+VIS-10347,PAT-116,2025-06-27,2025-07-05,Type 2 Diabetes,Emergency,29821.97,43,Medicare
+VIS-10348,PAT-420,2025-07-18,2025-07-26,Viral Infection,Cardiology,6287.87,58,Self-Pay
+VIS-10349,PAT-224,2025-04-25,2025-04-30,Fracture,Emergency,26750.62,74,BlueCross
+VIS-10350,PAT-238,2025-05-06,2025-05-10,Viral Infection,Neurology,9837.6,59,Self-Pay
+VIS-10351,PAT-259,2025-10-06,2025-10-20,Viral Infection,Emergency,7851.82,26,Aetna
+VIS-10352,PAT-208,2025-10-23,2025-10-27,Viral Infection,Emergency,40199.84,40,Aetna
+VIS-10353,PAT-447,2025-05-02,2025-05-06,Viral Infection,Orthopedics,30065.06,75,Medicare
+VIS-10354,PAT-174,2025-07-21,2025-07-25,Viral Infection,Emergency,33558.73,49,Self-Pay
+VIS-10355,PAT-263,2025-04-01,2025-04-11,Fracture,General Practice,38192.56,44,Medicare
+VIS-10356,PAT-283,2025-12-18,2025-12-31,Cardiomyopathy,General Practice,13854.64,23,Aetna
+VIS-10357,PAT-349,2025-04-09,2025-04-22,Cardiomyopathy,General Practice,43406.6,59,BlueCross
+VIS-10358,PAT-417,2025-02-22,2025-02-24,Viral Infection,Emergency,8766.83,43,Self-Pay
+VIS-10359,PAT-202,2026-01-05,2026-01-14,Hypertension,Neurology,41310.84,57,BlueCross
+VIS-10360,PAT-304,2025-12-11,2025-12-18,Viral Infection,Orthopedics,47807.9,45,Self-Pay
+VIS-10361,PAT-342,2025-12-21,2026-01-01,Appendicitis,General Practice,49476.08,68,Self-Pay
+VIS-10362,PAT-100,2025-03-28,2025-04-02,Fracture,Emergency,12951.89,67,Medicare
+VIS-10363,PAT-393,2025-10-25,2025-10-26,Appendicitis,Emergency,43507.76,80,Self-Pay
+VIS-10364,PAT-431,2025-06-10,2025-06-22,Fracture,Cardiology,27305.98,90,Self-Pay
+VIS-10365,PAT-243,2025-03-01,2025-03-15,Type 2 Diabetes,Emergency,38967.76,40,Medicare
+VIS-10366,PAT-305,2025-09-03,2025-09-05,Cardiomyopathy,General Practice,21203.28,47,Medicare
+VIS-10367,PAT-253,2025-09-09,2025-09-12,Hypertension,Neurology,45659.28,87,Medicare
+VIS-10368,PAT-402,2025-12-29,2026-01-09,Hypertension,Emergency,48024.47,65,Self-Pay
+VIS-10369,PAT-401,2025-05-09,2025-05-16,Viral Infection,Orthopedics,37443.5,88,Self-Pay
+VIS-10370,PAT-470,2025-05-25,2025-06-06,Cardiomyopathy,Orthopedics,18381.89,68,BlueCross
+VIS-10371,PAT-131,2025-06-06,2025-06-10,Type 2 Diabetes,Neurology,4345.45,60,BlueCross
+VIS-10372,PAT-377,2025-02-12,2025-02-25,Hypertension,Cardiology,25980.71,33,Self-Pay
+VIS-10373,PAT-277,2025-02-20,2025-02-21,Viral Infection,Cardiology,14628.27,62,Aetna
+VIS-10374,PAT-175,2025-07-17,2025-07-19,Type 2 Diabetes,Neurology,32791.78,70,Aetna
+VIS-10375,PAT-377,2025-07-13,2025-07-16,Viral Infection,Orthopedics,20646.77,36,Self-Pay
+VIS-10376,PAT-316,2025-01-26,2025-02-07,Type 2 Diabetes,Emergency,31496.59,88,Aetna
+VIS-10377,PAT-279,2025-08-05,2025-08-19,Fracture,Cardiology,22135.09,31,Self-Pay
+VIS-10378,PAT-298,2025-01-27,2025-02-08,Fracture,Cardiology,26980.03,56,Medicare
+VIS-10379,PAT-247,2025-11-11,2025-11-22,Viral Infection,Neurology,31500.68,21,Self-Pay
+VIS-10380,PAT-483,2025-07-02,2025-07-16,Cardiomyopathy,Neurology,19164.58,23,Medicare
+VIS-10381,PAT-400,2025-04-27,2025-05-08,Hypertension,Cardiology,39489.56,25,Self-Pay
+VIS-10382,PAT-314,2025-07-14,2025-07-26,Appendicitis,Emergency,3120.82,88,Self-Pay
+VIS-10383,PAT-429,2025-01-15,2025-01-21,Fracture,Neurology,40023.52,53,Self-Pay
+VIS-10384,PAT-187,2025-10-12,2025-10-19,Viral Infection,General Practice,4525.31,39,Self-Pay
+VIS-10385,PAT-395,2025-05-25,2025-06-08,Viral Infection,Orthopedics,24800.46,30,Self-Pay
+VIS-10386,PAT-279,2025-03-06,2025-03-19,Cardiomyopathy,Neurology,35188.18,46,Aetna
+VIS-10387,PAT-485,2025-01-31,2025-02-06,Viral Infection,Emergency,43120.42,32,Medicare
+VIS-10388,PAT-152,2025-11-27,2025-12-09,Appendicitis,Emergency,18003.95,71,BlueCross
+VIS-10389,PAT-211,2025-09-27,2025-10-10,Cardiomyopathy,Cardiology,49330.97,57,Self-Pay
+VIS-10390,PAT-196,2026-01-05,2026-01-17,Viral Infection,Emergency,22643.24,51,BlueCross
+VIS-10391,PAT-320,2025-10-21,2025-11-04,Viral Infection,Emergency,19061.81,35,Self-Pay
+VIS-10392,PAT-234,2025-02-13,2025-02-15,Cardiomyopathy,Cardiology,49684.53,31,BlueCross
+VIS-10393,PAT-286,2025-02-04,2025-02-08,Hypertension,Emergency,35601.22,87,Medicare
+VIS-10394,PAT-455,2025-08-12,2025-08-24,Hypertension,General Practice,30772.59,45,Medicare
+VIS-10395,PAT-147,2026-01-05,2026-01-19,Cardiomyopathy,Neurology,42670.77,37,Aetna
+VIS-10396,PAT-387,2025-04-18,2025-04-24,Appendicitis,Cardiology,21579.82,47,BlueCross
+VIS-10397,PAT-111,2025-03-28,2025-04-02,Fracture,Emergency,9237.63,71,Medicare
+VIS-10398,PAT-398,2025-08-12,2025-08-18,Viral Infection,Neurology,31288.92,40,Self-Pay
+VIS-10399,PAT-144,2025-12-02,2025-12-04,Appendicitis,Orthopedics,41813.13,31,Self-Pay
+VIS-10400,PAT-175,2025-02-11,2025-02-20,Type 2 Diabetes,Cardiology,26747.98,66,BlueCross
+VIS-10401,PAT-219,2025-07-24,2025-07-27,Type 2 Diabetes,Emergency,48501.28,88,Aetna
+VIS-10402,PAT-351,2025-10-08,2025-10-16,Cardiomyopathy,General Practice,11597.93,55,Aetna
+VIS-10403,PAT-169,2025-12-31,2026-01-12,Fracture,General Practice,10208.23,25,Self-Pay
+VIS-10404,PAT-450,2025-03-05,2025-03-15,Viral Infection,Cardiology,14321.14,75,Self-Pay
+VIS-10405,PAT-342,2025-03-07,2025-03-14,Type 2 Diabetes,General Practice,15632.88,89,BlueCross
+VIS-10406,PAT-312,2025-12-08,2025-12-18,Type 2 Diabetes,General Practice,9880.37,57,Self-Pay
+VIS-10407,PAT-117,2025-03-13,2025-03-14,Viral Infection,Cardiology,27129.35,85,Medicare
+VIS-10408,PAT-381,2025-11-22,2025-11-28,Viral Infection,Emergency,3814.75,81,Medicare
+VIS-10409,PAT-493,2025-04-06,2025-04-17,Cardiomyopathy,Neurology,24165.36,44,Aetna
+VIS-10410,PAT-238,2025-07-25,2025-07-31,Viral Infection,Emergency,14287.84,52,Self-Pay
+VIS-10411,PAT-100,2025-03-19,2025-03-30,Appendicitis,Emergency,28179.78,31,Medicare
+VIS-10412,PAT-169,2025-02-17,2025-02-21,Type 2 Diabetes,General Practice,20203.79,82,Aetna
+VIS-10413,PAT-319,2025-09-28,2025-10-09,Hypertension,Emergency,49897.24,69,BlueCross
+VIS-10414,PAT-331,2025-11-23,2025-11-27,Viral Infection,Cardiology,4297.4,73,Medicare
+VIS-10415,PAT-461,2025-03-10,2025-03-12,Viral Infection,Cardiology,4830.95,48,BlueCross
+VIS-10416,PAT-106,2025-05-15,2025-05-22,Hypertension,General Practice,2600.06,33,Self-Pay
+VIS-10417,PAT-339,2025-04-18,2025-05-01,Appendicitis,Cardiology,5137.19,40,BlueCross
+VIS-10418,PAT-376,2025-08-06,2025-08-11,Viral Infection,Neurology,30356.86,67,Aetna
+VIS-10419,PAT-144,2025-10-11,2025-10-16,Cardiomyopathy,Neurology,14073.19,81,BlueCross
+VIS-10420,PAT-431,2025-01-30,2025-02-13,Viral Infection,Emergency,27749.47,69,Self-Pay
+VIS-10421,PAT-209,2025-09-17,2025-09-24,Fracture,General Practice,28139.06,38,Aetna
+VIS-10422,PAT-106,2025-06-13,2025-06-23,Fracture,Cardiology,17073.75,36,BlueCross
+VIS-10423,PAT-386,2025-09-30,2025-10-08,Fracture,Neurology,20748.36,43,BlueCross
+VIS-10424,PAT-416,2025-02-20,2025-02-28,Cardiomyopathy,Emergency,31685.25,26,Medicare
+VIS-10425,PAT-315,2025-10-24,2025-11-02,Hypertension,Emergency,26213.9,25,Self-Pay
+VIS-10426,PAT-398,2025-09-05,2025-09-15,Fracture,Orthopedics,49524.09,86,Medicare
+VIS-10427,PAT-405,2025-08-06,2025-08-20,Appendicitis,Neurology,7096.24,28,Medicare
+VIS-10428,PAT-109,2025-10-17,2025-10-18,Viral Infection,Emergency,13698.7,79,Self-Pay
+VIS-10429,PAT-134,2025-06-02,2025-06-06,Type 2 Diabetes,Neurology,32813.9,35,Aetna
+VIS-10430,PAT-448,2025-09-24,2025-09-26,Type 2 Diabetes,General Practice,44413.24,27,BlueCross
+VIS-10431,PAT-220,2025-06-18,2025-06-22,Type 2 Diabetes,Emergency,29664.21,26,Aetna
+VIS-10432,PAT-420,2025-12-05,2025-12-08,Type 2 Diabetes,Emergency,44900.58,62,Self-Pay
+VIS-10433,PAT-414,2025-06-17,2025-06-18,Viral Infection,General Practice,49720.13,75,Medicare
+VIS-10434,PAT-136,2025-10-13,2025-10-15,Fracture,Cardiology,34008.76,77,Aetna
+VIS-10435,PAT-340,2025-07-17,2025-07-26,Type 2 Diabetes,Cardiology,29482.74,75,BlueCross
+VIS-10436,PAT-140,2025-04-02,2025-04-10,Cardiomyopathy,General Practice,20801.91,68,Medicare
+VIS-10437,PAT-288,2025-11-20,2025-11-26,Viral Infection,Emergency,30882.76,36,Medicare
+VIS-10438,PAT-442,2025-06-25,2025-06-27,Appendicitis,Emergency,1860.24,77,Aetna
+VIS-10439,PAT-151,2025-05-16,2025-05-17,Viral Infection,Orthopedics,34153.02,80,Medicare
+VIS-10440,PAT-214,2025-05-17,2025-05-30,Hypertension,Cardiology,4481.74,25,Self-Pay
+VIS-10441,PAT-415,2025-09-24,2025-10-03,Fracture,Cardiology,4768.02,50,BlueCross
+VIS-10442,PAT-485,2025-10-08,2025-10-22,Type 2 Diabetes,General Practice,25478.39,82,Medicare
+VIS-10443,PAT-332,2025-10-01,2025-10-11,Viral Infection,Orthopedics,12801.97,46,Self-Pay
+VIS-10444,PAT-242,2025-05-02,2025-05-10,Fracture,Orthopedics,11721.37,31,Self-Pay
+VIS-10445,PAT-291,2025-06-24,2025-07-08,Type 2 Diabetes,Emergency,20799.78,46,BlueCross
+VIS-10446,PAT-467,2025-06-24,2025-07-01,Cardiomyopathy,General Practice,36439.38,41,BlueCross
+VIS-10447,PAT-259,2025-10-22,2025-10-29,Cardiomyopathy,General Practice,5622.3,60,Medicare
+VIS-10448,PAT-164,2025-12-09,2025-12-20,Type 2 Diabetes,Emergency,1580.65,61,Self-Pay
+VIS-10449,PAT-162,2025-04-11,2025-04-15,Type 2 Diabetes,General Practice,33162.9,53,BlueCross
+VIS-10450,PAT-257,2025-12-16,2025-12-29,Cardiomyopathy,Neurology,10471.45,75,Medicare
+VIS-10451,PAT-154,2025-08-28,2025-09-01,Appendicitis,General Practice,27130.33,36,Self-Pay
+VIS-10452,PAT-361,2025-06-22,2025-06-24,Cardiomyopathy,Emergency,3622.23,35,Self-Pay
+VIS-10453,PAT-175,2025-11-27,2025-12-11,Cardiomyopathy,Emergency,8431.27,65,Medicare
+VIS-10454,PAT-295,2025-03-25,2025-03-26,Cardiomyopathy,Cardiology,45141.63,67,BlueCross
+VIS-10455,PAT-202,2025-01-22,2025-01-29,Type 2 Diabetes,General Practice,17210.64,49,Self-Pay
+VIS-10456,PAT-263,2025-02-11,2025-02-20,Appendicitis,Cardiology,42268.28,45,BlueCross
+VIS-10457,PAT-378,2025-09-05,2025-09-19,Fracture,Orthopedics,48186.21,43,Aetna
+VIS-10458,PAT-398,2025-04-05,2025-04-07,Type 2 Diabetes,Cardiology,6183.12,70,Self-Pay
+VIS-10459,PAT-162,2025-05-13,2025-05-16,Type 2 Diabetes,Neurology,25463.05,34,Self-Pay
+VIS-10460,PAT-292,2025-08-08,2025-08-09,Cardiomyopathy,Emergency,39531.72,61,Medicare
+VIS-10461,PAT-240,2025-04-09,2025-04-18,Hypertension,Cardiology,44124.1,43,Medicare
+VIS-10462,PAT-469,2025-06-24,2025-06-29,Viral Infection,Emergency,8497.17,87,BlueCross
+VIS-10463,PAT-275,2025-02-28,2025-03-14,Appendicitis,Cardiology,9732.94,86,Self-Pay
+VIS-10464,PAT-438,2025-12-14,2025-12-17,Viral Infection,Cardiology,8839.42,51,Self-Pay
+VIS-10465,PAT-274,2025-03-22,2025-04-03,Hypertension,Emergency,38326.19,50,BlueCross
+VIS-10466,PAT-364,2025-03-09,2025-03-13,Fracture,Orthopedics,2703.8,76,Medicare
+VIS-10467,PAT-350,2025-06-24,2025-07-08,Cardiomyopathy,General Practice,27532.91,84,Self-Pay
+VIS-10468,PAT-178,2025-11-05,2025-11-16,Hypertension,General Practice,14046.78,40,Self-Pay
+VIS-10469,PAT-318,2025-11-08,2025-11-16,Cardiomyopathy,Orthopedics,5465.86,55,Aetna
+VIS-10470,PAT-176,2025-11-09,2025-11-13,Hypertension,Neurology,7994.63,72,Self-Pay
+VIS-10471,PAT-193,2025-06-30,2025-07-12,Fracture,Orthopedics,956.06,20,Self-Pay
+VIS-10472,PAT-390,2025-06-18,2025-06-27,Appendicitis,Emergency,35145.54,84,Medicare
+VIS-10473,PAT-251,2025-02-14,2025-02-17,Cardiomyopathy,Emergency,43662.67,86,Self-Pay
+VIS-10474,PAT-220,2025-03-27,2025-03-28,Type 2 Diabetes,Emergency,11987.26,19,BlueCross
+VIS-10475,PAT-296,2025-06-10,2025-06-19,Cardiomyopathy,Neurology,2055.6,88,Aetna
+VIS-10476,PAT-212,2025-04-10,2025-04-16,Viral Infection,General Practice,23443.31,70,BlueCross
+VIS-10477,PAT-452,2025-06-22,2025-06-29,Hypertension,Neurology,23128.91,20,Medicare
+VIS-10478,PAT-437,2025-07-30,2025-08-07,Appendicitis,Neurology,32642.99,80,Aetna
+VIS-10479,PAT-482,2025-10-25,2025-10-29,Fracture,General Practice,3672.23,32,BlueCross
+VIS-10480,PAT-323,2025-03-21,2025-04-02,Hypertension,Orthopedics,7481.36,56,Aetna
+VIS-10481,PAT-351,2025-04-13,2025-04-20,Type 2 Diabetes,General Practice,13951.75,19,Self-Pay
+VIS-10482,PAT-190,2025-10-23,2025-11-04,Hypertension,General Practice,15304.34,79,BlueCross
+VIS-10483,PAT-493,2025-06-28,2025-07-05,Hypertension,Emergency,1509.9,74,Self-Pay
+VIS-10484,PAT-149,2025-10-12,2025-10-23,Type 2 Diabetes,Orthopedics,26991.87,65,Aetna
+VIS-10485,PAT-190,2025-06-13,2025-06-14,Appendicitis,Neurology,39683.37,43,Medicare
+VIS-10486,PAT-488,2025-04-27,2025-04-28,Type 2 Diabetes,Orthopedics,38699.72,33,BlueCross
+VIS-10487,PAT-429,2025-11-11,2025-11-12,Cardiomyopathy,Neurology,27643.79,55,Medicare
+VIS-10488,PAT-192,2025-04-09,2025-04-12,Fracture,Neurology,41531.49,19,BlueCross
+VIS-10489,PAT-120,2025-07-13,2025-07-24,Hypertension,Orthopedics,47430.04,43,Self-Pay
+VIS-10490,PAT-389,2025-07-12,2025-07-15,Type 2 Diabetes,Emergency,18265.71,29,Aetna
+VIS-10491,PAT-158,2025-09-07,2025-09-20,Appendicitis,Emergency,27905.6,30,Aetna
+VIS-10492,PAT-124,2025-11-19,2025-11-24,Viral Infection,Cardiology,8779.56,55,Medicare
+VIS-10493,PAT-463,2025-02-18,2025-02-19,Hypertension,Cardiology,29846.79,76,Aetna
+VIS-10494,PAT-452,2025-03-25,2025-03-28,Hypertension,Emergency,28967.37,20,Self-Pay
+VIS-10495,PAT-392,2025-03-16,2025-03-27,Fracture,Emergency,21896.6,63,Aetna
+VIS-10496,PAT-436,2025-08-20,2025-08-22,Fracture,Cardiology,49701.93,82,Aetna
+VIS-10497,PAT-288,2025-11-21,2025-11-28,Cardiomyopathy,Emergency,39749.19,49,BlueCross
+VIS-10498,PAT-324,2025-10-14,2025-10-20,Fracture,Orthopedics,47177.59,72,Aetna
+VIS-10499,PAT-234,2025-07-22,2025-07-25,Viral Infection,Orthopedics,6214.71,32,Aetna
+VIS-10500,PAT-414,2025-02-22,2025-03-06,Type 2 Diabetes,Emergency,9546.88,19,Self-Pay
+VIS-10501,PAT-131,2025-08-31,2025-09-03,Hypertension,General Practice,14365.07,23,BlueCross
+VIS-10502,PAT-108,2025-04-16,2025-04-27,Viral Infection,Orthopedics,38835.4,39,Aetna
+VIS-10503,PAT-498,2025-11-20,2025-11-24,Type 2 Diabetes,Orthopedics,25591.06,46,Aetna
+VIS-10504,PAT-336,2025-12-25,2025-12-27,Cardiomyopathy,Orthopedics,43220.42,87,BlueCross
+VIS-10505,PAT-231,2025-10-23,2025-10-28,Hypertension,Orthopedics,49806.18,38,BlueCross
+VIS-10506,PAT-475,2025-09-08,2025-09-15,Type 2 Diabetes,General Practice,31675.06,39,Aetna
+VIS-10507,PAT-439,2025-10-04,2025-10-08,Type 2 Diabetes,Orthopedics,34537.85,88,Medicare
+VIS-10508,PAT-362,2025-08-12,2025-08-13,Type 2 Diabetes,Orthopedics,23010.09,36,Medicare
+VIS-10509,PAT-458,2025-07-23,2025-07-26,Type 2 Diabetes,Neurology,46671.95,69,Aetna
+VIS-10510,PAT-437,2025-08-09,2025-08-16,Fracture,Emergency,20980.37,83,Aetna
+VIS-10511,PAT-398,2025-04-30,2025-05-11,Viral Infection,General Practice,7019.58,77,BlueCross
+VIS-10512,PAT-351,2025-05-20,2025-05-31,Hypertension,General Practice,20281.65,23,Medicare
+VIS-10513,PAT-464,2025-05-24,2025-05-26,Type 2 Diabetes,Cardiology,10484.71,43,BlueCross
+VIS-10514,PAT-117,2025-06-03,2025-06-16,Hypertension,Cardiology,41141.63,78,Aetna
+VIS-10515,PAT-283,2025-02-18,2025-03-03,Type 2 Diabetes,Neurology,29011.62,60,Medicare
+VIS-10516,PAT-123,2025-09-17,2025-09-19,Appendicitis,Emergency,27306.49,83,BlueCross
+VIS-10517,PAT-259,2025-09-26,2025-10-01,Fracture,Emergency,18529.79,38,BlueCross
+VIS-10518,PAT-427,2025-09-18,2025-09-22,Viral Infection,Orthopedics,27029.96,52,Self-Pay
+VIS-10519,PAT-463,2025-01-15,2025-01-18,Cardiomyopathy,Emergency,16175.92,50,Medicare
+VIS-10520,PAT-274,2025-01-17,2025-01-18,Hypertension,Cardiology,30990.3,67,Medicare
+VIS-10521,PAT-474,2025-03-02,2025-03-09,Viral Infection,Neurology,29472.05,38,BlueCross
+VIS-10522,PAT-312,2025-07-15,2025-07-27,Type 2 Diabetes,Emergency,37252.1,32,Aetna
+VIS-10523,PAT-416,2025-11-08,2025-11-18,Cardiomyopathy,Orthopedics,1829.45,44,Medicare
+VIS-10524,PAT-241,2025-12-03,2025-12-16,Hypertension,Neurology,4912.04,25,Self-Pay
+VIS-10525,PAT-301,2025-12-01,2025-12-08,Fracture,General Practice,22353.59,89,Medicare
+VIS-10526,PAT-468,2025-09-15,2025-09-26,Hypertension,Orthopedics,7610.01,74,BlueCross
+VIS-10527,PAT-307,2025-06-05,2025-06-09,Type 2 Diabetes,Neurology,6459.48,45,Self-Pay
+VIS-10528,PAT-463,2025-05-28,2025-06-09,Appendicitis,Emergency,43775.74,24,BlueCross
+VIS-10529,PAT-392,2025-03-07,2025-03-11,Cardiomyopathy,Emergency,9544.14,78,Self-Pay
+VIS-10530,PAT-453,2025-06-03,2025-06-06,Type 2 Diabetes,General Practice,11874.17,64,Aetna
+VIS-10531,PAT-369,2025-06-26,2025-06-27,Viral Infection,Emergency,27355.01,33,BlueCross
+VIS-10532,PAT-100,2025-01-27,2025-02-08,Type 2 Diabetes,Neurology,9169.8,61,BlueCross
+VIS-10533,PAT-239,2025-06-19,2025-07-03,Type 2 Diabetes,Emergency,47488.55,23,BlueCross
+VIS-10534,PAT-240,2025-12-08,2025-12-18,Appendicitis,Emergency,26930.69,37,Aetna
+VIS-10535,PAT-415,2025-03-03,2025-03-11,Fracture,Neurology,6116.83,90,BlueCross
+VIS-10536,PAT-238,2026-01-03,2026-01-17,Appendicitis,Cardiology,2821.1,64,Medicare
+VIS-10537,PAT-284,2025-09-24,2025-09-26,Hypertension,Neurology,24196.32,52,BlueCross
+VIS-10538,PAT-132,2025-06-08,2025-06-12,Appendicitis,Neurology,39844.82,28,Medicare
+VIS-10539,PAT-337,2025-08-21,2025-08-30,Type 2 Diabetes,Emergency,33726.64,41,BlueCross
+VIS-10540,PAT-486,2025-06-03,2025-06-05,Viral Infection,Cardiology,22185.54,61,BlueCross
+VIS-10541,PAT-330,2025-03-15,2025-03-18,Cardiomyopathy,General Practice,45654.48,72,Medicare
+VIS-10542,PAT-358,2025-01-31,2025-02-10,Type 2 Diabetes,Neurology,19526.24,51,Medicare
+VIS-10543,PAT-288,2025-04-18,2025-04-27,Viral Infection,General Practice,4191.56,32,Aetna
+VIS-10544,PAT-210,2025-03-03,2025-03-11,Fracture,Emergency,42423.71,57,Medicare
+VIS-10545,PAT-229,2025-08-16,2025-08-29,Cardiomyopathy,General Practice,3954.75,44,BlueCross
+VIS-10546,PAT-419,2025-05-30,2025-06-10,Hypertension,Neurology,650.7,19,Aetna
+VIS-10547,PAT-346,2026-01-03,2026-01-12,Cardiomyopathy,Orthopedics,34202.49,34,BlueCross
+VIS-10548,PAT-270,2025-12-24,2025-12-30,Appendicitis,Cardiology,21571.08,67,BlueCross
+VIS-10549,PAT-339,2025-10-29,2025-11-07,Fracture,Orthopedics,18408.33,81,Medicare
+VIS-10550,PAT-110,2025-05-16,2025-05-18,Viral Infection,General Practice,20676.39,38,Medicare
+VIS-10551,PAT-107,2025-09-18,2025-10-01,Cardiomyopathy,Orthopedics,13299.36,18,Medicare
+VIS-10552,PAT-118,2025-05-25,2025-06-05,Appendicitis,Emergency,46330.96,29,BlueCross
+VIS-10553,PAT-194,2025-03-19,2025-03-23,Cardiomyopathy,Orthopedics,13081.95,54,BlueCross
+VIS-10554,PAT-211,2025-05-22,2025-06-01,Type 2 Diabetes,General Practice,45728.52,48,Aetna
+VIS-10555,PAT-168,2025-10-24,2025-10-31,Hypertension,Orthopedics,10734.04,82,Medicare
+VIS-10556,PAT-475,2025-02-05,2025-02-14,Cardiomyopathy,Cardiology,46217.11,30,BlueCross
+VIS-10557,PAT-362,2025-04-22,2025-04-26,Hypertension,Neurology,24017.7,30,Aetna
+VIS-10558,PAT-160,2025-07-21,2025-07-25,Appendicitis,Orthopedics,6385.92,72,Aetna
+VIS-10559,PAT-122,2025-12-12,2025-12-20,Viral Infection,General Practice,27908.78,72,Self-Pay
+VIS-10560,PAT-156,2025-04-14,2025-04-25,Hypertension,Cardiology,48921.06,41,BlueCross
+VIS-10561,PAT-125,2025-08-10,2025-08-11,Cardiomyopathy,Orthopedics,44348.57,75,Self-Pay
+VIS-10562,PAT-490,2025-03-25,2025-04-05,Appendicitis,Orthopedics,33487.68,65,BlueCross
+VIS-10563,PAT-314,2025-09-21,2025-09-23,Appendicitis,Orthopedics,36497.02,84,Self-Pay
+VIS-10564,PAT-314,2025-05-13,2025-05-22,Appendicitis,General Practice,37396.96,32,BlueCross
+VIS-10565,PAT-234,2025-03-02,2025-03-05,Cardiomyopathy,Emergency,28759.35,53,Self-Pay
+VIS-10566,PAT-392,2025-07-05,2025-07-07,Cardiomyopathy,General Practice,48395.35,25,Aetna
+VIS-10567,PAT-350,2025-11-19,2025-12-01,Cardiomyopathy,Neurology,32858.63,19,Aetna
+VIS-10568,PAT-220,2025-09-29,2025-10-07,Type 2 Diabetes,Cardiology,2693.19,55,Self-Pay
+VIS-10569,PAT-448,2025-03-06,2025-03-13,Viral Infection,Orthopedics,14688.98,62,BlueCross
+VIS-10570,PAT-115,2025-02-18,2025-02-22,Fracture,Emergency,963.92,47,BlueCross
+VIS-10571,PAT-381,2025-04-07,2025-04-09,Fracture,Cardiology,47709.79,36,Medicare
+VIS-10572,PAT-169,2025-06-21,2025-06-28,Cardiomyopathy,Cardiology,19281.42,23,BlueCross
+VIS-10573,PAT-126,2025-12-13,2025-12-19,Fracture,Emergency,29649.45,53,BlueCross
+VIS-10574,PAT-382,2025-10-07,2025-10-17,Fracture,General Practice,41354.05,41,Self-Pay
+VIS-10575,PAT-266,2025-12-26,2026-01-09,Hypertension,Emergency,22366.61,51,Aetna
+VIS-10576,PAT-363,2025-04-28,2025-04-29,Cardiomyopathy,General Practice,14820.93,49,BlueCross
+VIS-10577,PAT-246,2025-06-09,2025-06-20,Viral Infection,Emergency,34665.86,45,Medicare
+VIS-10578,PAT-276,2025-06-16,2025-06-25,Hypertension,Cardiology,1413.18,67,Medicare
+VIS-10579,PAT-141,2025-05-27,2025-05-31,Fracture,Emergency,5067.98,85,Aetna
+VIS-10580,PAT-168,2025-02-15,2025-02-19,Hypertension,Orthopedics,3180.95,30,Aetna
+VIS-10581,PAT-473,2025-05-12,2025-05-25,Type 2 Diabetes,General Practice,43229.09,18,Self-Pay
+VIS-10582,PAT-416,2025-12-05,2025-12-19,Type 2 Diabetes,Orthopedics,42330.81,39,Medicare
+VIS-10583,PAT-339,2025-11-30,2025-12-13,Type 2 Diabetes,Neurology,3633.53,61,BlueCross
+VIS-10584,PAT-314,2025-07-01,2025-07-07,Appendicitis,Neurology,27081.8,20,Medicare
+VIS-10585,PAT-388,2025-08-01,2025-08-12,Fracture,General Practice,13765.85,20,Medicare
+VIS-10586,PAT-134,2025-02-10,2025-02-14,Hypertension,Emergency,16749.63,45,Aetna
+VIS-10587,PAT-170,2025-07-04,2025-07-09,Hypertension,Neurology,12917.17,21,Self-Pay
+VIS-10588,PAT-267,2025-09-04,2025-09-17,Type 2 Diabetes,General Practice,12743.16,34,Self-Pay
+VIS-10589,PAT-128,2025-02-12,2025-02-17,Cardiomyopathy,Neurology,44803.31,86,Aetna
+VIS-10590,PAT-484,2025-06-12,2025-06-13,Cardiomyopathy,Orthopedics,18998.84,39,Self-Pay
+VIS-10591,PAT-296,2025-06-03,2025-06-17,Viral Infection,Emergency,38352.09,56,BlueCross
+VIS-10592,PAT-172,2025-03-27,2025-04-05,Type 2 Diabetes,Orthopedics,10917.15,37,Self-Pay
+VIS-10593,PAT-384,2025-03-22,2025-04-04,Viral Infection,Neurology,46047.5,79,Aetna
+VIS-10594,PAT-153,2025-08-27,2025-09-07,Hypertension,Cardiology,45035.76,77,Self-Pay
+VIS-10595,PAT-423,2025-06-04,2025-06-07,Fracture,Emergency,12964.06,58,Medicare
+VIS-10596,PAT-482,2025-05-02,2025-05-08,Appendicitis,Neurology,44229.62,43,Self-Pay
+VIS-10597,PAT-355,2025-03-31,2025-04-14,Hypertension,Neurology,29431.43,50,Aetna
+VIS-10598,PAT-299,2025-07-05,2025-07-17,Viral Infection,Cardiology,10093.64,75,Self-Pay
+VIS-10599,PAT-157,2025-01-18,2025-01-31,Viral Infection,Orthopedics,40942.51,76,Aetna
+VIS-10600,PAT-336,2025-12-22,2025-12-29,Fracture,Orthopedics,2609.14,78,Aetna
+VIS-10601,PAT-290,2025-09-20,2025-10-04,Fracture,Neurology,47205.75,29,BlueCross
+VIS-10602,PAT-457,2025-01-25,2025-01-30,Type 2 Diabetes,General Practice,31502.63,57,Aetna
+VIS-10603,PAT-427,2025-12-22,2025-12-30,Type 2 Diabetes,Orthopedics,42275.07,54,Self-Pay
+VIS-10604,PAT-326,2025-01-13,2025-01-16,Hypertension,Neurology,46065.06,79,Aetna
+VIS-10605,PAT-215,2025-05-14,2025-05-25,Fracture,Cardiology,37223.75,62,Self-Pay
+VIS-10606,PAT-227,2025-08-31,2025-09-04,Fracture,Neurology,26917.23,71,Aetna
+VIS-10607,PAT-422,2025-05-29,2025-06-01,Type 2 Diabetes,Neurology,29629.68,32,Self-Pay
+VIS-10608,PAT-259,2025-02-05,2025-02-12,Viral Infection,General Practice,22349.71,65,BlueCross
+VIS-10609,PAT-108,2025-03-02,2025-03-16,Hypertension,Orthopedics,26782.86,67,Self-Pay
+VIS-10610,PAT-112,2025-05-24,2025-05-26,Fracture,Emergency,36399.51,84,Aetna
+VIS-10611,PAT-282,2025-06-22,2025-07-04,Type 2 Diabetes,Orthopedics,29031.62,30,Medicare
+VIS-10612,PAT-382,2025-12-06,2025-12-20,Viral Infection,Orthopedics,27790.05,85,Medicare
+VIS-10613,PAT-420,2025-07-20,2025-07-23,Fracture,Cardiology,32821.25,40,Medicare
+VIS-10614,PAT-211,2025-07-04,2025-07-16,Fracture,Emergency,19789.88,18,Aetna
+VIS-10615,PAT-231,2025-07-02,2025-07-05,Appendicitis,Cardiology,5394.71,49,Aetna
+VIS-10616,PAT-237,2025-02-12,2025-02-19,Appendicitis,Orthopedics,8826.84,37,Medicare
+VIS-10617,PAT-264,2025-04-14,2025-04-15,Type 2 Diabetes,Neurology,33385.76,60,Aetna
+VIS-10618,PAT-252,2025-11-13,2025-11-20,Fracture,Emergency,45165.62,89,Self-Pay
+VIS-10619,PAT-463,2025-03-26,2025-04-02,Type 2 Diabetes,Neurology,46898.5,33,Medicare
+VIS-10620,PAT-293,2025-10-30,2025-11-08,Fracture,Orthopedics,45303.83,19,BlueCross
+VIS-10621,PAT-317,2025-02-13,2025-02-20,Fracture,Neurology,49954.46,51,Aetna
+VIS-10622,PAT-100,2025-11-15,2025-11-25,Type 2 Diabetes,Cardiology,38560.77,44,Aetna
+VIS-10623,PAT-237,2025-02-05,2025-02-12,Cardiomyopathy,Neurology,4156.79,26,Self-Pay
+VIS-10624,PAT-254,2025-12-04,2025-12-18,Hypertension,Cardiology,14235.37,43,BlueCross
+VIS-10625,PAT-361,2025-12-23,2025-12-25,Appendicitis,General Practice,40653.82,86,BlueCross
+VIS-10626,PAT-178,2025-09-05,2025-09-13,Fracture,Orthopedics,24432.5,76,BlueCross
+VIS-10627,PAT-457,2025-09-06,2025-09-11,Type 2 Diabetes,Cardiology,10437.99,29,Aetna
+VIS-10628,PAT-397,2025-04-03,2025-04-17,Type 2 Diabetes,Orthopedics,29491.82,78,Self-Pay
+VIS-10629,PAT-147,2025-09-04,2025-09-06,Type 2 Diabetes,Neurology,41511.09,84,Self-Pay
+VIS-10630,PAT-414,2025-07-04,2025-07-09,Cardiomyopathy,Orthopedics,6253.82,90,Medicare
+VIS-10631,PAT-427,2025-07-17,2025-07-21,Viral Infection,Orthopedics,18135.02,47,Medicare
+VIS-10632,PAT-461,2025-03-15,2025-03-21,Fracture,Orthopedics,36038.37,88,BlueCross
+VIS-10633,PAT-317,2025-08-07,2025-08-19,Hypertension,Orthopedics,19871.42,22,Medicare
+VIS-10634,PAT-180,2025-03-09,2025-03-17,Cardiomyopathy,Neurology,39269.69,64,Medicare
+VIS-10635,PAT-198,2025-07-26,2025-07-29,Fracture,General Practice,9575.37,39,Self-Pay
+VIS-10636,PAT-481,2025-04-10,2025-04-22,Hypertension,Neurology,37143.12,59,Medicare
+VIS-10637,PAT-138,2025-04-21,2025-05-02,Appendicitis,Orthopedics,45495.37,39,Self-Pay
+VIS-10638,PAT-469,2026-01-03,2026-01-12,Appendicitis,Orthopedics,49675.38,86,Medicare
+VIS-10639,PAT-357,2025-11-15,2025-11-17,Viral Infection,General Practice,13066.32,29,Aetna
+VIS-10640,PAT-272,2025-04-15,2025-04-22,Cardiomyopathy,General Practice,11046.06,45,Aetna
+VIS-10641,PAT-374,2025-02-08,2025-02-18,Type 2 Diabetes,Orthopedics,6840.12,24,Self-Pay
+VIS-10642,PAT-489,2025-10-06,2025-10-17,Viral Infection,Cardiology,10994.14,23,Self-Pay
+VIS-10643,PAT-310,2025-10-01,2025-10-03,Hypertension,Neurology,41564.22,78,Self-Pay
+VIS-10644,PAT-427,2025-04-21,2025-04-28,Type 2 Diabetes,Orthopedics,7856.19,79,Medicare
+VIS-10645,PAT-278,2025-08-21,2025-08-28,Fracture,Emergency,10287.09,87,Self-Pay
+VIS-10646,PAT-145,2025-07-03,2025-07-05,Cardiomyopathy,Neurology,2517.4,73,Aetna
+VIS-10647,PAT-377,2025-02-05,2025-02-06,Cardiomyopathy,General Practice,18483.09,67,BlueCross
+VIS-10648,PAT-494,2025-02-27,2025-03-02,Type 2 Diabetes,Neurology,27713.39,51,Medicare
+VIS-10649,PAT-126,2025-12-08,2025-12-20,Appendicitis,General Practice,39484.67,88,Self-Pay
+VIS-10650,PAT-230,2025-09-18,2025-09-29,Type 2 Diabetes,General Practice,29064.0,35,Self-Pay
+VIS-10651,PAT-453,2025-11-15,2025-11-24,Cardiomyopathy,Orthopedics,740.22,74,BlueCross
+VIS-10652,PAT-133,2025-05-19,2025-05-29,Viral Infection,Neurology,19681.03,74,Self-Pay
+VIS-10653,PAT-326,2025-04-15,2025-04-19,Appendicitis,Orthopedics,4069.96,46,Self-Pay
+VIS-10654,PAT-384,2025-06-29,2025-07-12,Hypertension,Emergency,15591.07,61,Aetna
+VIS-10655,PAT-240,2025-06-16,2025-06-25,Appendicitis,Cardiology,16616.21,81,Self-Pay
+VIS-10656,PAT-142,2025-09-04,2025-09-07,Fracture,Neurology,43467.11,88,Medicare
+VIS-10657,PAT-492,2025-10-07,2025-10-20,Hypertension,General Practice,44654.75,88,Aetna
+VIS-10658,PAT-161,2025-05-25,2025-06-01,Fracture,Orthopedics,26117.5,64,Self-Pay
+VIS-10659,PAT-395,2025-07-30,2025-08-06,Fracture,Orthopedics,39574.42,26,Aetna
+VIS-10660,PAT-340,2025-09-25,2025-09-28,Appendicitis,Cardiology,3193.36,56,BlueCross
+VIS-10661,PAT-354,2026-01-03,2026-01-07,Fracture,Emergency,9100.29,72,Self-Pay
+VIS-10662,PAT-350,2025-02-26,2025-03-03,Viral Infection,General Practice,8968.95,87,Self-Pay
+VIS-10663,PAT-199,2025-06-19,2025-06-25,Appendicitis,Cardiology,12537.31,90,Aetna
+VIS-10664,PAT-384,2025-08-23,2025-08-30,Viral Infection,Orthopedics,30695.81,86,Self-Pay
+VIS-10665,PAT-421,2025-10-30,2025-11-07,Type 2 Diabetes,Emergency,23220.35,69,BlueCross
+VIS-10666,PAT-496,2025-09-29,2025-10-08,Fracture,Emergency,47449.0,72,BlueCross
+VIS-10667,PAT-300,2025-06-18,2025-07-01,Appendicitis,Cardiology,46236.17,31,Aetna
+VIS-10668,PAT-436,2025-03-11,2025-03-16,Viral Infection,Cardiology,36922.09,85,Aetna
+VIS-10669,PAT-125,2025-10-21,2025-10-26,Type 2 Diabetes,Neurology,32513.42,61,Aetna
+VIS-10670,PAT-145,2025-11-05,2025-11-06,Appendicitis,Orthopedics,21607.65,45,Aetna
+VIS-10671,PAT-184,2025-06-17,2025-06-24,Appendicitis,Neurology,19734.99,72,BlueCross
+VIS-10672,PAT-268,2025-03-06,2025-03-10,Hypertension,Orthopedics,20788.4,58,BlueCross
+VIS-10673,PAT-234,2025-09-29,2025-10-11,Viral Infection,Cardiology,1371.75,69,Aetna
+VIS-10674,PAT-132,2025-09-28,2025-10-01,Fracture,Orthopedics,33268.15,90,Medicare
+VIS-10675,PAT-311,2025-12-06,2025-12-12,Hypertension,Orthopedics,10048.6,54,Medicare
+VIS-10676,PAT-167,2025-08-28,2025-09-05,Viral Infection,Emergency,25767.98,30,Self-Pay
+VIS-10677,PAT-277,2025-10-12,2025-10-14,Appendicitis,Emergency,37285.3,27,BlueCross
+VIS-10678,PAT-452,2025-08-08,2025-08-21,Viral Infection,General Practice,46653.68,35,Medicare
+VIS-10679,PAT-343,2025-11-19,2025-11-30,Hypertension,General Practice,38474.53,29,BlueCross
+VIS-10680,PAT-481,2025-04-07,2025-04-08,Cardiomyopathy,Cardiology,20346.85,27,Self-Pay
+VIS-10681,PAT-474,2025-09-10,2025-09-19,Hypertension,General Practice,8502.47,58,Aetna
+VIS-10682,PAT-296,2025-08-11,2025-08-19,Type 2 Diabetes,Emergency,7189.65,24,Self-Pay
+VIS-10683,PAT-281,2025-01-15,2025-01-20,Type 2 Diabetes,Emergency,7469.28,63,Self-Pay
+VIS-10684,PAT-301,2025-03-22,2025-03-31,Viral Infection,Neurology,48063.56,75,BlueCross
+VIS-10685,PAT-236,2025-07-30,2025-08-10,Appendicitis,Orthopedics,15524.73,61,BlueCross
+VIS-10686,PAT-460,2025-07-14,2025-07-23,Fracture,Cardiology,26407.51,67,Self-Pay
+VIS-10687,PAT-207,2025-03-28,2025-04-11,Appendicitis,Orthopedics,14971.82,65,Aetna
+VIS-10688,PAT-385,2025-09-09,2025-09-17,Hypertension,General Practice,6040.71,26,Self-Pay
+VIS-10689,PAT-336,2025-01-20,2025-01-26,Cardiomyopathy,Cardiology,37364.47,26,Medicare
+VIS-10690,PAT-294,2025-11-09,2025-11-19,Fracture,Orthopedics,23422.43,21,Medicare
+VIS-10691,PAT-150,2025-01-26,2025-02-03,Type 2 Diabetes,Orthopedics,46927.94,72,Self-Pay
+VIS-10692,PAT-408,2025-10-09,2025-10-16,Cardiomyopathy,Cardiology,18688.12,83,Medicare
+VIS-10693,PAT-152,2025-05-05,2025-05-18,Fracture,Cardiology,952.27,43,Aetna
+VIS-10694,PAT-356,2025-10-25,2025-11-08,Cardiomyopathy,General Practice,4488.75,58,Aetna
+VIS-10695,PAT-409,2025-10-25,2025-10-29,Appendicitis,Cardiology,6317.65,32,Aetna
+VIS-10696,PAT-123,2025-08-18,2025-08-21,Appendicitis,Emergency,45276.05,81,Aetna
+VIS-10697,PAT-462,2025-08-15,2025-08-26,Appendicitis,Cardiology,31672.87,41,Self-Pay
+VIS-10698,PAT-291,2025-10-27,2025-11-05,Hypertension,General Practice,32415.61,36,Medicare
+VIS-10699,PAT-419,2025-02-11,2025-02-18,Cardiomyopathy,Cardiology,9632.04,73,BlueCross
+VIS-10700,PAT-373,2025-09-03,2025-09-15,Hypertension,Neurology,42012.0,71,Aetna
+VIS-10701,PAT-293,2025-07-11,2025-07-18,Viral Infection,General Practice,10316.96,59,Self-Pay
+VIS-10702,PAT-242,2025-09-02,2025-09-12,Cardiomyopathy,Neurology,7966.22,23,BlueCross
+VIS-10703,PAT-466,2025-06-16,2025-06-24,Viral Infection,Orthopedics,1932.77,43,Aetna
+VIS-10704,PAT-252,2025-01-30,2025-02-08,Appendicitis,Orthopedics,38268.28,88,BlueCross
+VIS-10705,PAT-396,2025-06-19,2025-06-21,Fracture,Cardiology,36497.02,34,Self-Pay
+VIS-10706,PAT-144,2025-02-11,2025-02-17,Fracture,General Practice,13472.87,22,Medicare
+VIS-10707,PAT-276,2025-02-11,2025-02-23,Type 2 Diabetes,General Practice,20373.57,60,Aetna
+VIS-10708,PAT-252,2025-05-07,2025-05-10,Hypertension,Emergency,21207.06,34,BlueCross
+VIS-10709,PAT-188,2025-08-22,2025-08-30,Viral Infection,Neurology,13288.99,90,Aetna
+VIS-10710,PAT-181,2025-09-10,2025-09-18,Fracture,Orthopedics,8607.06,85,Aetna
+VIS-10711,PAT-289,2025-12-21,2026-01-03,Fracture,Neurology,14970.78,61,Aetna
+VIS-10712,PAT-481,2025-08-17,2025-08-20,Appendicitis,Emergency,7393.26,61,Aetna
+VIS-10713,PAT-347,2025-08-31,2025-09-04,Appendicitis,Emergency,49445.29,83,BlueCross
+VIS-10714,PAT-164,2025-04-10,2025-04-23,Cardiomyopathy,Orthopedics,32809.54,23,Medicare
+VIS-10715,PAT-104,2025-12-30,2026-01-12,Appendicitis,Orthopedics,42628.1,42,Self-Pay
+VIS-10716,PAT-250,2025-12-23,2026-01-06,Hypertension,Neurology,12257.03,78,Aetna
+VIS-10717,PAT-407,2025-07-04,2025-07-12,Type 2 Diabetes,Emergency,40155.58,84,Medicare
+VIS-10718,PAT-485,2025-06-17,2025-06-30,Appendicitis,Neurology,42531.65,85,Medicare
+VIS-10719,PAT-238,2025-08-30,2025-09-11,Fracture,Orthopedics,33828.38,90,Aetna
+VIS-10720,PAT-250,2025-09-01,2025-09-14,Fracture,Orthopedics,20959.14,50,Self-Pay
+VIS-10721,PAT-231,2025-11-05,2025-11-16,Fracture,Emergency,10080.71,84,Self-Pay
+VIS-10722,PAT-361,2025-09-17,2025-10-01,Fracture,General Practice,16783.4,64,BlueCross
+VIS-10723,PAT-417,2025-11-24,2025-12-06,Viral Infection,General Practice,6517.4,66,Self-Pay
+VIS-10724,PAT-497,2025-09-11,2025-09-15,Appendicitis,Cardiology,10501.66,87,Self-Pay
+VIS-10725,PAT-362,2025-08-24,2025-08-29,Type 2 Diabetes,Cardiology,30110.44,67,BlueCross
+VIS-10726,PAT-304,2025-11-10,2025-11-11,Cardiomyopathy,Cardiology,25255.36,20,Aetna
+VIS-10727,PAT-430,2025-10-12,2025-10-18,Appendicitis,Neurology,47715.14,43,BlueCross
+VIS-10728,PAT-198,2025-01-26,2025-01-27,Cardiomyopathy,Neurology,28393.08,79,Self-Pay
+VIS-10729,PAT-141,2025-10-03,2025-10-05,Type 2 Diabetes,General Practice,36561.39,33,Medicare
+VIS-10730,PAT-179,2025-05-19,2025-06-01,Type 2 Diabetes,Cardiology,15665.8,81,BlueCross
+VIS-10731,PAT-405,2025-08-18,2025-08-19,Viral Infection,General Practice,28753.76,71,BlueCross
+VIS-10732,PAT-445,2025-11-02,2025-11-07,Type 2 Diabetes,Cardiology,16782.73,78,Aetna
+VIS-10733,PAT-451,2025-04-26,2025-05-07,Viral Infection,General Practice,25140.31,34,Medicare
+VIS-10734,PAT-248,2025-07-18,2025-07-27,Cardiomyopathy,Emergency,38553.84,66,BlueCross
+VIS-10735,PAT-362,2025-05-11,2025-05-15,Appendicitis,Emergency,4378.5,56,BlueCross
+VIS-10736,PAT-419,2025-10-10,2025-10-15,Cardiomyopathy,Neurology,30514.37,78,BlueCross
+VIS-10737,PAT-472,2025-10-30,2025-11-11,Type 2 Diabetes,Orthopedics,24968.67,18,Aetna
+VIS-10738,PAT-395,2025-11-30,2025-12-09,Cardiomyopathy,Neurology,46100.74,74,Self-Pay
+VIS-10739,PAT-303,2025-11-17,2025-11-18,Cardiomyopathy,Neurology,36977.93,48,Medicare
+VIS-10740,PAT-226,2025-10-26,2025-10-31,Cardiomyopathy,Orthopedics,49541.31,28,BlueCross
+VIS-10741,PAT-495,2025-10-09,2025-10-17,Viral Infection,Orthopedics,35713.1,40,BlueCross
+VIS-10742,PAT-270,2025-05-19,2025-05-27,Fracture,Orthopedics,49239.64,88,BlueCross
+VIS-10743,PAT-203,2025-12-21,2025-12-24,Appendicitis,Cardiology,42354.21,34,BlueCross
+VIS-10744,PAT-425,2025-04-05,2025-04-09,Hypertension,General Practice,34464.55,74,Medicare
+VIS-10745,PAT-393,2025-12-20,2026-01-03,Hypertension,Cardiology,37749.62,45,Medicare
+VIS-10746,PAT-160,2025-07-29,2025-08-05,Cardiomyopathy,Cardiology,12309.96,62,BlueCross
+VIS-10747,PAT-362,2025-12-26,2026-01-01,Cardiomyopathy,Orthopedics,17160.34,80,Self-Pay
+VIS-10748,PAT-194,2025-07-18,2025-07-29,Appendicitis,Emergency,32323.81,67,BlueCross
+VIS-10749,PAT-127,2025-03-18,2025-03-21,Fracture,Emergency,34725.69,80,Self-Pay
+VIS-10750,PAT-227,2025-09-04,2025-09-14,Fracture,General Practice,21725.41,19,Medicare
+VIS-10751,PAT-401,2025-11-01,2025-11-12,Type 2 Diabetes,Cardiology,715.12,29,Medicare
+VIS-10752,PAT-332,2025-05-07,2025-05-10,Cardiomyopathy,Emergency,2606.39,30,Medicare
+VIS-10753,PAT-362,2025-08-09,2025-08-21,Hypertension,Neurology,26214.67,29,BlueCross
+VIS-10754,PAT-167,2025-08-11,2025-08-12,Viral Infection,General Practice,30609.24,73,Aetna
+VIS-10755,PAT-161,2025-02-09,2025-02-23,Cardiomyopathy,Neurology,9506.0,73,Self-Pay
+VIS-10756,PAT-106,2025-12-01,2025-12-06,Cardiomyopathy,Cardiology,34167.51,42,BlueCross
+VIS-10757,PAT-114,2025-10-08,2025-10-10,Appendicitis,General Practice,48600.39,70,BlueCross
+VIS-10758,PAT-347,2025-05-07,2025-05-20,Cardiomyopathy,Orthopedics,21755.77,23,BlueCross
+VIS-10759,PAT-375,2025-03-10,2025-03-24,Viral Infection,Orthopedics,45208.82,40,Medicare
+VIS-10760,PAT-414,2025-08-10,2025-08-17,Viral Infection,Cardiology,25457.21,35,Aetna
+VIS-10761,PAT-164,2025-01-16,2025-01-22,Fracture,General Practice,36975.09,75,Aetna
+VIS-10762,PAT-254,2025-04-17,2025-04-18,Hypertension,Cardiology,9312.72,58,Aetna
+VIS-10763,PAT-205,2025-11-23,2025-11-26,Appendicitis,Orthopedics,49864.54,76,BlueCross
+VIS-10764,PAT-423,2025-09-05,2025-09-12,Fracture,Neurology,6274.11,32,Aetna
+VIS-10765,PAT-474,2025-06-06,2025-06-10,Hypertension,Orthopedics,14012.96,53,BlueCross
+VIS-10766,PAT-221,2025-12-12,2025-12-17,Cardiomyopathy,Neurology,43283.34,52,Aetna
+VIS-10767,PAT-110,2025-01-15,2025-01-22,Cardiomyopathy,Cardiology,43327.6,47,Medicare
+VIS-10768,PAT-437,2025-01-20,2025-01-29,Viral Infection,General Practice,45163.04,36,Medicare
+VIS-10769,PAT-211,2025-02-17,2025-02-24,Type 2 Diabetes,Orthopedics,33904.47,60,Self-Pay
+VIS-10770,PAT-244,2025-03-13,2025-03-16,Fracture,Neurology,30701.57,80,BlueCross
+VIS-10771,PAT-361,2025-04-26,2025-05-10,Viral Infection,Orthopedics,37700.98,83,BlueCross
+VIS-10772,PAT-200,2025-03-04,2025-03-09,Viral Infection,Orthopedics,6118.69,84,Aetna
+VIS-10773,PAT-218,2025-03-23,2025-04-04,Viral Infection,Cardiology,4719.05,46,BlueCross
+VIS-10774,PAT-241,2025-11-18,2025-11-22,Hypertension,Cardiology,48540.58,77,Self-Pay
+VIS-10775,PAT-339,2025-02-13,2025-02-23,Cardiomyopathy,Orthopedics,4598.75,34,Aetna
+VIS-10776,PAT-209,2025-12-02,2025-12-04,Fracture,Emergency,4549.17,29,BlueCross
+VIS-10777,PAT-107,2025-03-20,2025-04-02,Type 2 Diabetes,Neurology,25770.9,19,Medicare
+VIS-10778,PAT-450,2025-02-06,2025-02-14,Type 2 Diabetes,General Practice,13992.85,69,Medicare
+VIS-10779,PAT-449,2025-09-08,2025-09-12,Type 2 Diabetes,General Practice,40925.04,72,Aetna
+VIS-10780,PAT-201,2025-08-11,2025-08-22,Hypertension,Neurology,10323.95,32,Aetna
+VIS-10781,PAT-157,2025-05-26,2025-06-02,Fracture,Orthopedics,21916.4,69,BlueCross
+VIS-10782,PAT-425,2025-04-04,2025-04-07,Hypertension,Emergency,3232.37,77,Self-Pay
+VIS-10783,PAT-257,2025-05-14,2025-05-26,Cardiomyopathy,Emergency,13910.03,42,Aetna
+VIS-10784,PAT-110,2025-05-29,2025-06-06,Appendicitis,Cardiology,21697.0,71,BlueCross
+VIS-10785,PAT-267,2025-02-20,2025-03-06,Type 2 Diabetes,Cardiology,31217.66,45,Aetna
+VIS-10786,PAT-416,2025-11-06,2025-11-12,Appendicitis,Neurology,4400.74,34,Self-Pay
+VIS-10787,PAT-330,2025-08-26,2025-09-04,Cardiomyopathy,Emergency,18500.65,24,BlueCross
+VIS-10788,PAT-369,2025-06-19,2025-06-30,Hypertension,Neurology,34290.0,36,BlueCross
+VIS-10789,PAT-266,2025-08-18,2025-08-31,Fracture,Orthopedics,44906.28,32,Self-Pay
+VIS-10790,PAT-275,2025-11-08,2025-11-13,Cardiomyopathy,Neurology,44033.57,57,Aetna
+VIS-10791,PAT-497,2025-09-17,2025-09-18,Hypertension,General Practice,2294.9,58,BlueCross
+VIS-10792,PAT-302,2025-08-18,2025-08-20,Viral Infection,Orthopedics,13866.75,88,Aetna
+VIS-10793,PAT-331,2025-12-01,2025-12-09,Cardiomyopathy,Cardiology,33693.67,22,Self-Pay
+VIS-10794,PAT-481,2025-10-26,2025-11-04,Appendicitis,Cardiology,11917.82,86,Medicare
+VIS-10795,PAT-465,2025-05-23,2025-05-30,Hypertension,Neurology,13453.25,67,Self-Pay
+VIS-10796,PAT-268,2025-03-21,2025-03-26,Fracture,Cardiology,49365.92,36,Self-Pay
+VIS-10797,PAT-372,2025-02-17,2025-02-27,Appendicitis,Neurology,34843.28,73,Self-Pay
+VIS-10798,PAT-312,2025-09-29,2025-10-04,Fracture,Cardiology,39277.84,19,Self-Pay
+VIS-10799,PAT-408,2025-08-14,2025-08-16,Appendicitis,Orthopedics,24347.67,85,Aetna
+VIS-10800,PAT-271,2025-01-24,2025-02-02,Appendicitis,Emergency,38719.1,18,Medicare
+VIS-10801,PAT-254,2025-06-05,2025-06-08,Appendicitis,Neurology,3945.24,86,Self-Pay
+VIS-10802,PAT-460,2025-03-17,2025-03-18,Cardiomyopathy,General Practice,41014.83,24,BlueCross
+VIS-10803,PAT-190,2025-12-28,2026-01-03,Type 2 Diabetes,Cardiology,6798.62,26,BlueCross
+VIS-10804,PAT-381,2025-08-31,2025-09-04,Type 2 Diabetes,Neurology,32612.97,67,Medicare
+VIS-10805,PAT-434,2025-11-24,2025-12-04,Appendicitis,General Practice,3331.75,80,BlueCross
+VIS-10806,PAT-487,2025-12-31,2026-01-14,Cardiomyopathy,Cardiology,11105.6,40,Medicare
+VIS-10807,PAT-110,2025-01-20,2025-02-01,Cardiomyopathy,Orthopedics,45937.88,56,Self-Pay
+VIS-10808,PAT-414,2025-11-19,2025-11-22,Cardiomyopathy,Neurology,4056.32,38,BlueCross
+VIS-10809,PAT-423,2025-10-25,2025-10-29,Fracture,Emergency,44245.76,90,Self-Pay
+VIS-10810,PAT-382,2025-03-19,2025-04-01,Viral Infection,Cardiology,7089.41,22,BlueCross
+VIS-10811,PAT-215,2025-10-13,2025-10-23,Hypertension,General Practice,2317.86,45,Aetna
+VIS-10812,PAT-391,2025-06-03,2025-06-06,Appendicitis,Orthopedics,47382.53,21,Medicare
+VIS-10813,PAT-351,2025-06-25,2025-07-04,Cardiomyopathy,Emergency,4377.22,34,Aetna
+VIS-10814,PAT-326,2025-11-05,2025-11-07,Viral Infection,Orthopedics,13772.17,73,Medicare
+VIS-10815,PAT-416,2025-06-22,2025-07-05,Viral Infection,Emergency,10953.96,61,Self-Pay
+VIS-10816,PAT-477,2025-11-10,2025-11-11,Appendicitis,Emergency,39477.91,63,BlueCross
+VIS-10817,PAT-465,2025-02-19,2025-02-21,Fracture,Orthopedics,8982.95,69,Medicare
+VIS-10818,PAT-322,2025-08-19,2025-08-20,Hypertension,Orthopedics,22417.43,68,BlueCross
+VIS-10819,PAT-370,2025-04-14,2025-04-26,Cardiomyopathy,Neurology,6138.71,70,Self-Pay
+VIS-10820,PAT-301,2025-12-23,2026-01-03,Hypertension,Emergency,32361.71,77,BlueCross
+VIS-10821,PAT-247,2025-03-27,2025-04-08,Viral Infection,Cardiology,28661.34,42,Medicare
+VIS-10822,PAT-161,2025-11-22,2025-12-04,Appendicitis,General Practice,26356.41,75,BlueCross
+VIS-10823,PAT-160,2025-08-13,2025-08-27,Hypertension,General Practice,43171.54,57,Medicare
+VIS-10824,PAT-199,2025-09-24,2025-10-02,Appendicitis,Emergency,15777.07,66,Medicare
+VIS-10825,PAT-165,2025-10-24,2025-10-30,Viral Infection,General Practice,33495.62,85,Self-Pay
+VIS-10826,PAT-423,2025-03-20,2025-03-28,Cardiomyopathy,Neurology,47572.73,89,BlueCross
+VIS-10827,PAT-484,2025-11-02,2025-11-16,Fracture,Emergency,19499.44,38,Medicare
+VIS-10828,PAT-424,2025-11-11,2025-11-21,Hypertension,Emergency,49080.77,22,BlueCross
+VIS-10829,PAT-175,2025-10-11,2025-10-23,Cardiomyopathy,General Practice,47351.04,23,Self-Pay
+VIS-10830,PAT-200,2025-03-18,2025-03-22,Appendicitis,Emergency,26497.63,38,Aetna
+VIS-10831,PAT-268,2025-04-14,2025-04-16,Appendicitis,Orthopedics,22332.34,46,Aetna
+VIS-10832,PAT-458,2025-11-16,2025-11-24,Appendicitis,Neurology,45907.65,58,Medicare
+VIS-10833,PAT-446,2025-04-19,2025-04-28,Viral Infection,Cardiology,38250.89,29,Aetna
+VIS-10834,PAT-372,2025-03-13,2025-03-18,Viral Infection,General Practice,30030.73,35,Self-Pay
+VIS-10835,PAT-135,2025-05-13,2025-05-25,Viral Infection,Emergency,42891.86,21,Aetna
+VIS-10836,PAT-403,2025-12-08,2025-12-16,Type 2 Diabetes,Neurology,12550.31,23,Self-Pay
+VIS-10837,PAT-108,2025-08-30,2025-09-11,Viral Infection,Emergency,49867.46,53,BlueCross
+VIS-10838,PAT-217,2025-04-24,2025-04-30,Cardiomyopathy,Orthopedics,17047.75,90,BlueCross
+VIS-10839,PAT-355,2025-01-29,2025-02-07,Viral Infection,Cardiology,612.64,58,BlueCross
+VIS-10840,PAT-106,2025-09-19,2025-10-03,Hypertension,Neurology,5550.36,50,Medicare
+VIS-10841,PAT-440,2025-08-16,2025-08-19,Appendicitis,Orthopedics,8600.31,66,BlueCross
+VIS-10842,PAT-287,2025-09-05,2025-09-09,Cardiomyopathy,General Practice,2628.63,85,BlueCross
+VIS-10843,PAT-257,2025-09-26,2025-10-02,Viral Infection,Emergency,11668.08,76,Medicare
+VIS-10844,PAT-285,2025-11-29,2025-12-12,Type 2 Diabetes,Orthopedics,13798.53,37,Medicare
+VIS-10845,PAT-414,2025-06-19,2025-06-26,Appendicitis,Neurology,25736.1,21,Self-Pay
+VIS-10846,PAT-366,2025-03-28,2025-04-03,Viral Infection,Orthopedics,41178.14,77,Self-Pay
+VIS-10847,PAT-173,2025-05-21,2025-05-25,Type 2 Diabetes,Neurology,12788.97,79,Aetna
+VIS-10848,PAT-328,2025-08-14,2025-08-25,Type 2 Diabetes,Cardiology,35049.4,39,Medicare
+VIS-10849,PAT-256,2025-10-08,2025-10-09,Hypertension,Neurology,26001.97,19,Aetna
+VIS-10850,PAT-376,2025-04-30,2025-05-14,Fracture,Emergency,18725.92,55,Self-Pay
+VIS-10851,PAT-168,2025-05-19,2025-05-26,Hypertension,Orthopedics,48250.87,60,Aetna
+VIS-10852,PAT-105,2025-01-22,2025-01-27,Hypertension,Emergency,25173.32,44,BlueCross
+VIS-10853,PAT-341,2025-04-07,2025-04-10,Viral Infection,Orthopedics,16217.97,29,BlueCross
+VIS-10854,PAT-474,2025-07-18,2025-07-24,Type 2 Diabetes,Emergency,1663.67,82,Aetna
+VIS-10855,PAT-399,2025-11-08,2025-11-13,Appendicitis,Neurology,5969.59,71,Medicare
+VIS-10856,PAT-204,2025-10-10,2025-10-23,Viral Infection,Emergency,44107.31,21,BlueCross
+VIS-10857,PAT-364,2025-04-14,2025-04-27,Viral Infection,Neurology,33828.4,88,BlueCross
+VIS-10858,PAT-288,2025-09-07,2025-09-15,Type 2 Diabetes,Emergency,44818.44,38,Aetna
+VIS-10859,PAT-145,2025-09-09,2025-09-12,Viral Infection,Emergency,25109.84,90,Medicare
+VIS-10860,PAT-327,2025-12-20,2026-01-02,Type 2 Diabetes,General Practice,13874.27,35,Aetna
+VIS-10861,PAT-166,2025-02-13,2025-02-21,Appendicitis,Emergency,2301.7,56,Self-Pay
+VIS-10862,PAT-393,2025-06-20,2025-06-29,Cardiomyopathy,Neurology,34442.07,88,BlueCross
+VIS-10863,PAT-495,2025-01-24,2025-01-31,Type 2 Diabetes,General Practice,12903.98,88,Self-Pay
+VIS-10864,PAT-347,2025-03-05,2025-03-12,Hypertension,General Practice,44117.8,90,Self-Pay
+VIS-10865,PAT-174,2025-10-10,2025-10-13,Type 2 Diabetes,Emergency,809.55,43,Medicare
+VIS-10866,PAT-197,2025-08-04,2025-08-09,Cardiomyopathy,Orthopedics,30122.25,78,Self-Pay
+VIS-10867,PAT-476,2025-04-23,2025-04-25,Hypertension,General Practice,17795.47,42,Medicare
+VIS-10868,PAT-325,2025-12-17,2025-12-19,Type 2 Diabetes,General Practice,33130.98,55,BlueCross
+VIS-10869,PAT-352,2025-11-03,2025-11-10,Cardiomyopathy,Emergency,22389.34,84,Medicare
+VIS-10870,PAT-354,2025-01-29,2025-02-02,Viral Infection,Orthopedics,26354.13,48,Aetna
+VIS-10871,PAT-371,2025-02-20,2025-03-03,Viral Infection,General Practice,7439.84,90,Medicare
+VIS-10872,PAT-397,2025-11-20,2025-11-23,Appendicitis,Cardiology,35613.64,86,Self-Pay
+VIS-10873,PAT-316,2025-04-26,2025-04-29,Fracture,Orthopedics,43893.81,90,BlueCross
+VIS-10874,PAT-258,2025-06-02,2025-06-03,Viral Infection,Cardiology,49207.25,65,Self-Pay
+VIS-10875,PAT-153,2025-08-21,2025-09-01,Hypertension,Emergency,47540.9,41,Medicare
+VIS-10876,PAT-435,2025-05-30,2025-06-06,Viral Infection,Emergency,43774.14,39,Self-Pay
+VIS-10877,PAT-216,2025-06-22,2025-06-30,Type 2 Diabetes,General Practice,44418.67,77,Aetna
+VIS-10878,PAT-101,2025-03-23,2025-04-06,Hypertension,Emergency,39176.36,80,Medicare
+VIS-10879,PAT-329,2026-01-06,2026-01-16,Viral Infection,Cardiology,43713.52,29,Medicare
+VIS-10880,PAT-301,2025-05-10,2025-05-12,Fracture,Emergency,30995.97,72,Self-Pay
+VIS-10881,PAT-463,2025-04-07,2025-04-12,Hypertension,General Practice,43785.27,67,Aetna
+VIS-10882,PAT-462,2025-06-27,2025-07-10,Viral Infection,Emergency,21031.2,18,Self-Pay
+VIS-10883,PAT-466,2025-05-25,2025-06-04,Appendicitis,Orthopedics,4215.06,61,Aetna
+VIS-10884,PAT-444,2025-03-16,2025-03-17,Appendicitis,Emergency,12546.76,40,Medicare
+VIS-10885,PAT-327,2025-06-18,2025-06-26,Viral Infection,Cardiology,12710.81,52,Self-Pay
+VIS-10886,PAT-325,2025-07-20,2025-07-31,Cardiomyopathy,General Practice,8752.81,47,Self-Pay
+VIS-10887,PAT-242,2025-02-19,2025-03-01,Type 2 Diabetes,Neurology,30566.92,57,Medicare
+VIS-10888,PAT-224,2025-04-26,2025-05-07,Hypertension,General Practice,21799.13,61,Self-Pay
+VIS-10889,PAT-478,2025-12-26,2026-01-06,Cardiomyopathy,Cardiology,36911.46,49,Self-Pay
+VIS-10890,PAT-414,2025-03-14,2025-03-19,Cardiomyopathy,Emergency,44905.06,62,Medicare
+VIS-10891,PAT-234,2025-08-07,2025-08-19,Cardiomyopathy,General Practice,21004.78,90,Medicare
+VIS-10892,PAT-125,2025-12-15,2025-12-23,Appendicitis,General Practice,18472.31,21,Aetna
+VIS-10893,PAT-213,2025-12-13,2025-12-18,Viral Infection,Neurology,40204.96,30,Medicare
+VIS-10894,PAT-146,2025-11-07,2025-11-20,Cardiomyopathy,Emergency,5455.3,50,Aetna
+VIS-10895,PAT-313,2025-01-20,2025-01-28,Viral Infection,General Practice,27192.62,73,Aetna
+VIS-10896,PAT-214,2025-03-04,2025-03-16,Hypertension,Emergency,39580.58,66,BlueCross
+VIS-10897,PAT-277,2025-05-02,2025-05-10,Type 2 Diabetes,Neurology,12806.33,19,Self-Pay
+VIS-10898,PAT-195,2025-05-14,2025-05-28,Cardiomyopathy,Neurology,2875.55,72,Self-Pay
+VIS-10899,PAT-265,2025-03-12,2025-03-20,Fracture,Cardiology,1108.4,35,Medicare
+VIS-10900,PAT-244,2025-03-20,2025-03-23,Type 2 Diabetes,Cardiology,41224.37,31,Aetna
+VIS-10901,PAT-109,2025-01-16,2025-01-26,Hypertension,Neurology,32947.54,67,Medicare
+VIS-10902,PAT-241,2025-10-13,2025-10-18,Viral Infection,Orthopedics,48346.17,44,BlueCross
+VIS-10903,PAT-445,2025-08-06,2025-08-17,Viral Infection,Orthopedics,530.24,63,Aetna
+VIS-10904,PAT-198,2025-06-14,2025-06-23,Viral Infection,General Practice,37398.61,65,Self-Pay
+VIS-10905,PAT-336,2025-02-27,2025-02-28,Fracture,Emergency,49781.9,83,BlueCross
+VIS-10906,PAT-481,2025-02-08,2025-02-13,Type 2 Diabetes,Neurology,46311.27,58,Aetna
+VIS-10907,PAT-389,2025-10-31,2025-11-07,Type 2 Diabetes,Orthopedics,24320.68,41,Medicare
+VIS-10908,PAT-136,2025-10-15,2025-10-22,Hypertension,Emergency,44929.89,62,BlueCross
+VIS-10909,PAT-325,2025-06-06,2025-06-19,Viral Infection,Neurology,19747.58,25,Medicare
+VIS-10910,PAT-188,2025-06-09,2025-06-11,Type 2 Diabetes,Emergency,1508.13,37,BlueCross
+VIS-10911,PAT-362,2025-03-03,2025-03-04,Viral Infection,Cardiology,5316.04,87,Medicare
+VIS-10912,PAT-491,2025-04-06,2025-04-14,Type 2 Diabetes,Emergency,12672.97,68,Medicare
+VIS-10913,PAT-354,2025-02-20,2025-02-22,Cardiomyopathy,General Practice,47754.92,57,BlueCross
+VIS-10914,PAT-123,2025-06-03,2025-06-13,Type 2 Diabetes,Emergency,18460.44,32,Aetna
+VIS-10915,PAT-281,2025-08-19,2025-08-24,Appendicitis,Emergency,777.16,65,Aetna
+VIS-10916,PAT-215,2025-06-19,2025-07-02,Fracture,Neurology,44320.83,26,Self-Pay
+VIS-10917,PAT-331,2025-04-25,2025-04-30,Viral Infection,Emergency,15111.44,71,BlueCross
+VIS-10918,PAT-214,2025-03-17,2025-03-24,Fracture,Orthopedics,15573.29,30,Self-Pay
+VIS-10919,PAT-363,2025-05-25,2025-06-02,Type 2 Diabetes,Orthopedics,5810.3,86,Medicare
+VIS-10920,PAT-172,2025-12-02,2025-12-16,Appendicitis,General Practice,27481.76,30,Self-Pay
+VIS-10921,PAT-213,2025-04-02,2025-04-07,Cardiomyopathy,General Practice,37626.24,62,Self-Pay
+VIS-10922,PAT-140,2025-10-15,2025-10-16,Viral Infection,General Practice,23273.72,38,BlueCross
+VIS-10923,PAT-250,2025-03-27,2025-04-08,Viral Infection,Emergency,22536.42,86,Aetna
+VIS-10924,PAT-496,2025-09-28,2025-09-30,Fracture,Cardiology,19691.66,51,Self-Pay
+VIS-10925,PAT-438,2025-06-12,2025-06-17,Viral Infection,Orthopedics,44361.05,36,Aetna
+VIS-10926,PAT-229,2025-06-04,2025-06-06,Cardiomyopathy,General Practice,13418.16,37,Self-Pay
+VIS-10927,PAT-175,2025-01-17,2025-01-19,Type 2 Diabetes,Orthopedics,11669.36,85,Medicare
+VIS-10928,PAT-191,2025-07-18,2025-07-25,Hypertension,General Practice,3605.16,28,Self-Pay
+VIS-10929,PAT-401,2025-10-04,2025-10-16,Type 2 Diabetes,Neurology,36883.67,54,BlueCross
+VIS-10930,PAT-315,2025-07-28,2025-08-10,Appendicitis,Orthopedics,38328.95,74,BlueCross
+VIS-10931,PAT-422,2025-01-13,2025-01-15,Type 2 Diabetes,Cardiology,14409.39,26,Self-Pay
+VIS-10932,PAT-202,2025-12-07,2025-12-10,Hypertension,General Practice,48333.08,77,Aetna
+VIS-10933,PAT-456,2025-12-25,2026-01-06,Cardiomyopathy,Orthopedics,45621.85,77,Medicare
+VIS-10934,PAT-253,2025-05-22,2025-06-03,Fracture,Emergency,37073.1,78,Aetna
+VIS-10935,PAT-421,2025-03-18,2025-03-27,Type 2 Diabetes,General Practice,36411.52,24,Self-Pay
+VIS-10936,PAT-478,2025-02-22,2025-03-04,Cardiomyopathy,Cardiology,20084.85,86,Aetna
+VIS-10937,PAT-314,2025-06-30,2025-07-10,Cardiomyopathy,Neurology,5412.95,24,Aetna
+VIS-10938,PAT-417,2025-01-30,2025-02-05,Viral Infection,General Practice,45482.75,37,Medicare
+VIS-10939,PAT-447,2025-02-23,2025-03-03,Fracture,Orthopedics,10173.1,73,Medicare
+VIS-10940,PAT-454,2025-04-28,2025-05-10,Hypertension,Emergency,8688.6,84,Self-Pay
+VIS-10941,PAT-336,2025-09-29,2025-10-03,Fracture,Cardiology,39712.74,66,Medicare
+VIS-10942,PAT-330,2025-12-26,2026-01-01,Appendicitis,Orthopedics,24771.29,63,Medicare
+VIS-10943,PAT-225,2025-08-08,2025-08-09,Cardiomyopathy,Cardiology,39261.6,79,Medicare
+VIS-10944,PAT-283,2025-04-06,2025-04-11,Type 2 Diabetes,Cardiology,3742.07,20,Aetna
+VIS-10945,PAT-460,2025-11-27,2025-11-28,Cardiomyopathy,General Practice,45539.04,84,Medicare
+VIS-10946,PAT-125,2025-07-25,2025-08-05,Fracture,General Practice,6530.96,63,Aetna
+VIS-10947,PAT-144,2025-01-23,2025-01-27,Type 2 Diabetes,Cardiology,7150.83,21,Self-Pay
+VIS-10948,PAT-269,2025-08-04,2025-08-14,Appendicitis,Emergency,26948.44,56,BlueCross
+VIS-10949,PAT-212,2025-12-26,2026-01-09,Cardiomyopathy,General Practice,7777.48,82,Self-Pay
+VIS-10950,PAT-468,2025-03-04,2025-03-16,Hypertension,Orthopedics,19408.5,45,Self-Pay
+VIS-10951,PAT-252,2025-08-12,2025-08-21,Fracture,Emergency,45083.25,78,Aetna
+VIS-10952,PAT-425,2025-02-26,2025-03-12,Hypertension,Cardiology,43406.22,27,Self-Pay
+VIS-10953,PAT-197,2025-07-29,2025-07-31,Hypertension,General Practice,41648.83,75,Aetna
+VIS-10954,PAT-255,2025-06-28,2025-07-06,Type 2 Diabetes,Neurology,39061.53,49,Self-Pay
+VIS-10955,PAT-306,2025-02-19,2025-03-05,Hypertension,Emergency,14578.62,39,Self-Pay
+VIS-10956,PAT-438,2025-11-20,2025-12-02,Appendicitis,General Practice,21166.54,38,Self-Pay
+VIS-10957,PAT-159,2025-01-19,2025-01-20,Appendicitis,Orthopedics,48712.47,75,Medicare
+VIS-10958,PAT-316,2025-04-15,2025-04-24,Appendicitis,General Practice,21619.37,21,Medicare
+VIS-10959,PAT-180,2025-06-16,2025-06-20,Viral Infection,Orthopedics,16124.52,29,Self-Pay
+VIS-10960,PAT-367,2025-04-01,2025-04-10,Cardiomyopathy,Cardiology,48386.17,49,Self-Pay
+VIS-10961,PAT-125,2025-10-16,2025-10-19,Appendicitis,Cardiology,1943.94,75,Aetna
+VIS-10962,PAT-197,2025-12-25,2026-01-06,Appendicitis,Orthopedics,45172.76,24,BlueCross
+VIS-10963,PAT-222,2025-08-24,2025-08-29,Cardiomyopathy,Orthopedics,10771.28,35,Self-Pay
+VIS-10964,PAT-458,2025-03-03,2025-03-16,Cardiomyopathy,Neurology,16275.56,59,BlueCross
+VIS-10965,PAT-409,2025-10-15,2025-10-17,Viral Infection,Emergency,6085.23,33,Self-Pay
+VIS-10966,PAT-294,2025-09-19,2025-09-30,Viral Infection,Neurology,43942.19,34,Aetna
+VIS-10967,PAT-125,2025-07-05,2025-07-11,Hypertension,Neurology,6310.85,87,Self-Pay
+VIS-10968,PAT-279,2025-10-18,2025-10-30,Fracture,Cardiology,43352.55,33,BlueCross
+VIS-10969,PAT-241,2025-03-18,2025-03-23,Cardiomyopathy,Cardiology,40459.1,18,Self-Pay
+VIS-10970,PAT-342,2025-02-09,2025-02-12,Appendicitis,Orthopedics,11044.15,29,BlueCross
+VIS-10971,PAT-343,2025-03-12,2025-03-24,Hypertension,General Practice,41085.91,81,Aetna
+VIS-10972,PAT-100,2025-04-17,2025-04-26,Hypertension,Emergency,47275.57,84,BlueCross
+VIS-10973,PAT-130,2025-04-07,2025-04-18,Fracture,Emergency,30945.27,39,Aetna
+VIS-10974,PAT-374,2025-04-30,2025-05-12,Hypertension,Cardiology,32150.84,60,BlueCross
+VIS-10975,PAT-109,2025-04-05,2025-04-17,Appendicitis,Neurology,8348.56,33,Self-Pay
+VIS-10976,PAT-400,2025-07-24,2025-08-02,Hypertension,Emergency,30424.64,28,Self-Pay
+VIS-10977,PAT-476,2025-11-14,2025-11-26,Viral Infection,General Practice,23658.28,42,Aetna
+VIS-10978,PAT-284,2025-03-30,2025-04-01,Viral Infection,Cardiology,42427.2,44,Aetna
+VIS-10979,PAT-250,2025-10-07,2025-10-09,Appendicitis,Neurology,9267.39,31,BlueCross
+VIS-10980,PAT-198,2025-03-05,2025-03-18,Hypertension,Emergency,911.0,70,Medicare
+VIS-10981,PAT-340,2025-02-14,2025-02-21,Type 2 Diabetes,Cardiology,9262.36,44,Aetna
+VIS-10982,PAT-218,2025-10-19,2025-10-31,Viral Infection,General Practice,8071.59,29,Self-Pay
+VIS-10983,PAT-196,2025-03-14,2025-03-18,Type 2 Diabetes,General Practice,10186.54,51,Medicare
+VIS-10984,PAT-154,2025-12-09,2025-12-20,Appendicitis,General Practice,25233.31,35,BlueCross
+VIS-10985,PAT-314,2025-01-25,2025-02-02,Type 2 Diabetes,Orthopedics,32034.44,18,Medicare
+VIS-10986,PAT-281,2025-10-04,2025-10-09,Type 2 Diabetes,Orthopedics,16165.21,18,BlueCross
+VIS-10987,PAT-360,2025-08-13,2025-08-25,Cardiomyopathy,General Practice,48797.78,79,Medicare
+VIS-10988,PAT-192,2025-03-21,2025-03-23,Type 2 Diabetes,General Practice,46804.77,31,Medicare
+VIS-10989,PAT-122,2025-03-19,2025-03-23,Type 2 Diabetes,Emergency,2278.68,31,BlueCross
+VIS-10990,PAT-331,2025-03-10,2025-03-12,Hypertension,Neurology,25026.59,28,Medicare
+VIS-10991,PAT-276,2025-02-09,2025-02-18,Fracture,Neurology,28268.72,70,Self-Pay
+VIS-10992,PAT-411,2026-01-03,2026-01-08,Appendicitis,Emergency,27557.27,61,Self-Pay
+VIS-10993,PAT-433,2025-05-15,2025-05-26,Cardiomyopathy,Neurology,42193.65,68,Self-Pay
+VIS-10994,PAT-238,2025-03-01,2025-03-09,Cardiomyopathy,Cardiology,26640.42,26,Medicare
+VIS-10995,PAT-451,2025-10-31,2025-11-05,Fracture,General Practice,23243.04,27,Aetna
+VIS-10996,PAT-430,2025-07-11,2025-07-14,Hypertension,Emergency,19852.15,21,Self-Pay
+VIS-10997,PAT-398,2025-03-30,2025-04-08,Viral Infection,Cardiology,8200.41,23,Aetna
+VIS-10998,PAT-129,2025-01-22,2025-02-02,Cardiomyopathy,Neurology,27396.11,38,Self-Pay
+VIS-10999,PAT-133,2025-12-04,2025-12-13,Hypertension,Cardiology,29522.99,66,BlueCross

@@ -28,3 +28,8 @@ export * from './widget-reorder-item';
 export * from './widget-reorder-request';
 export * from './widget-response';
 export * from './widget-update';
+// Added missing exports
+export * from './conversation-response';
+export * from './message-response';
+export * from './conversation-create';
+export * from './message-create';

@@ -14,4 +14,8 @@ export * from './simulation.service';
 import { SimulationService } from './simulation.service';
 export * from './templates.service';
 import { TemplatesService } from './templates.service';
-export const APIS = [AiService, AuthService, DashboardsService, DefaultService, ExecutionService, SchemaService, SimulationService, TemplatesService];
+// Added missing service
+export * from './chat.service';
+import { ChatService } from './chat.service';
+
+export const APIS = [AiService, AuthService, DashboardsService, DefaultService, ExecutionService, SchemaService, SimulationService, TemplatesService, ChatService];

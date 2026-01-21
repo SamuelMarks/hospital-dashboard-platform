@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar'; 
 import { MatButtonModule } from '@angular/material/button'; 
 import { MatProgressBarModule } from '@angular/material/progress-bar'; 
+import { MatSidenavModule } from '@angular/material/sidenav'; 
 
 // Core Features
 import { DashboardStore } from './dashboard.store'; 
@@ -31,6 +32,7 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
   imports: [ 
     CommonModule, 
     DragDropModule, 
+    MatSidenavModule, 
     ToolbarComponent, 
     FilterRibbonComponent, 
     WidgetComponent, 

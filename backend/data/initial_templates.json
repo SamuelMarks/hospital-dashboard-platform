@@ -88,7 +88,7 @@
     "title": "Admission Lag",
     "description": "Average time gap between ER Admission and appearance in Midnight Census. Filters for specific visits to ensure long-stay patients don't skew the average.",
     "category": "Bottlenecks",
-    "sql_template": "WITH first_appearances AS (\n  SELECT \n    Visit_ID, \n    Clinical_Service, \n    Admit_DT, \n    MIN(Midnight_Census_DateTime) as first_census_dt\n  FROM synthetic_hospital_data\n  WHERE Entry_Point = 'Emergency Room'\n  GROUP BY 1, 2, 3\n)\nSELECT \n  Clinical_Service,\n  AVG(date_diff('hour', Admit_DT, first_census_dt)) as avg_lag_hours\nFROM first_appearances\nGROUP BY 1\nORDER BY 2 DESC;",
+    "sql_template": "WITH first_appearances AS (\n  SELECT \n    Visit_Type, \n    Clinical_Service, \n    Admit_DT, \n    MIN(Midnight_Census_DateTime) as first_census_dt\n  FROM synthetic_hospital_data\n  WHERE Entry_Point = 'Emergency Room'\n  GROUP BY 1, 2, 3\n)\nSELECT \n  Clinical_Service,\n  AVG(date_diff('hour', Admit_DT, first_census_dt)) as avg_lag_hours\nFROM first_appearances\nGROUP BY 1\nORDER BY 2 DESC;",
     "parameters_schema": { "type": "object", "properties": {} }
   },
   {

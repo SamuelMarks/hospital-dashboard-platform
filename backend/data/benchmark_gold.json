@@ -1,0 +1,194 @@
+[
+  {
+    "_meta": {
+      "description": "Gold Standard Dataset for Clinical Text-to-SQL Benchmarking",
+      "version": "1.0",
+      "schema": {
+        "theme": "The analytical category (1-30)",
+        "question": "The natural language prompt (Input)",
+        "gold_sql": "The verified ground truth SQL (Output)",
+        "complexity": "Estimated difficulty (Low/Medium/High)"
+      }
+    }
+  },
+  {
+    "theme": "Predictive Availability",
+    "question": "What is the probability that 'ICU_Gen' will have at least 2 beds available on a Sunday, given that the census is currently above 90% capacity on Thursday?",
+    "complexity": "High",
+    "gold_sql": "WITH daily_stats AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date, \n    dayofweek(Midnight_Census_DateTime) as dow_idx, \n    COUNT(*) as current_census\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%ICU_Gen%'\n  GROUP BY 1, 2\n),\nscenarios AS (\n  SELECT \n    t1.census_date as condition_date,\n    t1.current_census as condition_load,\n    t2.current_census as outcome_load,\n    (20 - t2.current_census) as outcome_available\n  FROM daily_stats t1\n  JOIN daily_stats t2 ON t2.census_date = t1.census_date + INTERVAL 3 DAY\n  WHERE t1.dow_idx = 4\n)\nSELECT \n  COALESCE(PROBABILITY(outcome_available >= 2), 0) as probability_pct,\n  COUNT(*) as sample_size\nFROM scenarios\nWHERE (condition_load::FLOAT / 20) > 0.9;"
+  },
+  {
+    "theme": "Bottleneck Analysis",
+    "question": "Identify hours of the day where 'Cardiology' admissions exceed discharges, causing a bottleneck.",
+    "complexity": "Medium",
+    "gold_sql": "WITH flow_events AS (\n  SELECT Clinical_Service, hour(Admit_DT) as hr, 1 as admit_count, 0 as discharge_count\n  FROM synthetic_hospital_data WHERE Admit_DT IS NOT NULL AND Clinical_Service = 'Cardiology'\n  UNION ALL\n  SELECT Clinical_Service, hour(Discharge_DT) as hr, 0 as admit_count, 1 as discharge_count\n  FROM synthetic_hospital_data WHERE Discharge_DT IS NOT NULL AND Clinical_Service = 'Cardiology'\n),\naggregated AS (\n  SELECT \n    Clinical_Service,\n    hr,\n    SUM(admit_count) as admits,\n    SUM(discharge_count) as discharges\n  FROM flow_events\n  GROUP BY 1, 2\n)\nSELECT \n  hr as hour_of_day,\n  admits,\n  discharges,\n  (admits - discharges) as net_bottleneck\nFROM aggregated\nWHERE IS_BOTTLENECK(admits, discharges)\nORDER BY net_bottleneck DESC;"
+  },
+  {
+    "theme": "Day-of-Week Volatility",
+    "question": "Which units have the most unpredictable staffing needs based on the standard deviation of their midnight census?",
+    "complexity": "Medium",
+    "gold_sql": "WITH daily_counts AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date,\n    Location,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  GROUP BY 1, 2\n)\nSELECT \n  Location,\n  ROUND(AVG(census), 1) as avg_census,\n  ROUND(STDDEV(census), 2) as census_std_dev,\n  ROUND((STDDEV(census) / NULLIF(AVG(census), 0)) * 100, 1) as variance_index\nFROM daily_counts\nGROUP BY 1\nHAVING AVG(census) >= 5\nORDER BY census_std_dev DESC\nLIMIT 20;"
+  },
+  {
+    "theme": "Weekend Effect",
+    "question": "Compare the Average Length of Stay for patients admitted on weekends versus those admitted on Tuesday.",
+    "complexity": "Medium",
+    "gold_sql": "WITH stays AS (\n  SELECT \n    Clinical_Service,\n    Admit_DT,\n    date_diff('hour', Admit_DT, Discharge_DT) / 24.0 as los_days\n  FROM synthetic_hospital_data\n  WHERE Discharge_DT IS NOT NULL\n)\nSELECT \n  Clinical_Service,\n  AVG(CASE WHEN WEEKEND_LAG(Admit_DT) THEN los_days END) as avg_los_weekend_admit,\n  AVG(CASE WHEN dayofweek(Admit_DT) = 2 THEN los_days END) as avg_los_tuesday_admit\nFROM stays\nGROUP BY 1\nORDER BY 1;"
+  },
+  {
+    "theme": "Throughput Velocity",
+    "question": "Calculate the daily churn rate (Admissions + Discharges) for every unit and show the top 5 busiest days.",
+    "complexity": "Low",
+    "gold_sql": "WITH flow_events AS (\n  SELECT CAST(Admit_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE Admit_DT IS NOT NULL\n  UNION ALL\n  SELECT CAST(Discharge_DT AS DATE) as dt, Location, 1 as event_count FROM synthetic_hospital_data WHERE Discharge_DT IS NOT NULL\n)\nSELECT \n  dt as activity_date,\n  Location,\n  SUM(event_count) as total_churn\nFROM flow_events\nGROUP BY 1, 2\nORDER BY total_churn DESC\nLIMIT 5;"
+  },
+  {
+    "theme": "Service Dominance",
+    "question": "Show the daily percentage breakdown of Clinical Services in 'PCU_Mixed_A'.",
+    "complexity": "Medium",
+    "gold_sql": "WITH daily AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    Clinical_Service,\n    COUNT(*) as cnt\n  FROM synthetic_hospital_data\n  WHERE Location = 'PCU_Mixed_A'\n  GROUP BY 1, 2\n)\nSELECT \n  dt,\n  Clinical_Service,\n  cnt,\n  SAFE_DIV(cnt, SUM(cnt) OVER (PARTITION BY dt)) * 100 as pct_share\nFROM daily\nORDER BY dt DESC, pct_share DESC;"
+  },
+  {
+    "theme": "Utilization Spikes",
+    "question": "Find all 3-day consecutive periods where 'ICU_General' utilization exceeded 20 patients.",
+    "complexity": "High",
+    "gold_sql": "WITH daily_census AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Location = 'ICU_General'\n  GROUP BY 1\n),\nwindows AS (\n  SELECT \n    dt,\n    census as day_1_load,\n    LEAD(census, 1) OVER (ORDER BY dt) as day_2_load,\n    LEAD(census, 2) OVER (ORDER BY dt) as day_3_load\n  FROM daily_census\n)\nSELECT \n  dt as spike_start_date,\n  day_1_load,\n  day_2_load,\n  day_3_load\nFROM windows\nWHERE CONSECUTIVE_OVERLOAD(day_1_load, day_2_load, day_3_load, 20)\nORDER BY dt DESC;"
+  },
+  {
+    "theme": "Admission Lag",
+    "question": "What is the average time gap between ER Admission and appearance in the Midnight Census?",
+    "complexity": "Medium",
+    "gold_sql": "WITH first_appearances AS (\n  SELECT \n    Visit_Type, \n    Clinical_Service, \n    Admit_DT, \n    MIN(Midnight_Census_DateTime) as first_census_dt\n  FROM synthetic_hospital_data\n  WHERE Entry_Point = 'Emergency Room'\n  GROUP BY 1, 2, 3\n)\nSELECT \n  Clinical_Service,\n  AVG(date_diff('hour', Admit_DT, first_census_dt)) as avg_lag_hours\nFROM first_appearances\nGROUP BY 1\nORDER BY 2 DESC;"
+  },
+  {
+    "theme": "Holiday Decompression",
+    "question": "How many days does it take for census levels to return to the seasonal average after Christmas?",
+    "complexity": "High",
+    "gold_sql": "WITH baseline AS (\n  SELECT AVG(cnt) as avg_census \n  FROM (SELECT CAST(Midnight_Census_DateTime AS DATE) as d, COUNT(*) as cnt FROM synthetic_hospital_data GROUP BY 1) a\n),\ndaily AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as census \n  FROM synthetic_hospital_data \n  GROUP BY 1\n)\nSELECT \n  MIN(dt) as recovery_date,\n  HOLIDAY_DIFF(MIN(dt), 12, 25) as days_to_recover\nFROM daily, baseline\nWHERE dt > make_date(year(dt), 12, 25)\n  AND census <= baseline.avg_census\nGROUP BY year(dt);"
+  },
+  {
+    "theme": "Step-Down Flow",
+    "question": "Calculate the average time patients spend in the ICU before transferring to a PCU.",
+    "complexity": "Medium",
+    "gold_sql": "SELECT \n  AVG(date_diff('hour', t1.Transfer_DateTime, t2.Transfer_DateTime)) as avg_hours_icu_before_stepdown\nFROM synthetic_hospital_data_transfers t1\nJOIN synthetic_hospital_data_transfers t2 ON t1.CSN = t2.CSN\nWHERE t1.Transfer_In_Unit LIKE '%ICU%'\n  AND t2.Transfer_In_Unit LIKE '%PCU%'\n  AND t2.Transfer_DateTime > t1.Transfer_DateTime;"
+  },
+  {
+    "theme": "Elective Impact",
+    "question": "Correlate the volume of Elective admissions on Mondays with bed scarcity on the following Wednesday.",
+    "complexity": "High",
+    "gold_sql": "WITH mon_vol AS (\n  SELECT date_trunc('week', Admit_DT) as wk, COUNT(*) as vol \n  FROM synthetic_hospital_data \n  WHERE dayofweek(Admit_DT) = 1 AND Entry_Point LIKE '%Elective%'\n  GROUP BY 1\n),\nwed_util AS (\n  SELECT date_trunc('week', Midnight_Census_DateTime) as wk, COUNT(*) as census\n  FROM synthetic_hospital_data \n  WHERE dayofweek(Midnight_Census_DateTime) = 3\n  GROUP BY 1\n)\nSELECT \n  CORRELATION_MATRIX(m.vol, w.census) as correlation_coef\nFROM mon_vol m\nJOIN wed_util w ON m.wk = w.wk;"
+  },
+  {
+    "theme": "Long-Stayers",
+    "question": "What percentage of bed-days is occupied by outliers staying more than 2 standard deviations above the average?",
+    "complexity": "Medium",
+    "gold_sql": "WITH stays AS (\n  SELECT \n    date_diff('day', Admit_DT, Discharge_DT) as los\n  FROM synthetic_hospital_data\n  WHERE Discharge_DT IS NOT NULL\n),\nstats AS (\n  SELECT AVG(los) as mu, STDDEV(los) as sigma FROM stays\n)\nSELECT \n  (SUM(los) FILTER (WHERE IS_OUTLIER(los, stats.mu, sigma)) / NULLIF(SUM(los), 0)::FLOAT) * 100 as outlier_resource_pct\nFROM stays, stats;"
+  },
+  {
+    "theme": "Shift Change Stress",
+    "question": "Which unit has the highest frequency of discharges during the evening shift change (6PM - 8PM)?",
+    "complexity": "Low",
+    "gold_sql": "SELECT \n  Location,\n  COUNT(*) as shift_change_discharges\nFROM synthetic_hospital_data\nWHERE SHIFT_CHANGE(Discharge_DT, 18, 20)\nGROUP BY 1\nORDER BY 2 DESC\nLIMIT 1;"
+  },
+  {
+    "theme": "Seasonal Growth",
+    "question": "Calculate month-over-month growth for 'Gen_Peds' census.",
+    "complexity": "Medium",
+    "gold_sql": "WITH monthly AS (\n  SELECT \n    date_trunc('month', Midnight_Census_DateTime) as mth,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Clinical_Service = 'Gen_Peds'\n  GROUP BY 1\n)\nSELECT \n  mth,\n  census,\n  ((census - LAG(census) OVER (ORDER BY mth)) / NULLIF(LAG(census) OVER (ORDER BY mth), 0)::FLOAT) * 100 as mom_growth\nFROM monthly\nORDER BY mth DESC;"
+  },
+  {
+    "theme": "Capacity Forecasting",
+    "question": "Forecast the census for 'PCU_Nursery_A' using a 7-day Simple Moving Average.",
+    "complexity": "Low",
+    "gold_sql": "WITH daily AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt,\n    COUNT(*) as census\n  FROM synthetic_hospital_data\n  WHERE Location = 'PCU_Nursery_A'\n  GROUP BY 1\n)\nSELECT \n  dt,\n  census as actual,\n  MOVING_AVERAGE(census, dt) as forecast_sma_7\nFROM daily\nORDER BY dt DESC\nLIMIT 30;"
+  },
+  {
+    "theme": "Cohort Isolation",
+    "question": "Compare daily census counts for patients entering via ER versus Physician Referral.",
+    "complexity": "Low",
+    "gold_sql": "SELECT \n  CAST(Midnight_Census_DateTime AS DATE) as dt, \n  Entry_Point, \n  COUNT(*) as census\nFROM synthetic_hospital_data\nWHERE Entry_Point IN ('Emergency Room', 'Physician Referral')\nGROUP BY 1, 2 \nORDER BY 1 DESC, 2;"
+  },
+  {
+    "theme": "Bed Turnover Time",
+    "question": " What is the average time between discharge and the next admission in 'ICU_General'?",
+    "complexity": "High",
+    "gold_sql": "WITH flow AS (\n  SELECT \n    Location, \n    Discharge_DT, \n    LEAD(Admit_DT) OVER (PARTITION BY Location ORDER BY Admit_DT) as next_admit\n  FROM synthetic_hospital_data \n  WHERE Location = 'ICU_General'\n)\nSELECT \n  AVG(date_diff('minute', Discharge_DT, next_admit)) as avg_turnover_minutes\nFROM flow \nWHERE next_admit > Discharge_DT \n  AND date_diff('hour', Discharge_DT, next_admit) < 24;"
+  },
+  {
+    "theme": "Clinical Service 'Rent'",
+    "question": "Which Clinical Service consumes the most bed-hours in mixed units?",
+    "complexity": "Medium",
+    "gold_sql": "SELECT \n  Clinical_Service, \n  SUM(date_diff('hour', Admit_DT, COALESCE(Discharge_DT, CURRENT_TIMESTAMP))) as total_bed_hours\nFROM synthetic_hospital_data \nWHERE Location LIKE '%Mixed%'\nGROUP BY 1 \nORDER BY 2 DESC\nLIMIT 1;"
+  },
+  {
+    "theme": "Wait-list Probability",
+    "question": "What is the likelihood that 'PCU_Nursery_A' is full on Tuesdays?",
+    "complexity": "Medium",
+    "gold_sql": "WITH daily AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as dt, \n    COUNT(*) as cnt\n  FROM synthetic_hospital_data \n  WHERE Location = 'PCU_Nursery_A' \n    AND dayofweek(Midnight_Census_DateTime) = 2\n  GROUP BY 1\n)\nSELECT \n  PROBABILITY(cnt >= 20) as full_probability_pct\nFROM daily;"
+  },
+  {
+    "theme": "Midnight vs. Noon",
+    "question": "Compare the Midnight Census count against the Noon Census count for each day.",
+    "complexity": "High",
+    "gold_sql": "WITH dates AS (\n  SELECT DISTINCT CAST(Midnight_Census_DateTime AS DATE) as d FROM synthetic_hospital_data\n)\nSELECT \n  d as census_date,\n  (SELECT COUNT(*) FROM synthetic_hospital_data WHERE CAST(Midnight_Census_DateTime AS DATE) = d) as midnight_count,\n  (SELECT COUNT(*) FROM synthetic_hospital_data WHERE Admit_DT <= (d + INTERVAL 12 HOUR) AND (Discharge_DT >= (d + INTERVAL 12 HOUR) OR Discharge_DT IS NULL)) as noon_count\nFROM dates\nORDER BY d DESC;"
+  },
+  {
+    "theme": "Conditional Overstay Risk",
+    "question": "Given a patient in 'Cardiology' has stayed 4 days, what is the probability they stay 7 days?",
+    "complexity": "Medium",
+    "gold_sql": "WITH stays AS (\n  SELECT date_diff('day', Admit_DT, Discharge_DT) as los \n  FROM synthetic_hospital_data \n  WHERE Location LIKE '%Cardiology%'\n)\nSELECT \n  (COUNT(*) FILTER (WHERE los >= 7) / NULLIF(COUNT(*) FILTER (WHERE los >= 4), 0)::FLOAT) * 100 as probability_pct\nFROM stays;"
+  },
+  {
+    "theme": "Step-Down Availability",
+    "question": "What is the probability that 'PCU_Mixed_A' has space when 'ICU_Mixed_A' is full?",
+    "complexity": "High",
+    "gold_sql": "WITH icu AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='ICU_Mixed_A' GROUP BY 1\n),\npcu AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='PCU_Mixed_A' GROUP BY 1\n)\nSELECT \n  PROBABILITY(p.cnt < 20) as pcu_open_when_icu_full\nFROM icu i \nJOIN pcu p ON i.dt = p.dt \nWHERE i.cnt >= 15;"
+  },
+  {
+    "theme": "Service-Adjusted LoS",
+    "question": "Calculate overstay risk for ER vs Elective admissions in Orthopedics.",
+    "complexity": "Medium",
+    "gold_sql": "WITH data AS (\n  SELECT Entry_Point, date_diff('day', Admit_DT, Discharge_DT) as los \n  FROM synthetic_hospital_data \n  WHERE Clinical_Service='Orthopedics'\n),\nstats AS (\n  SELECT median(los) as med FROM data\n)\nSELECT \n  Entry_Point, \n  PROBABILITY(data.los > (stats.med * 1.2)) as overstay_risk_pct\nFROM data, stats \nGROUP BY 1 \nORDER BY 2 DESC;"
+  },
+  {
+    "theme": "Maternity-Nursery Link",
+    "question": "What is the likelihood that Nursery is full when Maternity is full?",
+    "complexity": "Medium",
+    "gold_sql": "WITH mat AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='PCU_Maternity_B' GROUP BY 1\n),\nnur AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='PCU_Nursery_A' GROUP BY 1\n)\nSELECT \n  PROBABILITY(n.cnt > (20 * 0.9)) as nursery_full_prob\nFROM mat m \nJOIN nur n ON m.dt = n.dt \nWHERE m.cnt > (20 * 0.9);"
+  },
+  {
+    "theme": "The '2 AM' Indicator",
+    "question": "Compare the probability of overstaying for patients admitted between 12AM and 5AM vs standard hours.",
+    "complexity": "Medium",
+    "gold_sql": "SELECT \n  CASE WHEN hour(Admit_DT) BETWEEN 0 AND 5 THEN 'Night (00-05)' ELSE 'Standard Hours' END as shift,\n  PROBABILITY(date_diff('day', Admit_DT, Discharge_DT) > 4) as overstay_prob\nFROM synthetic_hospital_data \nWHERE Discharge_DT IS NOT NULL \nGROUP BY 1;"
+  },
+  {
+    "theme": "Paired Bottlenecks",
+    "question": "Identify dates where both 'PCU_Trauma' and 'PCU_Neurosurgery' were simultaneously full.",
+    "complexity": "Medium",
+    "gold_sql": "WITH u1 AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt \n  FROM synthetic_hospital_data WHERE Location='PCU_Trauma' \n  GROUP BY 1 HAVING COUNT(*) >= 20\n),\nu2 AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt \n  FROM synthetic_hospital_data WHERE Location='PCU_Neurosurgery' \n  GROUP BY 1 HAVING COUNT(*) >= 20\n)\nSELECT \n  u1.dt as blockage_date\nFROM u1 \nJOIN u2 ON u1.dt = u2.dt\nORDER BY 1 DESC;"
+  },
+  {
+    "theme": "Discharge Efficiency",
+    "question": "What is the average delay in minutes until the first bed becomes free on days where 'ICU_General' is full at 8AM?",
+    "complexity": "High",
+    "gold_sql": "WITH full_days AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt \n  FROM synthetic_hospital_data WHERE Location='ICU_General' \n  GROUP BY 1 HAVING COUNT(*) >= 20\n),\ndischarges AS (\n  SELECT \n    CAST(Discharge_DT AS DATE) as dt, \n    MIN(Discharge_DT) as first_out \n  FROM synthetic_hospital_data WHERE Location='ICU_General' \n  GROUP BY 1\n)\nSELECT \n  AVG(date_diff('minute', make_timestamp(year(f.dt), month(f.dt), day(f.dt), 8, 0, 0), d.first_out)) as avg_delay_minutes\nFROM full_days f \nJOIN discharges d ON f.dt = d.dt \nWHERE d.first_out > make_timestamp(year(f.dt), month(f.dt), day(f.dt), 8, 0, 0);"
+  },
+  {
+    "theme": "The 'NICU Cliff'",
+    "question": "What is the probability that a Newborn staying longer than 48 hours will stay longer than 10 days?",
+    "complexity": "Low",
+    "gold_sql": "WITH newborns AS (\n  SELECT \n    date_diff('hour', Admit_DT, Discharge_DT) as hours, \n    date_diff('day', Admit_DT, Discharge_DT) as los_days \n  FROM synthetic_hospital_data \n  WHERE Clinical_Service='Newborn'\n)\nSELECT \n  PROBABILITY(los_days > 10) as prob_long_stay_if_exceed_48h\nFROM newborns \nWHERE hours > 48;"
+  },
+  {
+    "theme": "Overflow Predictor",
+    "question": "What is the probability that a Cardiology patient ends up in an off-service unit when 'PCU_Cardiology_A' is full?",
+    "complexity": "High",
+    "gold_sql": "WITH cap AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as cnt \n  FROM synthetic_hospital_data WHERE Location='PCU_Cardiology_A' \n  GROUP BY 1\n)\nSELECT \n  PROBABILITY(s.Location != 'PCU_Cardiology_A') as off_service_prob\nFROM synthetic_hospital_data s\nJOIN cap c ON CAST(s.Midnight_Census_DateTime AS DATE) = c.dt\nWHERE c.cnt >= 20 \n  AND s.Clinical_Service = 'Cardiology';"
+  },
+  {
+    "theme": "Weekend Discharge Lag",
+    "question": "What is the risk of overstaying the average LoS if discharged on a Saturday versus a Tuesday?",
+    "complexity": "Low",
+    "gold_sql": "SELECT \n  dayname(Discharge_DT) as day_of_discharge, \n  PROBABILITY(date_diff('day', Admit_DT, Discharge_DT) > 4) as overstay_risk\nFROM synthetic_hospital_data \nWHERE dayofweek(Discharge_DT) IN (2, 6) \n  AND Discharge_DT IS NOT NULL\nGROUP BY 1\nORDER BY 1;"
+  }
+]
