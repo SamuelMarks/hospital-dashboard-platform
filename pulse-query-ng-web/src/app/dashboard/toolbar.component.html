@@ -1,0 +1,144 @@
+<mat-toolbar class="app-toolbar mat-elevation-z2">
+  <!-- Brand / Context Section -->
+  <div 
+    class="title-group" 
+    routerLink="/" 
+    matTooltip="Back to Home" 
+    tabindex="0" 
+    role="button" 
+    (keydown.enter)="router.navigate(['/'])"
+  >
+    <span class="title-overline" style="color: var(--sys-primary);">Analytics</span>
+    <span class="title-main">
+      @if (isDashboardRoute()) { 
+        {{ store.dashboard()?.name || 'Loading...' }} 
+      } @else { 
+        Pulse Query
+      } 
+    </span>
+  </div>
+
+  <!-- Primary Navigation -->
+  <div class="nav-links hidden sm:flex">
+    <a mat-button routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}" class="nav-link">Dashboards</a>
+    <a mat-button routerLink="/simulation" routerLinkActive="active-link" class="nav-link">Simulation</a>
+    <a mat-button routerLink="/chat" routerLinkActive="active-link" class="nav-link">Ad-Hoc</a>
+  </div>
+
+  <span class="toolbar-spacer"></span>
+
+  <!-- Action Area -->
+  <div class="gap-2 items-center">
+    
+    <!-- Dashboard Specific Actions -->
+    @if (isDashboardRoute()) { 
+      <!-- Edit Toggle -->
+      <mat-slide-toggle 
+        color="primary" 
+        [checked]="store.isEditMode()" 
+        (change)="store.toggleEditMode()" 
+        class="mr-2" 
+        aria-label="Toggle Edit Mode" 
+        data-testid="toggle-edit-mode" 
+      >
+        <span class="text-sm">Edit</span>
+      </mat-slide-toggle>
+
+      <!-- Add Widget (Only in Edit Mode) -->
+      @if (store.isEditMode()) { 
+        <button 
+          mat-stroked-button 
+          class="action-btn"
+          (click)="openWidgetBuilder()" 
+          [disabled]="!store.dashboard()" 
+          data-testid="btn-add-widget"
+        >
+          <mat-icon>add</mat-icon> <span>Widget</span>
+        </button>
+      } 
+
+      <button 
+        mat-icon-button 
+        (click)="store.refreshAll()" 
+        [disabled]="store.isLoading()" 
+        [attr.aria-label]="store.isLoading() ? 'Refreshing Data' : 'Refresh Dashboard'" 
+        data-testid="btn-refresh" 
+      >
+        @if (store.isLoading()) { <mat-spinner diameter="18"></mat-spinner> } 
+        @else { <mat-icon>refresh</mat-icon> } 
+      </button>
+
+      <div class="divider-vertical"></div>
+    } 
+
+    <!-- THEME MENU (New M3 Palette Picker) -->
+    <button mat-icon-button [matMenuTriggerFor]="themeMenu" aria-label="Open Theme Settings" data-testid="btn-theme-menu">
+      <mat-icon>palette</mat-icon>
+    </button>
+    
+    <mat-menu #themeMenu="matMenu">
+      <div class="menu-header-compact">Appearance</div>
+      
+      <!-- Mode Toggle -->
+      <button mat-menu-item (click)="themeService.toggle()">
+        <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        <span>{{ themeService.isDark() ? 'Light Mode' : 'Dark Mode' }}</span>
+      </button>
+
+      <mat-divider></mat-divider>
+      
+      <!-- Color Palette Preset Grid -->
+      <div class="palette-grid p-3" (click)="$event.stopPropagation()">
+        <span class="text-xs text-secondary mb-2 block">Seed Color</span>
+        <div class="flex gap-2 flex-wrap">
+          @for (color of presetColors; track color) {
+            <button 
+              class="color-dot" 
+              [style.background-color]="color" 
+              (click)="updateTheme(color)" 
+              [class.active]="themeService.seedColor() === color"
+              [attr.aria-label]="'Set theme color to ' + color"
+            ></button>
+          }
+          <!-- Custom Picker Wrapper -->
+          <div class="color-dot relative overflow-hidden bg-gray-200 flex items-center justify-center border border-gray-300">
+            <mat-icon style="font-size: 16px; width: 16px; height: 16px; color: #666">colorize</mat-icon>
+            <input 
+              type="color" 
+              class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" 
+              [value]="themeService.seedColor()" 
+              (input)="onColorPickerChange($event)"
+              aria-label="Custom Theme Color"
+            >
+          </div>
+        </div>
+      </div>
+    </mat-menu>
+
+    <!-- Global Ask AI -->
+    <button mat-stroked-button class="action-btn" (click)="askDataService.open()">
+      <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
+    </button>
+
+    <!-- User Profile -->
+    <button 
+      mat-icon-button 
+      [matMenuTriggerFor]="userMenu" 
+      aria-label="User Account Menu" 
+      data-testid="btn-user-menu"
+    >
+      <mat-icon class="text-secondary">account_circle</mat-icon>
+    </button>
+
+    <mat-menu #userMenu="matMenu">
+      <div class="menu-header">
+        <mat-icon class="large-avatar mb-2">account_circle</mat-icon>
+        <span class="menu-email">{{ authService.currentUser()?.email }}</span>
+      </div>
+      <button mat-menu-item routerLink="/"><mat-icon>dashboard</mat-icon><span>My Dashboards</span></button>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()"><mat-icon color="warn">logout</mat-icon><span>Logout</span></button>
+    </mat-menu>
+
+  </div>
+</mat-toolbar>
