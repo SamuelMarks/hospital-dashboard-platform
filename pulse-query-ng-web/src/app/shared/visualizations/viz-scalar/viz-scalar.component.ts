@@ -1,36 +1,47 @@
 import { Component, input, computed, ChangeDetectionStrategy, Signal } from '@angular/core'; 
 import { CommonModule } from '@angular/common'; 
 import { MatTooltipModule } from '@angular/material/tooltip'; 
+import { MatProgressBarModule } from '@angular/material/progress-bar'; 
 
 /** 
- * Visualization: Scalar & Correlation Gauge.
+ * Visualization: Scalar & Correlation Gauge. 
+ * 
+ * **Updates**: 
+ * - Replaced custom HTML gauge with `MatProgressBar`. 
+ * - Styles progress bar color based on correlation (Red=Neg, Green=Pos). 
  */ 
 @Component({ 
   selector: 'viz-scalar', 
-  imports: [CommonModule, MatTooltipModule], 
+  imports: [CommonModule, MatTooltipModule, MatProgressBarModule], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`
     :host { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; padding: 16px; } 
     .value-display { font-size: 3rem; font-weight: 300; color: var(--sys-text-primary); line-height: 1; margin-bottom: 8px; } 
     .label-display { font-size: 0.875rem; text-transform: uppercase; color: var(--sys-text-secondary); letter-spacing: 1px; text-align: center; } 
-    .correlation-gauge { width: 100%; max-width: 200px; height: 8px; background: #e0e0e0; border-radius: 4px; position: relative; margin-top: 16px; background: linear-gradient(90deg, #f44336 0%, #e0e0e0 50%, #4caf50 100%); } 
-    .indicator { position: absolute; top: -4px; width: 4px; height: 16px; background-color: #333; border: 1px solid white; transform: translateX(-50%); } 
-    .interpret-text { margin-top: 8px; font-weight: 500; font-size: 0.75rem; color: var(--sys-text-secondary); } 
+    
+    .gauge-wrapper { width: 100%; max-width: 200px; margin-top: 16px; position: relative; } 
+    .interpret-text { margin-top: 8px; font-weight: 500; font-size: 0.75rem; color: var(--sys-text-secondary); text-align: center; } 
+
+    /* Dynamic Coloring for ProgressBar Track */ 
+    ::ng-deep .gauge-pos .mdc-linear-progress__bar-inner { border-color: #4caf50 !important; } 
+    ::ng-deep .gauge-neg .mdc-linear-progress__bar-inner { border-color: #f44336 !important; } 
+    ::ng-deep .gauge-neutral .mdc-linear-progress__bar-inner { border-color: var(--sys-text-secondary) !important; } 
   `], 
   template: `
     <div class="value-display" role="status">{{ formattedValue() }}</div>
     <div class="label-display">{{ label() }}</div>
 
     @if (isCorrelation()) { 
-      <div 
-        class="correlation-gauge" 
-        matTooltip="Correlation Scale: -1 (Neg) to +1 (Pos)"
-        role="meter" 
-        [attr.aria-valuenow]="value()" 
-        aria-valuemin="-1" 
-        aria-valuemax="1"
-      >
-        <div class="indicator" [style.left.%]="gaugePosition()"></div>
+      <div class="gauge-wrapper" [matTooltip]="'Correlation Scale: -1 to +1'"> 
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="gaugePosition()" 
+          [class]="colorClass()" 
+          role="meter" 
+          [attr.aria-valuenow]="value()" 
+          aria-valuemin="-1" 
+          aria-valuemax="1" 
+        ></mat-progress-bar>
       </div>
       <div class="interpret-text" [style.color]="strengthColor()">
         {{ strengthLabel() }} 
@@ -41,6 +52,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 export class VizScalarComponent { 
   readonly data = input<any | null>(); 
 
+  /** Extract numeric value from dataset. */ 
   readonly value: Signal<number | null> = computed(() => { 
     const d = this.data(); 
     if (!d) return null; 
@@ -68,6 +80,7 @@ export class VizScalarComponent {
     return 'Result'; 
   }); 
 
+  /** Detect if metric is a correlation coefficient (-1 to 1). */ 
   readonly isCorrelation = computed(() => { 
     const v = this.value(); 
     const l = this.label().toLowerCase(); 
@@ -77,9 +90,22 @@ export class VizScalarComponent {
     return false; 
   }); 
 
+  /** 
+   * Maps -1...1 to 0...100 for ProgressBar. 
+   * -1 => 0% 
+   * 0 => 50% 
+   * 1 => 100% 
+   */ 
   readonly gaugePosition = computed(() => { 
     const v = this.value() || 0; 
     return ((v + 1) / 2) * 100; 
+  }); 
+
+  /** Determines color class for ProgressBar styling. */ 
+  readonly colorClass = computed(() => { 
+    const v = this.value() || 0; 
+    if (Math.abs(v) < 0.3) return 'gauge-neutral'; 
+    return v > 0 ? 'gauge-pos' : 'gauge-neg'; 
   }); 
 
   readonly strengthLabel = computed(() => { 

@@ -15,14 +15,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { DashboardsService, DashboardResponse } from '../api-client'; 
 import { DashboardCreateDialog } from './dashboard-create.dialog'; 
+import { AskDataService } from '../global/ask-data.service'; // Needed for "Ask AI" 
 
-/** 
- * HomeComponent
- * 
- * Serves as the landing page for authenticated users. 
- * Displays a grid of Dashboard Cards and allows creation, renaming, and deletion. 
- * Allows Quick Restoration of the "Default" template. 
- */ 
 @Component({ 
   selector: 'app-home', 
   standalone: true, 
@@ -40,84 +34,18 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`
-    :host { 
-      display: block; 
-      min-height: 100vh; 
-      background-color: #f5f5f5; 
-      padding: 32px; 
-    } 
-    .header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 32px; 
-      max-width: 1200px; 
-      margin-left: auto; 
-      margin-right: auto; 
-    } 
-    .header-text h1 { 
-      margin: 0; 
-      font-size: 32px; 
-      font-weight: 300; 
-      color: #333; 
-    } 
-    .header-text p { 
-      margin: 4px 0 0 0; 
-      color: #666; 
-    } 
-    .grid-container { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
-      gap: 24px; 
-      max-width: 1200px; 
-      margin: 0 auto; 
-    } 
-    .dash-card { 
-      cursor: pointer; 
-      transition: transform 0.2s, box-shadow 0.2s; 
-      position: relative; 
-    } 
-    .dash-card:hover { 
-      transform: translateY(-2px); 
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-    } 
-    .avatar-placeholder { 
-      width: 40px; 
-      height: 40px; 
-      border-radius: 50%; 
-      background-color: #e3f2fd; 
-      color: #1976d2; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-weight: bold; 
-    } 
-    .card-actions-btn { 
-      margin-left: auto; 
-      color: #757575; 
-    } 
-    .empty-state { 
-      grid-column: 1 / -1; 
-      text-align: center; 
-      padding: 64px; 
-      background: white; 
-      border-radius: 8px; 
-      border: 2px dashed #e0e0e0; 
-      color: #757575; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      gap: 16px; 
-    } 
-    .loading-container { 
-      display: flex; 
-      justify-content: center; 
-      padding-top: 64px; 
-    } 
-    .btn-group { 
-      display: flex; 
-      gap: 12px; 
-    } 
+    :host { display: block; min-height: 100vh; background-color: #f5f5f5; padding: 32px; } 
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; max-width: 1200px; margin-left: auto; margin-right: auto; } 
+    .header-text h1 { margin: 0; font-size: 32px; font-weight: 300; color: #333; } 
+    .header-text p { margin: 4px 0 0 0; color: #666; } 
+    .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; } 
+    .dash-card { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative; } 
+    .dash-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); } 
+    .avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; background-color: #e3f2fd; color: #1976d2; display: flex; align-items: center; justify-content: center; font-weight: bold; } 
+    .card-actions-btn { margin-left: auto; color: #757575; } 
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 64px; background: white; border-radius: 8px; border: 2px dashed #e0e0e0; color: #757575; display: flex; flex-direction: column; align-items: center; gap: 16px; } 
+    .loading-container { display: flex; justify-content: center; padding-top: 64px; } 
+    .btn-group { display: flex; gap: 12px; } 
   `], 
   template: `
     <!-- Header -->
@@ -126,22 +54,32 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
         <h1>My Dashboards</h1>
         <p>Manage and view your analytics workspaces</p>
       </div>
-      
+
       <div class="btn-group">
+        <!-- New: Ask AI Button for Global Accessibility -->
         <button 
+          mat-stroked-button 
+          color="primary" 
+          (click)="askDataService.open()" 
+          matTooltip="Open chat assistant"
+        >
+          <mat-icon>smart_toy</mat-icon> Ask AI
+        </button>
+
+        <button
           mat-stroked-button
           color="primary" 
           (click)="restoreDefaults()" 
           [disabled]="isRestoring()" 
           matTooltip="Recreate the standard Hospial Command Center dashboard" 
         >
-          @if (isRestoring()) { <mat-spinner diameter="18"></mat-spinner> } 
+          @if (isRestoring()) { <mat-spinner diameter="18" aria-label="Restoring..."></mat-spinner> } 
           @else { <mat-icon>restore</mat-icon> } 
           <span class="ml-2">Restore Defaults</span>
         </button>
 
-        <button 
-          mat-flat-button 
+        <button
+          mat-flat-button
           color="primary" 
           (click)="openCreateDialog()" 
           data-testid="btn-create" 
@@ -155,16 +93,16 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
     <!-- Loading State -->
     @if (isLoading()) { 
       <div class="loading-container" data-testid="loading-state">
-        <mat-spinner diameter="40"></mat-spinner>
+        <mat-spinner diameter="40" aria-label="Loading dashboards..."></mat-spinner>
       </div>
     } 
 
     <!-- Dashboard List -->
     @if (!isLoading()) { 
       <div class="grid-container" data-testid="dashboard-grid">
-        
+
         @for (dash of dashboards(); track dash.id) { 
-          <mat-card 
+          <mat-card
             class="dash-card" 
             [routerLink]="['/dashboard', dash.id]" 
             [attr.data-testid]="'dash-card-' + dash.id" 
@@ -173,15 +111,15 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
               <div mat-card-avatar class="avatar-placeholder">
                 <mat-icon>analytics</mat-icon>
               </div>
-              
+
               <mat-card-title>{{ dash.name }}</mat-card-title>
               <mat-card-subtitle>
                 ID: {{ dash.id.substring(0, 8) }}... 
               </mat-card-subtitle>
 
               <!-- Card Actions Menu -->
-              <button 
-                mat-icon-button 
+              <button
+                mat-icon-button
                 class="card-actions-btn" 
                 [matMenuTriggerFor]="cardMenu" 
                 (click)="$event.stopPropagation()" 
@@ -207,7 +145,7 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
               </mat-menu>
 
             </mat-card-header>
-            
+
             <mat-card-content>
               <p class="text-sm text-gray-500 mt-2">
                 {{ (dash.widgets || []).length }} Widgets Configured
@@ -221,7 +159,7 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
           <div class="empty-state" data-testid="empty-state">
             <mat-icon class="text-4xl text-gray-300 mb-2">dashboard</mat-icon>
             <p>You haven't created any analytics dashboards yet.</p>
-            
+
             <div class="flex gap-4">
               <button mat-stroked-button color="primary" (click)="restoreDefaults()" [disabled]="isRestoring()">
                 Create Default Dashboard
@@ -232,7 +170,7 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
             </div>
           </div>
         } 
-        
+
       </div>
     } 
   `
@@ -242,6 +180,9 @@ export class HomeComponent implements OnInit {
   private readonly dialog = inject(MatDialog); 
   private readonly router = inject(Router); 
   private readonly snackBar = inject(MatSnackBar); 
+  
+  // Public for template access
+  public readonly askDataService = inject(AskDataService); 
 
   readonly dashboards = signal<DashboardResponse[]>([]); 
   readonly isLoading = signal(true); 
@@ -279,17 +220,13 @@ export class HomeComponent implements OnInit {
     }); 
   } 
 
-  /** 
-   * Triggers the backend Provisioning service to re-create the default dashboard. 
-   * If successful, appends it to the list (and navigates). 
-   */ 
   restoreDefaults(): void { 
     this.isRestoring.set(true); 
     this.dashboardsApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost() 
       .pipe(finalize(() => this.isRestoring.set(false))) 
       .subscribe({ 
         next: (newDash: DashboardResponse) => { 
-          this.dashboards.update(curr => [newDash, ...curr]); // Add to top
+          this.dashboards.update(curr => [newDash, ...curr]); 
           this.router.navigate(['/dashboard', newDash.id]); 
           this.snackBar.open('Default dashboard created.', 'Close', { duration: 3000 }); 
         }, 
@@ -302,11 +239,11 @@ export class HomeComponent implements OnInit {
 
   renameDashboard(dash: DashboardResponse): void { 
     const newName = window.prompt("Enter new dashboard name:", dash.name); 
-    
+
     if (newName && newName.trim() !== "" && newName !== dash.name) { 
       const originalName = dash.name; 
-      
-      this.dashboards.update(items => 
+
+      this.dashboards.update(items =>
         items.map(d => d.id === dash.id ? { ...d, name: newName } : d) 
       ); 
 
@@ -314,7 +251,7 @@ export class HomeComponent implements OnInit {
         .subscribe({ 
           error: (err) => { 
             console.error(err); 
-            this.dashboards.update(items => 
+            this.dashboards.update(items =>
               items.map(d => d.id === dash.id ? { ...d, name: originalName } : d) 
             ); 
             this.snackBar.open(`Rename failed for "${originalName}". Reverted changes.`, 'Close', { duration: 5000 }); 
@@ -339,7 +276,7 @@ export class HomeComponent implements OnInit {
 
   deleteDashboard(dash: DashboardResponse): void { 
     if (window.confirm(`Are you sure you want to delete "${dash.name}"? This cannot be undone.`)) { 
-      
+
       const originalList = this.dashboards(); 
       this.dashboards.update(items => items.filter(d => d.id !== dash.id)); 
 

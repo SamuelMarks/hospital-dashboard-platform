@@ -1,8 +1,8 @@
-<!-- Toolbar & Ribbons -->
+<!-- FILTER RIBBON (Now integrated Toolbar variant) -->
 @if (!isTvMode()) { 
-  <app-toolbar></app-toolbar>
   <app-filter-ribbon></app-filter-ribbon>
 } @else { 
+  <!-- TV Mode Header -->
   <div class="tv-carousel-header">
     <div class="tv-dashboard-title">{{ store.dashboard()?.name }}</div>
     <div class="tv-meta">
@@ -12,7 +12,7 @@
   @if (store.isLoading()) { <mat-progress-bar mode="indeterminate" color="accent" style="height: 4px"></mat-progress-bar> } 
 } 
 
-<!-- MAIN CONTENT WRAPPER: Sidenav Layout for Editor -->
+<!-- MAIN CONTENT WRAPPER: Sidenav Layout for Split Views -->
 <mat-sidenav-container class="dashboard-sidnav-container h-full" autosize>
   
   <!-- LEFT: Dashboard Grid Viewport -->
@@ -20,7 +20,7 @@
     class="view-port overflow-y-auto" 
     [class.tv-view]="isTvMode()" 
   >
-    <!-- Skeleton -->
+    <!-- Skeleton Loading State -->
     @if (store.isLoading() && !store.dashboard()) { 
       <div class="ghost-grid" data-testid="skeleton-grid">
         <div class="ghost-card h-2" style="grid-column: span 6"><app-skeleton-loader variant="metric"></app-skeleton-loader></div>
@@ -28,11 +28,12 @@
       </div>
     } 
 
-    <!-- Grid -->
+    <!-- Grid Canvas -->
     @if (store.dashboard()) { 
       <div 
         cdkDropList
         id="dashboard-grid" 
+        [attr.data-testid]="'dashboard-grid'" 
         [cdkDropListDisabled]="!store.isEditMode() || isTvMode()" 
         [cdkDropListOrientation]="'mixed'" 
         (cdkDropListDropped)="onDrop($event)" 
@@ -48,6 +49,7 @@
             [class.item-draggable]="store.isEditMode() && !isTvMode()" 
             [attr.data-testid]="'widget-wrapper-' + widget.id" 
           >
+            <!-- Elevation Wrapper handled by MatCard internally in widget -->
             <div class="widget-content">
               <app-widget
                 [widget]="widget" 
@@ -57,8 +59,11 @@
                 (duplicate)="store.duplicateWidget(widget)" 
               ></app-widget>
             </div>
-            <!-- Placeholders -->
+            
+            <!-- Drag Placeholder style -->
             <div *cdkDragPlaceholder class="drag-placeholder"></div>
+            
+            <!-- Resize Handle -->
             @if (store.isEditMode() && !isTvMode()) { 
               <div class="resize-handle" (mousedown)="startResizing($event, widget)"></div>
             } 
@@ -66,31 +71,29 @@
         } 
       </div>
 
-      <!-- Use Empty State Component when no widgets exist -->
+      <!-- Empty State Component -->
       @if (store.widgets().length === 0) { 
         <app-empty-state class="h-full block"></app-empty-state>
       } 
     } 
   </mat-sidenav-content>
 
-  <!-- RIGHT: Edit Sidebar (Gallery) -->
-  <!-- Automatically opens in Edit Mode unless TV mode is on -->
+  <!-- RIGHT: Widget Gallery Sidebar -->
   <mat-sidenav 
     mode="side" 
     position="end" 
     [opened]="store.isEditMode() && !isTvMode()" 
-    class="editor-sidenav" 
-    class="mat-elevation-z4" 
+    class="editor-sidenav mat-elevation-z4" 
   >
     <app-widget-gallery class="h-full"></app-widget-gallery>
   </mat-sidenav>
 
 </mat-sidenav-container>
 
-<!-- Focus Overlay -->
+<!-- Focus / Zen Mode Overlay -->
 @if (store.focusedWidget(); as focused) { 
   <div class="focus-overlay" role="dialog" aria-modal="true" (click)="store.setFocusedWidget(null)">
-    <div class="focus-container" (click)="$event.stopPropagation()">
+    <div class="focus-container mat-elevation-z24" (click)="$event.stopPropagation()">
        <app-widget
          [widget]="focused" 
          class="h-full block" 

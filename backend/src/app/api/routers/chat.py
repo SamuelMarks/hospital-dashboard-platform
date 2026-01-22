@@ -2,12 +2,12 @@
 Chat API Router.
 
 Handles stateful conversations between the User and the Analytics Assistant.
-Integrates with `any-llm` to providing intelligent SQL generation and
-logic validation using `sqlglot`.
+Integrates with `LLMArenaClient` to provide multiple response candidates for voting.
 """
 
 import logging
 import re
+import asyncio
 from datetime import datetime, timezone
 from typing import Annotated, List, Optional
 from uuid import UUID
@@ -18,22 +18,22 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-# any_llm integration
-from any_llm import completion
-
 from app.api import deps
 from app.core.config import settings
 from app.database.postgres import get_db
 from app.models.user import User
-from app.models.chat import Conversation, Message
+from app.models.chat import Conversation, Message, MessageCandidate
 from app.schemas.chat import (
   ConversationCreate,
+  ConversationUpdate,
   ConversationResponse,
   ConversationDetail,
   MessageCreate,
   MessageResponse,
+  MessageVoteRequest,
 )
 from app.services.schema import schema_service
+from app.services.llm_client import llm_client, ArenaResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -75,7 +75,8 @@ def _extract_and_validate_sql(text: str) -> Optional[str]:
 
 async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, history_limit: int = 10) -> Message:
   """
-  Orchestrates the AI interaction loop.
+  Orchestrates the AI interaction loop with Arena Voting.
+  Generates 3 candidates for the user to vote on.
 
   Args:
       db: Database session.
@@ -83,10 +84,9 @@ async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, his
       history_limit: Number of past turns to include.
 
   Returns:
-      Message: The persisted assistant response object.
+      Message: The persisted assistant response object (parent of candidates).
   """
   # 1. Fetch History
-  # We fetch the latest messages.
   stmt = (
     select(Message)
     .where(Message.conversation_id == conversation_id)
@@ -94,13 +94,10 @@ async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, his
     .limit(history_limit)
   )
   result = await db.execute(stmt)
-  # Reverse to chronological order (Oldest -> Newest) for LLM Context
   history_objs = result.scalars().all()[::-1]
 
   # 2. Build Messages Payload
   messages_payload = []
-
-  # System Instructions
   schema_context = schema_service.get_schema_context_string()
   system_prompt = (
     "You are an expert Hospital Analytics Assistant. "
@@ -111,50 +108,74 @@ async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, his
   )
   messages_payload.append({"role": "system", "content": system_prompt})
 
-  # History injection
   for msg in history_objs:
     if msg.role in ["user", "assistant"]:
+      # Use main content. For voting scenarios, history might need to respect selected candidate content.
+      # Assuming msg.content is updated to the winner content after vote.
       messages_payload.append({"role": msg.role, "content": msg.content})
 
-  # 3. Call LLM
-  # Use default model or environment override
-  model_id = "gpt-4o" if settings.LLM_SWARM else "mistral-small"
+  # 3. Call LLM Arena to get Responsens
+  responses: List[ArenaResponse] = []
 
   try:
-    # We wrap in sync bridge if `any_llm` is not natively async,
-    # but modern SDKs usually handle this or we run in threadpool.
-    # Assuming `completion` handles this or is fast enough for basic usages.
-    response = completion(
-      model=model_id,
+    # Attempt 1: Standard Broadcast
+    responses = await llm_client.generate_arena_competition(
       messages=messages_payload,
-      temperature=0.2,  # Low temp for SQL precision
+      temperature=0.7,  # Higher temp for variety
       max_tokens=1000,
     )
-    ai_text = response.choices[0].message.content
+
+    # Logic to ensure 3 candidates if we have fewer providers configured
+    if len(responses) < 3:
+      needed = 3 - len(responses)
+      # Generate extras with varying temperature to ensure diversity
+      extras = await asyncio.gather(
+        *[llm_client.generate_arena_competition(messages_payload, temperature=0.7 + (i * 0.2)) for i in range(needed)]
+      )
+      for batch in extras:
+        responses.extend(batch)
+
   except Exception as e:
     logger.error(f"LLM Generation Failed: {e}")
-    ai_text = "I apologize, but I am unable to process your request at this moment."
+    responses = [ArenaResponse("System", "error", "I apologize, but I am unable to process your request.", 0, str(e))]
 
-  # 4. Process Content (Extract SQL)
-  sql_code = _extract_and_validate_sql(ai_text)
+  # Trim to 3 if more
+  responses = responses[:3]
 
-  # 5. Persist Assistant Message
-  # Explicitly set timestamp to ensure consistency in tests without DB refresh roundtrips
+  # 4. Persistence
   now = datetime.now(timezone.utc)
 
+  # Create Parent Message (Placeholder content until vote)
   assistant_msg = Message(
-    conversation_id=conversation_id, role="assistant", content=ai_text, sql_snippet=sql_code, created_at=now
+    conversation_id=conversation_id,
+    role="assistant",
+    content="Multiple options generated. Please select the best response.",
+    sql_snippet=None,
+    created_at=now,
   )
   db.add(assistant_msg)
+  await db.flush()  # Get ID for candidates
+
+  # Create Candidates
+  for idx, res in enumerate(responses):
+    sql_code = _extract_and_validate_sql(res.content)
+    # Use distinct name if multiples from same provider
+    tag = res.provider_name if len(responses) <= len(settings.LLM_SWARM) else f"{res.provider_name} {idx + 1}"
+
+    cand = MessageCandidate(
+      message_id=assistant_msg.id, model_name=tag, content=res.content, sql_snippet=sql_code, is_selected=False
+    )
+    db.add(cand)
 
   # Update parent conversation timestamp
-  # We must fetch the conversation objects or update via query to avoid detachment issues
   await db.execute(Conversation.__table__.update().where(Conversation.id == conversation_id).values(updated_at=now))
 
   await db.commit()
-  await db.refresh(assistant_msg)
 
-  return assistant_msg
+  # Reload to return full structure with candidates
+  stmt = select(Message).where(Message.id == assistant_msg.id).options(selectinload(Message.candidates))
+  result = await db.execute(stmt)
+  return result.scalars().first()
 
 
 # --- Endpoints ---
@@ -167,9 +188,6 @@ async def list_conversations(
   limit: int = 50,
   offset: int = 0,
 ) -> List[Conversation]:
-  """
-  List all conversations for the authenticated user.
-  """
   stmt = (
     select(Conversation)
     .where(Conversation.user_id == current_user.id)
@@ -187,12 +205,7 @@ async def create_conversation(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Conversation:
-  """
-  Start a new conversation.
-  """
   now = datetime.now(timezone.utc)
-
-  # 1. Determine Title
   title = payload.title
   if not title:
     if payload.message:
@@ -200,28 +213,63 @@ async def create_conversation(
     else:
       title = "New Chat"
 
-  # 2. Create Header
   conv = Conversation(user_id=current_user.id, title=title, created_at=now, updated_at=now)
   db.add(conv)
-  await db.flush()  # Generate ID
+  await db.flush()
 
-  # 3. Handle Initial Message
   if payload.message:
-    # Save User Message
     user_msg = Message(conversation_id=conv.id, role="user", content=payload.message, created_at=now)
     db.add(user_msg)
-    await db.commit()  # Commit so helper can see history
-
-    # Generate Response
+    await db.commit()
     await _generate_assistant_reply(db, conv.id)
   else:
     await db.commit()
 
-  # 4. Return full object
-  # Force reload to get messages relation populated
-  stmt = select(Conversation).where(Conversation.id == conv.id).options(selectinload(Conversation.messages))
+  stmt = (
+    select(Conversation)
+    .where(Conversation.id == conv.id)
+    .options(selectinload(Conversation.messages).selectinload(Message.candidates))
+  )
   result = await db.execute(stmt)
   return result.scalars().first()
+
+
+@router.put("/{conversation_id}", response_model=ConversationResponse)
+async def update_conversation(
+  conversation_id: UUID,
+  payload: ConversationUpdate,
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> Conversation:
+  result = await db.execute(
+    select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
+  )
+  conv = result.scalars().first()
+  if not conv:
+    raise HTTPException(status_code=404, detail="Conversation not found")
+
+  conv.title = payload.title
+  await db.commit()
+  await db.refresh(conv)
+  return conv
+
+
+@router.delete("/{conversation_id}", status_code=204)
+async def delete_conversation(
+  conversation_id: UUID,
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+  result = await db.execute(
+    select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
+  )
+  conv = result.scalars().first()
+  if not conv:
+    raise HTTPException(status_code=404, detail="Conversation not found")
+
+  await db.delete(conv)
+  await db.commit()
+  return None
 
 
 @router.get("/{conversation_id}/messages", response_model=List[MessageResponse])
@@ -230,10 +278,6 @@ async def get_messages(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> List[Message]:
-  """
-  Retrieve message history.
-  """
-  # Verify ownership
   result = await db.execute(
     select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
   )
@@ -241,9 +285,11 @@ async def get_messages(
   if not conv:
     raise HTTPException(status_code=404, detail="Conversation not found")
 
-  # Fetch messages chronological
   msg_result = await db.execute(
-    select(Message).where(Message.conversation_id == conversation_id).order_by(Message.created_at)
+    select(Message)
+    .where(Message.conversation_id == conversation_id)
+    .options(selectinload(Message.candidates))
+    .order_by(Message.created_at)
   )
   return msg_result.scalars().all()
 
@@ -255,10 +301,6 @@ async def send_message(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Message:
-  """
-  Send a new message to an existing conversation.
-  """
-  # 1. Verify Ownership
   result = await db.execute(
     select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
   )
@@ -267,17 +309,58 @@ async def send_message(
     raise HTTPException(status_code=404, detail="Conversation not found")
 
   now = datetime.now(timezone.utc)
-
-  # 2. Save User Message
   user_msg = Message(conversation_id=conversation_id, role="user", content=payload.content, created_at=now)
   db.add(user_msg)
-
-  # Update timestamp manually to avoid dealing with DB-side defaults not returning immediately
   conv.updated_at = now
-
   await db.commit()
 
-  # 3. Generate AI Response
   assistant_msg = await _generate_assistant_reply(db, conversation_id)
-
   return assistant_msg
+
+
+@router.post("/{conversation_id}/messages/{message_id}/vote", response_model=MessageResponse)
+async def vote_candidate(
+  conversation_id: UUID,
+  message_id: UUID,
+  payload: MessageVoteRequest,
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> Message:
+  """
+  Selects a specific candidate as the 'winner' for a message.
+  Updates the parent Message content/sql_snippet with the winner's data.
+  """
+  # 1. Verify access
+  result = await db.execute(
+    select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
+  )
+  if not result.scalars().first():
+    raise HTTPException(status_code=404, detail="Conversation not found")
+
+  # 2. Fetch Message
+  msg_res = await db.execute(
+    select(Message)
+    .where(Message.id == message_id, Message.conversation_id == conversation_id)
+    .options(selectinload(Message.candidates))
+  )
+  msg = msg_res.scalars().first()
+  if not msg:
+    raise HTTPException(status_code=404, detail="Message not found")
+
+  # 3. Find Candidate
+  target_candidate = next((c for c in msg.candidates if c.id == payload.candidate_id), None)
+  if not target_candidate:
+    raise HTTPException(status_code=404, detail="Candidate not found")
+
+  # 4. Apply Vote
+  # Reset others
+  for c in msg.candidates:
+    c.is_selected = c.id == payload.candidate_id
+
+  # Promote Content to Main Message (so history works linearly)
+  msg.content = target_candidate.content
+  msg.sql_snippet = target_candidate.sql_snippet
+
+  await db.commit()
+  await db.refresh(msg)
+  return msg

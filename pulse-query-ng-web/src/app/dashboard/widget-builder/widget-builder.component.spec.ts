@@ -6,6 +6,17 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { of } from 'rxjs'; 
 import { signal } from '@angular/core'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 // Mocks
 const MOCK_TEMPLATE: TemplateResponse = { 
@@ -67,18 +78,22 @@ describe('WidgetBuilderComponent', () => {
     expect(component.templates().length).toBe(1); 
   }); 
 
-  it('should create draft widget on initialization of custom flow', () => { 
+  it('should create draft widget on initialization of custom flow and advance stepper', () => { 
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_DRAFT)); 
     
+    // Mock Stepper
+    const mockStepper = { next: vi.fn() } as any; 
+
     // Select Custom SQL type
     component.selectCustomType('SQL'); 
-    component.initializeDraft(); 
+    component.initializeDraft(mockStepper); 
 
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith( 
       'd1', 
       expect.objectContaining({ type: 'SQL', visualization: 'table' }) 
     ); 
     expect(component.draftWidget()).toEqual(MOCK_DRAFT); 
+    expect(mockStepper.next).toHaveBeenCalled(); 
   }); 
 
   it('should handle TEXT widget creation flow', () => { 
@@ -91,7 +106,7 @@ describe('WidgetBuilderComponent', () => {
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(textDraft)); 
 
     component.selectCustomType('TEXT'); 
-    component.initializeDraft(); 
+    component.initializeDraft(); // Optional arg check
 
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith( 
         'd1', 

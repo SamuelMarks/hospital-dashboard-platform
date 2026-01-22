@@ -14,7 +14,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 // Core Features
 import { DashboardStore } from './dashboard.store'; 
 import { DashboardsService, WidgetResponse, WidgetUpdate, TemplateResponse } from '../api-client'; 
-import { ToolbarComponent } from './toolbar.component'; 
+// ToolbarComponent removed (Moved to App Layout)
 import { FilterRibbonComponent } from './filter-ribbon.component'; 
 import { WidgetComponent } from '../widget/widget.component'; 
 import { WidgetGalleryComponent } from './widget-gallery/widget-gallery.component'; 
@@ -33,7 +33,7 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
     CommonModule, 
     DragDropModule, 
     MatSidenavModule, 
-    ToolbarComponent, 
+    // ToolbarComponent removed
     FilterRibbonComponent, 
     WidgetComponent, 
     WidgetGalleryComponent, 
@@ -77,27 +77,22 @@ export class DashboardLayoutComponent implements OnInit {
 
   /** 
    * Unified Drop Handler. 
-   * Distinguishes between internal reordering and external template dropping. 
    */ 
   onDrop(event: CdkDragDrop<any[]>): void { 
     if (this.isTvMode()) return; 
 
     if (event.previousContainer === event.container) { 
-      // Case A: Reorder existing widgets
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex); 
     } else { 
-      // Case B: Dragged from Sidebar (Template) 
       const template = event.item.data as TemplateResponse; 
       const dashboard = this.store.dashboard(); 
       
       if (dashboard && template) { 
-        // Optimistic: The Store will reload. 
         this.store.setLoading(true); 
 
         this.provisioning.provisionWidget(template, dashboard.id).subscribe({ 
           next: () => { 
             this.snackBar.open(`Added widget: ${template.title}`, 'OK', { duration: 3000 }); 
-            // Reload to get correct position/ID
             this.store.loadDashboard(dashboard.id); 
           }, 
           error: (err: unknown) => { 
@@ -110,13 +105,11 @@ export class DashboardLayoutComponent implements OnInit {
     } 
   } 
 
-  /** Calculates Column Span (1-12) */ 
   getColSpan(widget: WidgetResponse): number { 
     const w = Number(widget.config?.['w']); 
     return Math.max(1, Math.min(12, w || 6)); 
   } 
 
-  /** Calculates Row Span */ 
   getRowSpan(widget: WidgetResponse): number { 
     const h = Number(widget.config?.['h']); 
     return Math.max(1, Math.min(4, h || 2)); 

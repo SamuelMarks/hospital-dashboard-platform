@@ -1,5 +1,6 @@
 /** 
  * @fileoverview Unit tests for Dashboard Layout. 
+ * Includes manual mocking of @material/material-color-utilities. 
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
@@ -14,9 +15,18 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar'; 
 import { WidgetComponent } from '../widget/widget.component'; 
 import { DragDropModule } from '@angular/cdk/drag-drop'; 
-import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component'; 
-import { By } from '@angular/platform-browser'; 
-import { ProvisioningService } from './provisioning.service'; // Added Dependency
+import { ProvisioningService } from './provisioning.service'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 @Component({ selector: 'app-widget', template: '' }) 
 class MockWidgetComponent { 
@@ -28,7 +38,7 @@ class MockWidgetComponent {
 
 // Mock Empty State for component test usage
 @Component({ selector: 'app-empty-state', template: '' }) 
-class MockEmptyStateComponent {}
+class MockEmptyStateComponent {} 
 
 describe('DashboardLayoutComponent', () => { 
   let component: DashboardLayoutComponent; 

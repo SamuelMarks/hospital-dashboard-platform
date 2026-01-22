@@ -1,19 +1,23 @@
 /** 
- * @fileoverview Application Toolbar. 
+ * @fileoverview Application Toolbar (Global Navigation). 
  * 
- * Contains Global Navigation, Action Buttons (Add Widget, Theme Toggle), 
- * and User Profile management. 
+ * Contains Global Navigation Links, Context-Aware Actions (Edit/Refresh), 
+ * and System Settings (Theme Palette/Mode). 
  * 
- * **Change Log**: 
- * - EXTRACTED data filters (Date Range, Department) to `FilterRibbonComponent`. 
- * - Minimized redundant form imports. 
+ * **Changes:** 
+ * - Migrated template to external file `toolbar.component.html`. 
+ * - Implemented `ThemeService` integration for dynamic color seeding. 
+ * - Replaced custom CSS avatars with Material Icons. 
+ * - Added Color Picker logic. 
  */ 
 
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core'; 
 import { CommonModule } from '@angular/common'; 
-import { Router, RouterModule } from '@angular/router'; 
+import { Router, RouterModule, NavigationEnd } from '@angular/router'; 
+import { filter, map } from 'rxjs/operators'; 
+import { toSignal } from '@angular/core/rxjs-interop'; 
 
-// Material Imports
+// Material Imports 
 import { MatToolbarModule } from '@angular/material/toolbar'; 
 import { MatButtonModule } from '@angular/material/button'; 
 import { MatIconModule } from '@angular/material/icon'; 
@@ -30,8 +34,12 @@ import { AskDataService } from '../global/ask-data.service';
 import { ThemeService } from '../core/theme/theme.service'; 
 import { WidgetBuilderComponent } from './widget-builder/widget-builder.component'; 
 
+/** 
+ * Toolbar Component. 
+ */ 
 @Component({ 
   selector: 'app-toolbar', 
+  standalone: true, 
   imports: [ 
     CommonModule, 
     RouterModule, 
@@ -45,123 +53,104 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
     MatSlideToggleModule
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
+  templateUrl: './toolbar.component.html', 
   styles: [`
-    :host { display: block; position: sticky; top: 0; z-index: 1000; } 
+    :host { display: block; width: 100%; position: relative; z-index: 10; } 
+    
+    /* M3 Surface Container Mapping */ 
+    .app-toolbar { 
+      background-color: var(--sys-surface); 
+      color: var(--sys-on-surface); 
+      border-bottom: 1px solid var(--sys-surface-border); 
+    } 
+
     .toolbar-spacer { flex: 1 1 auto; } 
-    .title-group { display: flex; flex-direction: column; line-height: normal; cursor: pointer; } 
-    .title-overline { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; } 
+    
+    /* Brand Title */ 
+    .title-group { display: flex; flex-direction: column; line-height: normal; cursor: pointer; user-select: none; } 
+    .title-overline { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; } 
     .title-main { font-size: 16px; font-weight: 500; } 
+
+    /* Navigation */ 
+    .nav-links { display: flex; gap: 4px; margin-left: 32px; height: 100%; } 
+    .nav-link { 
+      font-size: 14px; color: var(--sys-text-secondary); font-weight: 500; 
+      opacity: 0.7; height: 100%; border-radius: 0; padding: 0 16px; 
+      border-bottom: 2px solid transparent; 
+    } 
+    .nav-link.active-link { 
+      color: var(--sys-primary); opacity: 1; border-bottom-color: var(--sys-primary); 
+      background: linear-gradient(to top, var(--sys-selected), transparent); 
+    } 
+
+    /* Actions */ 
     .gap-2 { display: flex; gap: 8px; } 
-    .user-avatar { background-color: var(--sys-primary); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; } 
-    .menu-header { padding: 16px; display: flex; flex-direction: column; align-items: center; background-color: var(--sys-background); border-bottom: 1px solid var(--sys-surface-border); } 
-    .menu-email { margin-top: 8px; font-weight: 500; color: var(--sys-text-primary); font-size: 14px; } 
-  `], 
-  template: `
-    <mat-toolbar color="surface" class="mat-elevation-z2" style="background-color: var(--sys-surface); color: var(--sys-text-primary);">
-      <!-- Brand / Home Link -->
-      <div 
-        class="title-group" 
-        routerLink="/" 
-        matTooltip="Back to Home" 
-        tabindex="0" 
-        role="button" 
-        (keydown.enter)="router.navigate(['/'])" 
-      >
-        <span class="title-overline text-primary" style="color: var(--sys-primary);">Analytics</span>
-        <span class="title-main">{{ store.dashboard()?.name || 'Loading...' }}</span>
-      </div>
+    .divider-vertical { height: 24px; width: 1px; background-color: var(--sys-surface-border); margin: 0 8px; } 
+    .text-secondary { color: var(--sys-text-secondary); } 
+    
+    /* Menu Styles */ 
+    .menu-header { padding: 16px; display: flex; flex-direction: column; align-items: center; background-color: var(--sys-surface); outline: none; } 
+    .menu-header-compact { padding: 8px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--sys-text-secondary); } 
+    .menu-email { margin-top: 8px; font-weight: 500; font-size: 14px; color: var(--sys-on-surface); } 
+    .large-avatar { width: 48px; height: 48px; font-size: 48px; color: var(--sys-text-secondary); } 
 
-      <span class="toolbar-spacer"></span>
-
-      <div class="gap-2 items-center">
-        
-        <!-- Theme Toggle -->
-        <button 
-          mat-icon-button 
-          (click)="themeService.toggle()" 
-          matTooltip="Toggle Dark Mode" 
-          [attr.aria-label]="themeService.isDark() ? 'Switch to Light Mode' : 'Switch to Dark Mode'" 
-        >
-          <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
-        </button>
-
-        <span class="border-l h-8 mx-1 border-gray-300"></span>
-
-        <!-- Edit Mode Toggle -->
-        <mat-slide-toggle 
-          color="primary" 
-          [checked]="store.isEditMode()" 
-          (change)="store.toggleEditMode()" 
-          class="mr-2" 
-          aria-label="Toggle Dashboard Editing" 
-        >
-          <span class="text-sm">Edit</span>
-        </mat-slide-toggle>
-
-        <!-- NOTE: Data Filters moved to Filter Ribbon Component below -->
-
-        <button mat-stroked-button color="primary" (click)="askDataService.open()">
-          <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
-        </button>
-
-        @if (store.isEditMode()) { 
-          <button mat-stroked-button color="accent" (click)="openWidgetBuilder()" [disabled]="!store.dashboard()" data-testid="btn-add-widget">
-            <mat-icon>add</mat-icon> <span>Add Widget</span>
-          </button>
-        } 
-
-        <button 
-          mat-icon-button 
-          color="primary" 
-          (click)="store.refreshAll()" 
-          [disabled]="store.isLoading()" 
-          [attr.aria-label]="store.isLoading() ? 'Refreshing Data' : 'Refresh Dashboard'" 
-          data-testid="btn-refresh" 
-        >
-          @if (store.isLoading()) { <mat-spinner diameter="18"></mat-spinner> } 
-          @else { <mat-icon>refresh</mat-icon> } 
-        </button>
-
-        <span class="border-l h-8 mx-2 border-gray-300"></span>
-
-        <!-- User Menu -->
-        <button 
-          mat-icon-button 
-          [matMenuTriggerFor]="userMenu" 
-          aria-label="User Account Menu" 
-        >
-          <div class="user-avatar text-xs">{{ userInitials() }}</div>
-        </button>
-
-        <mat-menu #userMenu="matMenu">
-          <div class="menu-header">
-            <mat-icon class="text-4xl mb-2" style="width:40px; height:40px; font-size:40px; color: var(--sys-text-secondary);">account_circle</mat-icon>
-            <span class="menu-email">{{ authService.currentUser()?.email }}</span>
-          </div>
-          <button mat-menu-item routerLink="/"><mat-icon>dashboard</mat-icon><span>My Dashboards</span></button>
-          <mat-divider></mat-divider>
-          <button mat-menu-item (click)="logout()"><mat-icon color="warn">logout</mat-icon><span>Logout</span></button>
-        </mat-menu>
-
-      </div>
-    </mat-toolbar>
-  `
+    /* Color Palette */ 
+    .palette-grid { min-width: 200px; } 
+    .color-dot { 
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; 
+      transition: transform 0.2s, border-color 0.2s; 
+    } 
+    .color-dot:hover { transform: scale(1.1); } 
+    .color-dot.active { border-color: var(--sys-on-surface); box-shadow: 0 0 0 2px var(--sys-surface); } 
+    
+    /* Action Buttons */ 
+    .action-btn { border-color: var(--sys-surface-border); color: var(--sys-primary); } 
+  `] 
 }) 
 export class ToolbarComponent { 
-  readonly store = inject(DashboardStore); 
-  readonly askDataService = inject(AskDataService); 
-  readonly authService = inject(AuthService); 
-  readonly themeService = inject(ThemeService); 
-  readonly router = inject(Router); 
+  public readonly store = inject(DashboardStore); 
+  public readonly askDataService = inject(AskDataService); 
+  public readonly authService = inject(AuthService); 
+  public readonly themeService = inject(ThemeService); 
+  public readonly router = inject(Router); 
   private readonly dialog = inject(MatDialog); 
 
-  userInitials(): string { 
-    const email = this.authService.currentUser()?.email; 
-    return email ? email.substring(0, 2).toUpperCase() : '??'; 
-  } 
+  /** 
+   * Preset Seeds for Theme Generation. 
+   * Includes: 
+   * - Material Blue (#1565c0) 
+   * - Deep Purple (#7b1fa2) 
+   * - Teal (#00796b) 
+   * - Red (#c62828) 
+   * - Orange (#ef6c00) 
+   */ 
+  readonly presetColors = [ 
+    '#1565c0', 
+    '#7b1fa2', 
+    '#00796b', 
+    '#c62828', 
+    '#ef6c00' 
+  ]; 
 
-  logout(): void { this.authService.logout(); } 
+  /** Signal indicating if the current view is a Dashboard Detail page. */ 
+  readonly isDashboardRoute = toSignal( 
+    this.router.events.pipe( 
+      filter(e => e instanceof NavigationEnd), 
+      map(() => this.router.url.includes('/dashboard/')) 
+    ), 
+    { initialValue: false } 
+  ); 
+
+  /** 
+   * Logs out the user. 
+   */ 
+  logout(): void { 
+    this.authService.logout(); 
+  } 
   
+  /** 
+   * Opens the Widget Builder Dialog for the current dashboard. 
+   */ 
   openWidgetBuilder(): void { 
     const currentDash = this.store.dashboard(); 
     if (!currentDash) return; 
@@ -174,6 +163,28 @@ export class ToolbarComponent {
       panelClass: 'no-padding-dialog', 
       disableClose: true 
     }); 
-    ref.afterClosed().subscribe((res: boolean) => { if (res) this.store.loadDashboard(currentDash.id); }); 
+    
+    ref.afterClosed().subscribe((res: boolean) => { 
+      if (res) this.store.loadDashboard(currentDash.id); 
+    }); 
+  } 
+
+  /** 
+   * Updates the global application theme seed color. 
+   * @param {string} hex - Color hex code. 
+   */ 
+  updateTheme(hex: string): void { 
+    this.themeService.setSeedColor(hex); 
+  } 
+
+  /** 
+   * Handles native color input changes for custom seeds. 
+   * @param {Event} event - Input Event. 
+   */ 
+  onColorPickerChange(event: Event): void { 
+    const input = event.target as HTMLInputElement; 
+    if (input.value) { 
+      this.updateTheme(input.value); 
+    } 
   } 
 }

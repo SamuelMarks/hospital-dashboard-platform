@@ -2,7 +2,10 @@
 :host { 
   display: flex; 
   flex-direction: column; 
-  min-height: 100vh; 
+  /* CHANGE: Using percentage height instead of viewport height because it is now wrapped in App flex container */
+  height: 100%; 
+  /* Ensure min-height resets so it doesn't overflow parent */
+  min-height: 0; 
   background-color: var(--sys-background); 
 } 
 
@@ -21,7 +24,6 @@
   padding: 16px; 
   box-sizing: border-box; 
   height: 100%; 
-  /* Center grid content inside viewport */ 
   display: flex; 
   flex-direction: column; 
 } 
@@ -35,11 +37,10 @@
 
 /* TV Mode Override */ 
 .tv-view { 
-  overflow: hidden; /* Prevent scrolling in kiosk mode */ 
+  overflow: hidden; 
   padding: 24px; 
 } 
 
-/* grid-template-columns: repeat(12, 1fr) establishes a 12-column grid system */ 
 .dashboard-grid { 
   display: grid; 
   grid-template-columns: repeat(12, minmax(0, 1fr)); 
@@ -48,7 +49,6 @@
   align-items: start; 
 } 
 
-/* Grid Item container */ 
 .grid-item { 
   position: relative; 
   min-width: 0; 
@@ -62,7 +62,6 @@
 .item-draggable { cursor: grab; } 
 .item-draggable:active { cursor: grabbing; } 
 
-/* CDK Drag & Drop Visuals */ 
 .cdk-drag-preview { 
   box-sizing: border-box; 
   border-radius: 8px; 
@@ -72,7 +71,6 @@
   z-index: 10000; 
 } 
 
-/* Placeholders must be visible blocks for grid flow */ 
 .drag-placeholder { 
   background: rgba(0, 0, 0, 0.05); 
   border: 2px dashed var(--sys-primary); 
@@ -87,7 +85,6 @@
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); 
 } 
 
-/* Resizer Handle */ 
 .resize-handle { 
   position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; 
   cursor: nwse-resize; z-index: 20; display: none; 
@@ -98,7 +95,6 @@
 } 
 .grid-item:hover .resize-handle { display: block; } 
 
-/* Empty State / Ghost Loading */ 
 .ghost-grid { 
   display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; padding-bottom: 24px; 
 } 
@@ -107,7 +103,6 @@
 } 
 .h-2 { height: 320px; } 
 
-/* --- Focus Overlay --- */ 
 .focus-overlay { 
   position: fixed; inset: 0; z-index: 10000; background-color: rgba(0, 0, 0, 0.85); 
   backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 32px; 
@@ -117,7 +112,6 @@
   border-radius: 8px; box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14); overflow: hidden; position: relative; 
 } 
 
-/* TV Header */ 
 .tv-carousel-header { 
   padding: 24px; background: var(--sys-surface); border-bottom: 4px solid var(--sys-primary); 
   display: flex; justify-content: space-between; align-items: center; 
@@ -125,7 +119,6 @@
 .tv-dashboard-title { font-size: 2.5rem; font-weight: 300; color: var(--sys-text-primary); } 
 .tv-last-updated { font-size: 1rem; color: var(--sys-text-secondary); font-family: monospace; } 
 
-/* Responsive */ 
 @media (max-width: 1024px) { 
   .dashboard-grid { grid-template-columns: repeat(2, 1fr); } 
   .grid-item { grid-column: span 1 !important; } 

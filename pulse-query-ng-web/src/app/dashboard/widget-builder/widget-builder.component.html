@@ -116,7 +116,7 @@
             <button 
               mat-flat-button 
               color="primary" 
-              (click)="initializeDraft()" 
+              (click)="initializeDraft(stepper)" 
               [disabled]="isBusy() || (!selectedTemplateId() && !selectedCustomType())" 
             >
               @if (isBusy()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
@@ -173,6 +173,7 @@
                   [dashboardId]="data.dashboardId" 
                   [widgetId]="widget.id" 
                   [initialSql]="widget.config['query']" 
+                  (sqlChange)="onSqlChange($event)" 
                   class="h-full block" 
                 ></app-sql-builder>
               </div>
@@ -192,6 +193,7 @@
                   [dashboardId]="data.dashboardId" 
                   [widgetId]="widget.id" 
                   [initialConfig]="widget.config" 
+                  (configChange)="onConfigChange($event)" 
                   class="h-full block" 
                 ></app-http-config>
               </div>
@@ -210,6 +212,7 @@
                   [dashboardId]="data.dashboardId" 
                   [widgetId]="widget.id" 
                   [initialContent]="widget.config['content']" 
+                  (contentChange)="onContentChange($event)" 
                   class="h-full block" 
                 ></app-text-editor>
               </div>
@@ -244,6 +247,7 @@
               <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Chart Type</label>
               <div class="grid grid-cols-3 gap-2 mb-6">
                 @for (v of visualizations; track v.id) { 
+                  <!-- Fix: Added text label inside the option for easier identification and E2E targeting -->
                   <div 
                     class="viz-option" 
                     [class.selected]="draftWidget()?.visualization === v.id" 
@@ -251,6 +255,7 @@
                     [matTooltip]="v.label" 
                   >
                     <mat-icon>{{ v.icon }}</mat-icon>
+                    <div class="text-xs mt-1 truncate">{{ v.label }}</div>
                   </div>
                 } 
               </div>

@@ -1,13 +1,9 @@
 /** 
  * @fileoverview Filter Ribbon Component. 
  * 
- * A persistent sub-header that houses data manipulation controls. 
- * Separates "Data Context" (Date Range, Department) from "Application Context" (Navigation, Settings). 
- * 
- * Features: 
- * - Date Range Picker (Start/End). 
- * - Department Dropdown. 
- * - Syncs state with URL Query Parameters. 
+ * **Updates**: 
+ * - Switched container to `MatToolbar` for standard Material container behavior. 
+ * - Standardized spacing and alignment using M3 density properties. 
  */ 
 
 import { Component, ChangeDetectionStrategy, inject, OnInit, OnDestroy } from '@angular/core'; 
@@ -16,7 +12,8 @@ import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router'; 
 import { Subject, takeUntil } from 'rxjs'; 
 
-// Material Imports
+// Material Imports 
+import { MatToolbarModule } from '@angular/material/toolbar'; 
 import { MatFormFieldModule } from '@angular/material/form-field'; 
 import { MatSelectModule } from '@angular/material/select'; 
 import { MatInputModule } from '@angular/material/input'; 
@@ -36,6 +33,7 @@ import { DashboardStore } from './dashboard.store';
   imports: [ 
     CommonModule, 
     ReactiveFormsModule, 
+    MatToolbarModule, 
     MatFormFieldModule, 
     MatSelectModule, 
     MatInputModule, 
@@ -45,65 +43,99 @@ import { DashboardStore } from './dashboard.store';
   ], 
   providers: [provideNativeDateAdapter()], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
-  templateUrl: './filter-ribbon.component.html', 
+  template: `
+    <!-- MatToolbar acts as the surface container -->
+    <mat-toolbar class="filter-toolbar">
+      
+      <!-- Label Section -->
+      <div class="filter-label">
+        <mat-icon class="text-secondary icon-small">filter_list</mat-icon>
+        <span class="label-text">Data Filters</span>
+      </div>
+
+      <div class="filter-group">
+        <!-- 1. Department -->
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" density="compact" class="ribbon-field">
+          <mat-label>Department</mat-label>
+          <mat-select [formControl]="deptControl" placeholder="All Departments">
+            <mat-option [value]="null">All Departments</mat-option>
+            <mat-option value="Cardiology">Cardiology</mat-option>
+            <mat-option value="Neurology">Neurology</mat-option>
+            <mat-option value="Orthopedics">Orthopedics</mat-option>
+            <mat-option value="Emergency">Emergency</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- 2. Date Range -->
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" density="compact" class="date-field">
+          <mat-label>Reporting Period</mat-label>
+          <mat-date-range-input [rangePicker]="picker" separator=" – ">
+            <input 
+              matStartDate 
+              placeholder="Start" 
+              [formControl]="startDate" 
+              (dateChange)="onDateChange()" 
+              aria-label="Start Date" 
+            >
+            <input 
+              matEndDate 
+              placeholder="End" 
+              [formControl]="endDate" 
+              (dateChange)="onDateChange()" 
+              aria-label="End Date" 
+            >
+          </mat-date-range-input>
+          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-date-range-picker #picker></mat-date-range-picker>
+        </mat-form-field>
+
+        <!-- 3. Clear Action -->
+        @if (store.globalParams()['dept'] || store.globalParams()['start_date']) { 
+          <button 
+            mat-button 
+            color="warn" 
+            (click)="clearFilters()" 
+            aria-label="Clear all filters" 
+          >
+            <mat-icon>highlight_off</mat-icon> Clear
+          </button>
+        } 
+      </div>
+
+    </mat-toolbar>
+  `, 
   styles: [`
-    :host { 
-      display: block; 
-      position: sticky; 
-      top: 64px; /* Height of the main toolbar */ 
-      z-index: 900; 
+    :host { display: block; position: sticky; top: 0; z-index: 900; } 
+    
+    .filter-toolbar { 
       background-color: var(--sys-background); 
       border-bottom: 1px solid var(--sys-surface-border); 
-      padding: 12px 24px; 
-      transition: top 0.2s, background-color 0.3s; 
-    } 
-
-    .ribbon-container { 
+      height: 56px; 
+      padding: 0 24px; 
       display: flex; 
+      gap: 24px; 
       align-items: center; 
-      gap: 16px; 
-      flex-wrap: wrap; 
-      max-width: 1920px; 
-      margin: 0 auto; 
     } 
 
     .filter-label { 
-      font-size: 11px; 
-      font-weight: 600; 
-      text-transform: uppercase; 
-      color: var(--sys-text-secondary); 
-      margin-right: 8px; 
-      display: flex; 
-      align-items: center; 
-      gap: 4px; 
+      display: flex; align-items: center; gap: 8px; user-select: none; 
+    } 
+    .label-text { 
+      font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--sys-text-secondary); 
+    } 
+    .icon-small { font-size: 18px; width: 18px; height: 18px; } 
+    .text-secondary { color: var(--sys-text-secondary); } 
+
+    .filter-group { 
+      display: flex; align-items: center; gap: 12px; height: 100%; 
     } 
 
-    /* Compact Form Fields for Ribbon Density */ 
-    .ribbon-field { 
-      font-size: 13px; 
-      min-width: 160px; 
-    } 
-    .date-field { 
-      min-width: 240px; 
-    } 
-
-    /* Material Overrides for Density - using ::ng-deep to penetrade encapsulated view styles 
-       Ideally moved to global styles if used frequently, but specific to this ribbon layout */ 
-    ::ng-deep .ribbon-field .mat-mdc-text-field-wrapper, 
-    ::ng-deep .date-field .mat-mdc-text-field-wrapper { 
-      height: 40px; 
-      padding-top: 0; 
-      background-color: var(--sys-surface); 
-    } 
-    ::ng-deep .ribbon-field .mat-mdc-form-field-flex, 
-    ::ng-deep .date-field .mat-mdc-form-field-flex { 
-      height: 40px; 
-      align-items: center; 
-    } 
-    ::ng-deep .ribbon-field .mat-mdc-form-field-subscript-wrapper, 
-    ::ng-deep .date-field .mat-mdc-form-field-subscript-wrapper { 
-      display: none; /* Hide hint/error spacing for tight layout */ 
-    } 
+    /* Compact Field Widths */ 
+    .ribbon-field { min-width: 180px; font-size: 13px; } 
+    .date-field { min-width: 240px; font-size: 13px; } 
+    
+    /* Override internal spacing for compactness in toolbar */ 
+    ::ng-deep .mat-mdc-form-field-flex { align-items: center !important; } 
   `] 
 }) 
 export class FilterRibbonComponent implements OnInit, OnDestroy { 
@@ -114,28 +146,22 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   
   private readonly destroy$ = new Subject<void>(); 
 
-  // Form Controls
-  /** Control for Start Date of the range. */ 
+  // Form Controls 
   readonly startDate = new FormControl<Date | null>(null); 
-  /** Control for End Date of the range. */ 
   readonly endDate = new FormControl<Date | null>(null); 
-  /** Control for Department Selection. */ 
   readonly deptControl = new FormControl<string | null>(null); 
 
   ngOnInit(): void { 
-    // 1. Sync Controls from URL Params on Load/Change
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(params => { 
       const start = params.get('start_date'); 
       const end = params.get('end_date'); 
       const dept = params.get('dept'); 
 
-      // Use { emitEvent: false } to prevent cyclical navigation loops
       if (start) this.startDate.setValue(new Date(start), { emitEvent: false }); 
       if (end) this.endDate.setValue(new Date(end), { emitEvent: false }); 
       this.deptControl.setValue(dept || null, { emitEvent: false }); 
     }); 
 
-    // 2. Listen for Dept Changes -> Navigate
     this.deptControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(val => { 
       this.updateFilter('dept', val); 
     }); 
@@ -146,10 +172,6 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     this.destroy$.complete(); 
   } 
 
-  /** 
-   * Handler for Date Range Picker separation changes. 
-   * Navigates only when both Start and End values are valid. 
-   */ 
   onDateChange(): void { 
     const s = this.startDate.value; 
     const e = this.endDate.value; 
@@ -166,9 +188,6 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     } 
   } 
 
-  /** 
-   * Clears all active filters via navigation. 
-   */ 
   clearFilters(): void { 
     this.router.navigate([], { 
       relativeTo: this.route, 
@@ -176,18 +195,11 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
       queryParamsHandling: 'merge' 
     }); 
     
-    // Reset form controls
     this.startDate.reset(); 
     this.endDate.reset(); 
     this.deptControl.reset(); 
   } 
 
-  /** 
-   * Generic navigation helper for updating a single query param. 
-   * 
-   * @param {string} key - Query Parameter Key. 
-   * @param {any} value - The value to set (null removes it). 
-   */ 
   private updateFilter(key: string, value: any): void { 
     this.router.navigate([], { 
       relativeTo: this.route, 
@@ -196,12 +208,6 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     }); 
   } 
 
-  /** 
-   * Utility: Format Date object to YYYY-MM-DD. 
-   * 
-   * @param {Date} d - The date to format. 
-   * @returns {string} ISO date string. 
-   */ 
   private formatDate(d: Date): string { 
     return d.toISOString().split('T')[0]; 
   } 

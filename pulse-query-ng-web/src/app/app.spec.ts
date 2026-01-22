@@ -1,6 +1,6 @@
 /** 
  * @fileoverview Unit tests for the App Root Component. 
- * Verifies layout structure, dependency injection, and interaction with the Sidebar service. 
+ * Includes manual mocking of @material/material-color-utilities. 
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
@@ -11,6 +11,17 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { App } from './app'; 
 import { AskDataComponent } from './global/ask-data.component'; 
 import { AskDataService } from './global/ask-data.service'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 /** 
  * Mock Child Component to avoid rendering the heavy AskData logic during root tests. 
@@ -41,7 +52,7 @@ describe('App', () => {
     await TestBed.configureTestingModule({ 
       imports: [App, NoopAnimationsModule], 
       providers: [ 
-        { provide: AskDataService, useValue: mockAskDataService },
+        { provide: AskDataService, useValue: mockAskDataService }, 
         // Provide Router to satisfy ActivatedRoute dependency in App component
         provideRouter([]) 
       ] 

@@ -5,6 +5,17 @@ import { signal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { By } from '@angular/platform-browser'; 
 import { VizChartComponent } from '../../shared/visualizations/viz-chart/viz-chart.component'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 describe('ScenarioEditorComponent', () => { 
   let component: ScenarioEditorComponent; 

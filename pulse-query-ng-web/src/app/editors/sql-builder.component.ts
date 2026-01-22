@@ -49,16 +49,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { DashboardsService, ExecutionService, WidgetUpdate, SchemaService } from '../api-client'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
 import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-table/viz-table.component'; 
+import { ConversationComponent } from '../chat/conversation/conversation.component'; 
+import { ChatStore } from '../chat/chat.store'; 
 
-/** 
- * SQL Editor Component. 
- * 
- * Replaces the basic specific syntax highlighter with a full CodeMirror 6 instance. 
- * Handles bidirectional binding between the EditorView and the `currentSql` signal. 
- * 
- * **Update**: Implements Schema-Aware Autocomplete by fetching metadata from 
- * `SchemaService` and reconfiguring the CodeMirror `sql()` extension dynamically. 
- */ 
 @Component({ 
   selector: 'app-sql-builder', 
   imports: [ 
@@ -70,8 +63,11 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
     MatProgressSpinnerModule, 
     MatMenuModule, 
     MatTooltipModule, 
-    VizTableComponent
+    VizTableComponent, 
+    ConversationComponent
   ], 
+  // PROVIDE CHAT STORE so that ConversationComponent (which injects it) works. 
+  providers: [ChatStore], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`
     :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; min-height: 0; } 
@@ -100,7 +96,9 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
       background-color: #fce4ec; color: #c62828; padding: 8px 12px; font-size: 13px; 
       border-left: 4px solid #c62828; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 8px; 
     } 
-    .ai-placeholder { background-color: var(--sys-surface); color: var(--sys-text-secondary); } 
+    .ai-wrapper { 
+      height: 100%; width: 100%; overflow: hidden; 
+    } 
   `], 
   template: `
     <div class="wrapper">
@@ -171,10 +169,10 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
           </div>
         </mat-tab>
 
-        <!-- AI Tab -->
+        <!-- AI Tab: Implements the Conversation UI requirements -->
         <mat-tab label="AI Assistant">
-           <div class="p-4 flex flex-col h-full overflow-hidden ai-placeholder">
-             <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">AI Integration Placeholder</div>
+           <div class="ai-wrapper">
+             <app-conversation class="h-full"></app-conversation>
            </div>
         </mat-tab>
 
@@ -191,6 +189,9 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly dashboardId = input.required<string>(); 
   readonly widgetId = input.required<string>(); 
   readonly initialSql = input<string>(''); 
+  /** Optional: Set which tab opens by default. 0=Code, 1=AI */
+  readonly initialTab = input<number>(0); 
+  
   readonly sqlChange = output<string>(); 
 
   readonly currentSql = model<string>(''); 
@@ -206,12 +207,12 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   // CodeMirror References
   @ViewChild('editorHost') editorHost!: ElementRef<HTMLDivElement>; 
   private editorView?: EditorView; 
-  
-  // Compartment to allow dynamic reconfiguration of extensions
   private languageConf = new Compartment(); 
 
   ngOnInit() { 
     if (this.initialSql()) this.currentSql.set(this.initialSql()); 
+    // Initialize tab selection from input
+    this.selectedTabIndex.set(this.initialTab()); 
   } 
 
   ngAfterViewInit(): void { 
@@ -259,26 +260,17 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     }); 
   } 
 
-  /** 
-   * Fetches the database schema and updates CodeMirror's autocomplete configuration. 
-   */ 
   private loadSchemaForAutocomplete(): void { 
     this.schemaApi.getDatabaseSchemaApiV1SchemaGet().subscribe({ 
       next: (tables) => { 
         if (!this.editorView) return; 
-
-        // Transform backend format to CodeMirror schema object
-        // Format: { [tableName]: [col1, col2, ...] } 
         const schemaConfig: { [key: string]: string[] } = {}; 
-        
         tables.forEach(t => { 
           schemaConfig[t.table_name] = t.columns.map(c => c.name); 
         }); 
-
-        // Reconfigure the SQL language extension with schema knowledge
         this.editorView.dispatch({ 
           effects: this.languageConf.reconfigure(sql({ 
-            dialect: PostgreSQL, // Analysis syntax resembles PG
+            dialect: PostgreSQL, 
             schema: schemaConfig, 
             upperCaseKeywords: true
           })) 
@@ -288,36 +280,24 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     }); 
   } 
 
-  /** 
-   * Inserts text at the current cursor position in the editor. 
-   */ 
   insertParam(key: string): void { 
     const token = `{{${key}}}`; 
-    
     if (this.editorView) { 
       const state = this.editorView.state; 
       const range = state.selection.main; 
-      
       this.editorView.dispatch({ 
         changes: { from: range.from, to: range.to, insert: token }, 
         selection: { anchor: range.from + token.length } 
       }); 
-      // Focus back 
       this.editorView.focus(); 
     } else { 
-      // Fallback if view not ready
       this.currentSql.update(current => current + ' ' + token); 
     } 
   } 
 
-  /** 
-   * Pre-processes the SQL to inject current global parameter values 
-   * BEFORE sending to the backend for execution/storage. 
-   */ 
   private injectParameters(sqlTemplate: string): string { 
     let processed = sqlTemplate; 
     const params = this.globalParams(); 
-    
     Object.entries(params).forEach(([key, val]) => { 
       const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'); 
       processed = processed.replace(regex, String(val)); 
@@ -336,12 +316,11 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({ 
         next: () => { 
           this.sqlChange.emit(this.currentSql()); 
-          
           this.executionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId()) 
             .pipe(finalize(() => this.isRunning.set(false))) 
             .subscribe({ 
               next: (map) => this.latestResult.set(map[this.widgetId()] as TableDataSet), 
-              error: () => { /* Interceptor handles global notification */ } 
+              error: () => { } 
             }); 
         }, 
         error: (err: HttpErrorResponse) => { 

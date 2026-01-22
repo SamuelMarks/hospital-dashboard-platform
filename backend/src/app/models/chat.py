@@ -9,7 +9,7 @@ AI Agent, allowing context retention and SQL snippet tracking.
 import uuid
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy import String, Text, DateTime, ForeignKey, func
+from sqlalchemy import String, Text, DateTime, ForeignKey, func, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.postgres import Base
@@ -66,6 +66,7 @@ class Message(Base):
       sql_snippet (Optional[str]): If the assistant generated SQL, it is stored
           separately here for easy extraction and execution by the UI.
       created_at (datetime): Message timestamp.
+      candidates (List[MessageCandidate]): Alternative responses for Arena voting.
   """
 
   __tablename__ = "messages"
@@ -79,7 +80,32 @@ class Message(Base):
 
   # Relationships
   conversation: Mapped["Conversation"] = relationship("Conversation", back_populates="messages")
+  candidates: Mapped[List["MessageCandidate"]] = relationship(
+    "MessageCandidate", back_populates="message", cascade="all, delete-orphan", lazy="selectin"
+  )
 
   def __repr__(self) -> str:
     """Return distinct string representation."""
     return f"<Message {self.role}: {self.content[:20]}...>"
+
+
+class MessageCandidate(Base):
+  """
+  Represents one of the multiple LLM responses generated for an assistant message
+  in the Arena mode. Users vote on these to select the 'winner'.
+  """
+
+  __tablename__ = "message_candidates"
+
+  id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+  message_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("messages.id"), nullable=False, index=True)
+  model_name: Mapped[str] = mapped_column(String, nullable=False)
+  content: Mapped[str] = mapped_column(Text, nullable=False)
+  sql_snippet: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  is_selected: Mapped[bool] = mapped_column(Boolean, default=False)
+
+  message: Mapped["Message"] = relationship("Message", back_populates="candidates")
+
+  def __repr__(self) -> str:
+    """Return string rep."""
+    return f"<Candidate {self.model_name} for Msg {self.message_id}>"

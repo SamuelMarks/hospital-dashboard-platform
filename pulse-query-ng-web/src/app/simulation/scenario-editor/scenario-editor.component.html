@@ -1,71 +1,102 @@
 <div class="scenario-layout">
   
+  <!-- LEFT: Configuration Pane -->
   <div class="config-pane mat-elevation-z2">
-    <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
-      <mat-icon class="text-primary">tune</mat-icon> 
-      Configuration
-    </h2>
-
-    <div class="section">
-      <h3 class="section-title">Unit Capacities (Beds)</h3>
-      <!-- ... (Capacities List) -->
-      <div class="capacity-list">
-        @for (unit of units(); track unit) { 
-          <div class="capacity-row">
-            <span class="unit-label">{{ unit }}</span>
-            <div class="slider-group">
-              <mat-slider min="0" max="50" step="1" discrete showTickMarks>
-                <input matSliderThumb [value]="getCapacity(unit)" (valueChange)="setCapacity(unit, $event)">
-              </mat-slider>
-              <span class="val-badge">{{ getCapacity(unit) }}</span>
-            </div>
-          </div>
-        } 
-      </div>
+    <div class="pane-header">
+      <h2 class="text-lg font-bold flex items-center gap-2 m-0" style="color: var(--sys-text-primary)">
+        <mat-icon color="primary">tune</mat-icon> 
+        Configuration
+      </h2>
     </div>
 
-    <!-- NEW: Constraints UI -->
-    <div class="section mt-6 border-t pt-4">
-      <h3 class="section-title flex justify-between items-center">
-        Constraints
-        <button mat-icon-button color="primary" (click)="addConstraint()" matTooltip="Add Rule"><mat-icon>add_circle</mat-icon></button>
-      </h3>
-      
-      <div class="constraints-list flex flex-col gap-2">
-        @for (c of constraints(); track $index) { 
-          <div class="constraint-card p-2 bg-gray-50 border rounded text-xs flex flex-col gap-2 relative">
-            <button mat-icon-button class="absolute top-0 right-0 scale-75 text-gray-400" (click)="removeConstraint($index)"><mat-icon>close</mat-icon></button>
-            <div class="font-bold text-gray-600">Force Flow</div>
-            
-            <div class="grid grid-cols-2 gap-2">
-              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                <mat-label>Service</mat-label>
-                <input matInput [(ngModel)]="c.service" placeholder="Svc">
-              </mat-form-field>
-              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                <mat-label>Unit</mat-label>
-                <input matInput [(ngModel)]="c.unit" placeholder="Unit">
-              </mat-form-field>
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                <mat-label>Min</mat-label>
-                <input matInput type="number" [(ngModel)]="c.min">
-              </mat-form-field>
-              <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                <mat-label>Max</mat-label>
-                <input matInput type="number" [(ngModel)]="c.max">
-              </mat-form-field>
-            </div>
+    <!-- Scrollable Settings Area -->
+    <div class="pane-content">
+      <mat-accordion multi>
+        
+        <!-- SECTION 1: CAPACITIES -->
+        <mat-expansion-panel expanded>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Unit Capacities</mat-panel-title>
+            <mat-panel-description>Bed Counts</mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="capacity-list">
+            @for (unit of units(); track unit) { 
+              <div class="capacity-row">
+                <div class="row-label">
+                  <span class="unit-name">{{ unit }}</span>
+                  <mat-chip class="compact-chip" highlighted>{{ getCapacity(unit) }}</mat-chip>
+                </div>
+                <mat-slider min="0" max="50" step="1" discrete showTickMarks>
+                  <input matSliderThumb 
+                         [value]="getCapacity(unit)" 
+                         (valueChange)="setCapacity(unit, $event)" 
+                         [attr.aria-label]="'Capacity for ' + unit">
+                </mat-slider>
+              </div>
+            } 
           </div>
-        } 
-        @if (constraints().length === 0) { 
-          <div class="text-xs text-gray-400 italic text-center p-2">No active constraints</div>
-        } 
-      </div>
+        </mat-expansion-panel>
+
+        <!-- SECTION 2: CONSTRAINTS -->
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Constraints</mat-panel-title>
+            <mat-panel-description>{{ constraints().length }} Rules</mat-panel-description>
+          </mat-expansion-panel-header>
+
+          <div class="actions-bar mb-2 flex justify-end">
+            <button mat-stroked-button color="primary" (click)="addConstraint()" class="text-xs">
+              <mat-icon>add</mat-icon> Add Rule
+            </button>
+          </div>
+
+          <mat-list class="constraints-list">
+            @for (c of constraints(); track $index) { 
+              <mat-list-item class="constraint-item">
+                <div matListItemTitle class="font-bold text-xs uppercase text-gray-500 mb-1">Force Flow</div>
+                
+                <div matListItemLine class="grid grid-cols-2 gap-2 mb-2">
+                  <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                    <mat-label>Service</mat-label>
+                    <input matInput [(ngModel)]="c.service" placeholder="Svc">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                    <mat-label>Unit</mat-label>
+                    <input matInput [(ngModel)]="c.unit" placeholder="Unit">
+                  </mat-form-field>
+                </div>
+                
+                <div matListItemLine class="grid grid-cols-2 gap-2">
+                  <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                    <mat-label>Min</mat-label>
+                    <input matInput type="number" [(ngModel)]="c.min">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
+                    <mat-label>Max</mat-label>
+                    <input matInput type="number" [(ngModel)]="c.max">
+                  </mat-form-field>
+                </div>
+
+                <div matListItemMeta>
+                  <button mat-icon-button color="warn" (click)="removeConstraint($index)" aria-label="Remove Constraint">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </mat-list-item>
+              <mat-divider></mat-divider>
+            } 
+            @if (constraints().length === 0) { 
+              <div class="empty-list-msg">No active constraints defined.</div>
+            } 
+          </mat-list>
+        </mat-expansion-panel>
+
+      </mat-accordion>
     </div>
 
-    <div class="action-footer mt-auto pt-4">
+    <!-- Sticky Footer Action -->
+    <div class="action-footer">
       <button 
         mat-flat-button 
         color="accent" 
@@ -74,67 +105,90 @@
         [disabled]="store.isRunning()" 
       >
         @if (store.isRunning()) { 
-          <div class="flex items-center justify-center">
-            <mat-spinner diameter="24" class="mr-2"></mat-spinner> Simulating... 
+          <div class="flex items-center justify-center gap-2">
+            <mat-spinner diameter="24" color="accent"></mat-spinner> Optimizing... 
           </div>
         } @else { 
-          <ng-container>
-            <mat-icon>play_circle</mat-icon> Run Simulation
-          </ng-container>
+          <span class="flex items-center gap-2"><mat-icon>play_circle</mat-icon> Run Simulation</span>
         } 
       </button>
     </div>
   </div>
 
-  <div class="results-pane p-6 overflow-y-auto">
-    <!-- ... Results Rendering (unchanged) -->
-    <div class="flex justify-between items-end mb-4">
-      <!-- ... -->
+  <!-- RIGHT: Results Pane -->
+  <div class="results-pane">
+    <!-- Header -->
+    <div class="results-header">
       <div>
-        <h1 class="text-2xl font-light">Scenario Results</h1>
-        <p class="text-gray-500 text-sm">Optimization based on current input parameters.</p>
+        <h1 class="text-2xl font-light m-0">Scenario Results</h1>
+        <p class="text-gray-500 text-sm m-0">Optimization outcomes based on current parameters.</p>
       </div>
       @if (store.results()) { 
-        <div class="kpi-badge">
-          Allocated: <strong>{{ totalAllocated() }}</strong> Patients
-        </div>
+        <mat-chip-set>
+          <mat-chip color="accent" highlighted>
+            <mat-icon matChipAvatar>check_circle</mat-icon>
+            Allocated: {{ totalAllocated() }}
+          </mat-chip>
+        </mat-chip-set>
       } 
     </div>
 
-    @if (store.error()) { 
-      <div class="p-4 bg-red-50 text-red-700 border-l-4 border-red-500 rounded mb-4">
-        <strong>Simulation Error:</strong> {{ store.error() }} 
+    <!-- Error State -->
+    @if (store.error(); as err) { 
+      <div class="p-4 mx-6 mt-4 bg-red-50 text-red-700 border-l-4 border-red-500 rounded flex gap-3 items-center">
+        <mat-icon>error</mat-icon>
+        <div><strong>Simulation Error:</strong> {{ err }}</div>
       </div>
     } 
 
-    <!-- ... Charts/Table ... -->
-    @if (!store.results() && !store.isRunning()) { 
-      <div class="empty-state">
-        <mat-icon class="text-6xl text-gray-300 mb-4">analytics</mat-icon>
-        <p>Adjust parameters and click Run to see optimization results.</p>
-      </div>
-    } @else if (store.isRunning()) { 
-      <div class="empty-state">
-        <mat-spinner diameter="50"></mat-spinner>
-        <p class="mt-4 text-gray-500">Processing Optimization Model...</p>
-      </div>
-    } @else { 
-      <!-- ... Charts ... --> 
-      <div class="grid grid-cols-2 gap-4 mb-4" style="min-height: 250px;">
-        <div class="viz-wrapper mat-elevation-z1 p-2">
-           <h4 class="text-xs font-bold uppercase text-gray-400 mb-1 ml-2">Recommended Allocation</h4>
-           <viz-chart [dataSet]="allocationData()" [config]="{stackBy:'Service', xKey: 'Unit', yKey: 'Patients'}"></viz-chart>
+    <!-- Content Switcher -->
+    <div class="results-content">
+      
+      @if (!store.results() && !store.isRunning()) { 
+        <div class="empty-state">
+          <mat-icon class="text-6xl text-gray-300 mb-4 scale-150">analytics</mat-icon>
+          <p class="text-lg font-medium text-gray-400">Ready to Simulate</p>
+          <p class="text-sm text-gray-400">Adjust capacities and constraints, then click Run.</p>
         </div>
-        <div class="viz-wrapper mat-elevation-z1 p-2">
-           <h4 class="text-xs font-bold uppercase text-gray-400 mb-1 ml-2">Net Deviation</h4>
-           <viz-chart [dataSet]="deviationData()" [config]="{xKey: 'Unit', yKey: 'Delta', stackBy:'Service'}"></viz-chart>
+      } 
+      
+      @else if (store.isRunning()) { 
+        <div class="empty-state">
+          <mat-spinner diameter="60"></mat-spinner>
+          <p class="mt-6 text-gray-500 font-medium">Processing Optimization Model...</p>
         </div>
-      </div>
-      <!-- Table -->
-      <div class="viz-wrapper mat-elevation-z1 flex-grow" style="min-height: 300px;">
-        <h4 class="text-xs font-bold uppercase text-gray-400 p-3 bg-gray-50 border-b">Detailed Assignments</h4>
-        <viz-table [dataSet]="tableData()" class="h-full block w-full"></viz-table>
-      </div>
-    } 
+      } 
+      
+      @else { 
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid-layout">
+          
+          <!-- Chart 1: Allocation -->
+          <div class="viz-card mat-elevation-z1">
+             <div class="viz-header">Recommended Allocation</div>
+             <div class="viz-body">
+               <viz-chart [dataSet]="allocationData()" [config]="{stackBy:'Service', xKey: 'Unit', yKey: 'Patients'}"></viz-chart>
+             </div>
+          </div>
+
+          <!-- Chart 2: Deviations -->
+          <div class="viz-card mat-elevation-z1">
+             <div class="viz-header">Net Deviation</div>
+             <div class="viz-body">
+               <viz-chart [dataSet]="deviationData()" [config]="{xKey: 'Unit', yKey: 'Delta', stackBy:'Service'}"></viz-chart>
+             </div>
+          </div>
+
+          <!-- Table: Detailed Assignments -->
+          <div class="viz-card mat-elevation-z1 full-width">
+            <div class="viz-header">Detailed Assignments</div>
+            <div class="viz-body table-wrapper">
+              <viz-table [dataSet]="tableData()" class="h-full block w-full"></viz-table>
+            </div>
+          </div>
+
+        </div>
+      } 
+    </div>
   </div>
 </div>

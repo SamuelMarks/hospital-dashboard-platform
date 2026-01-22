@@ -5,34 +5,31 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { VizScalarComponent } from './viz-scalar.component'; 
 import { By } from '@angular/platform-browser'; 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { vi } from 'vitest';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
+import { vi } from 'vitest'; 
 
 describe('VizScalarComponent', () => { 
   let component: VizScalarComponent; 
   let fixture: ComponentFixture<VizScalarComponent>; 
 
-  /**
-   * Fix for "TypeError: mql.addListener is not a function" on CI.
-   * Angular Material Tooltips (used in this component) rely on CDK BreakpointObserver.
-   * JSDOM (used by Vitest) does not fully implement matchMedia, especially the deprecated 
-   * `addListener` method which versions of CDK still fall back to.
-   */
-  beforeAll(() => {
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation((query: string) => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addListener: vi.fn(), // Required by CDK/Material legacy support
-        removeListener: vi.fn(),
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
-    });
-  });
+  /** 
+   * Fix for "TypeError: mql.addListener is not a function" on CI. 
+   */ 
+  beforeAll(() => { 
+    Object.defineProperty(window, 'matchMedia', { 
+      writable: true, 
+      value: vi.fn().mockImplementation((query: string) => ({ 
+        matches: false, 
+        media: query, 
+        onchange: null, 
+        addListener: vi.fn(), 
+        removeListener: vi.fn(), 
+        addEventListener: vi.fn(), 
+        removeEventListener: vi.fn(), 
+        dispatchEvent: vi.fn(), 
+      })), 
+    }); 
+  }); 
 
   beforeEach(async () => { 
     await TestBed.configureTestingModule({ 
@@ -56,7 +53,8 @@ describe('VizScalarComponent', () => {
     const valEl = fixture.debugElement.query(By.css('.value-display')); 
     expect(valEl.nativeElement.textContent).toBe('1,000'); 
     
-    expect(fixture.debugElement.query(By.css('.correlation-gauge'))).toBeFalsy(); 
+    // MatProgressBar should NOT be present
+    expect(fixture.debugElement.query(By.css('mat-progress-bar'))).toBeFalsy(); 
   }); 
 
   it('should display correlation context', () => { 
@@ -70,7 +68,8 @@ describe('VizScalarComponent', () => {
     const valEl = fixture.debugElement.query(By.css('.value-display')); 
     expect(valEl.nativeElement.textContent).toBe('0.85'); 
 
-    const gauge = fixture.debugElement.query(By.css('.correlation-gauge')); 
+    // Query for the material component directly as internal class logic might vary
+    const gauge = fixture.debugElement.query(By.css('mat-progress-bar')); 
     expect(gauge).toBeTruthy(); 
     expect(gauge.attributes['role']).toBe('meter'); 
 

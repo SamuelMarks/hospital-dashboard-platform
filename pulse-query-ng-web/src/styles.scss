@@ -1,135 +1,184 @@
-@use '@angular/material' as mat;
-
 /* 
- * ============================================================================
- * CORE THEME CONFIGURATION
- * ============================================================================
- */
-// ... (Existing Theme Code) 
-// [Truncated existing content for brevity, appending new styles]
+ * Main Stylesheet. 
+ * Implements Material Design 3 Styling via Angular Material. 
+ * Overrides hardcoded palette colors with Runtime CSS Variables (--sys-*). 
+ */ 
 
-@include mat.core();
+@use '@angular/material' as mat; 
 
-$light-primary: mat.m2-define-palette(mat.$m2-blue-palette);
-$light-accent:  mat.m2-define-palette(mat.$m2-orange-palette, A200, A100, A400);
-$light-warn:    mat.m2-define-palette(mat.$m2-red-palette);
+// Base Material Core Styles 
+@include mat.core(); 
 
-$light-theme: mat.m2-define-light-theme((
-  color: (
-    primary: $light-primary,
-    accent: $light-accent,
-    warn: $light-warn,
-  ),
-  typography: mat.m2-define-typography-config(),
-  density: 0
-));
+// ------------------------------------------------------------------------- 
+// 1. CORE VARIABLES (Defaults) 
+// These CSS Variables are injected dynamically by ThemeService at runtime. 
+// We define defaults here to prevent FOUC (Flash of Unstyled Content) 
+// before hydration completes. 
+// ------------------------------------------------------------------------- 
+:root { 
+  --sys-primary: #1565c0; 
+  --sys-on-primary: #ffffff; 
+  --sys-primary-container: #dce1ff; 
+  --sys-on-primary-container: #00164d; 
+  
+  --sys-secondary: #585e71; 
+  --sys-on-secondary: #ffffff; 
+  --sys-secondary-container: #dce2f9; 
+  --sys-on-secondary-container: #151b2c; 
 
-$dark-primary: mat.m2-define-palette(mat.$m2-blue-grey-palette, A200);
-$dark-accent:  mat.m2-define-palette(mat.$m2-amber-palette, A200, A100, A400);
-$dark-warn:    mat.m2-define-palette(mat.$m2-red-palette);
+  --sys-tertiary: #735471; 
+  --sys-on-tertiary: #ffffff; 
+  --sys-tertiary-container: #ffd7f9; 
+  --sys-on-tertiary-container: #2b122b; 
 
-$dark-theme: mat.m2-define-dark-theme((
-  color: (
-    primary: $dark-primary,
-    accent: $dark-accent,
-    warn: $dark-warn,
-  )
-));
+  --sys-error: #ba1a1a; 
+  --sys-on-error: #ffffff; 
+  --sys-warn: #ffa000; 
 
-// DEFAULT (LIGHT) THEME VARIABLES
-:root, body.light-theme {
-  @include mat.all-component-themes($light-theme);
-  --sys-background: #f5f5f5;
-  --sys-surface: #ffffff;
-  --sys-surface-border: #e0e0e0;
-  --sys-text-primary: rgba(0, 0, 0, 0.87);
-  --sys-text-secondary: rgba(0, 0, 0, 0.60);
-  --sys-text-hint: rgba(0, 0, 0, 0.38);
-  --sys-hover: rgba(0, 0, 0, 0.04);
-  --sys-selected: rgba(0, 0, 0, 0.08);
-  --sys-focus: rgba(0, 0, 0, 0.12);
-  --sys-primary: #{mat.m2-get-color-from-palette($light-primary)};
-  --sys-accent: #{mat.m2-get-color-from-palette($light-accent)};
-  --sys-warn: #{mat.m2-get-color-from-palette($light-warn)};
-  --chart-color-1: #1976d2;
-  --chart-color-2: #42a5f5;
-  --chart-color-3: #90caf9;
-  --chart-neg: #f44336;
-  --sys-autofill-bg: #ffffff;
-  --sys-autofill-text: #000000;
-}
+  --sys-background: #fdfbff; 
+  --sys-surface: #fdfbff; 
+  --sys-on-surface: #1a1b1f; 
+  
+  --sys-on-background: #1a1b1f; 
+  --sys-surface-variant: #e1e2ec; 
+  --sys-on-surface-variant: #44474f; 
+  --sys-surface-border: #e1e2ec; 
+  --sys-outline: #757780; 
+  --sys-outline-variant: #c4c7d0; 
 
-// DARK THEME OVERRIDES
-body.dark-theme {
-  @include mat.all-component-themes($dark-theme);
-  --sys-background: #121212;
-  --sys-surface: #1e1e1e;
-  --sys-surface-border: #333333;
-  --sys-text-primary: rgba(255, 255, 255, 0.87);
-  --sys-text-secondary: rgba(255, 255, 255, 0.70);
-  --sys-text-hint: rgba(255, 255, 255, 0.38);
-  --sys-hover: rgba(255, 255, 255, 0.04);
-  --sys-selected: rgba(255, 255, 255, 0.08);
-  --sys-focus: rgba(255, 255, 255, 0.12);
-  --sys-primary: #{mat.m2-get-color-from-palette($dark-primary)};
-  --sys-accent: #{mat.m2-get-color-from-palette($dark-accent)};
-  --sys-warn: #{mat.m2-get-color-from-palette($dark-warn)};
-  --chart-color-1: #82b1ff;
-  --chart-color-2: #448aff;
-  --chart-color-3: #2979ff;
-  --chart-neg: #ff5252;
-  --sys-autofill-bg: #424242;
-  --sys-autofill-text: #ffffff;
-}
+  --sys-hover: rgba(26, 27, 31, 0.08); 
+  --sys-selected: rgba(21, 101, 192, 0.12); 
+  --sys-focus: rgba(26, 27, 31, 0.12); 
+  
+  --chart-color-1: #1565c0; 
+  --chart-color-2: #585e71; 
+  --chart-color-3: #735471; 
+  --chart-neg: #ba1a1a; 
+  
+  --sys-autofill-bg: #ffffff; 
+  --sys-autofill-text: #000000; 
+} 
 
-/* 
- * ============================================================================
- * TV KIOSK MODE
- * ============================================================================
- * High-impact overrides for large screen passive viewing.
- */
-body.mode-tv {
-  /* Scale font base: 1.5x standard size (16px * 1.5 = 24px base) */
+// ------------------------------------------------------------------------- 
+// 2. ANGULAR MATERIAL THEME CONFIG 
+// We define a standard M3 theme using strict Sass types. 
+// Uses M3-specific palettes ($azure-palette) and strict M3 typography keys. 
+// ------------------------------------------------------------------------- 
+
+$m3-theme: mat.define-theme(( 
+  color: ( 
+    theme-type: light, 
+    primary: mat.$azure-palette, 
+    tertiary: mat.$violet-palette
+  ), 
+  typography: ( 
+    brand-family: 'Roboto', 
+    plain-family: 'Roboto', 
+    bold-weight: 500, 
+    medium-weight: 400, 
+    regular-weight: 400 
+  ), 
+  density: ( 
+    scale: 0 
+  ) 
+)); 
+
+// Apply the theme to the root 
+html { 
+  @include mat.all-component-themes($m3-theme); 
+  height: 100%; 
+} 
+
+// ------------------------------------------------------------------------- 
+// 3. RUNTIME OVERRIDES 
+// Angular Material writes its own CSS vars (e.g. --mat-sys-primary). 
+// To make the components respect our Runtime `ThemeService`, we override 
+// the Material System Tokens with our `--sys-*` variables. 
+// ------------------------------------------------------------------------- 
+body { 
+  // Map Angular Material System Tokens -> Our Dynamic Runtime Tokens 
+  --md-sys-color-primary: var(--sys-primary); 
+  --md-sys-color-on-primary: var(--sys-on-primary); 
+  --md-sys-color-primary-container: var(--sys-primary-container); 
+  --md-sys-color-on-primary-container: var(--sys-on-primary-container); 
+
+  --md-sys-color-secondary: var(--sys-secondary); 
+  --md-sys-color-on-secondary: var(--sys-on-secondary); 
+  --md-sys-color-secondary-container: var(--sys-secondary-container); 
+  --md-sys-color-on-secondary-container: var(--sys-on-secondary-container); 
+
+  --md-sys-color-tertiary: var(--sys-tertiary); 
+  --md-sys-color-on-tertiary: var(--sys-on-tertiary); 
+  --md-sys-color-tertiary-container: var(--sys-tertiary-container); 
+  --md-sys-color-on-tertiary-container: var(--sys-on-tertiary-container); 
+
+  --md-sys-color-error: var(--sys-error); 
+  --md-sys-color-on-error: var(--sys-on-error); 
+  
+  --md-sys-color-background: var(--sys-background); 
+  --md-sys-color-on-background: var(--sys-on-background); 
+  
+  --md-sys-color-surface: var(--sys-surface); 
+  --md-sys-color-on-surface: var(--sys-on-surface); 
+  --md-sys-color-surface-variant: var(--sys-surface-variant); 
+  --md-sys-color-on-surface-variant: var(--sys-on-surface-variant); 
+  
+  --md-sys-color-outline: var(--sys-outline); 
+  --md-sys-color-outline-variant: var(--sys-outline-variant); 
+
+  // Base setup 
+  margin: 0; 
+  font-family: Roboto, "Helvetica Neue", sans-serif; 
+  background-color: var(--sys-background); 
+  color: var(--sys-on-background); 
+  transition: background-color 0.3s ease, color 0.3s ease; 
+} 
+
+// ------------------------------------------------------------------------- 
+// 4. DISPLAY MODES 
+// ------------------------------------------------------------------------- 
+
+body.mode-tv { 
+  // TV Mode: Scale Typography using Material Tokens 
   font-size: 1.5rem; 
   
-  /* Remove scrollbars for cleaner look on digital signage */
-  ::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-  }
+  // Hide Scrollbars 
+  ::-webkit-scrollbar { width: 0; height: 0; } 
   
-  /* Increase specific widget areas */
-  .mat-headline-2 {
-    font-size: 4rem !important; /* Huge metrics */
-    font-weight: 700 !important;
-  }
+  // Enforce High Contrast Headers 
+  .mat-headline-2, .mat-headline-1 { 
+    font-size: 4rem !important; 
+    font-weight: 700 !important; 
+    letter-spacing: -0.02em; 
+  } 
   
-  .mat-mdc-card-title {
-    font-size: 1.5rem !important;
-  }
+  // Enhance Card Titles 
+  .mat-mdc-card-title { 
+    font-size: 1.75rem !important; 
+    line-height: normal !important; 
+  } 
   
-  /* Enhance contrast for chart bars */
-  .bar, .bar-segment {
-    stroke: var(--sys-background);
-    stroke-width: 1px;
-  }
-}
+  // High Contrast Borders for Charts 
+  .bar, .bar-segment { 
+    stroke: var(--sys-background); 
+    stroke-width: 2px; 
+  } 
+} 
 
-// ... (Rest of existing Utilities)
-@media (forced-colors: active) {
-  // ... (Existing forced colors logic)
-}
-
-html, body { height: 100%; }
-body { 
-  margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; 
-  background-color: var(--sys-background); color: var(--sys-text-primary); 
-  transition: background-color 0.3s ease, color 0.3s ease; 
-}
-// ... (Input resets)
+// ------------------------------------------------------------------------- 
+// 5. GLOBAL FORM CONTROLS 
+// ------------------------------------------------------------------------- 
 input, textarea, select { 
   background-color: transparent; 
-  color: var(--sys-text-primary); 
-  border-color: var(--sys-surface-border); 
+  color: var(--sys-on-surface); 
+  border-color: var(--sys-outline); 
+  caret-color: var(--sys-primary); 
+} 
+
+// Fix for autofill background messing up Dark Mode 
+input:-webkit-autofill, 
+textarea:-webkit-autofill, 
+select:-webkit-autofill { 
+  -webkit-box-shadow: 0 0 0 1000px var(--sys-surface) inset !important; 
+  -webkit-text-fill-color: var(--sys-on-surface) !important; 
 }
-// ... (Helper classes)

@@ -1,121 +1,169 @@
-import { Injectable, signal, computed, inject, PLATFORM_ID, Signal } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+/** 
+ * @fileoverview Runtime Theme Service. 
+ * 
+ * Manages: 
+ * 1. Visual Mode (Light / Dark). 
+ * 2. Display Mode (Standard / TV Kiosk). 
+ * 3. **Color Palette Generation** (M3 Dynamic Colors). 
+ * 
+ * Injects CSS Variables into the document root to update the entire app's look 
+ * instantly without reloading or SCSS recompilation. 
+ */ 
 
-/** Type definition for supported theme modes. */
-export type ThemeMode = 'light' | 'dark';
+import { Injectable, signal, computed, inject, PLATFORM_ID, Signal, EffectRef, effect } from '@angular/core'; 
+import { isPlatformBrowser, DOCUMENT } from '@angular/common'; 
+import { generateThemeVariables, CssVariableMap } from './color-utils'; 
 
-/**
- * Service to manage Application Theme (Light/Dark) and Display Modes (TV/Kiosk).
- *
- * Responsibilities:
- * 1. Toggles specific CSS classes (`light-theme`, `dark-theme`, `mode-tv`) on `document.body`.
- * 2. Persists user preference for Light/Dark mode.
- * 3. Exposes reactive signals (`mode`, `isDark`, `isTvMode`) for components.
- * 4. Automatically detects OS System Preference on first load.
- */
-@Injectable({
-  providedIn: 'root'
-})
-export class ThemeService {
-  private readonly platformId = inject(PLATFORM_ID);
-  private readonly STORAGE_KEY = 'pulse_theme_preference';
+/** Type definition for supported theme visual modes. */ 
+export type ThemeMode = 'light' | 'dark'; 
 
-  /** Internal mutable state signal for color theme. */
-  private readonly _mode = signal<ThemeMode>('light');
+/** Default Seed Color (Material Blue 800 roughly). */ 
+const DEFAULT_SEED = '#1565c0'; 
+const STORAGE_KEY_MODE = 'pulse_theme_mode'; 
+const STORAGE_KEY_SEED = 'pulse_theme_seed'; 
+
+@Injectable({ 
+  providedIn: 'root' 
+}) 
+export class ThemeService { 
+  private readonly platformId = inject(PLATFORM_ID); 
+  private readonly document = inject(DOCUMENT); 
+
+  // --- State Signals --- 
+  private readonly _mode = signal<ThemeMode>('light'); 
+  private readonly _tvMode = signal<boolean>(false); 
+  private readonly _seedColor = signal<string>(DEFAULT_SEED); 
+
+  /** Valid Hex Color for the current theme seed. */ 
+  readonly seedColor: Signal<string> = this._seedColor.asReadonly(); 
   
-  /** Internal mutable state signal for TV Kiosk Mode. */
-  private readonly _tvMode = signal<boolean>(false);
+  /** Current Visual Mode (light/dark). */ 
+  readonly mode: Signal<ThemeMode> = this._mode.asReadonly(); 
+  
+  /** Boolean helper for templates. */ 
+  readonly isDark: Signal<boolean> = computed(() => this._mode() === 'dark'); 
+  
+  /** TV Kiosk Mode active state. */ 
+  readonly isTvMode: Signal<boolean> = this._tvMode.asReadonly(); 
 
-  /** Read-only signal for UI binding. */
-  readonly mode: Signal<ThemeMode> = this._mode.asReadonly();
+  constructor() { 
+    // Hydrate from Storage (Browser only) 
+    if (isPlatformBrowser(this.platformId)) { 
+      this.loadPreferences(); 
+    } 
 
-  /** Read-only signal indicating if Kiosk Mode is active. */
-  readonly isTvMode: Signal<boolean> = this._tvMode.asReadonly();
+    // Reactively update DOM when state changes 
+    effect(() => { 
+      const m = this.mode(); 
+      const seed = this.seedColor(); 
+      const isTv = this.isTvMode(); 
 
-  /** Boolean computed helper for templates (e.g., `[class.dark]="isDark()"`). */
-  readonly isDark: Signal<boolean> = computed(() => this._mode() === 'dark');
+      // Only execute side-effects in browser 
+      if (isPlatformBrowser(this.platformId)) { 
+        this.applyThemeToDom(m, seed, isTv); 
+      } 
+    }); 
+  } 
 
-  constructor() {
-    // Only access DOM/Storage in browser environment (SSR safety)
-    if (isPlatformBrowser(this.platformId)) {
-      this.initializeTheme();
-    }
-  }
+  /** 
+   * Toggles between Light and Dark mode. 
+   */ 
+  toggle(): void { 
+    this._mode.update(current => (current === 'light' ? 'dark' : 'light')); 
+    this.savePreferences(); 
+  } 
 
-  /**
-   * Toggles the active theme between 'light' and 'dark'.
-   */
-  toggle(): void {
-    this._mode.update(current => (current === 'light' ? 'dark' : 'light'));
-    this.applyTheme(this._mode());
-  }
+  /** 
+   * Sets the theme mode explicitly. 
+   * @param {ThemeMode} mode - 'light' or 'dark'. 
+   */ 
+  setMode(mode: ThemeMode): void { 
+    this._mode.set(mode); 
+    this.savePreferences(); 
+  } 
 
-  /**
-   * Sets a specific theme mode explicitly.
-   * @param mode - The desired theme ('light' or 'dark').
-   */
-  setMode(mode: ThemeMode): void {
-    this._mode.set(mode);
-    this.applyTheme(mode);
-  }
+  /** 
+   * Updates the primary seed color for the application. 
+   * Regenerates the entire palette. 
+   * @param {string} hex - The new hex color (e.g. #ff0000). 
+   */ 
+  setSeedColor(hex: string): void { 
+    this._seedColor.set(hex); 
+    this.savePreferences(); 
+  } 
 
-  /**
-   * Activates or Deactivates TV Kiosk Mode.
-   * In TV mode, chrome is hidden and fonts are scaled.
+  /** 
+   * Toggles TV / Kiosk Mode. 
+   * @param {boolean} active - State. 
+   */ 
+  setTvMode(active: boolean): void { 
+    this._tvMode.set(active); 
+    // TV mode forces Dark theme usually 
+    if (active && this._mode() !== 'dark') { 
+      this._mode.set('dark'); 
+    } 
+  } 
+
+  /** 
+   * Loads saved preferences from LocalStorage or detects OS preference. 
+   */ 
+  private loadPreferences(): void { 
+    const savedMode = localStorage.getItem(STORAGE_KEY_MODE) as ThemeMode; 
+    const savedSeed = localStorage.getItem(STORAGE_KEY_SEED); 
+
+    if (savedMode && (savedMode === 'light' || savedMode === 'dark')) { 
+      this._mode.set(savedMode); 
+    } else { 
+      // OS Preference 
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; 
+      this._mode.set(prefersDark ? 'dark' : 'light'); 
+    } 
+
+    if (savedSeed) { 
+      this._seedColor.set(savedSeed); 
+    } 
+  } 
+
+  /** 
+   * Persists current state to LocalStorage. 
+   */ 
+  private savePreferences(): void { 
+    if (!isPlatformBrowser(this.platformId)) return; 
+    localStorage.setItem(STORAGE_KEY_MODE, this._mode()); 
+    localStorage.setItem(STORAGE_KEY_SEED, this._seedColor()); 
+  } 
+
+  /** 
+   * Applies all styling changes to the DOM. 
+   * 1. Generates CSS Custom Properties via ColorUtils. 
+   * 2. Sets Body Classes. 
    * 
-   * @param active - Whether TV mode is on.
-   */
-  setTvMode(active: boolean): void {
-    this._tvMode.set(active);
-    
-    if (isPlatformBrowser(this.platformId)) {
-      const body = document.body;
-      if (active) {
-        body.classList.add('mode-tv');
-        // TV Mode usually implies Dark Theme for better contrast/battery on OLEDs
-        if (this._mode() !== 'dark') this.setMode('dark');
-      } else {
-        body.classList.remove('mode-tv');
-      }
-    }
-  }
+   * @param {ThemeMode} mode - Current mode. 
+   * @param {string} seed - Current seed color. 
+   * @param {boolean} isTv - Is TV mode active. 
+   */ 
+  private applyThemeToDom(mode: ThemeMode, seed: string, isTv: boolean): void { 
+    const body = this.document.body; 
+    const root = this.document.documentElement; 
 
-  /**
-   * Loads preference from storage or falls back to the OS system preference.
-   * Prioritizes:
-   * 1. LocalStorage value.
-   * 2. Window `matchMedia` (prefers-color-scheme).
-   * 3. Default ('light').
-   */
-  private initializeTheme(): void {
-    const saved = localStorage.getItem(this.STORAGE_KEY) as ThemeMode;
-    
-    if (saved && (saved === 'light' || saved === 'dark')) {
-      this.setMode(saved);
-    } else {
-      // Check OS preference
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      this.setMode(prefersDark ? 'dark' : 'light');
-    }
-  }
+    // 1. Classes 
+    if (mode === 'dark') { 
+      body.classList.add('dark-theme'); 
+      body.classList.remove('light-theme'); 
+    } else { 
+      body.classList.add('light-theme'); 
+      body.classList.remove('dark-theme'); 
+    } 
 
-  /**
-   * Applies the theme class to the document body and saves state.
-   * @param mode - The active theme mode.
-   */
-  private applyTheme(mode: ThemeMode): void {
-    // Safety check for SSR or non-DOM environments
-    if (!isPlatformBrowser(this.platformId)) return;
+    if (isTv) body.classList.add('mode-tv'); 
+    else body.classList.remove('mode-tv'); 
 
-    const body = document.body;
-    if (mode === 'dark') {
-      body.classList.add('dark-theme');
-      body.classList.remove('light-theme');
-    } else {
-      body.classList.add('light-theme');
-      body.classList.remove('dark-theme');
-    }
-    
-    localStorage.setItem(this.STORAGE_KEY, mode);
-  }
+    // 2. Generate Palette 
+    const vars: CssVariableMap = generateThemeVariables(seed, mode === 'dark'); 
+
+    // 3. Inject CSS Variables 
+    Object.entries(vars).forEach(([key, value]) => { 
+      root.style.setProperty(key, value); 
+    }); 
+  } 
 }

@@ -93,13 +93,14 @@ import { AuthService } from '../core/auth/auth.service';
       } 
 
       <!-- Builder Instance -->
-      <!-- The builder component naturally fetches schema on init. 
-           We render it immediately once scratchpad ID is known. -->
+      <!-- We render it immediately once scratchpad ID is known. 
+           Passed [initialTab]="1" to default to AI Assistant view for this context. -->
       @if (scratchpadIds(); as ids) { 
          <app-sql-builder
            [dashboardId]="ids.dashboardId" 
            [widgetId]="ids.widgetId" 
            [initialSql]="'SELECT * FROM hospital_data LIMIT 5'" 
+           [initialTab]="1" 
            class="h-full w-full block" 
          ></app-sql-builder>
       } 

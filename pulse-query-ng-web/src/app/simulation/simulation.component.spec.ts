@@ -1,5 +1,6 @@
 /** 
  * @fileoverview Unit tests for SimulationComponent. 
+ * Includes manual mocking of @material/material-color-utilities. 
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
@@ -9,6 +10,17 @@ import { signal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { MatSliderModule } from '@angular/material/slider'; 
 import { By } from '@angular/platform-browser'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 describe('SimulationComponent', () => { 
   let component: SimulationComponent; 

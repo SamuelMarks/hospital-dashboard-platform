@@ -10,12 +10,7 @@ import { vi } from 'vitest';
 
 /** 
  * Global Mock for `window.matchMedia`. 
- * 
- * Required by Angular Material components (e.g., MatTooltip, MatSidenav) that rely on 
- * `@angular/cdk/layout` BreakpointObserver. JSDOM does not implement this API by default. 
- * 
- * We patch `addListener` and `removeListener` as CDK still supports these deprecated methods 
- * for broader browser compatibility. 
+ * Fixes generic Material/CDK component instantiation. 
  */ 
 Object.defineProperty(window, 'matchMedia', { 
   writable: true, 
@@ -23,30 +18,54 @@ Object.defineProperty(window, 'matchMedia', {
     matches: false, 
     media: query, 
     onchange: null, 
-    addListener: vi.fn(), // Deprecated but required by CDK
-    removeListener: vi.fn(), // Deprecated but required by CDK
+    addListener: vi.fn(), 
+    removeListener: vi.fn(), 
     addEventListener: vi.fn(), 
     removeEventListener: vi.fn(), 
     dispatchEvent: vi.fn(), 
   })), 
 }); 
 
-/**
- * Mock Range for CodeMirror 6 in JSDOM.
- * CodeMirror 6 view measurement logic relies on `getClientRects` and `getBoundingClientRect`.
- * JSDOM implementation of Range is incomplete for layout.
- */
-Range.prototype.getClientRects = () => ({
-  item: () => null,
-  length: 0,
-  // Use Array iterator and cast to unknown to bypass TS2418 mismatch with DOMRectList iterator
-  [Symbol.iterator]: [][Symbol.iterator]
-} as unknown as DOMRectList);
+/** 
+ * Mock DOM Rect APIs for CodeMirror 6 in JSDOM. 
+ */ 
+Range.prototype.getClientRects = () => ({ 
+  item: () => null, 
+  length: 0, 
+  [Symbol.iterator]: [][Symbol.iterator] 
+} as unknown as DOMRectList); 
 
-Range.prototype.getBoundingClientRect = () => ({
+Range.prototype.getBoundingClientRect = () => ({ 
   x: 0, y: 0, width: 0, height: 0, top: 0, right: 0, bottom: 0, left: 0, 
-  toJSON: () => {}
-} as DOMRect);
+  toJSON: () => {} 
+} as DOMRect); 
+
+/** 
+ * Mock for @material/material-color-utilities. 
+ * 
+ * CRITICAL FIX: 
+ * We mock the entire module to prevent the test runner from attempting to resolve 
+ * deep internal ESM imports (like `dynamiccolor/dynamic_color`) which fail in JSDOM/Node. 
+ */ 
+vi.mock('@material/material-color-utilities', () => ({ 
+  // Function Stubs
+  argbFromHex: (hex: string) => 0xFFFFFFFF, 
+  hexFromArgb: (argb: number) => '#ffffff', 
+  themeFromSourceColor: (sourceArgb: number) => ({ 
+    schemes: { 
+      // Return Proxies to handle any property access safely
+      light: new Proxy({}, { get: () => 0xFFFFFFFF }), 
+      dark: new Proxy({}, { get: () => 0xFFFFFFFF }) 
+    } 
+  }), 
+  
+  // Class Stubs
+  Scheme: class {}, 
+  Theme: class {}, 
+  
+  // ESM Compatibility
+  __esModule: true
+})); 
 
 // Initialize the Angular testing environment
 TestBed.initTestEnvironment(BrowserDynamicTestingModule, platformBrowserDynamicTesting());

@@ -1,10 +1,22 @@
 /** 
  * @fileoverview Unit tests for VizPieComponent. 
+ * Includes manual mocking of @material/material-color-utilities to resolving import errors in JSDOM. 
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { VizPieComponent } from './viz-pie.component'; 
 import { By } from '@angular/platform-browser'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 describe('VizPieComponent', () => { 
   let component: VizPieComponent; 
@@ -19,8 +31,7 @@ describe('VizPieComponent', () => {
     component = fixture.componentInstance; 
     
     // Initialize required inputs before first Change Detection
-    // This prevents NG0950 error
-    fixture.componentRef.setInput('dataSet', { columns: [], data: [] });
+    fixture.componentRef.setInput('dataSet', { columns: [], data: [] }); 
     
     fixture.detectChanges(); 
   }); 

@@ -4,7 +4,8 @@
 <div class="flex flex-col h-full overflow-hidden">
 
   <mat-dialog-content class="flex-grow">
-    <mat-stepper [linear]="true" #stepper class="h-full">
+    <!-- Fix: disable animation to prevent visibility timeouts in E2E tests -->
+    <mat-stepper [linear]="true" #stepper class="h-full" animationDuration="0ms">
       
       <!-- STEP 1: Selection -->
       <mat-step [stepControl]="selectionForm">
@@ -28,9 +29,9 @@
               </mat-form-field>
 
               <mat-chip-set class="mb-2">
-                @for (cat of categories(); track cat) {
+                @for (cat of categories(); track cat) { 
                   <mat-chip [highlighted]="selectedCategory() === cat" (click)="toggleCategory(cat)">{{ cat }}</mat-chip>
-                }
+                } 
               </mat-chip-set>
 
               @if (loadingTemplates()) { <mat-spinner diameter="40" class="self-center"></mat-spinner> } 
@@ -42,8 +43,8 @@
                     class="template-card mb-2" 
                     [class.selected-card]="selectedTemplateId() === t.id" 
                     (click)="selectTemplate(t)" 
-                    tabindex="0"
-                    (keydown.enter)="selectTemplate(t)"
+                    tabindex="0" 
+                    (keydown.enter)="selectTemplate(t)" 
                   >
                     <mat-card-header>
                       <mat-card-title class="text-sm font-medium">{{ t.title }}</mat-card-title>
@@ -67,7 +68,7 @@
                 formControlName="rawSql" 
                 class="sql-preview h-64 border p-2 font-mono text-sm rounded bg-gray-50" 
                 [placeholder]="placeholderText" 
-                aria-label="SQL Code Editor"
+                aria-label="SQL Code Editor" 
               ></textarea>
             </div>
           } 
@@ -119,11 +120,11 @@
                   <div class="p-4 text-red-600 flex items-center justify-center"><mat-icon>error</mat-icon> {{ res.error }}</div>
                } @else { 
                  <!-- Optimization: Defer loading visualization until this step is reached -->
-                 @defer {
+                 @defer { 
                    <viz-table [dataSet]="asTableData(res)" class="h-full block w-full"></viz-table>
-                 } @loading {
+                 } @loading { 
                    <span>Loading Table...</span>
-                 }
+                 } 
                } 
              } 
           </div>

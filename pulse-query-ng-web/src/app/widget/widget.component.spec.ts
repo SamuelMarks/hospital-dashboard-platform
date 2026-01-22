@@ -1,6 +1,6 @@
 /** 
  * @fileoverview Unit tests for WidgetComponent. 
- * Verifies host binding interaction, visualization switching, loading states, and focus togglin. 
+ * Includes manual mocking of @material/material-color-utilities. 
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
@@ -10,8 +10,18 @@ import { WidgetResponse } from '../api-client';
 import { signal, WritableSignal } from '@angular/core'; 
 import { By } from '@angular/platform-browser'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component'; 
+import { vi } from 'vitest';
+
+// MOCK: @material/material-color-utilities
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xFFFFFFFF,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
 
 describe('WidgetComponent', () => { 
   let component: WidgetComponent; 

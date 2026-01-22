@@ -29,6 +29,20 @@ class MessageCreate(MessageBase):
   pass
 
 
+class MessageCandidateResponse(BaseModel):
+  """
+  DTO for a single Arena Candidate.
+  """
+
+  id: UUID
+  model_name: str
+  content: str
+  sql_snippet: Optional[str] = None
+  is_selected: bool
+
+  model_config = ConfigDict(from_attributes=True)
+
+
 class MessageResponse(MessageBase):
   """
   API Response model for a persisted Message.
@@ -39,9 +53,18 @@ class MessageResponse(MessageBase):
   role: str
   sql_snippet: Optional[str] = None
   created_at: datetime
+  candidates: List[MessageCandidateResponse] = []
 
   # Allow reading from SQLAlchemy ORM models
   model_config = ConfigDict(from_attributes=True)
+
+
+class MessageVoteRequest(BaseModel):
+  """
+  Payload for voting on a candidate.
+  """
+
+  candidate_id: UUID
 
 
 class ConversationBase(BaseModel):
@@ -59,6 +82,14 @@ class ConversationCreate(ConversationBase):
   """
 
   message: Optional[str] = Field(None, description="Initial message to kickstart the chat.")
+
+
+class ConversationUpdate(BaseModel):
+  """
+  Payload for updating conversation metadata (e.g. rename).
+  """
+
+  title: str = Field(..., min_length=1, max_length=100)
 
 
 class ConversationResponse(ConversationBase):
