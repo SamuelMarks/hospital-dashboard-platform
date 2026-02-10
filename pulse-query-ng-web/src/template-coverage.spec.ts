@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync, existsSync, realpathSync } from 'fs';
+import { readdirSync, readFileSync, statSync, existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 type TemplateRef = {
   sourceFile: string;
   templatePath: string;
 };
 
-const appRoot = resolve(process.cwd(), 'src', 'app');
+const specDir = dirname(fileURLToPath(import.meta.url));
+const appRoot = resolve(specDir, 'app');
 
 function walk(dir: string, matcher: (file: string) => boolean, results: string[] = []): string[] {
   const entries = readdirSync(dir);

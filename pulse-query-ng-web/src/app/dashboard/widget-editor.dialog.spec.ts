@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component, input, output, signal } from '@angular/core';
+import { Component, input, output, signal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog';
 import { WidgetResponse, DashboardsService, DashboardResponse } from '../api-client';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -9,6 +9,7 @@ import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { DashboardStore } from './dashboard.store';
 import { of } from 'rxjs';
+import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
   selector: 'app-sql-builder',
@@ -75,6 +76,13 @@ describe('WidgetEditorDialog', () => {
       .overrideComponent(WidgetEditorDialog, {
         remove: { imports: [SqlBuilderComponent, HttpConfigComponent] },
         add: { imports: [MockSqlBuilderComponent, MockHttpConfigComponent] }
+      })
+      .overrideComponent(WidgetEditorDialog, {
+        set: {
+          template: readTemplate('./widget-editor.dialog.html'),
+          templateUrl: null,
+          schemas: [NO_ERRORS_SCHEMA]
+        }
       })
       .compileComponents();
 
@@ -194,14 +202,14 @@ describe('WidgetEditorDialog', () => {
     const spy = vi.spyOn(component, 'handleEditorSave');
     const sqlBuilder = fixture.debugElement.query(By.directive(MockSqlBuilderComponent));
     expect(sqlBuilder).toBeTruthy();
-    sqlBuilder.componentInstance.sqlChange.emit('SELECT 2');
+    sqlBuilder.triggerEventHandler('sqlChange', 'SELECT 2');
     expect(spy).toHaveBeenCalled();
 
     component.data.widget = { ...sqlWidget, type: 'HTTP' } as WidgetResponse;
     fixture.detectChanges();
     const httpConfig = fixture.debugElement.query(By.directive(MockHttpConfigComponent));
     expect(httpConfig).toBeTruthy();
-    httpConfig.componentInstance.configChange.emit({ url: 'http://x' });
+    httpConfig.triggerEventHandler('configChange', { url: 'http://x' });
     expect(spy).toHaveBeenCalledTimes(2);
   });
 

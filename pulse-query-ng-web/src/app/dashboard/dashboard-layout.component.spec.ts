@@ -315,6 +315,7 @@ describe('DashboardLayoutComponent', () => {
       target: handle
     } as any, makeWidget({ config: { w: 6 } as any }));
 
+    document.dispatchEvent(new MouseEvent('mousemove', { clientX: 200 }));
     document.dispatchEvent(new MouseEvent('mouseup', { clientX: 300 }));
 
     expect(spy).toHaveBeenCalledWith(expect.any(Object), 8);

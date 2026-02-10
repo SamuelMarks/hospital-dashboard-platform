@@ -10,6 +10,7 @@ import { By } from '@angular/platform-browser';
 import { MatSidenav } from '@angular/material/sidenav';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
+import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({ selector: 'app-conversation', template: '' }) class MockConv {} 
 
@@ -45,6 +46,9 @@ describe('ChatLayoutComponent', () => {
     }) 
     .overrideComponent(ChatLayoutComponent, { 
       set: { providers: [{ provide: ChatStore, useValue: mockStore }] } 
+    }) 
+    .overrideComponent(ChatLayoutComponent, { 
+      set: { template: readTemplate('./chat-layout.component.html'), templateUrl: null } 
     }) 
     .compileComponents(); 
 

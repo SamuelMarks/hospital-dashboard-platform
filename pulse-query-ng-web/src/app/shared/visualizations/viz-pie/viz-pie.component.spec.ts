@@ -7,6 +7,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, PLATFORM_ID } from '@angular/core';
 import { By } from '@angular/platform-browser'; 
 import { vi } from 'vitest';
+import { VizPieComponent } from './viz-pie.component';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -19,21 +20,17 @@ vi.mock('@material/material-color-utilities', () => ({
 }));
 
 describe('VizPieComponent', () => { 
-  let component: import('./viz-pie.component').VizPieComponent; 
-  let fixture: ComponentFixture<import('./viz-pie.component').VizPieComponent>; 
-  let VizPieComponentCtor: typeof import('./viz-pie.component').VizPieComponent;
+  let component: VizPieComponent; 
+  let fixture: ComponentFixture<VizPieComponent>; 
   let dataSetSig: any;
   let configSig: any;
 
   beforeEach(async () => { 
-    const mod = await import('./viz-pie.component');
-    VizPieComponentCtor = mod.VizPieComponent;
-
     await TestBed.configureTestingModule({ 
-      imports: [VizPieComponentCtor] 
+      imports: [VizPieComponent] 
     }).compileComponents(); 
 
-    fixture = TestBed.createComponent(VizPieComponentCtor); 
+    fixture = TestBed.createComponent(VizPieComponent); 
     component = fixture.componentInstance; 
     dataSetSig = signal({ columns: [], data: [] });
     configSig = signal(undefined);
@@ -184,11 +181,11 @@ describe('VizPieComponent', () => {
   it('should skip palette update when platform is not browser', async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [VizPieComponentCtor],
+      imports: [VizPieComponent],
       providers: [{ provide: PLATFORM_ID, useValue: 'server' }]
     }).compileComponents();
 
-    const serverFixture = TestBed.createComponent(VizPieComponentCtor);
+    const serverFixture = TestBed.createComponent(VizPieComponent);
     const serverComponent = serverFixture.componentInstance;
     (serverComponent as any).dataSet = signal({ columns: [], data: [] });
     (serverComponent as any).config = signal(undefined);

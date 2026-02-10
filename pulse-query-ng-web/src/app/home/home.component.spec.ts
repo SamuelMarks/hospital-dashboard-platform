@@ -11,6 +11,7 @@ import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { of, throwError, Subject } from 'rxjs'; 
 import { AskDataService } from '../global/ask-data.service';
+import { readTemplate } from '../../test-utils/component-resources';
 
 describe('HomeComponent', () => { 
   let component: HomeComponent; 
@@ -66,7 +67,9 @@ describe('HomeComponent', () => {
         providers: [ 
           { provide: MatDialog, useValue: mockDialog },
           { provide: MatSnackBar, useValue: mockSnackBar } 
-        ] 
+        ],
+        template: readTemplate('./home.component.html'),
+        templateUrl: null
       } 
     }) 
     .compileComponents(); 

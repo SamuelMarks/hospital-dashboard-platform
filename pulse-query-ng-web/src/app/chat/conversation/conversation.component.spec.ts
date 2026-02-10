@@ -2,12 +2,28 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ConversationComponent } from './conversation.component'; 
 import { ChatStore } from '../chat.store'; 
 import { AskDataService } from '../../global/ask-data.service'; 
-import { signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core'; 
+import { Component, input, output, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { By } from '@angular/platform-browser'; 
 import { MessageResponse } from '../../api-client'; 
 import { vi } from 'vitest';
 import { SqlSnippetComponent } from './sql-snippet.component';
+import { VizMarkdownComponent } from '../../shared/visualizations/viz-markdown/viz-markdown.component';
+import { readTemplate } from '../../../test-utils/component-resources';
+
+@Component({ selector: 'viz-markdown', template: '' })
+class MockVizMarkdownComponent {
+  readonly content = input<string>('');
+}
+
+@Component({
+  selector: 'app-sql-snippet',
+  template: '<button data-testid="run" (click)="run.emit(sql())"></button>'
+})
+class MockSqlSnippetComponent {
+  readonly sql = input<string>('');
+  readonly run = output<string>();
+}
 
 describe('ConversationComponent', () => { 
   let component: ConversationComponent; 
@@ -34,7 +50,19 @@ describe('ConversationComponent', () => {
         { provide: ChatStore, useValue: mockStore }, 
         { provide: AskDataService, useValue: mockScratchpad } 
       ] 
-    }).compileComponents(); 
+    })
+      .overrideComponent(ConversationComponent, {
+        remove: { imports: [VizMarkdownComponent, SqlSnippetComponent] },
+        add: { imports: [MockVizMarkdownComponent, MockSqlSnippetComponent] }
+      })
+      .overrideComponent(ConversationComponent, {
+        set: {
+          template: readTemplate('./conversation.component.html'),
+          templateUrl: null,
+          schemas: [NO_ERRORS_SCHEMA]
+        }
+      })
+      .compileComponents(); 
 
     fixture = TestBed.createComponent(ConversationComponent); 
     component = fixture.componentInstance; 
@@ -227,7 +255,7 @@ describe('ConversationComponent', () => {
     };
     messagesSig.set([msg]);
     fixture.detectChanges();
-    const snippet = fixture.debugElement.query(By.directive(SqlSnippetComponent));
+    const snippet = fixture.debugElement.query(By.directive(MockSqlSnippetComponent));
     snippet.triggerEventHandler('run', 'SELECT 1');
     expect(mockScratchpad.open).toHaveBeenCalled();
   });

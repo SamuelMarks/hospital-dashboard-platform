@@ -6,9 +6,10 @@ import { DashboardsService, DashboardResponse, WidgetResponse } from '../api-cli
 import { AuthService } from '../core/auth/auth.service';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import { signal, WritableSignal, PLATFORM_ID, Component, input, output } from '@angular/core';
+import { signal, WritableSignal, PLATFORM_ID, Component, input, output, NO_ERRORS_SCHEMA } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
+import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
   selector: 'app-sql-builder',
@@ -82,6 +83,9 @@ describe('AskDataComponent', () => {
     .overrideComponent(AskDataComponent, {
       remove: { imports: [SqlBuilderComponent] },
       add: { imports: [MockSqlBuilderComponent] }
+    })
+    .overrideComponent(AskDataComponent, {
+      set: { template: readTemplate('./ask-data.component.html'), templateUrl: null, schemas: [NO_ERRORS_SCHEMA] }
     })
     .compileComponents();
 
@@ -271,6 +275,9 @@ describe('AskDataComponent', () => {
     .overrideComponent(AskDataComponent, {
       remove: { imports: [SqlBuilderComponent] },
       add: { imports: [MockSqlBuilderComponent] }
+    })
+    .overrideComponent(AskDataComponent, {
+      set: { template: readTemplate('./ask-data.component.html'), templateUrl: null, schemas: [NO_ERRORS_SCHEMA] }
     })
     .compileComponents();
 

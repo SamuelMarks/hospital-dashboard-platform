@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { type WidgetBuilderComponent as WidgetBuilderComponentType } from './widget-builder.component'; 
+import { WidgetBuilderComponent } from './widget-builder.component'; 
 import { DashboardsService, ExecutionService, TemplatesService, WidgetResponse, TemplateResponse } from '../../api-client'; 
 import { DashboardStore } from '../dashboard.store'; 
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog'; 
@@ -28,9 +28,8 @@ const MOCK_DRAFT: WidgetResponse = {
 }; 
 
 describe('WidgetBuilderComponent', () => { 
-  let component: WidgetBuilderComponentType; 
-  let fixture: ComponentFixture<WidgetBuilderComponentType>; 
-  let WidgetBuilderComponentCtor: typeof import('./widget-builder.component').WidgetBuilderComponent;
+  let component: WidgetBuilderComponent; 
+  let fixture: ComponentFixture<WidgetBuilderComponent>; 
   
   let mockDashApi: any; 
   let mockExecApi: any; 
@@ -39,9 +38,6 @@ describe('WidgetBuilderComponent', () => {
   let mockStore: any; 
 
   beforeEach(async () => { 
-    const mod = await import('./widget-builder.component');
-    WidgetBuilderComponentCtor = mod.WidgetBuilderComponent;
-
     mockDashApi = { 
       createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(), 
       updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn(), 
@@ -61,7 +57,7 @@ describe('WidgetBuilderComponent', () => {
     }; 
 
     await TestBed.configureTestingModule({ 
-      imports: [WidgetBuilderComponentCtor, NoopAnimationsModule], 
+      imports: [WidgetBuilderComponent, NoopAnimationsModule], 
       schemas: [NO_ERRORS_SCHEMA],
       providers: [ 
         { provide: DashboardsService, useValue: mockDashApi }, 
@@ -72,12 +68,12 @@ describe('WidgetBuilderComponent', () => {
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1' } } 
       ] 
     })
-    .overrideComponent(WidgetBuilderComponentCtor, {
+    .overrideComponent(WidgetBuilderComponent, {
       set: { template: '<div></div>', schemas: [NO_ERRORS_SCHEMA] }
     })
     .compileComponents(); 
 
-    fixture = TestBed.createComponent(WidgetBuilderComponentCtor); 
+    fixture = TestBed.createComponent(WidgetBuilderComponent); 
     component = fixture.componentInstance; 
     fixture.detectChanges(); 
   }); 

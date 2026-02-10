@@ -6,7 +6,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SqlBuilderComponent } from './sql-builder.component'; 
 import { DashboardsService, ExecutionService, SchemaService, BASE_PATH, ChatService } from '../api-client'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
-import { signal } from '@angular/core';
+import { signal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http'; 
 import { provideHttpClientTesting } from '@angular/common/http/testing'; 
@@ -18,6 +18,7 @@ import { By } from '@angular/platform-browser';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { Component, input } from '@angular/core';
+import { readTemplate } from '../../test-utils/component-resources';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { ConversationComponent } from '../chat/conversation/conversation.component';
 
@@ -273,6 +274,13 @@ describe('SqlBuilderComponent template wiring', () => {
       .overrideComponent(SqlBuilderComponent, {
         remove: { imports: [VizTableComponent, ConversationComponent] },
         add: { imports: [MockVizTableComponent, MockConversationComponent] }
+      })
+      .overrideComponent(SqlBuilderComponent, {
+        set: {
+          template: readTemplate('./sql-builder.component.html'),
+          templateUrl: null,
+          schemas: [NO_ERRORS_SCHEMA]
+        }
       })
       .compileComponents();
 

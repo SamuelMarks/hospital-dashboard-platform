@@ -12,6 +12,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { By } from '@angular/platform-browser'; 
 import { vi } from 'vitest';
 import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
+import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
   selector: 'viz-chart',
@@ -53,7 +54,12 @@ describe('SimulationComponent', () => {
       add: { imports: [MockVizChartComponent] }
     });
     TestBed.overrideComponent(SimulationComponent, {
-      set: { providers: [{ provide: SimulationStore, useValue: mockStore }], schemas: [NO_ERRORS_SCHEMA] }
+      set: {
+        providers: [{ provide: SimulationStore, useValue: mockStore }],
+        schemas: [NO_ERRORS_SCHEMA],
+        template: readTemplate('./simulation.component.html'),
+        templateUrl: null
+      }
     });
 
     await TestBed.configureTestingModule({ 

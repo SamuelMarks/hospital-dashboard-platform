@@ -19,6 +19,7 @@ import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-he
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
+import { readTemplate } from '../../test-utils/component-resources';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 
@@ -114,7 +115,7 @@ describe('WidgetComponent', () => {
       ] 
     })
     .overrideComponent(WidgetComponent, {
-      set: { schemas: [NO_ERRORS_SCHEMA] }
+      set: { schemas: [NO_ERRORS_SCHEMA], template: readTemplate('./widget.component.html'), templateUrl: null }
     })
     .overrideComponent(WidgetComponent, {
       remove: {

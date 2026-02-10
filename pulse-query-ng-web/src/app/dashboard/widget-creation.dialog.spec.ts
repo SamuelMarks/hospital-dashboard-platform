@@ -8,8 +8,9 @@ import { By } from '@angular/platform-browser';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { of, throwError } from 'rxjs';
-import { signal, Component, input, WritableSignal } from '@angular/core';
+import { signal, Component, input, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { vi } from 'vitest';
+import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({ selector: 'app-sql-builder', template: '' })
 class MockSqlBuilder { 
@@ -65,7 +66,15 @@ describe('WidgetCreationDialog', () => {
     .overrideComponent(WidgetCreationDialog, {
       remove: { imports: [SqlBuilderComponent, HttpConfigComponent] },
       add: { imports: [MockSqlBuilder, MockHttpConfig] }
-    }).compileComponents();
+    })
+    .overrideComponent(WidgetCreationDialog, {
+      set: {
+        template: readTemplate('./widget-creation.dialog.html'),
+        templateUrl: null,
+        schemas: [NO_ERRORS_SCHEMA]
+      }
+    })
+    .compileComponents();
 
     fixture = TestBed.createComponent(WidgetCreationDialog);
     component = fixture.componentInstance;

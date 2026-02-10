@@ -193,9 +193,50 @@ describe('QueryCartService', () => {
     });
 
     service.add('SELECT 4');
+    TestBed.flushEffects();
 
     localStorage.setItem = originalSetItem;
     expect(service.count()).toBe(1);
+  });
+
+  it('should persist items to storage', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+    });
+
+    const service = TestBed.inject(QueryCartService) as any;
+    service.persistToStorage([
+      { id: 'q5', title: 'Saved', sql: 'SELECT 5', createdAt: 'c', kind: 'query-cart-item' }
+    ]);
+
+    const stored = localStorage.getItem(STORAGE_KEY);
+    expect(stored).toContain('SELECT 5');
+  });
+
+  it('should treat undefined SQL as empty', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+    });
+
+    const service = TestBed.inject(QueryCartService);
+    const item = service.add(undefined as unknown as string);
+
+    expect(item).toBeNull();
+  });
+
+  it('should not rename when id is missing', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+    });
+
+    const service = TestBed.inject(QueryCartService);
+    const first = service.add('SELECT 1') as QueryCartItem;
+    const second = service.add('SELECT 2') as QueryCartItem;
+
+    service.rename('missing-id', 'New Title');
+
+    const titles = service.items().map(item => item.title);
+    expect(titles).toEqual([second.title, first.title]);
   });
 
   it('should skip storage when not in browser', () => {

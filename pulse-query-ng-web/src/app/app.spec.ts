@@ -4,17 +4,23 @@
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
-import { Component, signal, WritableSignal } from '@angular/core'; 
+import { NO_ERRORS_SCHEMA, PLATFORM_ID, signal, WritableSignal } from '@angular/core'; 
 import { RouterOutlet, provideRouter, ActivatedRoute } from '@angular/router'; 
 import { By } from '@angular/platform-browser'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { type App as AppType } from './app'; 
-import { type AskDataComponent as AskDataComponentType } from './global/ask-data.component'; 
+import { App } from './app'; 
+import { AskDataComponent } from './global/ask-data.component'; 
 import { AskDataService } from './global/ask-data.service'; 
-import { type ThemeService as ThemeServiceType } from './core/theme/theme.service';
-import { type ToolbarComponent as ToolbarComponentType } from './dashboard/toolbar.component';
+import { ThemeService } from './core/theme/theme.service';
+import { ToolbarComponent } from './dashboard/toolbar.component';
+import { DashboardsService } from './api-client';
+import { QueryCartService } from './global/query-cart.service';
+import { AuthService } from './core/auth/auth.service';
+import { DashboardStore } from './dashboard/dashboard.store';
+import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
+import { resolveComponentResourcesForTests } from '../test-utils/component-resources';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -26,30 +32,32 @@ vi.mock('@material/material-color-utilities', () => ({
   __esModule: true
 }));
 
-/** 
- * Mock Child Component to avoid rendering the heavy AskData logic during root tests. 
- */ 
-@Component({ 
-  selector: 'app-ask-data', 
-  template: '<div data-testid="mock-ask-data"></div>' 
-}) 
-class MockAskDataComponent {} 
-
-@Component({
-  selector: 'app-toolbar',
-  template: '<div data-testid="mock-toolbar"></div>'
-})
-class MockToolbarComponent {}
-
 describe('App', () => { 
-  let fixture: ComponentFixture<AppType>; 
-  let component: AppType; 
-  let AppCtor: typeof import('./app').App;
-  let AskDataComponentCtor: typeof import('./global/ask-data.component').AskDataComponent;
-  let ToolbarComponentCtor: typeof import('./dashboard/toolbar.component').ToolbarComponent;
-  let ThemeServiceCtor: typeof import('./core/theme/theme.service').ThemeService;
+  let fixture: ComponentFixture<App>; 
+  let component: App; 
   let queryParams$: Subject<Record<string, any>>;
   let mockThemeService: { isTvMode: ReturnType<typeof signal>; setTvMode: ReturnType<typeof vi.fn> };
+  let mockDashboardsService: {
+    listDashboardsApiV1DashboardsGet: ReturnType<typeof vi.fn>;
+    createDashboardApiV1DashboardsPost: ReturnType<typeof vi.fn>;
+    createWidgetApiV1DashboardsDashboardIdWidgetsPost: ReturnType<typeof vi.fn>;
+    deleteDashboardApiV1DashboardsDashboardIdDelete: ReturnType<typeof vi.fn>;
+  };
+  let mockCartService: { count: ReturnType<typeof signal>; add: ReturnType<typeof vi.fn> };
+  let mockAuthService: {
+    currentUser: ReturnType<typeof signal>;
+    isAuthenticated: ReturnType<typeof signal>;
+    logout: ReturnType<typeof vi.fn>;
+  };
+  let mockDashboardStore: {
+    dashboard: ReturnType<typeof signal>;
+    isEditMode: ReturnType<typeof signal>;
+    toggleEditMode: ReturnType<typeof vi.fn>;
+    refreshAll: ReturnType<typeof vi.fn>;
+    isLoading: ReturnType<typeof signal>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+  };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
   
   // Mock Service Configuration
   let mockAskDataService: { 
@@ -58,47 +66,71 @@ describe('App', () => {
   }; 
 
   beforeEach(async () => { 
-    const [appMod, askDataMod, toolbarMod, themeMod] = await Promise.all([
-      import('./app'),
-      import('./global/ask-data.component'),
-      import('./dashboard/toolbar.component'),
-      import('./core/theme/theme.service')
-    ]);
-
-    AppCtor = appMod.App;
-    AskDataComponentCtor = askDataMod.AskDataComponent;
-    ToolbarComponentCtor = toolbarMod.ToolbarComponent;
-    ThemeServiceCtor = themeMod.ThemeService;
+    await resolveComponentResourcesForTests();
 
     // Initialize mock signal for state testing
     mockAskDataService = { 
       isOpen: signal(false), 
-      close: vi.fn() 
+      close: vi.fn(),
+      open: vi.fn()
     }; 
+    mockDashboardsService = {
+      listDashboardsApiV1DashboardsGet: vi.fn().mockReturnValue(of([])),
+      createDashboardApiV1DashboardsPost: vi.fn().mockReturnValue(of({ id: 'd1', widgets: [] })),
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn().mockReturnValue(of({ id: 'w1' })),
+      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn().mockReturnValue(of({}))
+    };
+    mockCartService = { count: signal(0), add: vi.fn() };
+    mockAuthService = {
+      currentUser: signal({ email: 'test@example.com' }),
+      isAuthenticated: signal(false),
+      logout: vi.fn()
+    };
+    mockDashboardStore = {
+      dashboard: signal(null),
+      isEditMode: signal(false),
+      toggleEditMode: vi.fn(),
+      refreshAll: vi.fn(),
+      isLoading: signal(false),
+      loadDashboard: vi.fn()
+    };
+    mockDialog = {
+      open: vi.fn().mockReturnValue({ afterClosed: () => of(false) })
+    };
     queryParams$ = new Subject<Record<string, any>>();
     mockThemeService = {
       isTvMode: signal(false),
       setTvMode: vi.fn()
     };
 
-    await TestBed.configureTestingModule({ 
-      imports: [AppCtor, NoopAnimationsModule], 
+    TestBed.configureTestingModule({ 
+      imports: [App, NoopAnimationsModule], 
+      schemas: [NO_ERRORS_SCHEMA],
       providers: [ 
         { provide: AskDataService, useValue: mockAskDataService }, 
-        { provide: ThemeServiceCtor, useValue: mockThemeService },
+        { provide: ThemeService, useValue: mockThemeService },
+        { provide: DashboardsService, useValue: mockDashboardsService },
+        { provide: QueryCartService, useValue: mockCartService },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: DashboardStore, useValue: mockDashboardStore },
+        { provide: MatDialog, useValue: mockDialog },
+        { provide: PLATFORM_ID, useValue: 'server' },
         // Provide Router to satisfy ActivatedRoute dependency in App component
         provideRouter([]) 
       ] 
-    }) 
-      .overrideComponent(AppCtor, { 
-        remove: { imports: [AskDataComponentCtor, ToolbarComponentCtor] }, 
-        add: { imports: [MockAskDataComponent, MockToolbarComponent] } 
-      }) 
-      .compileComponents(); 
+    }); 
+    TestBed.overrideComponent(AskDataComponent, { 
+      set: { template: '', imports: [] } 
+    }); 
+    TestBed.overrideComponent(ToolbarComponent, { 
+      set: { template: '', imports: [] } 
+    }); 
+    await resolveComponentResourcesForTests();
+    await TestBed.compileComponents(); 
 
     TestBed.overrideProvider(ActivatedRoute, { useValue: { queryParams: queryParams$.asObservable() } });
 
-    fixture = TestBed.createComponent(AppCtor); 
+    fixture = TestBed.createComponent(App); 
     component = fixture.componentInstance; 
     fixture.detectChanges(); 
   }); 
@@ -154,7 +186,7 @@ describe('App', () => {
   it('should render the AskData component inside the drawer', () => { 
     const sidenav = fixture.debugElement.query(By.css('mat-sidenav')); 
     // Ensure content (even if projected) is queried correctly
-    const askData = sidenav.query(By.directive(MockAskDataComponent)); 
+    const askData = sidenav.query(By.css('app-ask-data')); 
     expect(askData).toBeTruthy(); 
   }); 
 
@@ -173,6 +205,6 @@ describe('App', () => {
   it('should hide toolbar in tv mode', () => {
     mockThemeService.isTvMode.set(true);
     fixture.detectChanges();
-    expect(fixture.debugElement.query(By.directive(MockToolbarComponent))).toBeFalsy();
+    expect(fixture.debugElement.query(By.css('app-toolbar'))).toBeFalsy();
   });
 }); 
