@@ -7,13 +7,13 @@
 
 import { 
   Directive, 
-  Input, 
   TemplateRef, 
   ViewContainerRef, 
   inject, 
   ErrorHandler, 
   OnDestroy, 
-  OnInit
+  OnInit,
+  Input
 } from '@angular/core'; 
 import { GlobalErrorHandler } from './global-error.handler'; 
 import { Subscription } from 'rxjs'; 
@@ -22,7 +22,7 @@ import { Subscription } from 'rxjs';
  * Context for the Fallback Template. 
  * Exposes the error object and a retry function to the template. 
  */ 
-interface ErrorBoundaryContext { 
+export interface ErrorBoundaryContext { 
   $implicit: unknown; // The error object
   retry: () => void;  // Callback to reset state
 } 
@@ -49,8 +49,8 @@ interface ErrorBoundaryContext {
  * ```
  */ 
 @Directive({ 
-  selector: '[appErrorBoundary]'
-  // 'standalone: true' is omitted (default).
+  selector: '[appErrorBoundary]',
+  standalone: true
 }) 
 export class ErrorBoundaryDirective implements OnInit, OnDestroy { 
   private readonly vcr = inject(ViewContainerRef); 
@@ -62,7 +62,8 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /** 
    * The Fallback Template to render when an error state is active. 
    */ 
-  @Input('appErrorBoundary') fallbackTemplate?: TemplateRef<ErrorBoundaryContext>; 
+  @Input('appErrorBoundary')
+  fallbackTemplate?: TemplateRef<ErrorBoundaryContext>; 
 
   /**
    * Initializes the view.
@@ -102,8 +103,9 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
    */ 
   public renderFallback(error: unknown): void { 
     this.vcr.clear(); 
-    if (this.fallbackTemplate) { 
-      this.vcr.createEmbeddedView(this.fallbackTemplate, { 
+    const fallbackTemplate = this.fallbackTemplate; 
+    if (fallbackTemplate) { 
+      this.vcr.createEmbeddedView(fallbackTemplate, { 
         $implicit: error, 
         retry: () => { 
           this.globalHandler.clearError(); // Clear global state if needed

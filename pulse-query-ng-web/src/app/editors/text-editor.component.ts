@@ -17,7 +17,6 @@ import { finalize } from 'rxjs';
  */ 
 @Component({ 
   selector: 'app-text-editor', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     FormsModule, 

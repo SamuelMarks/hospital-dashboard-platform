@@ -1,10 +1,18 @@
+"""
+Application configuration.
+
+Loads settings from environment variables and provides computed properties
+used across the backend (database URLs, LLM swarm configuration, etc.).
+"""
+
 import os
-import json
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Dict
 
 
 class Settings(BaseSettings):
+  """Strongly-typed configuration settings for the backend."""
+
   PROJECT_NAME: str = "Hospital Analytics Platform"
   API_V1_STR: str = "/api/v1"
 
@@ -22,6 +30,7 @@ class Settings(BaseSettings):
 
   @property
   def SQLALCHEMY_DATABASE_URI(self) -> str:
+    """Build the async SQLAlchemy database URI from environment settings."""
     return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
   # Database: DuckDB

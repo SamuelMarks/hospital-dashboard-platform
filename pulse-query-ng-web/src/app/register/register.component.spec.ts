@@ -91,6 +91,32 @@ describe('RegisterComponent', () => {
     expect(alert).toBeTruthy();
   });
 
+  it('should use fallback error message when detail is missing', () => {
+    mockAuthService.register.mockReturnValue(throwError(() => ({ error: {} })));
+
+    component.registerForm.setValue({
+      email: 'taken@user.com',
+      password: 'pass',
+      confirmPassword: 'pass'
+    });
+
+    component.onSubmit();
+
+    expect(component.errorMessage()).toContain('Registration failed');
+  });
+
+  it('should mark form as touched when invalid', () => {
+    const spy = vi.spyOn(component.registerForm, 'markAllAsTouched');
+    component.onSubmit();
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('should toggle password visibility', () => {
+    const initial = component.hidePassword();
+    component.togglePasswordVisibility(new Event('click'));
+    expect(component.hidePassword()).toBe(!initial);
+  });
+
   describe('passwordMatchValidator', () => {
     it('should return error if values mismatch', () => {
         const group = new FormGroup({ 
@@ -109,5 +135,19 @@ describe('RegisterComponent', () => {
         const result = passwordMatchValidator(group); 
         expect(result).toBeNull(); 
     }); 
+
+    it('should clear mismatch error when values match', () => {
+        const confirmControl = new FormControl('a');
+        confirmControl.setErrors({ mismatch: true });
+        const group = new FormGroup({
+            password: new FormControl('a'),
+            confirmPassword: confirmControl
+        });
+
+        const result = passwordMatchValidator(group);
+
+        expect(result).toBeNull();
+        expect(confirmControl.errors).toBeNull();
+    });
   });
 });

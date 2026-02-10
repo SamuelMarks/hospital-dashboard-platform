@@ -1,3 +1,9 @@
+"""
+Multi-provider LLM client for arena-style SQL generation.
+
+Wraps any-llm providers, executes concurrent requests, and normalizes responses.
+"""
+
 import logging
 import time
 import asyncio

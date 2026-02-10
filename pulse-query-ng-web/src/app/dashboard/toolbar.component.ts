@@ -27,19 +27,20 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider'; 
 import { MatDialog } from '@angular/material/dialog'; 
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'; 
+import { MatBadgeModule } from '@angular/material/badge';
 
 import { AuthService } from '../core/auth/auth.service'; 
 import { DashboardStore } from './dashboard.store'; 
 import { AskDataService } from '../global/ask-data.service'; 
 import { ThemeService } from '../core/theme/theme.service'; 
 import { WidgetBuilderComponent } from './widget-builder/widget-builder.component'; 
+import { QueryCartService } from '../global/query-cart.service';
 
 /** 
  * Toolbar Component. 
  */ 
 @Component({ 
   selector: 'app-toolbar', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     RouterModule, 
@@ -50,7 +51,8 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
     MatProgressSpinnerModule, 
     MatMenuModule, 
     MatDividerModule, 
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatBadgeModule
   ], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   templateUrl: './toolbar.component.html', 
@@ -110,10 +112,12 @@ import { WidgetBuilderComponent } from './widget-builder/widget-builder.componen
 export class ToolbarComponent { 
   public readonly store = inject(DashboardStore); 
   public readonly askDataService = inject(AskDataService); 
+  private readonly cart = inject(QueryCartService);
   public readonly authService = inject(AuthService); 
   public readonly themeService = inject(ThemeService); 
   public readonly router = inject(Router); 
   private readonly dialog = inject(MatDialog); 
+  readonly cartCount = this.cart.count;
 
   /** 
    * Preset Seeds for Theme Generation. 

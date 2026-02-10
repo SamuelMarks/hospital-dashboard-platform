@@ -18,6 +18,7 @@ import random
 import logging
 from datetime import datetime, timedelta
 from typing import List
+from builtins import open as open
 
 from app.core.config import settings
 from app.database.duckdb import duckdb_manager

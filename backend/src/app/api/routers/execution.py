@@ -172,6 +172,7 @@ async def refresh_widget(
 
 
 def _extract_token(auth_header: str | None) -> str | None:
+  """Extract bearer token from Authorization header if present."""
   if auth_header and auth_header.startswith("Bearer "):
     return auth_header.split(" ")[1]
   return None

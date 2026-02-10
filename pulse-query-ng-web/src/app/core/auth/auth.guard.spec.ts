@@ -66,4 +66,18 @@ describe('authGuard', () => {
     });
     expect(result).toBe(mockUrlTree);
   });
+
+  it('should allow access on the server platform', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: Router, useValue: mockRouter },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+
+    const result = executeGuard({} as any, {} as any);
+    expect(result).toBe(true);
+  });
 });

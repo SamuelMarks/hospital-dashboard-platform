@@ -27,7 +27,6 @@ import { MessageResponse } from '../../api-client';
 
 @Component({ 
   selector: 'app-conversation', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     FormsModule, 
@@ -204,10 +203,12 @@ export class ConversationComponent implements AfterViewChecked {
   } 
 
   private scrollToBottom(): void { 
-    try { 
-      setTimeout(() => { 
-        this.scrollContainer.nativeElement.scrollTop = this.scrollContainer.nativeElement.scrollHeight; 
-      }, 50); 
-    } catch (err) { } 
+    const container = this.scrollContainer?.nativeElement; 
+    if (!container) return; 
+    setTimeout(() => { 
+      const el = this.scrollContainer?.nativeElement; 
+      if (!el) return; 
+      el.scrollTop = el.scrollHeight; 
+    }, 50); 
   } 
-}
+} 

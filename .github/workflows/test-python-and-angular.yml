@@ -67,6 +67,12 @@ jobs:
           pytest
         working-directory: backend
 
+      - name: Python doc coverage
+        run: |
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
+          interrogate src/app
+        working-directory: backend
+
       - name: Angular dependencies install
         run: |
           npm i -g @angular/cli @vitest/browser-playwright

@@ -16,7 +16,6 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
  */
 @Component({
   selector: 'app-dashboard-create-dialog',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,

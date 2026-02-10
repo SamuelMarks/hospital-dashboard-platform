@@ -1,3 +1,5 @@
+"""User model definition for authentication and ownership."""
+
 import uuid
 from typing import List
 from sqlalchemy import String, Boolean

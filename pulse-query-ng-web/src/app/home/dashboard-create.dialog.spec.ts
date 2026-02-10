@@ -73,4 +73,12 @@ describe('DashboardCreateDialog', () => {
     const errorMsg = fixture.debugElement.query(By.css('[data-testid="error-msg"]')); 
     expect(errorMsg).toBeTruthy(); 
   }); 
-});
+
+  it('should not submit when form is invalid', () => {
+    component.form.controls['name'].setValue('');
+    component.submit();
+
+    expect(mockApi.createDashboardApiV1DashboardsPost).not.toHaveBeenCalled();
+    expect(component.isSubmitting()).toBe(false);
+  });
+}); 

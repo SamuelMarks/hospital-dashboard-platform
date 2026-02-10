@@ -67,4 +67,5 @@ app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/conversations", t
 
 @app.get("/")
 def root() -> dict[str, str]:
+  """Health check endpoint for the API root."""
   return {"message": "Hospital Analytics Platform API is running"}

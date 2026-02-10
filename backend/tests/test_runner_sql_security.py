@@ -6,6 +6,7 @@ relying on the Database Engine's read-only settings for actual protection.
 """
 
 import pytest
+import sqlglot
 from app.services.runners.sql import validate_query_ast, SQLSecurityError
 
 # --- Validator Unit Tests (Permissive) ---
@@ -66,3 +67,17 @@ def test_ast_empty_query_check():
   """Verify empty strings still raise basic errors."""
   with pytest.raises(SQLSecurityError):
     validate_query_ast("")
+
+
+def test_ast_parse_error_is_logged_but_not_blocking():
+  """Invalid SQL should not raise SQLSecurityError in relaxed mode."""
+  # sqlglot should fail parsing this string, which exercises the warning path.
+  validate_query_ast("SELECT FROM")
+
+
+def test_ast_empty_parse_result_raises(monkeypatch):
+  """If sqlglot returns no statements, treat it as empty."""
+  monkeypatch.setattr(sqlglot, "parse", lambda *_args, **_kwargs: [])
+
+  with pytest.raises(SQLSecurityError):
+    validate_query_ast("SELECT 1")

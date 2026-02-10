@@ -1,12 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { HomeComponent } from './home.component'; 
 import { DashboardsService, DashboardResponse } from '../api-client'; 
-import { provideRouter } from '@angular/router'; 
+import { provideRouter, Router } from '@angular/router'; 
 import { MatDialog } from '@angular/material/dialog'; 
 import { MatMenuModule } from '@angular/material/menu'; 
 import { MatSnackBar } from '@angular/material/snack-bar'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { of, throwError } from 'rxjs'; 
+import { of, throwError, Subject } from 'rxjs'; 
 
 describe('HomeComponent', () => { 
   let component: HomeComponent; 
@@ -15,6 +15,7 @@ describe('HomeComponent', () => {
   let mockDashApi: any; 
   let mockDialog: any; 
   let mockSnackBar: any; 
+  let router: Router;
 
   const mockDashboardList: DashboardResponse[] = [ 
     { id: 'd1', name: 'Finance', owner_id: 'u1', widgets: [] }, 
@@ -26,7 +27,8 @@ describe('HomeComponent', () => {
       listDashboardsApiV1DashboardsGet: vi.fn(), 
       updateDashboardApiV1DashboardsDashboardIdPut: vi.fn(), 
       deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn(), 
-      cloneDashboardApiV1DashboardsDashboardIdClonePost: vi.fn() // Updated with clone
+      cloneDashboardApiV1DashboardsDashboardIdClonePost: vi.fn(), // Updated with clone
+      restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost: vi.fn()
     }; 
     mockDialog = { open: vi.fn() }; 
     
@@ -54,6 +56,7 @@ describe('HomeComponent', () => {
     .overrideComponent(HomeComponent, { 
       set: { 
         providers: [ 
+          { provide: MatDialog, useValue: mockDialog },
           { provide: MatSnackBar, useValue: mockSnackBar } 
         ] 
       } 
@@ -63,11 +66,83 @@ describe('HomeComponent', () => {
     fixture = TestBed.createComponent(HomeComponent); 
     component = fixture.componentInstance; 
     fixture.detectChanges(); 
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
   }); 
 
   afterEach(() => { 
     vi.restoreAllMocks(); 
   }); 
+
+  it('should show error and allow retry when load fails', () => {
+    mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
+      throwError(() => new Error('load fail'))
+    );
+    const retry$ = new Subject<void>();
+    mockSnackBar.open.mockReturnValue({ onAction: () => retry$ });
+    const loadSpy = vi.spyOn(component, 'loadDashboards');
+
+    component.loadDashboards();
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to load dashboards', 'Retry', { duration: 5000 });
+    retry$.next();
+    expect(loadSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should open create dialog and navigate on result', () => {
+    const newDash = { id: 'd3', name: 'New Dash', owner_id: 'u1', widgets: [] };
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(newDash) });
+
+    component.openCreateDialog();
+
+    expect(component.dashboards().some(d => d.id === 'd3')).toBe(true);
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard', 'd3']);
+  });
+
+  it('should not navigate when create dialog closes without result', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(undefined) });
+
+    component.openCreateDialog();
+
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should restore defaults and navigate', () => {
+    const newDash = { id: 'd9', name: 'Default', owner_id: 'u1', widgets: [] };
+    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(of(newDash));
+
+    component.restoreDefaults();
+
+    expect(mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard', 'd9']);
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Default dashboard created.', 'Close', { duration: 3000 });
+  });
+
+  it('should handle restore defaults error', () => {
+    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(
+      throwError(() => new Error('restore fail'))
+    );
+
+    component.restoreDefaults();
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to restore defaults.', 'Close');
+  });
+
+  it('should ignore rename when prompt is empty or unchanged', () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('');
+    component.renameDashboard(mockDashboardList[0]);
+    expect(mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut).not.toHaveBeenCalled();
+
+    vi.spyOn(window, 'prompt').mockReturnValue('Finance');
+    component.renameDashboard(mockDashboardList[0]);
+    expect(mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut).not.toHaveBeenCalled();
+  });
+
+  it('should not delete when confirm is false', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    component.deleteDashboard(mockDashboardList[0]);
+    expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).not.toHaveBeenCalled();
+  });
 
   it('should create', () => { 
     expect(component).toBeTruthy(); 

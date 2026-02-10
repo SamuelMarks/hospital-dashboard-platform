@@ -3,10 +3,12 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { signal } from '@angular/core';
 import { HttpConfigComponent, jsonValidator } from './http-config.component'; 
 import { DashboardsService, ExecutionService } from '../api-client'; 
 import { of, throwError } from 'rxjs'; 
 import { FormControl } from '@angular/forms'; 
+import { By } from '@angular/platform-browser';
 
 describe('HttpConfigComponent', () => { 
   let component: HttpConfigComponent; 
@@ -14,6 +16,8 @@ describe('HttpConfigComponent', () => {
   
   let mockDashboardsApi: any; 
   let mockExecutionApi: any; 
+
+  let initialConfigSig: any;
 
   beforeEach(async () => { 
     mockDashboardsApi = { 
@@ -34,9 +38,9 @@ describe('HttpConfigComponent', () => {
     fixture = TestBed.createComponent(HttpConfigComponent); 
     component = fixture.componentInstance; 
 
-    fixture.componentRef.setInput('dashboardId', 'd1'); 
-    fixture.componentRef.setInput('widgetId', 'w1'); 
-    fixture.componentRef.setInput('initialConfig', { 
+    (component as any).dashboardId = signal('d1'); 
+    (component as any).widgetId = signal('w1'); 
+    initialConfigSig = signal({ 
       method: 'POST', 
       url: 'https://api.test.com', 
       params: { q: 'search' }, 
@@ -44,6 +48,7 @@ describe('HttpConfigComponent', () => {
       body: { someProperty: 123 }, 
       meta_forward_auth: true
     }); 
+    (component as any).initialConfig = initialConfigSig; 
 
     fixture.detectChanges(); 
   }); 
@@ -116,6 +121,16 @@ describe('HttpConfigComponent', () => {
     expect(component.paramsArray.at(0).value).toEqual({ key: 'page', value: '2' }); 
   }); 
 
+  it('should add and remove headers dynamically', () => {
+    component.addItem('headers');
+    fixture.detectChanges();
+    expect(component.headersArray.length).toBe(2);
+
+    component.removeItem('headers', 0);
+    fixture.detectChanges();
+    expect(component.headersArray.length).toBe(1);
+  });
+
   describe('saveAndTest', () => { 
     it('should update widget and refresh dashboard on success', () => { 
         mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({})); 
@@ -157,5 +172,89 @@ describe('HttpConfigComponent', () => {
         
         expect(mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled(); 
     }); 
+
+    it('should handle save errors', () => {
+        mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+          throwError(() => new Error('save fail'))
+        );
+        component.saveAndTest();
+        expect(component.isRunning()).toBe(false);
+        expect(component.result()?.error).toBe('Save failed');
+    });
+
+    it('should handle execution errors', () => {
+        mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+        mockExecutionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
+          throwError(() => new Error('exec fail'))
+        );
+        component.saveAndTest();
+        expect(component.result()?.error).toBe('Run failed');
+    });
+
+    it('should return fallback when no data for widget', () => {
+        mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+        mockExecutionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(of({}));
+        component.saveAndTest();
+        expect(component.result()?.info).toContain('No Data');
+    });
+    
+    it('should send null body when body field is empty', () => {
+        mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+        mockExecutionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(of({}));
+        component.form.patchValue({ body: '' });
+        component.saveAndTest();
+        expect(mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+          'w1',
+          expect.objectContaining({ config: expect.objectContaining({ body: null }) })
+        );
+    });
   }); 
-});
+
+  it('should mark field invalid after touch', () => {
+    const urlControl = component.form.controls.url;
+    urlControl.markAsTouched();
+    urlControl.setValue('bad');
+    expect(component.isFieldInvalid('url')).toBe(true);
+  });
+
+  it('should handle hydrate when config body is non-serializable', () => {
+    initialConfigSig.set({ body: { toJSON: () => { throw new Error('fail'); } } });
+    fixture.detectChanges();
+    expect(component.form.controls.body.value).toContain('[object Object]');
+  });
+  
+  it('should no-op hydrate when config is null', () => {
+    (component as any).hydrateForm(null);
+    expect(component.form.controls.method.value).toBe('POST');
+  });
+  
+  it('should leave body empty when config has no body', () => {
+    initialConfigSig.set({ method: 'GET', url: 'https://example.com', params: {}, headers: {} });
+    fixture.detectChanges();
+    expect(component.form.controls.body.value).toBe('');
+  });
+
+  it('should omit empty keys when building object', () => {
+    const obj = (component as any).arrToObj([{ key: '', value: 'x' }, { key: 'a', value: '1' }]);
+    expect(obj).toEqual({ a: '1' });
+  });
+
+  it('should clear arrays when source is undefined', () => {
+    (component as any).populateArray(component.paramsArray, undefined);
+    expect(component.paramsArray.length).toBe(0);
+    (component as any).populateArray(component.headersArray, undefined);
+    expect(component.headersArray.length).toBe(0);
+  });
+
+  it('should render preview fallback when no result', () => {
+    const preview = fixture.debugElement.query(By.css('.preview-panel'));
+    expect(preview.nativeElement.textContent).toContain('Save and Test to see response');
+  });
+
+  it('should render preview json when result is present', () => {
+    component.result.set({ ok: true });
+    fixture.detectChanges();
+    const preview = fixture.debugElement.query(By.css('.preview-panel'));
+    expect(preview.nativeElement.textContent).toContain('"ok": true');
+  });
+}); 

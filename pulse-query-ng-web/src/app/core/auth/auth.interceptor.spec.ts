@@ -8,6 +8,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Router } from '@angular/router'; 
 import { authInterceptor } from './auth.interceptor'; 
 import { AuthService } from './auth.service'; 
+import { HttpRequest } from '@angular/common/http';
+import { throwError } from 'rxjs';
 
 describe('authInterceptor', () => { 
   let httpMock: HttpTestingController; 
@@ -87,6 +89,37 @@ describe('authInterceptor', () => {
         { queryParams: { returnUrl: '/dashboard/123' } } 
     ); 
   }); 
+  
+  it('should default returnUrl to root when snapshot url empty', () => {
+    mockAuthService.getToken.mockReturnValue('expired-token');
+    mockRouter.routerState.snapshot.url = '';
+
+    httpClient.get('/api/protected').subscribe({ error: () => {} });
+
+    const req = httpMock.expectOne('/api/protected');
+    req.flush('Token Expired', { status: 401, statusText: 'Unauthorized' });
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      ['/login'],
+      { queryParams: { returnUrl: '/' } }
+    );
+  });
+
+  it('should fallback to root returnUrl when snapshot url empty', () => {
+    mockAuthService.getToken.mockReturnValue('expired-token');
+    mockRouter.routerState.snapshot.url = '';
+    mockRouter.url = '/somewhere';
+
+    httpClient.get('/api/protected').subscribe({ error: () => {} });
+
+    const req = httpMock.expectOne('/api/protected');
+    req.flush('Token Expired', { status: 401, statusText: 'Unauthorized' });
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      ['/login'],
+      { queryParams: { returnUrl: '/' } }
+    );
+  });
 
   it('should NOT redirect on 401 if request url is login endpoint', () => { 
     // Logic bypass check
@@ -102,4 +135,25 @@ describe('authInterceptor', () => {
     expect(mockAuthService.logout).not.toHaveBeenCalled(); 
     expect(mockRouter.navigate).not.toHaveBeenCalled(); 
   }); 
-});
+
+  it('should not logout on non-401 errors', () => {
+    mockAuthService.getToken.mockReturnValue('token');
+
+    httpClient.get('/api/fail').subscribe({ error: () => {} });
+    const req = httpMock.expectOne('/api/fail');
+    req.flush('Boom', { status: 500, statusText: 'Server Error' });
+
+    expect(mockAuthService.logout).not.toHaveBeenCalled();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should handle duck-typed 401 errors', () => {
+    const result$ = TestBed.runInInjectionContext(() => {
+      const req = new HttpRequest('GET', '/api/duck');
+      return authInterceptor(req, () => throwError(() => ({ status: 401 } as any)));
+    });
+
+    result$.subscribe({ error: () => {} });
+    expect(mockAuthService.logout).toHaveBeenCalledWith(false);
+  });
+}); 

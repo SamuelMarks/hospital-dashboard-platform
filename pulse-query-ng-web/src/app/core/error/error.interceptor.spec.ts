@@ -3,10 +3,11 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, HttpClient, HttpErrorResponse, HttpRequest } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { errorInterceptor } from './error.interceptor';
+import { throwError } from 'rxjs';
 
 describe('errorInterceptor', () => {
   let httpClient: HttpClient;
@@ -75,6 +76,67 @@ describe('errorInterceptor', () => {
 
     expect(mockSnackBar.open).toHaveBeenCalledWith(
       'Validation Error: Check input fields.',
+      'Close',
+      expect.any(Object)
+    );
+  });
+
+  it('should fall back to error.message when error body is not an object', () => {
+    httpClient.get('/api/test').subscribe({
+      error: () => {}
+    });
+
+    const req = httpMock.expectOne('/api/test');
+    req.flush('Server down', { status: 500, statusText: 'Server Error' });
+
+    const message = mockSnackBar.open.mock.calls[0][0] as string;
+    expect(message).toContain('Http failure response');
+  });
+
+  it('should use default message when detail is missing', () => {
+    httpClient.get('/api/test').subscribe({
+      error: () => {}
+    });
+
+    const req = httpMock.expectOne('/api/test');
+    req.flush({ foo: 'bar' }, { status: 500, statusText: 'Server Error' });
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'An unexpected error occurred.',
+      'Close',
+      expect.any(Object)
+    );
+  });
+  
+  it('should use error.message when error body is null', () => {
+    const error = new HttpErrorResponse({ status: 500, statusText: 'Server Error', url: '/api/test' });
+    const req = new HttpRequest('GET', '/api/test');
+
+    const result$ = TestBed.runInInjectionContext(() =>
+      errorInterceptor(req, () => throwError(() => error))
+    );
+
+    result$.subscribe({ error: () => {} });
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      error.message,
+      'Close',
+      expect.any(Object)
+    );
+  });
+
+  it('should use default message when error body is non-object and message missing', () => {
+    const error = { status: 500, error: 'boom', message: '' } as HttpErrorResponse;
+    const req = new HttpRequest('GET', '/api/test');
+
+    const result$ = TestBed.runInInjectionContext(() =>
+      errorInterceptor(req, () => throwError(() => error))
+    );
+
+    result$.subscribe({ error: () => {} });
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'An unexpected error occurred.',
       'Close',
       expect.any(Object)
     );

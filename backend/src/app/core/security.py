@@ -1,3 +1,9 @@
+"""
+Security utilities for password hashing and JWT creation.
+
+Centralizes auth-related helpers used by API routers and dependencies.
+"""
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any, Union
 from jose import jwt

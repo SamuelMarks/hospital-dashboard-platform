@@ -73,6 +73,36 @@ describe('GlobalErrorHandler', () => {
     ); 
   }); 
 
+  it('should handle rejection-wrapped errors', () => { 
+    handler.handleError({ rejection: new Error('Promise failed') }); 
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith( 
+      expect.stringMatching(/Promise failed/), 
+      expect.anything(), 
+      expect.anything() 
+    ); 
+  }); 
+
+  it('should ignore HttpErrorResponse wrapped in rejection', () => {
+    handler.handleError({ rejection: new HttpErrorResponse({ status: 500 }) });
+    expect(mockSnackBar.open).not.toHaveBeenCalled();
+  });
+
+  it('should fall back to unknown runtime exception message', () => {
+    handler.handleError({ foo: 'bar' });
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      expect.stringMatching(/Unknown runtime exception/),
+      'Reload',
+      expect.anything()
+    );
+  });
+
+  it('should clear errors stream', () => { 
+    handler.errors$.next(new Error('boom')); 
+    handler.clearError(); 
+    expect(handler.errors$.value).toBeNull(); 
+  }); 
+
   it('should broadcast error to errors$ stream', () => { 
     const error = new Error('Stream Test'); 
     
@@ -83,4 +113,11 @@ describe('GlobalErrorHandler', () => {
     handler.handleError(error); 
     expect(emitted).toBe(error); 
   }); 
-});
+
+  it('should invoke reload on snackbar action', () => { 
+    const reloadSpy = vi.spyOn(handler as any, 'reloadApp');
+    handler.handleError(new Error('Reload Test')); 
+    expect(reloadSpy).toHaveBeenCalled(); 
+    reloadSpy.mockRestore();
+  }); 
+}); 

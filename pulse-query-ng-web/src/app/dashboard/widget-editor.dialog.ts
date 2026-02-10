@@ -34,7 +34,6 @@ export interface WidgetEditorData {
  */ 
 @Component({ 
   selector: 'app-widget-editor-dialog', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     FormsModule,
@@ -187,13 +186,15 @@ export class WidgetEditorDialog {
   }); 
 
   /** Check if the current viz type needs mapping controls. */
-  readonly supportsMapping = computed(() => {
+  supportsMapping(): boolean {
     const v = (this.widget.visualization || '').toLowerCase();
     return ['bar_chart', 'line_graph', 'pie'].includes(v);
-  });
+  }
 
   /** Helper for label customization. */
-  readonly isPie = computed(() => this.widget.visualization === 'pie');
+  isPie(): boolean {
+    return this.widget.visualization === 'pie';
+  }
 
   /** Available columns from the latest execution result. */
   readonly columns = computed(() => {

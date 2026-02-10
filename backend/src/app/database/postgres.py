@@ -1,3 +1,10 @@
+"""
+PostgreSQL Database Module.
+
+Defines the async SQLAlchemy engine, session factory, and dependency helper
+used by FastAPI routes.
+"""
+
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
@@ -19,6 +26,8 @@ AsyncSessionLocal = async_sessionmaker(
 
 # 3. Define the Declarative Base for Models
 class Base(DeclarativeBase):
+  """Declarative base class for all SQLAlchemy models."""
+
   pass
 
 

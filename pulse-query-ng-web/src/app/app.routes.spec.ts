@@ -5,8 +5,7 @@
  */ 
 
 import { TestBed } from '@angular/core/testing'; 
-import { provideRouter, Router } from '@angular/router'; 
-import { routes } from './app.routes'; 
+import { provideRouter, Router, type Routes } from '@angular/router'; 
 import { authGuard } from './core/auth/auth.guard'; 
 import { guestGuard } from './core/auth/guest.guard'; 
 import { registrationGuard } from './core/auth/registration.guard'; 
@@ -17,6 +16,7 @@ vi.mock('./login/login.component', () => ({ LoginComponent: class {} }));
 vi.mock('./register/register.component', () => ({ RegisterComponent: class {} })); 
 vi.mock('./home/home.component', () => ({ HomeComponent: class {} })); 
 vi.mock('./dashboard/dashboard-layout.component', () => ({ DashboardLayoutComponent: class {} })); 
+vi.mock('./chat/chat-layout.component', () => ({ ChatLayoutComponent: class {} }));
 vi.mock('./simulation/simulation.routes', () => ({ simulationRoutes: [] })); 
 
 // MOCK: @material/material-color-utilities
@@ -32,8 +32,12 @@ vi.mock('@material/material-color-utilities', () => ({
 
 describe('AppRoutes', () => { 
   let router: Router; 
+  let routes: Routes;
 
-  beforeEach(() => { 
+  beforeEach(async () => { 
+    const mod = await import('./app.routes');
+    routes = mod.routes;
+
     TestBed.configureTestingModule({ 
       providers: [provideRouter(routes)] 
     }); 
@@ -86,6 +90,15 @@ describe('AppRoutes', () => {
     const childRoutes = await (route?.loadChildren as Function)(); 
     expect(childRoutes).toBeTruthy(); 
   }); 
+
+  it('should define the chat route with Auth Guard', async () => {
+    const route = routes.find(r => r.path === 'chat');
+    expect(route).toBeDefined();
+    expect(route?.canActivate).toContain(authGuard);
+
+    const component = await route?.loadComponent!();
+    expect(component).toBeTruthy();
+  });
 
   it('should redirect unknown paths to root', () => { 
     const route = routes.find(r => r.path === '**'); 

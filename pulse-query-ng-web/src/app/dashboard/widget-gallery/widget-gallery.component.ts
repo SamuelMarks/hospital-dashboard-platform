@@ -24,7 +24,6 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
 
 @Component({
   selector: 'app-widget-gallery',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,
@@ -44,10 +43,11 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
       display: flex;
       flex-direction: column;
       height: 100%;
+      min-height: 0;
       background: var(--sys-surface);
       border-left: 1px solid var(--sys-surface-border);
-      width: 320px;
-      flex-shrink: 0;
+      width: 100%;
+      flex: 1 1 auto;
       overflow: hidden;
     }
     .header {

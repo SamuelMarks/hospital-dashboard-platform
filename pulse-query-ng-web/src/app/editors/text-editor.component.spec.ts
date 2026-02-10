@@ -3,10 +3,12 @@
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { signal } from '@angular/core';
 import { TextEditorComponent } from './text-editor.component'; 
 import { DashboardsService } from '../api-client'; 
-import { of } from 'rxjs'; 
+import { of, throwError } from 'rxjs'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
+import { vi } from 'vitest';
 
 describe('TextEditorComponent', () => { 
   let component: TextEditorComponent; 
@@ -26,9 +28,9 @@ describe('TextEditorComponent', () => {
     fixture = TestBed.createComponent(TextEditorComponent); 
     component = fixture.componentInstance; 
     
-    fixture.componentRef.setInput('dashboardId', 'd1'); 
-    fixture.componentRef.setInput('widgetId', 'w1'); 
-    fixture.componentRef.setInput('initialContent', 'Initial Text'); 
+    (component as any).dashboardId = signal('d1'); 
+    (component as any).widgetId = signal('w1'); 
+    (component as any).initialContent = signal('Initial Text'); 
     
     fixture.detectChanges(); 
   }); 
@@ -46,4 +48,35 @@ describe('TextEditorComponent', () => {
         expect.objectContaining({ config: { content: 'New Text' } }) 
     ); 
   }); 
-});
+
+  it('should not save when form invalid', () => {
+    component.form.patchValue({ content: '' });
+    component.save();
+    expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+  });
+
+  it('should emit contentChange on success', () => {
+    const emitSpy = vi.spyOn(component.contentChange, 'emit');
+    component.form.patchValue({ content: 'Emit Text' });
+    component.save();
+    expect(emitSpy).toHaveBeenCalledWith('Emit Text');
+  });
+
+  it('should handle API errors', () => {
+    mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+      throwError(() => new Error('fail'))
+    );
+    component.form.patchValue({ content: 'Err Text' });
+    component.save();
+    expect(component.isRunning()).toBe(false);
+  });
+
+  it('should coerce falsy content to empty string', () => {
+    component.form.patchValue({ content: 0 as any });
+    component.save();
+    expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ config: { content: '' } })
+    );
+  });
+}); 

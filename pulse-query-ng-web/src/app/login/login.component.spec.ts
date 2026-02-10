@@ -13,6 +13,7 @@ describe('LoginComponent', () => {
   let fixture: ComponentFixture<LoginComponent>; 
   let mockAuthService: any; 
   let router: Router; 
+  let mockRoute: { snapshot: { queryParamMap: { get: ReturnType<typeof vi.fn> } } };
 
   const originalRegState = environment.registrationEnabled; 
 
@@ -22,13 +23,14 @@ describe('LoginComponent', () => {
       login: vi.fn(), 
       isAuthenticated: vi.fn().mockReturnValue(false) 
     }; 
+    mockRoute = { snapshot: { queryParamMap: { get: vi.fn() } } };
 
     await TestBed.configureTestingModule({ 
       imports: [LoginComponent, NoopAnimationsModule], 
       providers: [ 
         provideRouter([]), 
         { provide: AuthService, useValue: mockAuthService }, 
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: { get: vi.fn() } } } } 
+        { provide: ActivatedRoute, useValue: mockRoute } 
       ] 
     }).compileComponents(); 
     
@@ -64,6 +66,17 @@ describe('LoginComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/'); 
   }); 
 
+  it('should redirect to returnUrl when provided', () => {
+    mockRoute.snapshot.queryParamMap.get.mockReturnValue('/dashboard/1');
+    createComponent();
+    component.loginForm.setValue({ email: 'a@b.com', password: 'pass123' });
+    mockAuthService.login.mockReturnValue(of({ access_token: 'token', token_type: 'bearer' }));
+
+    component.onSubmit();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/dashboard/1');
+  });
+
   it('should display error message on login failure', () => { 
     createComponent(); 
     const validCredentials = { email: 'test@example.com', password: 'wrong' }; 
@@ -81,4 +94,34 @@ describe('LoginComponent', () => {
     const alertBox = fixture.debugElement.query(By.css('[data-testid="error-alert"]')); 
     expect(alertBox.nativeElement.textContent).toContain('Bad credentials'); 
   }); 
-});
+
+  it('should use fallback error message when detail is missing', () => {
+    createComponent();
+    component.loginForm.setValue({ email: 'test@example.com', password: 'wrong' });
+    mockAuthService.login.mockReturnValue(throwError(() => ({ error: {} })));
+
+    component.onSubmit();
+
+    expect(component.errorMessage()).toContain('Invalid email or password');
+  });
+
+  it('should mark form as touched when invalid', () => {
+    createComponent();
+    const spy = vi.spyOn(component.loginForm, 'markAllAsTouched');
+    component.onSubmit();
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('should toggle password visibility', () => {
+    createComponent();
+    const initial = component.hidePassword();
+    component.togglePasswordVisibility(new Event('click'));
+    expect(component.hidePassword()).toBe(!initial);
+  });
+
+  it('should redirect if already authenticated on init', () => {
+    mockAuthService.isAuthenticated.mockReturnValue(true);
+    createComponent();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+  });
+}); 

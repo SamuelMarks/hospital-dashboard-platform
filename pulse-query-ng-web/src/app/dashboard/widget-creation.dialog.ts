@@ -44,7 +44,6 @@ export interface WidgetCreationData {
  */
 @Component({
   selector: 'app-widget-creation-dialog',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,

@@ -108,3 +108,35 @@ def test_sql_query_normalization(cache_svc):
   k2 = cache_svc.generate_key("SQL", conf2)
 
   assert k1 == k2
+
+
+def test_http_config_hashing(cache_svc):
+  """Non-SQL widgets should hash full configs deterministically."""
+  config = {"url": "https://api.example.com", "method": "GET", "params": {"q": "1"}}
+  key = cache_svc.generate_key("HTTP", config)
+  assert isinstance(key, str)
+  assert len(key) == 64
+
+
+def test_cache_rejects_oversized_items(cache_svc):
+  """Ensure large items are not stored in the cache."""
+  cache_svc._max_item_size = 5
+  key = "too_big"
+  value = {"data": "this-is-way-too-large"}
+
+  cache_svc.set(key, value)
+  assert cache_svc.get(key) is None
+
+
+def test_cache_handles_unserializable_values(cache_svc):
+  """Ensure serialization failures do not crash the cache set path."""
+
+  class BadStr:
+    def __str__(self) -> str:
+      raise ValueError("nope")
+
+  key = "bad"
+  value = BadStr()
+
+  cache_svc.set(key, value)
+  assert cache_svc.get(key) is value

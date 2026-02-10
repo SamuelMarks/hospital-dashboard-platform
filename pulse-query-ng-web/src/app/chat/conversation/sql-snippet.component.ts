@@ -12,7 +12,6 @@ import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-sql-snippet',
-  standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [`

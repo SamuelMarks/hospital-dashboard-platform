@@ -19,7 +19,6 @@ import { AskDataService } from '../global/ask-data.service'; // Needed for "Ask 
 
 @Component({ 
   selector: 'app-home', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     RouterModule, 

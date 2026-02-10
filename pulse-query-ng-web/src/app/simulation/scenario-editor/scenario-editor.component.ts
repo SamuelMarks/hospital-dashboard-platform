@@ -27,7 +27,6 @@ import { ScenarioConstraint } from '../../api-client';
 
 @Component({ 
   selector: 'app-scenario-editor', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     FormsModule, 

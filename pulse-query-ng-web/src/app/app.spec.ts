@@ -5,13 +5,16 @@
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { Component, signal, WritableSignal } from '@angular/core'; 
-import { RouterOutlet, provideRouter } from '@angular/router'; 
+import { RouterOutlet, provideRouter, ActivatedRoute } from '@angular/router'; 
 import { By } from '@angular/platform-browser'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { App } from './app'; 
-import { AskDataComponent } from './global/ask-data.component'; 
+import { type App as AppType } from './app'; 
+import { type AskDataComponent as AskDataComponentType } from './global/ask-data.component'; 
 import { AskDataService } from './global/ask-data.service'; 
+import { type ThemeService as ThemeServiceType } from './core/theme/theme.service';
+import { type ToolbarComponent as ToolbarComponentType } from './dashboard/toolbar.component';
 import { vi } from 'vitest';
+import { Subject } from 'rxjs';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -32,9 +35,21 @@ vi.mock('@material/material-color-utilities', () => ({
 }) 
 class MockAskDataComponent {} 
 
+@Component({
+  selector: 'app-toolbar',
+  template: '<div data-testid="mock-toolbar"></div>'
+})
+class MockToolbarComponent {}
+
 describe('App', () => { 
-  let fixture: ComponentFixture<App>; 
-  let component: App; 
+  let fixture: ComponentFixture<AppType>; 
+  let component: AppType; 
+  let AppCtor: typeof import('./app').App;
+  let AskDataComponentCtor: typeof import('./global/ask-data.component').AskDataComponent;
+  let ToolbarComponentCtor: typeof import('./dashboard/toolbar.component').ToolbarComponent;
+  let ThemeServiceCtor: typeof import('./core/theme/theme.service').ThemeService;
+  let queryParams$: Subject<Record<string, any>>;
+  let mockThemeService: { isTvMode: ReturnType<typeof signal>; setTvMode: ReturnType<typeof vi.fn> };
   
   // Mock Service Configuration
   let mockAskDataService: { 
@@ -43,27 +58,47 @@ describe('App', () => {
   }; 
 
   beforeEach(async () => { 
+    const [appMod, askDataMod, toolbarMod, themeMod] = await Promise.all([
+      import('./app'),
+      import('./global/ask-data.component'),
+      import('./dashboard/toolbar.component'),
+      import('./core/theme/theme.service')
+    ]);
+
+    AppCtor = appMod.App;
+    AskDataComponentCtor = askDataMod.AskDataComponent;
+    ToolbarComponentCtor = toolbarMod.ToolbarComponent;
+    ThemeServiceCtor = themeMod.ThemeService;
+
     // Initialize mock signal for state testing
     mockAskDataService = { 
       isOpen: signal(false), 
       close: vi.fn() 
     }; 
+    queryParams$ = new Subject<Record<string, any>>();
+    mockThemeService = {
+      isTvMode: signal(false),
+      setTvMode: vi.fn()
+    };
 
     await TestBed.configureTestingModule({ 
-      imports: [App, NoopAnimationsModule], 
+      imports: [AppCtor, NoopAnimationsModule], 
       providers: [ 
         { provide: AskDataService, useValue: mockAskDataService }, 
+        { provide: ThemeServiceCtor, useValue: mockThemeService },
         // Provide Router to satisfy ActivatedRoute dependency in App component
         provideRouter([]) 
       ] 
     }) 
-      .overrideComponent(App, { 
-        remove: { imports: [AskDataComponent] }, 
-        add: { imports: [MockAskDataComponent] } 
+      .overrideComponent(AppCtor, { 
+        remove: { imports: [AskDataComponentCtor, ToolbarComponentCtor] }, 
+        add: { imports: [MockAskDataComponent, MockToolbarComponent] } 
       }) 
       .compileComponents(); 
 
-    fixture = TestBed.createComponent(App); 
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { queryParams: queryParams$.asObservable() } });
+
+    fixture = TestBed.createComponent(AppCtor); 
     component = fixture.componentInstance; 
     fixture.detectChanges(); 
   }); 
@@ -122,4 +157,16 @@ describe('App', () => {
     const askData = sidenav.query(By.directive(MockAskDataComponent)); 
     expect(askData).toBeTruthy(); 
   }); 
-});
+
+  it('should enable TV mode when query param mode=tv', () => {
+    queryParams$.next({ mode: 'tv' });
+    fixture.detectChanges();
+    expect(mockThemeService.setTvMode).toHaveBeenCalledWith(true);
+  });
+
+  it('should ignore non-tv mode query params', () => {
+    queryParams$.next({ mode: 'desktop' });
+    fixture.detectChanges();
+    expect(mockThemeService.setTvMode).not.toHaveBeenCalled();
+  });
+}); 

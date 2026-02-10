@@ -13,7 +13,7 @@ from typing import Annotated, List, Optional
 from uuid import UUID
 
 import sqlglot
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -188,6 +188,7 @@ async def list_conversations(
   limit: int = 50,
   offset: int = 0,
 ) -> List[Conversation]:
+  """List recent conversations for the current user."""
   stmt = (
     select(Conversation)
     .where(Conversation.user_id == current_user.id)
@@ -205,6 +206,7 @@ async def create_conversation(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Conversation:
+  """Create a new conversation and optionally seed the first message."""
   now = datetime.now(timezone.utc)
   title = payload.title
   if not title:
@@ -241,6 +243,7 @@ async def update_conversation(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Conversation:
+  """Update the title for an existing conversation."""
   result = await db.execute(
     select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
   )
@@ -260,6 +263,7 @@ async def delete_conversation(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> None:
+  """Delete a conversation and its messages."""
   result = await db.execute(
     select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
   )
@@ -278,6 +282,7 @@ async def get_messages(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> List[Message]:
+  """Return the ordered message history for a conversation."""
   result = await db.execute(
     select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
   )
@@ -301,6 +306,7 @@ async def send_message(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Message:
+  """Append a user message and generate assistant candidates."""
   result = await db.execute(
     select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == current_user.id)
   )

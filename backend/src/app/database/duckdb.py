@@ -1,3 +1,10 @@
+"""
+DuckDB connection management for analytics workloads.
+
+Provides a thin wrapper for read-write and read-only connections and a FastAPI
+dependency helper for OLAP access.
+"""
+
 import duckdb
 from typing import Generator
 from app.core.config import settings

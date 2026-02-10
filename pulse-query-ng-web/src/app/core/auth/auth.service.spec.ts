@@ -78,6 +78,22 @@ describe('AuthService', () => {
     }));
   });
 
+  it('should return token from storage in browser', () => {
+    localStorage.setItem('pulse_auth_token', 'stored');
+    expect(service.getToken()).toBe('stored');
+    expect(service.hasStoredToken()).toBe(true);
+  });
+
+  it('should treat stored token as authenticated when user is not loaded', () => {
+    localStorage.setItem('pulse_auth_token', 'stored');
+    expect(service.isAuthenticated()).toBe(true);
+  });
+
+  it('should return false when no token is stored', () => {
+    localStorage.removeItem('pulse_auth_token');
+    expect(service.hasStoredToken()).toBe(false);
+  });
+
   describe('logout', () => {
     it('should clear storage and redirect', () => {
       localStorage.setItem('pulse_auth_token', 'garbage');
@@ -87,6 +103,15 @@ describe('AuthService', () => {
       expect(localStorage.getItem('pulse_auth_token')).toBeNull();
       expect(service.currentUser()).toBeNull();
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+    });
+
+    it('should allow logout without redirect', () => {
+      localStorage.setItem('pulse_auth_token', 'garbage');
+
+      service.logout(false);
+
+      expect(localStorage.getItem('pulse_auth_token')).toBeNull();
+      expect(mockRouter.navigate).not.toHaveBeenCalled();
     });
   });
 
@@ -116,5 +141,84 @@ describe('AuthService', () => {
       expect(mockApiClient.readUsersMeApiV1AuthMeGet).toHaveBeenCalled();
       expect(service.currentUser()).toEqual(mockUser);
     });
+
+    it('should skip profile fetch when no token is stored', async () => {
+      await service.initialize();
+      expect(mockApiClient.readUsersMeApiV1AuthMeGet).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should not access storage on the server platform', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: AuthApiClient, useValue: mockApiClient },
+        { provide: Router, useValue: mockRouter },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+
+    const serverService = TestBed.inject(AuthService);
+    localStorage.setItem('pulse_auth_token', 'valid');
+
+    await serverService.initialize();
+    expect(serverService.getToken()).toBeNull();
+    expect(serverService.hasStoredToken()).toBe(false);
+    expect(mockApiClient.readUsersMeApiV1AuthMeGet).not.toHaveBeenCalled();
+  });
+
+  it('should not write to storage on server login', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: AuthApiClient, useValue: mockApiClient },
+        { provide: Router, useValue: mockRouter },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+
+    const serverService = TestBed.inject(AuthService);
+    const storageSpy = vi.spyOn(localStorage, 'setItem');
+    mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(of(mockToken));
+    mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
+
+    serverService.login({ email: 'u', password: 'p' }).subscribe();
+
+    expect(storageSpy).not.toHaveBeenCalled();
+    expect(mockApiClient.readUsersMeApiV1AuthMeGet).toHaveBeenCalled();
+    storageSpy.mockRestore();
+  });
+
+  it('should not clear storage on server logout', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        AuthService,
+        { provide: AuthApiClient, useValue: mockApiClient },
+        { provide: Router, useValue: mockRouter },
+        { provide: PLATFORM_ID, useValue: 'server' }
+      ]
+    });
+
+    const serverService = TestBed.inject(AuthService);
+    const removeSpy = vi.spyOn(localStorage, 'removeItem');
+
+    serverService.logout(false);
+
+    expect(removeSpy).not.toHaveBeenCalled();
+    removeSpy.mockRestore();
+  });
+
+  it('should logout when profile fetch fails', () => {
+    mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(of(mockToken));
+    mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(throwError(() => new Error('bad token')));
+
+    service.login({ email: 'u', password: 'p' }).subscribe({
+      error: () => {}
+    });
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
   });
 });

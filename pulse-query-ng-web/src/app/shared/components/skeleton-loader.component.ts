@@ -8,7 +8,6 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
  */ 
 @Component({ 
   selector: 'app-skeleton-loader', 
-  standalone: true, 
   imports: [CommonModule], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
   styles: [`

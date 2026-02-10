@@ -28,7 +28,6 @@ import { environment } from '../../environments/environment';
  */ 
 @Component({ 
   selector: 'app-login', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     ReactiveFormsModule, 

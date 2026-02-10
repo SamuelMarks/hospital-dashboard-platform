@@ -2,9 +2,9 @@
  * @fileoverview Unit tests for Error Boundary Directive.
  */
 
-import { Component } from '@angular/core';
+import { Component, TemplateRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ErrorBoundaryDirective } from './error-boundary.directive';
+import { ErrorBoundaryDirective, ErrorBoundaryContext } from './error-boundary.directive';
 import { ErrorHandler } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 import { By } from '@angular/platform-browser';
@@ -14,10 +14,15 @@ import { CommonModule } from '@angular/common';
  * Host component to test structural directive usage.
  */
 @Component({
+  standalone: false,
   template: `
     <div *appErrorBoundary="fallbackTpl">
-      <div id="content" *ngIf="!shouldCrash">Safe Content</div>
-      <div *ngIf="shouldCrash">{{ throwError() }}</div>
+
+      @if (shouldCrash) {
+        <div>{{ throwError() }}</div>
+      } @else {
+        <div id="content">Safe Content</div>
+      }
     </div>
 
     <ng-template #fallbackTpl let-err let-retry="retry">
@@ -26,12 +31,23 @@ import { CommonModule } from '@angular/common';
         <button id="retry-btn" (click)="retry()">Retry</button>
       </div>
     </ng-template>
-  `,
-  imports: [ErrorBoundaryDirective, CommonModule]
+  `
 })
 class TestHostComponent {
   shouldCrash = false;
   throwError() { throw new Error('Crash!'); }
+}
+
+@Component({
+  standalone: false,
+  template: `
+    <div *appErrorBoundary="missingTemplate">
+      <div id="content">Safe Content</div>
+    </div>
+  `
+})
+class MissingTemplateHostComponent {
+  missingTemplate?: TemplateRef<ErrorBoundaryContext>;
 }
 
 describe('ErrorBoundaryDirective', () => {
@@ -42,7 +58,8 @@ describe('ErrorBoundaryDirective', () => {
     handlerMock = { clearError: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [TestHostComponent, CommonModule],
+      imports: [CommonModule, ErrorBoundaryDirective],
+      declarations: [TestHostComponent, MissingTemplateHostComponent],
       providers: [
         { provide: ErrorHandler, useValue: handlerMock },
         { provide: GlobalErrorHandler, useValue: handlerMock }
@@ -65,9 +82,9 @@ describe('ErrorBoundaryDirective', () => {
     const debugNode = fixture.debugElement.queryAllNodes((node) => true)
         .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective);
-    
+
     expect(directive).toBeTruthy();
-    
+
     // 2. Trigger fallback manually (simulating catch)
     directive?.renderFallback('Manual Crash');
     fixture.detectChanges();
@@ -83,7 +100,7 @@ describe('ErrorBoundaryDirective', () => {
     const debugNode = fixture.debugElement.queryAllNodes((node) => true)
         .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective);
-    
+
     // Enter Error State
     directive?.renderFallback('Crash');
     fixture.detectChanges();
@@ -96,5 +113,50 @@ describe('ErrorBoundaryDirective', () => {
     expect(handlerMock.clearError).toHaveBeenCalled();
     // Should attempt to re-render content
     expect(fixture.debugElement.query(By.css('#content'))).toBeTruthy();
+  });
+
+  it('should render fallback when content creation throws', () => {
+    const debugNode = fixture.debugElement.queryAllNodes((node) => true)
+        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
+
+    const originalCreate = directive.vcr.createEmbeddedView.bind(directive.vcr);
+    vi.spyOn(directive.vcr, 'createEmbeddedView')
+      .mockImplementationOnce(() => {
+        throw new Error('boom');
+      })
+      .mockImplementation((...args: any[]) => originalCreate(...args));
+
+    directive.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.css('#fallback'))).toBeTruthy();
+  });
+
+  it('should skip rendering fallback when no template is provided', () => {
+    const noTemplateFixture = TestBed.createComponent(MissingTemplateHostComponent);
+    noTemplateFixture.detectChanges();
+
+    const debugNode = noTemplateFixture.debugElement.queryAllNodes((node) => true)
+        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
+
+    const createSpy = vi.spyOn(directive.vcr, 'createEmbeddedView');
+    createSpy.mockClear();
+
+    directive.renderFallback('No template');
+
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('should unsubscribe on destroy', () => {
+    const debugNode = fixture.debugElement.queryAllNodes((node) => true)
+        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
+
+    directive.sub = { unsubscribe: vi.fn() };
+    directive.ngOnDestroy();
+
+    expect(directive.sub.unsubscribe).toHaveBeenCalled();
   });
 });

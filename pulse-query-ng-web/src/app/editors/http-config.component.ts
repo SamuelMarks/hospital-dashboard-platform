@@ -8,7 +8,7 @@
  * - JSON Body Payload.
  */
 
-import { Component, input, output, inject, signal, ChangeDetectionStrategy, OnInit } from '@angular/core'; 
+import { Component, input, output, inject, signal, ChangeDetectionStrategy, effect } from '@angular/core'; 
 import { CommonModule } from '@angular/common'; 
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormControl, FormArray, Validators, AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms'; 
 import { finalize } from 'rxjs/operators'; 
@@ -247,7 +247,7 @@ export function jsonValidator(): ValidatorFn {
     </div>
   `
 }) 
-export class HttpConfigComponent implements OnInit { 
+export class HttpConfigComponent { 
   private readonly fb = inject(FormBuilder); 
   private readonly dashboardsApi = inject(DashboardsService); 
   private readonly executionApi = inject(ExecutionService); 
@@ -273,9 +273,9 @@ export class HttpConfigComponent implements OnInit {
   get paramsArray() { return this.form.get('params') as FormArray; } 
   get headersArray() { return this.form.get('headers') as FormArray; } 
 
-  ngOnInit(): void { 
-    this.hydrateForm(this.initialConfig()); 
-  } 
+  constructor() {
+    effect(() => this.hydrateForm(this.initialConfig()));
+  }
 
   isFieldInvalid(fieldName: string): boolean { 
     const field = this.form.get(fieldName as keyof HttpConfigForm); 

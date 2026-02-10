@@ -145,6 +145,17 @@ import { ChatStore } from '../chat/chat.store';
               </mat-menu>
 
               <div class="flex gap-2">
+                @if (enableCart()) { 
+                  <button
+                    mat-stroked-button
+                    (click)="saveQueryToCart()"
+                    [disabled]="!canSaveToCart()"
+                    matTooltip="Save query to cart"
+                  >
+                    <mat-icon class="mr-1">shopping_cart</mat-icon>
+                    Save to Cart
+                  </button>
+                } 
                 <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
                    @if (isRunning()) { <mat-spinner diameter="20" class="mr-2"></mat-spinner> } 
                    Run Query
@@ -191,8 +202,12 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly initialSql = input<string>(''); 
   /** Optional: Set which tab opens by default. 0=Code, 1=AI */
   readonly initialTab = input<number>(0); 
+  /** Optional: Enable cart actions for ad-hoc flows. */
+  readonly enableCart = input<boolean>(false);
   
   readonly sqlChange = output<string>(); 
+  /** Event emitted when user saves SQL to the query cart. */
+  readonly saveToCart = output<string>();
 
   readonly currentSql = model<string>(''); 
   readonly isRunning = signal(false); 
@@ -201,6 +216,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   
   readonly globalParams = this.store.globalParams; 
   readonly availableParams = computed(() => Object.keys(this.globalParams())); 
+  readonly canSaveToCart = computed(() => this.currentSql().trim().length > 0);
 
   selectedTabIndex = signal(0); 
 
@@ -331,4 +347,10 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
         } 
       }); 
   } 
-}
+
+  /** Emits the current SQL to the query cart. */
+  saveQueryToCart(): void { 
+    if (!this.canSaveToCart()) return; 
+    this.saveToCart.emit(this.currentSql()); 
+  } 
+} 

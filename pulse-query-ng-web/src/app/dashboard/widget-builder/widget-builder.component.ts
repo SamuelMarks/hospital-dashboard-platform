@@ -53,7 +53,6 @@ export interface WidgetBuilderData {
 
 @Component({ 
   selector: 'app-widget-builder', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     FormsModule, 

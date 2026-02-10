@@ -44,7 +44,6 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
 
 @Component({ 
   selector: 'app-register', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     ReactiveFormsModule, 

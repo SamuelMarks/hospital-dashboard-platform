@@ -85,7 +85,10 @@
     [opened]="store.isEditMode() && !isTvMode()" 
     class="editor-sidenav mat-elevation-z4" 
   >
-    <app-widget-gallery class="h-full"></app-widget-gallery>
+    <div class="sidebar-stack">
+      <app-query-cart [dashboardId]="store.dashboard()?.id || null" class="cart-pane"></app-query-cart>
+      <app-widget-gallery class="gallery-pane"></app-widget-gallery>
+    </div>
   </mat-sidenav>
 
 </mat-sidenav-container>

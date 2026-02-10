@@ -58,8 +58,16 @@ export class GlobalErrorHandler implements ErrorHandler {
       // Accessibility: 'assertive' ensures screen readers announce the crash immediately. 
       politeness: 'assertive', 
       panelClass: ['snackbar-critical'] 
-    }).onAction().subscribe(() => window.location.reload()); 
+    }).onAction().subscribe(() => this.reloadApp()); 
   } 
+
+  private reloadApp(): void {
+    try {
+      window.location.reload();
+    } catch {
+      // Ignore reload errors in non-browser environments (e.g., tests).
+    }
+  }
 
   /** 
    * Manually clears the error stream (e.g., after a Retry action matches a successful recovery). 

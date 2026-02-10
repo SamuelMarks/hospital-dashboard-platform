@@ -29,7 +29,6 @@ import { DashboardStore } from './dashboard.store';
  */ 
 @Component({ 
   selector: 'app-filter-ribbon', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     ReactiveFormsModule, 

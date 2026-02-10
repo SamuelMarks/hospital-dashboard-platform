@@ -1,5 +1,7 @@
+"""Dashboard and widget models for the analytics UI."""
+
 import uuid
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,6 +12,8 @@ from app.database.postgres import Base
 
 
 class Dashboard(Base):
+  """SQLAlchemy model representing a user dashboard."""
+
   __tablename__ = "dashboards"
 
   id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -26,6 +30,8 @@ class Dashboard(Base):
 
 
 class Widget(Base):
+  """SQLAlchemy model representing a dashboard widget."""
+
   __tablename__ = "widgets"
 
   id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -18,11 +18,14 @@ import { DashboardsService, WidgetResponse, WidgetUpdate, TemplateResponse } fro
 import { FilterRibbonComponent } from './filter-ribbon.component'; 
 import { WidgetComponent } from '../widget/widget.component'; 
 import { WidgetGalleryComponent } from './widget-gallery/widget-gallery.component'; 
+import { QueryCartComponent } from './query-cart/query-cart.component'; 
 import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog'; 
 import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component'; 
 import { ThemeService } from '../core/theme/theme.service'; 
 import { ProvisioningService } from './provisioning.service'; 
 import { EmptyStateComponent } from './empty-state/empty-state.component'; 
+import { QueryCartProvisioningService } from './query-cart-provisioning.service'; 
+import { QueryCartItem } from '../global/query-cart.models'; 
 
 @Component({ 
   selector: 'app-dashboard-layout', 
@@ -36,6 +39,7 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
     // ToolbarComponent removed
     FilterRibbonComponent, 
     WidgetComponent, 
+    QueryCartComponent, 
     WidgetGalleryComponent, 
     MatDialogModule, 
     MatIconModule, 
@@ -52,6 +56,7 @@ export class DashboardLayoutComponent implements OnInit {
   private readonly route = inject(ActivatedRoute); 
   private readonly dashboardApi = inject(DashboardsService); 
   private readonly provisioning = inject(ProvisioningService); 
+  private readonly cartProvisioning = inject(QueryCartProvisioningService); 
   private readonly dialog = inject(MatDialog); 
   private readonly snackBar = inject(MatSnackBar); 
 
@@ -84,25 +89,47 @@ export class DashboardLayoutComponent implements OnInit {
     if (event.previousContainer === event.container) { 
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex); 
     } else { 
-      const template = event.item.data as TemplateResponse; 
+      const data = event.item.data; 
       const dashboard = this.store.dashboard(); 
       
-      if (dashboard && template) { 
-        this.store.setLoading(true); 
+      if (!dashboard || !data) return; 
 
-        this.provisioning.provisionWidget(template, dashboard.id).subscribe({ 
+      if (this.isQueryCartItem(data)) { 
+        this.store.setLoading(true); 
+        this.cartProvisioning.addToDashboard(data, dashboard.id).subscribe({ 
           next: () => { 
-            this.snackBar.open(`Added widget: ${template.title}`, 'OK', { duration: 3000 }); 
+            this.snackBar.open(`Added query: ${data.title}`, 'OK', { duration: 3000 }); 
             this.store.loadDashboard(dashboard.id); 
           }, 
           error: (err: unknown) => { 
             console.error(err); 
-            this.snackBar.open('Failed to create widget from template', 'Close'); 
+            this.snackBar.open('Failed to add query to dashboard', 'Close'); 
             this.store.setLoading(false); 
           } 
         }); 
+        return; 
       } 
+
+      const template = data as TemplateResponse; 
+      this.store.setLoading(true); 
+
+      this.provisioning.provisionWidget(template, dashboard.id).subscribe({ 
+        next: () => { 
+          this.snackBar.open(`Added widget: ${template.title}`, 'OK', { duration: 3000 }); 
+          this.store.loadDashboard(dashboard.id); 
+        }, 
+        error: (err: unknown) => { 
+          console.error(err); 
+          this.snackBar.open('Failed to create widget from template', 'Close'); 
+          this.store.setLoading(false); 
+        } 
+      }); 
     } 
+  } 
+
+  /** Type guard for query-cart drag data. */ 
+  private isQueryCartItem(value: unknown): value is QueryCartItem { 
+    return !!value && typeof value === 'object' && (value as QueryCartItem).kind === 'query-cart-item'; 
   } 
 
   getColSpan(widget: WidgetResponse): number { 

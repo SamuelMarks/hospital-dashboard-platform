@@ -10,6 +10,7 @@ Verifies the Linear Programming formulation logic, specifically focusing on:
 
 import json
 import pytest
+import app.services.mpax_bridge as mpax_module
 from app.services.mpax_bridge import mpax_bridge
 
 
@@ -134,3 +135,65 @@ def test_empty_input_handling() -> None:
   data = json.loads(result)
   assert isinstance(data, list)
   assert len(data) == 0
+
+
+def test_overflow_only_when_no_capacity_units(monkeypatch) -> None:
+  """
+  If no real capacity units exist but demand does, Overflow should carry the load.
+  This covers the G_rows empty-but-nonzero variables branch.
+  """
+  demand = json.dumps({"ServiceA": 5.0})
+  capacity = json.dumps({})
+  affinity = json.dumps({})
+
+  class _DummyResult:
+    def __init__(self, sol):
+      self.primal_solution = sol
+
+  class _DummySolver:
+    def __init__(self, sol):
+      self._sol = sol
+
+    def optimize(self, _lp):
+      return _DummyResult(self._sol)
+
+  # Avoid long-running optimization for this edge-case branch.
+  monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummySolver([5.0]))
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
+  data = json.loads(result)
+
+  assert len(data) == 1
+  assert data[0]["Unit"] == "Overflow"
+  assert data[0]["Patient_Count"] == pytest.approx(5.0)
+
+
+def test_hard_constraint_max_enforced(monkeypatch) -> None:
+  """
+  Explicit max constraints should cap allocations for a unit.
+  """
+  demand = json.dumps({"ServiceA": 5.0})
+  capacity = json.dumps({"Unit1": 10.0, "Unit2": 10.0})
+  affinity = json.dumps({"ServiceA": {"Unit1": 1.0, "Unit2": 1.0}})
+
+  constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "max": 2.0}])
+
+  class _DummyResult:
+    def __init__(self, sol):
+      self.primal_solution = sol
+
+  class _DummySolver:
+    def __init__(self, sol):
+      self._sol = sol
+
+    def optimize(self, _lp):
+      return _DummyResult(self._sol)
+
+  # Solution order: Unit1, Unit2, Overflow (single service).
+  monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummySolver([2.0, 3.0, 0.0]))
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
+  data = json.loads(result)
+
+  allocation = {item["Unit"]: item["Patient_Count"] for item in data}
+  assert allocation.get("Unit1", 0.0) <= 2.01

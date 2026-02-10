@@ -116,3 +116,39 @@ async def test_run_simulation_legacy_2col_sql() -> None:
     assert row["Delta"] == 10.0
 
   app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_run_simulation_handles_value_error() -> None:
+  """ValueError should map to 400."""
+  mock_user = MagicMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  payload = {"demand_source_sql": "SELECT 1", "capacity_parameters": {}}
+
+  with patch("app.api.routers.simulation.simulation_service.run_scenario", side_effect=ValueError("bad")):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+      res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
+
+  assert res.status_code == 400
+  assert "bad" in res.json()["detail"]
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_run_simulation_handles_generic_error() -> None:
+  """Generic errors should map to 500."""
+  mock_user = MagicMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  payload = {"demand_source_sql": "SELECT 1", "capacity_parameters": {}}
+
+  with patch("app.api.routers.simulation.simulation_service.run_scenario", side_effect=RuntimeError("boom")):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+      res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
+
+  assert res.status_code == 500
+  assert "Simulation Failed" in res.json()["detail"]
+
+  app.dependency_overrides = {}

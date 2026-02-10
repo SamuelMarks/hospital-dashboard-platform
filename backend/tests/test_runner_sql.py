@@ -3,8 +3,8 @@ Tests for the SQL Runner Service Integration.
 Verifies query execution flow and error handling from the Database layer.
 """
 
-import pytest
 from unittest.mock import MagicMock
+from app.services.runners import sql as sql_runner
 from app.services.runners.sql import run_sql_widget
 
 
@@ -95,3 +95,44 @@ def test_run_sql_widget_execution_error() -> None:
   assert result["error"] is not None
   assert "SQL Execution Error" in result["error"]
   assert "Database Locked" in result["error"]
+
+
+def test_run_sql_widget_missing_query() -> None:
+  """Ensure missing SQL returns an error payload."""
+  mock_cursor = MagicMock()
+  config = {}
+
+  result = run_sql_widget(mock_cursor, config)
+
+  assert result["error"] is not None
+  assert "Missing SQL query" in result["error"]
+
+
+def test_run_sql_widget_no_result_set() -> None:
+  """Queries with no cursor description should return empty data without error."""
+  mock_cursor = MagicMock()
+  mock_cursor.description = None
+
+  config = {"query": "SET some_setting = 1"}
+
+  result = run_sql_widget(mock_cursor, config)
+
+  assert result["error"] is None
+  assert result["data"] == []
+  assert result["columns"] == []
+
+
+def test_run_sql_widget_continues_on_validation_warning(monkeypatch) -> None:
+  """Validation errors should not prevent execution."""
+  mock_cursor = MagicMock()
+  mock_cursor.description = [("id", "int")]
+  mock_cursor.fetchall.return_value = [(1,)]
+
+  def _boom(_query: str) -> None:
+    raise sql_runner.SQLSecurityError("bad")
+
+  monkeypatch.setattr(sql_runner, "validate_query_ast", _boom)
+
+  result = run_sql_widget(mock_cursor, {"query": "SELECT 1"})
+
+  assert result["error"] is None

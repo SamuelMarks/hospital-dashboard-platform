@@ -64,4 +64,36 @@ describe('SimulationStore', () => {
     // with 100% failure rate, error count should roughly match rps
     expect(m.errorCount).toBeGreaterThan(0);
   });
+
+  it('should apply latency injection when enabled', () => {
+    store.updateParams({ latencyInjection: true });
+    store.toggleSimulation();
+
+    vi.advanceTimersByTime(1100);
+    const m = store.metrics();
+    expect(m.avgLatency).toBeGreaterThan(20);
+  });
+
+  it('should reset state', () => {
+    store.updateParams({ users: 200 });
+    store.toggleSimulation();
+    store.reset();
+
+    expect(store.isActive()).toBe(false);
+    expect(store.history().length).toBe(0);
+  });
+
+  it('should stop timers on destroy', () => {
+    store.toggleSimulation();
+    store.ngOnDestroy();
+    expect((store as any).timer).toBeNull();
+  });
+
+  it('should avoid starting engine twice', () => {
+    (store as any).startEngine();
+    const firstTimer = (store as any).timer;
+    (store as any).startEngine();
+    expect((store as any).timer).toBe(firstTimer);
+    (store as any).stopEngine();
+  });
 });

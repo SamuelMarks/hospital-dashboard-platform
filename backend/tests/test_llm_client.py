@@ -4,8 +4,8 @@ Verifies broadcasting logic, latency recording, and error containment using any-
 """
 
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
-from app.services.llm_client import LLMArenaClient, ArenaResponse
+from unittest.mock import MagicMock, patch, PropertyMock, AsyncMock
+from app.services.llm_client import LLMArenaClient
 
 # Import the class Settings to patch the property on the class level
 from app.core.config import Settings
@@ -127,3 +127,53 @@ async def test_arena_initialization_failure():
       # Should have registered the Good one, logged error for Bad one
       assert len(arena.swarm) == 1
       assert arena.swarm[0]["name"] == "Good"
+
+
+@pytest.mark.asyncio
+async def test_arena_raises_when_no_providers_configured():
+  """If no providers are configured, the arena should raise."""
+  with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
+    mock_prop.return_value = []
+
+    arena = LLMArenaClient()
+
+    with pytest.raises(RuntimeError):
+      await arena.generate_arena_competition([{"role": "user", "content": "hi"}])
+
+
+@pytest.mark.asyncio
+async def test_arena_handles_malformed_response(mock_swarm_settings):
+  """Malformed provider responses should be normalized to errors."""
+  with patch("app.services.llm_client.AnyLLM.create") as mock_create:
+    mock_create.side_effect = [MagicMock(), MagicMock()]
+
+    arena = LLMArenaClient()
+
+    class BadResponse:
+      pass
+
+    with patch("app.services.llm_client.run_in_threadpool") as mock_thread:
+      mock_thread.return_value = BadResponse()
+
+      result = await arena._generate_single(
+        arena.swarm[0], [{"role": "user", "content": "hi"}], temperature=0.0, max_tokens=10, stop=None
+      )
+
+      assert result.error == "Malformed response structure"
+
+
+@pytest.mark.asyncio
+async def test_arena_wraps_unhandled_coroutine_errors(mock_swarm_settings):
+  """Exceptions from _generate_single should be wrapped into ArenaResponse errors."""
+  with patch("app.services.llm_client.AnyLLM.create") as mock_create:
+    mock_create.side_effect = [MagicMock(), MagicMock()]
+
+    arena = LLMArenaClient()
+
+    with patch.object(arena, "_generate_single", new_callable=AsyncMock) as mock_single:
+      mock_single.side_effect = RuntimeError("boom")
+
+      results = await arena.generate_arena_competition([{"role": "user", "content": "hi"}])
+
+      assert len(results) == 2
+      assert all("Critical Client Error" in res.error for res in results)

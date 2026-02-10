@@ -14,10 +14,11 @@ import { DashboardsService, DashboardResponse } from '../api-client';
 import { MatDialog } from '@angular/material/dialog'; 
 import { signal, WritableSignal } from '@angular/core'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { Router } from '@angular/router'; 
-import { provideRouter } from '@angular/router'; 
+import { NavigationEnd, NavigationStart, Router } from '@angular/router'; 
 import { By } from '@angular/platform-browser'; 
 import { vi } from 'vitest';
+import { of, Subject } from 'rxjs';
+import { QueryCartService } from '../global/query-cart.service';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -43,7 +44,9 @@ describe('ToolbarComponent', () => {
   let mockStore: any; 
   let mockAuthService: any; 
   let mockThemeService: any; 
+  let mockCartService: any;
   let router: Router; 
+  let routerEvents$: Subject<any>;
 
   let dashboardSig: WritableSignal<DashboardResponse | null>; 
   let isLoadingSig: WritableSignal<boolean>; 
@@ -82,6 +85,13 @@ describe('ToolbarComponent', () => {
       toggle: vi.fn(), 
       setSeedColor: vi.fn() 
     }; 
+    mockCartService = { count: signal(0) };
+
+    routerEvents$ = new Subject();
+    const mockRouter = {
+      events: routerEvents$.asObservable(),
+      url: '/'
+    };
 
     await TestBed.configureTestingModule({ 
       imports: [ 
@@ -95,9 +105,14 @@ describe('ToolbarComponent', () => {
         { provide: MatDialog, useValue: mockDialog }, 
         { provide: AuthService, useValue: mockAuthService }, 
         { provide: ThemeService, useValue: mockThemeService }, 
-        provideRouter([]) 
+        { provide: QueryCartService, useValue: mockCartService },
+        { provide: Router, useValue: mockRouter }
       ] 
-    }).compileComponents(); 
+    })
+    .overrideComponent(ToolbarComponent, {
+      set: { template: '<button data-testid="btn-theme-menu"></button>' }
+    })
+    .compileComponents(); 
 
     fixture = TestBed.createComponent(ToolbarComponent); 
     component = fixture.componentInstance; 
@@ -133,6 +148,25 @@ describe('ToolbarComponent', () => {
     expect(mockThemeService.setSeedColor).toHaveBeenCalledWith(hex); 
   }); 
 
+  it('should ignore empty color picker value', () => {
+    const event = { target: { value: '' } } as unknown as Event;
+    component.onColorPickerChange(event);
+    expect(mockThemeService.setSeedColor).not.toHaveBeenCalledWith('');
+  });
+
+  it('should ignore non-navigation end events for isDashboardRoute', () => {
+    routerEvents$.next(new NavigationStart(1, '/dashboard/1'));
+    TestBed.flushEffects();
+    expect(component.isDashboardRoute()).toBe(false);
+  });
+
+  it('should update isDashboardRoute on navigation end', () => {
+    (router as any).url = '/dashboard/123';
+    routerEvents$.next(new NavigationEnd(1, '/dashboard/123', '/dashboard/123'));
+    TestBed.flushEffects();
+    expect(component.isDashboardRoute()).toBe(true);
+  });
+
   it('should toggle edit mode via store', () => { 
     // Note: The visibility is guarded by `isDashboardRoute()` signal in component logic.
     // Testing the UI element requires correctly mocking the router event stream which is complex here.
@@ -146,4 +180,31 @@ describe('ToolbarComponent', () => {
     component.logout(); 
     expect(mockAuthService.logout).toHaveBeenCalled(); 
   }); 
-});
+
+  it('should open widget builder when dashboard exists', () => {
+    dashboardSig.set({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] });
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.openWidgetBuilder();
+
+    expect(mockDialog.open).toHaveBeenCalled();
+    expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
+  });
+
+  it('should skip reload when widget builder closes without result', () => {
+    dashboardSig.set({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] });
+    mockStore.loadDashboard.mockClear();
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+    component.openWidgetBuilder();
+
+    expect(mockDialog.open).toHaveBeenCalled();
+    expect(mockStore.loadDashboard).not.toHaveBeenCalled();
+  });
+
+  it('should not open widget builder when dashboard missing', () => {
+    dashboardSig.set(null);
+    component.openWidgetBuilder();
+    expect(mockDialog.open).not.toHaveBeenCalled();
+  });
+}); 

@@ -191,6 +191,7 @@ class SQLGeneratorService:
         model_tag=res.provider_name,
         generated_sql=final_sql,
         latency_ms=res.latency_ms,
+        is_selected=False,
         execution_success=None,
         error_message=error_msg,
       )

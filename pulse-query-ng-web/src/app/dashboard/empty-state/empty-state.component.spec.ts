@@ -92,4 +92,41 @@ describe('EmptyStateComponent', () => {
 
     expect(mockStore.createDefaultDashboard).toHaveBeenCalled(); 
   }); 
+
+  it('should not open wizard when dashboard missing', () => {
+    mockStore.dashboard.set(null);
+    component.openWizard();
+    expect(mockDialog.open).not.toHaveBeenCalled();
+  });
+
+  it('should not toggle edit mode when already in edit mode', () => {
+    mockStore.isEditMode.set(true);
+    component.openWizard();
+    expect(mockStore.toggleEditMode).not.toHaveBeenCalled();
+  });
+
+  it('should load dashboard after wizard closes with true', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
+    component.openWizard();
+    expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
+  });
+  
+  it('should not load dashboard when wizard closes falsy', () => {
+    mockStore.loadDashboard.mockClear();
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    component.openWizard();
+    expect(mockStore.loadDashboard).not.toHaveBeenCalled();
+  });
+
+  it('should not load dashboard when wizard closes with false', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    component.openWizard();
+    expect(mockStore.loadDashboard).not.toHaveBeenCalled();
+  });
+
+  it('should not load samples when loading', () => {
+    mockStore.isLoading.set(true);
+    component.loadSamples();
+    expect(mockStore.createDefaultDashboard).not.toHaveBeenCalled();
+  });
 });

@@ -44,6 +44,19 @@
         <span class="text-sm">Edit</span>
       </mat-slide-toggle>
 
+      <button
+        mat-icon-button
+        matTooltip="Query Cart is in the dashboard sidebar (Edit mode)."
+        aria-label="Query Cart location"
+        [matBadge]="cartCount()"
+        matBadgeColor="accent"
+        matBadgeSize="small"
+        [matBadgeHidden]="cartCount() === 0"
+        data-testid="btn-cart-location"
+      >
+        <mat-icon>shopping_cart</mat-icon>
+      </button>
+
       <!-- Add Widget (Only in Edit Mode) -->
       @if (store.isEditMode()) { 
         <button 

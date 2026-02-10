@@ -11,6 +11,7 @@ import { AskDataService } from './ask-data.service';
 import { SqlBuilderComponent } from '../editors/sql-builder.component'; 
 import { DashboardsService, DashboardCreate, DashboardResponse, WidgetResponse } from '../api-client'; 
 import { AuthService } from '../core/auth/auth.service'; 
+import { QueryCartService } from './query-cart.service'; 
 
 /** 
  * AskDataComponent
@@ -21,10 +22,10 @@ import { AuthService } from '../core/auth/auth.service';
  * 1. Manages the lifecycle of a "Scratchpad" Dashboard (create checking on load). 
  * 2. Hosts the `SqlBuilderComponent` for ad-hoc analysis. 
  * 3. Provides a header with a Close action (delegates to Service). 
+ * 4. Saves ad-hoc SQL into the Query Cart. 
  */ 
 @Component({ 
   selector: 'app-ask-data', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     SqlBuilderComponent, 
@@ -67,6 +68,10 @@ import { AuthService } from '../core/auth/auth.service';
     <mat-toolbar color="white" class="border-b">
       <span class="flex-grow font-medium">Ask Data</span>
       <span class="text-xs text-gray-500 mr-4 font-normal">Ad-hoc Analysis Scratchpad</span>
+      <span class="text-xs text-gray-500 mr-4 font-normal flex items-center gap-1">
+        <mat-icon style="font-size:14px; width:14px; height:14px">shopping_cart</mat-icon>
+        {{ cartCount() }} in cart
+      </span>
       
       <button mat-icon-button (click)="vis.close()" data-testid="close-btn">
         <mat-icon>close</mat-icon>
@@ -101,6 +106,8 @@ import { AuthService } from '../core/auth/auth.service';
            [widgetId]="ids.widgetId" 
            [initialSql]="'SELECT * FROM hospital_data LIMIT 5'" 
            [initialTab]="1" 
+           [enableCart]="true"
+           (saveToCart)="handleSaveToCart($event)"
            class="h-full w-full block" 
          ></app-sql-builder>
       } 
@@ -109,6 +116,7 @@ import { AuthService } from '../core/auth/auth.service';
 }) 
 export class AskDataComponent implements OnDestroy { 
   public readonly vis = inject(AskDataService); 
+  private readonly cart = inject(QueryCartService); 
   
   private readonly dashboardsApi = inject(DashboardsService); 
   private readonly auth = inject(AuthService); 
@@ -119,6 +127,7 @@ export class AskDataComponent implements OnDestroy {
   readonly loadingContext = signal(true); 
   readonly contextError = signal<string | null>(null); 
   readonly scratchpadIds = signal<{ dashboardId: string, widgetId: string } | null>(null); 
+  readonly cartCount = this.cart.count; 
 
   constructor() { 
     if (isPlatformBrowser(this.platformId)) { 
@@ -207,4 +216,9 @@ export class AskDataComponent implements OnDestroy {
     this.contextError.set(msg); 
     this.loadingContext.set(false); 
   } 
-}
+
+  /** Adds the current SQL to the query cart. */
+  handleSaveToCart(sql: string): void { 
+    this.cart.add(sql); 
+  } 
+} 

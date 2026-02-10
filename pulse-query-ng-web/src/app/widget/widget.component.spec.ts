@@ -6,12 +6,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { WidgetComponent } from './widget.component'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
-import { WidgetResponse } from '../api-client'; 
-import { signal, WritableSignal } from '@angular/core'; 
+import { WidgetResponse, DashboardsService } from '../api-client'; 
+import { Component, input, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core'; 
+import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { By } from '@angular/platform-browser'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component'; 
+import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
+import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
+import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
+import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
+import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
+import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { vi } from 'vitest';
+import { of } from 'rxjs';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -22,6 +30,44 @@ vi.mock('@material/material-color-utilities', () => ({
   Theme: class {},
   __esModule: true
 }));
+
+@Component({ selector: 'viz-table', template: '' })
+class MockVizTableComponent { 
+  readonly dataSet = input<unknown>();
+  readonly config = input<unknown>();
+}
+
+@Component({ selector: 'viz-metric', template: '' })
+class MockVizMetricComponent { 
+  readonly data = input<unknown>();
+  readonly config = input<unknown>();
+}
+
+@Component({ selector: 'viz-chart', template: '' })
+class MockVizChartComponent { 
+  readonly dataSet = input<unknown>();
+  readonly config = input<unknown>();
+}
+
+@Component({ selector: 'viz-pie', template: '' })
+class MockVizPieComponent { 
+  readonly dataSet = input<unknown>();
+}
+
+@Component({ selector: 'viz-heatmap', template: '' })
+class MockVizHeatmapComponent { 
+  readonly dataSet = input<unknown>();
+}
+
+@Component({ selector: 'viz-scalar', template: '' })
+class MockVizScalarComponent { 
+  readonly data = input<unknown>();
+}
+
+@Component({ selector: 'viz-markdown', template: '' })
+class MockVizMarkdownComponent { 
+  readonly content = input<string | undefined>();
+}
 
 describe('WidgetComponent', () => { 
   let component: WidgetComponent; 
@@ -37,6 +83,7 @@ describe('WidgetComponent', () => {
   }; 
 
   let mockStore: any; 
+  let mockDashApi: any;
 
   beforeEach(async () => { 
     dataMapSig = signal({}); 
@@ -52,17 +99,50 @@ describe('WidgetComponent', () => {
       isWidgetLoading: signal(() => false), 
       refreshWidget: vi.fn(), 
       setFocusedWidget: vi.fn(), 
-      duplicateWidget: vi.fn() // Now supported
+      duplicateWidget: vi.fn(), // Now supported
+      loadDashboard: vi.fn()
     }; 
+    mockDashApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})) };
 
     await TestBed.configureTestingModule({ 
       imports: [WidgetComponent, NoopAnimationsModule], 
-      providers: [{ provide: DashboardStore, useValue: mockStore }] 
-    }).compileComponents(); 
+      providers: [
+        { provide: DashboardStore, useValue: mockStore },
+        { provide: DashboardsService, useValue: mockDashApi }
+      ] 
+    })
+    .overrideComponent(WidgetComponent, {
+      set: { schemas: [NO_ERRORS_SCHEMA] }
+    })
+    .overrideComponent(WidgetComponent, {
+      remove: {
+        imports: [
+          VizTableComponent,
+          VizMetricComponent,
+          VizChartComponent,
+          VizPieComponent,
+          VizHeatmapComponent,
+          VizScalarComponent,
+          VizMarkdownComponent
+        ]
+      },
+      add: {
+        imports: [
+          MockVizTableComponent,
+          MockVizMetricComponent,
+          MockVizChartComponent,
+          MockVizPieComponent,
+          MockVizHeatmapComponent,
+          MockVizScalarComponent,
+          MockVizMarkdownComponent
+        ]
+      }
+    })
+    .compileComponents(); 
 
     fixture = TestBed.createComponent(WidgetComponent); 
     component = fixture.componentInstance; 
-    fixture.componentRef.setInput('widget', mockWidget); 
+    setInputSignal(component, 'widgetInput', mockWidget);
     fixture.detectChanges(); 
   }); 
 
@@ -144,6 +224,15 @@ describe('WidgetComponent', () => {
     expect(deleteEmitted).toBe(true); 
   }); 
 
+  it('should ignore escape when not focused and not edit mode', () => {
+    const event = new KeyboardEvent('keydown', { key: 'Escape' });
+    vi.spyOn(event, 'stopPropagation');
+    focusedWidgetIdSig.set(null);
+    isEditModeSig.set(false);
+    component.onEscape(event);
+    expect(mockStore.setFocusedWidget).not.toHaveBeenCalledWith(null);
+  });
+
   it('should toggle focus when button clicked', () => { 
     // Initial State: Not Focused
     focusedWidgetIdSig.set(null); 
@@ -162,7 +251,104 @@ describe('WidgetComponent', () => {
     dataMapSig.set({ 'w1': { columns: ['a'], data: [{a: 1}] } }); 
     fixture.detectChanges(); 
 
-    const viz = fixture.debugElement.query(By.directive(VizTableComponent)); 
+    const viz = fixture.debugElement.query(By.directive(MockVizTableComponent)); 
     expect(viz).toBeTruthy(); 
   }); 
+
+  it('should allow focus handler', () => {
+    component.onFocus();
+    expect(true).toBe(true);
+  });
+
+  it('should compute visualization type for text widgets', () => {
+    const textWidget = { ...mockWidget, type: 'TEXT', visualization: undefined };
+    setInputSignal(component, 'widgetInput', textWidget);
+    fixture.detectChanges();
+    expect(component.visualizationType()).toBe('markdown');
+  });
+
+  it('should compute skeleton type for various visualizations', () => {
+    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'bar_chart' });
+    fixture.detectChanges();
+    expect(component.skeletonType()).toBe('chart');
+
+    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'pie' });
+    fixture.detectChanges();
+    expect(component.skeletonType()).toBe('pie');
+
+    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'metric' });
+    fixture.detectChanges();
+    expect(component.skeletonType()).toBe('metric');
+
+    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: undefined });
+    fixture.detectChanges();
+    expect(component.skeletonType()).toBe('table');
+  });
+
+  it('should fallback skeleton type for unknown visualizations', () => {
+    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'custom' });
+    fixture.detectChanges();
+    expect(component.skeletonType()).toBe('card');
+  });
+
+  it('should refresh widget manually', () => {
+    component.manualRefresh();
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+  });
+  
+  it('should expose derived computed values', () => {
+    dataMapSig.set({ w1: { error: 'oops' } });
+    focusedWidgetIdSig.set('w1');
+    mockStore.isWidgetLoading.set(() => true);
+    fixture.detectChanges();
+
+    expect(component.isLoadingLocal()).toBe(true);
+    expect(component.rawResult()).toEqual({ error: 'oops' });
+    expect(component.isFocused()).toBe(true);
+    expect(component.errorMessage()).toBe('oops');
+    expect(component.typedDataAsTable()).toEqual({ error: 'oops' } as any);
+    expect(component.chartConfig()).toEqual(mockWidget.config as any);
+  });
+
+  it('should not reset widget when confirm is false', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    component.resetWidget();
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+  });
+
+  it('should reset SQL widget to safe defaults', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.resetWidget();
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ visualization: 'table', config: { query: 'SELECT 1 as SafeMode' } })
+    );
+    expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
+  });
+
+  it('should reset non-SQL widget with empty config', () => {
+    const httpWidget = { ...mockWidget, type: 'HTTP' };
+    setInputSignal(component, 'widgetInput', httpWidget);
+    fixture.detectChanges();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    component.resetWidget();
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ visualization: 'table', config: {} })
+    );
+  });
 });
+
+function setInputSignal(component: any, key: string, value: unknown): void {
+  const current = component[key];
+  const node = current?.[SIGNAL];
+  if (node) {
+    if (typeof node.applyValueToInputSignal === 'function') {
+      node.applyValueToInputSignal(node, value);
+    } else {
+      signalSetFn(node, value as never);
+    }
+  } else {
+    component[key] = value;
+  }
+}

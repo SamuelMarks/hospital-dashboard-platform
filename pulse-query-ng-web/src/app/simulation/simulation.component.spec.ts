@@ -6,11 +6,21 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
 import { SimulationComponent } from './simulation.component'; 
 import { SimulationStore } from './simulation.store'; 
-import { signal } from '@angular/core'; 
+import { signal, NO_ERRORS_SCHEMA, Component, input } from '@angular/core'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { MatSliderModule } from '@angular/material/slider'; 
 import { By } from '@angular/platform-browser'; 
 import { vi } from 'vitest';
+import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
+
+@Component({
+  selector: 'viz-chart',
+  template: ''
+})
+class MockVizChartComponent {
+  readonly dataSet = input<unknown>();
+  readonly config = input<unknown>();
+}
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -38,11 +48,17 @@ describe('SimulationComponent', () => {
       reset: vi.fn() 
     }; 
 
-    await TestBed.configureTestingModule({ 
-      imports: [SimulationComponent, NoopAnimationsModule, MatSliderModule] 
+    TestBed.overrideComponent(SimulationComponent, {
+      remove: { imports: [VizChartComponent] },
+      add: { imports: [MockVizChartComponent] }
+    });
+    TestBed.overrideComponent(SimulationComponent, {
+      set: { providers: [{ provide: SimulationStore, useValue: mockStore }], schemas: [NO_ERRORS_SCHEMA] }
+    });
 
-    }).overrideComponent(SimulationComponent, { 
-      set: { providers: [{ provide: SimulationStore, useValue: mockStore }] } 
+    await TestBed.configureTestingModule({ 
+      imports: [SimulationComponent, NoopAnimationsModule, MatSliderModule],
+      schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents(); 
 
     fixture = TestBed.createComponent(SimulationComponent); 
@@ -77,4 +93,9 @@ describe('SimulationComponent', () => {
     // Fix: Access property via bracket notation since it comes from Record<string, any>
     expect(d.data[1]['value']).toBe(5); 
   }); 
-});
+
+  it('should update params via store', () => {
+    component.updateParam('users', 200);
+    expect(mockStore.updateParams).toHaveBeenCalledWith({ users: 200 });
+  });
+}); 

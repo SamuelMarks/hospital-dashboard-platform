@@ -30,7 +30,6 @@ interface HistoryGroup { label: string; items: ConversationResponse[]; }
 
 @Component({ 
   selector: 'app-chat-layout', 
-  standalone: true, 
   imports: [ 
     CommonModule, 
     MatSidenavModule, 

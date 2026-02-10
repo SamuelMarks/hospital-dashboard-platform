@@ -37,6 +37,9 @@ Located in `backend/tests`. Focuses on API logic, SQL Security AST validation, a
     cd backend
     uv run pytest
     ```
+*   **Coverage:**
+    *   Line coverage is enforced at 100% via pytest-cov (runs with `uv run pytest`).
+    *   Doc coverage: `uv run interrogate src/app`
 *   **Critical Suites:**
     *   `test_runner_sql_security.py`: Ensures `sqlglot` effectively blocks destructive queries (DROP, DELETE).
     *   `test_mpax_bridge.py`: Verifies the JAX optimization solver logic.

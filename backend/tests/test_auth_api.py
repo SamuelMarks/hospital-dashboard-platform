@@ -9,6 +9,8 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from app.models.dashboard import Dashboard
 from app.models.template import WidgetTemplate
+from app.models.user import User
+from app.core import security
 
 # Note: The 'client' and 'db_session' fixtures are provided by conftest.py
 
@@ -96,6 +98,24 @@ async def test_login_failure(client: AsyncClient):
   response = await client.post("/api/v1/auth/login", data={"username": "ghost@user.com", "password": "pwd"})
   assert response.status_code == 400
   assert response.json()["detail"] == "Incorrect email or password"
+
+
+@pytest.mark.asyncio
+async def test_login_inactive_user(client: AsyncClient, db_session) -> None:
+  """
+  Test login failure when user is inactive.
+  """
+  email = f"inactive_{uuid.uuid4()}@example.com"
+  pwd = "password123"
+
+  user = User(email=email, hashed_password=security.get_password_hash(pwd), is_active=False)
+  db_session.add(user)
+  await db_session.commit()
+
+  response = await client.post("/api/v1/auth/login", data={"username": email, "password": pwd})
+
+  assert response.status_code == 400
+  assert response.json()["detail"] == "Inactive user"
 
 
 @pytest.mark.asyncio

@@ -1,34 +1,38 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { signal } from '@angular/core';
 import { SkeletonLoaderComponent } from './skeleton-loader.component';
 import { By } from '@angular/platform-browser';
 
-describe('SkeletonLoaderComponent', () => {
-  let component: SkeletonLoaderComponent;
-  let fixture: ComponentFixture<SkeletonLoaderComponent>;
+describe('SkeletonLoaderComponent', () => { 
+  let component: SkeletonLoaderComponent; 
+  let fixture: ComponentFixture<SkeletonLoaderComponent>; 
+  let variantSig: any;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SkeletonLoaderComponent]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(SkeletonLoaderComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
-  });
+    fixture = TestBed.createComponent(SkeletonLoaderComponent); 
+    component = fixture.componentInstance; 
+    variantSig = signal('card');
+    (component as any).variant = variantSig;
+    fixture.detectChanges(); 
+  }); 
 
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
   it('should render generic card by default', () => {
-    fixture.componentRef.setInput('variant', 'card');
+    variantSig.set('card');
     fixture.detectChanges();
     const el = fixture.debugElement.query(By.css('.layout-card'));
     expect(el).toBeTruthy();
   });
 
   it('should render table variant', () => {
-    fixture.componentRef.setInput('variant', 'table');
+    variantSig.set('table');
     fixture.detectChanges();
     
     const tableLayout = fixture.debugElement.query(By.css('.layout-table'));
@@ -38,7 +42,7 @@ describe('SkeletonLoaderComponent', () => {
   });
 
   it('should render metric variant', () => {
-    fixture.componentRef.setInput('variant', 'metric');
+    variantSig.set('metric');
     fixture.detectChanges();
     const el = fixture.debugElement.query(By.css('.metric-val'));
     expect(el).toBeTruthy();

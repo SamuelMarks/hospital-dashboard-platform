@@ -20,6 +20,17 @@ This script will:
 2. Clean the old `api-client` folder.
 3. specific TypeScript interfaces and Services.
 
+## Query Cart (Ad-hoc to Dashboard)
+
+Use the Query Cart to stage ad-hoc SQL and drop it into dashboards:
+
+1. Open **Ask Data** from the toolbar.
+2. Build/run a query and click **Save to Cart**.
+3. Open a dashboard and toggle **Edit** mode.
+4. Drag a cart item from the right sidebar onto the dashboard grid (or click **Add**).
+
+Cart items persist in browser storage so you can batch multiple queries before placing them.
+
 ## Development server
 
 To start a local development server, run:

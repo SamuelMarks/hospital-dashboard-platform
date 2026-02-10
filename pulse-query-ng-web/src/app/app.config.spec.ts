@@ -10,6 +10,13 @@ import { environment } from '../environments/environment';
 import { AuthService } from './core/auth/auth.service';
 import { APP_INITIALIZER, ErrorHandler } from '@angular/core';
 import { GlobalErrorHandler } from './core/error/global-error.handler';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { vi } from 'vitest';
+
+// Avoid hydration errors in unit tests (no server-side render context).
+vi.mock('@angular/platform-browser', () => ({
+  provideClientHydration: () => []
+}));
 
 describe('AppConfig', () => {
   /**
@@ -23,12 +30,17 @@ describe('AppConfig', () => {
     };
 
     TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
       providers: [
-        ...appConfig.providers,
-        // Override the actual AuthService with a mock for testing the initialization factory
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: BASE_PATH, useValue: environment.apiUrl },
+        { provide: Configuration, useFactory: apiConfigFactory },
+        { provide: ErrorHandler, useClass: GlobalErrorHandler },
         {
-          provide: AuthService,
-          useValue: mockAuthService
+          provide: APP_INITIALIZER,
+          useFactory: initializeAuth,
+          deps: [AuthService],
+          multi: true
         }
       ]
     });
@@ -67,5 +79,10 @@ describe('AppConfig', () => {
     const initializers = TestBed.inject(APP_INITIALIZER);
     expect(initializers).toBeTruthy();
     expect(initializers.length).toBeGreaterThan(0);
+  });
+
+  it('should include BASE_PATH provider in appConfig', () => {
+    const hasBasePath = appConfig.providers.some((provider) => (provider as any)?.provide === BASE_PATH);
+    expect(hasBasePath).toBe(true);
   });
 });

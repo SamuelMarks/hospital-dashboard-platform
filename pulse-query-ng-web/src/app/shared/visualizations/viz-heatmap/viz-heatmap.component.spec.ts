@@ -4,6 +4,7 @@
  */ 
 
 import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { signal } from '@angular/core';
 import { VizHeatmapComponent } from './viz-heatmap.component'; 
 import { By } from '@angular/platform-browser'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
@@ -15,6 +16,7 @@ import { vi } from 'vitest';
 describe('VizHeatmapComponent', () => { 
   let component: VizHeatmapComponent; 
   let fixture: ComponentFixture<VizHeatmapComponent>; 
+  let dataSetSig: any;
 
   /** 
    * Setup global browser mocks for Material components. 
@@ -48,10 +50,8 @@ describe('VizHeatmapComponent', () => {
 
     fixture = TestBed.createComponent(VizHeatmapComponent); 
     component = fixture.componentInstance; 
-    
-    // FIX: Set required input BEFORE first Change Detection to prevent signal errors 
-    fixture.componentRef.setInput('dataSet', { columns: [], data: [] }); 
-    
+    dataSetSig = signal({ columns: [], data: [] });
+    (component as any).dataSet = dataSetSig;
     fixture.detectChanges(); 
   }); 
 
@@ -75,7 +75,7 @@ describe('VizHeatmapComponent', () => {
         { svc: 'B', hr: 2, val: 15 } 
       ] 
     }; 
-    fixture.componentRef.setInput('dataSet', data); 
+    dataSetSig.set(data); 
     fixture.detectChanges(); 
 
     // Grid Container Check 
@@ -90,4 +90,41 @@ describe('VizHeatmapComponent', () => {
     // Note: Tooltip text is in aria-label for accessibility 
     expect(cells[0].attributes['aria-label']).toContain('10'); 
   }); 
+
+  it('should render empty state when no data', () => {
+    dataSetSig.set({ columns: [], data: [] });
+    fixture.detectChanges();
+    const empty = fixture.debugElement.query(By.css('.flex.items-center'));
+    expect(empty).toBeTruthy();
+  });
+
+  it('should compute min/max and tooltips with negative values', () => {
+    const data = {
+      columns: ['svc', 'hr', 'val'],
+      data: [
+        { svc: 'A', hr: 1, val: -5 },
+        { svc: 'A', hr: 2, val: 0 }
+      ]
+    };
+    dataSetSig.set(data);
+    fixture.detectChanges();
+
+    const m = component.matrix();
+    expect(m?.min).toBe(-5);
+    expect(m?.max).toBe(0);
+    expect(component.getCellTooltip(m, '1', 'A')).toContain('-5');
+  });
+
+  it('should use fallback range when all values equal', () => {
+    const data = {
+      columns: ['svc', 'hr', 'val'],
+      data: [{ svc: 'A', hr: 1, val: 0 }]
+    };
+    dataSetSig.set(data);
+    fixture.detectChanges();
+
+    const m = component.matrix();
+    const color = component.getCellColor(m, '1', 'A');
+    expect(color).toContain('rgba');
+  });
 });

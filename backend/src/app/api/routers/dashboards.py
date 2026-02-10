@@ -7,7 +7,7 @@ Also provides the ability to restore the default content pack and clone existing
 """
 
 import copy
-from typing import Annotated, List, Any
+from typing import Annotated, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -297,6 +297,7 @@ async def delete_widget(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ):
+  """Delete a widget owned by the current user."""
   result = await db.execute(
     select(Widget).join(Dashboard).where(Widget.id == widget_id, Dashboard.owner_id == current_user.id)
   )
