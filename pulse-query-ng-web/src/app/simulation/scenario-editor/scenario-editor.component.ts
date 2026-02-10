@@ -25,6 +25,7 @@ import { VizTableComponent, TableDataSet } from '../../shared/visualizations/viz
 import { VizChartComponent } from '../../shared/visualizations/viz-chart/viz-chart.component'; 
 import { ScenarioConstraint } from '../../api-client'; 
 
+/** Scenario Editor component. */
 @Component({ 
   selector: 'app-scenario-editor', 
   imports: [ 
@@ -112,11 +113,14 @@ import { ScenarioConstraint } from '../../api-client';
 }) 
 export class ScenarioEditorComponent { 
   // Inject the singleton store service 
+  /** Store. */
   readonly store = inject(SimServiceInstance); 
 
+  /** Units. */
   readonly units = computed(() => Object.keys(this.store.capacityMap())); 
   
   // Access store's mutable constraint list signal 
+  /** Constraints. */
   readonly constraints = this.store.constraints; 
 
   // --- Computed Projections --- 
@@ -166,18 +170,22 @@ export class ScenarioEditorComponent {
 
   // --- Actions --- 
 
+  /** Gets capacity. */
   getCapacity(unit: string): number { 
     return this.store.capacityMap()[unit]; 
   } 
 
+  /** Sets capacity. */
   setCapacity(unit: string, val: number): void { 
     this.store.updateCapacity(unit, val); 
   } 
 
+  /** Adds constraint. */
   addConstraint() { 
     this.store.addConstraint(); 
   } 
 
+  /** Removes constraint. */
   removeConstraint(index: number) { 
     this.store.removeConstraint(index); 
   } 

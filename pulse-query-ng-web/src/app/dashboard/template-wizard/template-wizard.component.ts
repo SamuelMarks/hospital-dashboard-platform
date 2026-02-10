@@ -47,10 +47,13 @@ import {
 import { VizTableComponent, TableDataSet } from '../../shared/visualizations/viz-table/viz-table.component';
 import { DynamicFormComponent } from './dynamic-form.component';
 
+/** Wizard Data interface. */
 export interface WizardData {
-  dashboardId: string;
+    /** dashboardId property. */
+dashboardId: string;
 }
 
+/** Template Wizard component. */
 @Component({
   selector: 'app-template-wizard',
   providers: [provideNativeDateAdapter()],
@@ -110,45 +113,70 @@ export interface WizardData {
   `]
 })
 export class TemplateWizardComponent implements OnInit, OnDestroy {
-  private readonly fb = inject(FormBuilder);
-  private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
-  private readonly dashboardsApi = inject(DashboardsService);
-  private readonly executionApi = inject(ExecutionService);
-  private readonly templatesApi = inject(TemplatesService);
-  private readonly data = inject<WizardData>(MAT_DIALOG_DATA);
-  private readonly sanitizer = inject(DomSanitizer);
+    /** fb property. */
+private readonly fb = inject(FormBuilder);
+    /** dialogRef property. */
+private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService);
+    /** executionApi property. */
+private readonly executionApi = inject(ExecutionService);
+    /** templatesApi property. */
+private readonly templatesApi = inject(TemplatesService);
+    /** data property. */
+private readonly data = inject<WizardData>(MAT_DIALOG_DATA);
+    /** sanitizer property. */
+private readonly sanitizer = inject(DomSanitizer);
 
   // --- State ---
+  /** Templates. */
   readonly templates = signal<TemplateResponse[]>([]);
+  /** Categories. */
   readonly categories = signal<string[]>(['Predictive', 'Operational', 'Capacity', 'Clinical', 'Financial']);
+  /** Loading Templates. */
   readonly loadingTemplates = signal(false);
+  /** Selected Category. */
   readonly selectedCategory = signal<string | null>(null);
+  /** Selected Template Id. */
   readonly selectedTemplateId = signal<string | null>(null);
 
   // --- RxJS for Search Debounce ---
-  private readonly searchSubject = new Subject<string>();
-  private searchSub?: Subscription;
-  private modeSub?: Subscription;
+    /** searchSubject property. */
+private readonly searchSubject = new Subject<string>();
+    /** searchSub property. */
+private searchSub?: Subscription;
+    /** modeSub property. */
+private modeSub?: Subscription;
 
   // --- Wizard Logic ---
+  /** Params Schema. */
   readonly paramsSchema = signal<Record<string, any>>({});
+  /** Final Sql. */
   readonly finalSql = signal<string>('');
+  /** Whether running. */
   readonly isRunning = signal(false);
+  /** Execution Result. */
   readonly executionResult = signal<any | null>(null);
+  /** Draft Widget Id. */
   readonly draftWidgetId = signal<string | null>(null);
 
+  /** Params Value. */
   readonly paramsValue = signal<Record<string, any>>({});
+  /** Params Valid. */
   readonly paramsValid = signal(false);
 
   // Form Group
+  /** Selection Form. */
   readonly selectionForm = this.fb.group({
     mode: ['predefined', Validators.required],
     templateId: [''],
     rawSql: ['']
   });
 
+  /** Placeholder Text. */
   readonly placeholderText = "SELECT * FROM table WHERE col = '{{param}}'";
 
+  /** Ng On Init. */
   ngOnInit(): void {
     this.createDraftWidget();
     this.loadTemplates();
@@ -175,11 +203,13 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void {
     this.searchSub?.unsubscribe();
     this.modeSub?.unsubscribe();
   }
 
+  /** Loads templates. */
   loadTemplates(searchTerm?: string) {
     this.loadingTemplates.set(true);
     const cat = this.selectedCategory() || undefined;
@@ -193,6 +223,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
       });
   }
 
+  /** Select Template. */
   selectTemplate(template: TemplateResponse) {
     this.selectedTemplateId.set(template.id);
     this.selectionForm.patchValue({
@@ -202,12 +233,14 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     this.paramsSchema.set(template.parameters_schema || {});
   }
 
+  /** Toggles category. */
   toggleCategory(cat: string) {
     const newCat = this.selectedCategory() === cat ? null : cat;
     this.selectedCategory.set(newCat);
     this.loadTemplates();
   }
 
+  /** Updates search. */
   updateSearch(event: Event) {
     const val = (event.target as HTMLInputElement).value;
     this.searchSubject.next(val);
@@ -228,7 +261,9 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Handles form Change. */
   handleFormChange(values: Record<string, any>) { this.paramsValue.set(values); }
+  /** Handles status Change. */
   handleStatusChange(status: 'VALID' | 'INVALID') { this.paramsValid.set(status === 'VALID'); }
 
   /** Compiles Template + Params into Final SQL. */
@@ -246,6 +281,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     this.executeDraft(sql);
   }
 
+  /** Save Widget. */
   saveWidget() {
     const draftId = this.draftWidgetId();
     if (!draftId) return;
@@ -269,6 +305,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
         });
   }
 
+  /** Whether cel. */
   cancel() {
     const draftId = this.draftWidgetId();
     if (draftId) {
@@ -279,7 +316,8 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private createDraftWidget() {
+    /** createDraftWidget method. */
+private createDraftWidget() {
     // Creates a placeholder to execute queries against
     // Use proper subtype
     const createReq: WidgetCreateSql = {
@@ -293,7 +331,8 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
         .subscribe((w: any) => this.draftWidgetId.set(w.id));
   }
 
-  private executeDraft(sql: string) {
+    /** executeDraft method. */
+private executeDraft(sql: string) {
     const draftId = this.draftWidgetId();
     if (!draftId) return;
 
@@ -317,8 +356,10 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
         });
   }
 
+  /** As Table Data. */
   asTableData(res: any): TableDataSet { return res as TableDataSet; }
 
+  /** Highlighted Sql. */
   highlightedSql(): SafeHtml {
     // Simple Syntax Highlighter for visual feedback
     let code = this.finalSql() || '';
@@ -330,6 +371,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     return this.sanitizer.bypassSecurityTrustHtml(code + '<br>');
   }
 
+  /** Sync Scroll. */
   syncScroll(e: Event) {
     const target = e.target as HTMLTextAreaElement;
     const highlight = target.parentElement?.querySelector('.highlight-layer');

@@ -7,6 +7,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser'; 
 import { MessageResponse } from '../../api-client'; 
 import { vi } from 'vitest';
+import { SqlSnippetComponent } from './sql-snippet.component';
 
 describe('ConversationComponent', () => { 
   let component: ConversationComponent; 
@@ -182,5 +183,52 @@ describe('ConversationComponent', () => {
     messagesSig.set([{ id: 'm1', conversation_id: 'c1', role: 'user', content: 'Hi' } as any]);
     TestBed.flushEffects();
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('should send message from template button and textarea enter', () => {
+    component.inputText = 'Hello';
+    fixture.detectChanges();
+    const sendBtn = fixture.debugElement.query(By.css('button[aria-label="Send Message"]'));
+    sendBtn.triggerEventHandler('click', null);
+    expect(mockStore.sendMessage).toHaveBeenCalledWith('Hello');
+
+    component.inputText = 'Hi again';
+    fixture.detectChanges();
+    const textarea = fixture.debugElement.query(By.css('textarea'));
+    const event = new KeyboardEvent('keydown', { key: 'Enter' });
+    textarea.triggerEventHandler('keydown.enter', event);
+    expect(mockStore.sendMessage).toHaveBeenCalledWith('Hi again');
+  });
+
+  it('should render empty, generating, and error states', () => {
+    messagesSig.set([]);
+    mockStore.isGenerating.set(false);
+    mockStore.error.set(null);
+    fixture.detectChanges();
+    expect(fixture.debugElement.nativeElement.textContent).toContain('Start a new analysis conversation');
+
+    mockStore.isGenerating.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('.animate-bounce'))).toBeTruthy();
+
+    mockStore.error.set('Boom');
+    fixture.detectChanges();
+    expect(fixture.debugElement.nativeElement.textContent).toContain('Boom');
+  });
+
+  it('should handle sql snippet run output', () => {
+    const msg: MessageResponse = {
+      id: 'm1',
+      conversation_id: 'c1',
+      role: 'assistant',
+      content: 'SQL',
+      created_at: '',
+      sql_snippet: 'SELECT 1'
+    };
+    messagesSig.set([msg]);
+    fixture.detectChanges();
+    const snippet = fixture.debugElement.query(By.directive(SqlSnippetComponent));
+    snippet.triggerEventHandler('run', 'SELECT 1');
+    expect(mockScratchpad.open).toHaveBeenCalled();
   });
 });

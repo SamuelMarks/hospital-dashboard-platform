@@ -9,32 +9,50 @@
 
 import { Injectable, signal, computed, effect, OnDestroy } from '@angular/core'; 
 
+/** Sim Params interface. */
 export interface SimParams { 
-  users: number; 
-  rate: number; 
-  errorInjection: boolean; 
-  failureRate: number; 
-  latencyInjection: boolean; 
+    /** users property. */
+users: number; 
+    /** rate property. */
+rate: number; 
+    /** errorInjection property. */
+errorInjection: boolean; 
+    /** failureRate property. */
+failureRate: number; 
+    /** latencyInjection property. */
+latencyInjection: boolean; 
 } 
 
+/** Sim Metrics interface. */
 export interface SimMetrics { 
-  activeConnections: number; 
-  rps: number; 
-  errorCount: number; 
-  avgLatency: number; 
+    /** activeConnections property. */
+activeConnections: number; 
+    /** rps property. */
+rps: number; 
+    /** errorCount property. */
+errorCount: number; 
+    /** avgLatency property. */
+avgLatency: number; 
 } 
 
+/** History Point interface. */
 export interface HistoryPoint { 
-  timestamp: number; 
-  rps: number; 
-  errors: number; 
+    /** timestamp property. */
+timestamp: number; 
+    /** rps property. */
+rps: number; 
+    /** errors property. */
+errors: number; 
 } 
 
+/** Simulation store. */
 @Injectable() 
 export class SimulationStore implements OnDestroy { 
   // State Signals
+  /** Whether active. */
   readonly isActive = signal(false); 
   
+  /** Params. */
   readonly params = signal<SimParams>({ 
     users: 50, 
     rate: 100, 
@@ -43,6 +61,7 @@ export class SimulationStore implements OnDestroy {
     latencyInjection: false 
   }); 
 
+  /** Metrics. */
   readonly metrics = signal<SimMetrics>({ 
     activeConnections: 0, 
     rps: 0, 
@@ -50,10 +69,13 @@ export class SimulationStore implements OnDestroy {
     avgLatency: 0 
   }); 
 
+  /** History. */
   readonly history = signal<HistoryPoint[]>([]); 
 
-  private timer: any = null; 
+    /** timer property. */
+private timer: any = null; 
 
+  /** Creates a new SimulationStore. */
   constructor() { 
     // Effect to start/stop engine based on active state
     effect(() => { 
@@ -65,25 +87,30 @@ export class SimulationStore implements OnDestroy {
     }); 
   } 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     this.stopEngine(); 
   } 
 
+  /** Toggles simulation. */
   toggleSimulation() { 
     this.isActive.update(v => !v); 
   } 
 
+  /** Updates params. */
   updateParams(partial: Partial<SimParams>) { 
     this.params.update(current => ({ ...current, ...partial })); 
   } 
 
+  /** Reset. */
   reset() { 
     this.isActive.set(false); 
     this.metrics.set({ activeConnections: 0, rps: 0, errorCount: 0, avgLatency: 0 }); 
     this.history.set([]); 
   } 
 
-  private startEngine() { 
+    /** startEngine method. */
+private startEngine() { 
     if (this.timer) return; 
 
     // Simulation Tick (1s)
@@ -92,7 +119,8 @@ export class SimulationStore implements OnDestroy {
     }, 1000); 
   } 
 
-  private stopEngine() { 
+    /** stopEngine method. */
+private stopEngine() { 
     if (this.timer) { 
       clearInterval(this.timer); 
       this.timer = null; 
@@ -100,9 +128,9 @@ export class SimulationStore implements OnDestroy {
   } 
 
   /**
-   * Generates synthetic metrics based on current parameters.
-   * "Fake Logic" to mimic backend fluctuation.
-   */
+  * Generates synthetic metrics based on current parameters.
+  * "Fake Logic" to mimic backend fluctuation.
+  */
   private tick() { 
     const p = this.params(); 
     

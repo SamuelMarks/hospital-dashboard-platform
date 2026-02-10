@@ -6,7 +6,11 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu'; 
 import { MatSnackBar } from '@angular/material/snack-bar'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
+import { By } from '@angular/platform-browser';
+import { MatMenuTrigger } from '@angular/material/menu';
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { of, throwError, Subject } from 'rxjs'; 
+import { AskDataService } from '../global/ask-data.service';
 
 describe('HomeComponent', () => { 
   let component: HomeComponent; 
@@ -15,7 +19,9 @@ describe('HomeComponent', () => {
   let mockDashApi: any; 
   let mockDialog: any; 
   let mockSnackBar: any; 
+  let mockAskDataService: any;
   let router: Router;
+  let overlay: OverlayContainer;
 
   const mockDashboardList: DashboardResponse[] = [ 
     { id: 'd1', name: 'Finance', owner_id: 'u1', widgets: [] }, 
@@ -31,6 +37,7 @@ describe('HomeComponent', () => {
       restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost: vi.fn()
     }; 
     mockDialog = { open: vi.fn() }; 
+    mockAskDataService = { open: vi.fn() };
     
     // Create the mock object explicitly to ensure reference identity
     mockSnackBar = { 
@@ -47,6 +54,7 @@ describe('HomeComponent', () => {
         provideRouter([]), 
         { provide: DashboardsService, useValue: mockDashApi }, 
         { provide: MatDialog, useValue: mockDialog }, 
+        { provide: AskDataService, useValue: mockAskDataService },
         // 1. Provide at Module Level
         { provide: MatSnackBar, useValue: mockSnackBar } 
       ] 
@@ -67,6 +75,7 @@ describe('HomeComponent', () => {
     component = fixture.componentInstance; 
     fixture.detectChanges(); 
     router = TestBed.inject(Router);
+    overlay = TestBed.inject(OverlayContainer);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
   }); 
 
@@ -232,4 +241,70 @@ describe('HomeComponent', () => {
       expect(mockSnackBar.open).toHaveBeenCalledWith(expect.stringContaining('Failed to clone'), 'Close', expect.anything()); 
     }); 
   }); 
+
+  it('should open Ask AI from template button', () => {
+    const buttons = fixture.debugElement.queryAll(By.css('button[mat-stroked-button]'));
+    buttons[0].triggerEventHandler('click', null);
+    expect(mockAskDataService.open).toHaveBeenCalled();
+  });
+
+  it('should render loading state and grid state', () => {
+    component.isLoading.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('[data-testid=\"loading-state\"]'))).toBeTruthy();
+
+    component.isLoading.set(false);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('[data-testid=\"dashboard-grid\"]'))).toBeTruthy();
+  });
+
+  it('should show restore spinner when restoring', () => {
+    component.isRestoring.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('mat-spinner'))).toBeTruthy();
+  });
+
+  it('should trigger create dialog and restore defaults from empty state', () => {
+    const createSpy = vi.spyOn(component, 'openCreateDialog').mockImplementation(() => {});
+    const restoreSpy = vi.spyOn(component, 'restoreDefaults').mockImplementation(() => {});
+    component.isLoading.set(false);
+    component.dashboards.set([]);
+    fixture.detectChanges();
+
+    const emptyState = fixture.debugElement.query(By.css('[data-testid=\"empty-state\"]'));
+    expect(emptyState).toBeTruthy();
+    const emptyButtons = emptyState.queryAll(By.css('button'));
+    expect(emptyButtons.length).toBe(2);
+    emptyButtons[0].triggerEventHandler('click', null);
+    emptyButtons[1].triggerEventHandler('click', null);
+
+    expect(restoreSpy).toHaveBeenCalled();
+    expect(createSpy).toHaveBeenCalled();
+  });
+
+  it('should wire card menu actions from template', () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('Renamed');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut.mockReturnValue(of({}));
+    mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue(of({ id: 'd3', name: 'Copy', owner_id: 'u1', widgets: [] }));
+    mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(of({}));
+    const menuBtn = fixture.debugElement.query(By.css('[data-testid=\"btn-card-menu\"]'));
+    const stopEvent = { stopPropagation: vi.fn() } as any;
+    menuBtn.triggerEventHandler('click', stopEvent);
+    expect(stopEvent.stopPropagation).toHaveBeenCalled();
+
+    const trigger = menuBtn.injector.get(MatMenuTrigger);
+    trigger.openMenu();
+    fixture.detectChanges();
+
+    const overlayEl = overlay.getContainerElement();
+    const items = overlayEl.querySelectorAll('button[mat-menu-item]');
+    (items[0] as HTMLElement).click();
+    (items[1] as HTMLElement).click();
+    (items[2] as HTMLElement).click();
+
+    expect(mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut).toHaveBeenCalled();
+    expect(mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost).toHaveBeenCalled();
+    expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).toHaveBeenCalled();
+  });
 });

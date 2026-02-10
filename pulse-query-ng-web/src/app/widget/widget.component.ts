@@ -38,6 +38,7 @@ import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-he
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component'; 
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component'; 
 
+/** Widget component. */
 @Component({ 
   selector: 'app-widget', 
   imports: [ 
@@ -142,131 +143,46 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
     .animate-spin { animation: spin 1s linear infinite; } 
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } 
   `], 
-  template: `
-    <!-- Outlined Appearance provides the M3 border behavior automatically -->
-    <mat-card appearance="outlined">
-      
-      <!-- Header -->
-      <div class="widget-header-row">
-        <div class="title-area">
-           <span class="title-text" [title]="widgetInput().title">
-              {{ widgetInput().title }} 
-           </span>
-           <!-- Use Standard Chip with minimal styling -->
-           <mat-chip-set>
-             <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
-           </mat-chip-set>
-        </div>
-
-        <div class="action-group">
-          <!-- Focus / Fullscreen -->
-          <button mat-icon-button class="icon-btn-compact" (click)="toggleFocus()" [matTooltip]="isFocused() ? 'Minimize' : 'Full Screen'" style="color: var(--sys-secondary)">
-            <mat-icon>{{ isFocused() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
-          </button>
-
-          <!-- Edit Mode Actions -->
-          @if (isEditMode()) { 
-            <button mat-icon-button class="icon-btn-compact" (click)="duplicate.emit()" matTooltip="Duplicate" data-testid="btn-duplicate" style="color: var(--sys-secondary)">
-              <mat-icon>content_copy</mat-icon>
-            </button>
-            <button mat-icon-button class="icon-btn-compact" (click)="edit.emit()" matTooltip="Edit" data-testid="btn-edit" style="color: var(--sys-secondary)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button class="icon-btn-compact" (click)="delete.emit()" matTooltip="Delete" data-testid="btn-delete" style="color: var(--sys-error)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          } 
-
-          <!-- Refresh Button -->
-          @if (widgetInput().type !== 'TEXT') { 
-            <button mat-icon-button class="icon-btn-compact" (click)="manualRefresh()" [disabled]="isLoadingLocal()" matTooltip="Refresh" style="color: var(--sys-primary)">
-               <mat-icon [class.animate-spin]="isLoadingLocal()">refresh</mat-icon>
-            </button>
-          } 
-        </div>
-      </div>
-
-      <!-- Content Area -->
-      <mat-card-content>
-        <!-- Error State -->
-        @if (errorMessage(); as error) { 
-          <div class="center-overlay p-4" data-testid="error-state" style="color: var(--sys-error)">
-             <mat-icon class="text-4xl mb-2">warning</mat-icon>
-             <span class="text-sm font-medium text-center">{{ error }}</span>
-             @if (isEditMode()) { 
-               <button mat-stroked-button color="warn" class="mt-4" (click)="edit.emit()" data-testid="btn-fix-query">Fix Query</button>
-             } 
-          </div>
-        } 
-        <!-- Loading State -->
-        @else if (isLoadingLocal()) { 
-           <div class="skeleton-wrapper" data-testid="loading-state">
-             <app-skeleton-loader [variant]="skeletonType()"></app-skeleton-loader>
-           </div>
-        } 
-        <!-- Visualization Render -->
-        @else { 
-          <div class="viz-container" *appErrorBoundary="safeModeTpl">
-            @switch (visualizationType()) { 
-              @case ('table') { <viz-table [dataSet]="typedDataAsTable()" [config]="widgetInput().config"></viz-table> } 
-              <!-- Fix: Removed titleOverride to allow metric viz to display actual data column name (e.g. 'Value') instead of repeating widget title -->
-              @case ('metric') { <viz-metric [data]="rawResult()" [config]="widgetInput().config"></viz-metric> } 
-              @case ('scalar') { <viz-scalar [data]="rawResult()"></viz-scalar> } 
-              @case ('bar_chart') { <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart> } 
-              @case ('line_graph') { <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart> } 
-              @case ('pie') { <viz-pie [dataSet]="typedDataAsTable()"></viz-pie> } 
-              @case ('heatmap') { <viz-heatmap [dataSet]="typedDataAsTable()"></viz-heatmap> } 
-              @case ('markdown') { <viz-markdown [content]="widgetInput().config['content']"></viz-markdown> } 
-              @default { <div class="center-overlay" style="color: var(--sys-text-secondary)">Unknown Viz</div> } 
-            } 
-          </div>
-        } 
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Error Boundary Fallback Template -->
-    <ng-template #safeModeTpl let-error let-retry="retry">
-      <div class="safe-mode-container">
-        <div class="safe-mode-title"><mat-icon>bug_report</mat-icon> Widget Crashed</div>
-        <div class="safe-mode-desc">
-          Error rendering visualization.<br>
-          <span class="font-mono text-xs">{{ error?.message || error }}</span>
-        </div>
-        <div class="flex gap-2">
-          <button mat-stroked-button (click)="retry()" class="border-white text-white">Retry</button>
-          @if (isEditMode()) { 
-            <button mat-stroked-button (click)="resetWidget()" class="bg-white text-error">Reset Defaults</button>
-          } 
-        </div>
-      </div>
-    </ng-template>
-  `
+    templateUrl: './widget.component.html'
 }) 
 export class WidgetComponent { 
-  private readonly store = inject(DashboardStore); 
-  private readonly dashApi = inject(DashboardsService); 
+    /** store property. */
+private readonly store = inject(DashboardStore); 
+    /** dashApi property. */
+private readonly dashApi = inject(DashboardsService); 
   
+  /** Widget Input. */
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' }); 
   
+  /** Edit. */
   readonly edit = output<void>(); 
+  /** Duplicate. */
   readonly duplicate = output<void>(); 
+  /** Delete. */
   readonly delete = output<void>(); 
 
+  /** Whether loading Local. */
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id)); 
+  /** Raw Result. */
   readonly rawResult = computed(() => this.store.dataMap()[this.widgetInput().id]); 
+  /** Whether edit Mode. */
   readonly isEditMode = this.store.isEditMode; 
+  /** Whether focused. */
   readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id); 
   
+  /** Error Message. */
   readonly errorMessage = computed(() => { 
     const res = this.rawResult(); 
     return (res && res.error) ? res.error : null; 
   }); 
 
+  /** Visualization Type. */
   readonly visualizationType = computed(() => { 
     if (this.widgetInput().type === 'TEXT') return 'markdown'; 
     return (this.widgetInput().visualization || 'table').toLowerCase(); 
   }); 
   
+  /** Skeleton Type. */
   readonly skeletonType = computed<SkeletonVariant>(() => { 
     const viz = this.visualizationType(); 
     if (viz.includes('chart') || viz.includes('graph')) return 'chart'; 
@@ -276,25 +192,32 @@ export class WidgetComponent {
     return 'card'; 
   }); 
 
+  /** Typed Data As Table. */
   readonly typedDataAsTable = computed(() => this.rawResult() as TableDataSet); 
+  /** Chart Config. */
   readonly chartConfig = computed(() => this.widgetInput().config as ChartConfig); 
 
+  /** Manual Refresh. */
   manualRefresh(): void { this.store.refreshWidget(this.widgetInput().id); } 
 
+  /** Toggles focus. */
   toggleFocus(): void { 
     const id = this.widgetInput().id; 
     const current = this.store.focusedWidgetId(); 
     this.store.setFocusedWidget(current === id ? null : id); 
   } 
 
+  /** Handles escape. */
   onEscape(event: Event): void { 
     (event as KeyboardEvent).stopPropagation(); 
     if (this.isFocused()) { this.store.setFocusedWidget(null); } 
     else if (this.isEditMode()) { this.delete.emit(); } 
   } 
 
+  /** Handles focus. */
   onFocus(): void {} 
 
+  /** Reset Widget. */
   resetWidget(): void { 
     if (!confirm('Reset this widget configuration to a safe default?')) return; 
     

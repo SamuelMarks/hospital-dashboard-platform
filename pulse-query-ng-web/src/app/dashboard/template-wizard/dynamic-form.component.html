@@ -1,0 +1,69 @@
+    <form [formGroup]="form" class="dynamic-form-grid">
+
+      @for (key of fieldKeys(); track key) {
+        @if (getProperty(key); as prop) {
+
+          <!-- Case 1: Boolean (Checkbox) -->
+          @if (prop.type === 'boolean') {
+            <div class="checkbox-row">
+              <mat-checkbox [formControlName]="key" color="primary">
+                {{ prop.title || formatLabel(key) }}
+              </mat-checkbox>
+              @if (prop.description) {
+                <mat-icon
+                  class="help-icon"
+                  [matTooltip]="prop.description"
+                  fontIcon="help_outline"
+                  tabindex="0"
+                  aria-label="Help info"
+                ></mat-icon>
+              }
+            </div>
+          } @else if (prop.enum) { <!-- Case 2: Enumeration (Select Dropdown) -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
+              <mat-select [formControlName]="key">
+                @for (opt of prop.enum; track opt) {
+                  <mat-option [value]="opt">{{ opt }}</mat-option>
+                }
+              </mat-select>
+              @if (prop.description) { <mat-hint>{{ prop.description }}</mat-hint> }
+              <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
+            </mat-form-field>
+          } @else if (prop.format === 'date') { <!-- Case 3: Date Picker -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
+              <input matInput [matDatepicker]="picker" [formControlName]="key">
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+              @if (prop.description) { <mat-hint>{{ prop.description }}</mat-hint> }
+              <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
+            </mat-form-field>
+          } @else { <!-- Case 4: Standard Input (Text/Number) -->
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
+              <input
+                matInput
+                [type]="prop.type === 'number' || prop.type === 'integer' ? 'number' : 'text'"
+                [formControlName]="key"
+                [min]="prop.minimum"
+                [max]="prop.maximum"
+              >
+              @if (prop.description) { <mat-hint>{{ prop.description }}</mat-hint> }
+              <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
+              <mat-error *ngIf="hasError(key, 'min')">Min value: {{prop.minimum}}</mat-error>
+              <mat-error *ngIf="hasError(key, 'max')">Max value: {{prop.maximum}}</mat-error>
+            </mat-form-field>
+          }
+
+        }
+      }
+
+      @if (fieldKeys().length === 0) {
+        <div class="empty-state">
+          No parameters required for this template.
+        </div>
+      }
+
+    </form>
+  

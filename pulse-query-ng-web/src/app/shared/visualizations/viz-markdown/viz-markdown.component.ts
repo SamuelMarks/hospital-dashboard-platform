@@ -38,14 +38,15 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
     .md-content ::ng-deep strong { font-weight: bold; }
     .md-content ::ng-deep em { font-style: italic; }
   `],
-  template: `
-    <div class="md-content" [innerHTML]="safeHtml()"></div>
-  `
+    templateUrl: './viz-markdown.component.html'
 })
 export class VizMarkdownComponent {
+  /** Content. */
   readonly content = input<string>('');
-  private readonly sanitizer = inject(DomSanitizer);
+    /** sanitizer property. */
+private readonly sanitizer = inject(DomSanitizer);
 
+  /** Safe Html. */
   readonly safeHtml = computed<SafeHtml>(() => {
     const raw = this.content() || '';
     const html = this.parseMarkdown(raw);
@@ -54,9 +55,9 @@ export class VizMarkdownComponent {
   });
 
   /**
-   * Lightweight Markdown Parser.
-   * Supports: Headers (#), Bold (**), Italic (*), Lists (-), Blockquotes (>), Code (`).
-   */
+  * Lightweight Markdown Parser.
+  * Supports: Headers (#), Bold (**), Italic (*), Lists (-), Blockquotes (>), Code (`).
+  */
   private parseMarkdown(text: string): string {
     let md = text
       .replace(/&/g, '&amp;')

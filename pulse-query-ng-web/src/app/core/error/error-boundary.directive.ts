@@ -23,8 +23,10 @@ import { Subscription } from 'rxjs';
  * Exposes the error object and a retry function to the template. 
  */ 
 export interface ErrorBoundaryContext { 
-  $implicit: unknown; // The error object
-  retry: () => void;  // Callback to reset state
+    /** $implicit property. */
+$implicit: unknown; // The error object
+    /** retry property. */
+retry: () => void;  // Callback to reset state
 } 
 
 /** 
@@ -53,39 +55,43 @@ export interface ErrorBoundaryContext {
   standalone: true
 }) 
 export class ErrorBoundaryDirective implements OnInit, OnDestroy { 
-  private readonly vcr = inject(ViewContainerRef); 
-  private readonly templateCallback = inject(TemplateRef<any>); 
-  private readonly globalHandler = inject(ErrorHandler) as GlobalErrorHandler; 
+    /** vcr property. */
+private readonly vcr = inject(ViewContainerRef); 
+    /** templateCallback property. */
+private readonly templateCallback = inject(TemplateRef<any>); 
+    /** globalHandler property. */
+private readonly globalHandler = inject(ErrorHandler) as GlobalErrorHandler; 
 
-  private sub?: Subscription; 
+    /** sub property. */
+private sub?: Subscription; 
   
   /** 
-   * The Fallback Template to render when an error state is active. 
-   */ 
+  * The Fallback Template to render when an error state is active. 
+  */ 
   @Input('appErrorBoundary')
   fallbackTemplate?: TemplateRef<ErrorBoundaryContext>; 
 
   /**
-   * Initializes the view.
-   * Attempts initial render and subscribes to global errors (if needed for monitoring).
-   */
+  * Initializes the view.
+  * Attempts initial render and subscribes to global errors (if needed for monitoring).
+  */
   ngOnInit(): void { 
     this.renderContent(); 
   } 
 
   /**
-   * Cleanup method.
-   * Unsubscribes from error streams.
-   */
+  * Cleanup method.
+  * Unsubscribes from error streams.
+  */
   ngOnDestroy(): void { 
     this.sub?.unsubscribe(); 
   } 
 
   /** 
-   * Attempts to render the main content. 
-   * If the rendering fails synchronously (e.g. OnInit crash in child), 
-   * it catches the exception and switches to fallback.
-   */ 
+  * Attempts to render the main content. 
+  * If the rendering fails synchronously (e.g. OnInit crash in child), 
+  * it catches the exception and switches to fallback.
+  */ 
   private renderContent(): void { 
     this.vcr.clear(); 
     
@@ -97,10 +103,10 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   } 
 
   /** 
-   * Switches the view to the Fallback template. 
-   * 
-   * @param {unknown} error - The exception caught. 
-   */ 
+  * Switches the view to the Fallback template. 
+  * 
+  * @param {unknown} error - The exception caught. 
+  */ 
   public renderFallback(error: unknown): void { 
     this.vcr.clear(); 
     const fallbackTemplate = this.fallbackTemplate; 

@@ -110,24 +110,32 @@ import { QueryCartService } from '../global/query-cart.service';
   `] 
 }) 
 export class ToolbarComponent { 
+  /** Store. */
   public readonly store = inject(DashboardStore); 
+  /** Ask Data Service. */
   public readonly askDataService = inject(AskDataService); 
-  private readonly cart = inject(QueryCartService);
+    /** cart property. */
+private readonly cart = inject(QueryCartService);
+  /** Auth Service. */
   public readonly authService = inject(AuthService); 
+  /** Theme Service. */
   public readonly themeService = inject(ThemeService); 
+  /** Router. */
   public readonly router = inject(Router); 
-  private readonly dialog = inject(MatDialog); 
+    /** dialog property. */
+private readonly dialog = inject(MatDialog); 
+  /** Cart Count. */
   readonly cartCount = this.cart.count;
 
   /** 
-   * Preset Seeds for Theme Generation. 
-   * Includes: 
-   * - Material Blue (#1565c0) 
-   * - Deep Purple (#7b1fa2) 
-   * - Teal (#00796b) 
-   * - Red (#c62828) 
-   * - Orange (#ef6c00) 
-   */ 
+  * Preset Seeds for Theme Generation. 
+  * Includes: 
+  * - Material Blue (#1565c0) 
+  * - Deep Purple (#7b1fa2) 
+  * - Teal (#00796b) 
+  * - Red (#c62828) 
+  * - Orange (#ef6c00) 
+  */ 
   readonly presetColors = [ 
     '#1565c0', 
     '#7b1fa2', 
@@ -146,15 +154,15 @@ export class ToolbarComponent {
   ); 
 
   /** 
-   * Logs out the user. 
-   */ 
+  * Logs out the user. 
+  */ 
   logout(): void { 
     this.authService.logout(); 
   } 
   
   /** 
-   * Opens the Widget Builder Dialog for the current dashboard. 
-   */ 
+  * Opens the Widget Builder Dialog for the current dashboard. 
+  */ 
   openWidgetBuilder(): void { 
     const currentDash = this.store.dashboard(); 
     if (!currentDash) return; 
@@ -174,17 +182,17 @@ export class ToolbarComponent {
   } 
 
   /** 
-   * Updates the global application theme seed color. 
-   * @param {string} hex - Color hex code. 
-   */ 
+  * Updates the global application theme seed color. 
+  * @param {string} hex - Color hex code. 
+  */ 
   updateTheme(hex: string): void { 
     this.themeService.setSeedColor(hex); 
   } 
 
   /** 
-   * Handles native color input changes for custom seeds. 
-   * @param {Event} event - Input Event. 
-   */ 
+  * Handles native color input changes for custom seeds. 
+  * @param {Event} event - Input Event. 
+  */ 
   onColorPickerChange(event: Event): void { 
     const input = event.target as HTMLInputElement; 
     if (input.value) { 

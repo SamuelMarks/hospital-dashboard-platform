@@ -22,17 +22,19 @@ import { DashboardStore } from '../dashboard/dashboard.store';
   providedIn: 'root'
 })
 export class ProvisioningService {
-  private readonly dashboardApi = inject(DashboardsService);
-  private readonly store = inject(DashboardStore);
+    /** dashboardApi property. */
+private readonly dashboardApi = inject(DashboardsService);
+    /** store property. */
+private readonly store = inject(DashboardStore);
 
   /**
-   * Instantiates a template into the current dashboard using its default parameters.
-   *
-   * @param {TemplateResponse} template - The source template.
-   * @param {string} dashboardId - The target dashboard UUID.
-   * @param {object} position - Optional grid position {x, y}.
-   * @returns {Observable<WidgetResponse>} The created widget.
-   */
+  * Instantiates a template into the current dashboard using its default parameters.
+  *
+  * @param {TemplateResponse} template - The source template.
+  * @param {string} dashboardId - The target dashboard UUID.
+  * @param {object} position - Optional grid position {x, y}.
+  * @returns {Observable<WidgetResponse>} The created widget.
+  */
   provisionWidget(
     template: TemplateResponse,
     dashboardId: string,
@@ -74,8 +76,8 @@ export class ProvisioningService {
   }
 
   /**
-   * Generates the widget configuration object by injecting schema defaults into the SQL.
-   */
+  * Generates the widget configuration object by injecting schema defaults into the SQL.
+  */
   private buildConfig(template: TemplateResponse): Record<string, any> {
     const rawSql = template.sql_template;
     const schema = template.parameters_schema || {};
@@ -98,8 +100,8 @@ export class ProvisioningService {
   }
 
   /**
-   * Heuristic to determine the best visualization based on title/SQL keywords.
-   */
+  * Heuristic to determine the best visualization based on title/SQL keywords.
+  */
   private guessVisualization(template: TemplateResponse): string {
     const title = template.title.toLowerCase();
     const sql = template.sql_template.toLowerCase();

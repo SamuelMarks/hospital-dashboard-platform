@@ -22,19 +22,20 @@ import { BehaviorSubject } from 'rxjs';
   providedIn: 'root' 
 }) 
 export class GlobalErrorHandler implements ErrorHandler { 
-  private readonly injector = inject(Injector); 
+    /** injector property. */
+private readonly injector = inject(Injector); 
 
   /** 
-   * Reactive stream of errors happened in the app. 
-   * Subscribers can analyze the stack trace or type to determine if it affects them. 
-   */ 
+  * Reactive stream of errors happened in the app. 
+  * Subscribers can analyze the stack trace or type to determine if it affects them. 
+  */ 
   readonly errors$ = new BehaviorSubject<unknown>(null); 
 
   /** 
-   * Main interception method called by Angular when an exception is thrown. 
-   * 
-   * @param {unknown} error - The caught exception. 
-   */ 
+  * Main interception method called by Angular when an exception is thrown. 
+  * 
+  * @param {unknown} error - The caught exception. 
+  */ 
   handleError(error: unknown): void { 
     // 1. Log mechanics (kept for debugging, but could be replaced by a logging service) 
     console.error('Captured Global Error:', error); 
@@ -61,7 +62,8 @@ export class GlobalErrorHandler implements ErrorHandler {
     }).onAction().subscribe(() => this.reloadApp()); 
   } 
 
-  private reloadApp(): void {
+    /** reloadApp method. */
+private reloadApp(): void {
     try {
       window.location.reload();
     } catch {
@@ -70,18 +72,18 @@ export class GlobalErrorHandler implements ErrorHandler {
   }
 
   /** 
-   * Manually clears the error stream (e.g., after a Retry action matches a successful recovery). 
-   */ 
+  * Manually clears the error stream (e.g., after a Retry action matches a successful recovery). 
+  */ 
   clearError(): void { 
     this.errors$.next(null); 
   } 
 
   /** 
-   * Helper to parse unknown error objects into human-readable strings. 
-   * 
-   * @param {unknown} error - The raw error object. 
-   * @returns {string} The extracted message string. 
-   */ 
+  * Helper to parse unknown error objects into human-readable strings. 
+  * 
+  * @param {unknown} error - The raw error object. 
+  * @returns {string} The extracted message string. 
+  */ 
   private extractMessage(error: unknown): string { 
     if (error instanceof Error) return error.message; 
     if (typeof error === 'string') return error; 

@@ -2,6 +2,15 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
+    "baseUrl": ".",
+    "paths": {
+      "@material/material-color-utilities": [
+        "src/test-mocks/material-color-utilities.ts"
+      ],
+      "@material/material-color-utilities/*": [
+        "src/test-mocks/material-color-utilities.ts"
+      ]
+    },
     "types": [
       "vitest/globals",
       "node"

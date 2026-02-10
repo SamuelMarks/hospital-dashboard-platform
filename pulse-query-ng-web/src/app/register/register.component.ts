@@ -42,6 +42,7 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
   } 
 }; 
 
+/** Register component. */
 @Component({ 
   selector: 'app-register', 
   imports: [ 
@@ -105,135 +106,38 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
       text-decoration: underline; 
     } 
   `], 
-  template: `
-    <mat-card>
-      @if (isLoading()) { 
-        <mat-progress-bar mode="indeterminate" data-testid="loading-bar"></mat-progress-bar>
-      } 
-
-      <mat-card-header>
-        <mat-card-title>Create Account</mat-card-title>
-        <mat-card-subtitle>Join the Hospital Analytics Platform</mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        @if (errorMessage()) { 
-          <div class="error-box" role="alert" data-testid="error-alert">
-            <mat-icon color="warn">error</mat-icon>
-            <span>{{ errorMessage() }}</span>
-          </div>
-        } 
-
-        <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-          
-          <mat-form-field appearance="outline">
-            <mat-label>Email address</mat-label>
-            <input 
-              matInput 
-              formControlName="email" 
-              type="email" 
-              placeholder="user@example.com" 
-              required
-              data-testid="input-email" 
-            >
-            @if (registerForm.get('email')?.hasError('required')) { 
-              <mat-error>Email is required</mat-error>
-            } 
-            @if (registerForm.get('email')?.hasError('email')) { 
-              <mat-error>Please enter a valid email</mat-error>
-            } 
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Password</mat-label>
-            <input 
-              matInput 
-              formControlName="password" 
-              [type]="hidePassword() ? 'password' : 'text'" 
-              required
-              data-testid="input-password" 
-            >
-            <button
-              mat-icon-button
-              matSuffix
-              type="button" 
-              (click)="togglePasswordVisibility($event)" 
-              [attr.aria-label]="'Hide password'" 
-            >
-              <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-            </button>
-            @if (registerForm.get('password')?.hasError('required')) { 
-              <mat-error>Password is required</mat-error>
-            } 
-            @if (registerForm.get('password')?.hasError('minlength')) { 
-              <mat-error>Password must be at least 4 characters</mat-error>
-            } 
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Confirm Password</mat-label>
-            <input 
-              matInput 
-              formControlName="confirmPassword" 
-              [type]="hidePassword() ? 'password' : 'text'" 
-              required
-              data-testid="input-confirm-password" 
-            >
-            @if (registerForm.get('confirmPassword')?.hasError('required')) { 
-              <mat-error>Confirmation is required</mat-error>
-            } 
-            @if (registerForm.get('confirmPassword')?.hasError('mismatch')) { 
-              <mat-error>Passwords do not match</mat-error>
-            } 
-          </mat-form-field>
-
-          <button 
-            mat-flat-button 
-            color="primary" 
-            type="submit" 
-            class="full-width-btn" 
-            [disabled]="registerForm.invalid || isLoading()" 
-            data-testid="submit-btn" 
-          >
-            @if (isLoading()) { 
-              Creating Account... 
-            } @else { 
-              Register
-            } 
-          </button>
-
-        </form>
-
-        <div class="footer-link">
-          Already have an account? 
-          <a routerLink="/login" data-testid="link-login">Sign in here</a>
-        </div>
-
-      </mat-card-content>
-    </mat-card>
-  `
+    templateUrl: './register.component.html'
 }) 
 export class RegisterComponent { 
-  private readonly authService = inject(AuthService); 
-  private readonly router = inject(Router); 
-  private readonly fb = inject(FormBuilder); 
+    /** authService property. */
+private readonly authService = inject(AuthService); 
+    /** router property. */
+private readonly router = inject(Router); 
+    /** fb property. */
+private readonly fb = inject(FormBuilder); 
 
+  /** Whether loading. */
   readonly isLoading = signal(false); 
+  /** Error Message. */
   readonly errorMessage = signal<string | null>(null); 
+  /** Hide Password. */
   readonly hidePassword = signal(true); 
   
   // Define form with validators
+  /** Register Form. */
   readonly registerForm: FormGroup = this.fb.group({ 
     email: ['', [Validators.required, Validators.email]], 
     password: ['', [Validators.required, Validators.minLength(4)]], 
     confirmPassword: ['', [Validators.required]] 
   }, { validators: passwordMatchValidator }); 
 
+  /** Toggles password Visibility. */
   togglePasswordVisibility(event: Event): void { 
     event.preventDefault(); 
     this.hidePassword.update(v => !v); 
   } 
 
+  /** Handles submit. */
   onSubmit(): void { 
     if (this.registerForm.invalid) { 
       this.registerForm.markAllAsTouched(); 

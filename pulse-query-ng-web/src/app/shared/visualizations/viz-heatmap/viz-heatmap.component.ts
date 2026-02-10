@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component'; 
 import { MatTooltipModule } from '@angular/material/tooltip'; 
 
+/** Viz Heatmap component. */
 @Component({ 
   selector: 'viz-heatmap', 
   imports: [CommonModule, MatTooltipModule], 
@@ -25,53 +26,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     .legend { margin-top: 16px; font-size: 11px; color: var(--sys-text-secondary); display: flex; align-items: center; gap: 8px; justify-content: flex-end; } 
     .legend-bar { width: 100px; height: 8px; background: linear-gradient(to right, #fff5f5, #b71c1c); border-radius: 4px; } 
   `], 
-  template: `
-    @if (matrix(); as m) { 
-      <div 
-        class="heatmap-container" 
-        [style.grid-template-columns]="'auto repeat(' + m.xHeaders.length + ', 1fr)'" 
-        role="grid"
-        aria-label="Heatmap Data Grid"
-      >
-        <!-- Top Left Corner (Empty) -->
-        <div aria-hidden="true"></div>
-
-        <!-- X Axis Header (Hours) -->
-        @for (hx of m.xHeaders; track hx) { 
-          <div class="axis-label x-label" role="columnheader">{{ hx }}</div>
-        } 
-
-        <!-- Rows -->
-        @for (hy of m.yHeaders; track hy) { 
-          <!-- Y Axis Label (Service) -->
-          <div class="axis-label y-label" [title]="hy" role="rowheader">{{ hy }}</div>
-
-          <!-- Cells -->
-          @for (hx of m.xHeaders; track hx) { 
-            <div 
-              class="cell" 
-              role="gridcell"
-              [style.background-color]="getCellColor(m, hx, hy)" 
-              [matTooltip]="getCellTooltip(m, hx, hy)" 
-              [attr.aria-label]="getCellTooltip(m, hx, hy)"
-            ></div>
-          } 
-        } 
-      </div>
-
-      <div class="legend" aria-hidden="true">
-        <span>Low Load</span>
-        <div class="legend-bar"></div>
-        <span>High Load</span>
-      </div>
-    } @else { 
-      <div class="flex items-center justify-center h-full text-gray-500">No Data</div>
-    } 
-  `
+    templateUrl: './viz-heatmap.component.html'
 }) 
 export class VizHeatmapComponent { 
+  /** Data Set. */
   readonly dataSet = input.required<TableDataSet | null>(); 
 
+  /** Matrix. */
   readonly matrix = computed(() => { 
     const ds = this.dataSet(); 
     if (!ds || ds.data.length === 0) return null; 
@@ -108,6 +69,7 @@ export class VizHeatmapComponent {
     return { xHeaders, yHeaders, dataMap, min, max }; 
   }); 
 
+  /** Gets cell Color. */
   getCellColor(m: any, x: string, y: string): string { 
     const val = m.dataMap.get(`${x}:${y}`) || 0; 
     const range = m.max - m.min || 1; 
@@ -117,6 +79,7 @@ export class VizHeatmapComponent {
     return `rgba(183, 28, 28, ${Math.max(0.1, pct)})`; 
   } 
 
+  /** Gets cell Tooltip. */
   getCellTooltip(m: any, x: string, y: string): string { 
     const val = m.dataMap.get(`${x}:${y}`) || 0; 
     return `${y} @ Hour ${x}: ${val}`; 

@@ -124,4 +124,40 @@ describe('LoginComponent', () => {
     createComponent();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/');
   });
+
+  it('should submit via template form and button', () => {
+    createComponent();
+    component.loginForm.setValue({ email: 'a@b.com', password: 'pass123' });
+    mockAuthService.login.mockReturnValue(of({ access_token: 'token', token_type: 'bearer' }));
+    fixture.detectChanges();
+
+    const form = fixture.debugElement.query(By.css('form'));
+    form.triggerEventHandler('ngSubmit', {});
+    expect(mockAuthService.login).toHaveBeenCalled();
+
+    const submitBtn = fixture.debugElement.query(By.css('[data-testid="submit-btn"]'));
+    submitBtn.triggerEventHandler('click', null);
+    expect(mockAuthService.login).toHaveBeenCalled();
+  });
+
+  it('should toggle password visibility from template button', () => {
+    createComponent();
+    const btn = fixture.debugElement.query(By.css('button[matSuffix]'));
+    const initial = component.hidePassword();
+    btn.triggerEventHandler('click', new Event('click'));
+    expect(component.hidePassword()).toBe(!initial);
+  });
+
+  it('should show registration link when enabled', () => {
+    environment.registrationEnabled = true;
+    createComponent();
+    expect(fixture.debugElement.query(By.css('[data-testid="link-register"]'))).toBeTruthy();
+  });
+
+  it('should show loading bar when loading', () => {
+    createComponent();
+    component.isLoading.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('[data-testid="loading-bar"]'))).toBeTruthy();
+  });
 }); 

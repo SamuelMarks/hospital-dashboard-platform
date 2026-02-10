@@ -11,10 +11,13 @@ import { QueryCartItem } from './query-cart.models';
   providedIn: 'root'
 })
 export class QueryCartService {
-  private readonly platformId = inject(PLATFORM_ID);
-  private readonly storageKey = 'pulse-query-cart-v1';
+    /** platformId property. */
+private readonly platformId = inject(PLATFORM_ID);
+    /** storageKey property. */
+private readonly storageKey = 'pulse-query-cart-v1';
 
-  private readonly _items = signal<QueryCartItem[]>([]);
+    /** _items property. */
+private readonly _items = signal<QueryCartItem[]>([]);
 
   /** Read-only list of cart items. */
   readonly items = this._items.asReadonly();
@@ -22,6 +25,7 @@ export class QueryCartService {
   /** Count of items in the cart. */
   readonly count = computed(() => this._items().length);
 
+  /** Creates a new QueryCartService. */
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadFromStorage();
@@ -30,12 +34,12 @@ export class QueryCartService {
   }
 
   /**
-   * Adds a SQL query to the cart.
-   *
-   * @param sql - Raw SQL text.
-   * @param title - Optional title override.
-   * @returns The created cart item, or null when SQL is empty.
-   */
+  * Adds a SQL query to the cart.
+  *
+  * @param sql - Raw SQL text.
+  * @param title - Optional title override.
+  * @returns The created cart item, or null when SQL is empty.
+  */
   add(sql: string, title?: string): QueryCartItem | null {
     const trimmed = (sql || '').trim();
     if (!trimmed) return null;
@@ -53,20 +57,20 @@ export class QueryCartService {
   }
 
   /**
-   * Removes an item from the cart.
-   *
-   * @param id - Cart item id.
-   */
+  * Removes an item from the cart.
+  *
+  * @param id - Cart item id.
+  */
   remove(id: string): void {
     this._items.update(curr => curr.filter(item => item.id !== id));
   }
 
   /**
-   * Renames a cart item.
-   *
-   * @param id - Cart item id.
-   * @param title - New title.
-   */
+  * Renames a cart item.
+  *
+  * @param id - Cart item id.
+  * @param title - New title.
+  */
   rename(id: string, title: string): void {
     const nextTitle = title.trim();
     if (!nextTitle) return;
@@ -77,24 +81,27 @@ export class QueryCartService {
   }
 
   /**
-   * Clears all items from the cart.
-   */
+  * Clears all items from the cart.
+  */
   clear(): void {
     this._items.set([]);
   }
 
-  private deriveTitle(sql: string): string {
+    /** deriveTitle method. */
+private deriveTitle(sql: string): string {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     if (!normalized) return 'Untitled Query';
     const max = 42;
     return normalized.length > max ? `${normalized.slice(0, max)}...` : normalized;
   }
 
-  private createId(): string {
+    /** createId method. */
+private createId(): string {
     return `qc-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
   }
 
-  private loadFromStorage(): void {
+    /** loadFromStorage method. */
+private loadFromStorage(): void {
     try {
       const raw = localStorage.getItem(this.storageKey);
       if (!raw) return;
@@ -106,7 +113,8 @@ export class QueryCartService {
     }
   }
 
-  private persistToStorage(items: QueryCartItem[]): void {
+    /** persistToStorage method. */
+private persistToStorage(items: QueryCartItem[]): void {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(items));
     } catch {
@@ -114,7 +122,8 @@ export class QueryCartService {
     }
   }
 
-  private isValidItem(item: QueryCartItem): boolean {
+    /** isValidItem method. */
+private isValidItem(item: QueryCartItem): boolean {
     return !!item &&
       typeof item.id === 'string' &&
       typeof item.title === 'string' &&

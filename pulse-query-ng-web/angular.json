@@ -78,6 +78,7 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
+            "runnerConfig": true,
             "coverage": true,
             "coverageExclude": [
               "src/app/api-client/**"

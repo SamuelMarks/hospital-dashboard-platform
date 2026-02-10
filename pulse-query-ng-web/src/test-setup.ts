@@ -14,6 +14,21 @@ import { basename, dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { vi } from 'vitest'; 
 
+// Global mock to avoid ESM resolution issues in Node for material-color-utilities.
+vi.mock('@material/material-color-utilities', () => ({
+  argbFromHex: () => 0xffffffff,
+  hexFromArgb: () => '#ffffff',
+  themeFromSourceColor: () => ({
+    schemes: {
+      light: new Proxy({}, { get: () => 0xffffffff }),
+      dark: new Proxy({}, { get: () => 0xffffffff })
+    }
+  }),
+  Scheme: class {},
+  Theme: class {},
+  __esModule: true
+}));
+
 /** 
  * Global Mock for `window.matchMedia`. 
  * Fixes generic Material/CDK component instantiation. 

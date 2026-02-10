@@ -16,39 +16,54 @@ import { ThemeService } from '../../../core/theme/theme.service';
  * Configuration for reference lines (e.g. thresholds). 
  */ 
 export interface ChartReferenceLine { 
-  y: number; 
-  label?: string; 
-  color?: string; 
-  style?: 'solid' | 'dashed' | 'dotted'; 
+    /** y property. */
+y: number; 
+    /** label property. */
+label?: string; 
+    /** color property. */
+color?: string; 
+    /** style property. */
+style?: 'solid' | 'dashed' | 'dotted'; 
 } 
 
 /** 
  * Configuration schema passed from parent widgets. 
  */ 
 export interface ChartConfig { 
-    xKey?: string; 
-    yKey?: string; 
-    stackBy?: string; 
-    referenceLines?: ChartReferenceLine[]; 
+        /** xKey property. */
+xKey?: string; 
+        /** yKey property. */
+yKey?: string; 
+        /** stackBy property. */
+stackBy?: string; 
+        /** referenceLines property. */
+referenceLines?: ChartReferenceLine[]; 
 } 
 
 /** 
  * Internal representation for chart rendering logic. 
  */ 
 interface ChartItem { 
-  segments?: { 
+    /** segments property. */
+segments?: { 
     label: string; 
     value: number; 
     color: string; 
     heightPct: string; 
     bottomPct: string; 
   }[]; 
-  label: string; 
-  value: number; 
-  heightPct: string; 
-  bottomPct: string; 
-  isNegative: boolean; 
-  isStacked: boolean; 
+    /** label property. */
+label: string; 
+    /** value property. */
+value: number; 
+    /** heightPct property. */
+heightPct: string; 
+    /** bottomPct property. */
+bottomPct: string; 
+    /** isNegative property. */
+isNegative: boolean; 
+    /** isStacked property. */
+isStacked: boolean; 
 } 
 
 /** 
@@ -90,75 +105,28 @@ interface ChartItem {
     } 
     .col-wrapper:hover .tooltip { visibility: visible; } 
   `], 
-  template: `
-    <div class="wrapper">
-      <div class="header">
-         <span>{{ axisKeys().y }}</span>
-         <span>{{ axisKeys().x }}</span>
-      </div>
-
-      <div class="plot-area">
-        <div class="bars-container">
-          @for (item of processedData(); track item.label) { 
-            <div class="col-wrapper">
-
-               @if (item.isStacked && item.segments) { 
-                 @for (seg of item.segments; track seg.label) { 
-                   <div
-                     class="bar-segment" 
-                     [style.background-color]="seg.color" 
-                     [style.height]="seg.heightPct" 
-                     [style.bottom]="seg.bottomPct" 
-                   ></div>
-                 } 
-                 <div class="tooltip">
-                   <strong>{{ item.label }}</strong>
-                   @for (seg of item.segments; track seg.label) { 
-                     <div>{{ seg.label }}: {{ seg.value }}</div>
-                   } 
-                 </div>
-
-               } @else { 
-                 <!-- Single Bar: Uses CSS Vars or JS Palette -->
-                 <div
-                   class="bar" 
-                   [style.background-color]="item.isNegative ? getPalette(-1) : getPalette(0)" 
-                   [style.height]="item.heightPct" 
-                   [style.bottom]="item.bottomPct" 
-                 ></div>
-                 <div class="tooltip" [style.bottom]="item.isNegative ? '-25px' : '100%'">
-                   <strong>{{ item.label }}</strong>: {{ item.value }} 
-                 </div>
-               } 
-            </div>
-          } @empty { 
-             <div class="flex items-center justify-center h-full w-full opacity-50 text-xs">No Data</div>
-          } 
-        </div>
-      </div>
-
-      <div class="x-axis">
-         @for (item of processedData(); track item.label) { 
-           <div class="x-label" [title]="item.label">{{ item.label }}</div>
-         } 
-      </div>
-    </div>
-  `
+    templateUrl: './viz-chart.component.html'
 }) 
 export class VizChartComponent { 
+  /** Data Set. */
   readonly dataSet = input.required<TableDataSet | null>(); 
+  /** Config. */
   readonly config = input<ChartConfig>(); 
 
-  private readonly document = inject(DOCUMENT); 
-  private readonly platformId = inject(PLATFORM_ID); 
-  private readonly themeService = inject(ThemeService); 
+    /** document property. */
+private readonly document = inject(DOCUMENT); 
+    /** platformId property. */
+private readonly platformId = inject(PLATFORM_ID); 
+    /** themeService property. */
+private readonly themeService = inject(ThemeService); 
 
   /** 
-   * Reactive Palette Signal. 
-   * Stores the resolved hex codes from CSS variables. 
-   */ 
+  * Reactive Palette Signal. 
+  * Stores the resolved hex codes from CSS variables. 
+  */ 
   private readonly palette = signal<string[]>([]); 
 
+  /** Creates a new VizChartComponent. */
   constructor() { 
     // Reads CSS variables whenever theme changes 
     effect(() => { 
@@ -174,8 +142,8 @@ export class VizChartComponent {
   } 
 
   /** 
-   * Extracts runtime CSS variables for charting consistency. 
-   */ 
+  * Extracts runtime CSS variables for charting consistency. 
+  */ 
   private updatePaletteFromDom(): void { 
     if (!this.document) return; 
     const style = getComputedStyle(this.document.documentElement); 
@@ -190,10 +158,10 @@ export class VizChartComponent {
   } 
 
   /** 
-   * Helper to safely access palette by index. 
-   * @param {number} index - Index or -1 for negative color. 
-   * @returns {string} Hex color. 
-   */ 
+  * Helper to safely access palette by index. 
+  * @param {number} index - Index or -1 for negative color. 
+  * @returns {string} Hex color. 
+  */ 
   getPalette(index: number): string { 
     const colors = this.palette(); 
     if (colors.length === 0) return index === -1 ? '#ba1a1a' : '#1976d2'; 
@@ -202,8 +170,8 @@ export class VizChartComponent {
   } 
 
   /** 
-   * Determines X and Y keys for plotting. 
-   */ 
+  * Determines X and Y keys for plotting. 
+  */ 
   readonly axisKeys = computed(() => { 
     const ds = this.dataSet(); 
     const conf = this.config(); 
@@ -223,8 +191,8 @@ export class VizChartComponent {
   }); 
 
   /** 
-   * Computes the renderable data structure. 
-   */ 
+  * Computes the renderable data structure. 
+  */ 
   readonly processedData = computed<ChartItem[]>(() => { 
     const ds = this.dataSet(); 
     const { x, y, stack } = this.axisKeys(); 
@@ -240,13 +208,14 @@ export class VizChartComponent {
     return this.processSimpleData(ds.data, x, y); 
   }); 
 
-  private getRefMax() { 
+    /** getRefMax method. */
+private getRefMax() { 
     return (this.config()?.referenceLines || []).reduce((acc, l) => Math.max(acc, l.y), 0); 
   } 
 
   /** 
-   * Processing Strategy for Standard Bar Charts. 
-   */ 
+  * Processing Strategy for Standard Bar Charts. 
+  */ 
   private processSimpleData(rows: Record<string, any>[], xKey: string, yKey: string): ChartItem[] { 
     const values = rows.map(r => Number(r[yKey]) || 0); 
     const min = Math.min(...values, 0); 
@@ -276,8 +245,8 @@ export class VizChartComponent {
   } 
 
   /** 
-   * Processing Strategy for Stacked Bar Charts. 
-   */ 
+  * Processing Strategy for Stacked Bar Charts. 
+  */ 
   private processStackedData(rows: Record<string, any>[], xKey: string, yKey: string, stackKey: string): ChartItem[] { 
     const groups: Record<string, {label: string, val: number, color: string }[]> = {}; 
     const colorMap: Record<string, string> = {}; 

@@ -47,10 +47,13 @@ import { HttpConfigComponent } from '../../editors/http-config.component';
 import { WidgetComponent } from '../../widget/widget.component'; 
 import { TextEditorComponent } from '../../editors/text-editor.component'; 
 
+/** Widget Builder Data interface. */
 export interface WidgetBuilderData { 
-  dashboardId: string; 
+    /** dashboardId property. */
+dashboardId: string; 
 } 
 
+/** Widget Builder component. */
 @Component({ 
   selector: 'app-widget-builder', 
   imports: [ 
@@ -138,44 +141,70 @@ export interface WidgetBuilderData {
   `] 
 }) 
 export class WidgetBuilderComponent implements OnInit, OnDestroy { 
-  private readonly fb = inject(FormBuilder); 
+    /** fb property. */
+private readonly fb = inject(FormBuilder); 
+  /** Data. */
   readonly data = inject<WidgetBuilderData>(MAT_DIALOG_DATA); 
-  private readonly dialogRef = inject(MatDialogRef<WidgetBuilderComponent>); 
-  private readonly dashboardApi = inject(DashboardsService); 
-  private readonly templatesApi = inject(TemplatesService); 
-  private readonly execApi = inject(ExecutionService); 
+    /** dialogRef property. */
+private readonly dialogRef = inject(MatDialogRef<WidgetBuilderComponent>); 
+    /** dashboardApi property. */
+private readonly dashboardApi = inject(DashboardsService); 
+    /** templatesApi property. */
+private readonly templatesApi = inject(TemplatesService); 
+    /** execApi property. */
+private readonly execApi = inject(ExecutionService); 
 
   // Pivot to DashboardStore for data checking
+  /** Store. */
   readonly store = inject(DashboardStore); 
 
   // --- STATE SIGNALS --- 
+  /** Active Mode. */
   readonly activeMode = signal<'template' | 'custom' | null>(null); 
+  /** Selected Template. */
   readonly selectedTemplate = signal<TemplateResponse | null>(null); 
+  /** Selected Custom Type. */
   readonly selectedCustomType = signal<'SQL' | 'HTTP' | 'TEXT' | null>(null); 
+  /** Draft Widget. */
   readonly draftWidget = signal<WidgetResponse | null>(null); // The widget being built
 
+  /** Templates. */
   readonly templates = signal<TemplateResponse[]>([]); 
+  /** Loading Templates. */
   readonly loadingTemplates = signal(false); 
+  /** Whether busy. */
   readonly isBusy = signal(false); 
+  /** Categories. */
   readonly categories = signal<string[]>(['Operational', 'Clinical', 'Capacity', 'Financial', 'Flow']); 
+  /** Selected Category. */
   readonly selectedCategory = signal<string | null>(null); 
 
   // Derived Helpers
+  /** Selected Template Id. */
   readonly selectedTemplateId = computed(() => this.selectedTemplate()?.id); 
+  /** Draft Widget Id. */
   readonly draftWidgetId = computed(() => this.draftWidget()?.id); 
+  /** Params Schema. */
   readonly paramsSchema = computed(() => this.selectedTemplate()?.parameters_schema || {}); 
 
   // Form Steps
+  /** Source Form. */
   readonly sourceForm = this.fb.group({}); // Dummy for Step 1 validatior
 
+  /** Template Params. */
   readonly templateParams = signal<Record<string, any>>({}); 
+  /** Template Form Valid. */
   readonly templateFormValid = signal(true); 
 
   // Visuals Config
+  /** Title Control. */
   readonly titleControl = new FormControl('', { nonNullable: true, validators: [Validators.required] }); 
+  /** X Key Control. */
   readonly xKeyControl = new FormControl<string | null>(null); 
+  /** Y Key Control. */
   readonly yKeyControl = new FormControl<string | null>(null); 
 
+  /** Visualizations. */
   readonly visualizations = [ 
     { id: 'table', icon: 'table_chart', label: 'Table' }, 
     { id: 'metric', icon: 'exposure_plus_1', label: 'Metric Card' }, 
@@ -185,6 +214,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     { id: 'scalar', icon: 'speed', label: 'Gauge' } 
   ]; 
 
+  /** Show Axes Config. */
   readonly showAxesConfig = computed(() => { 
     // TEXT type skips visualization step logic usually, or hides this part
     if (this.draftWidget()?.type === 'TEXT') return false; 
@@ -192,8 +222,10 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     return ['bar_chart', 'pie', 'line_graph'].includes(viz || ''); 
   }); 
 
+  /** Whether pie. */
   readonly isPie = computed(() => this.draftWidget()?.visualization === 'pie'); 
 
+  /** Available Columns. */
   readonly availableColumns = computed(() => { 
     const id = this.draftWidgetId(); 
     if (!id) return []; 
@@ -202,19 +234,23 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   }); 
 
   /** 
-   * Computed flag to control Step 2 completion status. 
-   * - Templates: Requires active form validation. 
-   * - Custom: Assumed valid if step reachable (validation internal to child component). 
-   */ 
+  * Computed flag to control Step 2 completion status. 
+  * - Templates: Requires active form validation. 
+  * - Custom: Assumed valid if step reachable (validation internal to child component). 
+  */ 
   readonly dataConfigured = computed(() => { 
     return this.activeMode() === 'template' ? this.templateFormValid() : true; 
   }); 
 
   // Search Logic
-  private search$ = new Subject<string>(); 
-  private sub?: Subscription; 
+    /** search$ property. */
+private search$ = new Subject<string>(); 
+    /** sub property. */
+private sub?: Subscription; 
+  /** Selected Tab. */
   selectedTab = 0; // 0=Templates, 1=Custom
 
+  /** Ng On Init. */
   ngOnInit(): void { 
     this.loadTemplates(); 
     this.sub = this.search$.pipe(debounceTime(300), distinctUntilChanged()) 
@@ -230,6 +266,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.yKeyControl.valueChanges.subscribe(() => this.syncVizConfig()); 
   } 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     this.sub?.unsubscribe(); 
     // Cleanup draft if not saved (Dialog closed via other means checks this too) 
@@ -238,13 +275,16 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   // --- Actions --- 
 
+  /** Updates search. */
   updateSearch(e: Event) { this.search$.next((e.target as HTMLInputElement).value); } 
 
+  /** Toggles category. */
   toggleCategory(cat: string) { 
     this.selectedCategory.update(c => c === cat ? null : cat); 
     this.loadTemplates(); 
   } 
 
+  /** Loads templates. */
   loadTemplates(search?: string) { 
     this.loadingTemplates.set(true); 
     this.templatesApi.listTemplatesApiV1TemplatesGet( 
@@ -254,12 +294,14 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     .subscribe(t => this.templates.set(t)); 
   } 
 
+  /** Select Template. */
   selectTemplate(t: TemplateResponse) { 
     this.selectedTemplate.set(t); 
     this.activeMode.set('template'); 
     this.selectedCustomType.set(null); 
   } 
 
+  /** Select Custom Type. */
   selectCustomType(type: 'SQL' | 'HTTP' | 'TEXT') { 
     this.selectedCustomType.set(type); 
     this.activeMode.set('custom'); 
@@ -267,11 +309,11 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   } 
 
   /** 
-   * Transition to Configure Step. 
-   * Creates the backend widget placeholder AND advances the stepper. 
-   * 
-   * @param stepper - Optional reference to MatStepper to trigger transition. 
-   */ 
+  * Transition to Configure Step. 
+  * Creates the backend widget placeholder AND advances the stepper. 
+  * 
+  * @param stepper - Optional reference to MatStepper to trigger transition. 
+  */ 
   initializeDraft(stepper?: MatStepper) { 
     this.isBusy.set(true); 
 
@@ -326,8 +368,8 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   } 
 
   /** 
-   * Step 2 Action: Process Template Params
-   */ 
+  * Step 2 Action: Process Template Params
+  */ 
   runTemplateQuery(stepper: MatStepper) { 
     const w = this.draftWidget(); 
     const t = this.selectedTemplate(); 
@@ -357,9 +399,9 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   } 
 
   /** 
-   * Step 2 Action: Custom Flows
-   * Allows moving to visualize if we assume user has configured/run in the child component. 
-   */ 
+  * Step 2 Action: Custom Flows
+  * Allows moving to visualize if we assume user has configured/run in the child component. 
+  */ 
   validateDataPresence(stepper: MatStepper) { 
     // We assume the user hit "Run" in the child component. 
     // We can also trigger a refresh here just in case. 
@@ -372,16 +414,19 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   // Keeps parent `draftWidget` state in sync with changes occurring in child components (SQL/HTTP/Text Editors).
   // Without this, `saveAndClose()` overwrites backend updates with stale initial config.
 
+  /** Handles sql Change. */
   onSqlChange(newSql: string) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, query: newSql } });
   }
 
+  /** Handles config Change. */
   onConfigChange(newConfig: Record<string, any>) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, ...newConfig } });
   }
 
+  /** Handles content Change. */
   onContentChange(content: string) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, content } });
@@ -389,6 +434,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   // --- Step 3: Visualize --- 
 
+  /** Updates viz Type. */
   updateVizType(id: string) { 
     const w = this.draftWidget(); 
     if (w) this.draftWidget.set({ ...w, visualization: id }); 
@@ -398,6 +444,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     // BUT 'app-widget' logic for mapping might need correct config. 
   } 
 
+  /** Sync Viz Config. */
   syncVizConfig() { 
     const w = this.draftWidget(); 
     if (!w) return; 
@@ -412,6 +459,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   // --- Finalize --- 
 
+  /** Save And Close. */
   saveAndClose() { 
     const w = this.draftWidget(); 
     if (!w) return; 
@@ -433,6 +481,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       }); 
   } 
 
+  /** Whether cel. */
   cancel() { 
     const id = this.draftWidgetId(); 
     if (id) { 

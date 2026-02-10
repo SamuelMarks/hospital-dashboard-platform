@@ -98,4 +98,38 @@ describe('SimulationComponent', () => {
     component.updateParam('users', 200);
     expect(mockStore.updateParams).toHaveBeenCalledWith({ users: 200 });
   });
-}); 
+
+  it('should wire slider and toggle ngModelChange handlers', () => {
+    mockStore.params.set({
+      users: 10,
+      rate: 5,
+      errorInjection: true,
+      failureRate: 2,
+      latencyInjection: false
+    });
+    fixture.detectChanges();
+
+    const sliders = fixture.debugElement.queryAll(By.css('input[matSliderThumb]'));
+    expect(sliders.length).toBeGreaterThanOrEqual(3);
+    sliders[0].triggerEventHandler('ngModelChange', 42);
+    sliders[1].triggerEventHandler('ngModelChange', 99);
+    sliders[2].triggerEventHandler('ngModelChange', 7);
+
+    const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
+    toggles[0].triggerEventHandler('ngModelChange', false);
+    toggles[1].triggerEventHandler('ngModelChange', true);
+
+    expect(mockStore.updateParams).toHaveBeenCalledWith({ users: 42 });
+    expect(mockStore.updateParams).toHaveBeenCalledWith({ rate: 99 });
+    expect(mockStore.updateParams).toHaveBeenCalledWith({ failureRate: 7 });
+    expect(mockStore.updateParams).toHaveBeenCalledWith({ errorInjection: false });
+    expect(mockStore.updateParams).toHaveBeenCalledWith({ latencyInjection: true });
+  });
+
+  it('should render active status when simulation running', () => {
+    mockStore.isActive.set(true);
+    fixture.detectChanges();
+    const status = fixture.debugElement.query(By.css('.status-panel span.font-bold'));
+    expect(status.nativeElement.textContent).toContain('Running');
+  });
+});

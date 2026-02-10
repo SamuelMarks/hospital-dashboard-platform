@@ -20,8 +20,10 @@ import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
  * Data structure for the table.
  */
 export interface TableDataSet {
-  columns: string[];
-  data: Record<string, any>[];
+    /** columns property. */
+columns: string[];
+    /** data property. */
+data: Record<string, any>[];
 }
 
 /**
@@ -40,6 +42,7 @@ export interface TableConfig {
   thresholdColumn?: string;
 }
 
+/** Viz Table component. */
 @Component({
   selector: 'viz-table',
   imports: [CommonModule, MatTableModule, MatPaginatorModule],
@@ -61,50 +64,20 @@ export interface TableConfig {
     .cell-warn { color: var(--sys-warn, #ffa000); font-weight: bold; }
     .cell-critical { color: var(--sys-error, #d32f2f); font-weight: 900; background-color: rgba(211, 47, 47, 0.05); }
   `],
-  template: `
-    <div class="table-container">
-      <table mat-table [dataSource]="dataSource" class="mat-elevation-z0" aria-label="Data Results Table">
-        
-        @for (col of finalColumns(); track col) {
-          <ng-container [matColumnDef]="col">
-            <th mat-header-cell *matHeaderCellDef scope="col"> {{ col }} </th>
-            <td mat-cell *matCellDef="let row"> 
-              <!-- Applied heuristic styling and threshold class binding -->
-              <span [ngClass]="getCellClass(row, col)">
-                {{ getCellValue(row, col) }}
-              </span>
-            </td>
-          </ng-container>
-        }
-
-        <tr mat-header-row *matHeaderRowDef="finalColumns(); sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: finalColumns();"></tr>
-
-        <tr *matNoDataRow>
-          <td [attr.colspan]="finalColumns().length" class="p-8 text-center text-gray-500 italic">
-            No data available
-          </td>
-        </tr>
-
-      </table>
-    </div>
-    
-    <mat-paginator 
-      [pageSize]="10" 
-      [pageSizeOptions]="[5, 10, 20]" 
-      showFirstLastButtons
-      class="border-t" 
-      aria-label="Table Paginator" 
-    ></mat-paginator>
-  `
+    templateUrl: './viz-table.component.html'
 })
 export class VizTableComponent {
+  /** Data Set. */
   readonly dataSet = input<TableDataSet | null | undefined>();
+  /** Config. */
   readonly config = input<TableConfig | null>(null);
 
+  /** Data Source. */
   dataSource = new MatTableDataSource<Record<string, any>>([]);
+  /** Paginator. */
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
+  /** Creates a new VizTableComponent. */
   constructor() {
     effect(() => {
       const db = this.dataSet();
@@ -117,8 +90,10 @@ export class VizTableComponent {
     });
   }
 
+  /** Final Columns. */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
+  /** Gets cell Value. */
   getCellValue(row: Record<string, any>, col: string): string {
     const val = row[col];
     if (val === null || val === undefined) return '-';
@@ -131,9 +106,9 @@ export class VizTableComponent {
   }
 
   /**
-   * Determines classes for a specific cell.
-   * Combines heuristic delta-coloring with configuration-driven threshold alerts.
-   */
+  * Determines classes for a specific cell.
+  * Combines heuristic delta-coloring with configuration-driven threshold alerts.
+  */
   getCellClass(row: Record<string, any>, col: string): string {
     let classes = '';
     const val = row[col];
@@ -162,15 +137,16 @@ export class VizTableComponent {
     return classes.trim();
   }
 
-  private isDeltaColumn(col: string): boolean {
+    /** isDeltaColumn method. */
+private isDeltaColumn(col: string): boolean {
     const lower = col.toLowerCase();
     return lower === 'delta' || lower.includes('change') || lower.includes('net_flow');
   }
 
   /**
-   * Determines if a column should be checked against the configured thresholds.
-   * Prioritizes specific config `thresholdColumn`, otherwise defaults to standard metric names.
-   */
+  * Determines if a column should be checked against the configured thresholds.
+  * Prioritizes specific config `thresholdColumn`, otherwise defaults to standard metric names.
+  */
   private isAlertCandidate(col: string): boolean {
     const conf = this.config();
     if (conf?.thresholdColumn) {

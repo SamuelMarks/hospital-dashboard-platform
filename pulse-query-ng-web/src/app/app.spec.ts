@@ -169,4 +169,10 @@ describe('App', () => {
     fixture.detectChanges();
     expect(mockThemeService.setTvMode).not.toHaveBeenCalled();
   });
+
+  it('should hide toolbar in tv mode', () => {
+    mockThemeService.isTvMode.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(MockToolbarComponent))).toBeFalsy();
+  });
 }); 

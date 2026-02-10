@@ -34,52 +34,38 @@ import { finalize } from 'rxjs';
     textarea { font-family: monospace; resize: none; height: 100% !important; min-height: 200px; } 
     .footer { display: flex; justify-content: flex-end; padding: 8px 16px; border-top: 1px solid var(--sys-surface-border); } 
   `], 
-  template: `
-    <form [formGroup]="form">
-      <mat-form-field appearance="outline" class="flex-grow">
-        <mat-label>Markdown Content</mat-label>
-        <textarea 
-          matInput 
-          formControlName="content" 
-          placeholder="# Header\n\n**Bold Text**\n\n- List Item" 
-        ></textarea>
-        <mat-hint>Supports basic Markdown syntax.</mat-hint>
-      </mat-form-field>
-    </form>
-
-    <div class="footer">
-      <button 
-        mat-flat-button 
-        color="primary" 
-        (click)="save()" 
-        [disabled]="form.invalid || isRunning()" 
-      >
-        @if (isRunning()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
-        Save Content
-      </button>
-    </div>
-  `
+    templateUrl: './text-editor.component.html'
 }) 
 export class TextEditorComponent implements OnInit { 
-  private readonly fb = inject(FormBuilder); 
-  private readonly dashboardsApi = inject(DashboardsService); 
+    /** fb property. */
+private readonly fb = inject(FormBuilder); 
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService); 
 
+  /** Dashboard Id. */
   readonly dashboardId = input.required<string>(); 
+  /** Widget Id. */
   readonly widgetId = input.required<string>(); 
+  /** Initial Content. */
   readonly initialContent = input<string>(''); 
   
+  /** Content Change. */
   readonly contentChange = output<string>(); 
 
+  /** Whether running. */
   readonly isRunning = signal(false); 
 
+  /** Form. */
   readonly form = this.fb.group({ 
     content: ['', Validators.required] 
   }); 
 
+  /** Ng On Init. */
   ngOnInit() { 
     this.form.patchValue({ content: this.initialContent() }); 
   } 
 
+  /** Save. */
   save() { 
     if (this.form.invalid) return; 
     

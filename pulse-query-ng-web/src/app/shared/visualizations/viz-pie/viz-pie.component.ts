@@ -24,12 +24,17 @@ import { ThemeService } from '../../../core/theme/theme.service';
 
 /** Represents a calculated arc segment */ 
 interface PieSlice { 
-  path: string; 
-  color: string; 
-  label: string; 
-  percentage: number; 
+    /** path property. */
+path: string; 
+    /** color property. */
+color: string; 
+    /** label property. */
+label: string; 
+    /** percentage property. */
+percentage: number; 
 } 
 
+/** Viz Pie component. */
 @Component({ 
   selector: 'viz-pie', 
   imports: [CommonModule], 
@@ -62,65 +67,28 @@ interface PieSlice {
     .legend-item:hover, .legend-item:focus { background-color: var(--sys-hover); outline: none; } 
     .dot { width: 8px; height: 8px; border-radius: 50%; } 
   `], 
-  template: `
-    <div class="container" role="figure" [attr.aria-label]="accessibilityLabel()">
-      
-      <!-- SVG Chart -->
-      <svg viewBox="-1 -1 2 2" style="transform: rotate(-90deg)" height="80%" role="img" aria-hidden="true">
-        @for (slice of slices(); track slice.label) { 
-          <path 
-            [attr.d]="slice.path" 
-            [attr.fill]="slice.color" 
-            (mouseenter)="activeSlice.set(slice.label)" 
-            (mouseleave)="activeSlice.set(null)" 
-            tabindex="-1" 
-          >
-             <title>{{slice.label}}: {{slice.percentage}}%</title>
-          </path>
-        } 
-      </svg>
-      
-      <!-- Keyboard Accessible Legend -->
-      <div class="legend" role="list" aria-label="Chart Legend">
-        @for (slice of slices(); track slice.label) { 
-          <div 
-            class="legend-item" 
-            role="listitem" 
-            [style.opacity]="isActive(slice.label) ? 1 : 0.3" 
-            (mouseenter)="activeSlice.set(slice.label)" 
-            (mouseleave)="activeSlice.set(null)" 
-            (focus)="activeSlice.set(slice.label)" 
-            (blur)="activeSlice.set(null)" 
-            tabindex="0" 
-            [attr.aria-label]="slice.label + ': ' + slice.percentage + ' percent'" 
-          >
-            <div class="dot" [style.background-color]="slice.color" aria-hidden="true"></div>
-            <span>{{slice.label}}</span>
-          </div>
-        } 
-      </div>
-
-      <!-- Center Data Label (Visual Tooltip) -->
-      @if (activeSlice()) { 
-        <div class="tooltip" style="bottom: 10px;" aria-hidden="true">
-          {{ activeSlice() }} 
-        </div>
-      } 
-    </div>
-  `
+    templateUrl: './viz-pie.component.html'
 }) 
 export class VizPieComponent { 
+  /** Data Set. */
   readonly dataSet = input.required<TableDataSet | null>(); 
+  /** Config. */
   readonly config = input<ChartConfig>(); 
   
-  private readonly document = inject(DOCUMENT); 
-  private readonly platformId = inject(PLATFORM_ID); 
-  private readonly themeService = inject(ThemeService); 
+    /** document property. */
+private readonly document = inject(DOCUMENT); 
+    /** platformId property. */
+private readonly platformId = inject(PLATFORM_ID); 
+    /** themeService property. */
+private readonly themeService = inject(ThemeService); 
 
+  /** Active Slice. */
   readonly activeSlice = signal<string | null>(null); 
   
-  private readonly palette = signal<string[]>(['#1976d2', '#42a5f5', '#64b5f6']); 
+    /** palette property. */
+private readonly palette = signal<string[]>(['#1976d2', '#42a5f5', '#64b5f6']); 
 
+  /** Creates a new VizPieComponent. */
   constructor() { 
     // Listen to theme resets 
     effect(() => { 
@@ -132,7 +100,8 @@ export class VizPieComponent {
     }); 
   } 
 
-  private updatePaletteFomDom(): void { 
+    /** updatePaletteFomDom method. */
+private updatePaletteFomDom(): void { 
     if (!this.document) return; 
     const style = getComputedStyle(this.document.documentElement); 
     const p1 = style.getPropertyValue('--chart-color-1').trim(); 
@@ -143,15 +112,18 @@ export class VizPieComponent {
     this.palette.set([p1, p2, p3, '#ffb74d', '#ffa726', '#f57c00', '#d32f2f', '#c2185b']); 
   } 
 
+  /** Whether active. */
   isActive(l: string): boolean { 
     return !this.activeSlice() || this.activeSlice() === l; 
   } 
 
+  /** Accessibility Label. */
   readonly accessibilityLabel = computed(() => { 
     const s = this.slices(); 
     return `Pie chart with ${s.length} slices. Use tab to navigate legendary items for details.`; 
   }); 
 
+  /** Slices. */
   readonly slices: Signal<PieSlice[]> = computed(() => { 
     const ds = this.dataSet(); 
     const colors = this.palette(); 

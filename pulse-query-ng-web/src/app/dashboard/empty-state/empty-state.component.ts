@@ -19,6 +19,7 @@ import { DashboardStore } from '../dashboard.store';
 import { AskDataService } from '../../global/ask-data.service'; 
 import { WidgetBuilderComponent } from '../widget-builder/widget-builder.component'; 
 
+/** Empty State component. */
 @Component({ 
   selector: 'app-empty-state', 
   imports: [ 
@@ -71,80 +72,17 @@ import { WidgetBuilderComponent } from '../widget-builder/widget-builder.compone
     /* Using fake-button spans to hint interactivity without nesting buttons */ 
     .fake-button { font-weight: 500; font-size: 14px; text-transform: uppercase; color: var(--sys-primary); } 
   `], 
-  template: `
-    <div class="hero-text">
-      <h2 class="hero-title">Start your Analysis</h2>
-      <p class="hero-subtitle">This dashboard is currently empty. Choose how you would like to begin.</p>
-    </div>
-
-    <div class="cards-grid">
-      
-      <!-- Card 1: Wizard -->
-      <mat-card 
-        appearance="outlined" 
-        matRipple 
-        class="action-card" 
-        (click)="openWizard()" 
-        tabindex="0" 
-        (keydown.enter)="openWizard()"
-        role="button"
-        aria-label="Start with a Template"
-      >
-        <div class="card-content-wrapper">
-          <div class="card-icon-bg icon-wizard"><mat-icon>library_add</mat-icon></div>
-          <h3 class="card-title">Start with a Template</h3>
-          <p class="card-desc">Browse pre-built metrics like "Admission Lag" or "Utilization Spikes".</p>
-          <div class="card-action"><span class="fake-button">Open Wizard &rarr;</span></div>
-        </div>
-      </mat-card>
-
-      <!-- Card 2: AI -->
-      <mat-card 
-        appearance="outlined" 
-        matRipple 
-        class="action-card" 
-        (click)="openAi()" 
-        tabindex="0" 
-        (keydown.enter)="openAi()"
-        role="button"
-        aria-label="Ask AI a Question"
-      >
-        <div class="card-content-wrapper">
-          <div class="card-icon-bg icon-ai"><mat-icon>smart_toy</mat-icon></div>
-          <h3 class="card-title">Ask AI a Question</h3>
-          <p class="card-desc">Describe what you want to see. AI will generate the SQL and visualization.</p>
-          <div class="card-action"><span class="fake-button">Open Assistant &rarr;</span></div>
-        </div>
-      </mat-card>
-
-      <!-- Card 3: Seeder -->
-      <!-- FIX: Added accessible label for E2E targeting -->
-      <mat-card 
-        appearance="outlined" 
-        matRipple 
-        class="action-card" 
-        (click)="!store.isLoading() && loadSamples()" 
-        tabindex="0" 
-        (keydown.enter)="loadSamples()"
-        role="button"
-        aria-label="Load Sample Data"
-      >
-        <div class="card-content-wrapper">
-          <div class="card-icon-bg icon-seed"><mat-icon>restore</mat-icon></div>
-          <h3 class="card-title">Load Sample Data</h3>
-          <p class="card-desc">Instantly populate this dashboard with standard "Hospital Command Center" content.</p>
-          <div class="card-action"><span class="fake-button">{{ store.isLoading() ? 'Loading...' : 'Auto-Fill' }}</span></div>
-        </div>
-      </mat-card>
-
-    </div>
-  `
+    templateUrl: './empty-state.component.html'
 }) 
 export class EmptyStateComponent { 
+  /** Store. */
   readonly store = inject(DashboardStore); 
-  private readonly dialog = inject(MatDialog); 
-  private readonly askDataService = inject(AskDataService); 
+    /** dialog property. */
+private readonly dialog = inject(MatDialog); 
+    /** askDataService property. */
+private readonly askDataService = inject(AskDataService); 
 
+  /** Open Wizard. */
   openWizard(): void { 
     const dashboard = this.store.dashboard(); 
     if (!dashboard) return; 
@@ -164,10 +102,12 @@ export class EmptyStateComponent {
     }); 
   } 
 
+  /** Open Ai. */
   openAi(): void { 
     this.askDataService.open(); 
   } 
 
+  /** Loads samples. */
   loadSamples(): void { 
     if (this.store.isLoading()) return; 
     this.store.createDefaultDashboard(); 

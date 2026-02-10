@@ -14,6 +14,12 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs'; 
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { EditorState } from '@codemirror/state';
+import { By } from '@angular/platform-browser';
+import { MatMenuTrigger } from '@angular/material/menu';
+import { OverlayContainer } from '@angular/cdk/overlay';
+import { Component, input } from '@angular/core';
+import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
+import { ConversationComponent } from '../chat/conversation/conversation.component';
 
 describe('SqlBuilderComponent', () => { 
   let component: SqlBuilderComponent; 
@@ -224,6 +230,119 @@ describe('SqlBuilderComponent', () => {
     component.saveQueryToCart();
 
     expect(emitSpy).not.toHaveBeenCalled();
+  });
+});
+
+@Component({ selector: 'viz-table', template: '<div data-testid=\"mock-table\"></div>' })
+class MockVizTableComponent {
+  readonly dataSet = input<unknown>();
+}
+
+@Component({ selector: 'app-conversation', template: '<div data-testid=\"mock-conversation\"></div>' })
+class MockConversationComponent {}
+
+describe('SqlBuilderComponent template wiring', () => {
+  let fixture: ComponentFixture<SqlBuilderComponent>;
+  let component: SqlBuilderComponent;
+  let mockDashApi: any;
+  let mockExecApi: any;
+  let mockSchemaApi: any;
+  let mockStore: any;
+  let overlay: OverlayContainer;
+
+  beforeEach(async () => {
+    TestBed.resetTestingModule();
+    mockDashApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})) };
+    mockExecApi = { refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn().mockReturnValue(of({ w1: { columns: [], data: [] } })) };
+    mockSchemaApi = { getDatabaseSchemaApiV1SchemaGet: vi.fn().mockReturnValue(of([])) };
+    mockStore = { globalParams: signal<Record<string, any>>({}) };
+
+    await TestBed.configureTestingModule({
+      imports: [SqlBuilderComponent, NoopAnimationsModule],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: ExecutionService, useValue: mockExecApi },
+        { provide: SchemaService, useValue: mockSchemaApi },
+        { provide: ChatService, useValue: {} },
+        { provide: DashboardStore, useValue: mockStore },
+        { provide: BASE_PATH, useValue: 'http://api' }
+      ]
+    })
+      .overrideComponent(SqlBuilderComponent, {
+        remove: { imports: [VizTableComponent, ConversationComponent] },
+        add: { imports: [MockVizTableComponent, MockConversationComponent] }
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(SqlBuilderComponent);
+    component = fixture.componentInstance;
+    setInputSignal(component, 'dashboardId', 'd1');
+    setInputSignal(component, 'widgetId', 'w1');
+    setInputSignal(component, 'enableCart', true);
+    fixture.detectChanges();
+    overlay = TestBed.inject(OverlayContainer);
+  });
+
+  it('should dismiss validation error from template button', () => {
+    component.validationError.set('Bad SQL');
+    fixture.detectChanges();
+    const closeBtn = fixture.debugElement.query(By.css('[data-testid=\"error-banner\"] button'));
+    closeBtn.triggerEventHandler('click', null);
+    expect(component.validationError()).toBeNull();
+  });
+
+  it('should open params menu and insert param', () => {
+    mockStore.globalParams.set({ dept: 'Cardiology' });
+    fixture.detectChanges();
+    const trigger = fixture.debugElement.query(By.directive(MatMenuTrigger)).injector.get(MatMenuTrigger);
+    const spy = vi.spyOn(component, 'insertParam');
+    trigger.openMenu();
+    fixture.detectChanges();
+    const overlayEl = overlay.getContainerElement();
+    const item = overlayEl.querySelector('button[mat-menu-item]') as HTMLElement;
+    item.click();
+    expect(spy).toHaveBeenCalledWith('dept');
+  });
+
+  it('should show empty params message when none available', () => {
+    mockStore.globalParams.set({});
+    fixture.detectChanges();
+    const trigger = fixture.debugElement.query(By.directive(MatMenuTrigger)).injector.get(MatMenuTrigger);
+    trigger.openMenu();
+    fixture.detectChanges();
+    const overlayEl = overlay.getContainerElement();
+    expect(overlayEl.textContent).toContain('No global params set');
+  });
+
+  it('should wire save to cart and run query buttons', () => {
+    const saveSpy = vi.spyOn(component, 'saveQueryToCart');
+    const runSpy = vi.spyOn(component, 'runQuery').mockImplementation(() => {});
+    component.currentSql.set('SELECT 1');
+    fixture.detectChanges();
+    const buttons = fixture.debugElement.queryAll(By.css('button'));
+    const saveBtn = buttons.find(b => b.nativeElement.textContent.includes('Save to Cart'))!;
+    const runBtn = buttons.find(b => b.nativeElement.textContent.includes('Run Query'))!;
+    saveBtn.triggerEventHandler('click', null);
+    runBtn.triggerEventHandler('click', null);
+    expect(saveSpy).toHaveBeenCalled();
+    expect(runSpy).toHaveBeenCalled();
+  });
+
+  it('should render result states in template', () => {
+    component.latestResult.set({ columns: ['a'], data: [{ a: 1 }] } as any);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(MockVizTableComponent))).toBeTruthy();
+
+    component.latestResult.set(null);
+    component.isRunning.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.nativeElement.textContent).toContain('Executing');
+
+    component.isRunning.set(false);
+    fixture.detectChanges();
+    expect(fixture.debugElement.nativeElement.textContent).toContain('Run query to see results');
   });
 });
 

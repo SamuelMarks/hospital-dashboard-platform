@@ -47,4 +47,18 @@ describe('SkeletonLoaderComponent', () => {
     const el = fixture.debugElement.query(By.css('.metric-val'));
     expect(el).toBeTruthy();
   });
+
+  it('should render chart variant', () => {
+    variantSig.set('chart');
+    fixture.detectChanges();
+    const el = fixture.debugElement.query(By.css('.layout-chart'));
+    expect(el).toBeTruthy();
+  });
+
+  it('should render pie variant', () => {
+    variantSig.set('pie');
+    fixture.detectChanges();
+    const el = fixture.debugElement.query(By.css('.layout-pie'));
+    expect(el).toBeTruthy();
+  });
 });

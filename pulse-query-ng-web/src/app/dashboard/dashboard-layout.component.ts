@@ -27,6 +27,7 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service'; 
 import { QueryCartItem } from '../global/query-cart.models'; 
 
+/** Dashboard Layout component. */
 @Component({ 
   selector: 'app-dashboard-layout', 
   templateUrl: './dashboard-layout.component.html', 
@@ -51,17 +52,27 @@ import { QueryCartItem } from '../global/query-cart.models';
   ] 
 }) 
 export class DashboardLayoutComponent implements OnInit { 
+  /** Store. */
   public readonly store = inject(DashboardStore); 
-  private readonly themeService = inject(ThemeService); 
-  private readonly route = inject(ActivatedRoute); 
-  private readonly dashboardApi = inject(DashboardsService); 
-  private readonly provisioning = inject(ProvisioningService); 
-  private readonly cartProvisioning = inject(QueryCartProvisioningService); 
-  private readonly dialog = inject(MatDialog); 
-  private readonly snackBar = inject(MatSnackBar); 
+    /** themeService property. */
+private readonly themeService = inject(ThemeService); 
+    /** route property. */
+private readonly route = inject(ActivatedRoute); 
+    /** dashboardApi property. */
+private readonly dashboardApi = inject(DashboardsService); 
+    /** provisioning property. */
+private readonly provisioning = inject(ProvisioningService); 
+    /** cartProvisioning property. */
+private readonly cartProvisioning = inject(QueryCartProvisioningService); 
+    /** dialog property. */
+private readonly dialog = inject(MatDialog); 
+    /** snackBar property. */
+private readonly snackBar = inject(MatSnackBar); 
 
+  /** Whether tv Mode. */
   readonly isTvMode = this.themeService.isTvMode; 
 
+  /** Ng On Init. */
   ngOnInit(): void { 
     this.route.paramMap.subscribe(params => { 
       const id = params.get('id'); 
@@ -81,8 +92,8 @@ export class DashboardLayoutComponent implements OnInit {
   } 
 
   /** 
-   * Unified Drop Handler. 
-   */ 
+  * Unified Drop Handler. 
+  */ 
   onDrop(event: CdkDragDrop<any[]>): void { 
     if (this.isTvMode()) return; 
 
@@ -132,16 +143,19 @@ export class DashboardLayoutComponent implements OnInit {
     return !!value && typeof value === 'object' && (value as QueryCartItem).kind === 'query-cart-item'; 
   } 
 
+  /** Gets col Span. */
   getColSpan(widget: WidgetResponse): number { 
     const w = Number(widget.config?.['w']); 
     return Math.max(1, Math.min(12, w || 6)); 
   } 
 
+  /** Gets row Span. */
   getRowSpan(widget: WidgetResponse): number { 
     const h = Number(widget.config?.['h']); 
     return Math.max(1, Math.min(4, h || 2)); 
   } 
 
+  /** Start Resizing. */
   startResizing(event: MouseEvent, widget: WidgetResponse): void { 
     if (this.isTvMode()) return; 
     event.preventDefault(); 
@@ -172,6 +186,7 @@ export class DashboardLayoutComponent implements OnInit {
     document.addEventListener('mouseup', onUp); 
   } 
 
+  /** Updates widget Width. */
   updateWidgetWidth(widget: WidgetResponse, newWidth: number): void { 
     const update: WidgetUpdate = { config: { w: newWidth } }; 
     this.dashboardApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(widget.id, update) 
@@ -181,6 +196,7 @@ export class DashboardLayoutComponent implements OnInit {
       }); 
   } 
 
+  /** Edit Widget. */
   editWidget(widget: WidgetResponse): void { 
     if (this.isTvMode()) return; 
     const dashboardId = this.store.dashboard()?.id; 
@@ -193,6 +209,7 @@ export class DashboardLayoutComponent implements OnInit {
     ref.afterClosed().subscribe(res => { if (res) this.store.loadDashboard(dashboardId); }); 
   } 
 
+  /** Confirm Delete Widget. */
   confirmDeleteWidget(widget: WidgetResponse): void { 
     if (this.isTvMode()) return; 
     if (!confirm(`Delete "${widget.title}"?`)) return; 

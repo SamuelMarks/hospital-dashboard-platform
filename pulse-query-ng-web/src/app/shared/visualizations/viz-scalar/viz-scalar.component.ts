@@ -27,29 +27,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     ::ng-deep .gauge-neg .mdc-linear-progress__bar-inner { border-color: #f44336 !important; } 
     ::ng-deep .gauge-neutral .mdc-linear-progress__bar-inner { border-color: var(--sys-text-secondary) !important; } 
   `], 
-  template: `
-    <div class="value-display" role="status">{{ formattedValue() }}</div>
-    <div class="label-display">{{ label() }}</div>
-
-    @if (isCorrelation()) { 
-      <div class="gauge-wrapper" [matTooltip]="'Correlation Scale: -1 to +1'"> 
-        <mat-progress-bar 
-          mode="determinate" 
-          [value]="gaugePosition()" 
-          [class]="colorClass()" 
-          role="meter" 
-          [attr.aria-valuenow]="value()" 
-          aria-valuemin="-1" 
-          aria-valuemax="1" 
-        ></mat-progress-bar>
-      </div>
-      <div class="interpret-text" [style.color]="strengthColor()">
-        {{ strengthLabel() }} 
-      </div>
-    } 
-  `
+    templateUrl: './viz-scalar.component.html'
 }) 
 export class VizScalarComponent { 
+  /** Data. */
   readonly data = input<any | null>(); 
 
   /** Extract numeric value from dataset. */ 
@@ -67,6 +48,7 @@ export class VizScalarComponent {
     return null; 
   }); 
 
+  /** Formatted Value. */
   readonly formattedValue = computed(() => { 
     const v = this.value(); 
     if (v === null) return '-'; 
@@ -74,6 +56,7 @@ export class VizScalarComponent {
     return v.toLocaleString(); 
   }); 
 
+  /** Label. */
   readonly label = computed(() => { 
     const d = this.data(); 
     if (d?.columns && d.columns.length > 0) return d.columns.find((c: string) => c !== 'value') || d.columns[0]; 
@@ -91,11 +74,11 @@ export class VizScalarComponent {
   }); 
 
   /** 
-   * Maps -1...1 to 0...100 for ProgressBar. 
-   * -1 => 0% 
-   * 0 => 50% 
-   * 1 => 100% 
-   */ 
+  * Maps -1...1 to 0...100 for ProgressBar. 
+  * -1 => 0% 
+  * 0 => 50% 
+  * 1 => 100% 
+  */ 
   readonly gaugePosition = computed(() => { 
     const v = this.value() || 0; 
     return ((v + 1) / 2) * 100; 
@@ -108,6 +91,7 @@ export class VizScalarComponent {
     return v > 0 ? 'gauge-pos' : 'gauge-neg'; 
   }); 
 
+  /** Strength Label. */
   readonly strengthLabel = computed(() => { 
     const v = this.value() || 0; 
     const abs = Math.abs(v); 
@@ -116,6 +100,7 @@ export class VizScalarComponent {
     return 'Strong Correlation'; 
   }); 
 
+  /** Strength Color. */
   readonly strengthColor = computed(() => { 
     const v = this.value() || 0; 
     if (Math.abs(v) < 0.3) return 'var(--sys-text-secondary)'; 

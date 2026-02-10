@@ -25,49 +25,7 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
     MatInputModule
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <h2 mat-dialog-title>Create New Dashboard</h2>
-    
-    <mat-dialog-content>
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <p class="text-sm text-gray-500 mb-4">Enter a name for your new analytics workspace.</p>
-        
-        <mat-form-field appearance="outline" class="w-full">
-          <mat-label>Dashboard Name</mat-label>
-          <input matInput formControlName="name" placeholder="e.g. Q3 Overview" data-testid="input-name">
-          @if (form.get('name')?.hasError('required')) {
-            <mat-error>Name is required</mat-error>
-          }
-          @if (form.get('name')?.hasError('minlength')) {
-            <mat-error>Name must be at least 3 characters</mat-error>
-          }
-        </mat-form-field>
-
-        @if (error()) {
-          <div class="text-red-600 text-sm mb-2" data-testid="error-msg">
-            {{ error() }}
-          </div>
-        }
-      </form>
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button 
-        mat-flat-button 
-        color="primary" 
-        (click)="submit()" 
-        [disabled]="form.invalid || isSubmitting()"
-        data-testid="btn-submit"
-      >
-        @if (isSubmitting()) {
-          Creating...
-        } @else {
-          Create
-        }
-      </button>
-    </mat-dialog-actions>
-  `
+    templateUrl: './dashboard-create.dialog.html'
 })
 export class DashboardCreateDialog {
   /** API Client for Dashboard Operations. */
@@ -91,10 +49,10 @@ export class DashboardCreateDialog {
   });
 
   /**
-   * Handles the form submission.
-   * Calls the API to create the dashboard, then closes the dialog 
-   * passing the new object back to the caller.
-   */
+  * Handles the form submission.
+  * Calls the API to create the dashboard, then closes the dialog 
+  * passing the new object back to the caller.
+  */
   submit(): void {
     if (this.form.invalid) return;
 

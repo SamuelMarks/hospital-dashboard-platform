@@ -19,8 +19,10 @@ import { HttpConfigComponent } from '../editors/http-config.component';
  * Data interface for the Dialog Injection. 
  */ 
 export interface WidgetEditorData { 
-  dashboardId: string; 
-  widget: WidgetResponse; 
+    /** dashboardId property. */
+dashboardId: string; 
+    /** widget property. */
+widget: WidgetResponse; 
 } 
 
 /** 
@@ -75,100 +77,26 @@ export interface WidgetEditorData {
       align-items: center;
     }
   `], 
-  template: `
-    <!-- Header -->
-    <div mat-dialog-title class="flex items-center justify-between border-b pb-2">
-      <div class="flex flex-col">
-        <span class="text-lg font-medium">Edit Widget</span>
-        <span class="text-xs text-gray-500 font-mono flex items-center gap-2">
-          {{ widget.title }} 
-          <span class="bg-blue-50 text-blue-700 px-1 rounded border border-blue-100">{{ widget.type }}</span>
-        </span>
-      </div>
-      <button mat-icon-button mat-dialog-close>
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-
-    <!-- Content (Editor Implementation) -->
-    <mat-dialog-content>
-      @switch (widget.type) { 
-        @case ('SQL') { 
-          <app-sql-builder 
-            [dashboardId]="data.dashboardId" 
-            [widgetId]="widget.id" 
-            [initialSql]="initialSql()" 
-            (sqlChange)="handleEditorSave()" 
-            class="h-full block" 
-          ></app-sql-builder>
-        } 
-        @case ('HTTP') { 
-          <app-http-config 
-            [dashboardId]="data.dashboardId" 
-            [widgetId]="widget.id" 
-            [initialConfig]="widget.config" 
-            (configChange)="handleEditorSave()" 
-            class="h-full block" 
-          ></app-http-config>
-        } 
-      } 
-    </mat-dialog-content>
-
-    <!-- Visualization Mapping Settings -->
-    <!-- Only show if viz type supports mapping -->
-    @if (supportsMapping()) {
-      <div class="viz-settings-panel">
-        <div class="text-xs font-bold uppercase text-gray-500 mb-2">Visualization Settings ({{ widget.visualization }})</div>
-        
-        <div class="settings-grid">
-          <!-- X-Axis / Label Selector -->
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ isPie() ? 'Label Column' : 'X-Axis / Category' }}</mat-label>
-            <mat-select [(ngModel)]="xKey" [disabled]="columns().length === 0">
-              <mat-option [value]="null">-- Auto --</mat-option>
-              @for (col of columns(); track col) {
-                <mat-option [value]="col">{{ col }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <!-- Y-Axis / Value Selector -->
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>{{ isPie() ? 'Size Column' : 'Y-Axis / Value' }}</mat-label>
-            <mat-select [(ngModel)]="yKey" [disabled]="columns().length === 0">
-              <mat-option [value]="null">-- Auto --</mat-option>
-              @for (col of columns(); track col) {
-                <mat-option [value]="col">{{ col }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <button mat-flat-button color="primary" (click)="saveSettings()">
-            Update Viz
-          </button>
-        </div>
-        
-        @if (columns().length === 0) {
-          <div class="text-xs text-amber-700 mt-2">
-            Run the query in the editor above to populate available columns.
-          </div>
-        }
-      </div>
-    }
-  `
+    templateUrl: './widget-editor.dialog.html'
 }) 
 export class WidgetEditorDialog { 
+  /** Data. */
   readonly data = inject<WidgetEditorData>(MAT_DIALOG_DATA); 
-  private readonly dialogRef = inject(MatDialogRef<WidgetEditorDialog>); 
-  private readonly dashboardsApi = inject(DashboardsService);
+    /** dialogRef property. */
+private readonly dialogRef = inject(MatDialogRef<WidgetEditorDialog>); 
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService);
   
   /** Access existing data to populate column dropdowns. */
   private readonly store = inject(DashboardStore);
 
   // --- Local State for Settings Form ---
+  /** X Key. */
   readonly xKey = signal<string | null>(null);
+  /** Y Key. */
   readonly yKey = signal<string | null>(null);
 
+  /** Creates a new WidgetEditorDialog. */
   constructor() {
     // Initialize form from existing config
     const conf = this.widget.config || {};
@@ -176,6 +104,7 @@ export class WidgetEditorDialog {
     this.yKey.set(conf['yKey'] || null);
   }
 
+  /** Widget. */
   get widget(): WidgetResponse { 
     return this.data.widget; 
   } 
@@ -206,11 +135,11 @@ export class WidgetEditorDialog {
   });
 
   /** 
-   * Called when the internal editor (SQL/HTTP) saves. 
-   * We refrain from closing immediately to allow Viz editing if desired, 
-   * or we can close if the user is done. 
-   * For this UX, we do NOT close automatically anymore, allowing standard workflow.
-   */ 
+  * Called when the internal editor (SQL/HTTP) saves. 
+  * We refrain from closing immediately to allow Viz editing if desired, 
+  * or we can close if the user is done. 
+  * For this UX, we do NOT close automatically anymore, allowing standard workflow.
+  */ 
   handleEditorSave(): void {
     // Reload dashboard to get new widgetConfig (incase editor wiped it) 
     // and refresh columns.
@@ -218,9 +147,9 @@ export class WidgetEditorDialog {
   }
 
   /**
-   * Saves the Column Mapping configuration.
-   * Merges with existing config to prevent overwriting Query/URL logic.
-   */
+  * Saves the Column Mapping configuration.
+  * Merges with existing config to prevent overwriting Query/URL logic.
+  */
   saveSettings() {
     // 1. Get fresh widget state (in case Editor modified config)
     this.dashboardsApi.getDashboardApiV1DashboardsDashboardIdGet(this.data.dashboardId)

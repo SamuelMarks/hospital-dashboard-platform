@@ -1,0 +1,15 @@
+    <div class="card">
+      <div class="header">
+        <span>Suggested Query</span>
+        <div class="flex gap-2">
+          <button mat-icon-button class="scale-75 text-gray-400 hover:text-white" (click)="copy()" aria-label="Copy SQL">
+            <mat-icon style="font-size: 16px;">content_copy</mat-icon>
+          </button>
+          <button mat-stroked-button color="accent" class="text-xs h-6 px-2 leading-none" (click)="run.emit(sql())">
+            <mat-icon class="mr-1 text-xs" style="font-size:14px; width:14px; height:14px;">play_arrow</mat-icon> Run
+          </button>
+        </div>
+      </div>
+      <div class="code-block" [innerHTML]="highlightedSql"></div>
+    </div>
+  

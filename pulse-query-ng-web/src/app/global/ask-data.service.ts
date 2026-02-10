@@ -15,22 +15,22 @@ export class AskDataService {
   public isOpen = this._isOpen.asReadonly();
 
   /** 
-   * Toggles the visibility state of the sidebar.
-   */
+  * Toggles the visibility state of the sidebar.
+  */
   toggle() {
     this._isOpen.update(v => !v);
   }
 
   /** 
-   * Explicitly closes the sidebar.
-   */
+  * Explicitly closes the sidebar.
+  */
   close() {
     this._isOpen.set(false);
   }
 
   /** 
-   * Explicitly opens the sidebar.
-   */
+  * Explicitly opens the sidebar.
+  */
   open() {
     this._isOpen.set(true);
   }

@@ -23,15 +23,23 @@ import {
   ConversationUpdate
 } from '../api-client'; 
 
+/** Chat State interface. */
 export interface ChatState { 
-  conversations: ConversationResponse[]; 
-  activeConversationId: string | null; 
-  messages: MessageResponse[]; 
-  isLoadingList: boolean; 
-  isGenerating: boolean; 
-  error: string | null; 
+    /** conversations property. */
+conversations: ConversationResponse[]; 
+    /** activeConversationId property. */
+activeConversationId: string | null; 
+    /** messages property. */
+messages: MessageResponse[]; 
+    /** isLoadingList property. */
+isLoadingList: boolean; 
+    /** isGenerating property. */
+isGenerating: boolean; 
+    /** error property. */
+error: string | null; 
 } 
 
+/** Initial State constant. */
 const initialState: ChatState = { 
   conversations: [], 
   activeConversationId: null, 
@@ -41,25 +49,38 @@ const initialState: ChatState = {
   error: null
 }; 
 
+/** Chat store. */
 @Injectable({ providedIn: 'root' }) 
 export class ChatStore implements OnDestroy { 
-  private readonly chatApi = inject(ChatService); 
-  private readonly _state = signal<ChatState>(initialState); 
-  private readonly destroy$ = new Subject<void>(); 
+    /** chatApi property. */
+private readonly chatApi = inject(ChatService); 
+    /** _state property. */
+private readonly _state = signal<ChatState>(initialState); 
+    /** destroy$ property. */
+private readonly destroy$ = new Subject<void>(); 
 
+  /** State. */
   readonly state = this._state.asReadonly(); 
+  /** Conversations. */
   readonly conversations = computed(() => this._state().conversations); 
+  /** Active Conversation Id. */
   readonly activeConversationId = computed(() => this._state().activeConversationId); 
+  /** Messages. */
   readonly messages = computed(() => this._state().messages); 
+  /** Whether data Loading. */
   readonly isDataLoading = computed(() => this._state().isLoadingList); 
+  /** Whether generating. */
   readonly isGenerating = computed(() => this._state().isGenerating); 
+  /** Error. */
   readonly error = computed(() => this._state().error); 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     this.destroy$.next(); 
     this.destroy$.complete(); 
   } 
 
+  /** Loads history. */
   loadHistory(): void { 
     this.patch({ isLoadingList: true, error: null }); 
     this.chatApi.listConversationsApiV1ConversationsGet() 
@@ -70,6 +91,7 @@ export class ChatStore implements OnDestroy {
       }); 
   } 
 
+  /** Select Conversation. */
   selectConversation(id: string): void { 
     this.patch({ activeConversationId: id, messages: [], error: null, isLoadingList: true }); 
     this.chatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(id) 
@@ -80,11 +102,13 @@ export class ChatStore implements OnDestroy {
       }); 
   } 
 
+  /** Creates new Chat. */
   createNewChat(): void { 
     if (!this.activeConversationId() && this.messages().length === 0) return; 
     this.patch({ activeConversationId: null, messages: [], error: null }); 
   } 
 
+  /** Send Message. */
   sendMessage(content: string): void { 
     if (!content.trim()) return; 
     const currentId = this.activeConversationId(); 
@@ -130,6 +154,7 @@ export class ChatStore implements OnDestroy {
     } 
   } 
 
+  /** Vote Candidate. */
   voteCandidate(messageId: string, candidateId: string): void { 
     const activeId = this.activeConversationId(); 
     if (!activeId) return; 
@@ -157,6 +182,7 @@ export class ChatStore implements OnDestroy {
 
   // --- New Methods --- 
 
+  /** Deletes conversation. */
   deleteConversation(id: string): void { 
     // Optimistic Remove
     const currentList = this.conversations(); 
@@ -174,6 +200,7 @@ export class ChatStore implements OnDestroy {
     }); 
   } 
 
+  /** Rename Conversation. */
   renameConversation(id: string, newTitle: string): void { 
     const currentList = this.conversations(); 
     const original = currentList.find(c => c.id === id); 
@@ -189,8 +216,10 @@ export class ChatStore implements OnDestroy {
     }); 
   } 
 
-  private patch(p: Partial<ChatState>): void { this._state.update(s => ({ ...s, ...p })); } 
-  private handleError(e: unknown): void { 
+    /** patch method. */
+private patch(p: Partial<ChatState>): void { this._state.update(s => ({ ...s, ...p })); } 
+    /** handleError method. */
+private handleError(e: unknown): void { 
     const msg = e instanceof HttpErrorResponse ? (e.error?.detail || e.message) : 'Error'; 
     this.patch({ error: msg }); 
   } 

@@ -63,72 +63,35 @@ import { QueryCartService } from './query-cart.service';
       padding: 24px; 
     } 
   `], 
-  template: `
-    <!-- Header -->
-    <mat-toolbar color="white" class="border-b">
-      <span class="flex-grow font-medium">Ask Data</span>
-      <span class="text-xs text-gray-500 mr-4 font-normal">Ad-hoc Analysis Scratchpad</span>
-      <span class="text-xs text-gray-500 mr-4 font-normal flex items-center gap-1">
-        <mat-icon style="font-size:14px; width:14px; height:14px">shopping_cart</mat-icon>
-        {{ cartCount() }} in cart
-      </span>
-      
-      <button mat-icon-button (click)="vis.close()" data-testid="close-btn">
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-toolbar>
-
-    <!-- Content -->
-    <div class="content-area">
-      
-      <!-- Loading State -->
-      @if (loadingContext()) { 
-        <div class="center-overlay" data-testid="loading-state">
-           <mat-spinner diameter="40" class="mb-4"></mat-spinner>
-           <span class="text-sm text-gray-600">Initializing Environment...</span>
-        </div>
-      } 
-      
-      <!-- Error State -->
-      @if (contextError()) { 
-        <div class="center-overlay" data-testid="error-state">
-          <mat-icon class="text-red-500 text-4xl mb-2">error_outline</mat-icon>
-          <span class="text-red-600 font-medium">{{ contextError() }}</span>
-        </div>
-      } 
-
-      <!-- Builder Instance -->
-      <!-- We render it immediately once scratchpad ID is known. 
-           Passed [initialTab]="1" to default to AI Assistant view for this context. -->
-      @if (scratchpadIds(); as ids) { 
-         <app-sql-builder
-           [dashboardId]="ids.dashboardId" 
-           [widgetId]="ids.widgetId" 
-           [initialSql]="'SELECT * FROM hospital_data LIMIT 5'" 
-           [initialTab]="1" 
-           [enableCart]="true"
-           (saveToCart)="handleSaveToCart($event)"
-           class="h-full w-full block" 
-         ></app-sql-builder>
-      } 
-    </div>
-  `
+    templateUrl: './ask-data.component.html'
 }) 
 export class AskDataComponent implements OnDestroy { 
+  /** Vis. */
   public readonly vis = inject(AskDataService); 
-  private readonly cart = inject(QueryCartService); 
+    /** cart property. */
+private readonly cart = inject(QueryCartService); 
   
-  private readonly dashboardsApi = inject(DashboardsService); 
-  private readonly auth = inject(AuthService); 
-  private readonly platformId = inject(PLATFORM_ID); 
-  private readonly SCRATCHPAD_NAME = 'Scratchpad (Temp)'; 
-  private readonly WIDGET_TITLE = 'AdHoc Query'; 
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService); 
+    /** auth property. */
+private readonly auth = inject(AuthService); 
+    /** platformId property. */
+private readonly platformId = inject(PLATFORM_ID); 
+    /** SCRATCHPAD_NAME property. */
+private readonly SCRATCHPAD_NAME = 'Scratchpad (Temp)'; 
+    /** WIDGET_TITLE property. */
+private readonly WIDGET_TITLE = 'AdHoc Query'; 
 
+  /** Loading Context. */
   readonly loadingContext = signal(true); 
+  /** Context Error. */
   readonly contextError = signal<string | null>(null); 
+  /** Scratchpad Ids. */
   readonly scratchpadIds = signal<{ dashboardId: string, widgetId: string } | null>(null); 
+  /** Cart Count. */
   readonly cartCount = this.cart.count; 
 
+  /** Creates a new AskDataComponent. */
   constructor() { 
     if (isPlatformBrowser(this.platformId)) { 
       // Initialize immediately on construction (App startup), independent of visibility
@@ -151,6 +114,7 @@ export class AskDataComponent implements OnDestroy {
     } 
   } 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     if (isPlatformBrowser(this.platformId)) { 
       const ids = this.scratchpadIds(); 
@@ -163,7 +127,8 @@ export class AskDataComponent implements OnDestroy {
     } 
   } 
 
-  private initializeScratchpad(): void { 
+    /** initializeScratchpad method. */
+private initializeScratchpad(): void { 
     this.loadingContext.set(true); 
     this.contextError.set(null); 
 
@@ -180,7 +145,8 @@ export class AskDataComponent implements OnDestroy {
     }); 
   } 
 
-  private createDashboard(): void { 
+    /** createDashboard method. */
+private createDashboard(): void { 
     const scratchDash: DashboardCreate = { name: this.SCRATCHPAD_NAME }; 
     this.dashboardsApi.createDashboardApiV1DashboardsPost(scratchDash).subscribe({ 
       next: (dash) => this.ensureWidget(dash.id, []), 
@@ -188,7 +154,8 @@ export class AskDataComponent implements OnDestroy {
     }); 
   } 
 
-  private ensureWidget(dashboardId: string, widgets: WidgetResponse[]): void { 
+    /** ensureWidget method. */
+private ensureWidget(dashboardId: string, widgets: WidgetResponse[]): void { 
     const existingWidget = widgets.find(w => w.title === this.WIDGET_TITLE); 
     
     if (existingWidget) { 
@@ -206,12 +173,14 @@ export class AskDataComponent implements OnDestroy {
     } 
   } 
 
-  private setContext(dashboardId: string, widgetId: string): void { 
+    /** setContext method. */
+private setContext(dashboardId: string, widgetId: string): void { 
     this.scratchpadIds.set({ dashboardId, widgetId }); 
     this.loadingContext.set(false); 
   } 
 
-  private handleError(msg: string, error: any): void { 
+    /** handleError method. */
+private handleError(msg: string, error: any): void { 
     console.error(error); 
     this.contextError.set(msg); 
     this.loadingContext.set(false); 

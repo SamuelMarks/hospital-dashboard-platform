@@ -42,67 +42,7 @@ import { DashboardStore } from './dashboard.store';
   ], 
   providers: [provideNativeDateAdapter()], 
   changeDetection: ChangeDetectionStrategy.OnPush, 
-  template: `
-    <!-- MatToolbar acts as the surface container -->
-    <mat-toolbar class="filter-toolbar">
-      
-      <!-- Label Section -->
-      <div class="filter-label">
-        <mat-icon class="text-secondary icon-small">filter_list</mat-icon>
-        <span class="label-text">Data Filters</span>
-      </div>
-
-      <div class="filter-group">
-        <!-- 1. Department -->
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" density="compact" class="ribbon-field">
-          <mat-label>Department</mat-label>
-          <mat-select [formControl]="deptControl" placeholder="All Departments">
-            <mat-option [value]="null">All Departments</mat-option>
-            <mat-option value="Cardiology">Cardiology</mat-option>
-            <mat-option value="Neurology">Neurology</mat-option>
-            <mat-option value="Orthopedics">Orthopedics</mat-option>
-            <mat-option value="Emergency">Emergency</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <!-- 2. Date Range -->
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" density="compact" class="date-field">
-          <mat-label>Reporting Period</mat-label>
-          <mat-date-range-input [rangePicker]="picker" separator=" – ">
-            <input 
-              matStartDate 
-              placeholder="Start" 
-              [formControl]="startDate" 
-              (dateChange)="onDateChange()" 
-              aria-label="Start Date" 
-            >
-            <input 
-              matEndDate 
-              placeholder="End" 
-              [formControl]="endDate" 
-              (dateChange)="onDateChange()" 
-              aria-label="End Date" 
-            >
-          </mat-date-range-input>
-          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-          <mat-date-range-picker #picker></mat-date-range-picker>
-        </mat-form-field>
-
-        <!-- 3. Clear Action -->
-        @if (store.globalParams()['dept'] || store.globalParams()['start_date']) { 
-          <button 
-            mat-button 
-            color="warn" 
-            (click)="clearFilters()" 
-            aria-label="Clear all filters" 
-          >
-            <mat-icon>highlight_off</mat-icon> Clear
-          </button>
-        } 
-      </div>
-
-    </mat-toolbar>
-  `, 
+    templateUrl: './filter-ribbon.component.html', 
   styles: [`
     :host { display: block; position: sticky; top: 0; z-index: 900; } 
     
@@ -140,16 +80,23 @@ import { DashboardStore } from './dashboard.store';
 export class FilterRibbonComponent implements OnInit, OnDestroy { 
   /** Access to dashboard state (global params). */ 
   public readonly store = inject(DashboardStore); 
-  private readonly router = inject(Router); 
-  private readonly route = inject(ActivatedRoute); 
+    /** router property. */
+private readonly router = inject(Router); 
+    /** route property. */
+private readonly route = inject(ActivatedRoute); 
   
-  private readonly destroy$ = new Subject<void>(); 
+    /** destroy$ property. */
+private readonly destroy$ = new Subject<void>(); 
 
   // Form Controls 
+  /** Start Date. */
   readonly startDate = new FormControl<Date | null>(null); 
+  /** End Date. */
   readonly endDate = new FormControl<Date | null>(null); 
+  /** Dept Control. */
   readonly deptControl = new FormControl<string | null>(null); 
 
+  /** Ng On Init. */
   ngOnInit(): void { 
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(params => { 
       const start = params.get('start_date'); 
@@ -166,11 +113,13 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     }); 
   } 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     this.destroy$.next(); 
     this.destroy$.complete(); 
   } 
 
+  /** Handles date Change. */
   onDateChange(): void { 
     const s = this.startDate.value; 
     const e = this.endDate.value; 
@@ -187,6 +136,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     } 
   } 
 
+  /** Clear Filters. */
   clearFilters(): void { 
     this.router.navigate([], { 
       relativeTo: this.route, 
@@ -199,7 +149,8 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     this.deptControl.reset(); 
   } 
 
-  private updateFilter(key: string, value: any): void { 
+    /** updateFilter method. */
+private updateFilter(key: string, value: any): void { 
     this.router.navigate([], { 
       relativeTo: this.route, 
       queryParams: { [key]: value || null }, 
@@ -207,7 +158,8 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     }); 
   } 
 
-  private formatDate(d: Date): string { 
+    /** formatDate method. */
+private formatDate(d: Date): string { 
     return d.toISOString().split('T')[0]; 
   } 
 }

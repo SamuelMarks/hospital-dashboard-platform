@@ -19,20 +19,28 @@ export type ThemeMode = 'light' | 'dark';
 
 /** Default Seed Color (Material Blue 800 roughly). */ 
 const DEFAULT_SEED = '#1565c0'; 
+/** STORAGE KEY MODE constant. */
 const STORAGE_KEY_MODE = 'pulse_theme_mode'; 
+/** STORAGE KEY SEED constant. */
 const STORAGE_KEY_SEED = 'pulse_theme_seed'; 
 
+/** Theme service. */
 @Injectable({ 
   providedIn: 'root' 
 }) 
 export class ThemeService { 
-  private readonly platformId = inject(PLATFORM_ID); 
-  private readonly document = inject(DOCUMENT); 
+    /** platformId property. */
+private readonly platformId = inject(PLATFORM_ID); 
+    /** document property. */
+private readonly document = inject(DOCUMENT); 
 
   // --- State Signals --- 
-  private readonly _mode = signal<ThemeMode>('light'); 
-  private readonly _tvMode = signal<boolean>(false); 
-  private readonly _seedColor = signal<string>(DEFAULT_SEED); 
+    /** _mode property. */
+private readonly _mode = signal<ThemeMode>('light'); 
+    /** _tvMode property. */
+private readonly _tvMode = signal<boolean>(false); 
+    /** _seedColor property. */
+private readonly _seedColor = signal<string>(DEFAULT_SEED); 
 
   /** Valid Hex Color for the current theme seed. */ 
   readonly seedColor: Signal<string> = this._seedColor.asReadonly(); 
@@ -46,6 +54,7 @@ export class ThemeService {
   /** TV Kiosk Mode active state. */ 
   readonly isTvMode: Signal<boolean> = this._tvMode.asReadonly(); 
 
+  /** Creates a new ThemeService. */
   constructor() { 
     // Hydrate from Storage (Browser only) 
     if (isPlatformBrowser(this.platformId)) { 
@@ -66,36 +75,36 @@ export class ThemeService {
   } 
 
   /** 
-   * Toggles between Light and Dark mode. 
-   */ 
+  * Toggles between Light and Dark mode. 
+  */ 
   toggle(): void { 
     this._mode.update(current => (current === 'light' ? 'dark' : 'light')); 
     this.savePreferences(); 
   } 
 
   /** 
-   * Sets the theme mode explicitly. 
-   * @param {ThemeMode} mode - 'light' or 'dark'. 
-   */ 
+  * Sets the theme mode explicitly. 
+  * @param {ThemeMode} mode - 'light' or 'dark'. 
+  */ 
   setMode(mode: ThemeMode): void { 
     this._mode.set(mode); 
     this.savePreferences(); 
   } 
 
   /** 
-   * Updates the primary seed color for the application. 
-   * Regenerates the entire palette. 
-   * @param {string} hex - The new hex color (e.g. #ff0000). 
-   */ 
+  * Updates the primary seed color for the application. 
+  * Regenerates the entire palette. 
+  * @param {string} hex - The new hex color (e.g. #ff0000). 
+  */ 
   setSeedColor(hex: string): void { 
     this._seedColor.set(hex); 
     this.savePreferences(); 
   } 
 
   /** 
-   * Toggles TV / Kiosk Mode. 
-   * @param {boolean} active - State. 
-   */ 
+  * Toggles TV / Kiosk Mode. 
+  * @param {boolean} active - State. 
+  */ 
   setTvMode(active: boolean): void { 
     this._tvMode.set(active); 
     // TV mode forces Dark theme usually 
@@ -105,8 +114,8 @@ export class ThemeService {
   } 
 
   /** 
-   * Loads saved preferences from LocalStorage or detects OS preference. 
-   */ 
+  * Loads saved preferences from LocalStorage or detects OS preference. 
+  */ 
   private loadPreferences(): void { 
     const savedMode = localStorage.getItem(STORAGE_KEY_MODE) as ThemeMode; 
     const savedSeed = localStorage.getItem(STORAGE_KEY_SEED); 
@@ -125,8 +134,8 @@ export class ThemeService {
   } 
 
   /** 
-   * Persists current state to LocalStorage. 
-   */ 
+  * Persists current state to LocalStorage. 
+  */ 
   private savePreferences(): void { 
     if (!isPlatformBrowser(this.platformId)) return; 
     localStorage.setItem(STORAGE_KEY_MODE, this._mode()); 
@@ -134,14 +143,14 @@ export class ThemeService {
   } 
 
   /** 
-   * Applies all styling changes to the DOM. 
-   * 1. Generates CSS Custom Properties via ColorUtils. 
-   * 2. Sets Body Classes. 
-   * 
-   * @param {ThemeMode} mode - Current mode. 
-   * @param {string} seed - Current seed color. 
-   * @param {boolean} isTv - Is TV mode active. 
-   */ 
+  * Applies all styling changes to the DOM. 
+  * 1. Generates CSS Custom Properties via ColorUtils. 
+  * 2. Sets Body Classes. 
+  * 
+  * @param {ThemeMode} mode - Current mode. 
+  * @param {string} seed - Current seed color. 
+  * @param {boolean} isTv - Is TV mode active. 
+  */ 
   private applyThemeToDom(mode: ThemeMode, seed: string, isTv: boolean): void { 
     const body = this.document.body; 
     const root = this.document.documentElement; 

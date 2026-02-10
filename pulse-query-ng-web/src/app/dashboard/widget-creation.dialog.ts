@@ -33,8 +33,10 @@ import { DashboardStore } from './dashboard.store';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 
+/** Widget Creation Data interface. */
 export interface WidgetCreationData {
-  dashboardId: string;
+    /** dashboardId property. */
+dashboardId: string;
 }
 
 /**
@@ -196,178 +198,45 @@ export interface WidgetCreationData {
       .config-header { grid-template-columns: 1fr; }
     }
   `],
-  template: `
-    <h2 mat-dialog-title>Add New Widget</h2>
-
-    <mat-dialog-content>
-      <mat-stepper [linear]="true" #stepper class="w-full">
-
-        <!-- STEP 1: Data Source -->
-        <mat-step [completed]="!!selectedType()">
-          <ng-template matStepLabel>Source</ng-template>
-
-          <div class="compact-step-wrapper">
-            <p class="text-sm text-gray-500 mb-4">Where will this widget get its data from?</p>
-
-            <div class="option-card" [class.selected]="selectedType() === 'SQL'" (click)="setType('SQL')" data-testid="option-sql">
-              <mat-icon class="text-primary" style="color: var(--sys-primary)">storage</mat-icon>
-              <div>
-                <div class="font-medium">SQL Database</div>
-                <div class="text-xs text-gray-500">Query the internal DuckDB analytics engine.</div>
-              </div>
-              <div class="flex-grow"></div>
-              <mat-radio-button [checked]="selectedType() === 'SQL'" [disabled]="true"></mat-radio-button>
-            </div>
-
-            <div class="option-card" [class.selected]="selectedType() === 'HTTP'" (click)="setType('HTTP')" data-testid="option-http">
-              <mat-icon class="text-accent" style="color: var(--sys-accent)">cloud_download</mat-icon>
-              <div>
-                <div class="font-medium">HTTP Request</div>
-                <div class="text-xs text-gray-500">Fetch JSON data from an external REST API.</div>
-              </div>
-              <div class="flex-grow"></div>
-              <mat-radio-button [checked]="selectedType() === 'HTTP'" [disabled]="true"></mat-radio-button>
-            </div>
-
-            <div class="step-actions end">
-              <button mat-flat-button color="primary" matStepperNext [disabled]="!selectedType()" data-testid="btn-next-step1">
-                Next
-              </button>
-            </div>
-          </div>
-        </mat-step>
-
-        <!-- STEP 2: Visualization -->
-        <mat-step [completed]="!!selectedViz()">
-          <ng-template matStepLabel>Visualization</ng-template>
-
-          <div class="compact-step-wrapper">
-            <p class="text-sm text-gray-500 mb-4">How should the result be displayed?</p>
-
-            <div class="viz-grid">
-              <div class="viz-item" [class.selected]="selectedViz() === 'table'" (click)="selectedViz.set('table')" data-testid="viz-table">
-                <mat-icon>table_chart</mat-icon>
-                <span class="text-sm font-medium">Data Table</span>
-              </div>
-              <div class="viz-item" [class.selected]="selectedViz() === 'bar_chart'" (click)="selectedViz.set('bar_chart')" data-testid="viz-chart">
-                <mat-icon>bar_chart</mat-icon>
-                <span class="text-sm font-medium">Bar Chart</span>
-              </div>
-              <div class="viz-item" [class.selected]="selectedViz() === 'metric'" (click)="selectedViz.set('metric')" data-testid="viz-metric">
-                <mat-icon>exposure_plus_1</mat-icon>
-                <span class="text-sm font-medium">Scorecard</span>
-              </div>
-              <div class="viz-item" [class.selected]="selectedViz() === 'pie'" (click)="selectedViz.set('pie')" data-testid="viz-pie">
-                <mat-icon>pie_chart</mat-icon>
-                <span class="text-sm font-medium">Pie Chart</span>
-              </div>
-            </div>
-
-            <div class="step-actions">
-              <button mat-button matStepperPrevious>Back</button>
-              <button mat-flat-button color="primary" matStepperNext (click)="createDraftWidget()" [disabled]="!selectedViz()" data-testid="btn-next-step2">
-                Next: Configure
-              </button>
-            </div>
-          </div>
-        </mat-step>
-
-        <!-- STEP 3: Configure -->
-        <mat-step>
-          <ng-template matStepLabel>Configure</ng-template>
-
-          <div class="config-layout">
-            @if (isCreatingDraft()) {
-               <div class="flex-grow flex flex-col items-center justify-center p-8">
-                  <mat-spinner diameter="40" class="mb-4"></mat-spinner>
-                  <span class="text-gray-500">Initializing Draft Widget...</span>
-               </div>
-            } @else if (draftWidget(); as widget) {
-                <!-- Header -->
-                <div class="config-header" [formGroup]="configForm">
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <mat-label>Widget Title</mat-label>
-                    <input matInput formControlName="title" placeholder="My Analysis">
-                  </mat-form-field>
-
-                  @if (supportsMapping()) {
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                      <mat-label>{{ isPie() ? 'Label Column' : 'X-Axis / Category' }}</mat-label>
-                      <mat-select formControlName="xKey">
-                        <mat-option [value]="null">-- Auto --</mat-option>
-                        @for (col of availableColumns(); track col) { <mat-option [value]="col">{{ col }}</mat-option> }
-                      </mat-select>
-                    </mat-form-field>
-
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                      <mat-label>{{ isPie() ? 'Size Column' : 'Y-Axis / Value' }}</mat-label>
-                      <mat-select formControlName="yKey">
-                        <mat-option [value]="null">-- Auto --</mat-option>
-                        @for (col of availableColumns(); track col) { <mat-option [value]="col">{{ col }}</mat-option> }
-                      </mat-select>
-                    </mat-form-field>
-                  }
-                </div>
-
-                <!-- Editor -->
-                <div class="editor-container">
-                  @if (selectedType() === 'SQL') {
-                    <app-sql-builder
-                      [dashboardId]="data.dashboardId"
-                      [widgetId]="widget.id"
-                      [initialSql]="widget.config['query']"
-                      class="h-full w-full block"
-                    ></app-sql-builder>
-                  }
-                  @else {
-                    <app-http-config
-                      [dashboardId]="data.dashboardId"
-                      [widgetId]="widget.id"
-                      [initialConfig]="widget.config"
-                      class="h-full w-full block"
-                    ></app-http-config>
-                  }
-                </div>
-
-                <!-- Footer (Pinned) -->
-                <div class="actions-footer">
-                  <button mat-button color="warn" (click)="cancel()">Cancel</button>
-                  <button mat-flat-button color="primary" (click)="finalizeWidget()" [disabled]="configForm.invalid" data-testid="btn-finish">
-                    Create Widget
-                  </button>
-                </div>
-            }
-          </div>
-        </mat-step>
-
-      </mat-stepper>
-    </mat-dialog-content>
-  `
+    templateUrl: './widget-creation.dialog.html'
 })
 export class WidgetCreationDialog implements OnDestroy {
-  private readonly dialogRef = inject(MatDialogRef<WidgetCreationDialog>);
-  private readonly dashboardsApi = inject(DashboardsService);
-  private readonly store = inject(DashboardStore);
-  private readonly fb = inject(FormBuilder);
+    /** dialogRef property. */
+private readonly dialogRef = inject(MatDialogRef<WidgetCreationDialog>);
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService);
+    /** store property. */
+private readonly store = inject(DashboardStore);
+    /** fb property. */
+private readonly fb = inject(FormBuilder);
 
+  /** Data. */
   readonly data = inject<WidgetCreationData>(MAT_DIALOG_DATA);
 
+  /** Selected Type. */
   readonly selectedType = signal<'SQL' | 'HTTP' | null>(null);
+  /** Selected Viz. */
   readonly selectedViz = signal<string | null>(null);
+  /** Whether creating Draft. */
   readonly isCreatingDraft = signal(false);
+  /** Draft Widget. */
   readonly draftWidget = signal<WidgetResponse | null>(null);
 
+  /** Config Form. */
   readonly configForm: FormGroup = this.fb.group({
     title: ['', Validators.required],
     xKey: [null],
     yKey: [null]
   });
 
+  /** Supports Mapping. */
   readonly supportsMapping = computed(() => {
     return ['bar_chart', 'line_graph', 'pie'].includes(this.selectedViz() || '');
   });
+  /** Whether pie. */
   readonly isPie = computed(() => this.selectedViz() === 'pie');
 
+  /** Available Columns. */
   readonly availableColumns: Signal<string[]> = computed(() => {
     const widget = this.draftWidget();
     if (!widget) return [];
@@ -376,6 +245,7 @@ export class WidgetCreationDialog implements OnDestroy {
     return [];
   });
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void {
     const draft = this.draftWidget();
     if (draft) {
@@ -384,10 +254,12 @@ export class WidgetCreationDialog implements OnDestroy {
     }
   }
 
+  /** Sets type. */
   setType(type: 'SQL' | 'HTTP'): void {
     this.selectedType.set(type);
   }
 
+  /** Creates draft Widget. */
   createDraftWidget(): void {
     if (this.draftWidget() || this.isCreatingDraft()) return;
 
@@ -421,6 +293,7 @@ export class WidgetCreationDialog implements OnDestroy {
       });
   }
 
+  /** Finalize Widget. */
   finalizeWidget(): void {
     const draft = this.draftWidget();
     if (!draft || this.configForm.invalid) return;
@@ -447,11 +320,13 @@ export class WidgetCreationDialog implements OnDestroy {
     });
   }
 
+  /** Whether cel. */
   cancel(): void {
     this.dialogRef.close(false);
   }
 
-  private formatTitle(viz: string): string {
+    /** formatTitle method. */
+private formatTitle(viz: string): string {
     return viz.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 }

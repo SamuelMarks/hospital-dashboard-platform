@@ -17,6 +17,7 @@ import { DashboardsService, DashboardResponse } from '../api-client';
 import { DashboardCreateDialog } from './dashboard-create.dialog'; 
 import { AskDataService } from '../global/ask-data.service'; // Needed for "Ask AI" 
 
+/** Home component. */
 @Component({ 
   selector: 'app-home', 
   imports: [ 
@@ -46,151 +47,35 @@ import { AskDataService } from '../global/ask-data.service'; // Needed for "Ask 
     .loading-container { display: flex; justify-content: center; padding-top: 64px; } 
     .btn-group { display: flex; gap: 12px; } 
   `], 
-  template: `
-    <!-- Header -->
-    <div class="header">
-      <div class="header-text">
-        <h1>My Dashboards</h1>
-        <p>Manage and view your analytics workspaces</p>
-      </div>
-
-      <div class="btn-group">
-        <!-- New: Ask AI Button for Global Accessibility -->
-        <button 
-          mat-stroked-button 
-          color="primary" 
-          (click)="askDataService.open()" 
-          matTooltip="Open chat assistant"
-        >
-          <mat-icon>smart_toy</mat-icon> Ask AI
-        </button>
-
-        <button
-          mat-stroked-button
-          color="primary" 
-          (click)="restoreDefaults()" 
-          [disabled]="isRestoring()" 
-          matTooltip="Recreate the standard Hospial Command Center dashboard" 
-        >
-          @if (isRestoring()) { <mat-spinner diameter="18" aria-label="Restoring..."></mat-spinner> } 
-          @else { <mat-icon>restore</mat-icon> } 
-          <span class="ml-2">Restore Defaults</span>
-        </button>
-
-        <button
-          mat-flat-button
-          color="primary" 
-          (click)="openCreateDialog()" 
-          data-testid="btn-create" 
-        >
-          <mat-icon>add</mat-icon>
-          New Dashboard
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    @if (isLoading()) { 
-      <div class="loading-container" data-testid="loading-state">
-        <mat-spinner diameter="40" aria-label="Loading dashboards..."></mat-spinner>
-      </div>
-    } 
-
-    <!-- Dashboard List -->
-    @if (!isLoading()) { 
-      <div class="grid-container" data-testid="dashboard-grid">
-
-        @for (dash of dashboards(); track dash.id) { 
-          <mat-card
-            class="dash-card" 
-            [routerLink]="['/dashboard', dash.id]" 
-            [attr.data-testid]="'dash-card-' + dash.id" 
-          >
-            <mat-card-header>
-              <div mat-card-avatar class="avatar-placeholder">
-                <mat-icon>analytics</mat-icon>
-              </div>
-
-              <mat-card-title>{{ dash.name }}</mat-card-title>
-              <mat-card-subtitle>
-                ID: {{ dash.id.substring(0, 8) }}... 
-              </mat-card-subtitle>
-
-              <!-- Card Actions Menu -->
-              <button
-                mat-icon-button
-                class="card-actions-btn" 
-                [matMenuTriggerFor]="cardMenu" 
-                (click)="$event.stopPropagation()" 
-                aria-label="Dashboard Options" 
-                data-testid="btn-card-menu" 
-              >
-                <mat-icon>more_vert</mat-icon>
-              </button>
-
-              <mat-menu #cardMenu="matMenu">
-                <button mat-menu-item (click)="renameDashboard(dash)">
-                  <mat-icon>edit</mat-icon>
-                  <span>Rename</span>
-                </button>
-                <button mat-menu-item (click)="cloneDashboard(dash)">
-                  <mat-icon>content_copy</mat-icon>
-                  <span>Duplicate</span>
-                </button>
-                <button mat-menu-item (click)="deleteDashboard(dash)" class="text-red-600">
-                  <mat-icon color="warn">delete</mat-icon>
-                  <span>Delete</span>
-                </button>
-              </mat-menu>
-
-            </mat-card-header>
-
-            <mat-card-content>
-              <p class="text-sm text-gray-500 mt-2">
-                {{ (dash.widgets || []).length }} Widgets Configured
-              </p>
-            </mat-card-content>
-          </mat-card>
-        } 
-
-        <!-- Empty State -->
-        @if (dashboards().length === 0) { 
-          <div class="empty-state" data-testid="empty-state">
-            <mat-icon class="text-4xl text-gray-300 mb-2">dashboard</mat-icon>
-            <p>You haven't created any analytics dashboards yet.</p>
-
-            <div class="flex gap-4">
-              <button mat-stroked-button color="primary" (click)="restoreDefaults()" [disabled]="isRestoring()">
-                Create Default Dashboard
-              </button>
-              <button mat-button color="accent" (click)="openCreateDialog()">
-                Create Empty Custom
-              </button>
-            </div>
-          </div>
-        } 
-
-      </div>
-    } 
-  `
+    templateUrl: './home.component.html'
 }) 
 export class HomeComponent implements OnInit { 
-  private readonly dashboardsApi = inject(DashboardsService); 
-  private readonly dialog = inject(MatDialog); 
-  private readonly router = inject(Router); 
-  private readonly snackBar = inject(MatSnackBar); 
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService); 
+    /** dialog property. */
+private readonly dialog = inject(MatDialog); 
+    /** router property. */
+private readonly router = inject(Router); 
+    /** snackBar property. */
+private readonly snackBar = inject(MatSnackBar); 
   
   // Public for template access
+  /** Ask Data Service. */
   public readonly askDataService = inject(AskDataService); 
 
+  /** Dashboards. */
   readonly dashboards = signal<DashboardResponse[]>([]); 
+  /** Whether loading. */
   readonly isLoading = signal(true); 
+  /** Whether restoring. */
   readonly isRestoring = signal(false); 
 
+  /** Ng On Init. */
   ngOnInit(): void { 
     this.loadDashboards(); 
   } 
 
+  /** Loads dashboards. */
   loadDashboards(): void { 
     this.isLoading.set(true); 
     this.dashboardsApi.listDashboardsApiV1DashboardsGet() 
@@ -205,6 +90,7 @@ export class HomeComponent implements OnInit {
       }); 
   } 
 
+  /** Open Create Dialog. */
   openCreateDialog(): void { 
     const dialogRef = this.dialog.open(DashboardCreateDialog, { 
       width: '400px', 
@@ -219,6 +105,7 @@ export class HomeComponent implements OnInit {
     }); 
   } 
 
+  /** Restore Defaults. */
   restoreDefaults(): void { 
     this.isRestoring.set(true); 
     this.dashboardsApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost() 
@@ -236,6 +123,7 @@ export class HomeComponent implements OnInit {
       }); 
   } 
 
+  /** Rename Dashboard. */
   renameDashboard(dash: DashboardResponse): void { 
     const newName = window.prompt("Enter new dashboard name:", dash.name); 
 
@@ -259,6 +147,7 @@ export class HomeComponent implements OnInit {
     } 
   } 
 
+  /** Clone Dashboard. */
   cloneDashboard(dash: DashboardResponse): void { 
     this.dashboardsApi.cloneDashboardApiV1DashboardsDashboardIdClonePost(dash.id) 
       .subscribe({ 
@@ -273,6 +162,7 @@ export class HomeComponent implements OnInit {
       }); 
   } 
 
+  /** Deletes dashboard. */
   deleteDashboard(dash: DashboardResponse): void { 
     if (window.confirm(`Are you sure you want to delete "${dash.name}"? This cannot be undone.`)) { 
 

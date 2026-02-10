@@ -1,1 +1,33 @@
-<!-- Template moved to app.ts for Sidenav Layout integration -->
+    <mat-sidenav-container class="h-full-container" autosize>
+      
+      <!-- Side Drawer (Right aligned) -->
+      <mat-sidenav 
+        #sidenav
+        mode="over" 
+        position="end" 
+        [opened]="askData.isOpen()" 
+        (closed)="askData.close()" 
+        aria-label="Ask Data Assistant" 
+        class="search-drawer" 
+      >
+        <!-- The Content of the Sidebar -->
+        <app-ask-data></app-ask-data>
+      </mat-sidenav>
+
+      <!-- Main Content Area -->
+      <mat-sidenav-content role="main" class="main-content-layout">
+        
+        <!-- Global Toolbar (Hidden in TV Mode) -->
+        @if (!themeService.isTvMode()) {
+          <app-toolbar class="global-toolbar"></app-toolbar>
+        }
+
+        <!-- Page Content -->
+        <div class="page-container">
+          <router-outlet></router-outlet>
+        </div>
+
+      </mat-sidenav-content>
+
+    </mat-sidenav-container>
+  

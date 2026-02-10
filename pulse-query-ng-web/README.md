@@ -58,3 +58,23 @@ To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use th
 ```bash
 ng test
 ```
+
+## Coverage
+
+- Unit coverage is enforced at 100% for TypeScript sources.
+- The generated API client (`src/app/api-client`) is excluded from coverage because it is auto-generated.
+- Template coverage is enforced by `src/template-coverage.spec.ts`, which verifies every `templateUrl` has a matching spec file and no orphaned templates exist.
+
+## Documentation
+
+Generate documentation:
+
+```bash
+npm run docs
+```
+
+Enforce 100% documentation coverage for all non-generated app code:
+
+```bash
+npm run docs:coverage
+```

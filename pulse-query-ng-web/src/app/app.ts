@@ -37,40 +37,7 @@ import { ToolbarComponent } from './dashboard/toolbar.component';
     AskDataComponent,
     ToolbarComponent
   ], 
-  template: `
-    <mat-sidenav-container class="h-full-container" autosize>
-      
-      <!-- Side Drawer (Right aligned) -->
-      <mat-sidenav 
-        #sidenav
-        mode="over" 
-        position="end" 
-        [opened]="askData.isOpen()" 
-        (closed)="askData.close()" 
-        aria-label="Ask Data Assistant" 
-        class="search-drawer" 
-      >
-        <!-- The Content of the Sidebar -->
-        <app-ask-data></app-ask-data>
-      </mat-sidenav>
-
-      <!-- Main Content Area -->
-      <mat-sidenav-content role="main" class="main-content-layout">
-        
-        <!-- Global Toolbar (Hidden in TV Mode) -->
-        @if (!themeService.isTvMode()) {
-          <app-toolbar class="global-toolbar"></app-toolbar>
-        }
-
-        <!-- Page Content -->
-        <div class="page-container">
-          <router-outlet></router-outlet>
-        </div>
-
-      </mat-sidenav-content>
-
-    </mat-sidenav-container>
-  `, 
+    templateUrl: './app.html', 
   styles: [`
     :host { 
       display: block; 
@@ -112,15 +79,18 @@ import { ToolbarComponent } from './dashboard/toolbar.component';
 }) 
 export class App implements OnInit { 
   /** 
-   * Service controlling the visibility state of the side drawer. 
-   * Bound to the `[opened]` property of the sidenav. 
-   * 
-   * @readonly
-   */ 
+  * Service controlling the visibility state of the side drawer. 
+  * Bound to the `[opened]` property of the sidenav. 
+  * 
+  * @readonly
+  */ 
   readonly askData = inject(AskDataService); 
+  /** Theme Service. */
   readonly themeService = inject(ThemeService); 
-  private readonly route = inject(ActivatedRoute); 
+    /** route property. */
+private readonly route = inject(ActivatedRoute); 
 
+  /** Ng On Init. */
   ngOnInit(): void { 
     // Global listener for Kiosk Mode parameter
     this.route.queryParams.subscribe(params => { 

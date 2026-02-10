@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+/** Sql Snippet component. */
 @Component({
   selector: 'app-sql-snippet',
   imports: [CommonModule, MatButtonModule, MatIconModule],
@@ -49,22 +50,7 @@ import { MatIconModule } from '@angular/material/icon';
     .string { color: #98c379; }
     .number { color: #d19a66; }
   `],
-  template: `
-    <div class="card">
-      <div class="header">
-        <span>Suggested Query</span>
-        <div class="flex gap-2">
-          <button mat-icon-button class="scale-75 text-gray-400 hover:text-white" (click)="copy()" aria-label="Copy SQL">
-            <mat-icon style="font-size: 16px;">content_copy</mat-icon>
-          </button>
-          <button mat-stroked-button color="accent" class="text-xs h-6 px-2 leading-none" (click)="run.emit(sql())">
-            <mat-icon class="mr-1 text-xs" style="font-size:14px; width:14px; height:14px;">play_arrow</mat-icon> Run
-          </button>
-        </div>
-      </div>
-      <div class="code-block" [innerHTML]="highlightedSql"></div>
-    </div>
-  `
+    templateUrl: './sql-snippet.component.html'
 })
 export class SqlSnippetComponent {
   /** The SQL string to display. */
@@ -74,9 +60,9 @@ export class SqlSnippetComponent {
   readonly run = output<string>();
 
   /**
-   * Computes simple HTML highlighting for basic SQL keywords.
-   * Provides visual structure without a heavy library dependency.
-   */
+  * Computes simple HTML highlighting for basic SQL keywords.
+  * Provides visual structure without a heavy library dependency.
+  */
   get highlightedSql(): string {
     let code = this.sql() || '';
     // Escape HTML
@@ -91,6 +77,7 @@ export class SqlSnippetComponent {
     return code;
   }
 
+  /** Copy. */
   copy(): void {
     navigator.clipboard.writeText(this.sql());
   }

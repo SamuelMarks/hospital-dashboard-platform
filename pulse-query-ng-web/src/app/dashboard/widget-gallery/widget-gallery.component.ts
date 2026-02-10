@@ -22,6 +22,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
 import { TemplatesService, TemplateResponse } from '../../api-client';
 
+/** Widget Gallery component. */
 @Component({
   selector: 'app-widget-gallery',
   imports: [
@@ -97,70 +98,27 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
       margin-bottom: 4px;
     }
   `],
-  template: `
-    <div class="header">
-      <h3 class="text-lg font-medium mb-4 flex items-center gap-2">
-        <mat-icon>library_add</mat-icon> Widget Gallery
-      </h3>
-
-      <mat-form-field appearance="outline" density="compact" class="w-full">
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput placeholder="Search metrics..." [(ngModel)]="searchQuery">
-      </mat-form-field>
-    </div>
-
-    <div class="grid-container">
-      @if (loading()) {
-        <div class="flex justify-center p-8"><mat-spinner diameter="32"></mat-spinner></div>
-      }
-
-      <div
-        cdkDropList
-        [cdkDropListConnectedTo]="['dashboard-grid']"
-        [cdkDropListData]="filteredTemplates()"
-        class="flex flex-col gap-3 pb-8"
-      >
-        @for (group of groupedTemplates(); track group.category) {
-          <div class="cat-header">{{ group.category }}</div>
-
-          @for (t of group.items; track t.id) {
-            <div
-              class="template-card"
-              cdkDrag
-              [cdkDragData]="t"
-            >
-              <div class="font-medium text-sm text-primary mb-1">{{ t.title }}</div>
-              <div class="text-xs text-gray-500 line-clamp-2">{{ t.description }}</div>
-
-              <!-- Drag Preview -->
-              <div *cdkDragPreview class="template-card mat-elevation-z4">
-                <div class="font-medium text-sm text-primary">{{ t.title }}</div>
-                <div class="text-xs text-gray-500">Drop to add</div>
-              </div>
-            </div>
-          }
-        }
-
-        @if (filteredTemplates().length === 0 && !loading()) {
-          <div class="text-center text-gray-500 text-sm mt-8 italic">No templates found</div>
-        }
-      </div>
-    </div>
-  `
+    templateUrl: './widget-gallery.component.html'
 })
 export class WidgetGalleryComponent implements OnInit {
-  private readonly templatesApi = inject(TemplatesService);
+    /** templatesApi property. */
+private readonly templatesApi = inject(TemplatesService);
 
+  /** Templates. */
   readonly templates = signal<TemplateResponse[]>([]);
+  /** Loading. */
   readonly loading = signal(true);
 
   // Mutable Search Model
+  /** Search Query. */
   readonly searchQuery = signal('');
 
+  /** Ng On Init. */
   ngOnInit() {
     this.loadTemplates();
   }
 
+  /** Loads templates. */
   loadTemplates() {
     this.loading.set(true);
     this.templatesApi.listTemplatesApiV1TemplatesGet(undefined, undefined, 100)
@@ -173,6 +131,7 @@ export class WidgetGalleryComponent implements OnInit {
       });
   }
 
+  /** Filtered Templates. */
   readonly filteredTemplates = computed(() => {
     const q = this.searchQuery().toLowerCase();
     return this.templates().filter(t =>
@@ -180,6 +139,7 @@ export class WidgetGalleryComponent implements OnInit {
     );
   });
 
+  /** Grouped Templates. */
   readonly groupedTemplates = computed(() => {
     const list = this.filteredTemplates();
     const groups: Record<string, TemplateResponse[]> = {};

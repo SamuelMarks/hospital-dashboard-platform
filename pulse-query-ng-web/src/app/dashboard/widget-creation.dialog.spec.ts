@@ -4,6 +4,9 @@ import { DashboardsService, WidgetResponse, DashboardResponse } from '../api-cli
 import { DashboardStore } from './dashboard.store';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { By } from '@angular/platform-browser';
+import { SqlBuilderComponent } from '../editors/sql-builder.component';
+import { HttpConfigComponent } from '../editors/http-config.component';
 import { of, throwError } from 'rxjs';
 import { signal, Component, input, WritableSignal } from '@angular/core';
 import { vi } from 'vitest';
@@ -60,7 +63,7 @@ describe('WidgetCreationDialog', () => {
       ]
     })
     .overrideComponent(WidgetCreationDialog, {
-      remove: { imports: [] },
+      remove: { imports: [SqlBuilderComponent, HttpConfigComponent] },
       add: { imports: [MockSqlBuilder, MockHttpConfig] }
     }).compileComponents();
 
@@ -264,5 +267,77 @@ describe('WidgetCreationDialog', () => {
   it('should close dialog on cancel', () => {
     component.cancel();
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
+  });
+
+  it('should select data source and visualization via template clicks', () => {
+    const sqlOption = fixture.debugElement.query(By.css('[data-testid="option-sql"]'));
+    const httpOption = fixture.debugElement.query(By.css('[data-testid="option-http"]'));
+    sqlOption.triggerEventHandler('click', null);
+    expect(component.selectedType()).toBe('SQL');
+    httpOption.triggerEventHandler('click', null);
+    expect(component.selectedType()).toBe('HTTP');
+
+    const vizTable = fixture.debugElement.query(By.css('[data-testid="viz-table"]'));
+    const vizPie = fixture.debugElement.query(By.css('[data-testid="viz-pie"]'));
+    vizTable.triggerEventHandler('click', null);
+    expect(component.selectedViz()).toBe('table');
+    vizPie.triggerEventHandler('click', null);
+    expect(component.selectedViz()).toBe('pie');
+  });
+
+  it('should trigger draft creation from step button click', () => {
+    component.setType('SQL');
+    component.selectedViz.set('bar_chart');
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_WIDGET));
+    fixture.detectChanges();
+
+    const next = fixture.debugElement.query(By.css('[data-testid="btn-next-step2"]'));
+    next.triggerEventHandler('click', null);
+
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalled();
+  });
+
+  it('should render config step content for SQL and HTTP types', () => {
+    component.draftWidget.set(MOCK_WIDGET);
+    component.selectedType.set('SQL');
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(MockSqlBuilder))).toBeTruthy();
+
+    component.selectedType.set('HTTP');
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(MockHttpConfig))).toBeTruthy();
+  });
+
+  it('should show mapping fields when visualization supports mapping', () => {
+    component.selectedViz.set('pie');
+    component.draftWidget.set(MOCK_WIDGET);
+    fixture.detectChanges();
+    const formFields = fixture.debugElement.queryAll(By.css('mat-form-field'));
+    expect(formFields.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('should render creating state when draft is initializing', () => {
+    component.isCreatingDraft.set(true);
+    fixture.detectChanges();
+    const spinner = fixture.debugElement.query(By.css('mat-spinner'));
+    expect(spinner).toBeTruthy();
+  });
+
+  it('should wire cancel and finalize buttons in template', () => {
+    const finalizeSpy = vi.spyOn(component, 'finalizeWidget').mockImplementation(() => {});
+    const cancelSpy = vi.spyOn(component, 'cancel');
+
+    component.draftWidget.set(MOCK_WIDGET);
+    component.selectedViz.set('bar_chart');
+    component.configForm.patchValue({ title: 'Ready' });
+    fixture.detectChanges();
+
+    const cancelBtn = fixture.debugElement.query(By.css('button[mat-button][color=\"warn\"]'));
+    cancelBtn.triggerEventHandler('click', null);
+    expect(cancelSpy).toHaveBeenCalled();
+
+    const finishBtn = fixture.debugElement.query(By.css('[data-testid=\"btn-finish\"]'));
+    finishBtn.triggerEventHandler('click', null);
+    expect(finalizeSpy).toHaveBeenCalled();
   });
 });

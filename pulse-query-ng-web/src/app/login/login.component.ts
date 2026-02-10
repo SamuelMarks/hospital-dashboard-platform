@@ -89,126 +89,36 @@ import { environment } from '../../environments/environment';
       text-decoration: underline; 
     } 
   `], 
-  template: `
-    <mat-card>
-      <!-- Indeterminate loader at the top of the card -->
-      @if (isLoading()) { 
-        <mat-progress-bar mode="indeterminate" data-testid="loading-bar"></mat-progress-bar>
-      } 
-
-      <mat-card-header>
-        <mat-card-title>Sign in</mat-card-title>
-        <mat-card-subtitle>Hospital Analytics Platform</mat-card-subtitle>
-      </mat-card-header>
-
-      <mat-card-content>
-        <!-- Error Alert -->
-        @if (errorMessage()) { 
-          <div class="error-box" role="alert" data-testid="error-alert">
-            <mat-icon color="warn">error</mat-icon>
-            <span>{{ errorMessage() }}</span>
-          </div>
-        } 
-
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-          
-          <!-- Email Field -->
-          <mat-form-field appearance="outline">
-            <mat-label>Email address</mat-label>
-            <input 
-              matInput 
-              formControlName="email" 
-              type="email" 
-              placeholder="doctor@hospital.com" 
-              required
-              data-testid="input-email" 
-            >
-            @if (loginForm.get('email')?.hasError('required')) { 
-              <mat-error>Email is required</mat-error>
-            } 
-            @if (loginForm.get('email')?.hasError('email')) { 
-              <mat-error>Please enter a valid email address</mat-error>
-            } 
-          </mat-form-field>
-
-          <!-- Password Field -->
-          <mat-form-field appearance="outline">
-            <mat-label>Password</mat-label>
-            <input 
-              matInput 
-              formControlName="password" 
-              [type]="hidePassword() ? 'password' : 'text'" 
-              required
-              data-testid="input-password" 
-            >
-            <button
-              mat-icon-button
-              matSuffix
-              type="button" 
-              (click)="togglePasswordVisibility($event)" 
-              [attr.aria-label]="'Hide password'" 
-              [attr.aria-pressed]="hidePassword()" 
-            >
-              <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-            </button>
-            @if (loginForm.get('password')?.hasError('required')) { 
-              <mat-error>Password is required</mat-error>
-            } 
-            @if (loginForm.get('password')?.hasError('minlength')) { 
-              <mat-error>Password must be at least 4 characters</mat-error>
-            } 
-          </mat-form-field>
-
-          <!-- Submit Action -->
-           <button 
-            mat-flat-button 
-            color="primary" 
-            type="submit" 
-            class="full-width-btn" 
-            [disabled]="loginForm.invalid || isLoading()" 
-            data-testid="submit-btn" 
-          >
-            @if (isLoading()) { 
-              Signing in... 
-            } @else { 
-              Sign in
-            } 
-          </button>
-
-        </form>
-
-        <!-- Dynamic Registration Link -->
-        @if (registrationEnabled) { 
-          <div class="footer-link">
-            Don't have an account? 
-            <a routerLink="/register" data-testid="link-register">Create one</a>
-          </div>
-        } 
-
-      </mat-card-content>
-    </mat-card>
-  `
+    templateUrl: './login.component.html'
 }) 
 export class LoginComponent implements OnInit { 
   
-  private readonly authService = inject(AuthService); 
-  private readonly router = inject(Router); 
+    /** authService property. */
+private readonly authService = inject(AuthService); 
+    /** router property. */
+private readonly router = inject(Router); 
   /** Activated Route to read query parameters (returnUrl). */ 
   private readonly route = inject(ActivatedRoute); 
-  private readonly fb = inject(FormBuilder); 
+    /** fb property. */
+private readonly fb = inject(FormBuilder); 
 
   /** Environment Configuration: Exposed to template to toggle Registration link. */ 
   readonly registrationEnabled = environment.registrationEnabled; 
 
+  /** Whether loading. */
   readonly isLoading = signal(false); 
+  /** Error Message. */
   readonly errorMessage = signal<string | null>(null); 
+  /** Hide Password. */
   readonly hidePassword = signal(true); 
 
+  /** Login Form. */
   readonly loginForm: FormGroup = this.fb.group({ 
     email: ['', [Validators.required, Validators.email]], 
     password: ['', [Validators.required, Validators.minLength(4)]] 
   }); 
 
+  /** Ng On Init. */
   ngOnInit(): void { 
     // Safety Net: Redirect if already logged in. 
     // This catches edge cases where Guards might have race conditions in test environments. 
@@ -217,11 +127,13 @@ export class LoginComponent implements OnInit {
     } 
   } 
 
+  /** Toggles password Visibility. */
   togglePasswordVisibility(event: Event): void { 
     event.preventDefault(); 
     this.hidePassword.update(v => !v); 
   } 
 
+  /** Handles submit. */
   onSubmit(): void { 
     if (this.loginForm.invalid) { 
       this.loginForm.markAllAsTouched(); 

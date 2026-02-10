@@ -7,7 +7,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WidgetComponent } from './widget.component'; 
 import { DashboardStore } from '../dashboard/dashboard.store'; 
 import { WidgetResponse, DashboardsService } from '../api-client'; 
-import { Component, input, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core'; 
+import { Component, input, signal, WritableSignal, NO_ERRORS_SCHEMA, ErrorHandler } from '@angular/core'; 
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { By } from '@angular/platform-browser'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
@@ -18,6 +18,7 @@ import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.compon
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
+import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 
@@ -108,7 +109,8 @@ describe('WidgetComponent', () => {
       imports: [WidgetComponent, NoopAnimationsModule], 
       providers: [
         { provide: DashboardStore, useValue: mockStore },
-        { provide: DashboardsService, useValue: mockDashApi }
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: ErrorHandler, useValue: { clearError: vi.fn(), handleError: vi.fn() } }
       ] 
     })
     .overrideComponent(WidgetComponent, {
@@ -134,7 +136,8 @@ describe('WidgetComponent', () => {
           MockVizPieComponent,
           MockVizHeatmapComponent,
           MockVizScalarComponent,
-          MockVizMarkdownComponent
+          MockVizMarkdownComponent,
+          ErrorBoundaryDirective
         ]
       }
     })
@@ -294,6 +297,75 @@ describe('WidgetComponent', () => {
   it('should refresh widget manually', () => {
     component.manualRefresh();
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+  });
+
+  it('should trigger template click handlers for focus and refresh', () => {
+    const buttons = fixture.debugElement.queryAll(By.css('button[mat-icon-button]'));
+    buttons[0].triggerEventHandler('click', null);
+    buttons[buttons.length - 1].triggerEventHandler('click', null);
+    expect(mockStore.setFocusedWidget).toHaveBeenCalled();
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+  });
+
+  it('should emit edit and delete events from template buttons', () => {
+    isEditModeSig.set(true);
+    fixture.detectChanges();
+    const editSpy = vi.fn();
+    const deleteSpy = vi.fn();
+    component.edit.subscribe(editSpy);
+    component.delete.subscribe(deleteSpy);
+    fixture.debugElement.query(By.css('[data-testid="btn-edit"]')).triggerEventHandler('click', null);
+    fixture.debugElement.query(By.css('[data-testid="btn-delete"]')).triggerEventHandler('click', null);
+    expect(editSpy).toHaveBeenCalled();
+    expect(deleteSpy).toHaveBeenCalled();
+  });
+
+  it('should render each visualization case', () => {
+    const cases = [
+      { visualization: 'table', selector: MockVizTableComponent },
+      { visualization: 'bar_chart', selector: MockVizChartComponent },
+      { visualization: 'line_graph', selector: MockVizChartComponent },
+      { visualization: 'metric', selector: MockVizMetricComponent },
+      { visualization: 'scalar', selector: MockVizScalarComponent },
+      { visualization: 'pie', selector: MockVizPieComponent },
+      { visualization: 'heatmap', selector: MockVizHeatmapComponent }
+    ];
+
+    for (const entry of cases) {
+      setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: entry.visualization });
+      fixture.detectChanges();
+      expect(fixture.debugElement.query(By.directive(entry.selector))).toBeTruthy();
+    }
+
+    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT', visualization: undefined, config: { content: 'x' } });
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.directive(MockVizMarkdownComponent))).toBeTruthy();
+
+    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'unknown' });
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('.center-overlay'))).toBeTruthy();
+  });
+
+  it('should render safe mode template and handle actions', () => {
+    const boundaryNode = fixture.debugElement.query(By.directive(ErrorBoundaryDirective)) 
+      || fixture.debugElement.query(By.css('.viz-container'));
+    const directive = boundaryNode?.injector.get(ErrorBoundaryDirective, null) as ErrorBoundaryDirective | null;
+    if (!directive) {
+      throw new Error('ErrorBoundaryDirective not found');
+    }
+    directive.renderFallback(new Error('boom'));
+    fixture.detectChanges();
+
+    const retryBtn = fixture.debugElement.query(By.css('button[mat-stroked-button]'));
+    retryBtn.triggerEventHandler('click', null);
+
+    directive.renderFallback(new Error('boom-again'));
+    isEditModeSig.set(true);
+    fixture.detectChanges();
+    const resetBtn = fixture.debugElement.queryAll(By.css('button[mat-stroked-button]'))[1];
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    resetBtn.triggerEventHandler('click', null);
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
   
   it('should expose derived computed values', () => {

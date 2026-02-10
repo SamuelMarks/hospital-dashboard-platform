@@ -1,0 +1,39 @@
+    <!-- Sparkline Background -->
+    @if (sparklinePath(); as path) {
+      <svg class="sparkline-container" viewBox="0 0 100 50" preserveAspectRatio="none">
+        <path 
+          [attr.d]="path" 
+          fill="none" 
+          stroke-width="2" 
+          vector-effect="non-scaling-stroke"
+          [ngClass]="isTrendUp() ? 'spark-pos' : 'spark-neg'"
+        ></path>
+        <path 
+          [attr.d]="sparklineFill()" 
+          stroke="none" 
+          [ngClass]="isTrendUp() ? 'spark-fill-pos' : 'spark-fill-neg'"
+        ></path>
+      </svg>
+    }
+
+    <!-- Primary Value -->
+    <div class="mat-headline-2 metric-value" [ngClass]="alertClass()">
+      {{ displayValue() }}
+    </div>
+
+    <!-- Label -->
+    <div class="mat-body-2 metric-label">
+      {{ displayLabel() }}
+    </div>
+
+    <!-- Trend Indicator -->
+    @if (parsedTrend() !== null) {
+      <div 
+        class="mat-caption trend" 
+        [ngClass]="parsedTrend()! > 0 ? 'trend-pos' : 'trend-neg'" 
+      >
+        <span aria-hidden="true">{{ parsedTrend()! > 0 ? '▲' : '▼' }}</span>
+        {{ parsedTrend() }}%
+      </div>
+    }
+  

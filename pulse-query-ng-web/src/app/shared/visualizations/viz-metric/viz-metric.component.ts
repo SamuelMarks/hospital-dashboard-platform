@@ -11,9 +11,12 @@ import { CommonModule } from '@angular/common';
  * Standard Metric Data Contract.
  */
 export interface MetricData {
-  value: number | string;
-  label?: string;
-  trend?: number;
+    /** value property. */
+value: number | string;
+    /** label property. */
+label?: string;
+    /** trend property. */
+trend?: number;
   /** Array of numeric values for sparkline rendering. */
   trend_data?: number[];
 }
@@ -22,7 +25,8 @@ export interface MetricData {
  * Partial configuration schema for threshold logic.
  */
 export interface MetricConfig {
-  thresholds?: {
+    /** thresholds property. */
+thresholds?: {
     warning?: number;
     critical?: number;
   };
@@ -71,46 +75,7 @@ export interface MetricConfig {
     .spark-fill-pos { fill: #2e7d32; opacity: 0.2; }
     .spark-fill-neg { fill: #c62828; opacity: 0.2; }
   `],
-  template: `
-    <!-- Sparkline Background -->
-    @if (sparklinePath(); as path) {
-      <svg class="sparkline-container" viewBox="0 0 100 50" preserveAspectRatio="none">
-        <path 
-          [attr.d]="path" 
-          fill="none" 
-          stroke-width="2" 
-          vector-effect="non-scaling-stroke"
-          [ngClass]="isTrendUp() ? 'spark-pos' : 'spark-neg'"
-        ></path>
-        <path 
-          [attr.d]="sparklineFill()" 
-          stroke="none" 
-          [ngClass]="isTrendUp() ? 'spark-fill-pos' : 'spark-fill-neg'"
-        ></path>
-      </svg>
-    }
-
-    <!-- Primary Value -->
-    <div class="mat-headline-2 metric-value" [ngClass]="alertClass()">
-      {{ displayValue() }}
-    </div>
-
-    <!-- Label -->
-    <div class="mat-body-2 metric-label">
-      {{ displayLabel() }}
-    </div>
-
-    <!-- Trend Indicator -->
-    @if (parsedTrend() !== null) {
-      <div 
-        class="mat-caption trend" 
-        [ngClass]="parsedTrend()! > 0 ? 'trend-pos' : 'trend-neg'" 
-      >
-        <span aria-hidden="true">{{ parsedTrend()! > 0 ? '▲' : '▼' }}</span>
-        {{ parsedTrend() }}%
-      </div>
-    }
-  `
+    templateUrl: './viz-metric.component.html'
 })
 export class VizMetricComponent {
   /** Input Data: Can be primitive, SQL Result Set, or Metric Objects. */
@@ -184,6 +149,7 @@ export class VizMetricComponent {
     return [];
   });
 
+  /** Whether trend Up. */
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
     if (series.length < 2) return true;
@@ -191,9 +157,9 @@ export class VizMetricComponent {
   });
 
   /**
-   * Generates SVG Path Data for the Sparkline Stroke.
-   * Maps data points to a 100x50 coordinate system.
-   */
+  * Generates SVG Path Data for the Sparkline Stroke.
+  * Maps data points to a 100x50 coordinate system.
+  */
   readonly sparklinePath = computed<string | null>(() => {
     const raw = this.trendSeries();
     if (!raw || raw.length < 2) return null;
@@ -215,9 +181,9 @@ export class VizMetricComponent {
   });
 
   /**
-   * Generates SVG Path Data for the Area Fill.
-   * Closes the path loop to the bottom edge.
-   */
+  * Generates SVG Path Data for the Area Fill.
+  * Closes the path loop to the bottom edge.
+  */
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;

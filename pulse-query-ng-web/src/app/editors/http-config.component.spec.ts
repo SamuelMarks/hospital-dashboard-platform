@@ -257,4 +257,44 @@ describe('HttpConfigComponent', () => {
     const preview = fixture.debugElement.query(By.css('.preview-panel'));
     expect(preview.nativeElement.textContent).toContain('"ok": true');
   });
+
+  it('should trigger save via template button', () => {
+    const saveSpy = vi.spyOn(component, 'saveAndTest').mockImplementation(() => {});
+    component.form.controls.url.setValue('https://api.test.com');
+    fixture.detectChanges();
+    const saveBtn = fixture.debugElement.queryAll(By.css('button'))
+      .find(btn => btn.nativeElement.textContent.includes('Save & Test'))!;
+    saveBtn.triggerEventHandler('click', null);
+    expect(saveSpy).toHaveBeenCalled();
+  });
+
+  it('should add and remove items via template buttons', () => {
+    fixture.detectChanges();
+    const addParamBtn = fixture.debugElement.queryAll(By.css('button'))
+      .find(btn => btn.nativeElement.textContent.includes('Add Parameter'))!;
+    addParamBtn.triggerEventHandler('click', null);
+    fixture.detectChanges();
+    expect(component.paramsArray.length).toBeGreaterThan(1);
+
+    const removeParamBtn = fixture.debugElement.queryAll(By.css('button[mat-icon-button]'))[0];
+    removeParamBtn.triggerEventHandler('click', null);
+    fixture.detectChanges();
+
+    const addHeaderBtn = fixture.debugElement.queryAll(By.css('button'))
+      .find(btn => btn.nativeElement.textContent.includes('Add Header'))!;
+    addHeaderBtn.triggerEventHandler('click', null);
+    fixture.detectChanges();
+    expect(component.headersArray.length).toBeGreaterThan(1);
+
+    const removeHeaderBtn = fixture.debugElement.queryAll(By.css('button[mat-icon-button]'))
+      .find(btn => btn.nativeElement.getAttribute('aria-label') === 'Remove Header')!;
+    removeHeaderBtn.triggerEventHandler('click', null);
+    fixture.detectChanges();
+  });
+
+  it('should show spinner when running', () => {
+    component.isRunning.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('mat-spinner'))).toBeTruthy();
+  });
 }); 

@@ -1,0 +1,24 @@
+    <form [formGroup]="form">
+      <mat-form-field appearance="outline" class="flex-grow">
+        <mat-label>Markdown Content</mat-label>
+        <textarea 
+          matInput 
+          formControlName="content" 
+          placeholder="# Header\n\n**Bold Text**\n\n- List Item" 
+        ></textarea>
+        <mat-hint>Supports basic Markdown syntax.</mat-hint>
+      </mat-form-field>
+    </form>
+
+    <div class="footer">
+      <button 
+        mat-flat-button 
+        color="primary" 
+        (click)="save()" 
+        [disabled]="form.invalid || isRunning()" 
+      >
+        @if (isRunning()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
+        Save Content
+      </button>
+    </div>
+  

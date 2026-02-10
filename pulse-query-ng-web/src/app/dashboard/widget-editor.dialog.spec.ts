@@ -39,17 +39,20 @@ describe('WidgetEditorDialog', () => {
   let mockDashApi: any;
   let mockStore: any;
 
-  const sqlWidget: WidgetResponse = {
+  const makeSqlWidget = (): WidgetResponse => ({
     id: 'w1',
     dashboard_id: 'd1',
     title: 'SQL',
     type: 'SQL',
     visualization: 'bar_chart',
     config: { query: 'SELECT 1', xKey: 'x', yKey: 'y' }
-  };
-  const mockData: WidgetEditorData = { dashboardId: 'd1', widget: sqlWidget };
+  });
+  let sqlWidget: WidgetResponse;
+  let mockData: WidgetEditorData;
 
   beforeEach(async () => {
+    sqlWidget = makeSqlWidget();
+    mockData = { dashboardId: 'd1', widget: sqlWidget };
     mockDialogRef = { close: vi.fn() };
     mockDashApi = {
       getDashboardApiV1DashboardsDashboardIdGet: vi.fn(),
@@ -134,9 +137,20 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should fallback initialSql when query missing', () => {
-    component.data.widget.config = {} as any;
-    fixture.detectChanges();
-    expect(component.initialSql()).toBe('');
+    const noQueryWidget = { ...sqlWidget, config: {} as any } as WidgetResponse;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: noQueryWidget } },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: DashboardStore, useValue: mockStore }
+      ]
+    });
+
+    const inst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
+
+    expect(inst.initialSql()).toBe('');
   });
 
   it('should report mapping unsupported for table', () => {
@@ -174,6 +188,44 @@ describe('WidgetEditorDialog', () => {
       expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) })
     );
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
+  });
+
+  it('should trigger editor save handlers from template outputs', () => {
+    const spy = vi.spyOn(component, 'handleEditorSave');
+    const sqlBuilder = fixture.debugElement.query(By.directive(MockSqlBuilderComponent));
+    expect(sqlBuilder).toBeTruthy();
+    sqlBuilder.componentInstance.sqlChange.emit('SELECT 2');
+    expect(spy).toHaveBeenCalled();
+
+    component.data.widget = { ...sqlWidget, type: 'HTTP' } as WidgetResponse;
+    fixture.detectChanges();
+    const httpConfig = fixture.debugElement.query(By.directive(MockHttpConfigComponent));
+    expect(httpConfig).toBeTruthy();
+    httpConfig.componentInstance.configChange.emit({ url: 'http://x' });
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should allow mapping selection and save from template', () => {
+    const saveSpy = vi.spyOn(component, 'saveSettings').mockImplementation(() => {});
+    component.data.widget.visualization = 'bar_chart';
+    mockStore.dataMap.set({ w1: { columns: ['x', 'y'] } });
+    fixture.detectChanges();
+    const selects = fixture.debugElement.queryAll(By.css('mat-select'));
+    expect(selects.length).toBeGreaterThanOrEqual(2);
+    selects[0].triggerEventHandler('ngModelChange', 'x');
+    selects[1].triggerEventHandler('ngModelChange', 'y');
+
+    const updateBtn = fixture.debugElement.query(By.css('button[mat-flat-button]'));
+    updateBtn.triggerEventHandler('click', null);
+    expect(saveSpy).toHaveBeenCalled();
+  });
+
+  it('should render empty-columns message when no columns', () => {
+    component.data.widget.visualization = 'bar_chart';
+    mockStore.dataMap.set({ w1: { columns: [] } });
+    fixture.detectChanges();
+    const message = fixture.debugElement.query(By.css('.text-amber-700'));
+    expect(message).toBeTruthy();
   });
 
   it('should save settings when config missing', () => {

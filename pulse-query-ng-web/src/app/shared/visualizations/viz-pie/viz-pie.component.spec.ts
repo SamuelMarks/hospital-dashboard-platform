@@ -82,6 +82,27 @@ describe('VizPieComponent', () => {
     expect(component.activeSlice()).toBe('A'); 
   }); 
 
+  it('should clear active slice on mouseleave and blur', () => {
+    const data = {
+      columns: ['L', 'V'],
+      data: [{ L: 'A', V: 50 }]
+    };
+    dataSetSig.set(data);
+    fixture.detectChanges();
+
+    const path = fixture.debugElement.query(By.css('path'));
+    path.triggerEventHandler('mouseenter', null);
+    expect(component.activeSlice()).toBe('A');
+    path.triggerEventHandler('mouseleave', null);
+    expect(component.activeSlice()).toBeNull();
+
+    const legendItem = fixture.debugElement.query(By.css('.legend-item'));
+    legendItem.triggerEventHandler('focus', null);
+    expect(component.activeSlice()).toBe('A');
+    legendItem.triggerEventHandler('blur', null);
+    expect(component.activeSlice()).toBeNull();
+  });
+
   it('should map labels and values using config', () => {
     const data = {
       columns: ['name', 'amount'],

@@ -2,15 +2,21 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ChatLayoutComponent } from './chat-layout.component'; 
 import { ChatStore } from './chat.store'; 
 import { BreakpointObserver } from '@angular/cdk/layout'; 
-import { of } from 'rxjs'; 
+import { BehaviorSubject } from 'rxjs'; 
 import { signal, Component } from '@angular/core'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { ConversationComponent } from './conversation/conversation.component'; 
+import { By } from '@angular/platform-browser';
+import { MatSidenav } from '@angular/material/sidenav';
+import { MatMenuTrigger } from '@angular/material/menu';
+import { OverlayContainer } from '@angular/cdk/overlay';
 
 @Component({ selector: 'app-conversation', template: '' }) class MockConv {} 
 
 describe('ChatLayoutComponent', () => { 
   let component: ChatLayoutComponent, fixture: ComponentFixture<ChatLayoutComponent>, mockStore: any; 
+  let overlay: OverlayContainer;
+  let handsetState$: BehaviorSubject<{ matches: boolean }>;
 
   beforeEach(async () => { 
     mockStore = { 
@@ -24,9 +30,11 @@ describe('ChatLayoutComponent', () => {
       renameConversation: vi.fn() 
     }; 
     
+    handsetState$ = new BehaviorSubject<{ matches: boolean }>({ matches: false });
+
     await TestBed.configureTestingModule({ 
       imports: [ChatLayoutComponent, NoopAnimationsModule], 
-      providers: [{ provide: BreakpointObserver, useValue: { observe: () => of({matches:false}) } }] 
+      providers: [{ provide: BreakpointObserver, useValue: { observe: () => handsetState$.asObservable() } }] 
     }) 
     // FIX: Split overrides into separate calls. 
     // Mixing `remove/add` (Component Imports) with `set` (Providers) in the same 
@@ -43,6 +51,7 @@ describe('ChatLayoutComponent', () => {
     fixture = TestBed.createComponent(ChatLayoutComponent); 
     component = fixture.componentInstance; 
     fixture.detectChanges(); 
+    overlay = TestBed.inject(OverlayContainer);
   }); 
 
   it('should load history on init', () => {
@@ -147,5 +156,61 @@ describe('ChatLayoutComponent', () => {
 
     component.selectChat('c1');
     expect(close).not.toHaveBeenCalled();
+  });
+
+  it('should trigger new chat and select chat from template', () => {
+    component.drawer = { mode: 'over', close: vi.fn() } as any;
+    fixture.detectChanges();
+    const newChatBtn = fixture.debugElement.query(By.css('button[mat-stroked-button]'));
+    newChatBtn.triggerEventHandler('click', null);
+    expect(mockStore.createNewChat).toHaveBeenCalled();
+
+    const nav = fixture.debugElement.query(By.css('.nav-content'));
+    nav.triggerEventHandler('click', null);
+    expect(mockStore.selectConversation).toHaveBeenCalledWith('c1');
+  });
+
+  it('should render loading spinner when data loading', () => {
+    mockStore.isDataLoading.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('mat-spinner'))).toBeTruthy();
+  });
+
+  it('should show handset toolbar and toggle drawer', async () => {
+    handsetState$.next({ matches: true });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const toolbar = fixture.debugElement.query(By.css('mat-toolbar'));
+    expect(toolbar).toBeTruthy();
+    const toolbarBtn = toolbar.query(By.css('button'));
+    expect(toolbarBtn).toBeTruthy();
+    const sidenav = fixture.debugElement.query(By.directive(MatSidenav)).injector.get(MatSidenav);
+    const toggleSpy = vi.spyOn(sidenav, 'toggle');
+    toolbarBtn.triggerEventHandler('click', null);
+    expect(toggleSpy).toHaveBeenCalled();
+  });
+
+  it('should wire menu actions and stop propagation', () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('Renamed');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const menuBtn = fixture.debugElement.query(By.css('button[mat-icon-button].action-btn'));
+    expect(menuBtn).toBeTruthy();
+    const clickEvent = { stopPropagation: vi.fn() } as any;
+    menuBtn.triggerEventHandler('click', clickEvent);
+    expect(clickEvent.stopPropagation).toHaveBeenCalled();
+
+    const trigger = menuBtn.injector.get(MatMenuTrigger);
+    trigger.openMenu();
+    fixture.detectChanges();
+
+    const overlayEl = overlay.getContainerElement();
+    const items = overlayEl.querySelectorAll('button[mat-menu-item], button.mat-mdc-menu-item');
+    expect(items.length).toBeGreaterThan(1);
+    (items[0] as HTMLElement).click();
+    (items[1] as HTMLElement).click();
+
+    expect(mockStore.renameConversation).toHaveBeenCalledWith('c1', 'Renamed');
+    expect(mockStore.deleteConversation).toHaveBeenCalledWith('c1');
   });
 }); 

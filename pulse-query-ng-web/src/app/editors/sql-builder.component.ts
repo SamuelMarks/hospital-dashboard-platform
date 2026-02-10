@@ -52,6 +52,7 @@ import { VizTableComponent, TableDataSet } from '../shared/visualizations/viz-ta
 import { ConversationComponent } from '../chat/conversation/conversation.component'; 
 import { ChatStore } from '../chat/chat.store'; 
 
+/** Sql Builder component. */
 @Component({ 
   selector: 'app-sql-builder', 
   imports: [ 
@@ -100,149 +101,83 @@ import { ChatStore } from '../chat/chat.store';
       height: 100%; width: 100%; overflow: hidden; 
     } 
   `], 
-  template: `
-    <div class="wrapper">
-      <mat-tab-group class="flex-grow flex flex-col" style="height:100%" [(selectedIndex)]="selectedTabIndex" animationDuration="0ms">
-
-        <mat-tab label="Code Editor">
-          <div class="flex flex-col h-full p-4 gap-4 overflow-hidden">
-            
-            <!-- Error Banner -->
-            @if (validationError()) { 
-              <div class="error-banner" data-testid="error-banner" role="alert">
-                <mat-icon class="icon-sm" style="font-size:18px; width:18px; height:18px">cancel</mat-icon>
-                <div class="flex-1">
-                  <strong>Syntax Error:</strong> {{ validationError() }} 
-                </div>
-                <button mat-icon-button class="icon-btn-micro" (click)="validationError.set(null)" aria-label="Dismiss Error">
-                  <mat-icon style="font-size:16px;">close</mat-icon>
-                </button>
-              </div>
-            } 
-
-            <!-- 1. CodeMirror Editor Region -->
-            <div class="cm-wrapper shadow-inner">
-              <div #editorHost class="cm-host"></div>
-            </div>
-
-            <!-- 2. Action Bar -->
-            <div class="flex justify-between items-center flex-shrink-0">
-              
-              <!-- Parameters Injection Menu -->
-              <button mat-stroked-button [matMenuTriggerFor]="paramsMenu" matTooltip="Inject Global Filters">
-                <mat-icon class="mr-1">data_object</mat-icon> Insert Param
-              </button>
-              <mat-menu #paramsMenu="matMenu">
-                @for (key of availableParams(); track key) { 
-                  <button mat-menu-item (click)="insertParam(key)">
-                    <span>{{ '{' + '{' + key + '}' + '}' }}</span>
-                    <span class="text-xs ml-2" style="color: var(--sys-text-secondary)">({{ globalParams()[key] }})</span>
-                  </button>
-                } 
-                @if (availableParams().length === 0) { 
-                  <div class="px-4 py-2 text-xs" style="color: var(--sys-text-secondary)">No global params set</div>
-                } 
-              </mat-menu>
-
-              <div class="flex gap-2">
-                @if (enableCart()) { 
-                  <button
-                    mat-stroked-button
-                    (click)="saveQueryToCart()"
-                    [disabled]="!canSaveToCart()"
-                    matTooltip="Save query to cart"
-                  >
-                    <mat-icon class="mr-1">shopping_cart</mat-icon>
-                    Save to Cart
-                  </button>
-                } 
-                <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
-                   @if (isRunning()) { <mat-spinner diameter="20" class="mr-2"></mat-spinner> } 
-                   Run Query
-                </button>
-              </div>
-            </div>
-
-            <!-- 3. Result Table -->
-            <div class="result-container">
-               <div class="viz-scroll-wrapper">
-                 @if (latestResult(); as res) { 
-                   <viz-table [dataSet]="res" class="h-full block w-full"></viz-table> 
-                 } 
-                 @else if (isRunning()) { 
-                   <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">Executing...</div>
-                 } 
-                 @else { 
-                   <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">Run query to see results</div>
-                 } 
-               </div>
-            </div>
-          </div>
-        </mat-tab>
-
-        <!-- AI Tab: Implements the Conversation UI requirements -->
-        <mat-tab label="AI Assistant">
-           <div class="ai-wrapper">
-             <app-conversation class="h-full"></app-conversation>
-           </div>
-        </mat-tab>
-
-      </mat-tab-group>
-    </div>
-  `
+    templateUrl: './sql-builder.component.html'
 }) 
 export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy { 
-  private readonly boardsApi = inject(DashboardsService); 
-  private readonly executionApi = inject(ExecutionService); 
-  private readonly schemaApi = inject(SchemaService); 
-  private readonly store = inject(DashboardStore); 
+    /** boardsApi property. */
+private readonly boardsApi = inject(DashboardsService); 
+    /** executionApi property. */
+private readonly executionApi = inject(ExecutionService); 
+    /** schemaApi property. */
+private readonly schemaApi = inject(SchemaService); 
+    /** store property. */
+private readonly store = inject(DashboardStore); 
 
+  /** Dashboard Id. */
   readonly dashboardId = input.required<string>(); 
+  /** Widget Id. */
   readonly widgetId = input.required<string>(); 
+  /** Initial Sql. */
   readonly initialSql = input<string>(''); 
   /** Optional: Set which tab opens by default. 0=Code, 1=AI */
   readonly initialTab = input<number>(0); 
   /** Optional: Enable cart actions for ad-hoc flows. */
   readonly enableCart = input<boolean>(false);
   
+  /** Sql Change. */
   readonly sqlChange = output<string>(); 
   /** Event emitted when user saves SQL to the query cart. */
   readonly saveToCart = output<string>();
 
+  /** Current Sql. */
   readonly currentSql = model<string>(''); 
+  /** Whether running. */
   readonly isRunning = signal(false); 
+  /** Latest Result. */
   readonly latestResult = signal<TableDataSet | null>(null); 
+  /** Validation Error. */
   readonly validationError = signal<string | null>(null); 
   
+  /** Global Params. */
   readonly globalParams = this.store.globalParams; 
+  /** Available Params. */
   readonly availableParams = computed(() => Object.keys(this.globalParams())); 
+  /** Whether save To Cart. */
   readonly canSaveToCart = computed(() => this.currentSql().trim().length > 0);
 
+  /** Selected Tab Index. */
   selectedTabIndex = signal(0); 
 
   // CodeMirror References
+  /** Editor Host. */
   @ViewChild('editorHost') editorHost!: ElementRef<HTMLDivElement>; 
-  private editorView?: EditorView; 
-  private languageConf = new Compartment(); 
+    /** editorView property. */
+private editorView?: EditorView; 
+    /** languageConf property. */
+private languageConf = new Compartment(); 
 
+  /** Ng On Init. */
   ngOnInit() { 
     if (this.initialSql()) this.currentSql.set(this.initialSql()); 
     // Initialize tab selection from input
     this.selectedTabIndex.set(this.initialTab()); 
   } 
 
+  /** Ng After View Init. */
   ngAfterViewInit(): void { 
     this.initEditor(); 
     this.loadSchemaForAutocomplete(); 
   } 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     if (this.editorView) { 
       this.editorView.destroy(); 
     } 
   } 
 
-  private initEditor(): void { 
+    /** initEditor method. */
+private initEditor(): void { 
     if (!this.editorHost) return; 
 
     // Initial state setup with default SQL language
@@ -276,7 +211,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     }); 
   } 
 
-  private loadSchemaForAutocomplete(): void { 
+    /** loadSchemaForAutocomplete method. */
+private loadSchemaForAutocomplete(): void { 
     this.schemaApi.getDatabaseSchemaApiV1SchemaGet().subscribe({ 
       next: (tables) => { 
         if (!this.editorView) return; 
@@ -296,6 +232,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     }); 
   } 
 
+  /** Insert Param. */
   insertParam(key: string): void { 
     const token = `{{${key}}}`; 
     if (this.editorView) { 
@@ -311,7 +248,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     } 
   } 
 
-  private injectParameters(sqlTemplate: string): string { 
+    /** injectParameters method. */
+private injectParameters(sqlTemplate: string): string { 
     let processed = sqlTemplate; 
     const params = this.globalParams(); 
     Object.entries(params).forEach(([key, val]) => { 
@@ -321,6 +259,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     return processed; 
   } 
 
+  /** Run Query. */
   runQuery() { 
     this.isRunning.set(true); 
     this.validationError.set(null); 

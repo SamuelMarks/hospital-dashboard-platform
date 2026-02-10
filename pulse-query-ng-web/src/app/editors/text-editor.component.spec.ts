@@ -9,6 +9,7 @@ import { DashboardsService } from '../api-client';
 import { of, throwError } from 'rxjs'; 
 import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
 import { vi } from 'vitest';
+import { By } from '@angular/platform-browser';
 
 describe('TextEditorComponent', () => { 
   let component: TextEditorComponent; 
@@ -78,5 +79,20 @@ describe('TextEditorComponent', () => {
       'w1',
       expect.objectContaining({ config: { content: '' } })
     );
+  });
+
+  it('should wire save button click in template', () => {
+    const saveSpy = vi.spyOn(component, 'save');
+    component.form.patchValue({ content: 'Click Save' });
+    fixture.detectChanges();
+    const btn = fixture.debugElement.query(By.css('button[mat-flat-button]'));
+    btn.triggerEventHandler('click', null);
+    expect(saveSpy).toHaveBeenCalled();
+  });
+
+  it('should show spinner when running', () => {
+    component.isRunning.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('mat-spinner'))).toBeTruthy();
   });
 }); 

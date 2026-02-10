@@ -14,20 +14,33 @@ import {
   WidgetUpdate
 } from '../api-client'; 
 
+/** Dashboard State interface. */
 export interface DashboardState { 
-  dashboard: DashboardResponse | null; 
-  widgets: WidgetResponse[]; 
-  dataMap: Record<string, any>; 
-  isLoading: boolean; 
-  loadingWidgetIds: ReadonlySet<string>; 
-  error: string | null; 
-  globalParams: Record<string, any>; 
-  isEditMode: boolean; 
-  focusedWidgetId: string | null; 
-  lastUpdated: Date | null; 
-  isAutoRefreshEnabled: boolean; 
+    /** dashboard property. */
+dashboard: DashboardResponse | null; 
+    /** widgets property. */
+widgets: WidgetResponse[]; 
+    /** dataMap property. */
+dataMap: Record<string, any>; 
+    /** isLoading property. */
+isLoading: boolean; 
+    /** loadingWidgetIds property. */
+loadingWidgetIds: ReadonlySet<string>; 
+    /** error property. */
+error: string | null; 
+    /** globalParams property. */
+globalParams: Record<string, any>; 
+    /** isEditMode property. */
+isEditMode: boolean; 
+    /** focusedWidgetId property. */
+focusedWidgetId: string | null; 
+    /** lastUpdated property. */
+lastUpdated: Date | null; 
+    /** isAutoRefreshEnabled property. */
+isAutoRefreshEnabled: boolean; 
 } 
 
+/** Initial State constant. */
 const initialState: DashboardState = { 
   dashboard: null, 
   widgets: [], 
@@ -42,30 +55,50 @@ const initialState: DashboardState = {
   isAutoRefreshEnabled: true
 }; 
 
+/** DEFAULT REFRESH RATE constant. */
 const DEFAULT_REFRESH_RATE = 300_000; 
 
+/** Dashboard store. */
 @Injectable({ providedIn: 'root' }) 
 export class DashboardStore implements OnDestroy { 
-  private readonly dashboardApi = inject(DashboardsService); 
-  private readonly executionApi = inject(ExecutionService); 
-  private readonly router = inject(Router); 
+    /** dashboardApi property. */
+private readonly dashboardApi = inject(DashboardsService); 
+    /** executionApi property. */
+private readonly executionApi = inject(ExecutionService); 
+    /** router property. */
+private readonly router = inject(Router); 
 
-  private readonly _state = signal<DashboardState>(initialState); 
-  private readonly refreshTrigger$ = new Subject<void>(); 
-  private readonly destroy$ = new Subject<void>(); 
-  private pollingSub?: Subscription; 
+    /** _state property. */
+private readonly _state = signal<DashboardState>(initialState); 
+    /** refreshTrigger$ property. */
+private readonly refreshTrigger$ = new Subject<void>(); 
+    /** destroy$ property. */
+private readonly destroy$ = new Subject<void>(); 
+    /** pollingSub property. */
+private pollingSub?: Subscription; 
 
+  /** State. */
   readonly state = this._state.asReadonly(); 
+  /** Dashboard. */
   readonly dashboard = computed(() => this._state().dashboard); 
+  /** Widgets. */
   readonly widgets = computed(() => this._state().widgets); 
+  /** Data Map. */
   readonly dataMap = computed(() => this._state().dataMap); 
+  /** Whether loading. */
   readonly isLoading = computed(() => this._state().isLoading); 
+  /** Error. */
   readonly error = computed(() => this._state().error); 
+  /** Global Params. */
   readonly globalParams = computed(() => this._state().globalParams); 
+  /** Whether edit Mode. */
   readonly isEditMode = computed(() => this._state().isEditMode); 
+  /** Focused Widget Id. */
   readonly focusedWidgetId = computed(() => this._state().focusedWidgetId); 
+  /** Last Updated. */
   readonly lastUpdated = computed(() => this._state().lastUpdated); 
 
+  /** Sorted Widgets. */
   readonly sortedWidgets = computed(() => { 
     return [...this._state().widgets].sort((a, b) => { 
       const orderA = (a.config['order'] as number) || 0; 
@@ -74,30 +107,36 @@ export class DashboardStore implements OnDestroy {
     }); 
   }); 
 
+  /** Whether widget Loading. */
   readonly isWidgetLoading = computed(() => (id: string) => this._state().loadingWidgetIds.has(id)); 
 
+  /** Focused Widget. */
   readonly focusedWidget = computed(() => { 
     const id = this.focusedWidgetId(); 
     if (!id) return null; 
     return this.widgets().find(w => w.id === id) || null; 
   }); 
 
+  /** Creates a new DashboardStore. */
   constructor() { 
     this.setupRefreshPipeline(); 
     this.startPolling(); 
   } 
 
+  /** Ng On Destroy. */
   ngOnDestroy(): void { 
     this.destroy$.next(); 
     this.destroy$.complete(); 
     this.stopPolling(); 
   } 
 
+  /** Sets loading. */
   setLoading(isLoading: boolean): void { 
     this.patch({ isLoading }); 
   } 
 
-  private setupRefreshPipeline(): void { 
+    /** setupRefreshPipeline method. */
+private setupRefreshPipeline(): void { 
     this.refreshTrigger$.pipe( 
       takeUntil(this.destroy$), 
       tap(() => this.patch({ isLoading: true, error: null })), 
@@ -130,7 +169,8 @@ export class DashboardStore implements OnDestroy {
     }); 
   } 
 
-  private startPolling(): void { 
+    /** startPolling method. */
+private startPolling(): void { 
     this.stopPolling(); 
     this.pollingSub = timer(DEFAULT_REFRESH_RATE, DEFAULT_REFRESH_RATE).pipe( 
       filter(() => this._state().isAutoRefreshEnabled && !this._state().isEditMode), 
@@ -140,10 +180,12 @@ export class DashboardStore implements OnDestroy {
     }); 
   } 
 
-  private stopPolling(): void { 
+    /** stopPolling method. */
+private stopPolling(): void { 
     this.pollingSub?.unsubscribe(); 
   } 
 
+  /** Loads dashboard. */
   loadDashboard(dashboardId: string): void { 
     this.patch({ isLoading: true, error: null, focusedWidgetId: null }); 
     this.dashboardApi.getDashboardApiV1DashboardsDashboardIdGet(dashboardId) 
@@ -164,7 +206,8 @@ export class DashboardStore implements OnDestroy {
       }); 
   } 
 
-  private healBrokenWidgets(widgets: WidgetResponse[]): void { 
+    /** healBrokenWidgets method. */
+private healBrokenWidgets(widgets: WidgetResponse[]): void { 
     widgets.forEach(w => { 
       if (w.title === "Widget Admission Lag" && w.config?.['query']) { 
         const sql = w.config['query'] as string; 
@@ -182,6 +225,7 @@ export class DashboardStore implements OnDestroy {
     }); 
   } 
 
+  /** Duplicate Widget. */
   duplicateWidget(source: WidgetResponse): void { 
     const dash = this.dashboard(); 
     if (!dash) return; 
@@ -225,6 +269,7 @@ export class DashboardStore implements OnDestroy {
       }); 
   } 
 
+  /** Creates default Dashboard. */
   createDefaultDashboard(): void { 
     this.patch({ isLoading: true, error: null }); 
     this.dashboardApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost() 
@@ -245,19 +290,23 @@ export class DashboardStore implements OnDestroy {
       }); 
   } 
 
+  /** Toggles edit Mode. */
   toggleEditMode(): void { 
     const nextMode = !this._state().isEditMode; 
     this.patch({ isEditMode: nextMode }); 
   } 
 
+  /** Toggles auto Refresh. */
   toggleAutoRefresh(): void { 
     this.patch({ isAutoRefreshEnabled: !this._state().isAutoRefreshEnabled }); 
   } 
 
+  /** Sets focused Widget. */
   setFocusedWidget(id: string | null): void { 
     this.patch({ focusedWidgetId: id }); 
   } 
 
+  /** Sets global Params. */
   setGlobalParams(params: Record<string, any>): void { 
     const current = this._state().globalParams; 
     const keysA = Object.keys(current); 
@@ -272,20 +321,24 @@ export class DashboardStore implements OnDestroy {
     } 
   } 
 
+  /** Refresh All. */
   refreshAll(): void { 
     this.refreshTrigger$.next(); 
   } 
 
+  /** Refresh Widget. */
   refreshWidget(widgetId: string): void { 
     this.refreshTrigger$.next(); 
   } 
 
+  /** Reset. */
   reset(): void { 
     this.stopPolling(); 
     this._state.set(initialState); 
     this.startPolling(); 
   } 
 
+  /** Updates widget Order. */
   updateWidgetOrder(previousIndex: number, currentIndex: number): void { 
     const currentDashboard = this.dashboard(); 
     if (!currentDashboard || previousIndex === currentIndex) return; 
@@ -315,21 +368,25 @@ export class DashboardStore implements OnDestroy {
         }); 
   } 
 
+  /** Optimistic Remove Widget. */
   optimisticRemoveWidget(id: string): void { 
     const current = this._state().widgets; 
     this.patch({ widgets: current.filter(w => w.id !== id) }); 
   } 
 
+  /** Optimistic Restore Widget. */
   optimisticRestoreWidget(widget: WidgetResponse): void { 
     const current = this._state().widgets; 
     this.patch({ widgets: [...current, widget] }); 
   } 
 
-  private patch(p: Partial<DashboardState>) { 
+    /** patch method. */
+private patch(p: Partial<DashboardState>) { 
     this._state.update(current => ({ ...current, ...p })); 
   } 
 
-  private handleError(e: unknown) { 
+    /** handleError method. */
+private handleError(e: unknown) { 
     let msg = 'An unexpected error occurred'; 
     if (e instanceof HttpErrorResponse) { 
       if (e.error?.detail) { 

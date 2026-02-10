@@ -12,10 +12,10 @@ describe('material-color-utilities mock', () => {
     expect(hexFromArgb(0xff000000)).toBe('#ffffff');
 
     const theme = themeFromSourceColor(0xff00ff00);
-    const light = theme.schemes.light as Record<string, number>;
-    const dark = theme.schemes.dark as Record<string, number>;
-    expect(light['primary']).toBe(0xffffffff);
-    expect(dark['primary']).toBe(0xffffffff);
+    const light = theme.schemes.light;
+    const dark = theme.schemes.dark;
+    expect(light.primary).toBe(0xffffffff);
+    expect(dark.primary).toBe(0xffffffff);
 
     expect(new Scheme()).toBeInstanceOf(Scheme);
     expect(new Theme()).toBeInstanceOf(Theme);

@@ -19,6 +19,10 @@ import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { of, Subject } from 'rxjs';
 import { QueryCartService } from '../global/query-cart.service';
+import { RouterTestingModule } from '@angular/router/testing';
+import { MatMenuTrigger } from '@angular/material/menu';
+import { OverlayContainer } from '@angular/cdk/overlay';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -207,4 +211,124 @@ describe('ToolbarComponent', () => {
     component.openWidgetBuilder();
     expect(mockDialog.open).not.toHaveBeenCalled();
   });
-}); 
+});
+
+describe('ToolbarComponent template wiring', () => {
+  let fixture: ComponentFixture<ToolbarComponent>;
+  let component: ToolbarComponent;
+  let mockStore: any;
+  let mockAskService: any;
+  let mockDialog: any;
+  let mockAuthService: any;
+  let mockThemeService: any;
+  let mockCartService: any;
+  let router: Router;
+  let overlay: OverlayContainer;
+
+  beforeEach(async () => {
+    mockStore = {
+      dashboard: signal({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] }),
+      isLoading: signal(false),
+      isEditMode: signal(true),
+      refreshAll: vi.fn(),
+      loadDashboard: vi.fn(),
+      toggleEditMode: vi.fn()
+    };
+    mockAskService = { open: vi.fn() };
+    mockDialog = { open: vi.fn().mockReturnValue({ afterClosed: () => of(true) }) };
+    mockAuthService = { currentUser: signal({ email: 'tester@pulse.com' }), logout: vi.fn() };
+    mockThemeService = { isDark: signal(false), seedColor: signal('#1565c0'), toggle: vi.fn(), setSeedColor: vi.fn() };
+    mockCartService = { count: signal(2) };
+
+    await TestBed.resetTestingModule().configureTestingModule({
+      imports: [ToolbarComponent, RouterTestingModule.withRoutes([]), NoopAnimationsModule],
+      providers: [
+        { provide: DashboardStore, useValue: mockStore },
+        { provide: AskDataService, useValue: mockAskService },
+        { provide: MatDialog, useValue: mockDialog },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ThemeService, useValue: mockThemeService },
+        { provide: QueryCartService, useValue: mockCartService }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ToolbarComponent);
+    component = fixture.componentInstance;
+    (component as any).isDashboardRoute = signal(true);
+    router = TestBed.inject(Router);
+    overlay = TestBed.inject(OverlayContainer);
+    fixture.detectChanges();
+  });
+
+  it('should render dashboard actions when on dashboard route', () => {
+    (component as any).isDashboardRoute = signal(true);
+    fixture.detectChanges();
+    expect(component.isDashboardRoute()).toBe(true);
+
+    const toggle = fixture.debugElement.query(By.directive(MatSlideToggle));
+    expect(toggle).toBeTruthy();
+    toggle.componentInstance.change.emit({ checked: true, source: toggle.componentInstance } as any);
+    expect(mockStore.toggleEditMode).toHaveBeenCalled();
+
+    const addWidgetBtn = fixture.debugElement.query(By.css('[data-testid=\"btn-add-widget\"]'));
+    expect(addWidgetBtn).toBeTruthy();
+    addWidgetBtn.triggerEventHandler('click', null);
+    expect(mockDialog.open).toHaveBeenCalled();
+  });
+
+  it('should refresh dashboard from template button', () => {
+    (component as any).isDashboardRoute = signal(true);
+    fixture.detectChanges();
+    const refreshBtn = fixture.debugElement.query(By.css('[data-testid=\"btn-refresh\"]'));
+    expect(refreshBtn).toBeTruthy();
+    refreshBtn.triggerEventHandler('click', null);
+    expect(mockStore.refreshAll).toHaveBeenCalled();
+  });
+
+  it('should open theme menu and update theme', () => {
+    const trigger = fixture.debugElement.query(By.css('[data-testid=\"btn-theme-menu\"]')).injector.get(MatMenuTrigger);
+    trigger.openMenu();
+    fixture.detectChanges();
+    const overlayEl = overlay.getContainerElement();
+    const menuItems = overlayEl.querySelectorAll('button[mat-menu-item]');
+    (menuItems[0] as HTMLElement).click();
+    expect(mockThemeService.toggle).toHaveBeenCalled();
+
+    const colorButtons = overlayEl.querySelectorAll('button.color-dot');
+    (colorButtons[0] as HTMLElement).click();
+    expect(mockThemeService.setSeedColor).toHaveBeenCalled();
+  });
+
+  it('should handle custom color input change', () => {
+    const trigger = fixture.debugElement.query(By.css('[data-testid=\"btn-theme-menu\"]')).injector.get(MatMenuTrigger);
+    trigger.openMenu();
+    fixture.detectChanges();
+    const input = fixture.debugElement.query(By.css('input[type=\"color\"]'));
+    input.triggerEventHandler('input', { target: { value: '#123456' } });
+    expect(mockThemeService.setSeedColor).toHaveBeenCalledWith('#123456');
+  });
+
+  it('should open Ask AI and logout from template', () => {
+    const askBtn = fixture.debugElement.queryAll(By.css('button[mat-stroked-button]'))
+      .find(b => b.nativeElement.textContent.includes('Ask AI'))!;
+    askBtn.triggerEventHandler('click', null);
+    expect(mockAskService.open).toHaveBeenCalled();
+
+    const userTrigger = fixture.debugElement.query(By.css('[data-testid=\"btn-user-menu\"]')).injector.get(MatMenuTrigger);
+    userTrigger.openMenu();
+    fixture.detectChanges();
+    const overlayEl = overlay.getContainerElement();
+    const logoutBtn = Array.from(overlayEl.querySelectorAll('button[mat-menu-item]')).find(el =>
+      (el as HTMLElement).textContent?.includes('Logout')
+    ) as HTMLElement;
+    logoutBtn.click();
+    expect(mockAuthService.logout).toHaveBeenCalled();
+  });
+
+  it('should navigate on title keydown enter', () => {
+    const navSpy = vi.spyOn(router, 'navigate');
+    const title = fixture.debugElement.query(By.css('.title-group'));
+    title.triggerEventHandler('keydown.enter', new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(navSpy).toHaveBeenCalledWith(['/']);
+  });
+});

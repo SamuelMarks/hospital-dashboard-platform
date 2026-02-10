@@ -12,17 +12,20 @@ import { QueryCartService } from '../global/query-cart.service';
   providedIn: 'root'
 })
 export class QueryCartProvisioningService {
-  private readonly dashboardsApi = inject(DashboardsService);
-  private readonly store = inject(DashboardStore);
-  private readonly cart = inject(QueryCartService);
+    /** dashboardsApi property. */
+private readonly dashboardsApi = inject(DashboardsService);
+    /** store property. */
+private readonly store = inject(DashboardStore);
+    /** cart property. */
+private readonly cart = inject(QueryCartService);
 
   /**
-   * Adds a cart item to a dashboard as a SQL widget.
-   *
-   * @param item - Cart item to provision.
-   * @param dashboardId - Target dashboard id.
-   * @returns Observable of the created widget.
-   */
+  * Adds a cart item to a dashboard as a SQL widget.
+  *
+  * @param item - Cart item to provision.
+  * @param dashboardId - Target dashboard id.
+  * @returns Observable of the created widget.
+  */
   addToDashboard(item: QueryCartItem, dashboardId: string): Observable<WidgetResponse> {
     const payload: WidgetCreateSql = {
       title: item.title,

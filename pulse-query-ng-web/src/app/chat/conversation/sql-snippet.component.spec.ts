@@ -42,6 +42,14 @@ describe('SqlSnippetComponent', () => {
     expect(writeSpy).toHaveBeenCalledWith('SELECT * FROM table');
   });
 
+  it('should wire copy button click', () => {
+    const writeSpy = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText: writeSpy } });
+    const btn = fixture.debugElement.queryAll(By.css('button'))[0];
+    btn.triggerEventHandler('click', null);
+    expect(writeSpy).toHaveBeenCalledWith('SELECT * FROM table');
+  });
+
   it('should highlight numbers and strings', () => {
     setInputSignal(component, 'sql', "SELECT count(*) FROM t WHERE id = 5 AND name = 'bob'");
     fixture.detectChanges();

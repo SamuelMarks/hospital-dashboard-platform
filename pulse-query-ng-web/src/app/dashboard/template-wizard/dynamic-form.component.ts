@@ -43,20 +43,32 @@ import { provideNativeDateAdapter } from '@angular/material/core';
  * Typings for Supported JSON Schema Features.
  */
 interface JsonSchemaProperty {
-  type: 'string' | 'number' | 'integer' | 'boolean';
-  title?: string;
-  description?: string;
-  enum?: string[] | number[];
-  format?: 'date' | 'date-time' | 'email';
-  default?: string | number | boolean;
-  minimum?: number;
-  maximum?: number;
+    /** type property. */
+type: 'string' | 'number' | 'integer' | 'boolean';
+    /** title property. */
+title?: string;
+    /** description property. */
+description?: string;
+    /** enum property. */
+enum?: string[] | number[];
+    /** format property. */
+format?: 'date' | 'date-time' | 'email';
+    /** default property. */
+default?: string | number | boolean;
+    /** minimum property. */
+minimum?: number;
+    /** maximum property. */
+maximum?: number;
 }
 
+/** Json Schema interface. */
 interface JsonSchema {
-  type: string;
-  required?: string[];
-  properties?: Record<string, JsonSchemaProperty>;
+    /** type property. */
+type: string;
+    /** required property. */
+required?: string[];
+    /** properties property. */
+properties?: Record<string, JsonSchemaProperty>;
 }
 
 /**
@@ -83,76 +95,7 @@ interface JsonSchema {
     MatTooltipModule
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <form [formGroup]="form" class="dynamic-form-grid">
-
-      @for (key of fieldKeys(); track key) {
-        @if (getProperty(key); as prop) {
-
-          <!-- Case 1: Boolean (Checkbox) -->
-          @if (prop.type === 'boolean') {
-            <div class="checkbox-row">
-              <mat-checkbox [formControlName]="key" color="primary">
-                {{ prop.title || formatLabel(key) }}
-              </mat-checkbox>
-              @if (prop.description) {
-                <mat-icon
-                  class="help-icon"
-                  [matTooltip]="prop.description"
-                  fontIcon="help_outline"
-                  tabindex="0"
-                  aria-label="Help info"
-                ></mat-icon>
-              }
-            </div>
-          } @else if (prop.enum) { <!-- Case 2: Enumeration (Select Dropdown) -->
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
-              <mat-select [formControlName]="key">
-                @for (opt of prop.enum; track opt) {
-                  <mat-option [value]="opt">{{ opt }}</mat-option>
-                }
-              </mat-select>
-              @if (prop.description) { <mat-hint>{{ prop.description }}</mat-hint> }
-              <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
-            </mat-form-field>
-          } @else if (prop.format === 'date') { <!-- Case 3: Date Picker -->
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
-              <input matInput [matDatepicker]="picker" [formControlName]="key">
-              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-              <mat-datepicker #picker></mat-datepicker>
-              @if (prop.description) { <mat-hint>{{ prop.description }}</mat-hint> }
-              <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
-            </mat-form-field>
-          } @else { <!-- Case 4: Standard Input (Text/Number) -->
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
-              <input
-                matInput
-                [type]="prop.type === 'number' || prop.type === 'integer' ? 'number' : 'text'"
-                [formControlName]="key"
-                [min]="prop.minimum"
-                [max]="prop.maximum"
-              >
-              @if (prop.description) { <mat-hint>{{ prop.description }}</mat-hint> }
-              <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
-              <mat-error *ngIf="hasError(key, 'min')">Min value: {{prop.minimum}}</mat-error>
-              <mat-error *ngIf="hasError(key, 'max')">Max value: {{prop.maximum}}</mat-error>
-            </mat-form-field>
-          }
-
-        }
-      }
-
-      @if (fieldKeys().length === 0) {
-        <div class="empty-state">
-          No parameters required for this template.
-        </div>
-      }
-
-    </form>
-  `,
+    templateUrl: './dynamic-form.component.html',
   styles: [`
     :host { display: block; }
     .dynamic-form-grid {
@@ -184,9 +127,12 @@ export class DynamicFormComponent implements OnChanges {
   /** Output emitting extracted values. */
   readonly formValueChange = output<Record<string, any>>();
 
+  /** Form. */
   readonly form = new FormGroup({});
+  /** Field Keys. */
   readonly fieldKeys = signal<string[]>([]);
 
+  /** Ng On Changes. */
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['jsonSchema']) {
       this.rebuildForm();
@@ -194,8 +140,8 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   /**
-   * Reconstructs the Form Group controls based on new Schema input.
-   */
+  * Reconstructs the Form Group controls based on new Schema input.
+  */
   private rebuildForm(): void {
     // 1. Clear existing
     Object.keys(this.form.controls).forEach(k => this.form.removeControl(k));
@@ -243,24 +189,26 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   /**
-   * Helper to retrieve property definition for template binding.
-   */
+  * Helper to retrieve property definition for template binding.
+  */
   getProperty(key: string): JsonSchemaProperty | null {
     const schema = this.jsonSchema() as JsonSchema; // Safe cast after rebuild
     return schema?.properties?.[key] || null;
   }
 
+  /** Whether error. */
   hasError(key: string, errorName: string): boolean {
     return this.form.get(key)?.hasError(errorName) ?? false;
   }
 
+  /** Format Label. */
   formatLabel(key: string): string {
     return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
   /**
-   * Sanitizes values before emission (e.g. Date Objects -> strings).
-   */
+  * Sanitizes values before emission (e.g. Date Objects -> strings).
+  */
   private cleanValues(raw: Record<string, any>): Record<string, any> {
     const result = { ...raw };
     const schema = this.jsonSchema() as JsonSchema | null;

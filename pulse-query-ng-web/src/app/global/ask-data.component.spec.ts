@@ -282,4 +282,30 @@ describe('AskDataComponent', () => {
     serverComponent.ngOnDestroy();
     expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).not.toHaveBeenCalled();
   });
+
+  it('should close via header button', () => {
+    fixture.detectChanges();
+    const closeBtn = fixture.debugElement.query(By.css('[data-testid=\"close-btn\"]'));
+    closeBtn.triggerEventHandler('click', null);
+    expect(mockAskService.close).toHaveBeenCalled();
+  });
+
+  it('should render builder and forward saveToCart event', () => {
+    isAuthenticatedSig.set(true);
+    component.contextError.set(null);
+    component.loadingContext.set(false);
+    component.scratchpadIds.set({ dashboardId: MOCK_DASH_ID, widgetId: MOCK_WIDGET_ID });
+    fixture.detectChanges();
+    const builder = fixture.debugElement.query(By.directive(MockSqlBuilderComponent))
+      || fixture.debugElement.query(By.css('app-sql-builder'));
+    expect(builder).toBeTruthy();
+    builder.triggerEventHandler('saveToCart', 'SELECT 42');
+    expect(mockCartService.add).toHaveBeenCalledWith('SELECT 42');
+  });
+
+  it('should show loading overlay when initializing', () => {
+    component.loadingContext.set(true);
+    fixture.detectChanges();
+    expect(fixture.debugElement.query(By.css('[data-testid=\"loading-state\"]'))).toBeTruthy();
+  });
 });

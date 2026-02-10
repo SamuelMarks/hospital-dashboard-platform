@@ -7,9 +7,12 @@ import {
 import express from 'express';
 import { join } from 'node:path';
 
+/** Browser Dist Folder constant. */
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
+/** App constant. */
 const app = express();
+/** Angular App constant. */
 const angularApp = new AngularNodeAppEngine();
 
 /**
