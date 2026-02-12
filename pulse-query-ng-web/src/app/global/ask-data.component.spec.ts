@@ -85,7 +85,7 @@ describe('AskDataComponent', () => {
       add: { imports: [MockSqlBuilderComponent] }
     })
     .overrideComponent(AskDataComponent, {
-      set: { template: readTemplate('./ask-data.component.html'), templateUrl: null, schemas: [NO_ERRORS_SCHEMA] }
+      set: { template: readTemplate('./ask-data.component.html'), templateUrl: undefined, schemas: [NO_ERRORS_SCHEMA] }
     })
     .compileComponents();
 
@@ -277,7 +277,7 @@ describe('AskDataComponent', () => {
       add: { imports: [MockSqlBuilderComponent] }
     })
     .overrideComponent(AskDataComponent, {
-      set: { template: readTemplate('./ask-data.component.html'), templateUrl: null, schemas: [NO_ERRORS_SCHEMA] }
+      set: { template: readTemplate('./ask-data.component.html'), templateUrl: undefined, schemas: [NO_ERRORS_SCHEMA] }
     })
     .compileComponents();
 

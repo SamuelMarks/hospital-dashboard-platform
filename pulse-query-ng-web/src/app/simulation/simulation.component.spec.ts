@@ -58,7 +58,7 @@ describe('SimulationComponent', () => {
         providers: [{ provide: SimulationStore, useValue: mockStore }],
         schemas: [NO_ERRORS_SCHEMA],
         template: readTemplate('./simulation.component.html'),
-        templateUrl: null
+        templateUrl: undefined
       }
     });
 

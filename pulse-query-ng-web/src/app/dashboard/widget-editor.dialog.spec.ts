@@ -80,7 +80,7 @@ describe('WidgetEditorDialog', () => {
       .overrideComponent(WidgetEditorDialog, {
         set: {
           template: readTemplate('./widget-editor.dialog.html'),
-          templateUrl: null,
+          templateUrl: undefined,
           schemas: [NO_ERRORS_SCHEMA]
         }
       })

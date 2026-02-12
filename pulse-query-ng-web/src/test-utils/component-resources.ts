@@ -6,8 +6,32 @@ import { fileURLToPath } from 'url';
 
 /** Absolute path to the test-utils directory. */
 const testUtilsDir = dirname(fileURLToPath(import.meta.url));
+
+function isAppRoot(dir: string): boolean {
+  return existsSync(join(dir, 'src', 'app')) && existsSync(join(dir, 'package.json'));
+}
+
+function findAppRoot(startDir: string): string | undefined {
+  let current = startDir;
+  while (true) {
+    if (isAppRoot(current)) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+  }
+}
+
+const cwd = process.cwd();
+const nestedCwd = resolve(cwd, 'pulse-query-ng-web');
 /** Absolute path to the application root. */
-const appRoot = resolve(testUtilsDir, '..', '..');
+const appRoot =
+  findAppRoot(testUtilsDir) ??
+  (isAppRoot(cwd) ? cwd : undefined) ??
+  (isAppRoot(nestedCwd) ? nestedCwd : cwd);
 /** Absolute path to the application's src directory. */
 const srcRoot = resolve(appRoot, 'src');
 
@@ -59,6 +83,9 @@ class FsResourceLoader extends ResourceLoader {
 
 /** Recursively search for the first matching file name under a directory. */
 function findFirstFile(rootDir: string, fileName: string): string | undefined {
+  if (!existsSync(rootDir)) {
+    return undefined;
+  }
   const entries = readdirSync(rootDir);
   for (const entry of entries) {
     const fullPath = join(rootDir, entry);

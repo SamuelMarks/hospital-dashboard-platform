@@ -278,7 +278,7 @@ describe('SqlBuilderComponent template wiring', () => {
       .overrideComponent(SqlBuilderComponent, {
         set: {
           template: readTemplate('./sql-builder.component.html'),
-          templateUrl: null,
+          templateUrl: undefined,
           schemas: [NO_ERRORS_SCHEMA]
         }
       })

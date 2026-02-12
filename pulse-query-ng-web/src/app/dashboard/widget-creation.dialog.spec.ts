@@ -70,7 +70,7 @@ describe('WidgetCreationDialog', () => {
     .overrideComponent(WidgetCreationDialog, {
       set: {
         template: readTemplate('./widget-creation.dialog.html'),
-        templateUrl: null,
+        templateUrl: undefined,
         schemas: [NO_ERRORS_SCHEMA]
       }
     })

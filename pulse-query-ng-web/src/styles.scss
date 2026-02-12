@@ -61,41 +61,53 @@
 
 // ------------------------------------------------------------------------- 
 // 2. ANGULAR MATERIAL THEME CONFIG 
-// We define a standard M3 theme using strict Sass types. 
+// We define Light and Dark M3 themes using strict Sass types. 
 // Uses M3-specific palettes ($azure-palette) and strict M3 typography keys. 
 // ------------------------------------------------------------------------- 
 
-$m3-theme: mat.define-theme(( 
+$m3-typography: ( 
+  brand-family: 'Roboto', 
+  plain-family: 'Roboto', 
+  bold-weight: 500, 
+  medium-weight: 400, 
+  regular-weight: 400 
+); 
+
+$m3-density: ( 
+  scale: 0 
+); 
+
+$m3-light-theme: mat.define-theme(( 
   color: ( 
     theme-type: light, 
     primary: mat.$azure-palette, 
     tertiary: mat.$violet-palette
   ), 
-  typography: ( 
-    brand-family: 'Roboto', 
-    plain-family: 'Roboto', 
-    bold-weight: 500, 
-    medium-weight: 400, 
-    regular-weight: 400 
-  ), 
-  density: ( 
-    scale: 0 
-  ) 
+  typography: $m3-typography, 
+  density: $m3-density 
 )); 
 
-// Apply the theme to the root 
-html { 
-  @include mat.all-component-themes($m3-theme); 
+$m3-dark-theme: mat.define-theme(( 
+  color: ( 
+    theme-type: dark, 
+    primary: mat.$azure-palette, 
+    tertiary: mat.$violet-palette
+  ), 
+  typography: $m3-typography, 
+  density: $m3-density 
+)); 
+
+// ------------------------------------------------------------------------- 
+// 3. MATERIAL THEME APPLICATION 
+// ThemeService toggles .light-theme / .dark-theme on <body>. 
+// ------------------------------------------------------------------------- 
+
+html, 
+body { 
   height: 100%; 
 } 
 
-// ------------------------------------------------------------------------- 
-// 3. RUNTIME OVERRIDES 
-// Angular Material writes its own CSS vars (e.g. --mat-sys-primary). 
-// To make the components respect our Runtime `ThemeService`, we override 
-// the Material System Tokens with our `--sys-*` variables. 
-// ------------------------------------------------------------------------- 
-body { 
+@mixin runtime-color-bridge { 
   // Map Angular Material System Tokens -> Our Dynamic Runtime Tokens 
   --md-sys-color-primary: var(--sys-primary); 
   --md-sys-color-on-primary: var(--sys-on-primary); 
@@ -125,7 +137,24 @@ body {
   
   --md-sys-color-outline: var(--sys-outline); 
   --md-sys-color-outline-variant: var(--sys-outline-variant); 
+} 
 
+body.light-theme { 
+  @include mat.all-component-themes($m3-light-theme); 
+  @include runtime-color-bridge; 
+  color-scheme: light; 
+} 
+
+body.dark-theme { 
+  @include mat.all-component-themes($m3-dark-theme); 
+  @include runtime-color-bridge; 
+  color-scheme: dark; 
+} 
+
+// ------------------------------------------------------------------------- 
+// 4. RUNTIME OVERRIDES 
+// ------------------------------------------------------------------------- 
+body { 
   // Base setup 
   margin: 0; 
   font-family: Roboto, "Helvetica Neue", sans-serif; 
@@ -135,7 +164,7 @@ body {
 } 
 
 // ------------------------------------------------------------------------- 
-// 4. DISPLAY MODES 
+// 5. DISPLAY MODES 
 // ------------------------------------------------------------------------- 
 
 body.mode-tv { 
@@ -166,7 +195,7 @@ body.mode-tv {
 } 
 
 // ------------------------------------------------------------------------- 
-// 5. GLOBAL FORM CONTROLS 
+// 6. GLOBAL FORM CONTROLS 
 // ------------------------------------------------------------------------- 
 input, textarea, select { 
   background-color: transparent; 

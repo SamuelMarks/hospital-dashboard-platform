@@ -69,7 +69,7 @@ describe('HomeComponent', () => {
           { provide: MatSnackBar, useValue: mockSnackBar } 
         ],
         template: readTemplate('./home.component.html'),
-        templateUrl: null
+        templateUrl: undefined
       } 
     }) 
     .compileComponents(); 

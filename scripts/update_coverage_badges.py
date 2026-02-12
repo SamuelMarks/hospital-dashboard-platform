@@ -75,7 +75,16 @@ def compute_test_coverage() -> float:
   coverage_dir.mkdir(exist_ok=True)
   coverage_json = coverage_dir / "coverage.json"
 
-  run(["uv", "run", "pytest", "--cov-report=json:coverage/coverage.json"], cwd=BACKEND)
+  run(
+    [
+      "uv",
+      "run",
+      "pytest",
+      "--cov=app",
+      f"--cov-report=json:{coverage_json.as_posix()}",
+    ],
+    cwd=BACKEND,
+  )
 
   if not coverage_json.exists():
     raise CoverageError("coverage.json was not created by pytest.")

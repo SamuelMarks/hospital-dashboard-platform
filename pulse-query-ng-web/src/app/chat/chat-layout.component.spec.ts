@@ -48,7 +48,7 @@ describe('ChatLayoutComponent', () => {
       set: { providers: [{ provide: ChatStore, useValue: mockStore }] } 
     }) 
     .overrideComponent(ChatLayoutComponent, { 
-      set: { template: readTemplate('./chat-layout.component.html'), templateUrl: null } 
+      set: { template: readTemplate('./chat-layout.component.html'), templateUrl: undefined } 
     }) 
     .compileComponents(); 
 

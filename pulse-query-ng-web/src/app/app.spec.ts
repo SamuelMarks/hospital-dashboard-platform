@@ -72,7 +72,7 @@ describe('App', () => {
     mockAskDataService = { 
       isOpen: signal(false), 
       close: vi.fn(),
-      open: vi.fn()
+      // open: vi.fn()
     }; 
     mockDashboardsService = {
       listDashboardsApiV1DashboardsGet: vi.fn().mockReturnValue(of([])),

@@ -9,7 +9,19 @@ type TemplateRef = {
 };
 
 const specDir = dirname(fileURLToPath(import.meta.url));
-const appRoot = resolve(specDir, 'app');
+const appRootCandidates = [
+  resolve(specDir, 'app'),
+  resolve(specDir, 'src', 'app'),
+  resolve(specDir, '..', 'app'),
+  resolve(specDir, '..', 'src', 'app'),
+  resolve(process.cwd(), 'src', 'app'),
+  resolve(process.cwd(), 'pulse-query-ng-web', 'src', 'app')
+];
+const appRoot = appRootCandidates.find((dir) => existsSync(dir));
+if (!appRoot) {
+  throw new Error(`Unable to locate src/app from ${specDir}`);
+}
+const appRootPath = appRoot;
 
 function walk(dir: string, matcher: (file: string) => boolean, results: string[] = []): string[] {
   const entries = readdirSync(dir);
@@ -26,7 +38,7 @@ function walk(dir: string, matcher: (file: string) => boolean, results: string[]
 }
 
 function getTemplateRefs(): TemplateRef[] {
-  const tsFiles = walk(appRoot, (file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'));
+  const tsFiles = walk(appRootPath, (file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'));
   const templateRefs: TemplateRef[] = [];
   const templateRegex = /templateUrl\s*:\s*['"`]([^'"`]+)['"`]/g;
 
@@ -46,7 +58,7 @@ function getTemplateRefs(): TemplateRef[] {
 describe('Template coverage', () => {
   it('ensures all templateUrl entries resolve to files', () => {
     const refs = getTemplateRefs();
-    const htmlFiles = walk(appRoot, (file) => file.endsWith('.html'));
+    const htmlFiles = walk(appRootPath, (file) => file.endsWith('.html'));
     expect(refs.length).toBe(htmlFiles.length);
     const missing = refs.filter((ref) => !existsSync(ref.templatePath));
     expect(missing).toEqual([]);
@@ -59,7 +71,7 @@ describe('Template coverage', () => {
   });
 
   it('ensures no orphaned component templates exist', () => {
-    const htmlFiles = walk(appRoot, (file) => file.endsWith('.html'));
+    const htmlFiles = walk(appRootPath, (file) => file.endsWith('.html'));
     const orphaned = htmlFiles.filter((file) => !existsSync(file.replace(/\.html$/, '.ts')));
     expect(orphaned).toEqual([]);
   });

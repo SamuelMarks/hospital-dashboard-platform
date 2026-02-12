@@ -58,7 +58,7 @@ describe('ConversationComponent', () => {
       .overrideComponent(ConversationComponent, {
         set: {
           template: readTemplate('./conversation.component.html'),
-          templateUrl: null,
+          templateUrl: undefined,
           schemas: [NO_ERRORS_SCHEMA]
         }
       })

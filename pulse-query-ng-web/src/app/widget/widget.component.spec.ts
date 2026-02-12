@@ -115,7 +115,7 @@ describe('WidgetComponent', () => {
       ] 
     })
     .overrideComponent(WidgetComponent, {
-      set: { schemas: [NO_ERRORS_SCHEMA], template: readTemplate('./widget.component.html'), templateUrl: null }
+      set: { schemas: [NO_ERRORS_SCHEMA], template: readTemplate('./widget.component.html'), templateUrl: undefined }
     })
     .overrideComponent(WidgetComponent, {
       remove: {
