@@ -1,0 +1,289 @@
+<div class="page">
+  <div class="header">
+    <div class="title">
+      <h1>LLM Arena Analytics</h1>
+      <p>
+        Track user prompts, generated SQL, and which LLM outputs were selected (score = winner).
+      </p>
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="load()" [disabled]="isLoading()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="summary-grid">
+    <mat-card class="summary-card">
+      <div class="metric-value">{{ summary().totalCandidates }}</div>
+      <div class="metric-label">Candidates</div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <div class="metric-value">{{ summary().totalQueries }}</div>
+      <div class="metric-label">Queries</div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <div class="metric-value">{{ summary().totalUsers }}</div>
+      <div class="metric-label">Users</div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <div class="metric-value">{{ summary().totalModels }}</div>
+      <div class="metric-label">Models</div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <div class="metric-value">{{ summary().selectionRate }}%</div>
+      <div class="metric-label">Selection Rate</div>
+    </mat-card>
+    <mat-card class="summary-card">
+      <div class="metric-value">{{ summary().sqlCoverage }}%</div>
+      <div class="metric-label">SQL Coverage</div>
+    </mat-card>
+  </div>
+
+  <mat-card class="filters-card">
+    <div class="filters">
+      <mat-form-field appearance="outline">
+        <mat-label>Search</mat-label>
+        <input
+          matInput
+          placeholder="Query, SQL, model, or user"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event)"
+        />
+        @if (searchText()) {
+          <button mat-icon-button matSuffix (click)="searchText.set('')" aria-label="Clear search">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Model</mat-label>
+        <mat-select [ngModel]="modelFilter()" (ngModelChange)="modelFilter.set($event)">
+          <mat-option value="all">All models</mat-option>
+          @for (model of models(); track model) {
+            <mat-option [value]="model">{{ model }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>User</mat-label>
+        <mat-select [ngModel]="userFilter()" (ngModelChange)="userFilter.set($event)">
+          <mat-option value="all">All users</mat-option>
+          @for (user of users(); track user) {
+            <mat-option [value]="user">{{ user }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Score</mat-label>
+        <mat-select [ngModel]="scoreFilter()" (ngModelChange)="scoreFilter.set($event)">
+          <mat-option value="all">All outcomes</mat-option>
+          <mat-option value="selected">Selected</mat-option>
+          <mat-option value="unselected">Not selected</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>SQL</mat-label>
+        <mat-select [ngModel]="sqlFilter()" (ngModelChange)="sqlFilter.set($event)">
+          <mat-option value="all">All</mat-option>
+          <mat-option value="with_sql">With SQL</mat-option>
+          <mat-option value="no_sql">No SQL</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Source</mat-label>
+        <mat-select [ngModel]="sourceFilter()" (ngModelChange)="sourceFilter.set($event)">
+          <mat-option value="all">All sources</mat-option>
+          <mat-option value="chat">Chat Arena</mat-option>
+          <mat-option value="ai">AI Arena</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="actions">
+        <button mat-stroked-button (click)="clearFilters()">Clear</button>
+      </div>
+    </div>
+  </mat-card>
+
+  <div class="content-grid">
+    <mat-card class="table-card">
+      @if (isLoading()) {
+        <div class="empty-state">
+          <mat-spinner diameter="32"></mat-spinner>
+          <div class="mt-2">Loading analytics...</div>
+        </div>
+      } @else if (error()) {
+        <div class="empty-state">
+          <div>{{ error() }}</div>
+          <button mat-stroked-button class="mt-2" (click)="load()">Retry</button>
+        </div>
+      } @else if (filteredRows().length === 0) {
+        <div class="empty-state">No results match the current filters.</div>
+      } @else {
+        <div class="table-wrapper">
+          <table
+            mat-table
+            [dataSource]="filteredRows()"
+            class="analytics-table"
+            aria-label="LLM Analytics Table"
+          >
+            <ng-container matColumnDef="query">
+              <th mat-header-cell *matHeaderCellDef>Query</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="cell-primary">{{ row.query_text || 'Unknown query' }}</div>
+                <div class="cell-secondary">
+                  {{
+                    row.conversation_title ||
+                      (row.source === 'ai' ? 'AI Arena Experiment' : 'Unknown conversation')
+                  }}
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="sql">
+              <th mat-header-cell *matHeaderCellDef>SQL</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="sql-preview" [matTooltip]="row.sql_snippet || 'No SQL snippet'">
+                  {{ row.sql_snippet || 'No SQL snippet' }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="llm">
+              <th mat-header-cell *matHeaderCellDef>LLM</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="cell-primary">{{ row.llm }}</div>
+                <div class="cell-secondary">Model tag</div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="source">
+              <th mat-header-cell *matHeaderCellDef>Source</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="cell-primary">{{ sourceLabel(row) }}</div>
+                @if (row.prompt_strategy) {
+                  <div class="cell-secondary">{{ row.prompt_strategy }}</div>
+                } @else if (row.source === 'ai') {
+                  <div class="cell-secondary">default</div>
+                }
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="user">
+              <th mat-header-cell *matHeaderCellDef>User</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="cell-primary">{{ row.user_email }}</div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="score">
+              <th mat-header-cell *matHeaderCellDef>Score</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-chip-set>
+                  <mat-chip
+                    class="score-chip"
+                    [class.selected]="row.is_selected"
+                    [class.unselected]="!row.is_selected"
+                  >
+                    {{ scoreLabel(row) }}
+                  </mat-chip>
+                </mat-chip-set>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="time">
+              <th mat-header-cell *matHeaderCellDef>Time</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="cell-primary">{{ row.created_at | date: 'medium' }}</div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr
+              mat-row
+              class="row"
+              *matRowDef="let row; columns: displayedColumns"
+              (click)="selectRow(row)"
+              [class.selected]="selectedRow()?.candidate_id === row.candidate_id"
+            ></tr>
+          </table>
+        </div>
+        <div class="table-footer">{{ filteredRows().length }} records</div>
+      }
+    </mat-card>
+
+    <mat-card class="detail-card">
+      @if (selectedRow(); as row) {
+        <div class="detail-header">
+          <h3>Candidate Detail</h3>
+          <div class="status-row">
+            <span class="status-dot" [class.active]="row.is_selected"></span>
+            {{ scoreLabel(row) }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">Query</div>
+          <div class="detail-value">{{ row.query_text || 'Unknown query' }}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">Conversation</div>
+          <div class="detail-value">
+            {{
+              row.conversation_title ||
+                (row.source === 'ai' ? 'AI Arena Experiment' : 'Unknown conversation')
+            }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">User</div>
+          <div class="detail-value">{{ row.user_email }}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">LLM</div>
+          <div class="detail-value">{{ row.llm }}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">Source</div>
+          <div class="detail-value">{{ sourceLabel(row) }}</div>
+        </div>
+
+        @if (row.prompt_strategy) {
+          <div class="detail-section">
+            <div class="detail-label">Prompt Strategy</div>
+            <div class="detail-value">{{ row.prompt_strategy }}</div>
+          </div>
+        }
+
+        <div class="detail-section">
+          <div class="detail-label">Score</div>
+          <div class="detail-value">
+            {{ row.is_selected ? '1 (Selected)' : '0 (Not selected)' }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">Timestamp</div>
+          <div class="detail-value">{{ row.created_at | date: 'full' }}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-label">SQL</div>
+          <pre class="sql-block">{{ row.sql_snippet || 'No SQL snippet captured.' }}</pre>
+        </div>
+      } @else {
+        <div class="empty-state">Select a row to inspect the full SQL and metadata.</div>
+      }
+    </mat-card>
+  </div>
+</div>
