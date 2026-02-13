@@ -1,45 +1,49 @@
-    <div class="container" role="figure" [attr.aria-label]="accessibilityLabel()">
-      
-      <!-- SVG Chart -->
-      <svg viewBox="-1 -1 2 2" style="transform: rotate(-90deg)" height="80%" role="img" aria-hidden="true">
-        @for (slice of slices(); track slice.label) { 
-          <path 
-            [attr.d]="slice.path" 
-            [attr.fill]="slice.color" 
-            (mouseenter)="activeSlice.set(slice.label)" 
-            (mouseleave)="activeSlice.set(null)" 
-            tabindex="-1" 
-          >
-             <title>{{slice.label}}: {{slice.percentage}}%</title>
-          </path>
-        } 
-      </svg>
-      
-      <!-- Keyboard Accessible Legend -->
-      <div class="legend" role="list" aria-label="Chart Legend">
-        @for (slice of slices(); track slice.label) { 
-          <div 
-            class="legend-item" 
-            role="listitem" 
-            [style.opacity]="isActive(slice.label) ? 1 : 0.3" 
-            (mouseenter)="activeSlice.set(slice.label)" 
-            (mouseleave)="activeSlice.set(null)" 
-            (focus)="activeSlice.set(slice.label)" 
-            (blur)="activeSlice.set(null)" 
-            tabindex="0" 
-            [attr.aria-label]="slice.label + ': ' + slice.percentage + ' percent'" 
-          >
-            <div class="dot" [style.background-color]="slice.color" aria-hidden="true"></div>
-            <span>{{slice.label}}</span>
-          </div>
-        } 
-      </div>
+<div class="container" role="figure" [attr.aria-label]="accessibilityLabel()">
+  <!-- SVG Chart -->
+  <svg
+    viewBox="-1 -1 2 2"
+    style="transform: rotate(-90deg)"
+    height="80%"
+    role="img"
+    aria-hidden="true"
+  >
+    @for (slice of slices(); track slice.label) {
+      <path
+        [attr.d]="slice.path"
+        [attr.fill]="slice.color"
+        (mouseenter)="activeSlice.set(slice.label)"
+        (mouseleave)="activeSlice.set(null)"
+        tabindex="-1"
+      >
+        <title>{{ slice.label }}: {{ slice.percentage }}%</title>
+      </path>
+    }
+  </svg>
 
-      <!-- Center Data Label (Visual Tooltip) -->
-      @if (activeSlice()) { 
-        <div class="tooltip" style="bottom: 10px;" aria-hidden="true">
-          {{ activeSlice() }} 
-        </div>
-      } 
+  <!-- Keyboard Accessible Legend -->
+  <div class="legend" role="list" aria-label="Chart Legend">
+    @for (slice of slices(); track slice.label) {
+      <div
+        class="legend-item"
+        role="listitem"
+        [style.opacity]="isActive(slice.label) ? 1 : 0.3"
+        (mouseenter)="activeSlice.set(slice.label)"
+        (mouseleave)="activeSlice.set(null)"
+        (focus)="activeSlice.set(slice.label)"
+        (blur)="activeSlice.set(null)"
+        tabindex="0"
+        [attr.aria-label]="slice.label + ': ' + slice.percentage + ' percent'"
+      >
+        <div class="dot" [style.background-color]="slice.color" aria-hidden="true"></div>
+        <span>{{ slice.label }}</span>
+      </div>
+    }
+  </div>
+
+  <!-- Center Data Label (Visual Tooltip) -->
+  @if (activeSlice()) {
+    <div class="tooltip" style="bottom: 10px" aria-hidden="true">
+      {{ activeSlice() }}
     </div>
-  
+  }
+</div>

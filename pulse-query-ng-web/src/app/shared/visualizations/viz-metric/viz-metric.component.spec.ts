@@ -16,7 +16,7 @@ describe('VizMetricComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VizMetricComponent]
+      imports: [VizMetricComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VizMetricComponent);
@@ -51,7 +51,7 @@ describe('VizMetricComponent', () => {
   it('should extract value from object structure', () => {
     dataSig.set({ value: 99, label: 'Test' });
     fixture.detectChanges();
-    
+
     const valueEl = fixture.debugElement.query(By.css('.metric-value'));
     expect(valueEl.nativeElement.textContent.trim()).toBe('99');
   });
@@ -85,7 +85,7 @@ describe('VizMetricComponent', () => {
 
     const paths = svg.queryAll(By.css('path'));
     expect(paths.length).toBe(2); // Stroke and Fill paths
-    
+
     // Check Direction (Start 10 < End 30 -> Positive)
     expect(paths[0].classes['spark-pos']).toBe(true);
   });
@@ -132,7 +132,7 @@ describe('VizMetricComponent', () => {
     fixture.detectChanges();
     expect(component.displayValue()).toBe(7);
   });
-  
+
   it('should fallback when dataset row has no keys', () => {
     dataSig.set({ columns: [], data: [{}] });
     fixture.detectChanges();
@@ -150,7 +150,7 @@ describe('VizMetricComponent', () => {
     fixture.detectChanges();
     expect(component.parsedTrend()).toBeNull();
   });
-  
+
   it('should treat short trend series as upward and no fill', () => {
     dataSig.set({ value: 1, trend_data: [5] });
     fixture.detectChanges();

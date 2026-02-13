@@ -10,30 +10,30 @@ import { PLATFORM_ID } from '@angular/core';
 
 describe('authGuard', () => {
   const executeGuard: CanActivateFn = (...guardParameters) =>
-      TestBed.runInInjectionContext(() => authGuard(...guardParameters));
+    TestBed.runInInjectionContext(() => authGuard(...guardParameters));
 
-  let mockAuthService: { 
-    isAuthenticated: ReturnType<typeof vi.fn>; 
-    hasStoredToken: ReturnType<typeof vi.fn>; 
+  let mockAuthService: {
+    isAuthenticated: ReturnType<typeof vi.fn>;
+    hasStoredToken: ReturnType<typeof vi.fn>;
   };
   let mockRouter: { createUrlTree: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    mockAuthService = { 
+    mockAuthService = {
       isAuthenticated: vi.fn(),
-      hasStoredToken: vi.fn()
+      hasStoredToken: vi.fn(),
     };
-    
-    mockRouter = { 
-      createUrlTree: vi.fn()
+
+    mockRouter = {
+      createUrlTree: vi.fn(),
     };
 
     TestBed.configureTestingModule({
       providers: [
         { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
-        { provide: PLATFORM_ID, useValue: 'browser' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'browser' },
+      ],
     });
   });
 
@@ -55,14 +55,14 @@ describe('authGuard', () => {
   it('should redirect to login if not authenticated', () => {
     mockAuthService.isAuthenticated.mockReturnValue(false);
     mockAuthService.hasStoredToken.mockReturnValue(false);
-    
+
     const mockUrlTree = {} as UrlTree;
     mockRouter.createUrlTree.mockReturnValue(mockUrlTree);
 
     const result = executeGuard({} as any, { url: '/protected' } as any);
-    
-    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], { 
-      queryParams: { returnUrl: '/protected' } 
+
+    expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/protected' },
     });
     expect(result).toBe(mockUrlTree);
   });
@@ -73,8 +73,8 @@ describe('authGuard', () => {
       providers: [
         { provide: AuthService, useValue: mockAuthService },
         { provide: Router, useValue: mockRouter },
-        { provide: PLATFORM_ID, useValue: 'server' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'server' },
+      ],
     });
 
     const result = executeGuard({} as any, {} as any);

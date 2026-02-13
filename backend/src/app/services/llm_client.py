@@ -58,11 +58,12 @@ class LLMArenaClient:
     for config in settings.LLM_SWARM:
       try:
         # Initialize any-llm clients for each configured provider
+        api_base = config.get("api_base") or config.get("base_url")
         client = AnyLLM.create(
           config["provider"],
           model=config["model"],
           api_key=config.get("api_key"),
-          base_url=config.get("base_url"),  # Only used for local/custom endpoints
+          api_base=api_base,  # Only used for local/custom endpoints
           timeout=timeout,
         )
 

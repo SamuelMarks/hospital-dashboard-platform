@@ -42,15 +42,18 @@ import {
   TemplateResponse,
   WidgetIn,
   WidgetCreateSql, // Import subtype
-  WidgetUpdate
+  WidgetUpdate,
 } from '../../api-client';
-import { VizTableComponent, TableDataSet } from '../../shared/visualizations/viz-table/viz-table.component';
+import {
+  VizTableComponent,
+  TableDataSet,
+} from '../../shared/visualizations/viz-table/viz-table.component';
 import { DynamicFormComponent } from './dynamic-form.component';
 
 /** Wizard Data interface. */
 export interface WizardData {
-    /** dashboardId property. */
-dashboardId: string;
+  /** dashboardId property. */
+  dashboardId: string;
 }
 
 /** Template Wizard component. */
@@ -71,68 +74,111 @@ dashboardId: string;
     MatChipsModule,
     MatCardModule,
     VizTableComponent, // Imported for usage in @defer block
-    DynamicFormComponent
+    DynamicFormComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './template-wizard.component.html',
-  styles: [`
-    :host {
-      display: flex; flex-direction: column; width: 1000px; height: 85vh; max-height: 900px;
-    }
-    /* Template Grid Layout */
-    .template-grid {
-      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: start;
-    }
-    .template-card {
-      cursor: pointer; height: 140px; display: flex; flex-direction: column;
-      transition: all 0.2s; border: 1px solid transparent; /* Fix for high contrast */
-    }
-    .template-card.selected-card {
-      background-color: var(--sys-selected); border-color: var(--sys-primary) !important;
-    }
-    .template-card:hover:not(.selected-card) {
-      border-color: var(--sys-surface-border); background-color: var(--sys-hover);
-    }
+  styles: [
+    `
+      :host {
+        display: flex;
+        flex-direction: column;
+        width: 1000px;
+        height: 85vh;
+        max-height: 900px;
+      }
+      /* Template Grid Layout */
+      .template-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        align-content: start;
+      }
+      .template-card {
+        cursor: pointer;
+        height: 140px;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s;
+        border: 1px solid transparent; /* Fix for high contrast */
+      }
+      .template-card.selected-card {
+        background-color: var(--sys-selected);
+        border-color: var(--sys-primary) !important;
+      }
+      .template-card:hover:not(.selected-card) {
+        border-color: var(--sys-surface-border);
+        background-color: var(--sys-hover);
+      }
 
-    /* Editor styles */
-    .editor-wrapper {
-      position: relative; background: #1e1e1e; color: #d4d4d4;
-      font-family: 'Consolas', monospace; font-size: 14px; overflow: hidden;
-    }
-    textarea.raw-input {
-      position: absolute; inset: 0; padding: 12px; background: transparent;
-      color: transparent; caret-color: white; border: none; resize: none; z-index: 2;
-    }
-    .highlight-layer {
-      position: absolute; inset: 0; padding: 12px; z-index: 1; pointer-events: none;
-    }
-    /* Tokens */
-    ::ng-deep .kwd { color: #569cd6; font-weight: bold; }
-    ::ng-deep .str { color: #ce9178; }
-    ::ng-deep .num { color: #b5cea8; }
-  `]
+      /* Editor styles */
+      .editor-wrapper {
+        position: relative;
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: 'Consolas', monospace;
+        font-size: 14px;
+        overflow: hidden;
+      }
+      textarea.raw-input {
+        position: absolute;
+        inset: 0;
+        padding: 12px;
+        background: transparent;
+        color: transparent;
+        caret-color: white;
+        border: none;
+        resize: none;
+        z-index: 2;
+      }
+      .highlight-layer {
+        position: absolute;
+        inset: 0;
+        padding: 12px;
+        z-index: 1;
+        pointer-events: none;
+      }
+      /* Tokens */
+      ::ng-deep .kwd {
+        color: #569cd6;
+        font-weight: bold;
+      }
+      ::ng-deep .str {
+        color: #ce9178;
+      }
+      ::ng-deep .num {
+        color: #b5cea8;
+      }
+    `,
+  ],
 })
 export class TemplateWizardComponent implements OnInit, OnDestroy {
-    /** fb property. */
-private readonly fb = inject(FormBuilder);
-    /** dialogRef property. */
-private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
-    /** dashboardsApi property. */
-private readonly dashboardsApi = inject(DashboardsService);
-    /** executionApi property. */
-private readonly executionApi = inject(ExecutionService);
-    /** templatesApi property. */
-private readonly templatesApi = inject(TemplatesService);
-    /** data property. */
-private readonly data = inject<WizardData>(MAT_DIALOG_DATA);
-    /** sanitizer property. */
-private readonly sanitizer = inject(DomSanitizer);
+  /** fb property. */
+  private readonly fb = inject(FormBuilder);
+  /** dialogRef property. */
+  private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
+  /** dashboardsApi property. */
+  private readonly dashboardsApi = inject(DashboardsService);
+  /** executionApi property. */
+  private readonly executionApi = inject(ExecutionService);
+  /** templatesApi property. */
+  private readonly templatesApi = inject(TemplatesService);
+  /** data property. */
+  private readonly data = inject<WizardData>(MAT_DIALOG_DATA);
+  /** sanitizer property. */
+  private readonly sanitizer = inject(DomSanitizer);
 
   // --- State ---
   /** Templates. */
   readonly templates = signal<TemplateResponse[]>([]);
   /** Categories. */
-  readonly categories = signal<string[]>(['Predictive', 'Operational', 'Capacity', 'Clinical', 'Financial']);
+  readonly categories = signal<string[]>([
+    'Predictive',
+    'Operational',
+    'Capacity',
+    'Clinical',
+    'Financial',
+  ]);
   /** Loading Templates. */
   readonly loadingTemplates = signal(false);
   /** Selected Category. */
@@ -141,12 +187,12 @@ private readonly sanitizer = inject(DomSanitizer);
   readonly selectedTemplateId = signal<string | null>(null);
 
   // --- RxJS for Search Debounce ---
-    /** searchSubject property. */
-private readonly searchSubject = new Subject<string>();
-    /** searchSub property. */
-private searchSub?: Subscription;
-    /** modeSub property. */
-private modeSub?: Subscription;
+  /** searchSubject property. */
+  private readonly searchSubject = new Subject<string>();
+  /** searchSub property. */
+  private searchSub?: Subscription;
+  /** modeSub property. */
+  private modeSub?: Subscription;
 
   // --- Wizard Logic ---
   /** Params Schema. */
@@ -170,7 +216,7 @@ private modeSub?: Subscription;
   readonly selectionForm = this.fb.group({
     mode: ['predefined', Validators.required],
     templateId: [''],
-    rawSql: ['']
+    rawSql: [''],
   });
 
   /** Placeholder Text. */
@@ -181,13 +227,12 @@ private modeSub?: Subscription;
     this.createDraftWidget();
     this.loadTemplates();
 
-    this.searchSub = this.searchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged()
-    ).subscribe(term => this.loadTemplates(term));
+    this.searchSub = this.searchSubject
+      .pipe(debounceTime(300), distinctUntilChanged())
+      .subscribe((term) => this.loadTemplates(term));
 
     // Handle Validation Switch
-    this.modeSub = this.selectionForm.get('mode')?.valueChanges.subscribe(mode => {
+    this.modeSub = this.selectionForm.get('mode')?.valueChanges.subscribe((mode) => {
       const tplCtrl = this.selectionForm.get('templateId');
       const sqlCtrl = this.selectionForm.get('rawSql');
 
@@ -215,11 +260,12 @@ private modeSub?: Subscription;
     const cat = this.selectedCategory() || undefined;
     const search = searchTerm && searchTerm.trim().length > 0 ? searchTerm : undefined;
 
-    this.templatesApi.listTemplatesApiV1TemplatesGet(cat, search, 30)
+    this.templatesApi
+      .listTemplatesApiV1TemplatesGet(cat, search, 30)
       .pipe(finalize(() => this.loadingTemplates.set(false)))
       .subscribe({
         next: (data) => this.templates.set(data),
-        error: (err) => console.error('Failed to load templates', err)
+        error: (err) => console.error('Failed to load templates', err),
       });
   }
 
@@ -228,7 +274,7 @@ private modeSub?: Subscription;
     this.selectedTemplateId.set(template.id);
     this.selectionForm.patchValue({
       templateId: template.id,
-      rawSql: template.sql_template
+      rawSql: template.sql_template,
     });
     this.paramsSchema.set(template.parameters_schema || {});
   }
@@ -262,9 +308,13 @@ private modeSub?: Subscription;
   }
 
   /** Handles form Change. */
-  handleFormChange(values: Record<string, any>) { this.paramsValue.set(values); }
+  handleFormChange(values: Record<string, any>) {
+    this.paramsValue.set(values);
+  }
   /** Handles status Change. */
-  handleStatusChange(status: 'VALID' | 'INVALID') { this.paramsValid.set(status === 'VALID'); }
+  handleStatusChange(status: 'VALID' | 'INVALID') {
+    this.paramsValid.set(status === 'VALID');
+  }
 
   /** Compiles Template + Params into Final SQL. */
   renderPreview() {
@@ -272,7 +322,7 @@ private modeSub?: Subscription;
     let sql = this.selectionForm.value.rawSql || '';
     const values = this.paramsValue();
 
-    Object.keys(values).forEach(key => {
+    Object.keys(values).forEach((key) => {
       let val = values[key];
       sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
     });
@@ -289,82 +339,90 @@ private modeSub?: Subscription;
     // Determine title
     let title = 'Custom SQL Widget';
     if (this.selectionForm.value.mode === 'predefined') {
-      const t = this.templates().find(x => x.id === this.selectionForm.value.templateId);
+      const t = this.templates().find((x) => x.id === this.selectionForm.value.templateId);
       if (t) title = t.title;
     }
 
     const update: WidgetUpdate = {
-        title: title,
-        config: { query: this.finalSql() }
+      title: title,
+      config: { query: this.finalSql() },
     };
 
-    this.dashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, update)
-        .subscribe(() => {
-            this.draftWidgetId.set(null); // Prevent deletion in onDestroy/cancel
-            this.dialogRef.close(true);
-        });
+    this.dashboardsApi
+      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, update)
+      .subscribe(() => {
+        this.draftWidgetId.set(null); // Prevent deletion in onDestroy/cancel
+        this.dialogRef.close(true);
+      });
   }
 
   /** Whether cel. */
   cancel() {
     const draftId = this.draftWidgetId();
     if (draftId) {
-      this.dashboardsApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(draftId)
+      this.dashboardsApi
+        .deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(draftId)
         .subscribe(() => this.dialogRef.close(false));
     } else {
       this.dialogRef.close(false);
     }
   }
 
-    /** createDraftWidget method. */
-private createDraftWidget() {
+  /** createDraftWidget method. */
+  private createDraftWidget() {
     // Creates a placeholder to execute queries against
     // Use proper subtype
     const createReq: WidgetCreateSql = {
       title: 'Draft - Template Wizard',
       type: 'SQL',
       visualization: 'table',
-      config: { query: 'SELECT 1' }
+      config: { query: 'SELECT 1' },
     };
 
-    this.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(this.data.dashboardId, createReq)
-        .subscribe((w: any) => this.draftWidgetId.set(w.id));
+    this.dashboardsApi
+      .createWidgetApiV1DashboardsDashboardIdWidgetsPost(this.data.dashboardId, createReq)
+      .subscribe((w: any) => this.draftWidgetId.set(w.id));
   }
 
-    /** executeDraft method. */
-private executeDraft(sql: string) {
+  /** executeDraft method. */
+  private executeDraft(sql: string) {
     const draftId = this.draftWidgetId();
     if (!draftId) return;
 
     this.isRunning.set(true);
 
     // Update Query -> Refresh Execution -> Fetch Result
-    this.dashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, { config: { query: sql } })
-        .subscribe({
-            next: () => {
-                // Fix: Pass necessary args for refresh (id, auth, body) where auth can be undefined
-                this.executionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
-                    .pipe(finalize(() => this.isRunning.set(false)))
-                    .subscribe((resMap: any) => {
-                        this.executionResult.set(resMap[draftId]);
-                    });
-            },
-            error: () => {
-                this.isRunning.set(false);
-                this.executionResult.set({ error: 'Failed to execute query' });
-            }
-        });
+    this.dashboardsApi
+      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, { config: { query: sql } })
+      .subscribe({
+        next: () => {
+          // Fix: Pass necessary args for refresh (id, auth, body) where auth can be undefined
+          this.executionApi
+            .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
+            .pipe(finalize(() => this.isRunning.set(false)))
+            .subscribe((resMap: any) => {
+              this.executionResult.set(resMap[draftId]);
+            });
+        },
+        error: () => {
+          this.isRunning.set(false);
+          this.executionResult.set({ error: 'Failed to execute query' });
+        },
+      });
   }
 
   /** As Table Data. */
-  asTableData(res: any): TableDataSet { return res as TableDataSet; }
+  asTableData(res: any): TableDataSet {
+    return res as TableDataSet;
+  }
 
   /** Highlighted Sql. */
   highlightedSql(): SafeHtml {
     // Simple Syntax Highlighter for visual feedback
     let code = this.finalSql() || '';
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const keywords = /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|INNER|ON|AND|OR|AS)\b/gi;
+    const keywords =
+      /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|INNER|ON|AND|OR|AS)\b/gi;
     code = code.replace(keywords, '<span class="kwd">$1</span>');
     code = code.replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
     code = code.replace(/\b(\d+)\b/g, '<span class="num">$1</span>');

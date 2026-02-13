@@ -20,7 +20,10 @@ test.describe('Registration', () => {
 
     await expect(page).not.toHaveURL(/register/);
     await expect(
-      page.locator('app-toolbar').or(page.getByRole('heading', { name: 'My Dashboards' })).first()
+      page
+        .locator('app-toolbar')
+        .or(page.getByRole('heading', { name: 'My Dashboards' }))
+        .first(),
     ).toBeVisible({ timeout: 20000 });
 
     await page.getByTestId('btn-user-menu').click();

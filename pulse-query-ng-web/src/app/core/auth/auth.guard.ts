@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 
 /**
  * Functional Route Guard to protect routes requiring authentication.
- * 
+ *
  * Logic:
  * 1. **Server-Side Bypass**: If running on the Server, allow access.
  *    This prevents the Server from redirecting to /login because it lacks access to localStorage.
@@ -18,7 +18,7 @@ import { AuthService } from './auth.service';
  *    a. Check `isAuthenticated()` (In-memory reactive state).
  *    b. Check `hasStoredToken()` (Persistence fallback for F5 Refresh).
  * 3. **Fallback**: Redirect to `/login` with `returnUrl` parameter.
- * 
+ *
  * @param {import('@angular/router').ActivatedRouteSnapshot} route - The activated route snapshot.
  * @param {import('@angular/router').RouterStateSnapshot} state - The router state snapshot.
  * @returns {boolean | UrlTree} true if allowed, or a UrlTree redirecting to login.
@@ -44,7 +44,7 @@ export const authGuard: CanActivateFn = (route, state): boolean | UrlTree => {
   }
 
   // 4. Not Authenticated
-  return router.createUrlTree(['/login'], { 
-    queryParams: { returnUrl: state.url } 
+  return router.createUrlTree(['/login'], {
+    queryParams: { returnUrl: state.url },
   });
 };

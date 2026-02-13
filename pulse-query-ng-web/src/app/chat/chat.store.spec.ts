@@ -1,51 +1,63 @@
-import { TestBed } from '@angular/core/testing'; 
-import { ChatStore } from './chat.store'; 
-import { ChatService, MessageResponse, ConversationResponse } from '../api-client'; 
-import { of, throwError } from 'rxjs'; 
-import { HttpErrorResponse } from '@angular/common/http'; 
+import { TestBed } from '@angular/core/testing';
+import { ChatStore } from './chat.store';
+import { ChatService, MessageResponse, ConversationResponse } from '../api-client';
+import { of, throwError } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
-describe('ChatStore', () => { 
-  let store: ChatStore; 
-  let mockApi: any; 
+describe('ChatStore', () => {
+  let store: ChatStore;
+  let mockApi: any;
 
-  const MOCK_CONV: ConversationResponse = { id: 'c1', title: 'Start', updated_at: '2023-01-01', messages: [] }; 
+  const MOCK_CONV: ConversationResponse = {
+    id: 'c1',
+    title: 'Start',
+    updated_at: '2023-01-01',
+    messages: [],
+  };
 
-  beforeEach(() => { 
-    vi.useFakeTimers(); 
-    mockApi = { 
-      listConversationsApiV1ConversationsGet: vi.fn(), 
-      createConversationApiV1ConversationsPost: vi.fn(), 
-      getMessagesApiV1ConversationsConversationIdMessagesGet: vi.fn(), 
-      sendMessageApiV1ConversationsConversationIdMessagesPost: vi.fn(), 
-      voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost: vi.fn(), 
-      deleteConversationApiV1ConversationsConversationIdDelete: vi.fn(), 
-      updateConversationApiV1ConversationsConversationIdPut: vi.fn() 
-    }; 
-    TestBed.configureTestingModule({ providers: [ChatStore, { provide: ChatService, useValue: mockApi }] }); 
-    store = TestBed.inject(ChatStore); 
-  }); 
-  afterEach(() => vi.useRealTimers()); 
+  beforeEach(() => {
+    vi.useFakeTimers();
+    mockApi = {
+      listConversationsApiV1ConversationsGet: vi.fn(),
+      createConversationApiV1ConversationsPost: vi.fn(),
+      getMessagesApiV1ConversationsConversationIdMessagesGet: vi.fn(),
+      sendMessageApiV1ConversationsConversationIdMessagesPost: vi.fn(),
+      voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost: vi.fn(),
+      deleteConversationApiV1ConversationsConversationIdDelete: vi.fn(),
+      updateConversationApiV1ConversationsConversationIdPut: vi.fn(),
+    };
+    TestBed.configureTestingModule({
+      providers: [ChatStore, { provide: ChatService, useValue: mockApi }],
+    });
+    store = TestBed.inject(ChatStore);
+  });
+  afterEach(() => vi.useRealTimers());
 
-  it('should delete conversation optimistically', () => { 
-    store['patch']({ conversations: [MOCK_CONV], activeConversationId: 'c1' }); 
-    mockApi.deleteConversationApiV1ConversationsConversationIdDelete.mockReturnValue(of({})); 
+  it('should delete conversation optimistically', () => {
+    store['patch']({ conversations: [MOCK_CONV], activeConversationId: 'c1' });
+    mockApi.deleteConversationApiV1ConversationsConversationIdDelete.mockReturnValue(of({}));
 
-    store.deleteConversation('c1'); 
+    store.deleteConversation('c1');
 
-    expect(store.conversations().length).toBe(0); 
-    expect(store.activeConversationId()).toBeNull(); 
-    expect(mockApi.deleteConversationApiV1ConversationsConversationIdDelete).toHaveBeenCalledWith('c1'); 
-  }); 
+    expect(store.conversations().length).toBe(0);
+    expect(store.activeConversationId()).toBeNull();
+    expect(mockApi.deleteConversationApiV1ConversationsConversationIdDelete).toHaveBeenCalledWith(
+      'c1',
+    );
+  });
 
-  it('should rename conversation optimistically', () => { 
-    store['patch']({ conversations: [MOCK_CONV] }); 
-    mockApi.updateConversationApiV1ConversationsConversationIdPut.mockReturnValue(of({})); 
+  it('should rename conversation optimistically', () => {
+    store['patch']({ conversations: [MOCK_CONV] });
+    mockApi.updateConversationApiV1ConversationsConversationIdPut.mockReturnValue(of({}));
 
-    store.renameConversation('c1', 'Renamed'); 
+    store.renameConversation('c1', 'Renamed');
 
-    expect(store.conversations()[0].title).toBe('Renamed'); 
-    expect(mockApi.updateConversationApiV1ConversationsConversationIdPut).toHaveBeenCalledWith('c1', { title: 'Renamed' }); 
-  }); 
+    expect(store.conversations()[0].title).toBe('Renamed');
+    expect(mockApi.updateConversationApiV1ConversationsConversationIdPut).toHaveBeenCalledWith(
+      'c1',
+      { title: 'Renamed' },
+    );
+  });
 
   it('cleans up subscriptions on destroy', () => {
     store.ngOnDestroy();
@@ -64,14 +76,18 @@ describe('ChatStore', () => {
   });
 
   it('selects conversation and loads messages', () => {
-    const msgs: MessageResponse[] = [{ id: 'm1', conversation_id: 'c1', role: 'user', content: 'Hi' } as any];
+    const msgs: MessageResponse[] = [
+      { id: 'm1', conversation_id: 'c1', role: 'user', content: 'Hi' } as any,
+    ];
     mockApi.getMessagesApiV1ConversationsConversationIdMessagesGet.mockReturnValue(of(msgs));
     store.selectConversation('c1');
     expect(store.messages().length).toBe(1);
   });
 
   it('handles select conversation error', () => {
-    mockApi.getMessagesApiV1ConversationsConversationIdMessagesGet.mockReturnValue(throwError(() => new Error('fail')));
+    mockApi.getMessagesApiV1ConversationsConversationIdMessagesGet.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
     store.selectConversation('c1');
     expect(store.error()).toBe('Error');
   });
@@ -113,7 +129,7 @@ describe('ChatStore', () => {
     expect(store.activeConversationId()).toBe('c3');
     expect(store.messages()).toEqual([]);
   });
-  
+
   it('sendMessage falls back when conversation has no messages', () => {
     const conv = { id: 'c3', title: 'NoMsgs', updated_at: 'x' } as ConversationResponse;
     mockApi.createConversationApiV1ConversationsPost.mockReturnValue(of(conv));
@@ -124,7 +140,9 @@ describe('ChatStore', () => {
   });
 
   it('sendMessage rolls back on create error', () => {
-    mockApi.createConversationApiV1ConversationsPost.mockReturnValue(throwError(() => new Error('fail')));
+    mockApi.createConversationApiV1ConversationsPost.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
     store.sendMessage('oops');
     expect(store.messages().length).toBe(0);
     expect(store.error()).toBe('Error');
@@ -132,17 +150,24 @@ describe('ChatStore', () => {
 
   it('sendMessage appends AI response when conversation exists', () => {
     store['patch']({ activeConversationId: 'c1', messages: [] });
-    const ai: MessageResponse = { id: 'm2', conversation_id: 'c1', role: 'assistant', content: 'AI' } as any;
+    const ai: MessageResponse = {
+      id: 'm2',
+      conversation_id: 'c1',
+      role: 'assistant',
+      content: 'AI',
+    } as any;
     mockApi.sendMessageApiV1ConversationsConversationIdMessagesPost.mockReturnValue(of(ai));
 
     store.sendMessage('hi');
 
-    expect(store.messages().some(m => m.role === 'assistant')).toBe(true);
+    expect(store.messages().some((m) => m.role === 'assistant')).toBe(true);
   });
 
   it('sendMessage rolls back optimistic message on error', () => {
     store['patch']({ activeConversationId: 'c1', messages: [] });
-    mockApi.sendMessageApiV1ConversationsConversationIdMessagesPost.mockReturnValue(throwError(() => new Error('fail')));
+    mockApi.sendMessageApiV1ConversationsConversationIdMessagesPost.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
 
     store.sendMessage('hi');
 
@@ -160,15 +185,44 @@ describe('ChatStore', () => {
       conversation_id: 'c1',
       role: 'assistant',
       content: 'old',
-      candidates: [{ id: 'c1', content: 'new', sql_snippet: 'SQL', is_selected: false }]
+      candidates: [{ id: 'c1', content: 'new', sql_snippet: 'SQL', is_selected: false }],
     } as any;
     store['patch']({ messages: [msg] });
-    mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(of({}));
+    mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+      of({}),
+    );
 
     store.voteCandidate('m1', 'c1');
 
     expect(store.messages()[0].content).toBe('new');
-    expect(mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost).toHaveBeenCalled();
+    expect(
+      mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost,
+    ).toHaveBeenCalled();
+  });
+
+  it('voteCandidate selects all candidates with matching sql_hash', () => {
+    const msg: MessageResponse = {
+      id: 'm1',
+      conversation_id: 'c1',
+      role: 'assistant',
+      content: 'old',
+      candidates: [
+        { id: 'c1', content: 'new', sql_hash: 'h1', is_selected: false },
+        { id: 'c2', content: 'alt', sql_hash: 'h1', is_selected: false },
+        { id: 'c3', content: 'diff', sql_hash: 'h2', is_selected: false },
+      ],
+    } as any;
+    store['patch']({ activeConversationId: 'c1', messages: [msg] });
+    mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+      of({}),
+    );
+
+    store.voteCandidate('m1', 'c1');
+
+    const candidates = store.messages()[0].candidates || [];
+    expect(candidates.find((c) => c.id === 'c1')?.is_selected).toBe(true);
+    expect(candidates.find((c) => c.id === 'c2')?.is_selected).toBe(true);
+    expect(candidates.find((c) => c.id === 'c3')?.is_selected).toBe(false);
   });
 
   it('voteCandidate ignores missing candidates', () => {
@@ -177,13 +231,15 @@ describe('ChatStore', () => {
       conversation_id: 'c1',
       role: 'assistant',
       content: 'old',
-      candidates: []
+      candidates: [],
     } as any;
     store['patch']({ activeConversationId: 'c1', messages: [msg] });
 
     store.voteCandidate('m1', 'missing');
 
-    expect(mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost).not.toHaveBeenCalled();
+    expect(
+      mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost,
+    ).not.toHaveBeenCalled();
   });
 
   it('voteCandidate reports API errors', () => {
@@ -192,11 +248,11 @@ describe('ChatStore', () => {
       conversation_id: 'c1',
       role: 'assistant',
       content: 'old',
-      candidates: [{ id: 'c1', content: 'new', is_selected: false }]
+      candidates: [{ id: 'c1', content: 'new', is_selected: false }],
     } as any;
     store['patch']({ activeConversationId: 'c1', messages: [msg] });
     mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
-      throwError(() => new HttpErrorResponse({ error: { detail: 'Nope' } }))
+      throwError(() => new HttpErrorResponse({ error: { detail: 'Nope' } })),
     );
 
     store.voteCandidate('m1', 'c1');
@@ -205,7 +261,9 @@ describe('ChatStore', () => {
 
   it('deleteConversation rolls back on error', () => {
     store['patch']({ conversations: [MOCK_CONV] });
-    mockApi.deleteConversationApiV1ConversationsConversationIdDelete.mockReturnValue(throwError(() => new Error('fail')));
+    mockApi.deleteConversationApiV1ConversationsConversationIdDelete.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
 
     store.deleteConversation('c1');
     expect(store.conversations().length).toBe(1);
@@ -217,12 +275,14 @@ describe('ChatStore', () => {
     expect(store.conversations().length).toBe(0);
 
     store['patch']({ conversations: [MOCK_CONV] });
-    mockApi.updateConversationApiV1ConversationsConversationIdPut.mockReturnValue(throwError(() => new Error('fail')));
+    mockApi.updateConversationApiV1ConversationsConversationIdPut.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
     store.renameConversation('c1', 'New');
     expect(store.conversations()[0].title).toBe('Start');
     expect(store.error()).toBe('Error');
   });
-  
+
   it('renameConversation updates only matching entry', () => {
     const other: ConversationResponse = { id: 'c2', title: 'Other', updated_at: 'x', messages: [] };
     store['patch']({ conversations: [MOCK_CONV, other] });
@@ -230,8 +290,8 @@ describe('ChatStore', () => {
 
     store.renameConversation('c1', 'Renamed');
 
-    expect(store.conversations().find(c => c.id === 'c1')?.title).toBe('Renamed');
-    expect(store.conversations().find(c => c.id === 'c2')?.title).toBe('Other');
+    expect(store.conversations().find((c) => c.id === 'c1')?.title).toBe('Renamed');
+    expect(store.conversations().find((c) => c.id === 'c2')?.title).toBe('Other');
   });
 
   it('handleError uses HttpErrorResponse message when detail missing', () => {
@@ -247,7 +307,7 @@ describe('ChatStore', () => {
       messages: [{ id: 'm1' } as any],
       isLoadingList: true,
       isGenerating: true,
-      error: 'oops'
+      error: 'oops',
     });
 
     expect(store.state()).toBeTruthy();

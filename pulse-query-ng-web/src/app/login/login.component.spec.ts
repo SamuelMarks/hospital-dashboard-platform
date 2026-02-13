@@ -1,70 +1,70 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
-import { LoginComponent } from './login.component'; 
-import { AuthService } from '../core/auth/auth.service'; 
-import { Router, ActivatedRoute, provideRouter } from '@angular/router'; 
-import { of, throwError } from 'rxjs'; 
-import { By } from '@angular/platform-browser'; 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { HttpErrorResponse } from '@angular/common/http'; 
-import { environment } from '../../environments/environment'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { LoginComponent } from './login.component';
+import { AuthService } from '../core/auth/auth.service';
+import { Router, ActivatedRoute, provideRouter } from '@angular/router';
+import { of, throwError } from 'rxjs';
+import { By } from '@angular/platform-browser';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { HttpErrorResponse } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
-describe('LoginComponent', () => { 
-  let component: LoginComponent; 
-  let fixture: ComponentFixture<LoginComponent>; 
-  let mockAuthService: any; 
-  let router: Router; 
+describe('LoginComponent', () => {
+  let component: LoginComponent;
+  let fixture: ComponentFixture<LoginComponent>;
+  let mockAuthService: any;
+  let router: Router;
   let mockRoute: { snapshot: { queryParamMap: { get: ReturnType<typeof vi.fn> } } };
 
-  const originalRegState = environment.registrationEnabled; 
+  const originalRegState = environment.registrationEnabled;
 
-  beforeEach(async () => { 
+  beforeEach(async () => {
     // Correctly mock the isAuthenticated signal as a function returning boolean
-    mockAuthService = { 
-      login: vi.fn(), 
-      isAuthenticated: vi.fn().mockReturnValue(false) 
-    }; 
+    mockAuthService = {
+      login: vi.fn(),
+      isAuthenticated: vi.fn().mockReturnValue(false),
+    };
     mockRoute = { snapshot: { queryParamMap: { get: vi.fn() } } };
 
-    await TestBed.configureTestingModule({ 
-      imports: [LoginComponent, NoopAnimationsModule], 
-      providers: [ 
-        provideRouter([]), 
-        { provide: AuthService, useValue: mockAuthService }, 
-        { provide: ActivatedRoute, useValue: mockRoute } 
-      ] 
-    }).compileComponents(); 
-    
-    router = TestBed.inject(Router); 
-    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true); 
-  }); 
+    await TestBed.configureTestingModule({
+      imports: [LoginComponent, NoopAnimationsModule],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ActivatedRoute, useValue: mockRoute },
+      ],
+    }).compileComponents();
 
-  afterEach(() => { 
-    environment.registrationEnabled = originalRegState; 
-  }); 
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+  });
 
-  const createComponent = () => { 
-    fixture = TestBed.createComponent(LoginComponent); 
-    component = fixture.componentInstance; 
-    fixture.detectChanges(); 
-  }; 
+  afterEach(() => {
+    environment.registrationEnabled = originalRegState;
+  });
 
-  it('should create', () => { 
-    createComponent(); 
-    expect(component).toBeTruthy(); 
-  }); 
+  const createComponent = () => {
+    fixture = TestBed.createComponent(LoginComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  };
 
-  it('should call AuthService and navigate on success', () => { 
-    createComponent(); 
-    const validCredentials = { email: 'test@example.com', password: 'password123' }; 
-    component.loginForm.setValue(validCredentials); 
-    mockAuthService.login.mockReturnValue(of({ access_token: 'token', token_type: 'bearer' })); 
+  it('should create', () => {
+    createComponent();
+    expect(component).toBeTruthy();
+  });
 
-    component.onSubmit(); 
+  it('should call AuthService and navigate on success', () => {
+    createComponent();
+    const validCredentials = { email: 'test@example.com', password: 'password123' };
+    component.loginForm.setValue(validCredentials);
+    mockAuthService.login.mockReturnValue(of({ access_token: 'token', token_type: 'bearer' }));
 
-    expect(mockAuthService.login).toHaveBeenCalledWith(expect.objectContaining(validCredentials)); 
+    component.onSubmit();
+
+    expect(mockAuthService.login).toHaveBeenCalledWith(expect.objectContaining(validCredentials));
     // Defaults to root '/' if no returnUrl present
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/'); 
-  }); 
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+  });
 
   it('should redirect to returnUrl when provided', () => {
     mockRoute.snapshot.queryParamMap.get.mockReturnValue('/dashboard/1');
@@ -77,23 +77,23 @@ describe('LoginComponent', () => {
     expect(router.navigateByUrl).toHaveBeenCalledWith('/dashboard/1');
   });
 
-  it('should display error message on login failure', () => { 
-    createComponent(); 
-    const validCredentials = { email: 'test@example.com', password: 'wrong' }; 
-    component.loginForm.setValue(validCredentials); 
-    
-    const errorResponse = new HttpErrorResponse({ 
-      error: { detail: 'Bad credentials' }, 
-      status: 401
-    }); 
-    mockAuthService.login.mockReturnValue(throwError(() => errorResponse)); 
+  it('should display error message on login failure', () => {
+    createComponent();
+    const validCredentials = { email: 'test@example.com', password: 'wrong' };
+    component.loginForm.setValue(validCredentials);
 
-    component.onSubmit(); 
+    const errorResponse = new HttpErrorResponse({
+      error: { detail: 'Bad credentials' },
+      status: 401,
+    });
+    mockAuthService.login.mockReturnValue(throwError(() => errorResponse));
 
-    fixture.detectChanges(); 
-    const alertBox = fixture.debugElement.query(By.css('[data-testid="error-alert"]')); 
-    expect(alertBox.nativeElement.textContent).toContain('Bad credentials'); 
-  }); 
+    component.onSubmit();
+
+    fixture.detectChanges();
+    const alertBox = fixture.debugElement.query(By.css('[data-testid="error-alert"]'));
+    expect(alertBox.nativeElement.textContent).toContain('Bad credentials');
+  });
 
   it('should use fallback error message when detail is missing', () => {
     createComponent();
@@ -160,4 +160,4 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('[data-testid="loading-bar"]'))).toBeTruthy();
   });
-}); 
+});

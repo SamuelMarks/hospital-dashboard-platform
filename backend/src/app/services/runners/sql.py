@@ -91,7 +91,11 @@ def run_sql_widget(cursor: Any, config: Dict[str, Any]) -> Dict[str, Any]:
     # 4. Fetching Metadata & Data
     if cursor.description:
       columns: List[str] = [desc[0] for desc in cursor.description]
-      rows: List[Tuple] = cursor.fetchall()
+      max_rows = config.get("max_rows")
+      if isinstance(max_rows, int) and max_rows > 0:
+        rows = cursor.fetchmany(max_rows)
+      else:
+        rows = cursor.fetchall()
       results: List[Dict[str, Any]] = [dict(zip(columns, row)) for row in rows]
       return {"data": results, "columns": columns, "error": None}
     else:

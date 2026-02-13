@@ -4,7 +4,7 @@ import {
   inject,
   signal,
   ChangeDetectionStrategy,
-  computed
+  computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -36,73 +36,75 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
     MatInputModule,
     MatChipsModule,
     MatProgressSpinnerModule,
-    MatExpansionModule
+    MatExpansionModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [`
-    :host {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      min-height: 0;
-      background: var(--sys-surface);
-      border-left: 1px solid var(--sys-surface-border);
-      width: 100%;
-      flex: 1 1 auto;
-      overflow: hidden;
-    }
-    .header {
-      padding: 16px;
-      border-bottom: 1px solid var(--sys-surface-border);
-      background: var(--sys-background);
-    }
-    .grid-container {
-      flex: 1;
-      padding: 16px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .template-card {
-      cursor: grab;
-      border: 1px solid var(--sys-surface-border);
-      padding: 12px;
-      border-radius: 8px;
-      background: white;
-      transition: box-shadow 0.2s;
-    }
-    .template-card:hover {
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      border-color: var(--sys-primary);
-    }
-    .template-card:active {
-      cursor: grabbing;
-    }
-    /* Material Drag Preview */
-    .cdk-drag-preview {
-      box-sizing: border-box;
-      border-radius: 8px;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-      background: white;
-      padding: 12px;
-      width: 300px;
-      z-index: 10000;
-    }
-    .cat-header {
-      font-size: 11px;
-      color: var(--sys-text-secondary);
-      text-transform: uppercase;
-      font-weight: 700;
-      margin-top: 8px;
-      margin-bottom: 4px;
-    }
-  `],
-    templateUrl: './widget-gallery.component.html'
+  styles: [
+    `
+      :host {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+        background: var(--sys-surface);
+        border-left: 1px solid var(--sys-surface-border);
+        width: 100%;
+        flex: 1 1 auto;
+        overflow: hidden;
+      }
+      .header {
+        padding: 16px;
+        border-bottom: 1px solid var(--sys-surface-border);
+        background: var(--sys-background);
+      }
+      .grid-container {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .template-card {
+        cursor: grab;
+        border: 1px solid var(--sys-surface-border);
+        padding: 12px;
+        border-radius: 8px;
+        background: white;
+        transition: box-shadow 0.2s;
+      }
+      .template-card:hover {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-color: var(--sys-primary);
+      }
+      .template-card:active {
+        cursor: grabbing;
+      }
+      /* Material Drag Preview */
+      .cdk-drag-preview {
+        box-sizing: border-box;
+        border-radius: 8px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        background: white;
+        padding: 12px;
+        width: 300px;
+        z-index: 10000;
+      }
+      .cat-header {
+        font-size: 11px;
+        color: var(--sys-text-secondary);
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-top: 8px;
+        margin-bottom: 4px;
+      }
+    `,
+  ],
+  templateUrl: './widget-gallery.component.html',
 })
 export class WidgetGalleryComponent implements OnInit {
-    /** templatesApi property. */
-private readonly templatesApi = inject(TemplatesService);
+  /** templatesApi property. */
+  private readonly templatesApi = inject(TemplatesService);
 
   /** Templates. */
   readonly templates = signal<TemplateResponse[]>([]);
@@ -121,21 +123,21 @@ private readonly templatesApi = inject(TemplatesService);
   /** Loads templates. */
   loadTemplates() {
     this.loading.set(true);
-    this.templatesApi.listTemplatesApiV1TemplatesGet(undefined, undefined, 100)
-      .subscribe({
-        next: (data) => {
-          this.templates.set(data);
-          this.loading.set(false);
-        },
-        error: () => this.loading.set(false)
-      });
+    this.templatesApi.listTemplatesApiV1TemplatesGet(undefined, undefined, 100).subscribe({
+      next: (data) => {
+        this.templates.set(data);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
   }
 
   /** Filtered Templates. */
   readonly filteredTemplates = computed(() => {
     const q = this.searchQuery().toLowerCase();
-    return this.templates().filter(t =>
-      !q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase() || '').includes(q)
+    return this.templates().filter(
+      (t) =>
+        !q || t.title.toLowerCase().includes(q) || (t.description?.toLowerCase() || '').includes(q),
     );
   });
 
@@ -144,15 +146,17 @@ private readonly templatesApi = inject(TemplatesService);
     const list = this.filteredTemplates();
     const groups: Record<string, TemplateResponse[]> = {};
 
-    list.forEach(t => {
+    list.forEach((t) => {
       const cat = t.category || 'General';
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(t);
     });
 
-    return Object.keys(groups).sort().map(cat => ({
-      category: cat,
-      items: groups[cat]
-    }));
+    return Object.keys(groups)
+      .sort()
+      .map((cat) => ({
+        category: cat,
+        items: groups[cat],
+      }));
   });
 }

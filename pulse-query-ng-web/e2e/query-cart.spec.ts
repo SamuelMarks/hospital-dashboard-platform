@@ -1,7 +1,9 @@
 import { test, expect } from './fixtures';
 
 test.describe('Query Cart', () => {
-  test('should save an ad-hoc query to cart and add it to the dashboard', async ({ loggedInPage }) => {
+  test('should save an ad-hoc query to cart and add it to the dashboard', async ({
+    loggedInPage,
+  }) => {
     test.setTimeout(90000);
 
     // Create a fresh dashboard
@@ -14,7 +16,10 @@ test.describe('Query Cart', () => {
     await expect(loggedInPage.locator('app-toolbar')).toBeVisible();
 
     // Open Ask Data
-    await loggedInPage.locator('app-toolbar').getByRole('button', { name: /Ask AI/i }).click();
+    await loggedInPage
+      .locator('app-toolbar')
+      .getByRole('button', { name: /Ask AI/i })
+      .click();
     const drawer = loggedInPage.locator('.search-drawer');
     await expect(drawer).toBeVisible({ timeout: 15000 });
 

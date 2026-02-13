@@ -13,14 +13,14 @@ import { vi } from 'vitest';
 import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({ selector: 'app-sql-builder', template: '' })
-class MockSqlBuilder { 
+class MockSqlBuilder {
   readonly dashboardId = input<string | undefined>();
   readonly widgetId = input<string | undefined>();
   readonly initialSql = input<string | undefined>();
 }
 
 @Component({ selector: 'app-http-config', template: '' })
-class MockHttpConfig { 
+class MockHttpConfig {
   readonly dashboardId = input<string | undefined>();
   readonly widgetId = input<string | undefined>();
   readonly initialConfig = input<Record<string, any> | undefined>();
@@ -29,29 +29,34 @@ class MockHttpConfig {
 describe('WidgetCreationDialog', () => {
   let component: WidgetCreationDialog;
   let fixture: ComponentFixture<WidgetCreationDialog>;
-  
+
   let mockDashApi: any;
   let mockStore: any;
   let mockDialogRef: any;
 
   const MOCK_DASH_ID = 'dash-1';
   const MOCK_WIDGET: WidgetResponse = {
-    id: 'w1', dashboard_id: MOCK_DASH_ID, title: 'Draft', type: 'SQL', visualization: 'bar_chart', config: { query: 'FOO' }
+    id: 'w1',
+    dashboard_id: MOCK_DASH_ID,
+    title: 'Draft',
+    type: 'SQL',
+    visualization: 'bar_chart',
+    config: { query: 'FOO' },
   };
 
   let dataMapSig: WritableSignal<Record<string, any>>;
 
   beforeEach(async () => {
     mockDashApi = {
-        createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
-        updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn(),
-        // FIX: Ensure delete returns observable for ngOnDestroy cleanup
-        deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn().mockReturnValue(of({})),
-        getDashboardApiV1DashboardsDashboardIdGet: vi.fn()
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
+      updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn(),
+      // FIX: Ensure delete returns observable for ngOnDestroy cleanup
+      deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn().mockReturnValue(of({})),
+      getDashboardApiV1DashboardsDashboardIdGet: vi.fn(),
     };
     mockDialogRef = { close: vi.fn() };
-    
-    dataMapSig = signal({ 'w1': { columns: ['colA', 'colB'] } });
+
+    dataMapSig = signal({ w1: { columns: ['colA', 'colB'] } });
     mockStore = { dataMap: dataMapSig, refreshWidget: vi.fn() };
 
     await TestBed.configureTestingModule({
@@ -60,21 +65,21 @@ describe('WidgetCreationDialog', () => {
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: MOCK_DASH_ID } as WidgetCreationData },
-        { provide: DashboardStore, useValue: mockStore }
-      ]
+        { provide: DashboardStore, useValue: mockStore },
+      ],
     })
-    .overrideComponent(WidgetCreationDialog, {
-      remove: { imports: [SqlBuilderComponent, HttpConfigComponent] },
-      add: { imports: [MockSqlBuilder, MockHttpConfig] }
-    })
-    .overrideComponent(WidgetCreationDialog, {
-      set: {
-        template: readTemplate('./widget-creation.dialog.html'),
-        templateUrl: undefined,
-        schemas: [NO_ERRORS_SCHEMA]
-      }
-    })
-    .compileComponents();
+      .overrideComponent(WidgetCreationDialog, {
+        remove: { imports: [SqlBuilderComponent, HttpConfigComponent] },
+        add: { imports: [MockSqlBuilder, MockHttpConfig] },
+      })
+      .overrideComponent(WidgetCreationDialog, {
+        set: {
+          template: readTemplate('./widget-creation.dialog.html'),
+          templateUrl: undefined,
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(WidgetCreationDialog);
     component = fixture.componentInstance;
@@ -82,17 +87,17 @@ describe('WidgetCreationDialog', () => {
   });
 
   it('should call create draft API when transitioned to Step 3', () => {
-    component.setType('SQL'); 
-    fixture.detectChanges(); 
-    component.selectedViz.set('bar_chart'); 
-    fixture.detectChanges(); 
-    
+    component.setType('SQL');
+    fixture.detectChanges();
+    component.selectedViz.set('bar_chart');
+    fixture.detectChanges();
+
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_WIDGET));
 
-    component.createDraftWidget(); 
+    component.createDraftWidget();
 
-    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalled(); 
-    expect(component.draftWidget()).toEqual(MOCK_WIDGET); 
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalled();
+    expect(component.draftWidget()).toEqual(MOCK_WIDGET);
   });
 
   it('should set selected type', () => {
@@ -110,7 +115,7 @@ describe('WidgetCreationDialog', () => {
 
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       MOCK_DASH_ID,
-      expect.objectContaining({ type: 'HTTP', visualization: 'metric' })
+      expect.objectContaining({ type: 'HTTP', visualization: 'metric' }),
     );
   });
 
@@ -131,7 +136,7 @@ describe('WidgetCreationDialog', () => {
     component.setType('SQL');
     component.selectedViz.set('table');
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
-      throwError(() => new Error('fail'))
+      throwError(() => new Error('fail')),
     );
 
     component.createDraftWidget();
@@ -141,27 +146,27 @@ describe('WidgetCreationDialog', () => {
   });
 
   it('should Finalize: Merge Settings and Close(true)', () => {
-    component.draftWidget.set(MOCK_WIDGET); 
-    component.selectedViz.set('bar_chart'); 
-    component.configForm.patchValue({ title: 'Final Title' }); 
+    component.draftWidget.set(MOCK_WIDGET);
+    component.selectedViz.set('bar_chart');
+    component.configForm.patchValue({ title: 'Final Title' });
 
-    const freshDash = { 
-        id: MOCK_DASH_ID, 
-        name: 'D', 
-        owner_id: 'u', 
-        widgets: [ { ...MOCK_WIDGET, config: { query: 'UPDATED' } } ] 
-    } as DashboardResponse; 
+    const freshDash = {
+      id: MOCK_DASH_ID,
+      name: 'D',
+      owner_id: 'u',
+      widgets: [{ ...MOCK_WIDGET, config: { query: 'UPDATED' } }],
+    } as DashboardResponse;
 
-    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash)); 
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of(MOCK_WIDGET)); 
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of(MOCK_WIDGET));
 
-    component.finalizeWidget(); 
+    component.finalizeWidget();
 
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith( 
-      'w1', 
-      expect.objectContaining({ title: 'Final Title' }) 
-    ); 
-    expect(mockDialogRef.close).toHaveBeenCalledWith(true); 
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ title: 'Final Title' }),
+    );
+    expect(mockDialogRef.close).toHaveBeenCalledWith(true);
   });
 
   it('should finalize without mapping for non-mapped viz', () => {
@@ -169,7 +174,7 @@ describe('WidgetCreationDialog', () => {
       id: MOCK_DASH_ID,
       name: 'D',
       owner_id: 'u',
-      widgets: [ { ...MOCK_WIDGET, config: { query: 'UPDATED' } } ]
+      widgets: [{ ...MOCK_WIDGET, config: { query: 'UPDATED' } }],
     } as DashboardResponse;
 
     component.draftWidget.set({ ...MOCK_WIDGET, visualization: 'table' });
@@ -182,7 +187,7 @@ describe('WidgetCreationDialog', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: { query: 'UPDATED' } })
+      expect.objectContaining({ config: { query: 'UPDATED' } }),
     );
   });
 
@@ -200,7 +205,9 @@ describe('WidgetCreationDialog', () => {
   it('should skip finalize when fresh widget is missing', () => {
     component.draftWidget.set(MOCK_WIDGET);
     component.configForm.patchValue({ title: 'Final' });
-    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of({ id: MOCK_DASH_ID, widgets: [] }));
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
+      of({ id: MOCK_DASH_ID, widgets: [] }),
+    );
 
     component.finalizeWidget();
 
@@ -215,7 +222,7 @@ describe('WidgetCreationDialog', () => {
     component.draftWidget.set(MOCK_WIDGET);
     expect(component.availableColumns()).toEqual(['colA', 'colB']);
   });
-  
+
   it('should return empty available columns when columns missing', () => {
     dataMapSig.set({ w1: { data: [] } });
     component.draftWidget.set(MOCK_WIDGET);
@@ -233,13 +240,13 @@ describe('WidgetCreationDialog', () => {
     expect(component.supportsMapping()).toBe(false);
     expect(component.isPie()).toBe(false);
   });
-  
+
   it('should compute supportsMapping false when no viz selected', () => {
     component.selectedViz.set(null);
     expect(component.supportsMapping()).toBe(false);
     expect(component.isPie()).toBe(false);
   });
-  
+
   it('should return empty columns when no draft widget', () => {
     component.draftWidget.set(null);
     expect(component.availableColumns()).toEqual([]);
@@ -254,7 +261,7 @@ describe('WidgetCreationDialog', () => {
   it('should warn when draft cleanup fails', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(
-      throwError(() => new Error('fail'))
+      throwError(() => new Error('fail')),
     );
     component.draftWidget.set(MOCK_WIDGET);
     component.ngOnDestroy();

@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "format": "prettier --write .",
     "docs": "compodoc -p tsconfig.doc.json -d docs",
     "docs:coverage": "compodoc -p tsconfig.doc.json --coverageTest 100 --coverageMinimumPerFile 100 --coverageTestShowOnlyFailed",
     "serve:ssr:pulse-query-ng-web": "node dist/pulse-query-ng-web/server/server.mjs",

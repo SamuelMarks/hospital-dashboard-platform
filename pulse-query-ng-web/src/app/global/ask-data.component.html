@@ -1,49 +1,47 @@
-    <!-- Header -->
-    <mat-toolbar color="white" class="border-b">
-      <span class="flex-grow font-medium">Ask Data</span>
-      <span class="text-xs text-gray-500 mr-4 font-normal">Ad-hoc Analysis Scratchpad</span>
-      <span class="text-xs text-gray-500 mr-4 font-normal flex items-center gap-1">
-        <mat-icon style="font-size:14px; width:14px; height:14px">shopping_cart</mat-icon>
-        {{ cartCount() }} in cart
-      </span>
-      
-      <button mat-icon-button (click)="vis.close()" data-testid="close-btn">
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-toolbar>
+<!-- Header -->
+<mat-toolbar color="white" class="border-b">
+  <span class="flex-grow font-medium">Ask Data</span>
+  <span class="text-xs text-gray-500 mr-4 font-normal">Ad-hoc Analysis Scratchpad</span>
+  <span class="text-xs text-gray-500 mr-4 font-normal flex items-center gap-1">
+    <mat-icon style="font-size: 14px; width: 14px; height: 14px">shopping_cart</mat-icon>
+    {{ cartCount() }} in cart
+  </span>
 
-    <!-- Content -->
-    <div class="content-area">
-      
-      <!-- Loading State -->
-      @if (loadingContext()) { 
-        <div class="center-overlay" data-testid="loading-state">
-           <mat-spinner diameter="40" class="mb-4"></mat-spinner>
-           <span class="text-sm text-gray-600">Initializing Environment...</span>
-        </div>
-      } 
-      
-      <!-- Error State -->
-      @if (contextError()) { 
-        <div class="center-overlay" data-testid="error-state">
-          <mat-icon class="text-red-500 text-4xl mb-2">error_outline</mat-icon>
-          <span class="text-red-600 font-medium">{{ contextError() }}</span>
-        </div>
-      } 
+  <button mat-icon-button (click)="vis.close()" data-testid="close-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+</mat-toolbar>
 
-      <!-- Builder Instance -->
-      <!-- We render it immediately once scratchpad ID is known. 
-           Passed [initialTab]="1" to default to AI Assistant view for this context. -->
-      @if (scratchpadIds(); as ids) { 
-         <app-sql-builder
-           [dashboardId]="ids.dashboardId" 
-           [widgetId]="ids.widgetId" 
-           [initialSql]="'SELECT * FROM hospital_data LIMIT 5'" 
-           [initialTab]="1" 
-           [enableCart]="true"
-           (saveToCart)="handleSaveToCart($event)"
-           class="h-full w-full block" 
-         ></app-sql-builder>
-      } 
+<!-- Content -->
+<div class="content-area">
+  <!-- Loading State -->
+  @if (loadingContext()) {
+    <div class="center-overlay" data-testid="loading-state">
+      <mat-spinner diameter="40" class="mb-4"></mat-spinner>
+      <span class="text-sm text-gray-600">Initializing Environment...</span>
     </div>
-  
+  }
+
+  <!-- Error State -->
+  @if (contextError()) {
+    <div class="center-overlay" data-testid="error-state">
+      <mat-icon class="text-red-500 text-4xl mb-2">error_outline</mat-icon>
+      <span class="text-red-600 font-medium">{{ contextError() }}</span>
+    </div>
+  }
+
+  <!-- Builder Instance -->
+  <!-- We render it immediately once scratchpad ID is known. 
+           Passed [initialTab]="1" to default to AI Assistant view for this context. -->
+  @if (scratchpadIds(); as ids) {
+    <app-sql-builder
+      [dashboardId]="ids.dashboardId"
+      [widgetId]="ids.widgetId"
+      [initialSql]="'SELECT * FROM hospital_data LIMIT 5'"
+      [initialTab]="1"
+      [enableCart]="true"
+      (saveToCart)="handleSaveToCart($event)"
+      class="h-full w-full block"
+    ></app-sql-builder>
+  }
+</div>

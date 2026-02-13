@@ -11,7 +11,7 @@ describe('ProvisioningService', () => {
 
   beforeEach(() => {
     mockDashApi = {
-      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn()
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
     };
     mockStore = { refreshWidget: vi.fn() };
 
@@ -19,8 +19,8 @@ describe('ProvisioningService', () => {
       providers: [
         ProvisioningService,
         { provide: DashboardsService, useValue: mockDashApi },
-        { provide: DashboardStore, useValue: mockStore }
-      ]
+        { provide: DashboardStore, useValue: mockStore },
+      ],
     });
 
     service = TestBed.inject(ProvisioningService);
@@ -32,32 +32,32 @@ describe('ProvisioningService', () => {
       title: 'Template',
       category: 'Ops',
       sql_template: 'SELECT * FROM t WHERE unit = {{unit}}',
-      parameters_schema: { properties: { unit: { default: 'ICU_A' } } }
+      parameters_schema: { properties: { unit: { default: 'ICU_A' } } },
     };
 
     const config = (service as any).buildConfig(template);
     expect(config.query).toContain('ICU_A');
   });
-  
+
   it('builds config when parameters schema is missing', () => {
     const template: TemplateResponse = {
       id: 't2',
       title: 'Template',
       category: 'Ops',
-      sql_template: 'SELECT * FROM t WHERE unit = {{unit}}'
+      sql_template: 'SELECT * FROM t WHERE unit = {{unit}}',
     };
 
     const config = (service as any).buildConfig(template);
     expect(config.query).toContain('{{unit}}');
   });
-  
+
   it('does not replace placeholders when defaults are missing', () => {
     const template: TemplateResponse = {
       id: 't3',
       title: 'Template',
       category: 'Ops',
       sql_template: 'SELECT * FROM t WHERE unit = {{unit}}',
-      parameters_schema: { properties: { unit: {} } }
+      parameters_schema: { properties: { unit: {} } },
     };
 
     const config = (service as any).buildConfig(template);
@@ -69,11 +69,13 @@ describe('ProvisioningService', () => {
       id: title,
       title,
       category: 'X',
-      sql_template: sql
+      sql_template: sql,
     });
 
     expect((service as any).guessVisualization(mk('Service Breakdown', 'select *'))).toBe('pie');
-    expect((service as any).guessVisualization(mk('Trend Over Time', 'select * group by dt'))).toBe('bar_chart');
+    expect((service as any).guessVisualization(mk('Trend Over Time', 'select * group by dt'))).toBe(
+      'bar_chart',
+    );
     expect((service as any).guessVisualization(mk('Risk Rate', 'select *'))).toBe('scalar');
     expect((service as any).guessVisualization(mk('Gap Analysis', 'select *'))).toBe('metric');
     expect((service as any).guessVisualization(mk('Raw Table', 'select *'))).toBe('table');
@@ -85,7 +87,7 @@ describe('ProvisioningService', () => {
       title: 'Template',
       category: 'Ops',
       sql_template: 'SELECT 1',
-      parameters_schema: {}
+      parameters_schema: {},
     };
 
     const created: WidgetResponse = { id: 'w1', dashboard_id: 'd1' } as WidgetResponse;

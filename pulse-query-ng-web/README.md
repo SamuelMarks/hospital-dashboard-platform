@@ -9,6 +9,7 @@ This project uses **Contract-First Development**. The frontend code for communic
 **Do not edit files in `src/app/api-client` manually.**
 
 To update the client (after backend changes):
+
 1. Navigate to the project root (`pulse-query`).
 2. Run the generation script:
    ```bash
@@ -16,6 +17,7 @@ To update the client (after backend changes):
    ```
 
 This script will:
+
 1. Extract the `openapi.json` from the running FastAPI backend code.
 2. Clean the old `api-client` folder.
 3. specific TypeScript interfaces and Services.

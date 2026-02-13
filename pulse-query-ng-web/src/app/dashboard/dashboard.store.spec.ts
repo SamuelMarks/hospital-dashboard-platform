@@ -1,6 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { DashboardStore } from './dashboard.store';
-import { DashboardsService, ExecutionService, DashboardResponse, WidgetResponse } from '../api-client';
+import {
+  DashboardsService,
+  ExecutionService,
+  DashboardResponse,
+  WidgetResponse,
+} from '../api-client';
 import { of, throwError } from 'rxjs';
 import { delay } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,7 +13,9 @@ import { Router } from '@angular/router';
 
 describe('DashboardStore', () => {
   let store: DashboardStore;
-  let mockExecApi: { refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn> };
+  let mockExecApi: {
+    refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
+  };
   let mockDashApi: {
     getDashboardApiV1DashboardsDashboardIdGet: ReturnType<typeof vi.fn>;
     updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
@@ -25,7 +32,7 @@ describe('DashboardStore', () => {
     type: 'SQL',
     visualization: 'table',
     config: {},
-    ...overrides
+    ...overrides,
   });
 
   const makeDashboard = (overrides: Partial<DashboardResponse> = {}): DashboardResponse => ({
@@ -33,7 +40,7 @@ describe('DashboardStore', () => {
     name: 'Test',
     owner_id: 'u1',
     widgets: [],
-    ...overrides
+    ...overrides,
   });
 
   const d1 = makeDashboard();
@@ -46,13 +53,13 @@ describe('DashboardStore', () => {
       updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn(),
       restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost: vi.fn(),
       reorderWidgetsApiV1DashboardsDashboardIdReorderPost: vi.fn(),
-      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn()
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
     };
     mockExecApi = {
       refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn(),
     };
     mockRouter = {
-        navigate: vi.fn().mockReturnValue(Promise.resolve(true))
+      navigate: vi.fn().mockReturnValue(Promise.resolve(true)),
     };
 
     // Default return to prevent pipe crash
@@ -63,8 +70,8 @@ describe('DashboardStore', () => {
         DashboardStore,
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ExecutionService, useValue: mockExecApi },
-        { provide: Router, useValue: mockRouter }
-      ]
+        { provide: Router, useValue: mockRouter },
+      ],
     });
 
     store = TestBed.inject(DashboardStore);
@@ -128,7 +135,9 @@ describe('DashboardStore', () => {
 
   it('should update lastUpdated timestamp on success', () => {
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
-    mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(of({ data: 1 }));
+    mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
+      of({ data: 1 }),
+    );
 
     store.loadDashboard('d1');
     expect(store.lastUpdated()).toBeDefined();
@@ -151,11 +160,15 @@ describe('DashboardStore', () => {
 
     // Advance 5 minutes (300,000ms)
     vi.advanceTimersByTime(300_000);
-    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(1);
+    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(
+      1,
+    );
 
     // Another 5 mins
     vi.advanceTimersByTime(300_000);
-    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(2);
+    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(
+      2,
+    );
   });
 
   it('should pause polling when in Edit Mode', () => {
@@ -168,13 +181,17 @@ describe('DashboardStore', () => {
 
     vi.advanceTimersByTime(300_000);
     // Should NOT have called refresh
-    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).not.toHaveBeenCalled();
+    expect(
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+    ).not.toHaveBeenCalled();
 
     // Exit Edit Mode
     store.toggleEditMode();
     vi.advanceTimersByTime(300_000);
     // Should resume
-    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(1);
+    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(
+      1,
+    );
   });
 
   it('should pause polling if toggleAutoRefresh is disabled', () => {
@@ -183,7 +200,9 @@ describe('DashboardStore', () => {
 
     store.toggleAutoRefresh(); // Disable
     vi.advanceTimersByTime(300_000);
-    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).not.toHaveBeenCalled();
+    expect(
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+    ).not.toHaveBeenCalled();
   });
 
   // --- End Auto-Refresh Tests ---
@@ -191,7 +210,9 @@ describe('DashboardStore', () => {
   describe('Loading & Refresh Pipeline', () => {
     it('should load dashboard and trigger refresh pipeline', () => {
       mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
-      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(of({ w1: [1, 2] }));
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
+        of({ w1: [1, 2] }),
+      );
 
       store.loadDashboard('d1');
 
@@ -205,24 +226,30 @@ describe('DashboardStore', () => {
 
       // Update with new
       store.setGlobalParams({ dept: 'A' });
-      expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(1);
+      expect(
+        mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+      ).toHaveBeenCalledTimes(1);
 
       // Update with SAME
       store.setGlobalParams({ dept: 'A' });
       // Should not call again
-      expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(1);
+      expect(
+        mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+      ).toHaveBeenCalledTimes(1);
 
       // Update with different
       store.setGlobalParams({ dept: 'B' });
-      expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(2);
+      expect(
+        mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+      ).toHaveBeenCalledTimes(2);
     });
 
     it('should handle race conditions via switchMap', () => {
       mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
       store.loadDashboard('d1');
 
-      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockImplementation(
-          () => of({ dept: 'A' }).pipe(delay(100))
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockImplementation(() =>
+        of({ dept: 'A' }).pipe(delay(100)),
       );
 
       store.setGlobalParams({ dept: 'A' });
@@ -236,13 +263,15 @@ describe('DashboardStore', () => {
       // 2. Param A
       // 3. Param B -> Cancels A
       // Total 3 invocations start, but we only care operationally.
-      expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalledTimes(3);
+      expect(
+        mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+      ).toHaveBeenCalledTimes(3);
     });
 
     it('should handle refresh errors via catchError', () => {
       store['patch']({ dashboard: d1 });
       mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
-        throwError(() => new Error('fail'))
+        throwError(() => new Error('fail')),
       );
 
       store.setGlobalParams({ dept: 'A' });
@@ -256,7 +285,7 @@ describe('DashboardStore', () => {
     const brokenWidget = makeWidget({
       id: 'w1',
       title: 'Widget Admission Lag',
-      config: { query: 'SELECT Visit_ID FROM t' }
+      config: { query: 'SELECT Visit_ID FROM t' },
     });
     const dash = makeDashboard({ widgets: [brokenWidget] });
 
@@ -282,7 +311,7 @@ describe('DashboardStore', () => {
     const widget = makeWidget({
       id: 'w1',
       title: 'Widget Admission Lag',
-      config: { query: 'SELECT Visit_Type FROM t' }
+      config: { query: 'SELECT Visit_Type FROM t' },
     });
     const dash = makeDashboard({ widgets: [widget] });
 
@@ -297,7 +326,7 @@ describe('DashboardStore', () => {
     const widget = makeWidget({
       id: 'w1',
       title: 'Other Widget',
-      config: {}
+      config: {},
     });
     const dash = makeDashboard({ widgets: [widget] });
 
@@ -312,14 +341,14 @@ describe('DashboardStore', () => {
     const brokenWidget = makeWidget({
       id: 'w1',
       title: 'Widget Admission Lag',
-      config: { query: 'SELECT Visit_ID FROM t' }
+      config: { query: 'SELECT Visit_ID FROM t' },
     });
     const dash = makeDashboard({ widgets: [brokenWidget] });
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(dash));
     mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
-      throwError(() => new Error('fail'))
+      throwError(() => new Error('fail')),
     );
 
     store.loadDashboard('d1');
@@ -331,7 +360,7 @@ describe('DashboardStore', () => {
   it('should expose global params and widget loading selector', () => {
     store['patch']({
       globalParams: { dept: 'ER' },
-      loadingWidgetIds: new Set(['w1'])
+      loadingWidgetIds: new Set(['w1']),
     });
 
     expect(store.globalParams()).toEqual({ dept: 'ER' });
@@ -363,7 +392,9 @@ describe('DashboardStore', () => {
     const widget = makeWidget({ id: 'w1', title: 'Widget', config: {} });
     store['patch']({ dashboard: d1, widgets: [widget] });
 
-    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(throwError(() => new Error('fail')));
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
 
     store.duplicateWidget(widget);
 
@@ -373,7 +404,9 @@ describe('DashboardStore', () => {
 
   it('should create default dashboard and navigate', async () => {
     const newDash = makeDashboard({ id: 'new', name: 'New' });
-    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(of(newDash));
+    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(
+      of(newDash),
+    );
 
     store.createDefaultDashboard();
 
@@ -382,7 +415,9 @@ describe('DashboardStore', () => {
   });
 
   it('should handle errors when creating default dashboard', () => {
-    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(throwError(() => new Error('oops')));
+    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(
+      throwError(() => new Error('oops')),
+    );
 
     store.createDefaultDashboard();
 
@@ -395,7 +430,9 @@ describe('DashboardStore', () => {
     store['patch']({ dashboard: d1, widgets: [w1, w2] });
 
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
-    mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost.mockReturnValue(throwError(() => new Error('fail')));
+    mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
 
     store.updateWidgetOrder(0, 1);
 
@@ -424,7 +461,12 @@ describe('DashboardStore', () => {
   });
 
   it('should handle HttpErrorResponse without detail', () => {
-    const err = new HttpErrorResponse({ error: {}, status: 500, statusText: 'Server Error', url: '/api' });
+    const err = new HttpErrorResponse({
+      error: {},
+      status: 500,
+      statusText: 'Server Error',
+      url: '/api',
+    });
     (store as any).handleError(err);
     expect(store.error()).toContain('Http failure response');
   });
@@ -462,7 +504,9 @@ describe('DashboardStore', () => {
   });
 
   it('should handle loadDashboard errors', () => {
-    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(throwError(() => new Error('fail')));
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
+      throwError(() => new Error('fail')),
+    );
     store.loadDashboard('d1');
     expect(store.error()).toBeTruthy();
     expect(store.isLoading()).toBe(false);

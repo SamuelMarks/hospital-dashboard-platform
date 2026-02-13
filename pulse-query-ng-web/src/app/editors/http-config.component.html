@@ -1,134 +1,164 @@
-    <!-- Toolbar -->
-    <div class="header-bar">
-      <h3 class="header-title">HTTP Configuration</h3>
-      <button 
-        mat-flat-button 
-        color="primary" 
-        (click)="saveAndTest()" 
-        [disabled]="form.invalid || isRunning()" 
-      >
-        @if (isRunning()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
-        Save & Test
-      </button>
-    </div>
+<!-- Toolbar -->
+<div class="header-bar">
+  <h3 class="header-title">HTTP Configuration</h3>
+  <button
+    mat-flat-button
+    color="primary"
+    (click)="saveAndTest()"
+    [disabled]="form.invalid || isRunning()"
+  >
+    @if (isRunning()) {
+      <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+    }
+    Save & Test
+  </button>
+</div>
 
-    <div class="main-layout">
-      <!-- Form Area -->
-      <div class="config-panel">
-        <form [formGroup]="form">
-          
-          <div class="flex gap-4">
-            <mat-form-field appearance="outline" class="w-32">
-              <mat-label>Method</mat-label>
-              <mat-select formControlName="method">
-                <mat-option value="GET">GET</mat-option>
-                <mat-option value="POST">POST</mat-option>
-                <mat-option value="PUT">PUT</mat-option>
-                <mat-option value="DELETE">DELETE</mat-option>
-              </mat-select>
-            </mat-form-field>
+<div class="main-layout">
+  <!-- Form Area -->
+  <div class="config-panel">
+    <form [formGroup]="form">
+      <div class="flex gap-4">
+        <mat-form-field appearance="outline" class="w-32">
+          <mat-label>Method</mat-label>
+          <mat-select formControlName="method">
+            <mat-option value="GET">GET</mat-option>
+            <mat-option value="POST">POST</mat-option>
+            <mat-option value="PUT">PUT</mat-option>
+            <mat-option value="DELETE">DELETE</mat-option>
+          </mat-select>
+        </mat-form-field>
 
-            <mat-form-field appearance="outline" class="flex-grow">
-              <mat-label>URL Endpoint</mat-label>
-              <input matInput formControlName="url" placeholder="https://api.example.com">
-              <mat-error *ngIf="form.get('url')?.invalid">Valid URL is required</mat-error>
-            </mat-form-field>
-          </div>
-
-          <div class="mb-4">
-            <mat-slide-toggle formControlName="forward_auth" color="primary">
-              Forward Authentication Token
-            </mat-slide-toggle>
-            <p class="text-xs mt-1 ml-10" style="color: var(--sys-text-secondary)">Passes the current user's JWT to the external service.</p>
-          </div>
-
-          <mat-accordion multi>
-            
-            <!-- Params -->
-            <mat-expansion-panel>
-              <mat-expansion-panel-header>
-                <mat-panel-title>Query Parameters</mat-panel-title>
-              </mat-expansion-panel-header>
-              
-              <div formArrayName="params">
-                @for (item of paramsArray.controls; track item; let i = $index) { 
-                  <div [formGroupName]="i" class="array-row">
-                    <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
-                      <input matInput formControlName="key" placeholder="Key" aria-label="Parameter Key">
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
-                      <input matInput formControlName="value" placeholder="Value" aria-label="Parameter Value">
-                    </mat-form-field>
-                    <button mat-icon-button color="warn" (click)="removeItem('params', i)" aria-label="Remove Parameter">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                } 
-              </div>
-              <button mat-button color="primary" (click)="addItem('params')">
-                <mat-icon>add</mat-icon> Add Parameter
-              </button>
-            </mat-expansion-panel>
-
-            <!-- Headers -->
-            <mat-expansion-panel>
-              <mat-expansion-panel-header>
-                <mat-panel-title>Headers</mat-panel-title>
-              </mat-expansion-panel-header>
-
-              <div formArrayName="headers">
-                @for (item of headersArray.controls; track item; let i = $index) { 
-                  <div [formGroupName]="i" class="array-row">
-                    <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
-                      <input matInput formControlName="key" placeholder="Header Key" aria-label="Header Key">
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
-                      <input matInput formControlName="value" placeholder="Value" aria-label="Header Value">
-                    </mat-form-field>
-                    <button mat-icon-button color="warn" (click)="removeItem('headers', i)" aria-label="Remove Header">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                } 
-              </div>
-              <button mat-button color="primary" (click)="addItem('headers')">
-                <mat-icon>add</mat-icon> Add Header
-              </button>
-            </mat-expansion-panel>
-
-            <!-- Body -->
-            <mat-expansion-panel>
-              <mat-expansion-panel-header>
-                <mat-panel-title>Request Body (JSON)</mat-panel-title>
-              </mat-expansion-panel-header>
-              
-              <mat-form-field appearance="outline" class="w-full">
-                <mat-label>JSON Payload</mat-label>
-                <textarea 
-                  matInput 
-                  formControlName="body" 
-                  rows="8" 
-                  class="font-mono" 
-                  placeholder='{ "key": "value" }' 
-                ></textarea>
-                <mat-error *ngIf="form.hasError('invalidJson', 'body')">Invalid JSON format</mat-error>
-              </mat-form-field>
-            </mat-expansion-panel>
-
-          </mat-accordion>
-        </form>
+        <mat-form-field appearance="outline" class="flex-grow">
+          <mat-label>URL Endpoint</mat-label>
+          <input matInput formControlName="url" placeholder="https://api.example.com" />
+          <mat-error *ngIf="form.get('url')?.invalid">Valid URL is required</mat-error>
+        </mat-form-field>
       </div>
 
-      <!-- Result Area -->
-      <div class="preview-panel">
-        <div class="preview-header">Response Preview</div>
-        <div class="json-code">
-          @if (result(); as res) { 
-            {{ res | json }} 
-          } @else { 
-            <span style="color: var(--sys-text-secondary)">Save and Test to see response...</span>
-          } 
-        </div>
+      <div class="mb-4">
+        <mat-slide-toggle formControlName="forward_auth" color="primary">
+          Forward Authentication Token
+        </mat-slide-toggle>
+        <p class="text-xs mt-1 ml-10" style="color: var(--sys-text-secondary)">
+          Passes the current user's JWT to the external service.
+        </p>
       </div>
+
+      <mat-accordion multi>
+        <!-- Params -->
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Query Parameters</mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div formArrayName="params">
+            @for (item of paramsArray.controls; track item; let i = $index) {
+              <div [formGroupName]="i" class="array-row">
+                <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
+                  <input
+                    matInput
+                    formControlName="key"
+                    placeholder="Key"
+                    aria-label="Parameter Key"
+                  />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
+                  <input
+                    matInput
+                    formControlName="value"
+                    placeholder="Value"
+                    aria-label="Parameter Value"
+                  />
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="removeItem('params', i)"
+                  aria-label="Remove Parameter"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+          <button mat-button color="primary" (click)="addItem('params')">
+            <mat-icon>add</mat-icon> Add Parameter
+          </button>
+        </mat-expansion-panel>
+
+        <!-- Headers -->
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Headers</mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <div formArrayName="headers">
+            @for (item of headersArray.controls; track item; let i = $index) {
+              <div [formGroupName]="i" class="array-row">
+                <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
+                  <input
+                    matInput
+                    formControlName="key"
+                    placeholder="Header Key"
+                    aria-label="Header Key"
+                  />
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
+                  <input
+                    matInput
+                    formControlName="value"
+                    placeholder="Value"
+                    aria-label="Header Value"
+                  />
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  (click)="removeItem('headers', i)"
+                  aria-label="Remove Header"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+          <button mat-button color="primary" (click)="addItem('headers')">
+            <mat-icon>add</mat-icon> Add Header
+          </button>
+        </mat-expansion-panel>
+
+        <!-- Body -->
+        <mat-expansion-panel>
+          <mat-expansion-panel-header>
+            <mat-panel-title>Request Body (JSON)</mat-panel-title>
+          </mat-expansion-panel-header>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>JSON Payload</mat-label>
+            <textarea
+              matInput
+              formControlName="body"
+              rows="8"
+              class="font-mono"
+              placeholder='{ "key": "value" }'
+            ></textarea>
+            <mat-error *ngIf="form.hasError('invalidJson', 'body')">Invalid JSON format</mat-error>
+          </mat-form-field>
+        </mat-expansion-panel>
+      </mat-accordion>
+    </form>
+  </div>
+
+  <!-- Result Area -->
+  <div class="preview-panel">
+    <div class="preview-header">Response Preview</div>
+    <div class="json-code">
+      @if (result(); as res) {
+        {{ res | json }}
+      } @else {
+        <span style="color: var(--sys-text-secondary)">Save and Test to see response...</span>
+      }
     </div>
-  
+  </div>
+</div>

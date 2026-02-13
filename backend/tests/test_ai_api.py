@@ -15,6 +15,7 @@ from app.schemas.feedback import ExperimentResponse, ModelCandidateResponse
 # Common constants
 BASE_URL = "http://test"
 AI_ENDPOINT = "/api/v1/ai/generate"
+AI_EXECUTE_ENDPOINT = "/api/v1/ai/execute"
 
 
 @pytest.mark.asyncio
@@ -66,6 +67,63 @@ async def test_generate_sql_success() -> None:
     mock_service.run_arena_experiment.assert_called_once()
 
   # Cleanup
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_execute_sql_empty_prompt() -> None:
+  """Empty SQL should return 400."""
+  mock_user = AsyncMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
+    response = await ac.post(AI_EXECUTE_ENDPOINT, json={"sql": "  "})
+
+  assert response.status_code == 400
+  assert "SQL cannot be empty" in response.json()["detail"]
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_execute_sql_success() -> None:
+  """Execute SQL should return data on success."""
+  mock_user = AsyncMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  mock_conn = MagicMock()
+  mock_cursor = MagicMock()
+  mock_conn.cursor.return_value = mock_cursor
+
+  payload = {"data": [{"x": 1}], "columns": ["x"], "error": None}
+
+  with (
+    patch("app.api.routers.ai.duckdb_manager.get_readonly_connection", return_value=mock_conn),
+    patch("app.api.routers.ai.run_sql_widget", return_value=payload),
+  ):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
+      response = await ac.post(AI_EXECUTE_ENDPOINT, json={"sql": "SELECT 1"})
+
+  assert response.status_code == 200
+  assert response.json()["data"] == [{"x": 1}]
+  mock_conn.close.assert_called_once()
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_execute_sql_handles_exception() -> None:
+  """Execution errors should be returned in response payload."""
+  mock_user = AsyncMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  with patch("app.api.routers.ai.duckdb_manager.get_readonly_connection", side_effect=RuntimeError("boom")):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
+      response = await ac.post(AI_EXECUTE_ENDPOINT, json={"sql": "SELECT 1"})
+
+  assert response.status_code == 200
+  assert "boom" in (response.json().get("error") or "")
+
   app.dependency_overrides = {}
 
 

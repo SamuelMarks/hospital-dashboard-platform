@@ -11,12 +11,12 @@ import { CommonModule } from '@angular/common';
  * Standard Metric Data Contract.
  */
 export interface MetricData {
-    /** value property. */
-value: number | string;
-    /** label property. */
-label?: string;
-    /** trend property. */
-trend?: number;
+  /** value property. */
+  value: number | string;
+  /** label property. */
+  label?: string;
+  /** trend property. */
+  trend?: number;
   /** Array of numeric values for sparkline rendering. */
   trend_data?: number[];
 }
@@ -25,8 +25,8 @@ trend?: number;
  * Partial configuration schema for threshold logic.
  */
 export interface MetricConfig {
-    /** thresholds property. */
-thresholds?: {
+  /** thresholds property. */
+  thresholds?: {
     warning?: number;
     critical?: number;
   };
@@ -45,37 +45,85 @@ thresholds?: {
   selector: 'viz-metric',
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  styles: [`
-    :host {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      height: 100%; text-align: center; padding: 16px; position: relative; overflow: hidden;
-    }
-    .metric-value {
-      font-weight: 500; color: #1976d2; /* Primary Blue */ margin-bottom: 8px;
-      transition: color 0.3s ease; position: relative; z-index: 2;
-    }
-    .metric-label {
-      text-transform: uppercase; letter-spacing: 0.5px; color: rgba(0,0,0,0.6); position: relative; z-index: 2;
-    }
-    .trend { margin-top: 8px; font-weight: bold; position: relative; z-index: 2; }
-    .trend-pos { color: #2e7d32; }
-    .trend-neg { color: #c62828; }
+  styles: [
+    `
+      :host {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 16px;
+        position: relative;
+        overflow: hidden;
+      }
+      .metric-value {
+        font-weight: 500;
+        color: #1976d2; /* Primary Blue */
+        margin-bottom: 8px;
+        transition: color 0.3s ease;
+        position: relative;
+        z-index: 2;
+      }
+      .metric-label {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: rgba(0, 0, 0, 0.6);
+        position: relative;
+        z-index: 2;
+      }
+      .trend {
+        margin-top: 8px;
+        font-weight: bold;
+        position: relative;
+        z-index: 2;
+      }
+      .trend-pos {
+        color: #2e7d32;
+      }
+      .trend-neg {
+        color: #c62828;
+      }
 
-    /* Conditional Threshold Styles */
-    .val-warn { color: var(--sys-warn, #ffa000) !important; }
-    .val-critical { color: var(--sys-error, #d32f2f) !important; font-weight: 700; transform: scale(1.1); }
+      /* Conditional Threshold Styles */
+      .val-warn {
+        color: var(--sys-warn, #ffa000) !important;
+      }
+      .val-critical {
+        color: var(--sys-error, #d32f2f) !important;
+        font-weight: 700;
+        transform: scale(1.1);
+      }
 
-    /* Sparkline Layer */
-    .sparkline-container {
-      position: absolute; bottom: 0; left: 0; width: 100%; height: 60%;
-      opacity: 0.15; z-index: 1; pointer-events: none;
-    }
-    .spark-pos { stroke: #2e7d32; }
-    .spark-neg { stroke: #c62828; }
-    .spark-fill-pos { fill: #2e7d32; opacity: 0.2; }
-    .spark-fill-neg { fill: #c62828; opacity: 0.2; }
-  `],
-    templateUrl: './viz-metric.component.html'
+      /* Sparkline Layer */
+      .sparkline-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 60%;
+        opacity: 0.15;
+        z-index: 1;
+        pointer-events: none;
+      }
+      .spark-pos {
+        stroke: #2e7d32;
+      }
+      .spark-neg {
+        stroke: #c62828;
+      }
+      .spark-fill-pos {
+        fill: #2e7d32;
+        opacity: 0.2;
+      }
+      .spark-fill-neg {
+        fill: #c62828;
+        opacity: 0.2;
+      }
+    `,
+  ],
+  templateUrl: './viz-metric.component.html',
 })
 export class VizMetricComponent {
   /** Input Data: Can be primitive, SQL Result Set, or Metric Objects. */
@@ -93,22 +141,22 @@ export class VizMetricComponent {
 
     // Shape: Explicit Metric Object
     if (typeof d === 'object' && 'value' in d && !Array.isArray(d)) return d.value;
-    
+
     // Shape: DuckDB Table Result
     if (typeof d === 'object' && Array.isArray(d.data) && d.data.length > 0) {
       const firstRow = d.data[0];
       const keys = Object.keys(firstRow);
       return keys.length > 0 ? firstRow[keys[0]] : '-';
     }
-    
+
     // Shape: Simple Object
     if (typeof d === 'object' && !Array.isArray(d)) {
-        const keys = Object.keys(d);
-        for (const k of keys) {
-            if (typeof d[k] === 'number') return d[k];
-        }
+      const keys = Object.keys(d);
+      for (const k of keys) {
+        if (typeof d[k] === 'number') return d[k];
+      }
     }
-    
+
     // Primitive number
     if (typeof d === 'number') return d;
 
@@ -124,7 +172,7 @@ export class VizMetricComponent {
     if (!d || typeof d !== 'object') return '';
 
     if (Array.isArray(d.data) && d.columns?.length > 0) {
-        return d.columns[0];
+      return d.columns[0];
     }
     if ('label' in d) return d.label;
     return '';
@@ -134,7 +182,7 @@ export class VizMetricComponent {
   readonly parsedTrend: Signal<number | null> = computed(() => {
     const d = this.data();
     if (d && typeof d === 'object' && 'trend' in d) {
-        return d.trend;
+      return d.trend;
     }
     return null;
   });
@@ -144,7 +192,7 @@ export class VizMetricComponent {
     const d = this.data();
     // 1. Explicit property
     if (d && typeof d === 'object' && Array.isArray(d.trend_data)) {
-        return d.trend_data;
+      return d.trend_data;
     }
     return [];
   });
@@ -157,9 +205,9 @@ export class VizMetricComponent {
   });
 
   /**
-  * Generates SVG Path Data for the Sparkline Stroke.
-  * Maps data points to a 100x50 coordinate system.
-  */
+   * Generates SVG Path Data for the Sparkline Stroke.
+   * Maps data points to a 100x50 coordinate system.
+   */
   readonly sparklinePath = computed<string | null>(() => {
     const raw = this.trendSeries();
     if (!raw || raw.length < 2) return null;
@@ -167,7 +215,7 @@ export class VizMetricComponent {
     const min = Math.min(...raw);
     const max = Math.max(...raw);
     // Avoid division by zero if flat line
-    const range = (max - min) || 1; 
+    const range = max - min || 1;
 
     // Normalize to 0-100 (x) and 0-50 (y, inverted)
     const points = raw.map((val, index) => {
@@ -181,9 +229,9 @@ export class VizMetricComponent {
   });
 
   /**
-  * Generates SVG Path Data for the Area Fill.
-  * Closes the path loop to the bottom edge.
-  */
+   * Generates SVG Path Data for the Area Fill.
+   * Closes the path loop to the bottom edge.
+   */
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;
@@ -195,7 +243,7 @@ export class VizMetricComponent {
   readonly alertClass: Signal<string> = computed(() => {
     const val = this.displayValue();
     const conf = this.config();
-    
+
     if (typeof val !== 'number' || !conf?.thresholds) return '';
 
     const { warning, critical } = conf.thresholds;

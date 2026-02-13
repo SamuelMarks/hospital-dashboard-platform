@@ -11,13 +11,13 @@ const makeItem = (): QueryCartItem => ({
   title: 'Test Query',
   sql: 'SELECT 1',
   createdAt: '2024-01-01T00:00:00Z',
-  kind: 'query-cart-item'
+  kind: 'query-cart-item',
 });
 
 describe('QueryCartProvisioningService', () => {
   it('should create a widget and refresh dashboard', () => {
     const mockDashApi = {
-      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn()
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
     };
     const mockStore = { refreshWidget: vi.fn() };
     const mockCart = { remove: vi.fn() };
@@ -30,14 +30,14 @@ describe('QueryCartProvisioningService', () => {
         QueryCartProvisioningService,
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: DashboardStore, useValue: mockStore },
-        { provide: QueryCartService, useValue: mockCart }
-      ]
+        { provide: QueryCartService, useValue: mockCart },
+      ],
     });
 
     const service = TestBed.inject(QueryCartProvisioningService);
     const item = makeItem();
 
-    service.addToDashboard(item, 'd1').subscribe(result => {
+    service.addToDashboard(item, 'd1').subscribe((result) => {
       expect(result).toBe(widget);
     });
 
@@ -47,8 +47,8 @@ describe('QueryCartProvisioningService', () => {
         title: 'Test Query',
         type: 'SQL',
         visualization: 'table',
-        config: expect.objectContaining({ query: 'SELECT 1', w: 6, h: 4 })
-      })
+        config: expect.objectContaining({ query: 'SELECT 1', w: 6, h: 4 }),
+      }),
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
     expect(mockCart.remove).toHaveBeenCalledWith('q1');

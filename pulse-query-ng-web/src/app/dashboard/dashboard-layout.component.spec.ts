@@ -17,16 +17,17 @@ const makeCartItem = (): QueryCartItem => ({
   title: 'Cart Query',
   sql: 'SELECT 1',
   createdAt: '2024-01-01T00:00:00Z',
-  kind: 'query-cart-item'
+  kind: 'query-cart-item',
 });
 
-const makeTemplate = (): TemplateResponse => ({
-  id: 't1',
-  title: 'Template A',
-  description: 'desc',
-  sql_template: 'SELECT 1',
-  parameters_schema: {}
-} as TemplateResponse);
+const makeTemplate = (): TemplateResponse =>
+  ({
+    id: 't1',
+    title: 'Template A',
+    description: 'desc',
+    sql_template: 'SELECT 1',
+    parameters_schema: {},
+  }) as TemplateResponse;
 
 const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => ({
   id: 'w1',
@@ -35,7 +36,7 @@ const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => 
   type: 'SQL',
   visualization: 'table',
   config: { w: 6, h: 3 },
-  ...overrides
+  ...overrides,
 });
 
 describe('DashboardLayoutComponent', () => {
@@ -63,11 +64,11 @@ describe('DashboardLayoutComponent', () => {
       updateWidgetOrder: vi.fn(),
       setLoading: vi.fn(),
       optimisticRemoveWidget: vi.fn(),
-      optimisticRestoreWidget: vi.fn()
+      optimisticRestoreWidget: vi.fn(),
     };
     mockDashApi = {
       updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})),
-      deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn().mockReturnValue(of({}))
+      deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn().mockReturnValue(of({})),
     };
     mockProvisioning = { provisionWidget: vi.fn() };
     mockCartProvisioning = { addToDashboard: vi.fn() };
@@ -88,10 +89,10 @@ describe('DashboardLayoutComponent', () => {
           provide: ActivatedRoute,
           useValue: {
             paramMap: paramMap$.asObservable(),
-            queryParamMap: queryParamMap$.asObservable()
-          }
-        }
-      ]
+            queryParamMap: queryParamMap$.asObservable(),
+          },
+        },
+      ],
     });
   });
 
@@ -102,7 +103,7 @@ describe('DashboardLayoutComponent', () => {
     paramMap$.next({ get: (key: string) => (key === 'id' ? 'd9' : null) });
     queryParamMap$.next({
       keys: ['dept', 'mode'],
-      get: (key: string) => (key === 'dept' ? 'Cardiology' : 'tv')
+      get: (key: string) => (key === 'dept' ? 'Cardiology' : 'tv'),
     });
 
     expect(mockStore.reset).toHaveBeenCalled();
@@ -128,7 +129,7 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: makeCartItem() },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
     expect(mockStore.updateWidgetOrder).not.toHaveBeenCalled();
@@ -143,7 +144,7 @@ describe('DashboardLayoutComponent', () => {
       previousContainer: container,
       container,
       previousIndex: 1,
-      currentIndex: 2
+      currentIndex: 2,
     } as any);
 
     expect(mockStore.updateWidgetOrder).toHaveBeenCalledWith(1, 2);
@@ -158,7 +159,7 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: makeTemplate() },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
     expect(mockProvisioning.provisionWidget).not.toHaveBeenCalled();
@@ -172,7 +173,7 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: null },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
     expect(mockProvisioning.provisionWidget).not.toHaveBeenCalled();
@@ -189,12 +190,14 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: item },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
     expect(mockStore.setLoading).toHaveBeenCalledWith(true);
     expect(mockCartProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'd1');
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Added query: Cart Query', 'OK', { duration: 3000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Added query: Cart Query', 'OK', {
+      duration: 3000,
+    });
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
 
@@ -208,7 +211,7 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: item },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to add query to dashboard', 'Close');
@@ -225,11 +228,13 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: template },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
     expect(mockProvisioning.provisionWidget).toHaveBeenCalledWith(template, 'd1');
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Added widget: Template A', 'OK', { duration: 3000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Added widget: Template A', 'OK', {
+      duration: 3000,
+    });
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
 
@@ -243,10 +248,13 @@ describe('DashboardLayoutComponent', () => {
       container: {},
       item: { data: template },
       previousIndex: 0,
-      currentIndex: 0
+      currentIndex: 0,
     } as any);
 
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to create widget from template', 'Close');
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Failed to create widget from template',
+      'Close',
+    );
     expect(mockStore.setLoading).toHaveBeenCalledWith(false);
   });
 
@@ -273,12 +281,15 @@ describe('DashboardLayoutComponent', () => {
     mockTheme.isTvMode.set(true);
     const spy = vi.spyOn(component, 'updateWidgetWidth');
 
-    component.startResizing({
-      clientX: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-      target: { closest: () => null }
-    } as any, makeWidget());
+    component.startResizing(
+      {
+        clientX: 0,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        target: { closest: () => null },
+      } as any,
+      makeWidget(),
+    );
 
     expect(spy).not.toHaveBeenCalled();
   });
@@ -287,12 +298,15 @@ describe('DashboardLayoutComponent', () => {
     const component = setup();
     const spy = vi.spyOn(component, 'updateWidgetWidth');
 
-    component.startResizing({
-      clientX: 0,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-      target: { closest: () => null }
-    } as any, makeWidget());
+    component.startResizing(
+      {
+        clientX: 0,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        target: { closest: () => null },
+      } as any,
+      makeWidget(),
+    );
 
     expect(spy).not.toHaveBeenCalled();
   });
@@ -308,12 +322,15 @@ describe('DashboardLayoutComponent', () => {
     const handle = document.createElement('div');
     grid.appendChild(handle);
 
-    component.startResizing({
-      clientX: 100,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-      target: handle
-    } as any, makeWidget({ config: { w: 6 } as any }));
+    component.startResizing(
+      {
+        clientX: 100,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        target: handle,
+      } as any,
+      makeWidget({ config: { w: 6 } as any }),
+    );
 
     document.dispatchEvent(new MouseEvent('mousemove', { clientX: 200 }));
     document.dispatchEvent(new MouseEvent('mouseup', { clientX: 300 }));
@@ -332,12 +349,15 @@ describe('DashboardLayoutComponent', () => {
     const handle = document.createElement('div');
     grid.appendChild(handle);
 
-    component.startResizing({
-      clientX: 100,
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-      target: handle
-    } as any, makeWidget({ config: { w: 6 } as any }));
+    component.startResizing(
+      {
+        clientX: 100,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+        target: handle,
+      } as any,
+      makeWidget({ config: { w: 6 } as any }),
+    );
 
     document.dispatchEvent(new MouseEvent('mouseup', { clientX: 100 }));
 
@@ -421,7 +441,7 @@ describe('DashboardLayoutComponent', () => {
     const component = setup();
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(
-      throwError(() => new Error('fail'))
+      throwError(() => new Error('fail')),
     );
 
     component.confirmDeleteWidget(makeWidget());

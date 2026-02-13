@@ -13,7 +13,7 @@ import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
   selector: 'app-sql-builder',
-  template: '<div data-testid="mock-sql-builder"></div>'
+  template: '<div data-testid="mock-sql-builder"></div>',
 })
 class MockSqlBuilderComponent {
   readonly dashboardId = input<string | undefined>();
@@ -24,7 +24,7 @@ class MockSqlBuilderComponent {
 
 @Component({
   selector: 'app-http-config',
-  template: '<div data-testid="mock-http-config"></div>'
+  template: '<div data-testid="mock-http-config"></div>',
 })
 class MockHttpConfigComponent {
   readonly dashboardId = input<string | undefined>();
@@ -46,7 +46,7 @@ describe('WidgetEditorDialog', () => {
     title: 'SQL',
     type: 'SQL',
     visualization: 'bar_chart',
-    config: { query: 'SELECT 1', xKey: 'x', yKey: 'y' }
+    config: { query: 'SELECT 1', xKey: 'x', yKey: 'y' },
   });
   let sqlWidget: WidgetResponse;
   let mockData: WidgetEditorData;
@@ -57,11 +57,11 @@ describe('WidgetEditorDialog', () => {
     mockDialogRef = { close: vi.fn() };
     mockDashApi = {
       getDashboardApiV1DashboardsDashboardIdGet: vi.fn(),
-      updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({}))
+      updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})),
     };
     mockStore = {
       loadDashboard: vi.fn(),
-      dataMap: signal({ w1: { columns: ['x', 'y'] } })
+      dataMap: signal({ w1: { columns: ['x', 'y'] } }),
     };
 
     await TestBed.configureTestingModule({
@@ -70,19 +70,19 @@ describe('WidgetEditorDialog', () => {
         { provide: MAT_DIALOG_DATA, useValue: mockData },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DashboardsService, useValue: mockDashApi },
-        { provide: DashboardStore, useValue: mockStore }
-      ]
+        { provide: DashboardStore, useValue: mockStore },
+      ],
     })
       .overrideComponent(WidgetEditorDialog, {
         remove: { imports: [SqlBuilderComponent, HttpConfigComponent] },
-        add: { imports: [MockSqlBuilderComponent, MockHttpConfigComponent] }
+        add: { imports: [MockSqlBuilderComponent, MockHttpConfigComponent] },
       })
       .overrideComponent(WidgetEditorDialog, {
         set: {
           template: readTemplate('./widget-editor.dialog.html'),
           templateUrl: undefined,
-          schemas: [NO_ERRORS_SCHEMA]
-        }
+          schemas: [NO_ERRORS_SCHEMA],
+        },
       })
       .compileComponents();
 
@@ -118,8 +118,8 @@ describe('WidgetEditorDialog', () => {
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: noConfigWidget } },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DashboardsService, useValue: mockDashApi },
-        { provide: DashboardStore, useValue: mockStore }
-      ]
+        { provide: DashboardStore, useValue: mockStore },
+      ],
     });
 
     const inst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
@@ -152,8 +152,8 @@ describe('WidgetEditorDialog', () => {
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: noQueryWidget } },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DashboardsService, useValue: mockDashApi },
-        { provide: DashboardStore, useValue: mockStore }
-      ]
+        { provide: DashboardStore, useValue: mockStore },
+      ],
     });
 
     const inst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
@@ -183,7 +183,7 @@ describe('WidgetEditorDialog', () => {
       id: 'd1',
       name: 'Dash',
       owner_id: 'u1',
-      widgets: [{ ...sqlWidget, config: { query: 'SELECT 2' } }]
+      widgets: [{ ...sqlWidget, config: { query: 'SELECT 2' } }],
     } as DashboardResponse;
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
 
@@ -193,7 +193,7 @@ describe('WidgetEditorDialog', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) })
+      expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) }),
     );
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
   });
@@ -241,7 +241,7 @@ describe('WidgetEditorDialog', () => {
       id: 'd1',
       name: 'Dash',
       owner_id: 'u1',
-      widgets: [{ ...sqlWidget, config: undefined } as unknown as WidgetResponse]
+      widgets: [{ ...sqlWidget, config: undefined } as unknown as WidgetResponse],
     } as DashboardResponse;
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
 
@@ -251,13 +251,13 @@ describe('WidgetEditorDialog', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: { xKey: 'x', yKey: 'y' } })
+      expect.objectContaining({ config: { xKey: 'x', yKey: 'y' } }),
     );
   });
 
   it('should skip save when widget missing', () => {
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
-      of({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] } as DashboardResponse)
+      of({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] } as DashboardResponse),
     );
 
     component.saveSettings();
@@ -278,9 +278,9 @@ describe('WidgetEditorDialog', () => {
           title: 'SQL',
           type: 'SQL',
           visualization: 'bar_chart',
-          config: {}
-        }
-      ]
+          config: {},
+        },
+      ],
     } as DashboardResponse;
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
 
@@ -290,7 +290,7 @@ describe('WidgetEditorDialog', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) })
+      expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) }),
     );
   });
 });

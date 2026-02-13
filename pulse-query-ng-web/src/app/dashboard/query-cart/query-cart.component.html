@@ -1,80 +1,72 @@
-    <div class="header">
-      <div class="title">
-        <mat-icon>shopping_cart</mat-icon>
-        <span>Query Cart</span>
-        <span class="count-pill" data-testid="cart-count">{{ count() }}</span>
+<div class="header">
+  <div class="title">
+    <mat-icon>shopping_cart</mat-icon>
+    <span>Query Cart</span>
+    <span class="count-pill" data-testid="cart-count">{{ count() }}</span>
+  </div>
+  <button mat-button (click)="clear()" [disabled]="count() === 0" data-testid="clear-cart">
+    Clear
+  </button>
+</div>
+
+<div
+  cdkDropList
+  [cdkDropListConnectedTo]="connectedDropLists()"
+  [cdkDropListSortingDisabled]="true"
+  [cdkDropListData]="items()"
+  class="cart-list"
+  data-testid="query-cart-list"
+>
+  @if (items().length === 0) {
+    <div class="empty-state" data-testid="cart-empty">Save ad-hoc queries to stage them here.</div>
+  }
+
+  @for (item of items(); track item.id) {
+    <div class="cart-item" cdkDrag [cdkDragData]="item" [attr.data-testid]="'cart-item-' + item.id">
+      <div class="drag-handle" cdkDragHandle matTooltip="Drag onto dashboard">
+        <mat-icon>drag_indicator</mat-icon>
       </div>
-      <button mat-button (click)="clear()" [disabled]="count() === 0" data-testid="clear-cart">
-        Clear
-      </button>
+
+      <div class="item-body">
+        <div class="item-title" [matTooltip]="item.title">{{ item.title }}</div>
+        <div class="item-sql" [matTooltip]="item.sql">{{ previewSql(item.sql) }}</div>
+      </div>
+
+      <div class="item-actions">
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="addToDashboard(item)"
+          [disabled]="!dashboardId()"
+          matTooltip="Add to current dashboard"
+          aria-label="Add to dashboard"
+          data-testid="add-to-dashboard"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+        <button mat-icon-button (click)="rename(item)" matTooltip="Rename" aria-label="Rename">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="warn"
+          (click)="remove(item)"
+          matTooltip="Remove"
+          aria-label="Remove"
+          data-testid="remove-item"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+
+      <div *cdkDragPreview class="cart-item">
+        <div class="item-title">{{ item.title }}</div>
+        <div class="item-sql">Drop to add</div>
+      </div>
     </div>
+  }
+</div>
 
-    <div
-      cdkDropList
-      [cdkDropListConnectedTo]="connectedDropLists()"
-      [cdkDropListSortingDisabled]="true"
-      [cdkDropListData]="items()"
-      class="cart-list"
-      data-testid="query-cart-list"
-    >
-      @if (items().length === 0) {
-        <div class="empty-state" data-testid="cart-empty">
-          Save ad-hoc queries to stage them here.
-        </div>
-      }
-
-      @for (item of items(); track item.id) {
-        <div class="cart-item" cdkDrag [cdkDragData]="item" [attr.data-testid]="'cart-item-' + item.id">
-          <div class="drag-handle" cdkDragHandle matTooltip="Drag onto dashboard">
-            <mat-icon>drag_indicator</mat-icon>
-          </div>
-
-          <div class="item-body">
-            <div class="item-title" [matTooltip]="item.title">{{ item.title }}</div>
-            <div class="item-sql" [matTooltip]="item.sql">{{ previewSql(item.sql) }}</div>
-          </div>
-
-          <div class="item-actions">
-            <button
-              mat-icon-button
-              color="primary"
-              (click)="addToDashboard(item)"
-              [disabled]="!dashboardId()"
-              matTooltip="Add to current dashboard"
-              aria-label="Add to dashboard"
-              data-testid="add-to-dashboard"
-            >
-              <mat-icon>add</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              (click)="rename(item)"
-              matTooltip="Rename"
-              aria-label="Rename"
-            >
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button
-              mat-icon-button
-              color="warn"
-              (click)="remove(item)"
-              matTooltip="Remove"
-              aria-label="Remove"
-              data-testid="remove-item"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-
-          <div *cdkDragPreview class="cart-item">
-            <div class="item-title">{{ item.title }}</div>
-            <div class="item-sql">Drop to add</div>
-          </div>
-        </div>
-      }
-    </div>
-
-    @if (!dashboardId()) {
-      <div class="hint">Open a dashboard to enable one-click add.</div>
-    }
-  
+@if (!dashboardId()) {
+  <div class="hint">Open a dashboard to enable one-click add.</div>
+}

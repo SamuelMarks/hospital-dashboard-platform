@@ -53,6 +53,7 @@ class ModelCandidate(Base):
                               Internal use only; hidden from frontend to ensure blind testing.
       model_tag (str): The label displayed to the user (e.g. "Model A", "Option 1").
       generated_sql (str): The raw SQL code produced by the model.
+      sql_hash (str): Stable hash of the normalized SQL for equivalence grouping.
       latency_ms (int): Time taken to generate the response in milliseconds.
       is_selected (bool): Feedback flag. True if the user clicked "Use This Query" or "Run".
       execution_success (bool): Telemetry flag. True if DuckDB executed the SQL without error.
@@ -67,6 +68,7 @@ class ModelCandidate(Base):
   model_identifier: Mapped[str] = mapped_column(String, nullable=False)
   model_tag: Mapped[str] = mapped_column(String, nullable=False)
   generated_sql: Mapped[str] = mapped_column(Text, nullable=False)
+  sql_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
   latency_ms: Mapped[int] = mapped_column(Integer, nullable=True)
 
   # Feedback / Telemetry

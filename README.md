@@ -97,11 +97,17 @@ flowchart TD
 
 ## ✨ Key Features
 
-*   **📊 Dynamic Dashboards**: Create grids of widgets powered by raw SQL (DuckDB) or external HTTP APIs.
-*   **🤖 AI Assistant**: Natural Language to SQL generation. Ask "How many patients in ICU?" and get a valid query instantly.
-*   **🔮 Simulation & Optimization**: Run complex scenarios to optimize patient-to-bed allocation using mathematical solvers.
-*   **🛡️ Analytical Security**: AST-based SQL validation ensures only safe `SELECT` and `CTE` queries are executed.
-*   **📁 Template Marketplace**: Pre-packaged analytics templates ("Utilization Spikes", "Seasonal Growth") that can be instantiated with custom parameters.
+*   **📊 Dynamic Dashboards**: Build responsive dashboards with grids of widgets powered by DuckDB SQL or external HTTP APIs.
+*   **🤖 AI Assistant**: Natural‑language to SQL generation with multi‑model candidate outputs and human selection.
+*   **🏟️ LLM Arena Analytics**: Inspect which user queries generated which SQL, by which LLM, and how each candidate was scored/selected.
+*   **🧪 Experiment Logs**: `/api/v1/ai` experiment runs are captured alongside chat arena results for unified analysis and comparison.
+*   **🔎 SQL Preview for Candidates**: Execute candidate SQL against the preview endpoint to compare results before selecting.
+*   **🧰 Query Cart**: Stage ad‑hoc SQL and drag it into dashboards for rapid iteration and collaboration.
+*   **🧩 Template Marketplace**: Pre‑packaged analytics templates ("Utilization Spikes", "Seasonal Growth") with parameterized inputs.
+*   **📐 Widget Builder**: Configure SQL widgets, HTTP‑backed widgets, and text/markdown summaries in one flow.
+*   **🔮 Simulation & Optimization**: Run complex scenarios to optimize patient‑to‑bed allocation using mathematical solvers.
+*   **🛡️ Analytical Security**: AST‑based SQL validation ensures only safe `SELECT` and `CTE` queries are executed.
+*   **🔗 Contract‑First Frontend**: OpenAPI‑generated Angular client ensures frontend/backend schema consistency.
 
 ---
 

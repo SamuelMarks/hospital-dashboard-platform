@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 
 describe('guestGuard', () => {
   const executeGuard: CanActivateFn = (...guardParameters) =>
-      TestBed.runInInjectionContext(() => guestGuard(...guardParameters));
+    TestBed.runInInjectionContext(() => guestGuard(...guardParameters));
 
   let mockAuthService: { isAuthenticated: ReturnType<typeof vi.fn> };
   let mockRouter: { createUrlTree: ReturnType<typeof vi.fn> };
@@ -21,8 +21,8 @@ describe('guestGuard', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: AuthService, useValue: mockAuthService },
-        { provide: Router, useValue: mockRouter }
-      ]
+        { provide: Router, useValue: mockRouter },
+      ],
     });
   });
 
@@ -37,7 +37,7 @@ describe('guestGuard', () => {
 
   it('should redirect to home if user IS authenticated', () => {
     mockAuthService.isAuthenticated.mockReturnValue(true);
-    
+
     const mockUrlTree = {} as UrlTree;
     mockRouter.createUrlTree.mockReturnValue(mockUrlTree);
 

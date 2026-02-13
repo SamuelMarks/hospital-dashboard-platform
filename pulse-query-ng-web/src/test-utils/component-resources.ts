@@ -7,10 +7,12 @@ import { fileURLToPath } from 'url';
 /** Absolute path to the test-utils directory. */
 const testUtilsDir = dirname(fileURLToPath(import.meta.url));
 
+/** Returns true if the directory looks like the app root. */
 function isAppRoot(dir: string): boolean {
   return existsSync(join(dir, 'src', 'app')) && existsSync(join(dir, 'package.json'));
 }
 
+/** Walk upward from a start directory to find the app root. */
 function findAppRoot(startDir: string): string | undefined {
   let current = startDir;
   while (true) {
@@ -25,7 +27,9 @@ function findAppRoot(startDir: string): string | undefined {
   }
 }
 
+/** Current working directory used for resolution. */
 const cwd = process.cwd();
+/** Workspace-level nested path for monorepo cases. */
 const nestedCwd = resolve(cwd, 'pulse-query-ng-web');
 /** Absolute path to the application root. */
 const appRoot =
@@ -56,7 +60,7 @@ class FsResourceLoader extends ResourceLoader {
     const directCandidates = [
       resolve(appRoot, url),
       resolve(appRoot, 'src', url),
-      resolve(appRoot, 'src', 'app', url)
+      resolve(appRoot, 'src', 'app', url),
     ];
 
     let filePath = directCandidates.find(existsSync);

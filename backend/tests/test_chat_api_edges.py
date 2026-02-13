@@ -89,6 +89,37 @@ async def test_generate_assistant_reply_handles_exception(db_session, chat_user)
 
 
 @pytest.mark.asyncio
+async def test_generate_assistant_reply_dedupes_model_names(db_session, chat_user) -> None:
+  """Duplicate provider names should be made unique."""
+  conv = Conversation(user_id=chat_user.id, title="Dupes")
+  db_session.add(conv)
+  await db_session.commit()
+
+  msg = Message(conversation_id=conv.id, role="user", content="Hi")
+  db_session.add(msg)
+  await db_session.commit()
+
+  mock_arena = AsyncMock(
+    return_value=[
+      ArenaResponse("Model A", "m1", "```sql SELECT 1```", 10),
+      ArenaResponse("Model A", "m2", "```sql SELECT 2```", 10),
+      ArenaResponse("Model A", "m3", "```sql SELECT 3```", 10),
+    ]
+  )
+
+  with (
+    patch("app.api.routers.chat.llm_client.generate_arena_competition", mock_arena),
+    patch("app.api.routers.chat.schema_service.get_schema_context_string", return_value="schema"),
+  ):
+    assistant_msg = await chat_router._generate_assistant_reply(db_session, conv.id)
+
+  names = [c.model_name for c in assistant_msg.candidates]
+  assert "Model A" in names
+  assert "Model A 2" in names
+  assert "Model A 3" in names
+
+
+@pytest.mark.asyncio
 async def test_create_conversation_defaults_title(client: AsyncClient, chat_user) -> None:
   """Missing title/message should default to 'New Chat'."""
   res = await client.post("/api/v1/conversations/", json={})
@@ -137,6 +168,45 @@ async def test_get_messages_success(client: AsyncClient, chat_user, db_session) 
 async def test_send_message_not_found(client: AsyncClient, chat_user) -> None:
   res = await client.post(f"/api/v1/conversations/{uuid.uuid4()}/messages", json={"content": "hi"})
   assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user, db_session) -> None:
+  """Voting should mark all candidates sharing the same sql_hash."""
+  conv = Conversation(user_id=chat_user.id, title="Shared Hash")
+  db_session.add(conv)
+  await db_session.commit()
+
+  msg = Message(conversation_id=conv.id, role="assistant", content="Pending Vote", sql_snippet=None)
+  db_session.add(msg)
+  await db_session.commit()
+
+  c1 = MessageCandidate(
+    message_id=msg.id,
+    model_name="A",
+    content="A",
+    sql_snippet="SELECT 1",
+    sql_hash="same-hash",
+    is_selected=False,
+  )
+  c2 = MessageCandidate(
+    message_id=msg.id,
+    model_name="B",
+    content="B",
+    sql_snippet="SELECT 1",
+    sql_hash="same-hash",
+    is_selected=False,
+  )
+  db_session.add_all([c1, c2])
+  await db_session.commit()
+
+  vote_url = f"/api/v1/conversations/{conv.id}/messages/{msg.id}/vote"
+  response = await client.post(vote_url, json={"candidate_id": str(c1.id)})
+
+  assert response.status_code == 200
+  data = response.json()
+  selected = [c for c in data["candidates"] if c["is_selected"]]
+  assert len(selected) == 2
 
 
 @pytest.mark.asyncio

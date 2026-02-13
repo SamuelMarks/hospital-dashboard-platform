@@ -9,19 +9,15 @@ import {
   importProvidersFrom,
   APP_INITIALIZER,
   ErrorHandler,
-  provideZonelessChangeDetection
+  provideZonelessChangeDetection,
 } from '@angular/core';
 import {
   provideRouter,
   withComponentInputBinding,
   withViewTransitions,
-  withRouterConfig
+  withRouterConfig,
 } from '@angular/router';
-import {
-  provideHttpClient,
-  withInterceptors,
-  withFetch
-} from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withFetch } from '@angular/common/http';
 import { provideClientHydration } from '@angular/platform-browser';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
@@ -59,7 +55,7 @@ export function apiConfigFactory(): Configuration {
   return new Configuration({
     basePath: environment.apiUrl,
     // Credentials (e.g. cookies) can be enabled here if switching away from Bearer tokens
-    withCredentials: false
+    withCredentials: false,
   });
 }
 
@@ -87,25 +83,19 @@ export const appConfig: ApplicationConfig = {
       // Provides smooth transitions between routes (Angular 17+)
       withViewTransitions(),
       // Strict parameter handling
-      withRouterConfig({ paramsInheritanceStrategy: 'always' })
+      withRouterConfig({ paramsInheritanceStrategy: 'always' }),
     ),
 
     provideClientHydration(),
     provideAnimationsAsync(),
 
     // HTTP Stack with Functional Interceptors
-    provideHttpClient(
-      withFetch(),
-      withInterceptors([
-        authInterceptor,
-        errorInterceptor
-      ])
-    ),
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),
 
     // Global Runtime Error Handler
     {
       provide: ErrorHandler,
-      useClass: GlobalErrorHandler
+      useClass: GlobalErrorHandler,
     },
 
     // Auth Initialization (Bootstrap Blocker)
@@ -113,16 +103,16 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeAuth,
       deps: [AuthService],
-      multi: true
+      multi: true,
     },
 
     // API Client Configuration
     // 1. Provide the BASE_PATH token for services that inject it directly
     {
       provide: BASE_PATH,
-      useValue: environment.apiUrl
+      useValue: environment.apiUrl,
     },
     // 2. Import the ApiModule using our dynamic factory
-    importProvidersFrom(ApiModule.forRoot(apiConfigFactory))
-  ]
+    importProvidersFrom(ApiModule.forRoot(apiConfigFactory)),
+  ],
 };

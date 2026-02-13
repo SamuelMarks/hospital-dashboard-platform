@@ -24,15 +24,15 @@ describe('FilterRibbonComponent', () => {
   beforeEach(async () => {
     globalParamsSig = signal({});
     mockStore = {
-      globalParams: globalParamsSig
+      globalParams: globalParamsSig,
     };
 
     queryParamsSub = new BehaviorSubject({
-      get: (key: string) => null
+      get: (key: string) => null,
     });
 
     mockRouter = {
-      navigate: vi.fn()
+      navigate: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -42,9 +42,9 @@ describe('FilterRibbonComponent', () => {
         { provide: Router, useValue: mockRouter },
         {
           provide: ActivatedRoute,
-          useValue: { queryParamMap: queryParamsSub.asObservable() }
-        }
-      ]
+          useValue: { queryParamMap: queryParamsSub.asObservable() },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(FilterRibbonComponent);
@@ -64,7 +64,7 @@ describe('FilterRibbonComponent', () => {
         if (key === 'start_date') return '2023-01-01';
         if (key === 'end_date') return '2023-01-31';
         return null;
-      }
+      },
     });
 
     // Check if form control updated
@@ -77,10 +77,13 @@ describe('FilterRibbonComponent', () => {
     component.deptControl.setValue('Neurology');
 
     // Check Router Navigation
-    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
-      queryParams: { dept: 'Neurology' },
-      queryParamsHandling: 'merge'
-    }));
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { dept: 'Neurology' },
+        queryParamsHandling: 'merge',
+      }),
+    );
   });
 
   it('should navigate when BOTH dates are set', () => {
@@ -93,12 +96,15 @@ describe('FilterRibbonComponent', () => {
     // Trigger the change handler manually (as UI picker would)
     component.onDateChange();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
         queryParams: {
-            start_date: '2023-01-01',
-            end_date: '2023-01-31'
-        }
-    }));
+          start_date: '2023-01-01',
+          end_date: '2023-01-31',
+        },
+      }),
+    );
   });
 
   it('should NOT navigate if only Start Date is set', () => {
@@ -110,9 +116,12 @@ describe('FilterRibbonComponent', () => {
   it('should clear filters when clearFilters() called', () => {
     component.clearFilters();
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
-        queryParams: { start_date: null, end_date: null, dept: null }
-    }));
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { start_date: null, end_date: null, dept: null },
+      }),
+    );
     expect(component.deptControl.value).toBeNull();
     expect(component.startDate.value).toBeNull();
     expect(component.endDate.value).toBeNull();
@@ -120,9 +129,12 @@ describe('FilterRibbonComponent', () => {
 
   it('should update filter with null value', () => {
     component.deptControl.setValue(null);
-    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
-      queryParams: { dept: null }
-    }));
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: { dept: null },
+      }),
+    );
   });
 
   it('should cleanup subscriptions on destroy', () => {

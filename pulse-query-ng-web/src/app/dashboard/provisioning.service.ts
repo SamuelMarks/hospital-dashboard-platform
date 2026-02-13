@@ -6,7 +6,7 @@ import {
   WidgetIn,
   WidgetCreateSql, // Import subtype
   WidgetResponse,
-  DashboardResponse
+  DashboardResponse,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
 
@@ -19,28 +19,27 @@ import { DashboardStore } from '../dashboard/dashboard.store';
  * 3. Persisting the new Widget to the API.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ProvisioningService {
-    /** dashboardApi property. */
-private readonly dashboardApi = inject(DashboardsService);
-    /** store property. */
-private readonly store = inject(DashboardStore);
+  /** dashboardApi property. */
+  private readonly dashboardApi = inject(DashboardsService);
+  /** store property. */
+  private readonly store = inject(DashboardStore);
 
   /**
-  * Instantiates a template into the current dashboard using its default parameters.
-  *
-  * @param {TemplateResponse} template - The source template.
-  * @param {string} dashboardId - The target dashboard UUID.
-  * @param {object} position - Optional grid position {x, y}.
-  * @returns {Observable<WidgetResponse>} The created widget.
-  */
+   * Instantiates a template into the current dashboard using its default parameters.
+   *
+   * @param {TemplateResponse} template - The source template.
+   * @param {string} dashboardId - The target dashboard UUID.
+   * @param {object} position - Optional grid position {x, y}.
+   * @returns {Observable<WidgetResponse>} The created widget.
+   */
   provisionWidget(
     template: TemplateResponse,
     dashboardId: string,
-    position: { x: number; y: number } = { x: 0, y: 0 }
+    position: { x: number; y: number } = { x: 0, y: 0 },
   ): Observable<WidgetResponse> {
-
     // 1. Prepare Configuration
     const config = this.buildConfig(template);
 
@@ -58,26 +57,27 @@ private readonly store = inject(DashboardStore);
       title: template.title,
       type: 'SQL',
       visualization: vizType,
-      config: { query: config['query'], ...config } as any
+      config: { query: config['query'], ...config } as any,
     };
 
     // 2. Call API & Update Store
-    return this.dashboardApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId, payload)
+    return this.dashboardApi
+      .createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId, payload)
       .pipe(
-        map(widget => {
+        map((widget) => {
           // Verify widget creation success
           // Trigger a refresh of the single widget to fetch data immediately
           this.store.refreshWidget(widget.id);
           // Reload dashboard to sync full layout state if needed
           // this.store.loadDashboard(dashboardId);
           return widget;
-        })
+        }),
       );
   }
 
   /**
-  * Generates the widget configuration object by injecting schema defaults into the SQL.
-  */
+   * Generates the widget configuration object by injecting schema defaults into the SQL.
+   */
   private buildConfig(template: TemplateResponse): Record<string, any> {
     const rawSql = template.sql_template;
     const schema = template.parameters_schema || {};
@@ -87,7 +87,7 @@ private readonly store = inject(DashboardStore);
     let processedSql = rawSql;
 
     // Iterate over schema properties to find defaults
-    Object.keys(props).forEach(key => {
+    Object.keys(props).forEach((key) => {
       const prop = props[key];
       if (prop.default !== undefined) {
         const val = String(prop.default);
@@ -100,8 +100,8 @@ private readonly store = inject(DashboardStore);
   }
 
   /**
-  * Heuristic to determine the best visualization based on title/SQL keywords.
-  */
+   * Heuristic to determine the best visualization based on title/SQL keywords.
+   */
   private guessVisualization(template: TemplateResponse): string {
     const title = template.title.toLowerCase();
     const sql = template.sql_template.toLowerCase();

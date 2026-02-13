@@ -1,87 +1,83 @@
-/** 
- * @fileoverview Unit tests for GlobalErrorHandler. 
- */ 
+/**
+ * @fileoverview Unit tests for GlobalErrorHandler.
+ */
 
-import { TestBed } from '@angular/core/testing'; 
-import { GlobalErrorHandler } from './global-error.handler'; 
-import { MatSnackBar } from '@angular/material/snack-bar'; 
-import { Injector } from '@angular/core'; 
-import { HttpErrorResponse } from '@angular/common/http'; 
-import { of } from 'rxjs'; 
+import { TestBed } from '@angular/core/testing';
+import { GlobalErrorHandler } from './global-error.handler';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Injector } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { of } from 'rxjs';
 
-describe('GlobalErrorHandler', () => { 
-  let handler: GlobalErrorHandler; 
-  let mockSnackBar: { open: ReturnType<typeof vi.fn> }; 
-  
+describe('GlobalErrorHandler', () => {
+  let handler: GlobalErrorHandler;
+  let mockSnackBar: { open: ReturnType<typeof vi.fn> };
+
   // Spy on console to keep test output clean from expected error logs
-  let consoleSpy: any; 
+  let consoleSpy: any;
 
-  beforeEach(() => { 
-    consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {}); 
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Setup default mock return value to prevent "Cannot read properties of undefined (reading 'onAction')" 
-    const snackRefObj = { onAction: () => of(void 0) }; 
-    mockSnackBar = { open: vi.fn().mockReturnValue(snackRefObj) }; 
-    
-    TestBed.configureTestingModule({ 
-      providers: [ 
-        GlobalErrorHandler, 
-        { provide: MatSnackBar, useValue: mockSnackBar }, 
-        Injector
-      ] 
-    }); 
+    // Setup default mock return value to prevent "Cannot read properties of undefined (reading 'onAction')"
+    const snackRefObj = { onAction: () => of(void 0) };
+    mockSnackBar = { open: vi.fn().mockReturnValue(snackRefObj) };
 
-    handler = TestBed.inject(GlobalErrorHandler); 
-  }); 
+    TestBed.configureTestingModule({
+      providers: [GlobalErrorHandler, { provide: MatSnackBar, useValue: mockSnackBar }, Injector],
+    });
 
-  afterEach(() => { 
-    consoleSpy.mockRestore(); 
-  }); 
+    handler = TestBed.inject(GlobalErrorHandler);
+  });
 
-  it('should be created', () => { 
-    expect(handler).toBeTruthy(); 
-  }); 
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
 
-  it('should display snackbar for client-side errors', () => { 
-    const error = new Error('Client logic failure'); 
-    
-    handler.handleError(error); 
+  it('should be created', () => {
+    expect(handler).toBeTruthy();
+  });
 
-    expect(mockSnackBar.open).toHaveBeenCalledWith( 
-      'Application Error: Client logic failure', 
-      'Reload', 
-      expect.objectContaining({ 
-        politeness: 'assertive', 
-        panelClass: ['snackbar-critical'] 
-      }) 
-    ); 
-  }); 
+  it('should display snackbar for client-side errors', () => {
+    const error = new Error('Client logic failure');
 
-  it('should ignore HttpErrorResponse (handled by interceptor)', () => { 
-    const httpError = new HttpErrorResponse({ status: 500 }); 
-    handler.handleError(httpError); 
-    expect(mockSnackBar.open).not.toHaveBeenCalled(); 
-  }); 
+    handler.handleError(error);
 
-  it('should handle string errors', () => { 
-    handler.handleError('Simple string error'); 
-    
-    expect(mockSnackBar.open).toHaveBeenCalledWith( 
-      expect.stringMatching(/Simple string error/), 
-      expect.anything(), 
-      expect.anything() 
-    ); 
-  }); 
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Application Error: Client logic failure',
+      'Reload',
+      expect.objectContaining({
+        politeness: 'assertive',
+        panelClass: ['snackbar-critical'],
+      }),
+    );
+  });
 
-  it('should handle rejection-wrapped errors', () => { 
-    handler.handleError({ rejection: new Error('Promise failed') }); 
+  it('should ignore HttpErrorResponse (handled by interceptor)', () => {
+    const httpError = new HttpErrorResponse({ status: 500 });
+    handler.handleError(httpError);
+    expect(mockSnackBar.open).not.toHaveBeenCalled();
+  });
 
-    expect(mockSnackBar.open).toHaveBeenCalledWith( 
-      expect.stringMatching(/Promise failed/), 
-      expect.anything(), 
-      expect.anything() 
-    ); 
-  }); 
+  it('should handle string errors', () => {
+    handler.handleError('Simple string error');
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      expect.stringMatching(/Simple string error/),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('should handle rejection-wrapped errors', () => {
+    handler.handleError({ rejection: new Error('Promise failed') });
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      expect.stringMatching(/Promise failed/),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
 
   it('should ignore HttpErrorResponse wrapped in rejection', () => {
     handler.handleError({ rejection: new HttpErrorResponse({ status: 500 }) });
@@ -93,31 +89,31 @@ describe('GlobalErrorHandler', () => {
     expect(mockSnackBar.open).toHaveBeenCalledWith(
       expect.stringMatching(/Unknown runtime exception/),
       'Reload',
-      expect.anything()
+      expect.anything(),
     );
   });
 
-  it('should clear errors stream', () => { 
-    handler.errors$.next(new Error('boom')); 
-    handler.clearError(); 
-    expect(handler.errors$.value).toBeNull(); 
-  }); 
+  it('should clear errors stream', () => {
+    handler.errors$.next(new Error('boom'));
+    handler.clearError();
+    expect(handler.errors$.value).toBeNull();
+  });
 
-  it('should broadcast error to errors$ stream', () => { 
-    const error = new Error('Stream Test'); 
-    
+  it('should broadcast error to errors$ stream', () => {
+    const error = new Error('Stream Test');
+
     // Subscribe to test emission
-    let emitted: unknown; 
-    handler.errors$.subscribe(e => emitted = e); 
+    let emitted: unknown;
+    handler.errors$.subscribe((e) => (emitted = e));
 
-    handler.handleError(error); 
-    expect(emitted).toBe(error); 
-  }); 
+    handler.handleError(error);
+    expect(emitted).toBe(error);
+  });
 
-  it('should invoke reload on snackbar action', () => { 
+  it('should invoke reload on snackbar action', () => {
     const reloadSpy = vi.spyOn(handler as any, 'reloadApp');
-    handler.handleError(new Error('Reload Test')); 
-    expect(reloadSpy).toHaveBeenCalled(); 
+    handler.handleError(new Error('Reload Test'));
+    expect(reloadSpy).toHaveBeenCalled();
     reloadSpy.mockRestore();
-  }); 
-}); 
+  });
+});

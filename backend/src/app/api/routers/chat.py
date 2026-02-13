@@ -7,7 +7,6 @@ Integrates with `LLMArenaClient` to provide multiple response candidates for vot
 
 import logging
 import re
-import asyncio
 from datetime import datetime, timezone
 from typing import Annotated, List, Optional
 from uuid import UUID
@@ -19,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api import deps
-from app.core.config import settings
 from app.database.postgres import get_db
 from app.models.user import User
 from app.models.chat import Conversation, Message, MessageCandidate
@@ -34,6 +32,7 @@ from app.schemas.chat import (
 )
 from app.services.schema import schema_service
 from app.services.llm_client import llm_client, ArenaResponse
+from app.services.sql_utils import sql_fingerprint
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ def _extract_and_validate_sql(text: str) -> Optional[str]:
 async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, history_limit: int = 10) -> Message:
   """
   Orchestrates the AI interaction loop with Arena Voting.
-  Generates 3 candidates for the user to vote on.
+  Generates candidates from all configured LLMs for the user to vote on.
 
   Args:
       db: Database session.
@@ -118,29 +117,30 @@ async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, his
   responses: List[ArenaResponse] = []
 
   try:
-    # Attempt 1: Standard Broadcast
+    # Standard Broadcast to all configured providers
     responses = await llm_client.generate_arena_competition(
       messages=messages_payload,
       temperature=0.7,  # Higher temp for variety
       max_tokens=1000,
     )
 
-    # Logic to ensure 3 candidates if we have fewer providers configured
-    if len(responses) < 3:
-      needed = 3 - len(responses)
-      # Generate extras with varying temperature to ensure diversity
-      extras = await asyncio.gather(
-        *[llm_client.generate_arena_competition(messages_payload, temperature=0.7 + (i * 0.2)) for i in range(needed)]
+    # Ensure we have at least 3 candidates for voting
+    target_count = 3
+    attempts = 0
+    while len(responses) < target_count and attempts < target_count:
+      more = await llm_client.generate_arena_competition(
+        messages=messages_payload,
+        temperature=0.7,
+        max_tokens=1000,
       )
-      for batch in extras:
-        responses.extend(batch)
+      responses.extend(more or [])
+      attempts += 1
 
   except Exception as e:
     logger.error(f"LLM Generation Failed: {e}")
     responses = [ArenaResponse("System", "error", "I apologize, but I am unable to process your request.", 0, str(e))]
 
-  # Trim to 3 if more
-  responses = responses[:3]
+  # Keep all responses for full arena comparison
 
   # 4. Persistence
   now = datetime.now(timezone.utc)
@@ -157,13 +157,23 @@ async def _generate_assistant_reply(db: AsyncSession, conversation_id: UUID, his
   await db.flush()  # Get ID for candidates
 
   # Create Candidates
+  used_names = set()
   for idx, res in enumerate(responses):
     sql_code = _extract_and_validate_sql(res.content)
-    # Use distinct name if multiples from same provider
-    tag = res.provider_name if len(responses) <= len(settings.LLM_SWARM) else f"{res.provider_name} {idx + 1}"
+    sql_hash = sql_fingerprint(sql_code) if sql_code else None
+    # Ensure display name uniqueness if provider labels collide
+    tag = res.provider_name
+    if tag in used_names:
+      tag = f"{tag} {idx + 1}"
+    used_names.add(tag)
 
     cand = MessageCandidate(
-      message_id=assistant_msg.id, model_name=tag, content=res.content, sql_snippet=sql_code, is_selected=False
+      message_id=assistant_msg.id,
+      model_name=tag,
+      content=res.content,
+      sql_snippet=sql_code,
+      sql_hash=sql_hash,
+      is_selected=False,
     )
     db.add(cand)
 
@@ -359,9 +369,12 @@ async def vote_candidate(
     raise HTTPException(status_code=404, detail="Candidate not found")
 
   # 4. Apply Vote
-  # Reset others
+  selected_hash = target_candidate.sql_hash
   for c in msg.candidates:
-    c.is_selected = c.id == payload.candidate_id
+    if selected_hash and c.sql_hash == selected_hash:
+      c.is_selected = True
+    else:
+      c.is_selected = c.id == payload.candidate_id
 
   # Promote Content to Main Message (so history works linearly)
   msg.content = target_candidate.content

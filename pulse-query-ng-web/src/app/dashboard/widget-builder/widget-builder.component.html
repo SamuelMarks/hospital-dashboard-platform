@@ -1,5 +1,4 @@
 <div class="h-full flex flex-col overflow-hidden">
-  
   <div class="flex items-center justify-between px-6 py-4 border-b bg-white flex-shrink-0">
     <h2 class="text-xl font-light m-0">Add Widget</h2>
     <button mat-icon-button (click)="cancel()" aria-label="Close dialog">
@@ -9,117 +8,136 @@
 
   <mat-dialog-content class="flex-grow !p-0 overflow-hidden">
     <mat-stepper [linear]="true" #stepper class="h-full flex flex-col">
-      
       <!-- STEP 1: SOURCE SELECTION -->
       <mat-step [stepControl]="sourceForm" [completed]="!!draftWidgetId()">
         <ng-template matStepLabel>Select Source</ng-template>
-        
+
         <div class="flex flex-col h-full bg-gray-50 overflow-hidden">
           <mat-tab-group class="flex-grow" animationDuration="0ms" [(selectedIndex)]="selectedTab">
-            
             <!-- TAB 1: MARKETPLACE -->
             <mat-tab label="Templates">
               <div class="p-6 h-full overflow-y-auto">
-                
                 <div class="flex gap-4 mb-4 items-center flex-wrap">
-                  <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic" class="w-64">
+                  <mat-form-field
+                    appearance="outline"
+                    density="compact"
+                    subscriptSizing="dynamic"
+                    class="w-64"
+                  >
                     <mat-icon matPrefix>search</mat-icon>
-                    <input matInput placeholder="Search templates..." (input)="updateSearch($event)">
+                    <input
+                      matInput
+                      placeholder="Search templates..."
+                      (input)="updateSearch($event)"
+                    />
                   </mat-form-field>
 
                   <mat-chip-set>
-                    @for (cat of categories(); track cat) { 
-                      <mat-chip-option 
-                        [selected]="selectedCategory() === cat" 
-                        (selectionChange)="toggleCategory(cat)" 
-                      >{{ cat }}</mat-chip-option>
-                    } 
+                    @for (cat of categories(); track cat) {
+                      <mat-chip-option
+                        [selected]="selectedCategory() === cat"
+                        (selectionChange)="toggleCategory(cat)"
+                        >{{ cat }}</mat-chip-option
+                      >
+                    }
                   </mat-chip-set>
                 </div>
 
-                @if (loadingTemplates()) { 
-                  <div class="flex justify-center p-12"><mat-spinner diameter="40"></mat-spinner></div>
-                } 
+                @if (loadingTemplates()) {
+                  <div class="flex justify-center p-12">
+                    <mat-spinner diameter="40"></mat-spinner>
+                  </div>
+                }
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" role="list">
-                  @for (t of templates(); track t.id) { 
-                    <div 
-                      class="template-card" 
-                      [class.selected]="selectedTemplateId() === t.id" 
-                      (click)="selectTemplate(t)" 
-                      (keydown.enter)="selectTemplate(t)" 
-                      tabindex="0" 
-                      role="button" 
-                      [attr.aria-label]="'Select template: ' + t.title" 
+                  @for (t of templates(); track t.id) {
+                    <div
+                      class="template-card"
+                      [class.selected]="selectedTemplateId() === t.id"
+                      (click)="selectTemplate(t)"
+                      (keydown.enter)="selectTemplate(t)"
+                      tabindex="0"
+                      role="button"
+                      [attr.aria-label]="'Select template: ' + t.title"
                     >
                       <div class="font-medium text-primary mb-1">{{ t.title }}</div>
-                      <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">{{ t.category }}</div>
+                      <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                        {{ t.category }}
+                      </div>
                       <div class="text-sm text-gray-600 line-clamp-3">{{ t.description }}</div>
                     </div>
-                  } 
+                  }
                 </div>
-
               </div>
             </mat-tab>
 
             <!-- TAB 2: CUSTOM -->
             <mat-tab label="Custom Query">
               <div class="p-8 max-w-4xl mx-auto h-full flex flex-col justify-center">
-                <h3 class="text-lg font-medium mb-6 text-center text-gray-700">Choose Data Source</h3>
-                
+                <h3 class="text-lg font-medium mb-6 text-center text-gray-700">
+                  Choose Data Source
+                </h3>
+
                 <div class="grid grid-cols-3 gap-6">
-                  <div 
-                    class="source-option" 
-                    [class.selected]="selectedCustomType() === 'SQL'" 
-                    (click)="selectCustomType('SQL')" 
-                    tabindex="0" 
-                    (keydown.enter)="selectCustomType('SQL')" 
+                  <div
+                    class="source-option"
+                    [class.selected]="selectedCustomType() === 'SQL'"
+                    (click)="selectCustomType('SQL')"
+                    tabindex="0"
+                    (keydown.enter)="selectCustomType('SQL')"
                   >
                     <mat-icon class="text-4xl mb-4 text-blue-600">storage</mat-icon>
                     <div class="font-bold">SQL Database</div>
-                    <div class="text-sm text-gray-500 mt-2 text-center">Query the internal DuckDB analytics engine using SQL</div>
+                    <div class="text-sm text-gray-500 mt-2 text-center">
+                      Query the internal DuckDB analytics engine using SQL
+                    </div>
                   </div>
 
-                  <div 
-                    class="source-option" 
-                    [class.selected]="selectedCustomType() === 'HTTP'" 
-                    (click)="selectCustomType('HTTP')" 
-                    tabindex="0" 
-                    (keydown.enter)="selectCustomType('HTTP')" 
+                  <div
+                    class="source-option"
+                    [class.selected]="selectedCustomType() === 'HTTP'"
+                    (click)="selectCustomType('HTTP')"
+                    tabindex="0"
+                    (keydown.enter)="selectCustomType('HTTP')"
                   >
                     <mat-icon class="text-4xl mb-4 text-orange-600">cloud_download</mat-icon>
                     <div class="font-bold">HTTP API</div>
-                    <div class="text-sm text-gray-500 mt-2 text-center">Fetch JSON data from an external REST endpoint</div>
+                    <div class="text-sm text-gray-500 mt-2 text-center">
+                      Fetch JSON data from an external REST endpoint
+                    </div>
                   </div>
 
                   <!-- NEW: TEXT WIDGET -->
-                  <div 
-                    class="source-option" 
-                    [class.selected]="selectedCustomType() === 'TEXT'" 
-                    (click)="selectCustomType('TEXT')" 
-                    tabindex="0" 
-                    (keydown.enter)="selectCustomType('TEXT')" 
+                  <div
+                    class="source-option"
+                    [class.selected]="selectedCustomType() === 'TEXT'"
+                    (click)="selectCustomType('TEXT')"
+                    tabindex="0"
+                    (keydown.enter)="selectCustomType('TEXT')"
                   >
                     <mat-icon class="text-4xl mb-4 text-gray-600">description</mat-icon>
                     <div class="font-bold">Static Markdown</div>
-                    <div class="text-sm text-gray-500 mt-2 text-center">Add text descriptions, instructions, or notes.</div>
+                    <div class="text-sm text-gray-500 mt-2 text-center">
+                      Add text descriptions, instructions, or notes.
+                    </div>
                   </div>
                 </div>
               </div>
             </mat-tab>
-
           </mat-tab-group>
 
           <!-- Step 1 Footer -->
           <div class="p-4 border-t bg-white flex justify-end gap-2">
             <button mat-button (click)="cancel()">Cancel</button>
-            <button 
-              mat-flat-button 
-              color="primary" 
-              (click)="initializeDraft(stepper)" 
-              [disabled]="isBusy() || (!selectedTemplateId() && !selectedCustomType())" 
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="initializeDraft(stepper)"
+              [disabled]="isBusy() || (!selectedTemplateId() && !selectedCustomType())"
             >
-              @if (isBusy()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
+              @if (isBusy()) {
+                <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+              }
               Next: Configure
             </button>
           </div>
@@ -130,51 +148,54 @@
       <!-- Only load content if draft exists to prevent null errors in child components -->
       <mat-step [completed]="dataConfigured()">
         <ng-template matStepLabel>Configure Data</ng-template>
-        
-        @if (draftWidget(); as widget) { 
+
+        @if (draftWidget(); as widget) {
           <div class="h-full flex flex-col overflow-hidden">
-            
             <!-- Case A: Template Params -->
-            @if (activeMode() === 'template') { 
+            @if (activeMode() === 'template') {
               <div class="flex-grow p-6 overflow-y-auto">
                 <div class="max-w-3xl mx-auto bg-white p-6 rounded border shadow-sm">
                   <h3 class="text-lg font-medium mb-4 flex items-center gap-2">
                     <mat-icon class="text-gray-400">tune</mat-icon> Parameters
                   </h3>
-                  <div class="mb-6 p-3 bg-blue-50 text-blue-800 text-sm rounded border border-blue-100">
-                    {{ selectedTemplate()?.description }} 
+                  <div
+                    class="mb-6 p-3 bg-blue-50 text-blue-800 text-sm rounded border border-blue-100"
+                  >
+                    {{ selectedTemplate()?.description }}
                   </div>
-                  
-                  <app-dynamic-form 
-                    [jsonSchema]="paramsSchema()" 
-                    (formValueChange)="templateParams.set($event)" 
-                    (statusChange)="templateFormValid.set($event === 'VALID')" 
+
+                  <app-dynamic-form
+                    [jsonSchema]="paramsSchema()"
+                    (formValueChange)="templateParams.set($event)"
+                    (statusChange)="templateFormValid.set($event === 'VALID')"
                   ></app-dynamic-form>
                 </div>
               </div>
               <div class="p-4 border-t bg-white flex justify-end gap-2">
                 <button mat-button matStepperPrevious>Back</button>
-                <button 
-                  mat-flat-button 
-                  color="primary" 
-                  (click)="runTemplateQuery(stepper)" 
-                  [disabled]="!templateFormValid() || isBusy()" 
+                <button
+                  mat-flat-button
+                  color="primary"
+                  (click)="runTemplateQuery(stepper)"
+                  [disabled]="!templateFormValid() || isBusy()"
                 >
-                  @if (isBusy()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
+                  @if (isBusy()) {
+                    <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+                  }
                   Run & Preview
                 </button>
               </div>
-            } 
+            }
 
             <!-- Case B: Custom SQL -->
-            @if (activeMode() === 'custom' && widget.type === 'SQL') { 
+            @if (activeMode() === 'custom' && widget.type === 'SQL') {
               <div class="flex-grow relative">
-                <app-sql-builder 
-                  [dashboardId]="data.dashboardId" 
-                  [widgetId]="widget.id" 
-                  [initialSql]="widget.config['query']" 
-                  (sqlChange)="onSqlChange($event)" 
-                  class="h-full block" 
+                <app-sql-builder
+                  [dashboardId]="data.dashboardId"
+                  [widgetId]="widget.id"
+                  [initialSql]="widget.config['query']"
+                  (sqlChange)="onSqlChange($event)"
+                  class="h-full block"
                 ></app-sql-builder>
               </div>
               <div class="p-4 border-t bg-white flex justify-end gap-2 z-10 relative">
@@ -184,17 +205,17 @@
                   Next: Visualize
                 </button>
               </div>
-            } 
+            }
 
             <!-- Case C: Custom HTTP -->
-            @if (activeMode() === 'custom' && widget.type === 'HTTP') { 
+            @if (activeMode() === 'custom' && widget.type === 'HTTP') {
               <div class="flex-grow relative">
-                <app-http-config 
-                  [dashboardId]="data.dashboardId" 
-                  [widgetId]="widget.id" 
-                  [initialConfig]="widget.config" 
-                  (configChange)="onConfigChange($event)" 
-                  class="h-full block" 
+                <app-http-config
+                  [dashboardId]="data.dashboardId"
+                  [widgetId]="widget.id"
+                  [initialConfig]="widget.config"
+                  (configChange)="onConfigChange($event)"
+                  class="h-full block"
                 ></app-http-config>
               </div>
               <div class="p-4 border-t bg-white flex justify-end gap-2 z-10 relative">
@@ -203,17 +224,17 @@
                   Next: Visualize
                 </button>
               </div>
-            } 
+            }
 
             <!-- Case D: Static Text -->
-            @if (activeMode() === 'custom' && widget.type === 'TEXT') { 
+            @if (activeMode() === 'custom' && widget.type === 'TEXT') {
               <div class="flex-grow relative bg-white">
-                <app-text-editor 
-                  [dashboardId]="data.dashboardId" 
-                  [widgetId]="widget.id" 
-                  [initialContent]="widget.config['content']" 
-                  (contentChange)="onContentChange($event)" 
-                  class="h-full block" 
+                <app-text-editor
+                  [dashboardId]="data.dashboardId"
+                  [widgetId]="widget.id"
+                  [initialContent]="widget.config['content']"
+                  (contentChange)="onContentChange($event)"
+                  class="h-full block"
                 ></app-text-editor>
               </div>
               <div class="p-4 border-t bg-white flex justify-end gap-2 z-10 relative">
@@ -223,52 +244,59 @@
                   Save & Finish
                 </button>
               </div>
-            } 
-
+            }
           </div>
-        } 
+        }
       </mat-step>
 
       <!-- STEP 3: VISUALIZE (Only for Data Widgets) -->
-      @if (draftWidget()?.type !== 'TEXT') { 
+      @if (draftWidget()?.type !== 'TEXT') {
         <mat-step>
           <ng-template matStepLabel>Visualize</ng-template>
-          
+
           <div class="h-full flex flex-col lg:flex-row overflow-hidden">
-            
             <!-- Config Sidebar -->
-            <div class="w-full lg:w-80 bg-gray-50 border-r flex flex-col overflow-y-auto p-4 flex-shrink-0">
-              
+            <div
+              class="w-full lg:w-80 bg-gray-50 border-r flex flex-col overflow-y-auto p-4 flex-shrink-0"
+            >
               <mat-form-field appearance="outline" class="w-full mb-4">
                 <mat-label>Widget Title</mat-label>
-                <input matInput [formControl]="titleControl" placeholder="My Report">
+                <input matInput [formControl]="titleControl" placeholder="My Report" />
               </mat-form-field>
 
               <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Chart Type</label>
               <div class="grid grid-cols-3 gap-2 mb-6">
-                @for (v of visualizations; track v.id) { 
+                @for (v of visualizations; track v.id) {
                   <!-- Fix: Added text label inside the option for easier identification and E2E targeting -->
-                  <div 
-                    class="viz-option" 
-                    [class.selected]="draftWidget()?.visualization === v.id" 
-                    (click)="updateVizType(v.id)" 
-                    [matTooltip]="v.label" 
+                  <div
+                    class="viz-option"
+                    [class.selected]="draftWidget()?.visualization === v.id"
+                    (click)="updateVizType(v.id)"
+                    [matTooltip]="v.label"
                   >
                     <mat-icon>{{ v.icon }}</mat-icon>
                     <div class="text-xs mt-1 truncate">{{ v.label }}</div>
                   </div>
-                } 
+                }
               </div>
 
-              @if (showAxesConfig()) { 
+              @if (showAxesConfig()) {
                 <div class="p-3 bg-white rounded border mb-4">
-                  <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Axes Mapping</label>
-                  
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full mb-3">
+                  <label class="text-xs font-bold text-gray-500 uppercase mb-2 block"
+                    >Axes Mapping</label
+                  >
+
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="w-full mb-3"
+                  >
                     <mat-label>{{ isPie() ? 'Label Column' : 'X-Axis / Category' }}</mat-label>
                     <mat-select [formControl]="xKeyControl">
                       <mat-option [value]="null">-- Auto --</mat-option>
-                      @for (col of availableColumns(); track col) { <mat-option [value]="col">{{ col }}</mat-option> } 
+                      @for (col of availableColumns(); track col) {
+                        <mat-option [value]="col">{{ col }}</mat-option>
+                      }
                     </mat-select>
                   </mat-form-field>
 
@@ -276,46 +304,48 @@
                     <mat-label>{{ isPie() ? 'Size Column' : 'Y-Axis / Value' }}</mat-label>
                     <mat-select [formControl]="yKeyControl">
                       <mat-option [value]="null">-- Auto --</mat-option>
-                      @for (col of availableColumns(); track col) { <mat-option [value]="col">{{ col }}</mat-option> } 
+                      @for (col of availableColumns(); track col) {
+                        <mat-option [value]="col">{{ col }}</mat-option>
+                      }
                     </mat-select>
                   </mat-form-field>
                 </div>
-              } 
-
+              }
             </div>
 
             <!-- Preview Area -->
             <div class="flex-grow flex flex-col bg-gray-100 p-8 overflow-hidden relative">
-              <div class="absolute top-2 left-8 text-xs font-bold text-gray-400 uppercase">Live Preview</div>
-              
-              <div class="bg-white rounded-lg shadow-sm border h-full w-full overflow-hidden flex flex-col p-4">
+              <div class="absolute top-2 left-8 text-xs font-bold text-gray-400 uppercase">
+                Live Preview
+              </div>
+
+              <div
+                class="bg-white rounded-lg shadow-sm border h-full w-full overflow-hidden flex flex-col p-4"
+              >
                 <!-- Render Actual Widget Component pointing to Draft -->
-                @if (draftWidget(); as w) { 
-                  <app-widget 
-                    [widget]="w" 
-                    class="flex-grow h-full w-full" 
-                  ></app-widget>
-                } 
+                @if (draftWidget(); as w) {
+                  <app-widget [widget]="w" class="flex-grow h-full w-full"></app-widget>
+                }
               </div>
             </div>
-
           </div>
 
           <div class="p-4 border-t bg-white flex justify-end gap-2 fixed-bottom">
             <button mat-button matStepperPrevious>Back</button>
-            <button 
-              mat-flat-button 
-              color="primary" 
-              (click)="saveAndClose()" 
-              [disabled]="titleControl.invalid || isBusy()" 
+            <button
+              mat-flat-button
+              color="primary"
+              (click)="saveAndClose()"
+              [disabled]="titleControl.invalid || isBusy()"
             >
-              @if (isBusy()) { <mat-spinner diameter="18" class="mr-2"></mat-spinner> } 
+              @if (isBusy()) {
+                <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+              }
               Save Widget
             </button>
           </div>
         </mat-step>
-      } 
-
+      }
     </mat-stepper>
   </mat-dialog-content>
 </div>

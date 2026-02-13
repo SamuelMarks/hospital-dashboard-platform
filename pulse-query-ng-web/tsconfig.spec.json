@@ -4,21 +4,10 @@
     "outDir": "./out-tsc/spec",
     "baseUrl": ".",
     "paths": {
-      "@material/material-color-utilities": [
-        "src/test-mocks/material-color-utilities.ts"
-      ],
-      "@material/material-color-utilities/*": [
-        "src/test-mocks/material-color-utilities.ts"
-      ]
+      "@material/material-color-utilities": ["src/test-mocks/material-color-utilities.ts"],
+      "@material/material-color-utilities/*": ["src/test-mocks/material-color-utilities.ts"]
     },
-    "types": [
-      "vitest/globals",
-      "node"
-    ]
+    "types": ["vitest/globals", "node"]
   },
-  "include": [
-    "src/**/*.d.ts",
-    "src/**/*.spec.ts",
-    "src/test-setup.ts"
-  ]
+  "include": ["src/**/*.d.ts", "src/**/*.spec.ts", "src/test-setup.ts"]
 }

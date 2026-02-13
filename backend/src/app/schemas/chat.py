@@ -38,6 +38,7 @@ class MessageCandidateResponse(BaseModel):
   model_name: str
   content: str
   sql_snippet: Optional[str] = None
+  sql_hash: Optional[str] = None
   is_selected: bool
 
   model_config = ConfigDict(from_attributes=True)

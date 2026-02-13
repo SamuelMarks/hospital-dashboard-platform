@@ -1,60 +1,62 @@
-    <!-- MatToolbar acts as the surface container -->
-    <mat-toolbar class="filter-toolbar">
-      
-      <!-- Label Section -->
-      <div class="filter-label">
-        <mat-icon class="text-secondary icon-small">filter_list</mat-icon>
-        <span class="label-text">Data Filters</span>
-      </div>
+<!-- MatToolbar acts as the surface container -->
+<mat-toolbar class="filter-toolbar">
+  <!-- Label Section -->
+  <div class="filter-label">
+    <mat-icon class="text-secondary icon-small">filter_list</mat-icon>
+    <span class="label-text">Data Filters</span>
+  </div>
 
-      <div class="filter-group">
-        <!-- 1. Department -->
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" density="compact" class="ribbon-field">
-          <mat-label>Department</mat-label>
-          <mat-select [formControl]="deptControl" placeholder="All Departments">
-            <mat-option [value]="null">All Departments</mat-option>
-            <mat-option value="Cardiology">Cardiology</mat-option>
-            <mat-option value="Neurology">Neurology</mat-option>
-            <mat-option value="Orthopedics">Orthopedics</mat-option>
-            <mat-option value="Emergency">Emergency</mat-option>
-          </mat-select>
-        </mat-form-field>
+  <div class="filter-group">
+    <!-- 1. Department -->
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      density="compact"
+      class="ribbon-field"
+    >
+      <mat-label>Department</mat-label>
+      <mat-select [formControl]="deptControl" placeholder="All Departments">
+        <mat-option [value]="null">All Departments</mat-option>
+        <mat-option value="Cardiology">Cardiology</mat-option>
+        <mat-option value="Neurology">Neurology</mat-option>
+        <mat-option value="Orthopedics">Orthopedics</mat-option>
+        <mat-option value="Emergency">Emergency</mat-option>
+      </mat-select>
+    </mat-form-field>
 
-        <!-- 2. Date Range -->
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" density="compact" class="date-field">
-          <mat-label>Reporting Period</mat-label>
-          <mat-date-range-input [rangePicker]="picker" separator=" – ">
-            <input 
-              matStartDate 
-              placeholder="Start" 
-              [formControl]="startDate" 
-              (dateChange)="onDateChange()" 
-              aria-label="Start Date" 
-            >
-            <input 
-              matEndDate 
-              placeholder="End" 
-              [formControl]="endDate" 
-              (dateChange)="onDateChange()" 
-              aria-label="End Date" 
-            >
-          </mat-date-range-input>
-          <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-          <mat-date-range-picker #picker></mat-date-range-picker>
-        </mat-form-field>
+    <!-- 2. Date Range -->
+    <mat-form-field
+      appearance="outline"
+      subscriptSizing="dynamic"
+      density="compact"
+      class="date-field"
+    >
+      <mat-label>Reporting Period</mat-label>
+      <mat-date-range-input [rangePicker]="picker" separator=" – ">
+        <input
+          matStartDate
+          placeholder="Start"
+          [formControl]="startDate"
+          (dateChange)="onDateChange()"
+          aria-label="Start Date"
+        />
+        <input
+          matEndDate
+          placeholder="End"
+          [formControl]="endDate"
+          (dateChange)="onDateChange()"
+          aria-label="End Date"
+        />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-date-range-picker #picker></mat-date-range-picker>
+    </mat-form-field>
 
-        <!-- 3. Clear Action -->
-        @if (store.globalParams()['dept'] || store.globalParams()['start_date']) { 
-          <button 
-            mat-button 
-            color="warn" 
-            (click)="clearFilters()" 
-            aria-label="Clear all filters" 
-          >
-            <mat-icon>highlight_off</mat-icon> Clear
-          </button>
-        } 
-      </div>
-
-    </mat-toolbar>
-  
+    <!-- 3. Clear Action -->
+    @if (store.globalParams()['dept'] || store.globalParams()['start_date']) {
+      <button mat-button color="warn" (click)="clearFilters()" aria-label="Clear all filters">
+        <mat-icon>highlight_off</mat-icon> Clear
+      </button>
+    }
+  </div>
+</mat-toolbar>

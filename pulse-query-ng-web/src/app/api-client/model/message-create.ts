@@ -12,5 +12,5 @@
  * Payload for creating a new Message.
  */
 export interface MessageCreate {
-    content: string;
+  content: string;
 }

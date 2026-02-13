@@ -15,7 +15,7 @@ import { vi } from 'vitest';
 
 // Avoid hydration errors in unit tests (no server-side render context).
 vi.mock('@angular/platform-browser', () => ({
-  provideClientHydration: () => []
+  provideClientHydration: () => [],
 }));
 
 describe('AppConfig', () => {
@@ -25,8 +25,8 @@ describe('AppConfig', () => {
   let mockAuthService: { initialize: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    mockAuthService = { 
-      initialize: vi.fn().mockResolvedValue(undefined) 
+    mockAuthService = {
+      initialize: vi.fn().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({
@@ -40,9 +40,9 @@ describe('AppConfig', () => {
           provide: APP_INITIALIZER,
           useFactory: initializeAuth,
           deps: [AuthService],
-          multi: true
-        }
-      ]
+          multi: true,
+        },
+      ],
     });
   });
 
@@ -82,7 +82,9 @@ describe('AppConfig', () => {
   });
 
   it('should include BASE_PATH provider in appConfig', () => {
-    const hasBasePath = appConfig.providers.some((provider) => (provider as any)?.provide === BASE_PATH);
+    const hasBasePath = appConfig.providers.some(
+      (provider) => (provider as any)?.provide === BASE_PATH,
+    );
     expect(hasBasePath).toBe(true);
   });
 });

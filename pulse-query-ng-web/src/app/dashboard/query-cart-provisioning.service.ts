@@ -9,23 +9,23 @@ import { QueryCartService } from '../global/query-cart.service';
  * Creates dashboard widgets from Query Cart items.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class QueryCartProvisioningService {
-    /** dashboardsApi property. */
-private readonly dashboardsApi = inject(DashboardsService);
-    /** store property. */
-private readonly store = inject(DashboardStore);
-    /** cart property. */
-private readonly cart = inject(QueryCartService);
+  /** dashboardsApi property. */
+  private readonly dashboardsApi = inject(DashboardsService);
+  /** store property. */
+  private readonly store = inject(DashboardStore);
+  /** cart property. */
+  private readonly cart = inject(QueryCartService);
 
   /**
-  * Adds a cart item to a dashboard as a SQL widget.
-  *
-  * @param item - Cart item to provision.
-  * @param dashboardId - Target dashboard id.
-  * @returns Observable of the created widget.
-  */
+   * Adds a cart item to a dashboard as a SQL widget.
+   *
+   * @param item - Cart item to provision.
+   * @param dashboardId - Target dashboard id.
+   * @returns Observable of the created widget.
+   */
   addToDashboard(item: QueryCartItem, dashboardId: string): Observable<WidgetResponse> {
     const payload: WidgetCreateSql = {
       title: item.title,
@@ -36,17 +36,18 @@ private readonly cart = inject(QueryCartService);
         x: 0,
         y: 0,
         w: 6,
-        h: 4
-      }
+        h: 4,
+      },
     };
 
-    return this.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId, payload)
+    return this.dashboardsApi
+      .createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId, payload)
       .pipe(
-        map(widget => {
+        map((widget) => {
           this.store.refreshWidget(widget.id);
           this.cart.remove(item.id);
           return widget;
-        })
+        }),
       );
   }
 }

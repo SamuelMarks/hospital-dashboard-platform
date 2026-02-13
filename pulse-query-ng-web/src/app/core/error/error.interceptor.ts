@@ -9,14 +9,14 @@ import { catchError, throwError } from 'rxjs';
 
 /**
  * Functional HTTP Interceptor for global API error feedback.
- * 
+ *
  * Responsibilities:
  * 1. Intercepts `HttpErrorResponse` from the HTTP pipeline.
  * 2. Filters out **401 Unauthorized** errors (handled by authentication guards/interceptors).
  * 3. Extracts meaningful error messages from the backend response (FastAPI `detail` field).
  * 4. Displays a visual notification via `MatSnackBar` using 'assertive' politeness for accessibility.
  * 5. Re-throws the error so specific components can still handle loading states.
- * 
+ *
  * @param {import('@angular/common/http').HttpRequest<unknown>} req - The outgoing HTTP request.
  * @param {import('@angular/common/http').HttpHandlerFn} next - The next interceptor handling function.
  * @returns {import('rxjs').Observable<import('@angular/common/http').HttpEvent<unknown>>} An Observable of the HTTP Event.
@@ -35,8 +35,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           // Type safety check for dynamic backend response objects
           const errObj = error.error as Record<string, any>;
           if (errObj['detail']) {
-            message = Array.isArray(errObj['detail']) 
-              ? 'Validation Error: Check input fields.' 
+            message = Array.isArray(errObj['detail'])
+              ? 'Validation Error: Check input fields.'
               : String(errObj['detail']);
           }
         } else if (error.message) {
@@ -51,12 +51,12 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           horizontalPosition: 'end',
           verticalPosition: 'bottom',
           politeness: 'assertive',
-          panelClass: ['snackbar-error'] // Custom styling hook
+          panelClass: ['snackbar-error'], // Custom styling hook
         });
       }
 
       // Propagate error to subscribers
       return throwError(() => error);
-    })
+    }),
   );
 };

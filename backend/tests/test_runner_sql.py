@@ -136,3 +136,15 @@ def test_run_sql_widget_continues_on_validation_warning(monkeypatch) -> None:
   result = run_sql_widget(mock_cursor, {"query": "SELECT 1"})
 
   assert result["error"] is None
+
+
+def test_run_sql_widget_respects_max_rows() -> None:
+  """Max rows should use fetchmany to limit result set."""
+  mock_cursor = MagicMock()
+  mock_cursor.description = [("id", "int")]
+  mock_cursor.fetchmany.return_value = [(1,)]
+
+  result = run_sql_widget(mock_cursor, {"query": "SELECT 1", "max_rows": 1})
+
+  mock_cursor.fetchmany.assert_called_once_with(1)
+  assert result["data"] == [{"id": 1}]

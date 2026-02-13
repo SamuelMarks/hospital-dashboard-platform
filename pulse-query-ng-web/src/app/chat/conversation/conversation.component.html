@@ -1,84 +1,145 @@
-    <div class="message-list" #scrollContainer>
-      
-      @if (store.messages().length === 0 && !store.isGenerating()) { 
-        <div class="flex flex-col items-center justify-center h-full text-gray-400 select-none">
-          <mat-icon class="text-6xl mb-4 text-gray-300">forum</mat-icon>
-          <p>Start a new analysis conversation.</p>
-        </div>
-      } 
-
-      @for (msg of store.messages(); track msg.id) { 
-        <div class="bubble-row" [ngClass]="msg.role">
-          <div class="bubble mat-elevation-z1" [style.max-width.%]="hasPendingCandidates(msg) ? 100 : 80">
-            
-            <!-- A: Pending Vote (Compare 3 Options) -->
-            @if (hasPendingCandidates(msg)) { 
-               <div class="mb-2 font-medium">Please vote for the best response ({{ msg.candidates?.length }} Options):</div>
-               
-               <div class="arena-grid"> 
-                 @for (cand of msg.candidates; track cand.id) { 
-                   <div class="candidate-card mat-elevation-z1">
-                     <div class="candidate-header">{{ cand.model_name }}</div>
-                     
-                     <div class="flex-grow">
-                        <!-- If short content, markdown. If mostly SQL, check snippet. -->
-                        <viz-markdown [content]="cleanContentSimple(cand.content)"></viz-markdown>
-                        @if (cand.sql_snippet) { <div class="candidate-preview mt-2">{{ cand.sql_snippet }}</div> } 
-                     </div>
-
-                     <button mat-stroked-button color="primary" class="mt-2 w-full" (click)="vote(msg.id, cand.id)">
-                       Vote & Select [{{ cand.model_name }}] 
-                     </button>
-                   </div>
-                 } 
-               </div>
-
-            <!-- B: Standard Resolved View -->
-            } @else { 
-               <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
-               @if (msg.sql_snippet) { 
-                 <app-sql-snippet [sql]="msg.sql_snippet" (run)="runQuery($event)"></app-sql-snippet>
-               } 
-            } 
-
-            <span class="timestamp">{{ msg.created_at | date:'shortTime' }}</span>
-          </div>
-        </div>
-      } 
-
-      @if (store.isGenerating()) { 
-        <div class="bubble-row assistant">
-          <div class="bubble" style="padding: 8px 16px;">
-            <div class="flex gap-1">
-              <span class="animate-bounce">.</span>
-              <span class="animate-bounce delay-100">.</span>
-              <span class="animate-bounce delay-200">.</span>
-            </div>
-          </div>
-        </div>
-      } 
-
-      @if (store.error(); as err) { 
-        <div class="w-full text-center p-2 mb-2 bg-red-50 text-red-600 text-xs rounded border border-red-200">{{ err }}</div>
-      } 
+<div class="message-list" #scrollContainer>
+  @if (store.messages().length === 0 && !store.isGenerating()) {
+    <div class="flex flex-col items-center justify-center h-full text-gray-400 select-none">
+      <mat-icon class="text-6xl mb-4 text-gray-300">forum</mat-icon>
+      <p>Start a new analysis conversation.</p>
     </div>
+  }
 
-    <!-- Input Footer -->
-    <div class="input-area">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-grow">
-        <textarea matInput placeholder="Ask question..." [(ngModel)]="inputText" (keydown.enter)="handleEnter($event)" rows="1" cdkTextareaAutosize [disabled]="store.isGenerating()"></textarea>
-      </mat-form-field>
-      
-      <!-- A11y Fix: Added label for E2E tests -->
-      <button 
-        mat-icon-button 
-        color="primary" 
-        class="h-12 w-12" 
-        (click)="send()" 
-        [disabled]="!inputText.trim() || store.isGenerating()"
-        aria-label="Send Message"
+  @for (msg of store.messages(); track msg.id) {
+    <div class="bubble-row" [ngClass]="msg.role">
+      <div
+        class="bubble mat-elevation-z1"
+        [style.max-width.%]="hasPendingCandidates(msg) ? 100 : 80"
       >
-        <mat-icon>send</mat-icon>
-      </button>
+        <!-- A: Pending Vote (Compare Options) -->
+        @if (hasPendingCandidates(msg)) {
+          <div class="mb-2 font-medium">
+            Please vote for the best response ({{ msg.candidates?.length }} Options):
+          </div>
+          @if (hasSqlCandidates(msg)) {
+            <button
+              mat-stroked-button
+              color="accent"
+              class="text-xs h-6 px-2 leading-none mb-2"
+              (click)="runAllCandidates(msg)"
+            >
+              Run All Queries
+            </button>
+          }
+
+          <div class="arena-grid">
+            @for (cand of msg.candidates; track cand.id) {
+              <div class="candidate-card mat-elevation-z1">
+                <div class="candidate-header">{{ cand.model_name }}</div>
+                @if (sqlGroupCount(msg, cand) > 1) {
+                  <div class="sql-group-badge">
+                    Same SQL ({{ sqlGroupCount(msg, cand) }} models)
+                  </div>
+                }
+
+                <div class="flex-grow">
+                  <!-- If short content, markdown. If mostly SQL, check snippet. -->
+                  <viz-markdown [content]="cleanContentSimple(cand.content)"></viz-markdown>
+                  @if (cand.sql_snippet) {
+                    <app-sql-snippet
+                      class="mt-2"
+                      [sql]="cand.sql_snippet"
+                      (run)="runCandidateQuery(cand)"
+                    ></app-sql-snippet>
+                    @if (isCandidateLoading(cand.id)) {
+                      <div class="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                        <mat-progress-spinner
+                          diameter="18"
+                          mode="indeterminate"
+                        ></mat-progress-spinner>
+                        Running query...
+                      </div>
+                    }
+                    @if (candidateError(cand.id)) {
+                      <div class="candidate-error mt-2">{{ candidateError(cand.id) }}</div>
+                    }
+                    @if (candidateResult(cand.id)) {
+                      <div class="result-preview mt-2">
+                        <div class="table-wrap">
+                          <viz-table [dataSet]="candidateResult(cand.id)"></viz-table>
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <div class="text-xs text-gray-400 mt-2">No SQL detected.</div>
+                  }
+                </div>
+
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  class="mt-2 w-full"
+                  (click)="vote(msg.id, cand.id)"
+                >
+                  Vote & Select [{{ cand.model_name }}]
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- B: Standard Resolved View -->
+        } @else {
+          <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
+          @if (msg.sql_snippet) {
+            <app-sql-snippet [sql]="msg.sql_snippet" (run)="runQuery($event)"></app-sql-snippet>
+          }
+        }
+
+        <span class="timestamp">{{ msg.created_at | date: 'shortTime' }}</span>
+      </div>
     </div>
-  
+  }
+
+  @if (store.isGenerating()) {
+    <div class="bubble-row assistant">
+      <div class="bubble" style="padding: 8px 16px">
+        <div class="flex gap-1">
+          <span class="animate-bounce">.</span>
+          <span class="animate-bounce delay-100">.</span>
+          <span class="animate-bounce delay-200">.</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (store.error(); as err) {
+    <div
+      class="w-full text-center p-2 mb-2 bg-red-50 text-red-600 text-xs rounded border border-red-200"
+    >
+      {{ err }}
+    </div>
+  }
+</div>
+
+<!-- Input Footer -->
+<div class="input-area">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-grow">
+    <textarea
+      matInput
+      placeholder="Ask question..."
+      [(ngModel)]="inputText"
+      (keydown.enter)="handleEnter($event)"
+      rows="1"
+      cdkTextareaAutosize
+      [disabled]="store.isGenerating()"
+    ></textarea>
+  </mat-form-field>
+
+  <!-- A11y Fix: Added label for E2E tests -->
+  <button
+    mat-icon-button
+    color="primary"
+    class="h-12 w-12"
+    (click)="send()"
+    [disabled]="!inputText.trim() || store.isGenerating()"
+    aria-label="Send Message"
+  >
+    <mat-icon>send</mat-icon>
+  </button>
+</div>

@@ -8,7 +8,11 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 function generateData(count: number): TableDataSet {
   return {
     columns: ['id', 'value', 'census'],
-    data: Array.from({ length: count }, (_, k) => ({ id: k + 1, value: `Row ${k + 1}`, census: k * 10 }))
+    data: Array.from({ length: count }, (_, k) => ({
+      id: k + 1,
+      value: `Row ${k + 1}`,
+      census: k * 10,
+    })),
   };
 }
 
@@ -20,7 +24,7 @@ describe('VizTableComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VizTableComponent, NoopAnimationsModule]
+      imports: [VizTableComponent, NoopAnimationsModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VizTableComponent);
@@ -51,7 +55,7 @@ describe('VizTableComponent', () => {
 
     const rows = fixture.debugElement.queryAll(By.css('tr[mat-row]'));
     expect(rows.length).toBe(3);
-    
+
     const cell = rows[0].query(By.css('td[mat-cell]'));
     expect(cell.nativeElement.textContent.trim()).toBe('1');
   });
@@ -62,7 +66,7 @@ describe('VizTableComponent', () => {
     await fixture.whenStable();
 
     if (component.dataSource.paginator === undefined) {
-        component.dataSource.paginator = component.paginator;
+      component.dataSource.paginator = component.paginator;
     }
 
     expect(component.dataSource.paginator).toBeTruthy();
@@ -87,14 +91,14 @@ describe('VizTableComponent', () => {
     fixture.detectChanges();
     expect(component.dataSource.paginator).toBeUndefined();
   });
-  
+
   it('should attach paginator when set manually', () => {
     const mockPaginator = {
       page: new Subject<void>(),
       initialized: new Subject<void>(),
       pageIndex: 0,
       pageSize: 10,
-      length: 0
+      length: 0,
     } as any;
     component.paginator = mockPaginator;
     dataSetSig.set(generateData(1));
@@ -107,13 +111,13 @@ describe('VizTableComponent', () => {
     component.dataSource.data = [row];
     dataSetSig.set({ columns: ['census'], data: [row] });
     configSig.set({ thresholds: { warning: 80, critical: 90 } });
-    
+
     // census contains 'census' string so heuristic should pick it up
     const classes = component.getCellClass(row, 'census');
     expect(classes).toContain('cell-warn');
     expect(classes).not.toContain('cell-critical');
   });
-  
+
   it('should apply warning class when only warning threshold is configured', () => {
     const row = { id: 1, census: 60 };
     configSig.set({ thresholds: { warning: 50 } });
@@ -134,7 +138,7 @@ describe('VizTableComponent', () => {
   it('should apply critical class to cells exceeding critical threshold', () => {
     const row = { id: 1, census: 95 }; // > 90
     configSig.set({ thresholds: { warning: 80, critical: 90 } });
-    
+
     const classes = component.getCellClass(row, 'census');
     expect(classes).toContain('cell-critical');
   });
@@ -142,9 +146,9 @@ describe('VizTableComponent', () => {
   it('should respect manual thresholdColumn config', () => {
     const row = { id: 1, custom_val: 100 };
     // 'custom_val' doesn't match heuristics, so we must specify it
-    configSig.set({ 
-        thresholds: { critical: 50 },
-        thresholdColumn: 'custom_val'
+    configSig.set({
+      thresholds: { critical: 50 },
+      thresholdColumn: 'custom_val',
     });
 
     const classes = component.getCellClass(row, 'custom_val');

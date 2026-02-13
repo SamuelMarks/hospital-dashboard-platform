@@ -1,54 +1,52 @@
-/** 
- * @fileoverview Unit tests for TextEditorComponent. 
- */ 
+/**
+ * @fileoverview Unit tests for TextEditorComponent.
+ */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { TextEditorComponent } from './text-editor.component'; 
-import { DashboardsService } from '../api-client'; 
-import { of, throwError } from 'rxjs'; 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
+import { TextEditorComponent } from './text-editor.component';
+import { DashboardsService } from '../api-client';
+import { of, throwError } from 'rxjs';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { By } from '@angular/platform-browser';
 
-describe('TextEditorComponent', () => { 
-  let component: TextEditorComponent; 
-  let fixture: ComponentFixture<TextEditorComponent>; 
-  let mockApi: any; 
+describe('TextEditorComponent', () => {
+  let component: TextEditorComponent;
+  let fixture: ComponentFixture<TextEditorComponent>;
+  let mockApi: any;
 
-  beforeEach(async () => { 
-    mockApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})) }; 
+  beforeEach(async () => {
+    mockApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})) };
 
-    await TestBed.configureTestingModule({ 
-      imports: [TextEditorComponent, NoopAnimationsModule], 
-      providers: [ 
-        { provide: DashboardsService, useValue: mockApi } 
-      ] 
-    }).compileComponents(); 
+    await TestBed.configureTestingModule({
+      imports: [TextEditorComponent, NoopAnimationsModule],
+      providers: [{ provide: DashboardsService, useValue: mockApi }],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(TextEditorComponent); 
-    component = fixture.componentInstance; 
-    
-    (component as any).dashboardId = signal('d1'); 
-    (component as any).widgetId = signal('w1'); 
-    (component as any).initialContent = signal('Initial Text'); 
-    
-    fixture.detectChanges(); 
-  }); 
+    fixture = TestBed.createComponent(TextEditorComponent);
+    component = fixture.componentInstance;
 
-  it('should initialize with content', () => { 
-    expect(component.form.value.content).toBe('Initial Text'); 
-  }); 
+    (component as any).dashboardId = signal('d1');
+    (component as any).widgetId = signal('w1');
+    (component as any).initialContent = signal('Initial Text');
 
-  it('should call API on save', () => { 
-    component.form.patchValue({ content: 'New Text' }); 
-    component.save(); 
+    fixture.detectChanges();
+  });
 
-    expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith( 
-        'w1', 
-        expect.objectContaining({ config: { content: 'New Text' } }) 
-    ); 
-  }); 
+  it('should initialize with content', () => {
+    expect(component.form.value.content).toBe('Initial Text');
+  });
+
+  it('should call API on save', () => {
+    component.form.patchValue({ content: 'New Text' });
+    component.save();
+
+    expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ config: { content: 'New Text' } }),
+    );
+  });
 
   it('should not save when form invalid', () => {
     component.form.patchValue({ content: '' });
@@ -65,7 +63,7 @@ describe('TextEditorComponent', () => {
 
   it('should handle API errors', () => {
     mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
-      throwError(() => new Error('fail'))
+      throwError(() => new Error('fail')),
     );
     component.form.patchValue({ content: 'Err Text' });
     component.save();
@@ -77,7 +75,7 @@ describe('TextEditorComponent', () => {
     component.save();
     expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: { content: '' } })
+      expect.objectContaining({ config: { content: '' } }),
     );
   });
 
@@ -95,4 +93,4 @@ describe('TextEditorComponent', () => {
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('mat-spinner'))).toBeTruthy();
   });
-}); 
+});

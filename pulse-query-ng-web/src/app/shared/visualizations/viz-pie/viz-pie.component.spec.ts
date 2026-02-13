@@ -1,88 +1,91 @@
-/** 
- * @fileoverview Unit tests for VizPieComponent. 
- * Includes manual mocking of @material/material-color-utilities to resolving import errors in JSDOM. 
- */ 
+/**
+ * @fileoverview Unit tests for VizPieComponent.
+ * Includes manual mocking of @material/material-color-utilities to resolving import errors in JSDOM.
+ */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, PLATFORM_ID } from '@angular/core';
-import { By } from '@angular/platform-browser'; 
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { VizPieComponent } from './viz-pie.component';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xFFFFFFFF,
+  argbFromHex: () => 0xffffffff,
   hexFromArgb: () => '#ffffff',
   themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
   Scheme: class {},
   Theme: class {},
-  __esModule: true
+  __esModule: true,
 }));
 
-describe('VizPieComponent', () => { 
-  let component: VizPieComponent; 
-  let fixture: ComponentFixture<VizPieComponent>; 
+describe('VizPieComponent', () => {
+  let component: VizPieComponent;
+  let fixture: ComponentFixture<VizPieComponent>;
   let dataSetSig: any;
   let configSig: any;
 
-  beforeEach(async () => { 
-    await TestBed.configureTestingModule({ 
-      imports: [VizPieComponent] 
-    }).compileComponents(); 
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [VizPieComponent],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(VizPieComponent); 
-    component = fixture.componentInstance; 
+    fixture = TestBed.createComponent(VizPieComponent);
+    component = fixture.componentInstance;
     dataSetSig = signal({ columns: [], data: [] });
     configSig = signal(undefined);
     (component as any).dataSet = dataSetSig;
     (component as any).config = configSig;
-     
-    fixture.detectChanges(); 
-  }); 
 
-  it('should create', () => { 
-    expect(component).toBeTruthy(); 
-  }); 
+    fixture.detectChanges();
+  });
 
-  it('should calculate paths correctly', () => { 
-    const data = { 
-        columns: ['L', 'V'], 
-        data: [{ L: 'A', V: 50 }, { L: 'B', V: 50 }] 
-    }; 
-    dataSetSig.set(data); 
-    fixture.detectChanges(); 
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
 
-    const slices = component.slices(); 
-    expect(slices.length).toBe(2); 
-    expect(slices[0].percentage).toBe(50); 
-    
+  it('should calculate paths correctly', () => {
+    const data = {
+      columns: ['L', 'V'],
+      data: [
+        { L: 'A', V: 50 },
+        { L: 'B', V: 50 },
+      ],
+    };
+    dataSetSig.set(data);
+    fixture.detectChanges();
+
+    const slices = component.slices();
+    expect(slices.length).toBe(2);
+    expect(slices[0].percentage).toBe(50);
+
     // Check SVG generation
-    const paths = fixture.debugElement.queryAll(By.css('path')); 
-    expect(paths.length).toBe(2); 
-  }); 
+    const paths = fixture.debugElement.queryAll(By.css('path'));
+    expect(paths.length).toBe(2);
+  });
 
-  it('should render keyboard accessible legend', () => { 
-    const data = { 
-        columns: ['L', 'V'], 
-        data: [{ L: 'A', V: 50 }] 
-    }; 
-    dataSetSig.set(data); 
-    fixture.detectChanges(); 
+  it('should render keyboard accessible legend', () => {
+    const data = {
+      columns: ['L', 'V'],
+      data: [{ L: 'A', V: 50 }],
+    };
+    dataSetSig.set(data);
+    fixture.detectChanges();
 
-    const legendItem = fixture.debugElement.query(By.css('.legend-item')); 
-    expect(legendItem).toBeTruthy(); 
-    expect(legendItem.attributes['tabindex']).toBe('0'); 
-    
+    const legendItem = fixture.debugElement.query(By.css('.legend-item'));
+    expect(legendItem).toBeTruthy();
+    expect(legendItem.attributes['tabindex']).toBe('0');
+
     // Focus simulation
-    legendItem.triggerEventHandler('focus', null); 
-    fixture.detectChanges(); 
-    expect(component.activeSlice()).toBe('A'); 
-  }); 
+    legendItem.triggerEventHandler('focus', null);
+    fixture.detectChanges();
+    expect(component.activeSlice()).toBe('A');
+  });
 
   it('should clear active slice on mouseleave and blur', () => {
     const data = {
       columns: ['L', 'V'],
-      data: [{ L: 'A', V: 50 }]
+      data: [{ L: 'A', V: 50 }],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -103,7 +106,7 @@ describe('VizPieComponent', () => {
   it('should map labels and values using config', () => {
     const data = {
       columns: ['name', 'amount'],
-      data: [{ name: 'X', amount: 100 }]
+      data: [{ name: 'X', amount: 100 }],
     };
     dataSetSig.set(data);
     configSig.set({ xKey: 'name', yKey: 'amount' });
@@ -117,7 +120,7 @@ describe('VizPieComponent', () => {
   it('should render full circle for single slice', () => {
     const data = {
       columns: ['L', 'V'],
-      data: [{ L: 'Only', V: 100 }]
+      data: [{ L: 'Only', V: 100 }],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -135,7 +138,7 @@ describe('VizPieComponent', () => {
   it('should provide accessibility label', () => {
     const data = {
       columns: ['L', 'V'],
-      data: [{ L: 'A', V: 50 }]
+      data: [{ L: 'A', V: 50 }],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -150,7 +153,7 @@ describe('VizPieComponent', () => {
   it('should fallback to single column for values', () => {
     const data = {
       columns: ['Only'],
-      data: [{ Only: 10 }]
+      data: [{ Only: 10 }],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -163,7 +166,10 @@ describe('VizPieComponent', () => {
   it('should clamp negative values to zero in totals', () => {
     const data = {
       columns: ['L', 'V'],
-      data: [{ L: 'A', V: -5 }, { L: 'B', V: 0 }]
+      data: [
+        { L: 'A', V: -5 },
+        { L: 'B', V: 0 },
+      ],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -177,12 +183,12 @@ describe('VizPieComponent', () => {
     (component as any).updatePaletteFomDom();
     expect(component['palette']()).toBeTruthy();
   });
-  
+
   it('should skip palette update when platform is not browser', async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [VizPieComponent],
-      providers: [{ provide: PLATFORM_ID, useValue: 'server' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
     }).compileComponents();
 
     const serverFixture = TestBed.createComponent(VizPieComponent);

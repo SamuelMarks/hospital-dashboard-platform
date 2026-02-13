@@ -1,53 +1,51 @@
-    <div class="wrapper">
-      <div class="header">
-         <span>{{ axisKeys().y }}</span>
-         <span>{{ axisKeys().x }}</span>
-      </div>
+<div class="wrapper">
+  <div class="header">
+    <span>{{ axisKeys().y }}</span>
+    <span>{{ axisKeys().x }}</span>
+  </div>
 
-      <div class="plot-area">
-        <div class="bars-container">
-          @for (item of processedData(); track item.label) { 
-            <div class="col-wrapper">
-
-               @if (item.isStacked && item.segments) { 
-                 @for (seg of item.segments; track seg.label) { 
-                   <div
-                     class="bar-segment" 
-                     [style.background-color]="seg.color" 
-                     [style.height]="seg.heightPct" 
-                     [style.bottom]="seg.bottomPct" 
-                   ></div>
-                 } 
-                 <div class="tooltip">
-                   <strong>{{ item.label }}</strong>
-                   @for (seg of item.segments; track seg.label) { 
-                     <div>{{ seg.label }}: {{ seg.value }}</div>
-                   } 
-                 </div>
-
-               } @else { 
-                 <!-- Single Bar: Uses CSS Vars or JS Palette -->
-                 <div
-                   class="bar" 
-                   [style.background-color]="item.isNegative ? getPalette(-1) : getPalette(0)" 
-                   [style.height]="item.heightPct" 
-                   [style.bottom]="item.bottomPct" 
-                 ></div>
-                 <div class="tooltip" [style.bottom]="item.isNegative ? '-25px' : '100%'">
-                   <strong>{{ item.label }}</strong>: {{ item.value }} 
-                 </div>
-               } 
+  <div class="plot-area">
+    <div class="bars-container">
+      @for (item of processedData(); track item.label) {
+        <div class="col-wrapper">
+          @if (item.isStacked && item.segments) {
+            @for (seg of item.segments; track seg.label) {
+              <div
+                class="bar-segment"
+                [style.background-color]="seg.color"
+                [style.height]="seg.heightPct"
+                [style.bottom]="seg.bottomPct"
+              ></div>
+            }
+            <div class="tooltip">
+              <strong>{{ item.label }}</strong>
+              @for (seg of item.segments; track seg.label) {
+                <div>{{ seg.label }}: {{ seg.value }}</div>
+              }
             </div>
-          } @empty { 
-             <div class="flex items-center justify-center h-full w-full opacity-50 text-xs">No Data</div>
-          } 
+          } @else {
+            <!-- Single Bar: Uses CSS Vars or JS Palette -->
+            <div
+              class="bar"
+              [style.background-color]="item.isNegative ? getPalette(-1) : getPalette(0)"
+              [style.height]="item.heightPct"
+              [style.bottom]="item.bottomPct"
+            ></div>
+            <div class="tooltip" [style.bottom]="item.isNegative ? '-25px' : '100%'">
+              <strong>{{ item.label }}</strong
+              >: {{ item.value }}
+            </div>
+          }
         </div>
-      </div>
-
-      <div class="x-axis">
-         @for (item of processedData(); track item.label) { 
-           <div class="x-label" [title]="item.label">{{ item.label }}</div>
-         } 
-      </div>
+      } @empty {
+        <div class="flex items-center justify-center h-full w-full opacity-50 text-xs">No Data</div>
+      }
     </div>
-  
+  </div>
+
+  <div class="x-axis">
+    @for (item of processedData(); track item.label) {
+      <div class="x-label" [title]="item.label">{{ item.label }}</div>
+    }
+  </div>
+</div>

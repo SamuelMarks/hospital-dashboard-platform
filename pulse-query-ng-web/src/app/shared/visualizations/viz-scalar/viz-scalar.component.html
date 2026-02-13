@@ -1,20 +1,19 @@
-    <div class="value-display" role="status">{{ formattedValue() }}</div>
-    <div class="label-display">{{ label() }}</div>
+<div class="value-display" role="status">{{ formattedValue() }}</div>
+<div class="label-display">{{ label() }}</div>
 
-    @if (isCorrelation()) { 
-      <div class="gauge-wrapper" [matTooltip]="'Correlation Scale: -1 to +1'"> 
-        <mat-progress-bar 
-          mode="determinate" 
-          [value]="gaugePosition()" 
-          [class]="colorClass()" 
-          role="meter" 
-          [attr.aria-valuenow]="value()" 
-          aria-valuemin="-1" 
-          aria-valuemax="1" 
-        ></mat-progress-bar>
-      </div>
-      <div class="interpret-text" [style.color]="strengthColor()">
-        {{ strengthLabel() }} 
-      </div>
-    } 
-  
+@if (isCorrelation()) {
+  <div class="gauge-wrapper" [matTooltip]="'Correlation Scale: -1 to +1'">
+    <mat-progress-bar
+      mode="determinate"
+      [value]="gaugePosition()"
+      [class]="colorClass()"
+      role="meter"
+      [attr.aria-valuenow]="value()"
+      aria-valuemin="-1"
+      aria-valuemax="1"
+    ></mat-progress-bar>
+  </div>
+  <div class="interpret-text" [style.color]="strengthColor()">
+    {{ strengthLabel() }}
+  </div>
+}

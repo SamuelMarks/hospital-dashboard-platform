@@ -26,10 +26,10 @@ describe('AuthService', () => {
     mockApiClient = {
       loginAccessTokenApiV1AuthLoginPost: vi.fn(),
       registerUserApiV1AuthRegisterPost: vi.fn(),
-      readUsersMeApiV1AuthMeGet: vi.fn()
+      readUsersMeApiV1AuthMeGet: vi.fn(),
     };
     mockRouter = {
-      navigate: vi.fn()
+      navigate: vi.fn(),
     };
 
     localStorage.clear();
@@ -39,8 +39,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: AuthApiClient, useValue: mockApiClient },
         { provide: Router, useValue: mockRouter },
-        { provide: PLATFORM_ID, useValue: 'browser' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'browser' },
+      ],
     });
 
     service = TestBed.inject(AuthService);
@@ -66,16 +66,19 @@ describe('AuthService', () => {
       expect(service.isAuthenticated()).toBe(true);
     });
 
-    it('should propagate error on failure', () => new Promise<void>(done => {
-      mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(throwError(() => new Error('401')));
+    it('should propagate error on failure', () =>
+      new Promise<void>((done) => {
+        mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(
+          throwError(() => new Error('401')),
+        );
 
-      service.login({ email: 'u', password: 'p' }).subscribe({
-        error: (err) => {
-          expect(err).toBeTruthy();
-          done();
-        }
-      });
-    }));
+        service.login({ email: 'u', password: 'p' }).subscribe({
+          error: (err) => {
+            expect(err).toBeTruthy();
+            done();
+          },
+        });
+      }));
   });
 
   it('should return token from storage in browser', () => {
@@ -97,7 +100,7 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('should clear storage and redirect', () => {
       localStorage.setItem('pulse_auth_token', 'garbage');
-      
+
       service.logout();
 
       expect(localStorage.getItem('pulse_auth_token')).toBeNull();
@@ -124,20 +127,23 @@ describe('AuthService', () => {
       service.register({ email: 'u', password: 'p' }).subscribe((res) => {
         expect(res).toEqual(mockToken);
       });
-      
-      expect(mockApiClient.registerUserApiV1AuthRegisterPost).toHaveBeenCalledWith({ email: 'u', password: 'p' });
+
+      expect(mockApiClient.registerUserApiV1AuthRegisterPost).toHaveBeenCalledWith({
+        email: 'u',
+        password: 'p',
+      });
       expect(mockApiClient.loginAccessTokenApiV1AuthLoginPost).toHaveBeenCalledWith('u', 'p');
       expect(service.isAuthenticated()).toBe(true);
     });
   });
-  
+
   describe('initialize', () => {
     it('should restore session if local token exists', async () => {
       localStorage.setItem('pulse_auth_token', 'valid');
       mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
-      
+
       await service.initialize();
-      
+
       expect(mockApiClient.readUsersMeApiV1AuthMeGet).toHaveBeenCalled();
       expect(service.currentUser()).toEqual(mockUser);
     });
@@ -155,8 +161,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: AuthApiClient, useValue: mockApiClient },
         { provide: Router, useValue: mockRouter },
-        { provide: PLATFORM_ID, useValue: 'server' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'server' },
+      ],
     });
 
     const serverService = TestBed.inject(AuthService);
@@ -175,8 +181,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: AuthApiClient, useValue: mockApiClient },
         { provide: Router, useValue: mockRouter },
-        { provide: PLATFORM_ID, useValue: 'server' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'server' },
+      ],
     });
 
     const serverService = TestBed.inject(AuthService);
@@ -198,8 +204,8 @@ describe('AuthService', () => {
         AuthService,
         { provide: AuthApiClient, useValue: mockApiClient },
         { provide: Router, useValue: mockRouter },
-        { provide: PLATFORM_ID, useValue: 'server' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'server' },
+      ],
     });
 
     const serverService = TestBed.inject(AuthService);
@@ -213,10 +219,12 @@ describe('AuthService', () => {
 
   it('should logout when profile fetch fails', () => {
     mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(of(mockToken));
-    mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(throwError(() => new Error('bad token')));
+    mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(
+      throwError(() => new Error('bad token')),
+    );
 
     service.login({ email: 'u', password: 'p' }).subscribe({
-      error: () => {}
+      error: () => {},
     });
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);

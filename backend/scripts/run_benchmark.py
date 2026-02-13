@@ -185,11 +185,13 @@ class BenchmarkRunner:
     _db_store = []
 
     def mock_add(obj):
+      """Collect objects into the in-memory mock session."""
       _db_store.append(obj)
 
     mock_db.add.side_effect = mock_add
 
     async def mock_flush():
+      """Simulate flush behavior and populate defaults for pending objects."""
       # Simulate ID generation and Defaults for pending objects
       for obj in _db_store:
         if not getattr(obj, "id", None):
@@ -204,6 +206,7 @@ class BenchmarkRunner:
 
     # Side effect for refresh: Populate ID, created_at, and relationships
     async def mock_refresh(instance):
+      """Populate IDs, timestamps, and basic relationships on refresh."""
       if not instance.id:
         instance.id = uuid.uuid4()
       if not getattr(instance, "created_at", None):
@@ -270,6 +273,7 @@ class BenchmarkRunner:
                 "Success": is_correct,
                 "ExecError": bool(gen_err),
                 "ErrorMsg": gen_err or "",
+                "SQLHash": getattr(candidate, "sql_hash", "") or "",
                 "GeneratedSQL": gen_sql.replace("\n", " ")[:100],
               }
             )

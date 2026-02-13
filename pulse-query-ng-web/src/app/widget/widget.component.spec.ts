@@ -1,17 +1,24 @@
-/** 
- * @fileoverview Unit tests for WidgetComponent. 
- * Includes manual mocking of @material/material-color-utilities. 
- */ 
+/**
+ * @fileoverview Unit tests for WidgetComponent.
+ * Includes manual mocking of @material/material-color-utilities.
+ */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
-import { WidgetComponent } from './widget.component'; 
-import { DashboardStore } from '../dashboard/dashboard.store'; 
-import { WidgetResponse, DashboardsService } from '../api-client'; 
-import { Component, input, signal, WritableSignal, NO_ERRORS_SCHEMA, ErrorHandler } from '@angular/core'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { WidgetComponent } from './widget.component';
+import { DashboardStore } from '../dashboard/dashboard.store';
+import { WidgetResponse, DashboardsService } from '../api-client';
+import {
+  Component,
+  input,
+  signal,
+  WritableSignal,
+  NO_ERRORS_SCHEMA,
+  ErrorHandler,
+} from '@angular/core';
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
-import { By } from '@angular/platform-browser'; 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component'; 
+import { By } from '@angular/platform-browser';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
 import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
@@ -25,208 +32,219 @@ import { of } from 'rxjs';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xFFFFFFFF,
+  argbFromHex: () => 0xffffffff,
   hexFromArgb: () => '#ffffff',
   themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
   Scheme: class {},
   Theme: class {},
-  __esModule: true
+  __esModule: true,
 }));
 
 @Component({ selector: 'viz-table', template: '' })
-class MockVizTableComponent { 
+class MockVizTableComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
 
 @Component({ selector: 'viz-metric', template: '' })
-class MockVizMetricComponent { 
+class MockVizMetricComponent {
   readonly data = input<unknown>();
   readonly config = input<unknown>();
 }
 
 @Component({ selector: 'viz-chart', template: '' })
-class MockVizChartComponent { 
+class MockVizChartComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
 
 @Component({ selector: 'viz-pie', template: '' })
-class MockVizPieComponent { 
+class MockVizPieComponent {
   readonly dataSet = input<unknown>();
 }
 
 @Component({ selector: 'viz-heatmap', template: '' })
-class MockVizHeatmapComponent { 
+class MockVizHeatmapComponent {
   readonly dataSet = input<unknown>();
 }
 
 @Component({ selector: 'viz-scalar', template: '' })
-class MockVizScalarComponent { 
+class MockVizScalarComponent {
   readonly data = input<unknown>();
 }
 
 @Component({ selector: 'viz-markdown', template: '' })
-class MockVizMarkdownComponent { 
+class MockVizMarkdownComponent {
   readonly content = input<string | undefined>();
 }
 
-describe('WidgetComponent', () => { 
-  let component: WidgetComponent; 
-  let fixture: ComponentFixture<WidgetComponent>; 
-  
-  let dataMapSig: WritableSignal<Record<string, any>>; 
-  let isLoadingSig: WritableSignal<boolean>; 
-  let isEditModeSig: WritableSignal<boolean>; 
-  let focusedWidgetIdSig: WritableSignal<string | null>; 
+describe('WidgetComponent', () => {
+  let component: WidgetComponent;
+  let fixture: ComponentFixture<WidgetComponent>;
 
-  const mockWidget: WidgetResponse = { 
-    id: 'w1', dashboard_id: 'd1', title: 'Test Widget', type: 'SQL', visualization: 'table', config: { query: 'SELECT 1' } 
-  }; 
+  let dataMapSig: WritableSignal<Record<string, any>>;
+  let isLoadingSig: WritableSignal<boolean>;
+  let isEditModeSig: WritableSignal<boolean>;
+  let focusedWidgetIdSig: WritableSignal<string | null>;
 
-  let mockStore: any; 
+  const mockWidget: WidgetResponse = {
+    id: 'w1',
+    dashboard_id: 'd1',
+    title: 'Test Widget',
+    type: 'SQL',
+    visualization: 'table',
+    config: { query: 'SELECT 1' },
+  };
+
+  let mockStore: any;
   let mockDashApi: any;
 
-  beforeEach(async () => { 
-    dataMapSig = signal({}); 
-    isLoadingSig = signal(false); 
-    isEditModeSig = signal(false); 
-    focusedWidgetIdSig = signal(null); 
-    
-    mockStore = { 
-      dataMap: dataMapSig, 
-      isLoading: isLoadingSig, 
-      isEditMode: isEditModeSig, 
-      focusedWidgetId: focusedWidgetIdSig, 
-      isWidgetLoading: signal(() => false), 
-      refreshWidget: vi.fn(), 
-      setFocusedWidget: vi.fn(), 
-      duplicateWidget: vi.fn(), // Now supported
-      loadDashboard: vi.fn()
-    }; 
-    mockDashApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})) };
+  beforeEach(async () => {
+    dataMapSig = signal({});
+    isLoadingSig = signal(false);
+    isEditModeSig = signal(false);
+    focusedWidgetIdSig = signal(null);
 
-    await TestBed.configureTestingModule({ 
-      imports: [WidgetComponent, NoopAnimationsModule], 
+    mockStore = {
+      dataMap: dataMapSig,
+      isLoading: isLoadingSig,
+      isEditMode: isEditModeSig,
+      focusedWidgetId: focusedWidgetIdSig,
+      isWidgetLoading: signal(() => false),
+      refreshWidget: vi.fn(),
+      setFocusedWidget: vi.fn(),
+      duplicateWidget: vi.fn(), // Now supported
+      loadDashboard: vi.fn(),
+    };
+    mockDashApi = {
+      updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [WidgetComponent, NoopAnimationsModule],
       providers: [
         { provide: DashboardStore, useValue: mockStore },
         { provide: DashboardsService, useValue: mockDashApi },
-        { provide: ErrorHandler, useValue: { clearError: vi.fn(), handleError: vi.fn() } }
-      ] 
+        { provide: ErrorHandler, useValue: { clearError: vi.fn(), handleError: vi.fn() } },
+      ],
     })
-    .overrideComponent(WidgetComponent, {
-      set: { schemas: [NO_ERRORS_SCHEMA], template: readTemplate('./widget.component.html'), templateUrl: undefined }
-    })
-    .overrideComponent(WidgetComponent, {
-      remove: {
-        imports: [
-          VizTableComponent,
-          VizMetricComponent,
-          VizChartComponent,
-          VizPieComponent,
-          VizHeatmapComponent,
-          VizScalarComponent,
-          VizMarkdownComponent
-        ]
-      },
-      add: {
-        imports: [
-          MockVizTableComponent,
-          MockVizMetricComponent,
-          MockVizChartComponent,
-          MockVizPieComponent,
-          MockVizHeatmapComponent,
-          MockVizScalarComponent,
-          MockVizMarkdownComponent,
-          ErrorBoundaryDirective
-        ]
-      }
-    })
-    .compileComponents(); 
+      .overrideComponent(WidgetComponent, {
+        set: {
+          schemas: [NO_ERRORS_SCHEMA],
+          template: readTemplate('./widget.component.html'),
+          templateUrl: undefined,
+        },
+      })
+      .overrideComponent(WidgetComponent, {
+        remove: {
+          imports: [
+            VizTableComponent,
+            VizMetricComponent,
+            VizChartComponent,
+            VizPieComponent,
+            VizHeatmapComponent,
+            VizScalarComponent,
+            VizMarkdownComponent,
+          ],
+        },
+        add: {
+          imports: [
+            MockVizTableComponent,
+            MockVizMetricComponent,
+            MockVizChartComponent,
+            MockVizPieComponent,
+            MockVizHeatmapComponent,
+            MockVizScalarComponent,
+            MockVizMarkdownComponent,
+            ErrorBoundaryDirective,
+          ],
+        },
+      })
+      .compileComponents();
 
-    fixture = TestBed.createComponent(WidgetComponent); 
-    component = fixture.componentInstance; 
+    fixture = TestBed.createComponent(WidgetComponent);
+    component = fixture.componentInstance;
     setInputSignal(component, 'widgetInput', mockWidget);
-    fixture.detectChanges(); 
-  }); 
+    fixture.detectChanges();
+  });
 
-  it('should create', () => { 
-    expect(component).toBeTruthy(); 
-  }); 
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
 
-  it('should hidden config buttons in Read-Only Mode (default)', () => { 
-    isEditModeSig.set(false); 
-    fixture.detectChanges(); 
-    
-    expect(fixture.debugElement.query(By.css('[data-testid="btn-edit"]'))).toBeFalsy(); 
-    expect(fixture.debugElement.query(By.css('[data-testid="btn-delete"]'))).toBeFalsy(); 
-    expect(fixture.debugElement.query(By.css('[data-testid="btn-duplicate"]'))).toBeFalsy(); 
-  }); 
+  it('should hidden config buttons in Read-Only Mode (default)', () => {
+    isEditModeSig.set(false);
+    fixture.detectChanges();
 
-  it('should show config buttons in Edit Mode', () => { 
-    isEditModeSig.set(true); 
-    fixture.detectChanges(); 
-    
-    expect(fixture.debugElement.query(By.css('[data-testid="btn-edit"]'))).toBeTruthy(); 
-    expect(fixture.debugElement.query(By.css('[data-testid="btn-delete"]'))).toBeTruthy(); 
-    expect(fixture.debugElement.query(By.css('[data-testid="btn-duplicate"]'))).toBeTruthy(); 
-  }); 
+    expect(fixture.debugElement.query(By.css('[data-testid="btn-edit"]'))).toBeFalsy();
+    expect(fixture.debugElement.query(By.css('[data-testid="btn-delete"]'))).toBeFalsy();
+    expect(fixture.debugElement.query(By.css('[data-testid="btn-duplicate"]'))).toBeFalsy();
+  });
 
-  it('should emit duplicate event when clicked', () => { 
-    isEditModeSig.set(true); 
-    fixture.detectChanges(); 
-    
-    let emitted = false; 
-    component.duplicate.subscribe(() => emitted = true); 
+  it('should show config buttons in Edit Mode', () => {
+    isEditModeSig.set(true);
+    fixture.detectChanges();
 
-    const btn = fixture.debugElement.query(By.css('[data-testid="btn-duplicate"]')); 
-    btn.triggerEventHandler('click', null); 
-    
-    expect(emitted).toBe(true); 
-  }); 
+    expect(fixture.debugElement.query(By.css('[data-testid="btn-edit"]'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('[data-testid="btn-delete"]'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('[data-testid="btn-duplicate"]'))).toBeTruthy();
+  });
 
-  it('should render In-Place Error Recovery button when error active', () => { 
+  it('should emit duplicate event when clicked', () => {
+    isEditModeSig.set(true);
+    fixture.detectChanges();
+
+    let emitted = false;
+    component.duplicate.subscribe(() => (emitted = true));
+
+    const btn = fixture.debugElement.query(By.css('[data-testid="btn-duplicate"]'));
+    btn.triggerEventHandler('click', null);
+
+    expect(emitted).toBe(true);
+  });
+
+  it('should render In-Place Error Recovery button when error active', () => {
     // Setup Error State in Store
-    dataMapSig.set({ 'w1': { error: 'Syntax Error in SQL' } }); 
-    isEditModeSig.set(true); 
-    fixture.detectChanges(); 
+    dataMapSig.set({ w1: { error: 'Syntax Error in SQL' } });
+    isEditModeSig.set(true);
+    fixture.detectChanges();
 
-    const errorState = fixture.debugElement.query(By.css('[data-testid="error-state"]')); 
-    expect(errorState).toBeTruthy(); 
-    expect(errorState.nativeElement.textContent).toContain('Syntax Error'); 
+    const errorState = fixture.debugElement.query(By.css('[data-testid="error-state"]'));
+    expect(errorState).toBeTruthy();
+    expect(errorState.nativeElement.textContent).toContain('Syntax Error');
 
     // Check Button
-    const fixBtn = fixture.debugElement.query(By.css('[data-testid="btn-fix-query"]')); 
-    expect(fixBtn).toBeTruthy(); 
-    
+    const fixBtn = fixture.debugElement.query(By.css('[data-testid="btn-fix-query"]'));
+    expect(fixBtn).toBeTruthy();
+
     // Verify Action
-    let editEmitted = false; 
-    component.edit.subscribe(() => editEmitted = true); 
-    fixBtn.triggerEventHandler('click', null); 
-    expect(editEmitted).toBe(true); 
-  }); 
+    let editEmitted = false;
+    component.edit.subscribe(() => (editEmitted = true));
+    fixBtn.triggerEventHandler('click', null);
+    expect(editEmitted).toBe(true);
+  });
 
-  it('should handle keyboard escape event logic', () => { 
-    let deleteEmitted = false; 
-    component.delete.subscribe(() => deleteEmitted = true); 
+  it('should handle keyboard escape event logic', () => {
+    let deleteEmitted = false;
+    component.delete.subscribe(() => (deleteEmitted = true));
 
-    const event = new KeyboardEvent('keydown', { key: 'Escape' }); 
-    vi.spyOn(event, 'stopPropagation'); 
+    const event = new KeyboardEvent('keydown', { key: 'Escape' });
+    vi.spyOn(event, 'stopPropagation');
 
-    // 1. If Focused, Escape should Close Focus (Call Store) 
-    focusedWidgetIdSig.set('w1'); 
-    fixture.detectChanges(); 
-    component.onEscape(event); 
-    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null); 
-    expect(deleteEmitted).toBe(false); 
+    // 1. If Focused, Escape should Close Focus (Call Store)
+    focusedWidgetIdSig.set('w1');
+    fixture.detectChanges();
+    component.onEscape(event);
+    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null);
+    expect(deleteEmitted).toBe(false);
 
     // 2. If Not Focused but Edit Mode, Escape should Delete
-    focusedWidgetIdSig.set(null); 
-    isEditModeSig.set(true); 
-    fixture.detectChanges(); 
-    component.onEscape(event); 
-    expect(deleteEmitted).toBe(true); 
-  }); 
+    focusedWidgetIdSig.set(null);
+    isEditModeSig.set(true);
+    fixture.detectChanges();
+    component.onEscape(event);
+    expect(deleteEmitted).toBe(true);
+  });
 
   it('should ignore escape when not focused and not edit mode', () => {
     const event = new KeyboardEvent('keydown', { key: 'Escape' });
@@ -237,27 +255,27 @@ describe('WidgetComponent', () => {
     expect(mockStore.setFocusedWidget).not.toHaveBeenCalledWith(null);
   });
 
-  it('should toggle focus when button clicked', () => { 
+  it('should toggle focus when button clicked', () => {
     // Initial State: Not Focused
-    focusedWidgetIdSig.set(null); 
-    fixture.detectChanges(); 
-    component.toggleFocus(); 
-    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith('w1'); 
+    focusedWidgetIdSig.set(null);
+    fixture.detectChanges();
+    component.toggleFocus();
+    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith('w1');
 
     // State: Already Focused
-    focusedWidgetIdSig.set('w1'); 
-    fixture.detectChanges(); 
-    component.toggleFocus(); 
-    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null); 
-  }); 
+    focusedWidgetIdSig.set('w1');
+    fixture.detectChanges();
+    component.toggleFocus();
+    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null);
+  });
 
-  it('should render VizTable when visualization is "table"', () => { 
-    dataMapSig.set({ 'w1': { columns: ['a'], data: [{a: 1}] } }); 
-    fixture.detectChanges(); 
+  it('should render VizTable when visualization is "table"', () => {
+    dataMapSig.set({ w1: { columns: ['a'], data: [{ a: 1 }] } });
+    fixture.detectChanges();
 
-    const viz = fixture.debugElement.query(By.directive(MockVizTableComponent)); 
-    expect(viz).toBeTruthy(); 
-  }); 
+    const viz = fixture.debugElement.query(By.directive(MockVizTableComponent));
+    expect(viz).toBeTruthy();
+  });
 
   it('should allow focus handler', () => {
     component.onFocus();
@@ -315,8 +333,12 @@ describe('WidgetComponent', () => {
     const deleteSpy = vi.fn();
     component.edit.subscribe(editSpy);
     component.delete.subscribe(deleteSpy);
-    fixture.debugElement.query(By.css('[data-testid="btn-edit"]')).triggerEventHandler('click', null);
-    fixture.debugElement.query(By.css('[data-testid="btn-delete"]')).triggerEventHandler('click', null);
+    fixture.debugElement
+      .query(By.css('[data-testid="btn-edit"]'))
+      .triggerEventHandler('click', null);
+    fixture.debugElement
+      .query(By.css('[data-testid="btn-delete"]'))
+      .triggerEventHandler('click', null);
     expect(editSpy).toHaveBeenCalled();
     expect(deleteSpy).toHaveBeenCalled();
   });
@@ -329,16 +351,24 @@ describe('WidgetComponent', () => {
       { visualization: 'metric', selector: MockVizMetricComponent },
       { visualization: 'scalar', selector: MockVizScalarComponent },
       { visualization: 'pie', selector: MockVizPieComponent },
-      { visualization: 'heatmap', selector: MockVizHeatmapComponent }
+      { visualization: 'heatmap', selector: MockVizHeatmapComponent },
     ];
 
     for (const entry of cases) {
-      setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: entry.visualization });
+      setInputSignal(component, 'widgetInput', {
+        ...mockWidget,
+        visualization: entry.visualization,
+      });
       fixture.detectChanges();
       expect(fixture.debugElement.query(By.directive(entry.selector))).toBeTruthy();
     }
 
-    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT', visualization: undefined, config: { content: 'x' } });
+    setInputSignal(component, 'widgetInput', {
+      ...mockWidget,
+      type: 'TEXT',
+      visualization: undefined,
+      config: { content: 'x' },
+    });
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(MockVizMarkdownComponent))).toBeTruthy();
 
@@ -348,9 +378,13 @@ describe('WidgetComponent', () => {
   });
 
   it('should render safe mode template and handle actions', () => {
-    const boundaryNode = fixture.debugElement.query(By.directive(ErrorBoundaryDirective)) 
-      || fixture.debugElement.query(By.css('.viz-container'));
-    const directive = boundaryNode?.injector.get(ErrorBoundaryDirective, null) as ErrorBoundaryDirective | null;
+    const boundaryNode =
+      fixture.debugElement.query(By.directive(ErrorBoundaryDirective)) ||
+      fixture.debugElement.query(By.css('.viz-container'));
+    const directive = boundaryNode?.injector.get(
+      ErrorBoundaryDirective,
+      null,
+    ) as ErrorBoundaryDirective | null;
     if (!directive) {
       throw new Error('ErrorBoundaryDirective not found');
     }
@@ -368,7 +402,7 @@ describe('WidgetComponent', () => {
     resetBtn.triggerEventHandler('click', null);
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
-  
+
   it('should expose derived computed values', () => {
     dataMapSig.set({ w1: { error: 'oops' } });
     focusedWidgetIdSig.set('w1');
@@ -394,7 +428,10 @@ describe('WidgetComponent', () => {
     component.resetWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ visualization: 'table', config: { query: 'SELECT 1 as SafeMode' } })
+      expect.objectContaining({
+        visualization: 'table',
+        config: { query: 'SELECT 1 as SafeMode' },
+      }),
     );
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
@@ -407,7 +444,7 @@ describe('WidgetComponent', () => {
     component.resetWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ visualization: 'table', config: {} })
+      expect.objectContaining({ visualization: 'table', config: {} }),
     );
   });
 });

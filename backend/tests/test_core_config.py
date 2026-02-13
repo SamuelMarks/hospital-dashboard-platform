@@ -41,9 +41,49 @@ def test_llm_swarm_defaults_to_local_provider(monkeypatch) -> None:
   monkeypatch.delenv("OPENAI_API_KEY", raising=False)
   monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
   monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+  monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+  monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+  monkeypatch.delenv("OLLAMA_MODELS", raising=False)
+  monkeypatch.delenv("LLM_LOCAL_MODELS", raising=False)
 
   settings = Settings()
   swarm = settings.LLM_SWARM
 
   assert len(swarm) == 1
   assert swarm[0]["name"] == "Local LLM"
+
+
+def test_llm_swarm_parses_local_models_env(monkeypatch) -> None:
+  """Custom local models should be parsed and labeled."""
+  monkeypatch.setenv("LLM_LOCAL_MODELS", "local-a, local-b")
+  monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+  monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+  monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+  monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+  monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+  monkeypatch.delenv("OLLAMA_MODELS", raising=False)
+
+  settings = Settings()
+  swarm = settings.LLM_SWARM
+
+  assert len(swarm) == 2
+  names = {item["name"] for item in swarm}
+  assert "Local LLM local-a" in names
+  assert "Local LLM local-b" in names
+
+
+def test_llm_swarm_includes_gemini_and_ollama(monkeypatch) -> None:
+  """Gemini and Ollama models should be added when configured."""
+  monkeypatch.setenv("GEMINI_API_KEY", "k-gemini")
+  monkeypatch.setenv("OLLAMA_MODELS", "llama3")
+  monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+  monkeypatch.delenv("MISTRAL_API_KEY", raising=False)
+  monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+  monkeypatch.delenv("LLM_LOCAL_MODELS", raising=False)
+
+  settings = Settings()
+  swarm = settings.LLM_SWARM
+
+  names = {item["name"] for item in swarm}
+  assert "Gemini 1.5 Pro" in names
+  assert "Llama3" in names

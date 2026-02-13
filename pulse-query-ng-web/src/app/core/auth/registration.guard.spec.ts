@@ -9,7 +9,7 @@ import { environment } from '../../../environments/environment';
 
 describe('registrationGuard', () => {
   const executeGuard: CanActivateFn = (...guardParameters) =>
-      TestBed.runInInjectionContext(() => registrationGuard(...guardParameters));
+    TestBed.runInInjectionContext(() => registrationGuard(...guardParameters));
 
   let mockRouter: { createUrlTree: ReturnType<typeof vi.fn> };
   const originalState = environment.registrationEnabled;
@@ -18,9 +18,7 @@ describe('registrationGuard', () => {
     mockRouter = { createUrlTree: vi.fn() };
 
     TestBed.configureTestingModule({
-      providers: [
-        { provide: Router, useValue: mockRouter }
-      ]
+      providers: [{ provide: Router, useValue: mockRouter }],
     });
   });
 
@@ -40,7 +38,7 @@ describe('registrationGuard', () => {
     mockRouter.createUrlTree.mockReturnValue(mockUrlTree);
 
     const result = executeGuard({} as any, {} as any);
-    
+
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login']);
     expect(result).toBe(mockUrlTree);
   });

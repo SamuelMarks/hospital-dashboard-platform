@@ -23,14 +23,14 @@ const expressMock = vi.fn(() => {
     listen: vi.fn((port: number, cb?: (err?: Error) => void) => {
       if (cb) cb();
       return { close: vi.fn() };
-    })
+    }),
   };
   return lastApp;
 }) as unknown as ExpressMock;
 expressMock.static = vi.fn(() => (_req: any, _res: any, next: any) => next?.());
 
 vi.mock('express', () => ({
-  default: expressMock
+  default: expressMock,
 }));
 
 vi.mock('@angular/ssr/node', () => ({
@@ -39,7 +39,7 @@ vi.mock('@angular/ssr/node', () => ({
   },
   createNodeRequestHandler,
   isMainModule,
-  writeResponseToNodeResponse
+  writeResponseToNodeResponse,
 }));
 
 describe('server bootstrap', () => {
@@ -112,7 +112,7 @@ describe('server bootstrap', () => {
       use: vi.fn(),
       listen: vi.fn((port: number, cb?: (err?: Error) => void) => {
         if (cb) cb(new Error('listen failed'));
-      })
+      }),
     };
     lastApp = app;
     expressMock.mockImplementationOnce(() => app);

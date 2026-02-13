@@ -1,82 +1,87 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
-import { ChatLayoutComponent } from './chat-layout.component'; 
-import { ChatStore } from './chat.store'; 
-import { BreakpointObserver } from '@angular/cdk/layout'; 
-import { BehaviorSubject } from 'rxjs'; 
-import { signal, Component } from '@angular/core'; 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { ConversationComponent } from './conversation/conversation.component'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ChatLayoutComponent } from './chat-layout.component';
+import { ChatStore } from './chat.store';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { BehaviorSubject } from 'rxjs';
+import { signal, Component } from '@angular/core';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { ConversationComponent } from './conversation/conversation.component';
 import { By } from '@angular/platform-browser';
 import { MatSidenav } from '@angular/material/sidenav';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { readTemplate } from '../../test-utils/component-resources';
 
-@Component({ selector: 'app-conversation', template: '' }) class MockConv {} 
+@Component({ selector: 'app-conversation', template: '' })
+class MockConv {}
 
-describe('ChatLayoutComponent', () => { 
-  let component: ChatLayoutComponent, fixture: ComponentFixture<ChatLayoutComponent>, mockStore: any; 
+describe('ChatLayoutComponent', () => {
+  let component: ChatLayoutComponent,
+    fixture: ComponentFixture<ChatLayoutComponent>,
+    mockStore: any;
   let overlay: OverlayContainer;
   let handsetState$: BehaviorSubject<{ matches: boolean }>;
 
-  beforeEach(async () => { 
-    mockStore = { 
-      conversations: signal([{id: 'c1', title: 'C1', updated_at: new Date().toISOString()}]), 
-      activeConversationId: signal(null), 
-      isDataLoading: signal(false), 
-      loadHistory: vi.fn(), 
-      selectConversation: vi.fn(), 
-      createNewChat: vi.fn(), 
-      deleteConversation: vi.fn(), 
-      renameConversation: vi.fn() 
-    }; 
-    
+  beforeEach(async () => {
+    mockStore = {
+      conversations: signal([{ id: 'c1', title: 'C1', updated_at: new Date().toISOString() }]),
+      activeConversationId: signal(null),
+      isDataLoading: signal(false),
+      loadHistory: vi.fn(),
+      selectConversation: vi.fn(),
+      createNewChat: vi.fn(),
+      deleteConversation: vi.fn(),
+      renameConversation: vi.fn(),
+    };
+
     handsetState$ = new BehaviorSubject<{ matches: boolean }>({ matches: false });
 
-    await TestBed.configureTestingModule({ 
-      imports: [ChatLayoutComponent, NoopAnimationsModule], 
-      providers: [{ provide: BreakpointObserver, useValue: { observe: () => handsetState$.asObservable() } }] 
-    }) 
-    // FIX: Split overrides into separate calls. 
-    // Mixing `remove/add` (Component Imports) with `set` (Providers) in the same 
-    // overrideMetadata call is illegal in Angular Testing APIs. 
-    .overrideComponent(ChatLayoutComponent, { 
-      remove: { imports: [ConversationComponent] }, 
-      add: { imports: [MockConv] } 
-    }) 
-    .overrideComponent(ChatLayoutComponent, { 
-      set: { providers: [{ provide: ChatStore, useValue: mockStore }] } 
-    }) 
-    .overrideComponent(ChatLayoutComponent, { 
-      set: { template: readTemplate('./chat-layout.component.html'), templateUrl: undefined } 
-    }) 
-    .compileComponents(); 
+    await TestBed.configureTestingModule({
+      imports: [ChatLayoutComponent, NoopAnimationsModule],
+      providers: [
+        { provide: BreakpointObserver, useValue: { observe: () => handsetState$.asObservable() } },
+      ],
+    })
+      // FIX: Split overrides into separate calls.
+      // Mixing `remove/add` (Component Imports) with `set` (Providers) in the same
+      // overrideMetadata call is illegal in Angular Testing APIs.
+      .overrideComponent(ChatLayoutComponent, {
+        remove: { imports: [ConversationComponent] },
+        add: { imports: [MockConv] },
+      })
+      .overrideComponent(ChatLayoutComponent, {
+        set: { providers: [{ provide: ChatStore, useValue: mockStore }] },
+      })
+      .overrideComponent(ChatLayoutComponent, {
+        set: { template: readTemplate('./chat-layout.component.html'), templateUrl: undefined },
+      })
+      .compileComponents();
 
-    fixture = TestBed.createComponent(ChatLayoutComponent); 
-    component = fixture.componentInstance; 
-    fixture.detectChanges(); 
+    fixture = TestBed.createComponent(ChatLayoutComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
     overlay = TestBed.inject(OverlayContainer);
-  }); 
+  });
 
   it('should load history on init', () => {
     expect(mockStore.loadHistory).toHaveBeenCalled();
   });
 
-  it('should trigger delete', () => { 
-    vi.spyOn(window, 'confirm').mockReturnValue(true); 
-    const chatObj = { id: 'c1', title: 'C1', updated_at: '', messages: [] } as any; 
-    
-    component.deleteChat(chatObj); 
-    expect(mockStore.deleteConversation).toHaveBeenCalledWith('c1'); 
-  }); 
+  it('should trigger delete', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const chatObj = { id: 'c1', title: 'C1', updated_at: '', messages: [] } as any;
 
-  it('should trigger rename', () => { 
-    vi.spyOn(window, 'prompt').mockReturnValue('New Name'); 
-    const chatObj = { id: 'c1', title: 'C1', updated_at: '', messages: [] } as any; 
-    
-    component.renameChat(chatObj); 
-    expect(mockStore.renameConversation).toHaveBeenCalledWith('c1', 'New Name'); 
-  }); 
+    component.deleteChat(chatObj);
+    expect(mockStore.deleteConversation).toHaveBeenCalledWith('c1');
+  });
+
+  it('should trigger rename', () => {
+    vi.spyOn(window, 'prompt').mockReturnValue('New Name');
+    const chatObj = { id: 'c1', title: 'C1', updated_at: '', messages: [] } as any;
+
+    component.renameChat(chatObj);
+    expect(mockStore.renameConversation).toHaveBeenCalledWith('c1', 'New Name');
+  });
 
   it('should not rename when prompt is empty or same', () => {
     const chatObj = { id: 'c1', title: 'C1', updated_at: '', messages: [] } as any;
@@ -101,7 +106,7 @@ describe('ChatLayoutComponent', () => {
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     mockStore.conversations.set([
       { id: 't', title: 'Today', updated_at: now.toISOString() },
-      { id: 'p', title: 'Prev', updated_at: yesterday.toISOString() }
+      { id: 'p', title: 'Prev', updated_at: yesterday.toISOString() },
     ]);
     fixture.detectChanges();
 
@@ -113,9 +118,7 @@ describe('ChatLayoutComponent', () => {
 
   it('should group history only as today when no older entries', () => {
     const now = new Date();
-    mockStore.conversations.set([
-      { id: 't', title: 'Today', updated_at: now.toISOString() }
-    ]);
+    mockStore.conversations.set([{ id: 't', title: 'Today', updated_at: now.toISOString() }]);
     fixture.detectChanges();
 
     const groups = component.groupedHistory();
@@ -126,9 +129,7 @@ describe('ChatLayoutComponent', () => {
   it('should group history only as previous when no today entries', () => {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    mockStore.conversations.set([
-      { id: 'p', title: 'Prev', updated_at: yesterday.toISOString() }
-    ]);
+    mockStore.conversations.set([{ id: 'p', title: 'Prev', updated_at: yesterday.toISOString() }]);
     fixture.detectChanges();
 
     const groups = component.groupedHistory();
@@ -217,4 +218,4 @@ describe('ChatLayoutComponent', () => {
     expect(mockStore.renameConversation).toHaveBeenCalledWith('c1', 'Renamed');
     expect(mockStore.deleteConversation).toHaveBeenCalledWith('c1');
   });
-}); 
+});

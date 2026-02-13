@@ -9,14 +9,11 @@ describe('SimulationStore (API-backed)', () => {
 
   beforeEach(() => {
     mockApi = {
-      runSimulationApiV1SimulationRunPost: vi.fn()
+      runSimulationApiV1SimulationRunPost: vi.fn(),
     };
 
     TestBed.configureTestingModule({
-      providers: [
-        SimulationStore,
-        { provide: ApiService, useValue: mockApi }
-      ]
+      providers: [SimulationStore, { provide: ApiService, useValue: mockApi }],
     });
 
     store = TestBed.inject(SimulationStore);
@@ -35,7 +32,7 @@ describe('SimulationStore (API-backed)', () => {
 
   it('runs scenario and stores results on success', () => {
     mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(
-      of({ assignments: [{ Service: 'A', Unit: 'B', Patient_Count: 1 }] })
+      of({ assignments: [{ Service: 'A', Unit: 'B', Patient_Count: 1 }] }),
     );
 
     store.runScenario();
@@ -47,7 +44,7 @@ describe('SimulationStore (API-backed)', () => {
 
   it('handles scenario errors gracefully', () => {
     mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(
-      throwError(() => ({ error: { detail: 'Bad request' }, message: 'Boom' }))
+      throwError(() => ({ error: { detail: 'Bad request' }, message: 'Boom' })),
     );
 
     store.runScenario();
@@ -59,7 +56,7 @@ describe('SimulationStore (API-backed)', () => {
 
   it('falls back to message when error detail missing', () => {
     mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(
-      throwError(() => ({ message: 'Boom' }))
+      throwError(() => ({ message: 'Boom' })),
     );
 
     store.runScenario();

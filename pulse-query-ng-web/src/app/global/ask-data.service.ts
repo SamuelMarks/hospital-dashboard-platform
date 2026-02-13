@@ -5,7 +5,7 @@ import { Injectable, signal, computed } from '@angular/core';
  * This acts as a bridge between the Toolbar (trigger) and the Sidebar Component (display).
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AskDataService {
   /** Private mutable signal for open/close state. */
@@ -14,23 +14,23 @@ export class AskDataService {
   /** Public read-only signal for UI binding. */
   public isOpen = this._isOpen.asReadonly();
 
-  /** 
-  * Toggles the visibility state of the sidebar.
-  */
+  /**
+   * Toggles the visibility state of the sidebar.
+   */
   toggle() {
-    this._isOpen.update(v => !v);
+    this._isOpen.update((v) => !v);
   }
 
-  /** 
-  * Explicitly closes the sidebar.
-  */
+  /**
+   * Explicitly closes the sidebar.
+   */
   close() {
     this._isOpen.set(false);
   }
 
-  /** 
-  * Explicitly opens the sidebar.
-  */
+  /**
+   * Explicitly opens the sidebar.
+   */
   open() {
     this._isOpen.set(true);
   }

@@ -15,7 +15,7 @@ export default defineConfig({
       provider: 'v8',
       all: true,
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/app/api-client/**'],
+      exclude: ['src/**/*.spec.ts', 'src/app/api-client/**', 'src/test-mocks/**', 'src/test-utils/**'],
       reporter: ['text', 'html'],
       reportOnFailure: true,
       thresholds: {

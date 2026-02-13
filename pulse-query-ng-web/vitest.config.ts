@@ -9,9 +9,9 @@ export default defineConfig({
     alias: [
       {
         find: /^@material\/material-color-utilities(\/.*)?$/,
-        replacement: resolve(__dirname, 'src/test-mocks/material-color-utilities.ts')
-      }
-    ]
+        replacement: resolve(__dirname, 'src/test-mocks/material-color-utilities.ts'),
+      },
+    ],
   },
   test: {
     globals: true,
@@ -26,7 +26,12 @@ export default defineConfig({
       provider: 'v8',
       all: true,
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/app/api-client/**'],
+      exclude: [
+        'src/**/*.spec.ts',
+        'src/app/api-client/**',
+        'src/test-mocks/**',
+        'src/test-utils/**',
+      ],
       reporter: ['text', 'html'],
       reportOnFailure: true,
       thresholds: {
@@ -34,8 +39,8 @@ export default defineConfig({
         functions: 100,
         branches: 100,
         statements: 100,
-        perFile: true
-      }
-    }
-  }
+        perFile: true,
+      },
+    },
+  },
 });

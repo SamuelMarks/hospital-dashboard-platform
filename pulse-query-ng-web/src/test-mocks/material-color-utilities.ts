@@ -3,8 +3,8 @@ export const hexFromArgb = (_argb: number): string => '#ffffff';
 export const themeFromSourceColor = (_sourceArgb: number) => ({
   schemes: {
     light: new Scheme(),
-    dark: new Scheme()
-  }
+    dark: new Scheme(),
+  },
 });
 
 export class Scheme {
@@ -37,6 +37,6 @@ export class Scheme {
 export class Theme {
   schemes = {
     light: new Scheme(),
-    dark: new Scheme()
+    dark: new Scheme(),
   };
 }

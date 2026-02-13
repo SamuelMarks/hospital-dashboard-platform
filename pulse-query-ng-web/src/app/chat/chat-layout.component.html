@@ -1,68 +1,63 @@
-    <mat-sidenav-container class="sidenav-container">
-      <mat-sidenav
-        #drawer
-        [mode]="(isHandset$ | async) ? 'over' : 'side'" 
-        [opened]="(isHandset$ | async) === false" 
-        class="history-drawer" 
-      >
-        <div class="history-header">
-          <button mat-stroked-button color="primary" class="w-full" (click)="newChat()">
-            <mat-icon>add</mat-icon> New Chat
-          </button>
-        </div>
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav
+    #drawer
+    [mode]="(isHandset$ | async) ? 'over' : 'side'"
+    [opened]="(isHandset$ | async) === false"
+    class="history-drawer"
+  >
+    <div class="history-header">
+      <button mat-stroked-button color="primary" class="w-full" (click)="newChat()">
+        <mat-icon>add</mat-icon> New Chat
+      </button>
+    </div>
 
-        @if (store.isDataLoading()) { 
-          <div class="flex justify-center p-8"><mat-spinner diameter="32"></mat-spinner></div>
-        } 
+    @if (store.isDataLoading()) {
+      <div class="flex justify-center p-8"><mat-spinner diameter="32"></mat-spinner></div>
+    }
 
-        <div class="history-list" role="list">
-          @for (group of groupedHistory(); track group.label) { 
-            <div class="group-label">{{ group.label }}</div>
-            @for (chat of group.items; track chat.id) { 
-              <div 
-                class="nav-item-container" 
-                [class.active]="store.activeConversationId() === chat.id" 
-              >
-                 <div class="nav-content" (click)="selectChat(chat.id)">
-                   <mat-icon class="mr-2 text-sm">chat_bubble_outline</mat-icon>
-                   <span class="truncate text-sm">{{ chat.title }}</span>
-                 </div>
-                 
-                 <!-- Context Menu Button -->
-                 <button 
-                    mat-icon-button 
-                    class="action-btn scale-75" 
-                    [matMenuTriggerFor]="menu" 
-                    (click)="$event.stopPropagation()" 
-                 >
-                   <mat-icon>more_vert</mat-icon>
-                 </button>
+    <div class="history-list" role="list">
+      @for (group of groupedHistory(); track group.label) {
+        <div class="group-label">{{ group.label }}</div>
+        @for (chat of group.items; track chat.id) {
+          <div class="nav-item-container" [class.active]="store.activeConversationId() === chat.id">
+            <div class="nav-content" (click)="selectChat(chat.id)">
+              <mat-icon class="mr-2 text-sm">chat_bubble_outline</mat-icon>
+              <span class="truncate text-sm">{{ chat.title }}</span>
+            </div>
 
-                 <mat-menu #menu="matMenu">
-                    <button mat-menu-item (click)="renameChat(chat)">
-                        <mat-icon>edit</mat-icon> Rename
-                    </button>
-                    <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
-                        <mat-icon color="warn">delete</mat-icon> Delete
-                    </button>
-                 </mat-menu>
-              </div>
-            } 
-          } 
-        </div>
+            <!-- Context Menu Button -->
+            <button
+              mat-icon-button
+              class="action-btn scale-75"
+              [matMenuTriggerFor]="menu"
+              (click)="$event.stopPropagation()"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
 
-      </mat-sidenav>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="renameChat(chat)">
+                <mat-icon>edit</mat-icon> Rename
+              </button>
+              <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
+                <mat-icon color="warn">delete</mat-icon> Delete
+              </button>
+            </mat-menu>
+          </div>
+        }
+      }
+    </div>
+  </mat-sidenav>
 
-      <mat-sidenav-content role="main">
-        @if (isHandset$ | async) { 
-          <mat-toolbar color="primary">
-            <button mat-icon-button (click)="drawer.toggle()"><mat-icon>menu</mat-icon></button>
-            <span>Assistant</span>
-          </mat-toolbar>
-        } 
-        <div class="h-full flex flex-col pt-16 md:pt-0">
-          <app-conversation class="flex-grow min-h-0"></app-conversation>
-        </div>
-      </mat-sidenav-content>
-    </mat-sidenav-container>
-  
+  <mat-sidenav-content role="main">
+    @if (isHandset$ | async) {
+      <mat-toolbar color="primary">
+        <button mat-icon-button (click)="drawer.toggle()"><mat-icon>menu</mat-icon></button>
+        <span>Assistant</span>
+      </mat-toolbar>
+    }
+    <div class="h-full flex flex-col pt-16 md:pt-0">
+      <app-conversation class="flex-grow min-h-0"></app-conversation>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

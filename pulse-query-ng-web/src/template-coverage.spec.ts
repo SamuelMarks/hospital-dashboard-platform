@@ -15,7 +15,7 @@ const appRootCandidates = [
   resolve(specDir, '..', 'app'),
   resolve(specDir, '..', 'src', 'app'),
   resolve(process.cwd(), 'src', 'app'),
-  resolve(process.cwd(), 'pulse-query-ng-web', 'src', 'app')
+  resolve(process.cwd(), 'pulse-query-ng-web', 'src', 'app'),
 ];
 const appRoot = appRootCandidates.find((dir) => existsSync(dir));
 if (!appRoot) {
@@ -66,7 +66,9 @@ describe('Template coverage', () => {
 
   it('ensures every template has a sibling spec file', () => {
     const refs = getTemplateRefs();
-    const missing = refs.filter((ref) => !existsSync(ref.templatePath.replace(/\.html$/, '.spec.ts')));
+    const missing = refs.filter(
+      (ref) => !existsSync(ref.templatePath.replace(/\.html$/, '.spec.ts')),
+    );
     expect(missing).toEqual([]);
   });
 

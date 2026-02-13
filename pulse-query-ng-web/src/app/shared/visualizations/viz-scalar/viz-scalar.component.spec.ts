@@ -1,85 +1,85 @@
-/** 
- * @fileoverview Unit tests for VizScalarComponent. 
- */ 
+/**
+ * @fileoverview Unit tests for VizScalarComponent.
+ */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { VizScalarComponent } from './viz-scalar.component'; 
-import { By } from '@angular/platform-browser'; 
-import { NoopAnimationsModule } from '@angular/platform-browser/animations'; 
-import { vi } from 'vitest'; 
+import { VizScalarComponent } from './viz-scalar.component';
+import { By } from '@angular/platform-browser';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { vi } from 'vitest';
 
-describe('VizScalarComponent', () => { 
-  let component: VizScalarComponent; 
-  let fixture: ComponentFixture<VizScalarComponent>; 
+describe('VizScalarComponent', () => {
+  let component: VizScalarComponent;
+  let fixture: ComponentFixture<VizScalarComponent>;
   let dataSig: any;
 
-  /** 
-   * Fix for "TypeError: mql.addListener is not a function" on CI. 
-   */ 
-  beforeAll(() => { 
-    Object.defineProperty(window, 'matchMedia', { 
-      writable: true, 
-      value: vi.fn().mockImplementation((query: string) => ({ 
-        matches: false, 
-        media: query, 
-        onchange: null, 
-        addListener: vi.fn(), 
-        removeListener: vi.fn(), 
-        addEventListener: vi.fn(), 
-        removeEventListener: vi.fn(), 
-        dispatchEvent: vi.fn(), 
-      })), 
-    }); 
-  }); 
+  /**
+   * Fix for "TypeError: mql.addListener is not a function" on CI.
+   */
+  beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+  });
 
-  beforeEach(async () => { 
-    await TestBed.configureTestingModule({ 
-      imports: [VizScalarComponent, NoopAnimationsModule] 
-    }).compileComponents(); 
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [VizScalarComponent, NoopAnimationsModule],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(VizScalarComponent); 
-    component = fixture.componentInstance; 
+    fixture = TestBed.createComponent(VizScalarComponent);
+    component = fixture.componentInstance;
     dataSig = signal<any | null>(null);
     (component as any).data = dataSig;
-    fixture.detectChanges(); 
-  }); 
+    fixture.detectChanges();
+  });
 
-  it('should create', () => { 
-    expect(component).toBeTruthy(); 
-  }); 
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
 
-  it('should display simple number', () => { 
-    const data = { data: [{ val: 1000 }] }; 
-    dataSig.set(data); 
-    fixture.detectChanges(); 
+  it('should display simple number', () => {
+    const data = { data: [{ val: 1000 }] };
+    dataSig.set(data);
+    fixture.detectChanges();
 
-    const valEl = fixture.debugElement.query(By.css('.value-display')); 
-    expect(valEl.nativeElement.textContent).toBe('1,000'); 
-    
+    const valEl = fixture.debugElement.query(By.css('.value-display'));
+    expect(valEl.nativeElement.textContent).toBe('1,000');
+
     // MatProgressBar should NOT be present
-    expect(fixture.debugElement.query(By.css('mat-progress-bar'))).toBeFalsy(); 
-  }); 
+    expect(fixture.debugElement.query(By.css('mat-progress-bar'))).toBeFalsy();
+  });
 
-  it('should display correlation context', () => { 
-    const data = { 
-        columns: ['correlation_coef'], 
-        data: [{ correlation_coef: 0.85 }] 
-    }; 
-    dataSig.set(data); 
-    fixture.detectChanges(); 
+  it('should display correlation context', () => {
+    const data = {
+      columns: ['correlation_coef'],
+      data: [{ correlation_coef: 0.85 }],
+    };
+    dataSig.set(data);
+    fixture.detectChanges();
 
-    const valEl = fixture.debugElement.query(By.css('.value-display')); 
-    expect(valEl.nativeElement.textContent).toBe('0.85'); 
+    const valEl = fixture.debugElement.query(By.css('.value-display'));
+    expect(valEl.nativeElement.textContent).toBe('0.85');
 
     // Query for the material component directly as internal class logic might vary
-    const gauge = fixture.debugElement.query(By.css('mat-progress-bar')); 
-    expect(gauge).toBeTruthy(); 
-    expect(gauge.attributes['role']).toBe('meter'); 
+    const gauge = fixture.debugElement.query(By.css('mat-progress-bar'));
+    expect(gauge).toBeTruthy();
+    expect(gauge.attributes['role']).toBe('meter');
 
-    const text = fixture.debugElement.query(By.css('.interpret-text')); 
-    expect(text.nativeElement.textContent).toContain('Strong'); 
-  }); 
+    const text = fixture.debugElement.query(By.css('.interpret-text'));
+    expect(text.nativeElement.textContent).toContain('Strong');
+  });
 
   it('should handle non-correlation values', () => {
     const data = { columns: ['value'], data: [{ value: 10 }] };
@@ -118,7 +118,7 @@ describe('VizScalarComponent', () => {
     expect(component.value()).toBeNull();
     expect(component.formattedValue()).toBe('-');
   });
-  
+
   it('should return null when data array is empty', () => {
     dataSig.set({ data: [] });
     fixture.detectChanges();

@@ -1,24 +1,24 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { SkeletonLoaderComponent } from './skeleton-loader.component';
 import { By } from '@angular/platform-browser';
 
-describe('SkeletonLoaderComponent', () => { 
-  let component: SkeletonLoaderComponent; 
-  let fixture: ComponentFixture<SkeletonLoaderComponent>; 
+describe('SkeletonLoaderComponent', () => {
+  let component: SkeletonLoaderComponent;
+  let fixture: ComponentFixture<SkeletonLoaderComponent>;
   let variantSig: any;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SkeletonLoaderComponent]
+      imports: [SkeletonLoaderComponent],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(SkeletonLoaderComponent); 
-    component = fixture.componentInstance; 
+    fixture = TestBed.createComponent(SkeletonLoaderComponent);
+    component = fixture.componentInstance;
     variantSig = signal('card');
     (component as any).variant = variantSig;
-    fixture.detectChanges(); 
-  }); 
+    fixture.detectChanges();
+  });
 
   it('should create', () => {
     expect(component).toBeTruthy();
@@ -34,7 +34,7 @@ describe('SkeletonLoaderComponent', () => {
   it('should render table variant', () => {
     variantSig.set('table');
     fixture.detectChanges();
-    
+
     const tableLayout = fixture.debugElement.query(By.css('.layout-table'));
     expect(tableLayout).toBeTruthy();
     const rows = fixture.debugElement.queryAll(By.css('.table-row'));

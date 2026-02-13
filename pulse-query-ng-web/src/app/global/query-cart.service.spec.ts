@@ -18,7 +18,7 @@ describe('QueryCartService', () => {
 
   it('should add items with derived titles', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -32,7 +32,7 @@ describe('QueryCartService', () => {
 
   it('should truncate long titles', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -44,7 +44,7 @@ describe('QueryCartService', () => {
 
   it('should return a fallback title for empty input', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService) as any;
@@ -53,7 +53,7 @@ describe('QueryCartService', () => {
 
   it('should ignore empty SQL', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -65,7 +65,7 @@ describe('QueryCartService', () => {
 
   it('should prefer explicit titles', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -76,7 +76,7 @@ describe('QueryCartService', () => {
 
   it('should rename and remove items', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -91,7 +91,7 @@ describe('QueryCartService', () => {
 
   it('should ignore blank rename values', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -105,7 +105,7 @@ describe('QueryCartService', () => {
 
   it('should clear items', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -117,12 +117,18 @@ describe('QueryCartService', () => {
 
   it('should load items from storage in browser mode', () => {
     const stored: QueryCartItem[] = [
-      { id: 'q1', title: 'Saved', sql: 'SELECT 1', createdAt: '2024-01-01T00:00:00Z', kind: 'query-cart-item' }
+      {
+        id: 'q1',
+        title: 'Saved',
+        sql: 'SELECT 1',
+        createdAt: '2024-01-01T00:00:00Z',
+        kind: 'query-cart-item',
+      },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -132,12 +138,12 @@ describe('QueryCartService', () => {
 
   it('should filter invalid items from storage', () => {
     const stored: Array<Partial<QueryCartItem>> = [
-      { id: 'bad', title: 'Missing Kind', sql: 'SELECT 1', createdAt: '2024-01-01T00:00:00Z' }
+      { id: 'bad', title: 'Missing Kind', sql: 'SELECT 1', createdAt: '2024-01-01T00:00:00Z' },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -148,7 +154,7 @@ describe('QueryCartService', () => {
     localStorage.setItem(STORAGE_KEY, '{bad json');
 
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -159,7 +165,7 @@ describe('QueryCartService', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ foo: 'bar' }));
 
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -168,22 +174,40 @@ describe('QueryCartService', () => {
 
   it('should validate items with required fields', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService) as any;
     expect(service.isValidItem(null)).toBe(false);
-    expect(service.isValidItem({ id: 1, title: 't', sql: 's', createdAt: 'c', kind: 'query-cart-item' })).toBe(false);
-    expect(service.isValidItem({ id: '1', title: 2, sql: 's', createdAt: 'c', kind: 'query-cart-item' })).toBe(false);
-    expect(service.isValidItem({ id: '1', title: 't', sql: 3, createdAt: 'c', kind: 'query-cart-item' })).toBe(false);
-    expect(service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 4, kind: 'query-cart-item' })).toBe(false);
-    expect(service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 'c', kind: 'other' })).toBe(false);
-    expect(service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 'c', kind: 'query-cart-item' })).toBe(true);
+    expect(
+      service.isValidItem({ id: 1, title: 't', sql: 's', createdAt: 'c', kind: 'query-cart-item' }),
+    ).toBe(false);
+    expect(
+      service.isValidItem({ id: '1', title: 2, sql: 's', createdAt: 'c', kind: 'query-cart-item' }),
+    ).toBe(false);
+    expect(
+      service.isValidItem({ id: '1', title: 't', sql: 3, createdAt: 'c', kind: 'query-cart-item' }),
+    ).toBe(false);
+    expect(
+      service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 4, kind: 'query-cart-item' }),
+    ).toBe(false);
+    expect(
+      service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 'c', kind: 'other' }),
+    ).toBe(false);
+    expect(
+      service.isValidItem({
+        id: '1',
+        title: 't',
+        sql: 's',
+        createdAt: 'c',
+        kind: 'query-cart-item',
+      }),
+    ).toBe(true);
   });
 
   it('should swallow storage errors when persisting', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -201,12 +225,12 @@ describe('QueryCartService', () => {
 
   it('should persist items to storage', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService) as any;
     service.persistToStorage([
-      { id: 'q5', title: 'Saved', sql: 'SELECT 5', createdAt: 'c', kind: 'query-cart-item' }
+      { id: 'q5', title: 'Saved', sql: 'SELECT 5', createdAt: 'c', kind: 'query-cart-item' },
     ]);
 
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -215,7 +239,7 @@ describe('QueryCartService', () => {
 
   it('should treat undefined SQL as empty', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -226,7 +250,7 @@ describe('QueryCartService', () => {
 
   it('should not rename when id is missing', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
     const service = TestBed.inject(QueryCartService);
@@ -235,18 +259,24 @@ describe('QueryCartService', () => {
 
     service.rename('missing-id', 'New Title');
 
-    const titles = service.items().map(item => item.title);
+    const titles = service.items().map((item) => item.title);
     expect(titles).toEqual([second.title, first.title]);
   });
 
   it('should skip storage when not in browser', () => {
     const stored: QueryCartItem[] = [
-      { id: 'q2', title: 'Saved', sql: 'SELECT 2', createdAt: '2024-01-01T00:00:00Z', kind: 'query-cart-item' }
+      {
+        id: 'q2',
+        title: 'Saved',
+        sql: 'SELECT 2',
+        createdAt: '2024-01-01T00:00:00Z',
+        kind: 'query-cart-item',
+      },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
     TestBed.configureTestingModule({
-      providers: [{ provide: PLATFORM_ID, useValue: 'server' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
     });
 
     const service = TestBed.inject(QueryCartService);

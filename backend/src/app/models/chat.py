@@ -93,6 +93,8 @@ class MessageCandidate(Base):
   """
   Represents one of the multiple LLM responses generated for an assistant message
   in the Arena mode. Users vote on these to select the 'winner'.
+
+  sql_hash provides a stable fingerprint of the SQL snippet for equivalence grouping.
   """
 
   __tablename__ = "message_candidates"
@@ -102,6 +104,7 @@ class MessageCandidate(Base):
   model_name: Mapped[str] = mapped_column(String, nullable=False)
   content: Mapped[str] = mapped_column(Text, nullable=False)
   sql_snippet: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+  sql_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
   is_selected: Mapped[bool] = mapped_column(Boolean, default=False)
 
   message: Mapped["Message"] = relationship("Message", back_populates="candidates")

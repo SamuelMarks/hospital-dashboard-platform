@@ -13,8 +13,8 @@ import { MessageResponse } from './message-response';
  * API Response model for a Chat Conversation.
  */
 export interface ConversationResponse {
-    id: string;
-    title: string;
-    updated_at: string;
-    messages?: Array<MessageResponse>;
+  id: string;
+  title: string;
+  updated_at: string;
+  messages?: Array<MessageResponse>;
 }

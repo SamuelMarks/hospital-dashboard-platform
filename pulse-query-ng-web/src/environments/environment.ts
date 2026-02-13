@@ -7,5 +7,5 @@ export const environment = {
   /** The base URL for the backend API. */
   apiUrl: 'http://localhost:8000',
   /** Feature flag: Allow public user registration. */
-  registrationEnabled: true
+  registrationEnabled: true,
 };

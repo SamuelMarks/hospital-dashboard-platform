@@ -18,7 +18,14 @@ describe('component-resources', () => {
       resolve(specDir, '..', 'app', 'global', 'ask-data.component.html'),
       resolve(specDir, '..', 'src', 'app', 'global', 'ask-data.component.html'),
       resolve(process.cwd(), 'src', 'app', 'global', 'ask-data.component.html'),
-      resolve(process.cwd(), 'pulse-query-ng-web', 'src', 'app', 'global', 'ask-data.component.html')
+      resolve(
+        process.cwd(),
+        'pulse-query-ng-web',
+        'src',
+        'app',
+        'global',
+        'ask-data.component.html',
+      ),
     ];
     const askDataPath = askDataCandidates.find((path) => existsSync(path));
     if (!askDataPath) {

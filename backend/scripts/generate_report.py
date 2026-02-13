@@ -59,6 +59,7 @@ class StrategyStats:
   """
 
   def __init__(self) -> None:
+    """Initialize counters for the strategy."""
     self.total = 0
     self.wins = 0
     self.latencies: List[int] = []

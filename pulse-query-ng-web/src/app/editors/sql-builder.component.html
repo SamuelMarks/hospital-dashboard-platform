@@ -1,89 +1,112 @@
-    <div class="wrapper">
-      <mat-tab-group class="flex-grow flex flex-col" style="height:100%" [(selectedIndex)]="selectedTabIndex" animationDuration="0ms">
-
-        <mat-tab label="Code Editor">
-          <div class="flex flex-col h-full p-4 gap-4 overflow-hidden">
-            
-            <!-- Error Banner -->
-            @if (validationError()) { 
-              <div class="error-banner" data-testid="error-banner" role="alert">
-                <mat-icon class="icon-sm" style="font-size:18px; width:18px; height:18px">cancel</mat-icon>
-                <div class="flex-1">
-                  <strong>Syntax Error:</strong> {{ validationError() }} 
-                </div>
-                <button mat-icon-button class="icon-btn-micro" (click)="validationError.set(null)" aria-label="Dismiss Error">
-                  <mat-icon style="font-size:16px;">close</mat-icon>
-                </button>
-              </div>
-            } 
-
-            <!-- 1. CodeMirror Editor Region -->
-            <div class="cm-wrapper shadow-inner">
-              <div #editorHost class="cm-host"></div>
-            </div>
-
-            <!-- 2. Action Bar -->
-            <div class="flex justify-between items-center flex-shrink-0">
-              
-              <!-- Parameters Injection Menu -->
-              <button mat-stroked-button [matMenuTriggerFor]="paramsMenu" matTooltip="Inject Global Filters">
-                <mat-icon class="mr-1">data_object</mat-icon> Insert Param
-              </button>
-              <mat-menu #paramsMenu="matMenu">
-                @for (key of availableParams(); track key) { 
-                  <button mat-menu-item (click)="insertParam(key)">
-                    <span>{{ '{' + '{' + key + '}' + '}' }}</span>
-                    <span class="text-xs ml-2" style="color: var(--sys-text-secondary)">({{ globalParams()[key] }})</span>
-                  </button>
-                } 
-                @if (availableParams().length === 0) { 
-                  <div class="px-4 py-2 text-xs" style="color: var(--sys-text-secondary)">No global params set</div>
-                } 
-              </mat-menu>
-
-              <div class="flex gap-2">
-                @if (enableCart()) { 
-                  <button
-                    mat-stroked-button
-                    (click)="saveQueryToCart()"
-                    [disabled]="!canSaveToCart()"
-                    matTooltip="Save query to cart"
-                  >
-                    <mat-icon class="mr-1">shopping_cart</mat-icon>
-                    Save to Cart
-                  </button>
-                } 
-                <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
-                   @if (isRunning()) { <mat-spinner diameter="20" class="mr-2"></mat-spinner> } 
-                   Run Query
-                </button>
-              </div>
-            </div>
-
-            <!-- 3. Result Table -->
-            <div class="result-container">
-               <div class="viz-scroll-wrapper">
-                 @if (latestResult(); as res) { 
-                   <viz-table [dataSet]="res" class="h-full block w-full"></viz-table> 
-                 } 
-                 @else if (isRunning()) { 
-                   <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">Executing...</div>
-                 } 
-                 @else { 
-                   <div class="flex items-center justify-center h-full" style="color: var(--sys-text-secondary)">Run query to see results</div>
-                 } 
-               </div>
-            </div>
+<div class="wrapper">
+  <mat-tab-group
+    class="flex-grow flex flex-col"
+    style="height: 100%"
+    [(selectedIndex)]="selectedTabIndex"
+    animationDuration="0ms"
+  >
+    <mat-tab label="Code Editor">
+      <div class="flex flex-col h-full p-4 gap-4 overflow-hidden">
+        <!-- Error Banner -->
+        @if (validationError()) {
+          <div class="error-banner" data-testid="error-banner" role="alert">
+            <mat-icon class="icon-sm" style="font-size: 18px; width: 18px; height: 18px"
+              >cancel</mat-icon
+            >
+            <div class="flex-1"><strong>Syntax Error:</strong> {{ validationError() }}</div>
+            <button
+              mat-icon-button
+              class="icon-btn-micro"
+              (click)="validationError.set(null)"
+              aria-label="Dismiss Error"
+            >
+              <mat-icon style="font-size: 16px">close</mat-icon>
+            </button>
           </div>
-        </mat-tab>
+        }
 
-        <!-- AI Tab: Implements the Conversation UI requirements -->
-        <mat-tab label="AI Assistant">
-           <div class="ai-wrapper">
-             <app-conversation class="h-full"></app-conversation>
-           </div>
-        </mat-tab>
+        <!-- 1. CodeMirror Editor Region -->
+        <div class="cm-wrapper shadow-inner">
+          <div #editorHost class="cm-host"></div>
+        </div>
 
-      </mat-tab-group>
-    </div>
-  
+        <!-- 2. Action Bar -->
+        <div class="flex justify-between items-center flex-shrink-0">
+          <!-- Parameters Injection Menu -->
+          <button
+            mat-stroked-button
+            [matMenuTriggerFor]="paramsMenu"
+            matTooltip="Inject Global Filters"
+          >
+            <mat-icon class="mr-1">data_object</mat-icon> Insert Param
+          </button>
+          <mat-menu #paramsMenu="matMenu">
+            @for (key of availableParams(); track key) {
+              <button mat-menu-item (click)="insertParam(key)">
+                <span>{{ '{' + '{' + key + '}' + '}' }}</span>
+                <span class="text-xs ml-2" style="color: var(--sys-text-secondary)"
+                  >({{ globalParams()[key] }})</span
+                >
+              </button>
+            }
+            @if (availableParams().length === 0) {
+              <div class="px-4 py-2 text-xs" style="color: var(--sys-text-secondary)">
+                No global params set
+              </div>
+            }
+          </mat-menu>
+
+          <div class="flex gap-2">
+            @if (enableCart()) {
+              <button
+                mat-stroked-button
+                (click)="saveQueryToCart()"
+                [disabled]="!canSaveToCart()"
+                matTooltip="Save query to cart"
+              >
+                <mat-icon class="mr-1">shopping_cart</mat-icon>
+                Save to Cart
+              </button>
+            }
+            <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
+              @if (isRunning()) {
+                <mat-spinner diameter="20" class="mr-2"></mat-spinner>
+              }
+              Run Query
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Result Table -->
+        <div class="result-container">
+          <div class="viz-scroll-wrapper">
+            @if (latestResult(); as res) {
+              <viz-table [dataSet]="res" class="h-full block w-full"></viz-table>
+            } @else if (isRunning()) {
+              <div
+                class="flex items-center justify-center h-full"
+                style="color: var(--sys-text-secondary)"
+              >
+                Executing...
+              </div>
+            } @else {
+              <div
+                class="flex items-center justify-center h-full"
+                style="color: var(--sys-text-secondary)"
+              >
+                Run query to see results
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- AI Tab: Implements the Conversation UI requirements -->
+    <mat-tab label="AI Assistant">
+      <div class="ai-wrapper">
+        <app-conversation class="h-full"></app-conversation>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

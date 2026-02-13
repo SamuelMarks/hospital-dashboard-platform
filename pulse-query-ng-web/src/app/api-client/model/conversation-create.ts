@@ -12,5 +12,5 @@
  * Payload for creating a new Conversation.
  */
 export interface ConversationCreate {
-    message: string;
+  message: string;
 }

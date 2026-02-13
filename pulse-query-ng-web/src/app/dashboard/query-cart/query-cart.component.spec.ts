@@ -16,7 +16,7 @@ const makeItem = (): QueryCartItem => ({
   title: 'Saved Query',
   sql: 'SELECT 1',
   createdAt: '2024-01-01T00:00:00Z',
-  kind: 'query-cart-item'
+  kind: 'query-cart-item',
 });
 
 describe('QueryCartComponent', () => {
@@ -35,7 +35,7 @@ describe('QueryCartComponent', () => {
       count: computed(() => itemsSig().length),
       clear: vi.fn(),
       remove: vi.fn(),
-      rename: vi.fn()
+      rename: vi.fn(),
     };
     mockProvisioning = { addToDashboard: vi.fn().mockReturnValue(of({ id: 'w1' })) };
     mockStore = { loadDashboard: vi.fn() };
@@ -47,8 +47,8 @@ describe('QueryCartComponent', () => {
         { provide: QueryCartService, useValue: mockCart },
         { provide: QueryCartProvisioningService, useValue: mockProvisioning },
         { provide: DashboardStore, useValue: mockStore },
-        { provide: MatSnackBar, useValue: mockSnackBar }
-      ]
+        { provide: MatSnackBar, useValue: mockSnackBar },
+      ],
     })
       .overrideProvider(MatSnackBar, { useValue: mockSnackBar })
       .compileComponents();

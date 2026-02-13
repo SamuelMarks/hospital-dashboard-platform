@@ -1,95 +1,98 @@
-/** 
- * @fileoverview Unit tests for VizChartComponent. 
- * Includes dependency mocking for Material Color Utilities used by ThemeService. 
- */ 
+/**
+ * @fileoverview Unit tests for VizChartComponent.
+ * Includes dependency mocking for Material Color Utilities used by ThemeService.
+ */
 
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, PLATFORM_ID } from '@angular/core';
-import { VizChartComponent } from './viz-chart.component'; 
-import { By } from '@angular/platform-browser'; 
+import { VizChartComponent } from './viz-chart.component';
+import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xFFFFFFFF,
+  argbFromHex: () => 0xffffffff,
   hexFromArgb: () => '#ffffff',
-  themeFromSourceColor: () => ({ 
-    schemes: { 
-      light: new Proxy({}, { get: () => 0xFFFFFFFF }), 
-      dark: new Proxy({}, { get: () => 0xFFFFFFFF }) 
-    } 
+  themeFromSourceColor: () => ({
+    schemes: {
+      light: new Proxy({}, { get: () => 0xffffffff }),
+      dark: new Proxy({}, { get: () => 0xffffffff }),
+    },
   }),
   Scheme: class {},
   Theme: class {},
-  __esModule: true
+  __esModule: true,
 }));
 
-describe('VizChartComponent', () => { 
-  let component: VizChartComponent; 
-  let fixture: ComponentFixture<VizChartComponent>; 
+describe('VizChartComponent', () => {
+  let component: VizChartComponent;
+  let fixture: ComponentFixture<VizChartComponent>;
   let dataSetSig: any;
   let configSig: any;
 
-  beforeEach(async () => { 
-    await TestBed.configureTestingModule({ 
-      imports: [VizChartComponent] 
-    }).compileComponents(); 
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [VizChartComponent],
+    }).compileComponents();
 
-    fixture = TestBed.createComponent(VizChartComponent); 
-    component = fixture.componentInstance; 
-    dataSetSig = signal({ columns: [], data: [] }); 
-    configSig = signal(undefined); 
-    (component as any).dataSet = dataSetSig; 
-    (component as any).config = configSig; 
-     
-    fixture.detectChanges(); 
-  }); 
+    fixture = TestBed.createComponent(VizChartComponent);
+    component = fixture.componentInstance;
+    dataSetSig = signal({ columns: [], data: [] });
+    configSig = signal(undefined);
+    (component as any).dataSet = dataSetSig;
+    (component as any).config = configSig;
 
-  it('should auto-detect stacking for 3 column data', () => { 
-    const data = { 
-        columns: ['date', 'service', 'cnt'], 
-        data: [ 
-            { date: '2023-01-01', service: 'A', cnt: 10 }, 
-            { date: '2023-01-01', service: 'B', cnt: 20 }, 
-            { date: '2023-01-02', service: 'A', cnt: 15 } 
-        ] 
-    }; 
-    dataSetSig.set(data); 
+    fixture.detectChanges();
+  });
+
+  it('should auto-detect stacking for 3 column data', () => {
+    const data = {
+      columns: ['date', 'service', 'cnt'],
+      data: [
+        { date: '2023-01-01', service: 'A', cnt: 10 },
+        { date: '2023-01-01', service: 'B', cnt: 20 },
+        { date: '2023-01-02', service: 'A', cnt: 15 },
+      ],
+    };
+    dataSetSig.set(data);
     // Trigger change detection to run computation
-    fixture.detectChanges(); 
+    fixture.detectChanges();
 
-    const keys = component.axisKeys(); 
-    expect(keys.stack).toBe('service'); 
-    
-    const items = component.processedData(); 
-    // Two groups: 2023-01-01 (stack of 30), 2023-01-02 (stack of 15) 
-    expect(items.length).toBe(2); 
-    
-    const d1 = items.find(i => i.label === '2023-01-01'); 
-    expect(d1?.segments?.length).toBe(2); 
-    expect(d1?.value).toBe(30); 
-  }); 
+    const keys = component.axisKeys();
+    expect(keys.stack).toBe('service');
 
-  it('should render colored segments', () => { 
-    const data = { 
-        columns: ['cat', 'type', 'val'], 
-        data: [ { cat: 'C1', type: 'T1', val: 50 }, { cat: 'C1', type: 'T2', val: 50 } ] 
-    }; 
-    dataSetSig.set(data); 
-    configSig.set({ stackBy: 'type' }); 
-    fixture.detectChanges(); 
+    const items = component.processedData();
+    // Two groups: 2023-01-01 (stack of 30), 2023-01-02 (stack of 15)
+    expect(items.length).toBe(2);
 
-    const segments = fixture.debugElement.queryAll(By.css('.bar-segment')); 
-    expect(segments.length).toBe(2); 
-    
-    const c1 = segments[0].styles['background-color']; 
-    const c2 = segments[1].styles['background-color']; 
+    const d1 = items.find((i) => i.label === '2023-01-01');
+    expect(d1?.segments?.length).toBe(2);
+    expect(d1?.value).toBe(30);
+  });
+
+  it('should render colored segments', () => {
+    const data = {
+      columns: ['cat', 'type', 'val'],
+      data: [
+        { cat: 'C1', type: 'T1', val: 50 },
+        { cat: 'C1', type: 'T2', val: 50 },
+      ],
+    };
+    dataSetSig.set(data);
+    configSig.set({ stackBy: 'type' });
+    fixture.detectChanges();
+
+    const segments = fixture.debugElement.queryAll(By.css('.bar-segment'));
+    expect(segments.length).toBe(2);
+
+    const c1 = segments[0].styles['background-color'];
+    const c2 = segments[1].styles['background-color'];
     // Mock returns same color, but usually they differ by index.
     // However, since we bypassed the library, exact color logic might result in both being white/mocked.
     // We check existence primarily.
     expect(segments[0]).toBeTruthy();
     expect(segments[1]).toBeTruthy();
-  }); 
+  });
 
   it('should handle empty data set', () => {
     dataSetSig.set({ columns: [], data: [] });
@@ -97,10 +100,10 @@ describe('VizChartComponent', () => {
     expect(component.axisKeys()).toEqual({ x: '', y: '', stack: '' });
     expect(component.processedData().length).toBe(0);
   });
-  
+
   it('should fallback palette colors when CSS vars are missing', () => {
     const styleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
-      getPropertyValue: vi.fn().mockReturnValue('')
+      getPropertyValue: vi.fn().mockReturnValue(''),
     } as any);
 
     (component as any).updatePaletteFromDom();
@@ -122,7 +125,10 @@ describe('VizChartComponent', () => {
   it('should compute simple chart with negatives', () => {
     const data = {
       columns: ['label', 'value'],
-      data: [{ label: 'A', value: -10 }, { label: 'B', value: 20 }]
+      data: [
+        { label: 'A', value: -10 },
+        { label: 'B', value: 20 },
+      ],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -135,7 +141,10 @@ describe('VizChartComponent', () => {
   it('should treat missing values as zero in simple data', () => {
     const data = {
       columns: ['label', 'value'],
-      data: [{ label: 'A', value: undefined }, { label: 'B', value: null }]
+      data: [
+        { label: 'A', value: undefined },
+        { label: 'B', value: null },
+      ],
     };
     dataSetSig.set(data);
     fixture.detectChanges();
@@ -156,7 +165,7 @@ describe('VizChartComponent', () => {
   it('should incorporate reference lines into scaling', () => {
     const data = {
       columns: ['label', 'value'],
-      data: [{ label: 'A', value: 1 }]
+      data: [{ label: 'A', value: 1 }],
     };
     dataSetSig.set(data);
     configSig.set({ referenceLines: [{ y: 100 }] });
@@ -171,8 +180,8 @@ describe('VizChartComponent', () => {
       columns: ['cat', 'stack', 'val'],
       data: [
         { cat: 'A', stack: 'S1', val: 0 },
-        { cat: 'A', stack: 'S2', val: -5 }
-      ]
+        { cat: 'A', stack: 'S2', val: -5 },
+      ],
     };
     dataSetSig.set(data);
     configSig.set({ stackBy: 'stack' });
@@ -194,7 +203,7 @@ describe('VizChartComponent', () => {
   it('should respect explicit axis config', () => {
     const data = {
       columns: ['x', 'y'],
-      data: [{ x: 'A', y: 1 }]
+      data: [{ x: 'A', y: 1 }],
     };
     dataSetSig.set(data);
     configSig.set({ xKey: 'x', yKey: 'y' });
@@ -204,7 +213,7 @@ describe('VizChartComponent', () => {
 
   it('should fallback axis keys when no string columns exist', () => {
     const data = {
-      data: [{ a: 1, b: 2, c: 3 }]
+      data: [{ a: 1, b: 2, c: 3 }],
     };
     dataSetSig.set(data as any);
     configSig.set(undefined);
@@ -215,7 +224,7 @@ describe('VizChartComponent', () => {
 
   it('should fallback y to second column when no numeric columns exist', () => {
     const data = {
-      data: [{ a: 'one', b: 'two', c: 'three' }]
+      data: [{ a: 'one', b: 'two', c: 'three' }],
     };
     dataSetSig.set(data as any);
     configSig.set(undefined);
@@ -226,7 +235,7 @@ describe('VizChartComponent', () => {
 
   it('should fallback y to first column when only one column exists', () => {
     const data = {
-      data: [{ only: 'A' }]
+      data: [{ only: 'A' }],
     };
     dataSetSig.set(data as any);
     configSig.set(undefined);
@@ -240,7 +249,7 @@ describe('VizChartComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [VizChartComponent],
-      providers: [{ provide: PLATFORM_ID, useValue: 'server' }]
+      providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
     }).compileComponents();
 
     const serverFixture = TestBed.createComponent(VizChartComponent);

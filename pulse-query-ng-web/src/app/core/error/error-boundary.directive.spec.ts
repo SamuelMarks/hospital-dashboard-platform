@@ -18,10 +18,9 @@ import { ErrorBoundaryDirective } from './error-boundary.directive';
     <div *appErrorBoundary="fallback">
       <div data-testid="content">Content OK</div>
     </div>
-  `
+  `,
 })
-class HostComponent {
-}
+class HostComponent {}
 
 describe('ErrorBoundaryDirective', () => {
   let fixture: ComponentFixture<HostComponent>;
@@ -32,7 +31,7 @@ describe('ErrorBoundaryDirective', () => {
 
     await TestBed.configureTestingModule({
       imports: [HostComponent],
-      providers: [{ provide: ErrorHandler, useValue: mockHandler }]
+      providers: [{ provide: ErrorHandler, useValue: mockHandler }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(HostComponent);
@@ -46,8 +45,8 @@ describe('ErrorBoundaryDirective', () => {
 
   it('should render fallback when content throws', () => {
     fixture.detectChanges();
-    const boundaryNode = fixture.debugElement.queryAllNodes(node =>
-      (node as any).providerTokens?.includes(ErrorBoundaryDirective)
+    const boundaryNode = fixture.debugElement.queryAllNodes((node) =>
+      (node as any).providerTokens?.includes(ErrorBoundaryDirective),
     )[0] as any;
     if (!boundaryNode) {
       throw new Error('ErrorBoundaryDirective not found');
@@ -65,14 +64,15 @@ describe('ErrorBoundaryDirective', () => {
     boundary.renderContent();
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('[data-testid="fallback"]'))).toBeTruthy();
-    expect(fixture.debugElement.query(By.css('[data-testid="error-text"]')).nativeElement.textContent)
-      .toContain('Boom');
+    expect(
+      fixture.debugElement.query(By.css('[data-testid="error-text"]')).nativeElement.textContent,
+    ).toContain('Boom');
   });
 
   it('should retry and clear error', () => {
     fixture.detectChanges();
-    const boundaryNode = fixture.debugElement.queryAllNodes(node =>
-      (node as any).providerTokens?.includes(ErrorBoundaryDirective)
+    const boundaryNode = fixture.debugElement.queryAllNodes((node) =>
+      (node as any).providerTokens?.includes(ErrorBoundaryDirective),
     )[0] as any;
     if (!boundaryNode) {
       throw new Error('ErrorBoundaryDirective not found');

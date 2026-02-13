@@ -17,7 +17,6 @@ import { CommonModule } from '@angular/common';
   standalone: false,
   template: `
     <div *appErrorBoundary="fallbackTpl">
-
       @if (shouldCrash) {
         <div>{{ throwError() }}</div>
       } @else {
@@ -31,11 +30,13 @@ import { CommonModule } from '@angular/common';
         <button id="retry-btn" (click)="retry()">Retry</button>
       </div>
     </ng-template>
-  `
+  `,
 })
 class TestHostComponent {
   shouldCrash = false;
-  throwError() { throw new Error('Crash!'); }
+  throwError() {
+    throw new Error('Crash!');
+  }
 }
 
 @Component({
@@ -44,7 +45,7 @@ class TestHostComponent {
     <div *appErrorBoundary="missingTemplate">
       <div id="content">Safe Content</div>
     </div>
-  `
+  `,
 })
 class MissingTemplateHostComponent {
   missingTemplate?: TemplateRef<ErrorBoundaryContext>;
@@ -62,8 +63,8 @@ describe('ErrorBoundaryDirective', () => {
       declarations: [TestHostComponent, MissingTemplateHostComponent],
       providers: [
         { provide: ErrorHandler, useValue: handlerMock },
-        { provide: GlobalErrorHandler, useValue: handlerMock }
-      ]
+        { provide: GlobalErrorHandler, useValue: handlerMock },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TestHostComponent);
@@ -79,8 +80,9 @@ describe('ErrorBoundaryDirective', () => {
 
   it('should switch to fallback template on error (simulated via method call)', () => {
     // 1. Get directive instance
-    const debugNode = fixture.debugElement.queryAllNodes((node) => true)
-        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const debugNode = fixture.debugElement
+      .queryAllNodes((node) => true)
+      .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective);
 
     expect(directive).toBeTruthy();
@@ -97,8 +99,9 @@ describe('ErrorBoundaryDirective', () => {
   });
 
   it('should call global handler clearError() when retry is clicked', () => {
-    const debugNode = fixture.debugElement.queryAllNodes((node) => true)
-        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const debugNode = fixture.debugElement
+      .queryAllNodes((node) => true)
+      .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective);
 
     // Enter Error State
@@ -116,8 +119,9 @@ describe('ErrorBoundaryDirective', () => {
   });
 
   it('should render fallback when content creation throws', () => {
-    const debugNode = fixture.debugElement.queryAllNodes((node) => true)
-        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const debugNode = fixture.debugElement
+      .queryAllNodes((node) => true)
+      .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
 
     const originalCreate = directive.vcr.createEmbeddedView.bind(directive.vcr);
@@ -137,8 +141,9 @@ describe('ErrorBoundaryDirective', () => {
     const noTemplateFixture = TestBed.createComponent(MissingTemplateHostComponent);
     noTemplateFixture.detectChanges();
 
-    const debugNode = noTemplateFixture.debugElement.queryAllNodes((node) => true)
-        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const debugNode = noTemplateFixture.debugElement
+      .queryAllNodes((node) => true)
+      .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
 
     const createSpy = vi.spyOn(directive.vcr, 'createEmbeddedView');
@@ -150,8 +155,9 @@ describe('ErrorBoundaryDirective', () => {
   });
 
   it('should unsubscribe on destroy', () => {
-    const debugNode = fixture.debugElement.queryAllNodes((node) => true)
-        .find(n => n.injector.get(ErrorBoundaryDirective, null) !== null);
+    const debugNode = fixture.debugElement
+      .queryAllNodes((node) => true)
+      .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
 
     directive.sub = { unsubscribe: vi.fn() };

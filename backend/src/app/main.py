@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.api.routers import auth, dashboards, execution, ai, templates, simulation, schema, chat
+from app.api.routers import auth, dashboards, execution, ai, templates, simulation, schema, chat, analytics
 from app.database.postgres import engine, Base
 from app.database.duckdb_init import init_duckdb_on_startup
 from app.services.template_seeder import TemplateSeeder
@@ -63,6 +63,8 @@ app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation"
 app.include_router(schema.router, prefix=f"{settings.API_V1_STR}/schema", tags=["schema"])
 # Register Chat Router
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/conversations", tags=["chat"])
+# Register Analytics Router
+app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
 
 
 @app.get("/")

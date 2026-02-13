@@ -6,14 +6,22 @@ import { DashboardsService, DashboardResponse, WidgetResponse } from '../api-cli
 import { AuthService } from '../core/auth/auth.service';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import { signal, WritableSignal, PLATFORM_ID, Component, input, output, NO_ERRORS_SCHEMA } from '@angular/core';
+import {
+  signal,
+  WritableSignal,
+  PLATFORM_ID,
+  Component,
+  input,
+  output,
+  NO_ERRORS_SCHEMA,
+} from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
   selector: 'app-sql-builder',
-  template: '<div data-testid="mock-sql-builder"></div>'
+  template: '<div data-testid="mock-sql-builder"></div>',
 })
 class MockSqlBuilderComponent {
   readonly dashboardId = input<string | undefined>();
@@ -33,7 +41,7 @@ const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => 
   type: 'SQL',
   visualization: 'table',
   config: {},
-  ...overrides
+  ...overrides,
 });
 
 describe('AskDataComponent', () => {
@@ -50,24 +58,26 @@ describe('AskDataComponent', () => {
       listDashboardsApiV1DashboardsGet: vi.fn(),
       createDashboardApiV1DashboardsPost: vi.fn(),
       createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
-      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn() // Cleanup requires this
+      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn(), // Cleanup requires this
     };
     mockAskService = {
       close: vi.fn(),
-      isOpen: signal(true)
+      isOpen: signal(true),
     };
     mockCartService = {
       add: vi.fn(),
-      count: signal(0)
+      count: signal(0),
     };
-    
+
     isAuthenticatedSig = signal(false);
     mockAuthService = { isAuthenticated: isAuthenticatedSig };
 
     // Default mock returns to prevent "undefined reading pipe/subscribe"
     mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
     mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(of({ id: MOCK_DASH_ID }));
-    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of({ id: MOCK_WIDGET_ID }));
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+      of({ id: MOCK_WIDGET_ID }),
+    );
     mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(of(null));
 
     await TestBed.configureTestingModule({
@@ -77,17 +87,21 @@ describe('AskDataComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: AskDataService, useValue: mockAskService },
         { provide: QueryCartService, useValue: mockCartService },
-        { provide: PLATFORM_ID, useValue: 'browser' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'browser' },
+      ],
     })
-    .overrideComponent(AskDataComponent, {
-      remove: { imports: [SqlBuilderComponent] },
-      add: { imports: [MockSqlBuilderComponent] }
-    })
-    .overrideComponent(AskDataComponent, {
-      set: { template: readTemplate('./ask-data.component.html'), templateUrl: undefined, schemas: [NO_ERRORS_SCHEMA] }
-    })
-    .compileComponents();
+      .overrideComponent(AskDataComponent, {
+        remove: { imports: [SqlBuilderComponent] },
+        add: { imports: [MockSqlBuilderComponent] },
+      })
+      .overrideComponent(AskDataComponent, {
+        set: {
+          template: readTemplate('./ask-data.component.html'),
+          templateUrl: undefined,
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(AskDataComponent);
     component = fixture.componentInstance;
@@ -99,7 +113,9 @@ describe('AskDataComponent', () => {
         id: 'existing-id',
         name: 'Scratchpad (Temp)',
         owner_id: 'u1',
-        widgets: [makeWidget({ id: 'existing-widget', dashboard_id: 'existing-id', title: 'AdHoc Query' })]
+        widgets: [
+          makeWidget({ id: 'existing-widget', dashboard_id: 'existing-id', title: 'AdHoc Query' }),
+        ],
       } as DashboardResponse;
 
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([existingDash]));
@@ -110,19 +126,22 @@ describe('AskDataComponent', () => {
 
       expect(mockDashApi.listDashboardsApiV1DashboardsGet).toHaveBeenCalled();
       expect(mockDashApi.createDashboardApiV1DashboardsPost).not.toHaveBeenCalled();
-      expect(component.scratchpadIds()).toEqual({ dashboardId: 'existing-id', widgetId: 'existing-widget' });
+      expect(component.scratchpadIds()).toEqual({
+        dashboardId: 'existing-id',
+        widgetId: 'existing-widget',
+      });
     });
-    
+
     it('should create widget when existing scratchpad has no widgets list', () => {
       const existingDash = {
         id: 'existing-id',
         name: 'Scratchpad (Temp)',
-        owner_id: 'u1'
+        owner_id: 'u1',
       } as DashboardResponse;
 
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([existingDash]));
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
-        of({ id: MOCK_WIDGET_ID } as WidgetResponse)
+        of({ id: MOCK_WIDGET_ID } as WidgetResponse),
       );
 
       fixture.detectChanges();
@@ -130,17 +149,25 @@ describe('AskDataComponent', () => {
       fixture.detectChanges();
 
       expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalled();
-      expect(component.scratchpadIds()).toEqual({ dashboardId: 'existing-id', widgetId: MOCK_WIDGET_ID });
+      expect(component.scratchpadIds()).toEqual({
+        dashboardId: 'existing-id',
+        widgetId: MOCK_WIDGET_ID,
+      });
     });
 
     it('should Create new scratchpad if none exist', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
-      
+
       mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
-        of({ id: MOCK_DASH_ID, name: 'Scratchpad (Temp)', owner_id: 'u1', widgets: [] } as DashboardResponse)
+        of({
+          id: MOCK_DASH_ID,
+          name: 'Scratchpad (Temp)',
+          owner_id: 'u1',
+          widgets: [],
+        } as DashboardResponse),
       );
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
-        of(makeWidget({ id: MOCK_WIDGET_ID }))
+        of(makeWidget({ id: MOCK_WIDGET_ID })),
       );
 
       fixture.detectChanges();
@@ -149,12 +176,15 @@ describe('AskDataComponent', () => {
 
       expect(mockDashApi.listDashboardsApiV1DashboardsGet).toHaveBeenCalled();
       expect(mockDashApi.createDashboardApiV1DashboardsPost).toHaveBeenCalled();
-      expect(component.scratchpadIds()).toEqual({ dashboardId: MOCK_DASH_ID, widgetId: MOCK_WIDGET_ID });
+      expect(component.scratchpadIds()).toEqual({
+        dashboardId: MOCK_DASH_ID,
+        widgetId: MOCK_WIDGET_ID,
+      });
     });
 
     it('should show error state on failure', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(throwError(() => 'API Error'));
-      
+
       fixture.detectChanges();
       isAuthenticatedSig.set(true);
       fixture.detectChanges();
@@ -166,7 +196,9 @@ describe('AskDataComponent', () => {
 
     it('should handle create dashboard failure', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
-      mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(throwError(() => 'create fail'));
+      mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
+        throwError(() => 'create fail'),
+      );
 
       fixture.detectChanges();
       isAuthenticatedSig.set(true);
@@ -181,11 +213,13 @@ describe('AskDataComponent', () => {
         id: 'existing-id',
         name: 'Scratchpad (Temp)',
         owner_id: 'u1',
-        widgets: []
+        widgets: [],
       } as DashboardResponse;
 
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([existingDash]));
-      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(throwError(() => 'widget fail'));
+      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+        throwError(() => 'widget fail'),
+      );
 
       fixture.detectChanges();
       isAuthenticatedSig.set(true);
@@ -203,26 +237,33 @@ describe('AskDataComponent', () => {
 
   describe('UI & Destruction', () => {
     beforeEach(() => {
-       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
-       mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
-         of({ id: MOCK_DASH_ID, name: 'Scratchpad (Temp)', owner_id: 'u1', widgets: [] } as DashboardResponse)
-       );
-       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
-         of(makeWidget({ id: MOCK_WIDGET_ID }))
-       );
-       isAuthenticatedSig.set(true);
-       fixture.detectChanges(); // Validates creation
+      mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
+      mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
+        of({
+          id: MOCK_DASH_ID,
+          name: 'Scratchpad (Temp)',
+          owner_id: 'u1',
+          widgets: [],
+        } as DashboardResponse),
+      );
+      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+        of(makeWidget({ id: MOCK_WIDGET_ID })),
+      );
+      isAuthenticatedSig.set(true);
+      fixture.detectChanges(); // Validates creation
     });
 
     it('should cleanup backend dashboard on destroy', () => {
       fixture.destroy();
-      expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).toHaveBeenCalledWith(MOCK_DASH_ID);
+      expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).toHaveBeenCalledWith(
+        MOCK_DASH_ID,
+      );
     });
 
     it('should warn when cleanup fails', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(
-        throwError(() => new Error('fail'))
+        throwError(() => new Error('fail')),
       );
       component.scratchpadIds.set({ dashboardId: 'd1', widgetId: 'w1' });
       component.ngOnDestroy();
@@ -256,7 +297,7 @@ describe('AskDataComponent', () => {
       listDashboardsApiV1DashboardsGet: vi.fn(),
       createDashboardApiV1DashboardsPost: vi.fn(),
       createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
-      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn()
+      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn(),
     };
     mockAskService = { close: vi.fn(), isOpen: signal(false) };
     mockAuthService = { isAuthenticated: signal(false) };
@@ -269,17 +310,21 @@ describe('AskDataComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: AskDataService, useValue: mockAskService },
         { provide: QueryCartService, useValue: mockCartService },
-        { provide: PLATFORM_ID, useValue: 'server' }
-      ]
+        { provide: PLATFORM_ID, useValue: 'server' },
+      ],
     })
-    .overrideComponent(AskDataComponent, {
-      remove: { imports: [SqlBuilderComponent] },
-      add: { imports: [MockSqlBuilderComponent] }
-    })
-    .overrideComponent(AskDataComponent, {
-      set: { template: readTemplate('./ask-data.component.html'), templateUrl: undefined, schemas: [NO_ERRORS_SCHEMA] }
-    })
-    .compileComponents();
+      .overrideComponent(AskDataComponent, {
+        remove: { imports: [SqlBuilderComponent] },
+        add: { imports: [MockSqlBuilderComponent] },
+      })
+      .overrideComponent(AskDataComponent, {
+        set: {
+          template: readTemplate('./ask-data.component.html'),
+          templateUrl: undefined,
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     const serverFixture = TestBed.createComponent(AskDataComponent);
     const serverComponent = serverFixture.componentInstance;
@@ -303,8 +348,9 @@ describe('AskDataComponent', () => {
     component.loadingContext.set(false);
     component.scratchpadIds.set({ dashboardId: MOCK_DASH_ID, widgetId: MOCK_WIDGET_ID });
     fixture.detectChanges();
-    const builder = fixture.debugElement.query(By.directive(MockSqlBuilderComponent))
-      || fixture.debugElement.query(By.css('app-sql-builder'));
+    const builder =
+      fixture.debugElement.query(By.directive(MockSqlBuilderComponent)) ||
+      fixture.debugElement.query(By.css('app-sql-builder'));
     expect(builder).toBeTruthy();
     builder.triggerEventHandler('saveToCart', 'SELECT 42');
     expect(mockCartService.add).toHaveBeenCalledWith('SELECT 42');

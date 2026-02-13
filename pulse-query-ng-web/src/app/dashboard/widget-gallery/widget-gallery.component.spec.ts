@@ -11,18 +11,29 @@ describe('WidgetGalleryComponent', () => {
 
   const templates: TemplateResponse[] = [
     { id: '1', title: 'ICU Census', category: 'Ops', description: 'ICU', sql_template: 'SELECT 1' },
-    { id: '2', title: 'ER Breakdown', category: 'Flow', description: 'ER', sql_template: 'SELECT 2' },
-    { id: '3', title: 'No Category', description: 'General', sql_template: 'SELECT 3' } as TemplateResponse
+    {
+      id: '2',
+      title: 'ER Breakdown',
+      category: 'Flow',
+      description: 'ER',
+      sql_template: 'SELECT 2',
+    },
+    {
+      id: '3',
+      title: 'No Category',
+      description: 'General',
+      sql_template: 'SELECT 3',
+    } as TemplateResponse,
   ];
 
   beforeEach(async () => {
     mockApi = {
-      listTemplatesApiV1TemplatesGet: vi.fn()
+      listTemplatesApiV1TemplatesGet: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
       imports: [WidgetGalleryComponent, NoopAnimationsModule],
-      providers: [{ provide: TemplatesService, useValue: mockApi }]
+      providers: [{ provide: TemplatesService, useValue: mockApi }],
     }).compileComponents();
   });
 
@@ -87,13 +98,13 @@ describe('WidgetGalleryComponent', () => {
 
     component.templates.set([
       { id: '1', title: 'Alpha', category: 'Ops', description: 'needle', sql_template: 'SELECT 1' },
-      { id: '2', title: 'Beta', category: 'Ops', sql_template: 'SELECT 2' } as TemplateResponse
+      { id: '2', title: 'Beta', category: 'Ops', sql_template: 'SELECT 2' } as TemplateResponse,
     ]);
 
     component.searchQuery.set('needle');
     const filtered = component.filteredTemplates();
 
-    expect(filtered.map(t => t.id)).toEqual(['1']);
+    expect(filtered.map((t) => t.id)).toEqual(['1']);
   });
 
   it('groups multiple items in the same category', () => {
@@ -105,7 +116,7 @@ describe('WidgetGalleryComponent', () => {
 
     component.templates.set([
       { id: '1', title: 'Alpha', category: 'Ops', description: 'A', sql_template: 'SELECT 1' },
-      { id: '2', title: 'Beta', category: 'Ops', description: 'B', sql_template: 'SELECT 2' }
+      { id: '2', title: 'Beta', category: 'Ops', description: 'B', sql_template: 'SELECT 2' },
     ]);
 
     component.searchQuery.set('');

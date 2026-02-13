@@ -19,6 +19,7 @@ class ModelCandidateBase(BaseModel):
 
   model_tag: str
   generated_sql: str
+  sql_hash: Optional[str] = None
   latency_ms: Optional[int] = None
 
 

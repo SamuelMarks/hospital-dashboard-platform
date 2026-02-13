@@ -8,16 +8,16 @@ import { QueryCartItem } from './query-cart.models';
  * Stores saved ad-hoc queries that can be dragged onto dashboards.
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class QueryCartService {
-    /** platformId property. */
-private readonly platformId = inject(PLATFORM_ID);
-    /** storageKey property. */
-private readonly storageKey = 'pulse-query-cart-v1';
+  /** platformId property. */
+  private readonly platformId = inject(PLATFORM_ID);
+  /** storageKey property. */
+  private readonly storageKey = 'pulse-query-cart-v1';
 
-    /** _items property. */
-private readonly _items = signal<QueryCartItem[]>([]);
+  /** _items property. */
+  private readonly _items = signal<QueryCartItem[]>([]);
 
   /** Read-only list of cart items. */
   readonly items = this._items.asReadonly();
@@ -34,12 +34,12 @@ private readonly _items = signal<QueryCartItem[]>([]);
   }
 
   /**
-  * Adds a SQL query to the cart.
-  *
-  * @param sql - Raw SQL text.
-  * @param title - Optional title override.
-  * @returns The created cart item, or null when SQL is empty.
-  */
+   * Adds a SQL query to the cart.
+   *
+   * @param sql - Raw SQL text.
+   * @param title - Optional title override.
+   * @returns The created cart item, or null when SQL is empty.
+   */
   add(sql: string, title?: string): QueryCartItem | null {
     const trimmed = (sql || '').trim();
     if (!trimmed) return null;
@@ -49,59 +49,59 @@ private readonly _items = signal<QueryCartItem[]>([]);
       title: title?.trim() || this.deriveTitle(trimmed),
       sql: trimmed,
       createdAt: new Date().toISOString(),
-      kind: 'query-cart-item'
+      kind: 'query-cart-item',
     };
 
-    this._items.update(curr => [item, ...curr]);
+    this._items.update((curr) => [item, ...curr]);
     return item;
   }
 
   /**
-  * Removes an item from the cart.
-  *
-  * @param id - Cart item id.
-  */
+   * Removes an item from the cart.
+   *
+   * @param id - Cart item id.
+   */
   remove(id: string): void {
-    this._items.update(curr => curr.filter(item => item.id !== id));
+    this._items.update((curr) => curr.filter((item) => item.id !== id));
   }
 
   /**
-  * Renames a cart item.
-  *
-  * @param id - Cart item id.
-  * @param title - New title.
-  */
+   * Renames a cart item.
+   *
+   * @param id - Cart item id.
+   * @param title - New title.
+   */
   rename(id: string, title: string): void {
     const nextTitle = title.trim();
     if (!nextTitle) return;
 
-    this._items.update(curr =>
-      curr.map(item => item.id === id ? { ...item, title: nextTitle } : item)
+    this._items.update((curr) =>
+      curr.map((item) => (item.id === id ? { ...item, title: nextTitle } : item)),
     );
   }
 
   /**
-  * Clears all items from the cart.
-  */
+   * Clears all items from the cart.
+   */
   clear(): void {
     this._items.set([]);
   }
 
-    /** deriveTitle method. */
-private deriveTitle(sql: string): string {
+  /** deriveTitle method. */
+  private deriveTitle(sql: string): string {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     if (!normalized) return 'Untitled Query';
     const max = 42;
     return normalized.length > max ? `${normalized.slice(0, max)}...` : normalized;
   }
 
-    /** createId method. */
-private createId(): string {
+  /** createId method. */
+  private createId(): string {
     return `qc-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
   }
 
-    /** loadFromStorage method. */
-private loadFromStorage(): void {
+  /** loadFromStorage method. */
+  private loadFromStorage(): void {
     try {
       const raw = localStorage.getItem(this.storageKey);
       if (!raw) return;
@@ -113,8 +113,8 @@ private loadFromStorage(): void {
     }
   }
 
-    /** persistToStorage method. */
-private persistToStorage(items: QueryCartItem[]): void {
+  /** persistToStorage method. */
+  private persistToStorage(items: QueryCartItem[]): void {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(items));
     } catch {
@@ -122,13 +122,15 @@ private persistToStorage(items: QueryCartItem[]): void {
     }
   }
 
-    /** isValidItem method. */
-private isValidItem(item: QueryCartItem): boolean {
-    return !!item &&
+  /** isValidItem method. */
+  private isValidItem(item: QueryCartItem): boolean {
+    return (
+      !!item &&
       typeof item.id === 'string' &&
       typeof item.title === 'string' &&
       typeof item.sql === 'string' &&
       typeof item.createdAt === 'string' &&
-      item.kind === 'query-cart-item';
+      item.kind === 'query-cart-item'
+    );
   }
 }

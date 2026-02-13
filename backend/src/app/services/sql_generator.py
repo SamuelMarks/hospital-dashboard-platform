@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.llm_client import llm_client, ArenaResponse
 from app.services.schema import schema_service
+from app.services.sql_utils import sql_fingerprint
 from app.models.feedback import ExperimentLog, ModelCandidate
 from app.models.user import User
 from app.schemas.feedback import ExperimentResponse
@@ -183,6 +184,7 @@ class SQLGeneratorService:
     for res in results:
       is_success = res.error is None and len(res.content) > 0
       final_sql = self._clean_sql_response(res.content) if is_success else ""
+      sql_hash = sql_fingerprint(final_sql) if final_sql else None
       error_msg = res.error if res.error else ("Empty Response" if not is_success else None)
 
       candidate = ModelCandidate(
@@ -190,6 +192,7 @@ class SQLGeneratorService:
         model_identifier=res.model_identifier,
         model_tag=res.provider_name,
         generated_sql=final_sql,
+        sql_hash=sql_hash,
         latency_ms=res.latency_ms,
         is_selected=False,
         execution_success=None,

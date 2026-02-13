@@ -20,8 +20,8 @@ describe('RegisterComponent', () => {
       imports: [RegisterComponent, NoopAnimationsModule],
       providers: [
         provideRouter([]), // FIX: Provide actual router configuration
-        { provide: AuthService, useValue: mockAuthService }
-      ]
+        { provide: AuthService, useValue: mockAuthService },
+      ],
     }).compileComponents();
 
     router = TestBed.inject(Router);
@@ -39,16 +39,16 @@ describe('RegisterComponent', () => {
 
   it('should validate matching passwords', () => {
     const form = component.registerForm;
-    form.patchValue({ 
-      email: 'test@test.com', 
-      password: 'pass', 
-      confirmPassword: 'wrong' 
+    form.patchValue({
+      email: 'test@test.com',
+      password: 'pass',
+      confirmPassword: 'wrong',
     });
-    
+
     form.updateValueAndValidity();
-    
+
     expect(form.hasError('mismatch')).toBe(true);
-    
+
     form.patchValue({ confirmPassword: 'pass' });
     form.updateValueAndValidity();
 
@@ -58,35 +58,40 @@ describe('RegisterComponent', () => {
 
   it('should call authService.register on submit', () => {
     mockAuthService.register.mockReturnValue(of({ access_token: 'abc', token_type: 'bearer' }));
-    
-    component.registerForm.setValue({ 
-      email: 'new@user.com', 
-      password: 'strongPassword', 
-      confirmPassword: 'strongPassword' 
+
+    component.registerForm.setValue({
+      email: 'new@user.com',
+      password: 'strongPassword',
+      confirmPassword: 'strongPassword',
     });
 
     component.onSubmit();
-    
+
     expect(component.isLoading()).toBe(false);
 
-    expect(mockAuthService.register).toHaveBeenCalledWith({ email: 'new@user.com', password: 'strongPassword' });
+    expect(mockAuthService.register).toHaveBeenCalledWith({
+      email: 'new@user.com',
+      password: 'strongPassword',
+    });
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
   });
 
   it('should display error on API failure', () => {
-    mockAuthService.register.mockReturnValue(throwError(() => ({ error: { detail: 'Email already exists' } })));
-    
-    component.registerForm.setValue({ 
-      email: 'taken@user.com', 
-      password: 'pass', 
-      confirmPassword: 'pass' 
+    mockAuthService.register.mockReturnValue(
+      throwError(() => ({ error: { detail: 'Email already exists' } })),
+    );
+
+    component.registerForm.setValue({
+      email: 'taken@user.com',
+      password: 'pass',
+      confirmPassword: 'pass',
     });
 
     component.onSubmit();
 
     expect(component.errorMessage()).toBe('Email already exists');
     fixture.detectChanges();
-    
+
     const alert = fixture.debugElement.query(By.css('[data-testid="error-alert"]'));
     expect(alert).toBeTruthy();
   });
@@ -97,7 +102,7 @@ describe('RegisterComponent', () => {
     component.registerForm.setValue({
       email: 'taken@user.com',
       password: 'pass',
-      confirmPassword: 'pass'
+      confirmPassword: 'pass',
     });
 
     component.onSubmit();
@@ -122,7 +127,7 @@ describe('RegisterComponent', () => {
     component.registerForm.setValue({
       email: 'new@user.com',
       password: 'strongPassword',
-      confirmPassword: 'strongPassword'
+      confirmPassword: 'strongPassword',
     });
     fixture.detectChanges();
 
@@ -154,35 +159,35 @@ describe('RegisterComponent', () => {
 
   describe('passwordMatchValidator', () => {
     it('should return error if values mismatch', () => {
-        const group = new FormGroup({ 
-            password: new FormControl('a'), 
-            confirmPassword: new FormControl('b') 
-        }); 
-        const result = passwordMatchValidator(group); 
-        expect(result).toEqual({ mismatch: true }); 
+      const group = new FormGroup({
+        password: new FormControl('a'),
+        confirmPassword: new FormControl('b'),
+      });
+      const result = passwordMatchValidator(group);
+      expect(result).toEqual({ mismatch: true });
     });
 
     it('should return null if values match', () => {
-        const group = new FormGroup({ 
-            password: new FormControl('a'), 
-            confirmPassword: new FormControl('a') 
-        }); 
-        const result = passwordMatchValidator(group); 
-        expect(result).toBeNull(); 
-    }); 
+      const group = new FormGroup({
+        password: new FormControl('a'),
+        confirmPassword: new FormControl('a'),
+      });
+      const result = passwordMatchValidator(group);
+      expect(result).toBeNull();
+    });
 
     it('should clear mismatch error when values match', () => {
-        const confirmControl = new FormControl('a');
-        confirmControl.setErrors({ mismatch: true });
-        const group = new FormGroup({
-            password: new FormControl('a'),
-            confirmPassword: confirmControl
-        });
+      const confirmControl = new FormControl('a');
+      confirmControl.setErrors({ mismatch: true });
+      const group = new FormGroup({
+        password: new FormControl('a'),
+        confirmPassword: confirmControl,
+      });
 
-        const result = passwordMatchValidator(group);
+      const result = passwordMatchValidator(group);
 
-        expect(result).toBeNull();
-        expect(confirmControl.errors).toBeNull();
+      expect(result).toBeNull();
+      expect(confirmControl.errors).toBeNull();
     });
   });
 });

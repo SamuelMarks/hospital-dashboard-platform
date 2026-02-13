@@ -1,108 +1,114 @@
 <!-- FILTER RIBBON (Now integrated Toolbar variant) -->
-@if (!isTvMode()) { 
+@if (!isTvMode()) {
   <app-filter-ribbon></app-filter-ribbon>
-} @else { 
+} @else {
   <!-- TV Mode Header -->
   <div class="tv-carousel-header">
     <div class="tv-dashboard-title">{{ store.dashboard()?.name }}</div>
     <div class="tv-meta">
-      @if (store.lastUpdated(); as date) { <span class="tv-last-updated">Updated: {{ date | date:'shortTime' }}</span> } 
+      @if (store.lastUpdated(); as date) {
+        <span class="tv-last-updated">Updated: {{ date | date: 'shortTime' }}</span>
+      }
     </div>
   </div>
-  @if (store.isLoading()) { <mat-progress-bar mode="indeterminate" color="accent" style="height: 4px"></mat-progress-bar> } 
-} 
+  @if (store.isLoading()) {
+    <mat-progress-bar mode="indeterminate" color="accent" style="height: 4px"></mat-progress-bar>
+  }
+}
 
 <!-- MAIN CONTENT WRAPPER: Sidenav Layout for Split Views -->
 <mat-sidenav-container class="dashboard-sidnav-container h-full" autosize>
-  
   <!-- LEFT: Dashboard Grid Viewport -->
-  <mat-sidenav-content 
-    class="view-port overflow-y-auto" 
-    [class.tv-view]="isTvMode()" 
-  >
+  <mat-sidenav-content class="view-port overflow-y-auto" [class.tv-view]="isTvMode()">
     <!-- Skeleton Loading State -->
-    @if (store.isLoading() && !store.dashboard()) { 
+    @if (store.isLoading() && !store.dashboard()) {
       <div class="ghost-grid" data-testid="skeleton-grid">
-        <div class="ghost-card h-2" style="grid-column: span 6"><app-skeleton-loader variant="metric"></app-skeleton-loader></div>
-        <div class="ghost-card h-2" style="grid-column: span 6"><app-skeleton-loader variant="chart"></app-skeleton-loader></div>
+        <div class="ghost-card h-2" style="grid-column: span 6">
+          <app-skeleton-loader variant="metric"></app-skeleton-loader>
+        </div>
+        <div class="ghost-card h-2" style="grid-column: span 6">
+          <app-skeleton-loader variant="chart"></app-skeleton-loader>
+        </div>
       </div>
-    } 
+    }
 
     <!-- Grid Canvas -->
-    @if (store.dashboard()) { 
-      <div 
+    @if (store.dashboard()) {
+      <div
         cdkDropList
-        id="dashboard-grid" 
-        [attr.data-testid]="'dashboard-grid'" 
-        [cdkDropListDisabled]="!store.isEditMode() || isTvMode()" 
-        [cdkDropListOrientation]="'mixed'" 
-        (cdkDropListDropped)="onDrop($event)" 
-        class="dashboard-grid" 
+        id="dashboard-grid"
+        [attr.data-testid]="'dashboard-grid'"
+        [cdkDropListDisabled]="!store.isEditMode() || isTvMode()"
+        [cdkDropListOrientation]="'mixed'"
+        (cdkDropListDropped)="onDrop($event)"
+        class="dashboard-grid"
       >
-        @for (widget of store.sortedWidgets(); track widget.id) { 
+        @for (widget of store.sortedWidgets(); track widget.id) {
           <div
-            class="grid-item" 
+            class="grid-item"
             cdkDrag
-            [cdkDragData]="widget" 
-            [style.grid-column]="'span ' + getColSpan(widget)" 
-            [style.grid-row]="'span ' + getRowSpan(widget)" 
-            [class.item-draggable]="store.isEditMode() && !isTvMode()" 
-            [attr.data-testid]="'widget-wrapper-' + widget.id" 
+            [cdkDragData]="widget"
+            [style.grid-column]="'span ' + getColSpan(widget)"
+            [style.grid-row]="'span ' + getRowSpan(widget)"
+            [class.item-draggable]="store.isEditMode() && !isTvMode()"
+            [attr.data-testid]="'widget-wrapper-' + widget.id"
           >
             <!-- Elevation Wrapper handled by MatCard internally in widget -->
             <div class="widget-content">
               <app-widget
-                [widget]="widget" 
-                class="h-full block" 
-                (edit)="editWidget(widget)" 
-                (delete)="confirmDeleteWidget(widget)" 
-                (duplicate)="store.duplicateWidget(widget)" 
+                [widget]="widget"
+                class="h-full block"
+                (edit)="editWidget(widget)"
+                (delete)="confirmDeleteWidget(widget)"
+                (duplicate)="store.duplicateWidget(widget)"
               ></app-widget>
             </div>
-            
+
             <!-- Drag Placeholder style -->
             <div *cdkDragPlaceholder class="drag-placeholder"></div>
-            
+
             <!-- Resize Handle -->
-            @if (store.isEditMode() && !isTvMode()) { 
+            @if (store.isEditMode() && !isTvMode()) {
               <div class="resize-handle" (mousedown)="startResizing($event, widget)"></div>
-            } 
+            }
           </div>
-        } 
+        }
       </div>
 
       <!-- Empty State Component -->
-      @if (store.widgets().length === 0) { 
+      @if (store.widgets().length === 0) {
         <app-empty-state class="h-full block"></app-empty-state>
-      } 
-    } 
+      }
+    }
   </mat-sidenav-content>
 
   <!-- RIGHT: Widget Gallery Sidebar -->
-  <mat-sidenav 
-    mode="side" 
-    position="end" 
-    [opened]="store.isEditMode() && !isTvMode()" 
-    class="editor-sidenav mat-elevation-z4" 
+  <mat-sidenav
+    mode="side"
+    position="end"
+    [opened]="store.isEditMode() && !isTvMode()"
+    class="editor-sidenav mat-elevation-z4"
   >
     <div class="sidebar-stack">
-      <app-query-cart [dashboardId]="store.dashboard()?.id || null" class="cart-pane"></app-query-cart>
+      <app-query-cart
+        [dashboardId]="store.dashboard()?.id || null"
+        class="cart-pane"
+      ></app-query-cart>
       <app-widget-gallery class="gallery-pane"></app-widget-gallery>
     </div>
   </mat-sidenav>
-
 </mat-sidenav-container>
 
 <!-- Focus / Zen Mode Overlay -->
-@if (store.focusedWidget(); as focused) { 
+@if (store.focusedWidget(); as focused) {
   <div class="focus-overlay" role="dialog" aria-modal="true" (click)="store.setFocusedWidget(null)">
     <div class="focus-container mat-elevation-z24" (click)="$event.stopPropagation()">
-       <app-widget
-         [widget]="focused" 
-         class="h-full block" 
-         (edit)="editWidget(focused)" 
-         (delete)="confirmDeleteWidget(focused)" 
-       ></app-widget>
+      <app-widget
+        [widget]="focused"
+        class="h-full block"
+        (edit)="editWidget(focused)"
+        (delete)="confirmDeleteWidget(focused)"
+      ></app-widget>
     </div>
   </div>
 }

@@ -18,7 +18,7 @@ import {
   SimpleChanges,
   inject,
   ChangeDetectionStrategy,
-  signal
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -26,7 +26,7 @@ import {
   FormGroup,
   FormControl,
   Validators,
-  ValidatorFn
+  ValidatorFn,
 } from '@angular/forms';
 
 // Material Imports
@@ -43,32 +43,32 @@ import { provideNativeDateAdapter } from '@angular/material/core';
  * Typings for Supported JSON Schema Features.
  */
 interface JsonSchemaProperty {
-    /** type property. */
-type: 'string' | 'number' | 'integer' | 'boolean';
-    /** title property. */
-title?: string;
-    /** description property. */
-description?: string;
-    /** enum property. */
-enum?: string[] | number[];
-    /** format property. */
-format?: 'date' | 'date-time' | 'email';
-    /** default property. */
-default?: string | number | boolean;
-    /** minimum property. */
-minimum?: number;
-    /** maximum property. */
-maximum?: number;
+  /** type property. */
+  type: 'string' | 'number' | 'integer' | 'boolean';
+  /** title property. */
+  title?: string;
+  /** description property. */
+  description?: string;
+  /** enum property. */
+  enum?: string[] | number[];
+  /** format property. */
+  format?: 'date' | 'date-time' | 'email';
+  /** default property. */
+  default?: string | number | boolean;
+  /** minimum property. */
+  minimum?: number;
+  /** maximum property. */
+  maximum?: number;
 }
 
 /** Json Schema interface. */
 interface JsonSchema {
-    /** type property. */
-type: string;
-    /** required property. */
-required?: string[];
-    /** properties property. */
-properties?: Record<string, JsonSchemaProperty>;
+  /** type property. */
+  type: string;
+  /** required property. */
+  required?: string[];
+  /** properties property. */
+  properties?: Record<string, JsonSchemaProperty>;
 }
 
 /**
@@ -92,31 +92,42 @@ properties?: Record<string, JsonSchemaProperty>;
     MatDatepickerModule,
     MatCheckboxModule,
     MatIconModule,
-    MatTooltipModule
+    MatTooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-    templateUrl: './dynamic-form.component.html',
-  styles: [`
-    :host { display: block; }
-    .dynamic-form-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      height: 56px; /* Match form field height */
-    }
-    .help-icon {
-      font-size: 16px;
-      width: 16px; height: 16px;
-      color: var(--sys-text-secondary);
-      margin-left: 8px;
-      cursor: help;
-    }
-    .empty-state { text-align: center; color: var(--sys-text-secondary); padding: 24px; font-style: italic; grid-column: 1/-1; }
-  `]
+  templateUrl: './dynamic-form.component.html',
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+      .dynamic-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        height: 56px; /* Match form field height */
+      }
+      .help-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: var(--sys-text-secondary);
+        margin-left: 8px;
+        cursor: help;
+      }
+      .empty-state {
+        text-align: center;
+        color: var(--sys-text-secondary);
+        padding: 24px;
+        font-style: italic;
+        grid-column: 1/-1;
+      }
+    `,
+  ],
 })
 export class DynamicFormComponent implements OnChanges {
   /** valid JSON Schema Object (subset). */
@@ -140,11 +151,11 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   /**
-  * Reconstructs the Form Group controls based on new Schema input.
-  */
+   * Reconstructs the Form Group controls based on new Schema input.
+   */
   private rebuildForm(): void {
     // 1. Clear existing
-    Object.keys(this.form.controls).forEach(k => this.form.removeControl(k));
+    Object.keys(this.form.controls).forEach((k) => this.form.removeControl(k));
 
     // 2. Coerce type safely
     const raw = this.jsonSchema() || {};
@@ -159,14 +170,14 @@ export class DynamicFormComponent implements OnChanges {
     const requiredList = schema.required || [];
     const keys = Object.keys(props);
 
-    keys.forEach(key => {
+    keys.forEach((key) => {
       const prop = props[key];
       const validators: ValidatorFn[] = [];
 
       if (requiredList.includes(key)) {
         validators.push(Validators.required);
       }
-      if ((prop.type === 'number' || prop.type === 'integer')) {
+      if (prop.type === 'number' || prop.type === 'integer') {
         if (prop.minimum !== undefined) validators.push(Validators.min(prop.minimum));
         if (prop.maximum !== undefined) validators.push(Validators.max(prop.maximum));
       }
@@ -178,7 +189,7 @@ export class DynamicFormComponent implements OnChanges {
     this.fieldKeys.set(keys);
 
     // Subscribe to changes
-    this.form.valueChanges.subscribe(val => {
+    this.form.valueChanges.subscribe((val) => {
       // Emit status
       this.statusChange.emit(this.form.valid ? 'VALID' : 'INVALID');
 
@@ -189,8 +200,8 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   /**
-  * Helper to retrieve property definition for template binding.
-  */
+   * Helper to retrieve property definition for template binding.
+   */
   getProperty(key: string): JsonSchemaProperty | null {
     const schema = this.jsonSchema() as JsonSchema; // Safe cast after rebuild
     return schema?.properties?.[key] || null;
@@ -203,18 +214,18 @@ export class DynamicFormComponent implements OnChanges {
 
   /** Format Label. */
   formatLabel(key: string): string {
-    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   /**
-  * Sanitizes values before emission (e.g. Date Objects -> strings).
-  */
+   * Sanitizes values before emission (e.g. Date Objects -> strings).
+   */
   private cleanValues(raw: Record<string, any>): Record<string, any> {
     const result = { ...raw };
     const schema = this.jsonSchema() as JsonSchema | null;
     const props = schema?.properties || {};
 
-    Object.keys(result).forEach(key => {
+    Object.keys(result).forEach((key) => {
       const prop = props[key];
       const val = result[key];
 

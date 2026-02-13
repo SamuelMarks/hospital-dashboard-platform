@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing'; 
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { SqlSnippetComponent } from './sql-snippet.component';
 import { By } from '@angular/platform-browser';
@@ -10,7 +10,7 @@ describe('SqlSnippetComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SqlSnippetComponent]
+      imports: [SqlSnippetComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SqlSnippetComponent);
@@ -26,7 +26,7 @@ describe('SqlSnippetComponent', () => {
 
   it('should emit run event', () => {
     let emittedSql = '';
-    component.run.subscribe(s => emittedSql = s);
+    component.run.subscribe((s) => (emittedSql = s));
 
     const btn = fixture.debugElement.queryAll(By.css('button'))[1]; // Run button is second
     btn.triggerEventHandler('click', null);
@@ -59,7 +59,7 @@ describe('SqlSnippetComponent', () => {
     expect(codeBlock.nativeElement.innerHTML).toContain('class="number"');
     expect(codeBlock.nativeElement.innerHTML).toContain('class="string"');
   });
-  
+
   it('should handle empty sql', () => {
     setInputSignal(component, 'sql', '');
     fixture.detectChanges();
@@ -73,7 +73,7 @@ describe('SqlSnippetComponent', () => {
     const codeBlock = fixture.debugElement.query(By.css('.code-block'));
     expect(codeBlock.nativeElement.innerHTML).toBe('');
   });
-}); 
+});
 
 function setInputSignal(component: any, key: string, value: unknown): void {
   const current = component[key];

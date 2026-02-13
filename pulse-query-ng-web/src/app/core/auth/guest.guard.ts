@@ -8,14 +8,14 @@ import { AuthService } from './auth.service';
 
 /**
  * Endpoint protection to prevent authenticated users from accessing "Guest-Only" pages.
- * 
+ *
  * Logic:
  * 1. Checks if the user is currently authenticated via {@link AuthService}.
  * 2. If authenticated, redirects them to the Dashboard view (`/`).
  * 3. If not authenticated, allows access to the route.
- * 
+ *
  * This is the inverse logic of {@link authGuard}.
- * 
+ *
  * @param {import('@angular/router').ActivatedRouteSnapshot} route - The activated route snapshot.
  * @param {import('@angular/router').RouterStateSnapshot} state - The router state snapshot.
  * @returns {boolean | UrlTree} true if access is allowed, or a UrlTree redirecting to Home.

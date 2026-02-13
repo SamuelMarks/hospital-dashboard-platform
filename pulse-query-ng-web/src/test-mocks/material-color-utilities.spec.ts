@@ -3,7 +3,7 @@ import {
   hexFromArgb,
   themeFromSourceColor,
   Scheme,
-  Theme
+  Theme,
 } from './material-color-utilities';
 
 describe('material-color-utilities mock', () => {
