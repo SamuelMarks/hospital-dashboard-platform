@@ -4,14 +4,14 @@ import { QueryCartProvisioningService } from './query-cart-provisioning.service'
 import { DashboardsService, WidgetResponse } from '../api-client';
 import { DashboardStore } from './dashboard.store';
 import { QueryCartService } from '../global/query-cart.service';
-import { QueryCartItem } from '../global/query-cart.models';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 
 const makeItem = (): QueryCartItem => ({
   id: 'q1',
   title: 'Test Query',
   sql: 'SELECT 1',
   createdAt: '2024-01-01T00:00:00Z',
-  kind: 'query-cart-item',
+  kind: QUERY_CART_ITEM_KIND,
 });
 
 describe('QueryCartProvisioningService', () => {

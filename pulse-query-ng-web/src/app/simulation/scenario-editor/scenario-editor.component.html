@@ -162,13 +162,11 @@
           <p class="text-lg font-medium text-gray-400">Ready to Simulate</p>
           <p class="text-sm text-gray-400">Adjust capacities and constraints, then click Run.</p>
         </div>
-
       } @else if (store.isRunning()) {
         <div class="empty-state">
           <mat-spinner diameter="60"></mat-spinner>
           <p class="mt-6 text-gray-500 font-medium">Processing Optimization Model...</p>
         </div>
-
       } @else {
         <!-- Dashboard Grid -->
         <div class="dashboard-grid-layout">

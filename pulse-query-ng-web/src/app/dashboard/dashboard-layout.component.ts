@@ -25,7 +25,7 @@ import { ThemeService } from '../core/theme/theme.service';
 import { ProvisioningService } from './provisioning.service';
 import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service';
-import { QueryCartItem } from '../global/query-cart.models';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 
 /** Dashboard Layout component. */
 @Component({
@@ -141,7 +141,7 @@ export class DashboardLayoutComponent implements OnInit {
   /** Type guard for query-cart drag data. */
   private isQueryCartItem(value: unknown): value is QueryCartItem {
     return (
-      !!value && typeof value === 'object' && (value as QueryCartItem).kind === 'query-cart-item'
+      !!value && typeof value === 'object' && (value as QueryCartItem).kind === QUERY_CART_ITEM_KIND
     );
   }
 

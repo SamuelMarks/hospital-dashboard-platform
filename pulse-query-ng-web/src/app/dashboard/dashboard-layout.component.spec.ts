@@ -10,14 +10,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ThemeService } from '../core/theme/theme.service';
 import { ActivatedRoute } from '@angular/router';
-import { QueryCartItem } from '../global/query-cart.models';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 
 const makeCartItem = (): QueryCartItem => ({
   id: 'q1',
   title: 'Cart Query',
   sql: 'SELECT 1',
   createdAt: '2024-01-01T00:00:00Z',
-  kind: 'query-cart-item',
+  kind: QUERY_CART_ITEM_KIND,
 });
 
 const makeTemplate = (): TemplateResponse =>

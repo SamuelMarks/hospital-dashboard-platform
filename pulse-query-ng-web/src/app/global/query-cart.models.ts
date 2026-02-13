@@ -2,6 +2,12 @@
  * Shared models for the Query Cart feature.
  */
 
+/** Discriminator for query-cart drag/drop items. */
+export const QUERY_CART_ITEM_KIND = 'query-cart-item' as const;
+
+/** Type for the query-cart discriminator. */
+export type QueryCartItemKind = typeof QUERY_CART_ITEM_KIND;
+
 /**
  * Represents a saved ad-hoc SQL query staged for dashboard placement.
  */
@@ -15,5 +21,5 @@ export interface QueryCartItem {
   /** ISO timestamp of when the query was saved. */
   createdAt: string;
   /** Discriminator for drag-and-drop type guards. */
-  kind: 'query-cart-item';
+  kind: QueryCartItemKind;
 }

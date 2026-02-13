@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { QueryCartService } from './query-cart.service';
-import { QueryCartItem } from './query-cart.models';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 
 const STORAGE_KEY = 'pulse-query-cart-v1';
 
@@ -122,7 +122,7 @@ describe('QueryCartService', () => {
         title: 'Saved',
         sql: 'SELECT 1',
         createdAt: '2024-01-01T00:00:00Z',
-        kind: 'query-cart-item',
+        kind: QUERY_CART_ITEM_KIND,
       },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
@@ -180,16 +180,40 @@ describe('QueryCartService', () => {
     const service = TestBed.inject(QueryCartService) as any;
     expect(service.isValidItem(null)).toBe(false);
     expect(
-      service.isValidItem({ id: 1, title: 't', sql: 's', createdAt: 'c', kind: 'query-cart-item' }),
+      service.isValidItem({
+        id: 1,
+        title: 't',
+        sql: 's',
+        createdAt: 'c',
+        kind: QUERY_CART_ITEM_KIND,
+      }),
     ).toBe(false);
     expect(
-      service.isValidItem({ id: '1', title: 2, sql: 's', createdAt: 'c', kind: 'query-cart-item' }),
+      service.isValidItem({
+        id: '1',
+        title: 2,
+        sql: 's',
+        createdAt: 'c',
+        kind: QUERY_CART_ITEM_KIND,
+      }),
     ).toBe(false);
     expect(
-      service.isValidItem({ id: '1', title: 't', sql: 3, createdAt: 'c', kind: 'query-cart-item' }),
+      service.isValidItem({
+        id: '1',
+        title: 't',
+        sql: 3,
+        createdAt: 'c',
+        kind: QUERY_CART_ITEM_KIND,
+      }),
     ).toBe(false);
     expect(
-      service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 4, kind: 'query-cart-item' }),
+      service.isValidItem({
+        id: '1',
+        title: 't',
+        sql: 's',
+        createdAt: 4,
+        kind: QUERY_CART_ITEM_KIND,
+      }),
     ).toBe(false);
     expect(
       service.isValidItem({ id: '1', title: 't', sql: 's', createdAt: 'c', kind: 'other' }),
@@ -200,7 +224,7 @@ describe('QueryCartService', () => {
         title: 't',
         sql: 's',
         createdAt: 'c',
-        kind: 'query-cart-item',
+        kind: QUERY_CART_ITEM_KIND,
       }),
     ).toBe(true);
   });
@@ -230,7 +254,13 @@ describe('QueryCartService', () => {
 
     const service = TestBed.inject(QueryCartService) as any;
     service.persistToStorage([
-      { id: 'q5', title: 'Saved', sql: 'SELECT 5', createdAt: 'c', kind: 'query-cart-item' },
+      {
+        id: 'q5',
+        title: 'Saved',
+        sql: 'SELECT 5',
+        createdAt: 'c',
+        kind: QUERY_CART_ITEM_KIND,
+      },
     ]);
 
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -270,7 +300,7 @@ describe('QueryCartService', () => {
         title: 'Saved',
         sql: 'SELECT 2',
         createdAt: '2024-01-01T00:00:00Z',
-        kind: 'query-cart-item',
+        kind: QUERY_CART_ITEM_KIND,
       },
     ];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));

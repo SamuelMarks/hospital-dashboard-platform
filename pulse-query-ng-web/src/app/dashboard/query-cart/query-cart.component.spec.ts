@@ -3,7 +3,7 @@ import { QueryCartComponent } from './query-cart.component';
 import { QueryCartService } from '../../global/query-cart.service';
 import { QueryCartProvisioningService } from '../query-cart-provisioning.service';
 import { DashboardStore } from '../dashboard.store';
-import { QueryCartItem } from '../../global/query-cart.models';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../../global/query-cart.models';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { computed, signal, WritableSignal } from '@angular/core';
@@ -16,7 +16,7 @@ const makeItem = (): QueryCartItem => ({
   title: 'Saved Query',
   sql: 'SELECT 1',
   createdAt: '2024-01-01T00:00:00Z',
-  kind: 'query-cart-item',
+  kind: QUERY_CART_ITEM_KIND,
 });
 
 describe('QueryCartComponent', () => {

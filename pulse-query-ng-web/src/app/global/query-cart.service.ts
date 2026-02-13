@@ -1,6 +1,6 @@
 import { Injectable, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { QueryCartItem } from './query-cart.models';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 
 /**
  * Service for managing the Query Cart state and persistence.
@@ -49,7 +49,7 @@ export class QueryCartService {
       title: title?.trim() || this.deriveTitle(trimmed),
       sql: trimmed,
       createdAt: new Date().toISOString(),
-      kind: 'query-cart-item',
+      kind: QUERY_CART_ITEM_KIND,
     };
 
     this._items.update((curr) => [item, ...curr]);
@@ -130,7 +130,7 @@ export class QueryCartService {
       typeof item.title === 'string' &&
       typeof item.sql === 'string' &&
       typeof item.createdAt === 'string' &&
-      item.kind === 'query-cart-item'
+      item.kind === QUERY_CART_ITEM_KIND
     );
   }
 }
