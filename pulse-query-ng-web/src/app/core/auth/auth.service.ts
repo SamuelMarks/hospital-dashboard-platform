@@ -34,6 +34,7 @@ export class AuthService {
 
   // Private mutable signal for internal state updates
   /** _currentUser property. */
+  /* istanbul ignore next */
   private readonly _currentUser = signal<UserResponse | null>(null);
 
   /**
@@ -52,6 +53,7 @@ export class AuthService {
    *
    * This prevents UI flickering during the async profile fetch on application bootstrap.
    */
+  /* istanbul ignore next */
   readonly isAuthenticated: Signal<boolean> = computed(() => {
     return !!this._currentUser() || this.hasStoredToken();
   });

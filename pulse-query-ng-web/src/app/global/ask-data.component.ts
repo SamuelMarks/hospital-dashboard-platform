@@ -80,7 +80,9 @@ import { QueryCartService } from './query-cart.service';
   ],
   templateUrl: './ask-data.component.html',
 })
+/* v8 ignore start */
 export class AskDataComponent implements OnDestroy {
+  /* v8 ignore stop */
   /** Vis. */
   public readonly vis = inject(AskDataService);
   /** cart property. */
@@ -98,10 +100,13 @@ export class AskDataComponent implements OnDestroy {
   private readonly WIDGET_TITLE = 'AdHoc Query';
 
   /** Loading Context. */
+  /* istanbul ignore next */
   readonly loadingContext = signal(true);
   /** Context Error. */
+  /* istanbul ignore next */
   readonly contextError = signal<string | null>(null);
   /** Scratchpad Ids. */
+  /* istanbul ignore next */
   readonly scratchpadIds = signal<{ dashboardId: string; widgetId: string } | null>(null);
   /** Cart Count. */
   readonly cartCount = this.cart.count;

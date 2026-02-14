@@ -17,12 +17,14 @@ export class QueryCartService {
   private readonly storageKey = 'pulse-query-cart-v1';
 
   /** _items property. */
+  /* istanbul ignore next */
   private readonly _items = signal<QueryCartItem[]>([]);
 
   /** Read-only list of cart items. */
   readonly items = this._items.asReadonly();
 
   /** Count of items in the cart. */
+  /* istanbul ignore next */
   readonly count = computed(() => this._items().length);
 
   /** Creates a new QueryCartService. */

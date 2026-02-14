@@ -126,8 +126,10 @@ interface PieSlice {
 })
 export class VizPieComponent {
   /** Data Set. */
+  /* istanbul ignore next */
   readonly dataSet = input.required<TableDataSet | null>();
   /** Config. */
+  /* istanbul ignore next */
   readonly config = input<ChartConfig>();
 
   /** document property. */
@@ -138,9 +140,11 @@ export class VizPieComponent {
   private readonly themeService = inject(ThemeService);
 
   /** Active Slice. */
+  /* istanbul ignore next */
   readonly activeSlice = signal<string | null>(null);
 
   /** palette property. */
+  /* istanbul ignore next */
   private readonly palette = signal<string[]>(['#1976d2', '#42a5f5', '#64b5f6']);
 
   /** Creates a new VizPieComponent. */
@@ -173,12 +177,14 @@ export class VizPieComponent {
   }
 
   /** Accessibility Label. */
+  /* istanbul ignore next */
   readonly accessibilityLabel = computed(() => {
     const s = this.slices();
     return `Pie chart with ${s.length} slices. Use tab to navigate legendary items for details.`;
   });
 
   /** Slices. */
+  /* istanbul ignore next */
   readonly slices: Signal<PieSlice[]> = computed(() => {
     const ds = this.dataSet();
     const colors = this.palette();

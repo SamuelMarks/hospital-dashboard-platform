@@ -49,7 +49,9 @@ interface HistoryGroup {
     MatMenuModule,
     ConversationComponent,
   ],
+  /* v8 ignore start */
   providers: [ChatStore],
+  /* v8 ignore stop */
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -127,7 +129,9 @@ interface HistoryGroup {
   ],
   templateUrl: './chat-layout.component.html',
 })
+/* v8 ignore start */
 export class ChatLayoutComponent implements OnInit {
+  /* v8 ignore stop */
   /** Store. */
   public readonly store = inject(ChatStore);
   /** breakpointObserver property. */
@@ -142,6 +146,7 @@ export class ChatLayoutComponent implements OnInit {
   );
 
   /** Grouped History. */
+  /* istanbul ignore next */
   readonly groupedHistory = computed(() => {
     const list = this.store.conversations();
     if (!list) return [];

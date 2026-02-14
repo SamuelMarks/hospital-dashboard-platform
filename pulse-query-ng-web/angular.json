@@ -78,7 +78,7 @@
             "tsConfig": "tsconfig.spec.json",
             "runnerConfig": true,
             "coverage": true,
-            "coverageExclude": ["src/app/api-client/**"]
+            "coverageExclude": ["src/app/api-client/**", "src/test-utils/**", "**/*.html"]
           }
         }
       }

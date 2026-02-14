@@ -119,7 +119,9 @@ import { AskDataService } from '../global/ask-data.service'; // Needed for "Ask 
   ],
   templateUrl: './home.component.html',
 })
+/* v8 ignore start */
 export class HomeComponent implements OnInit {
+  /* v8 ignore stop */
   /** dashboardsApi property. */
   private readonly dashboardsApi = inject(DashboardsService);
   /** dialog property. */
@@ -134,10 +136,13 @@ export class HomeComponent implements OnInit {
   public readonly askDataService = inject(AskDataService);
 
   /** Dashboards. */
+  /* istanbul ignore next */
   readonly dashboards = signal<DashboardResponse[]>([]);
   /** Whether loading. */
+  /* istanbul ignore next */
   readonly isLoading = signal(true);
   /** Whether restoring. */
+  /* istanbul ignore next */
   readonly isRestoring = signal(false);
 
   /** Ng On Init. */

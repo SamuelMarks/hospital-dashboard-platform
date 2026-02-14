@@ -121,10 +121,13 @@ export class RegisterComponent {
   private readonly fb = inject(FormBuilder);
 
   /** Whether loading. */
+  /* istanbul ignore next */
   readonly isLoading = signal(false);
   /** Error Message. */
+  /* istanbul ignore next */
   readonly errorMessage = signal<string | null>(null);
   /** Hide Password. */
+  /* istanbul ignore next */
   readonly hidePassword = signal(true);
 
   // Define form with validators

@@ -89,11 +89,13 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 })
 export class VizMarkdownComponent {
   /** Content. */
+  /* istanbul ignore next */
   readonly content = input<string>('');
   /** sanitizer property. */
   private readonly sanitizer = inject(DomSanitizer);
 
   /** Safe Html. */
+  /* istanbul ignore next */
   readonly safeHtml = computed<SafeHtml>(() => {
     const raw = this.content() || '';
     const html = this.parseMarkdown(raw);

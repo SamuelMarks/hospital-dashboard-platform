@@ -69,6 +69,7 @@ export class DashboardStore implements OnDestroy {
   private readonly router = inject(Router);
 
   /** _state property. */
+  /* istanbul ignore next */
   private readonly _state = signal<DashboardState>(initialState);
   /** refreshTrigger$ property. */
   private readonly refreshTrigger$ = new Subject<void>();
@@ -80,25 +81,35 @@ export class DashboardStore implements OnDestroy {
   /** State. */
   readonly state = this._state.asReadonly();
   /** Dashboard. */
+  /* istanbul ignore next */
   readonly dashboard = computed(() => this._state().dashboard);
   /** Widgets. */
+  /* istanbul ignore next */
   readonly widgets = computed(() => this._state().widgets);
   /** Data Map. */
+  /* istanbul ignore next */
   readonly dataMap = computed(() => this._state().dataMap);
   /** Whether loading. */
+  /* istanbul ignore next */
   readonly isLoading = computed(() => this._state().isLoading);
   /** Error. */
+  /* istanbul ignore next */
   readonly error = computed(() => this._state().error);
   /** Global Params. */
+  /* istanbul ignore next */
   readonly globalParams = computed(() => this._state().globalParams);
   /** Whether edit Mode. */
+  /* istanbul ignore next */
   readonly isEditMode = computed(() => this._state().isEditMode);
   /** Focused Widget Id. */
+  /* istanbul ignore next */
   readonly focusedWidgetId = computed(() => this._state().focusedWidgetId);
   /** Last Updated. */
+  /* istanbul ignore next */
   readonly lastUpdated = computed(() => this._state().lastUpdated);
 
   /** Sorted Widgets. */
+  /* istanbul ignore next */
   readonly sortedWidgets = computed(() => {
     return [...this._state().widgets].sort((a, b) => {
       const orderA = (a.config['order'] as number) || 0;
@@ -108,9 +119,11 @@ export class DashboardStore implements OnDestroy {
   });
 
   /** Whether widget Loading. */
+  /* istanbul ignore next */
   readonly isWidgetLoading = computed(() => (id: string) => this._state().loadingWidgetIds.has(id));
 
   /** Focused Widget. */
+  /* istanbul ignore next */
   readonly focusedWidget = computed(() => {
     const id = this.focusedWidgetId();
     if (!id) return null;

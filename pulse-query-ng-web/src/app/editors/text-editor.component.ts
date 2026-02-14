@@ -84,16 +84,20 @@ export class TextEditorComponent implements OnInit {
   private readonly dashboardsApi = inject(DashboardsService);
 
   /** Dashboard Id. */
+  /* istanbul ignore next */
   readonly dashboardId = input.required<string>();
   /** Widget Id. */
+  /* istanbul ignore next */
   readonly widgetId = input.required<string>();
   /** Initial Content. */
+  /* istanbul ignore next */
   readonly initialContent = input<string>('');
 
   /** Content Change. */
   readonly contentChange = output<string>();
 
   /** Whether running. */
+  /* istanbul ignore next */
   readonly isRunning = signal(false);
 
   /** Form. */

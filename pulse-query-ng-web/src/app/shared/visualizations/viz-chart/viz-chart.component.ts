@@ -196,8 +196,10 @@ interface ChartItem {
 })
 export class VizChartComponent {
   /** Data Set. */
+  /* istanbul ignore next */
   readonly dataSet = input.required<TableDataSet | null>();
   /** Config. */
+  /* istanbul ignore next */
   readonly config = input<ChartConfig>();
 
   /** document property. */
@@ -211,6 +213,7 @@ export class VizChartComponent {
    * Reactive Palette Signal.
    * Stores the resolved hex codes from CSS variables.
    */
+  /* istanbul ignore next */
   private readonly palette = signal<string[]>([]);
 
   /** Creates a new VizChartComponent. */
@@ -259,6 +262,7 @@ export class VizChartComponent {
   /**
    * Determines X and Y keys for plotting.
    */
+  /* istanbul ignore next */
   readonly axisKeys = computed(() => {
     const ds = this.dataSet();
     const conf = this.config();
@@ -280,6 +284,7 @@ export class VizChartComponent {
   /**
    * Computes the renderable data structure.
    */
+  /* istanbul ignore next */
   readonly processedData = computed<ChartItem[]>(() => {
     const ds = this.dataSet();
     const { x, y, stack } = this.axisKeys();

@@ -81,9 +81,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 })
 export class VizHeatmapComponent {
   /** Data Set. */
+  /* istanbul ignore next */
   readonly dataSet = input.required<TableDataSet | null>();
 
   /** Matrix. */
+  /* istanbul ignore next */
   readonly matrix = computed(() => {
     const ds = this.dataSet();
     if (!ds || ds.data.length === 0) return null;

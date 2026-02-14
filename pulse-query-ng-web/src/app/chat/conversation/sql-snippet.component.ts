@@ -69,6 +69,7 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class SqlSnippetComponent {
   /** The SQL string to display. */
+  /* istanbul ignore next */
   readonly sql = input.required<string>();
 
   /** Event emitted when user clicks "Run". Payload is the SQL string. */

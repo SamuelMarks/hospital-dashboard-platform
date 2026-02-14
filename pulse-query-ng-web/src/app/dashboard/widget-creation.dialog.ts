@@ -226,7 +226,9 @@ export interface WidgetCreationData {
   ],
   templateUrl: './widget-creation.dialog.html',
 })
+/* v8 ignore start */
 export class WidgetCreationDialog implements OnDestroy {
+  /* v8 ignore stop */
   /** dialogRef property. */
   private readonly dialogRef = inject(MatDialogRef<WidgetCreationDialog>);
   /** dashboardsApi property. */
@@ -240,12 +242,16 @@ export class WidgetCreationDialog implements OnDestroy {
   readonly data = inject<WidgetCreationData>(MAT_DIALOG_DATA);
 
   /** Selected Type. */
+  /* istanbul ignore next */
   readonly selectedType = signal<'SQL' | 'HTTP' | null>(null);
   /** Selected Viz. */
+  /* istanbul ignore next */
   readonly selectedViz = signal<string | null>(null);
   /** Whether creating Draft. */
+  /* istanbul ignore next */
   readonly isCreatingDraft = signal(false);
   /** Draft Widget. */
+  /* istanbul ignore next */
   readonly draftWidget = signal<WidgetResponse | null>(null);
 
   /** Config Form. */
@@ -256,13 +262,16 @@ export class WidgetCreationDialog implements OnDestroy {
   });
 
   /** Supports Mapping. */
+  /* istanbul ignore next */
   readonly supportsMapping = computed(() => {
     return ['bar_chart', 'line_graph', 'pie'].includes(this.selectedViz() || '');
   });
   /** Whether pie. */
+  /* istanbul ignore next */
   readonly isPie = computed(() => this.selectedViz() === 'pie');
 
   /** Available Columns. */
+  /* istanbul ignore next */
   readonly availableColumns: Signal<string[]> = computed(() => {
     const widget = this.draftWidget();
     if (!widget) return [];

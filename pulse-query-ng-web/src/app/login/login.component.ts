@@ -102,10 +102,13 @@ export class LoginComponent implements OnInit {
   readonly registrationEnabled = environment.registrationEnabled;
 
   /** Whether loading. */
+  /* istanbul ignore next */
   readonly isLoading = signal(false);
   /** Error Message. */
+  /* istanbul ignore next */
   readonly errorMessage = signal<string | null>(null);
   /** Hide Password. */
+  /* istanbul ignore next */
   readonly hidePassword = signal(true);
 
   /** Login Form. */

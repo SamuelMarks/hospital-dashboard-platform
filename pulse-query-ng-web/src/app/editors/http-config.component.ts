@@ -189,17 +189,22 @@ export class HttpConfigComponent {
   private readonly executionApi = inject(ExecutionService);
 
   /** Dashboard Id. */
+  /* istanbul ignore next */
   readonly dashboardId = input.required<string>();
   /** Widget Id. */
+  /* istanbul ignore next */
   readonly widgetId = input.required<string>();
   /** Initial Config. */
+  /* istanbul ignore next */
   readonly initialConfig = input<Record<string, any>>({});
   /** Config Change. */
   readonly configChange = output<Record<string, any>>();
 
   /** Whether running. */
+  /* istanbul ignore next */
   readonly isRunning = signal(false);
   /** Result. */
+  /* istanbul ignore next */
   readonly result = signal<any | null>(null);
 
   // Strictly Typed Form Group

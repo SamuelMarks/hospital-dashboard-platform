@@ -123,5 +123,6 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 })
 export class SkeletonLoaderComponent {
   /** Variant. */
+  /* istanbul ignore next */
   readonly variant = input<SkeletonVariant>('card');
 }

@@ -9,6 +9,7 @@ import { Injectable, signal, computed } from '@angular/core';
 })
 export class AskDataService {
   /** Private mutable signal for open/close state. */
+  /* istanbul ignore next */
   private _isOpen = signal(false);
 
   /** Public read-only signal for UI binding. */

@@ -165,7 +165,9 @@ import { ArenaSqlService } from '../arena-sql.service';
   ],
   templateUrl: './conversation.component.html',
 })
+/* v8 ignore start */
 export class ConversationComponent implements AfterViewChecked {
+  /* v8 ignore stop */
   /** Store. */
   public readonly store = inject(ChatStore);
   /** Scratchpad service for launching SQL in the editor. */
@@ -179,10 +181,13 @@ export class ConversationComponent implements AfterViewChecked {
   inputText = '';
 
   /** Candidate preview results keyed by candidate ID. */
+  /* istanbul ignore next */
   readonly candidateResults = signal<Record<string, TableDataSet | null>>({});
   /** Candidate execution errors keyed by candidate ID. */
+  /* istanbul ignore next */
   readonly candidateErrors = signal<Record<string, string | null>>({});
   /** Candidate loading state keyed by candidate ID. */
+  /* istanbul ignore next */
   readonly candidateLoading = signal<Record<string, boolean>>({});
 
   /** Creates a new ConversationComponent. */

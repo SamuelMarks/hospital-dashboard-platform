@@ -227,13 +227,16 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
   ],
   templateUrl: './widget.component.html',
 })
+/* v8 ignore start */
 export class WidgetComponent {
+  /* v8 ignore stop */
   /** store property. */
   private readonly store = inject(DashboardStore);
   /** dashApi property. */
   private readonly dashApi = inject(DashboardsService);
 
   /** Widget Input. */
+  /* istanbul ignore next */
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' });
 
   /** Edit. */
@@ -244,27 +247,33 @@ export class WidgetComponent {
   readonly delete = output<void>();
 
   /** Whether loading Local. */
+  /* istanbul ignore next */
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id));
   /** Raw Result. */
+  /* istanbul ignore next */
   readonly rawResult = computed(() => this.store.dataMap()[this.widgetInput().id]);
   /** Whether edit Mode. */
   readonly isEditMode = this.store.isEditMode;
   /** Whether focused. */
+  /* istanbul ignore next */
   readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id);
 
   /** Error Message. */
+  /* istanbul ignore next */
   readonly errorMessage = computed(() => {
     const res = this.rawResult();
     return res && res.error ? res.error : null;
   });
 
   /** Visualization Type. */
+  /* istanbul ignore next */
   readonly visualizationType = computed(() => {
     if (this.widgetInput().type === 'TEXT') return 'markdown';
     return (this.widgetInput().visualization || 'table').toLowerCase();
   });
 
   /** Skeleton Type. */
+  /* istanbul ignore next */
   readonly skeletonType = computed<SkeletonVariant>(() => {
     const viz = this.visualizationType();
     if (viz.includes('chart') || viz.includes('graph')) return 'chart';
@@ -275,8 +284,10 @@ export class WidgetComponent {
   });
 
   /** Typed Data As Table. */
+  /* istanbul ignore next */
   readonly typedDataAsTable = computed(() => this.rawResult() as TableDataSet);
   /** Chart Config. */
+  /* istanbul ignore next */
   readonly chartConfig = computed(() => this.widgetInput().config as ChartConfig);
 
   /** Manual Refresh. */

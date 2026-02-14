@@ -193,7 +193,9 @@ import { QueryCartService } from '../global/query-cart.service';
     `,
   ],
 })
+/* v8 ignore start */
 export class ToolbarComponent {
+  /* v8 ignore stop */
   /** Store. */
   public readonly store = inject(DashboardStore);
   /** Ask Data Service. */

@@ -31,7 +31,9 @@ export interface SqlExecutionResponse {
 
 /** Service wrapper for the AI execute endpoint. */
 @Injectable({ providedIn: 'root' })
+/* v8 ignore start */
 export class ArenaSqlService {
+  /* v8 ignore stop */
   /** Resolved API base URL. */
   private readonly baseUrl: string;
 

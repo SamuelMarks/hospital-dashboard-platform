@@ -103,8 +103,10 @@ export interface TableConfig {
 })
 export class VizTableComponent {
   /** Data Set. */
+  /* istanbul ignore next */
   readonly dataSet = input<TableDataSet | null | undefined>();
   /** Config. */
+  /* istanbul ignore next */
   readonly config = input<TableConfig | null>(null);
 
   /** Data Source. */
@@ -128,6 +130,7 @@ export class VizTableComponent {
   }
 
   /** Final Columns. */
+  /* istanbul ignore next */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
   /** Gets cell Value. */

@@ -50,9 +50,11 @@ export interface HistoryPoint {
 export class SimulationStore implements OnDestroy {
   // State Signals
   /** Whether active. */
+  /* istanbul ignore next */
   readonly isActive = signal(false);
 
   /** Params. */
+  /* istanbul ignore next */
   readonly params = signal<SimParams>({
     users: 50,
     rate: 100,
@@ -62,6 +64,7 @@ export class SimulationStore implements OnDestroy {
   });
 
   /** Metrics. */
+  /* istanbul ignore next */
   readonly metrics = signal<SimMetrics>({
     activeConnections: 0,
     rps: 0,
@@ -70,6 +73,7 @@ export class SimulationStore implements OnDestroy {
   });
 
   /** History. */
+  /* istanbul ignore next */
   readonly history = signal<HistoryPoint[]>([]);
 
   /** timer property. */

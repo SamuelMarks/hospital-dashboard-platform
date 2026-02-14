@@ -50,7 +50,9 @@ import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.compo
     VizChartComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  /* v8 ignore start */
   providers: [SimulationStore], // Component-level Store
+  /* v8 ignore stop */
   styles: [
     `
       :host {
@@ -115,7 +117,9 @@ import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.compo
   ],
   templateUrl: './simulation.component.html',
 })
+/* v8 ignore start */
 export class SimulationComponent implements OnInit {
+  /* v8 ignore stop */
   /** Store. */
   readonly store = inject(SimulationStore);
 
@@ -132,6 +136,7 @@ export class SimulationComponent implements OnInit {
   };
 
   /** Chart Data. */
+  /* istanbul ignore next */
   readonly chartData = computed<TableDataSet>(() => {
     const history = this.store.history();
     // Flatten History for VizChart

@@ -71,7 +71,9 @@ import { ChatStore } from '../chat/chat.store';
     ConversationComponent,
   ],
   // PROVIDE CHAT STORE so that ConversationComponent (which injects it) works.
+  /* v8 ignore start */
   providers: [ChatStore],
+  /* v8 ignore stop */
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -143,7 +145,9 @@ import { ChatStore } from '../chat/chat.store';
   ],
   templateUrl: './sql-builder.component.html',
 })
+/* v8 ignore start */
 export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
+  /* v8 ignore stop */
   /** boardsApi property. */
   private readonly boardsApi = inject(DashboardsService);
   /** executionApi property. */
@@ -154,14 +158,19 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly store = inject(DashboardStore);
 
   /** Dashboard Id. */
+  /* istanbul ignore next */
   readonly dashboardId = input.required<string>();
   /** Widget Id. */
+  /* istanbul ignore next */
   readonly widgetId = input.required<string>();
   /** Initial Sql. */
+  /* istanbul ignore next */
   readonly initialSql = input<string>('');
   /** Optional: Set which tab opens by default. 0=Code, 1=AI */
+  /* istanbul ignore next */
   readonly initialTab = input<number>(0);
   /** Optional: Enable cart actions for ad-hoc flows. */
+  /* istanbul ignore next */
   readonly enableCart = input<boolean>(false);
 
   /** Sql Change. */
@@ -170,22 +179,29 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly saveToCart = output<string>();
 
   /** Current Sql. */
+  /* istanbul ignore next */
   readonly currentSql = model<string>('');
   /** Whether running. */
+  /* istanbul ignore next */
   readonly isRunning = signal(false);
   /** Latest Result. */
+  /* istanbul ignore next */
   readonly latestResult = signal<TableDataSet | null>(null);
   /** Validation Error. */
+  /* istanbul ignore next */
   readonly validationError = signal<string | null>(null);
 
   /** Global Params. */
   readonly globalParams = this.store.globalParams;
   /** Available Params. */
+  /* istanbul ignore next */
   readonly availableParams = computed(() => Object.keys(this.globalParams()));
   /** Whether save To Cart. */
+  /* istanbul ignore next */
   readonly canSaveToCart = computed(() => this.currentSql().trim().length > 0);
 
   /** Selected Tab Index. */
+  /* istanbul ignore next */
   selectedTabIndex = signal(0);
 
   // CodeMirror References

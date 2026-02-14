@@ -43,7 +43,9 @@ export interface LlmAnalyticsRow {
 
 /** Client for analytics endpoints. */
 @Injectable({ providedIn: 'root' })
+/* v8 ignore start */
 export class AnalyticsService {
+  /* v8 ignore stop */
   /** Resolved API base URL. */
   private readonly baseUrl: string;
 

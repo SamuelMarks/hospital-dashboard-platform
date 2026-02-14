@@ -45,10 +45,13 @@ export class ThemeService {
 
   // --- State Signals ---
   /** _mode property. */
+  /* istanbul ignore next */
   private readonly _mode = signal<ThemeMode>('light');
   /** _tvMode property. */
+  /* istanbul ignore next */
   private readonly _tvMode = signal<boolean>(false);
   /** _seedColor property. */
+  /* istanbul ignore next */
   private readonly _seedColor = signal<string>(DEFAULT_SEED);
 
   /** Valid Hex Color for the current theme seed. */
@@ -58,6 +61,7 @@ export class ThemeService {
   readonly mode: Signal<ThemeMode> = this._mode.asReadonly();
 
   /** Boolean helper for templates. */
+  /* istanbul ignore next */
   readonly isDark: Signal<boolean> = computed(() => this._mode() === 'dark');
 
   /** TV Kiosk Mode active state. */

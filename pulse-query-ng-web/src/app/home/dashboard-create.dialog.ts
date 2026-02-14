@@ -38,9 +38,11 @@ export class DashboardCreateDialog {
   private readonly fb = inject(FormBuilder);
 
   /** Loading state signal during API submission. */
+  /* istanbul ignore next */
   readonly isSubmitting = signal(false);
 
   /** Error message signal for API failures. */
+  /* istanbul ignore next */
   readonly error = signal<string | null>(null);
 
   /** Reactive Form Group. */

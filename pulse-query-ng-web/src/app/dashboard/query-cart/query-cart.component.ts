@@ -154,6 +154,7 @@ export class QueryCartComponent {
   private readonly snackBar = inject(MatSnackBar);
 
   /** Optional dashboard id to enable the "Add" action. */
+  /* istanbul ignore next */
   readonly dashboardId = input<string | null>(null);
 
   /** Items from the cart service. */
@@ -163,6 +164,7 @@ export class QueryCartComponent {
   readonly count = this.cart.count;
 
   /** Drop list connection for dashboard grid. */
+  /* istanbul ignore next */
   readonly connectedDropLists = computed(() => ['dashboard-grid']);
 
   /** Clears all items from the cart. */

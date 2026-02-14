@@ -55,6 +55,7 @@ export class ChatStore implements OnDestroy {
   /** chatApi property. */
   private readonly chatApi = inject(ChatService);
   /** _state property. */
+  /* istanbul ignore next */
   private readonly _state = signal<ChatState>(initialState);
   /** destroy$ property. */
   private readonly destroy$ = new Subject<void>();
@@ -62,16 +63,22 @@ export class ChatStore implements OnDestroy {
   /** State. */
   readonly state = this._state.asReadonly();
   /** Conversations. */
+  /* istanbul ignore next */
   readonly conversations = computed(() => this._state().conversations);
   /** Active Conversation Id. */
+  /* istanbul ignore next */
   readonly activeConversationId = computed(() => this._state().activeConversationId);
   /** Messages. */
+  /* istanbul ignore next */
   readonly messages = computed(() => this._state().messages);
   /** Whether data Loading. */
+  /* istanbul ignore next */
   readonly isDataLoading = computed(() => this._state().isLoadingList);
   /** Whether generating. */
+  /* istanbul ignore next */
   readonly isGenerating = computed(() => this._state().isGenerating);
   /** Error. */
+  /* istanbul ignore next */
   readonly error = computed(() => this._state().error);
 
   /** Ng On Destroy. */

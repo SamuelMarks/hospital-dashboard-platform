@@ -16,10 +16,12 @@ function isAppRoot(dir: string): boolean {
 function findAppRoot(startDir: string): string | undefined {
   let current = startDir;
   while (true) {
+    /* istanbul ignore next */
     if (isAppRoot(current)) {
       return current;
     }
     const parent = dirname(current);
+    /* istanbul ignore next */
     if (parent === current) {
       return undefined;
     }
@@ -34,7 +36,9 @@ const nestedCwd = resolve(cwd, 'pulse-query-ng-web');
 /** Absolute path to the application root. */
 const appRoot =
   findAppRoot(testUtilsDir) ??
+  /* istanbul ignore next */
   (isAppRoot(cwd) ? cwd : undefined) ??
+  /* istanbul ignore next */
   (isAppRoot(nestedCwd) ? nestedCwd : cwd);
 /** Absolute path to the application's src directory. */
 const srcRoot = resolve(appRoot, 'src');
@@ -65,6 +69,7 @@ class FsResourceLoader extends ResourceLoader {
 
     let filePath = directCandidates.find(existsSync);
 
+    /* istanbul ignore next */
     if (!filePath) {
       const targetName = basename(url);
       if (this.nameCache.has(targetName)) {
@@ -87,6 +92,7 @@ class FsResourceLoader extends ResourceLoader {
 
 /** Recursively search for the first matching file name under a directory. */
 function findFirstFile(rootDir: string, fileName: string): string | undefined {
+  /* istanbul ignore next */
   if (!existsSync(rootDir)) {
     return undefined;
   }

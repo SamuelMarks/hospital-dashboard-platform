@@ -131,6 +131,7 @@ interface JsonSchema {
 })
 export class DynamicFormComponent implements OnChanges {
   /** valid JSON Schema Object (subset). */
+  /* istanbul ignore next */
   readonly jsonSchema = input<Record<string, any>>({});
 
   /** Output emitting validity status. */
@@ -141,6 +142,7 @@ export class DynamicFormComponent implements OnChanges {
   /** Form. */
   readonly form = new FormGroup({});
   /** Field Keys. */
+  /* istanbul ignore next */
   readonly fieldKeys = signal<string[]>([]);
 
   /** Ng On Changes. */

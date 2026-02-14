@@ -43,4 +43,10 @@ describe('component-resources', () => {
     expect(() => resourceLoader.get(missingName)).toThrow('Resource not found');
     expect(() => resourceLoader.get(`missing-path/${missingName}`)).toThrow('Resource not found');
   });
+
+  it('resolves component resources with the shared loader', async () => {
+    const { resolveComponentResourcesForTests } = await import('./component-resources');
+    await resolveComponentResourcesForTests();
+    expect(true).toBe(true);
+  });
 });

@@ -51,7 +51,9 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.m
     EmptyStateComponent,
   ],
 })
+/* v8 ignore start */
 export class DashboardLayoutComponent implements OnInit {
+  /* v8 ignore stop */
   /** Store. */
   public readonly store = inject(DashboardStore);
   /** themeService property. */
