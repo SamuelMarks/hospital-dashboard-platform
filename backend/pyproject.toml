@@ -58,7 +58,7 @@ docstring-code-line-length = "dynamic"
 packages = ["src/app"] 
 
 [tool.pytest.ini_options] 
-pythonpath = ["src"] 
+pythonpath = ["src"]
 testpaths = ["tests"] 
 markers = ["asyncio: mark test as async"] 
 asyncio_mode    = "auto"

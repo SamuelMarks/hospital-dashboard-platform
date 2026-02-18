@@ -59,9 +59,11 @@ class LLMArenaClient:
       try:
         # Initialize any-llm clients for each configured provider
         api_base = config.get("api_base") or config.get("base_url")
+
+        # NOTE: We do NOT pass 'model' here. OpenAI-compatible SDKs (v1+)
+        # expect 'model' to be passed during the completion call, not client init.
         client = AnyLLM.create(
           config["provider"],
-          model=config["model"],
           api_key=config.get("api_key"),
           api_base=api_base,  # Only used for local/custom endpoints
           timeout=timeout,
@@ -71,13 +73,26 @@ class LLMArenaClient:
           {
             "client": client,
             "name": config["name"],  # Display Name
-            "id": f"{config['provider']}/{config['model']}",  # Tracking ID
+            "id": f"{config['provider']}/{config['model']}",  # Unique Tracking ID
+            "model_name": config.get("model_name", config.get("model")),  # Actual Model ID
           }
         )
         logger.info(f"Registered Arena Combatant: {config['name']} ({config['model']})")
 
       except Exception as e:
         logger.error(f"Failed to initialize LLM provider {config.get('name')}: {e}")
+
+    # Fallback to prevent system crash if no providers are available
+    if not self.swarm:
+      logger.warning("Auto-configuring Mock Provider (No valid LLMs found)")
+      self.swarm.append(
+        {
+          "client": None,  # Signals internal mock logic
+          "name": "System Mock",
+          "id": "mock/fallback",
+          "model_name": "mock-model",
+        }
+      )
 
   async def _generate_single(
     self,
@@ -94,13 +109,26 @@ class LLMArenaClient:
     client = combatant["client"]
     name = combatant["name"]
     model_id = combatant["id"]
+    target_model_name = combatant["model_name"]
 
     start_time = time.time()
 
+    # Handle Mock / Fallback Mode
+    if client is None:
+      mock_sql = "SELECT 'System Mock' as source, 'No LLM Configured' as status;"
+      content = f"```sql\n{mock_sql}\n```"
+      return ArenaResponse(provider_name=name, model_identifier=model_id, content=content, latency_ms=10, error=None)
+
     try:
       # Offload blocking IO to threadpool to keep asyncio loop healthy
+      # We pass 'model' here to satisfy OpenAI SDK requirements
       response = await run_in_threadpool(
-        client.completion, messages=messages, temperature=temperature, max_tokens=max_tokens, stop=stop
+        client.completion,
+        model=target_model_name,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stop=stop,
       )
 
       # Measure Latency

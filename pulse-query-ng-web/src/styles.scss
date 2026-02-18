@@ -1,7 +1,6 @@
 /* 
  * Main Stylesheet. 
  * Implements Material Design 3 Styling via Angular Material. 
- * Overrides hardcoded palette colors with Runtime CSS Variables (--sys-*). 
  */
 
 @use '@angular/material' as mat;
@@ -11,11 +10,10 @@
 
 // -------------------------------------------------------------------------
 // 1. CORE VARIABLES (Defaults)
-// These CSS Variables are injected dynamically by ThemeService at runtime.
-// We define defaults here to prevent FOUC (Flash of Unstyled Content)
-// before hydration completes.
 // -------------------------------------------------------------------------
 :root {
+  // ... (Previous variables remain the same) ...
+
   --sys-primary: #1565c0;
   --sys-on-primary: #ffffff;
   --sys-primary-container: #dce1ff;
@@ -33,7 +31,10 @@
 
   --sys-error: #ba1a1a;
   --sys-on-error: #ffffff;
+  --sys-error-container: #ffdad6;
+  --sys-on-error-container: #410002;
   --sys-warn: #ffa000;
+  --sys-success: #2e7d32;
 
   --sys-background: #fdfbff;
   --sys-surface: #fdfbff;
@@ -46,6 +47,9 @@
   --sys-outline: #757780;
   --sys-outline-variant: #c4c7d0;
 
+  --sys-text-primary: var(--sys-on-surface);
+  --sys-text-secondary: var(--sys-on-surface-variant);
+
   --sys-hover: rgba(26, 27, 31, 0.08);
   --sys-selected: rgba(21, 101, 192, 0.12);
   --sys-focus: rgba(26, 27, 31, 0.12);
@@ -57,170 +61,85 @@
 
   --sys-autofill-bg: #ffffff;
   --sys-autofill-text: #000000;
+
+  /* Scrollbar Thumb Color (Default Light) */
+  --sys-scrollbar-thumb: #bdbdbd;
+  --sys-scrollbar-track: transparent;
 }
 
 // -------------------------------------------------------------------------
-// 2. ANGULAR MATERIAL THEME CONFIG
-// We define Light and Dark M3 themes using strict Sass types.
-// Uses M3-specific palettes ($azure-palette) and strict M3 typography keys.
+// 2. THEME DEFINITIONS
 // -------------------------------------------------------------------------
-
-$m3-typography: (
-  brand-family: 'Roboto',
-  plain-family: 'Roboto',
-  bold-weight: 500,
-  medium-weight: 400,
-  regular-weight: 400,
-);
-
-$m3-density: (
-  scale: 0,
-);
-
-$m3-light-theme: mat.define-theme(
+$light-theme: mat.define-theme(
   (
     color: (
       theme-type: light,
       primary: mat.$azure-palette,
-      tertiary: mat.$violet-palette,
+      tertiary: mat.$blue-palette,
     ),
-    typography: $m3-typography,
-    density: $m3-density,
   )
 );
 
-$m3-dark-theme: mat.define-theme(
+$dark-theme: mat.define-theme(
   (
     color: (
       theme-type: dark,
       primary: mat.$azure-palette,
-      tertiary: mat.$violet-palette,
+      tertiary: mat.$blue-palette,
     ),
-    typography: $m3-typography,
-    density: $m3-density,
   )
 );
 
-// -------------------------------------------------------------------------
-// 3. MATERIAL THEME APPLICATION
-// ThemeService toggles .light-theme / .dark-theme on <body>.
-// -------------------------------------------------------------------------
-
-html,
+// Apply Theme to Body
 body {
-  height: 100%;
-}
-
-@mixin runtime-color-bridge {
-  // Map Angular Material System Tokens -> Our Dynamic Runtime Tokens
-  --md-sys-color-primary: var(--sys-primary);
-  --md-sys-color-on-primary: var(--sys-on-primary);
-  --md-sys-color-primary-container: var(--sys-primary-container);
-  --md-sys-color-on-primary-container: var(--sys-on-primary-container);
-
-  --md-sys-color-secondary: var(--sys-secondary);
-  --md-sys-color-on-secondary: var(--sys-on-secondary);
-  --md-sys-color-secondary-container: var(--sys-secondary-container);
-  --md-sys-color-on-secondary-container: var(--sys-on-secondary-container);
-
-  --md-sys-color-tertiary: var(--sys-tertiary);
-  --md-sys-color-on-tertiary: var(--sys-on-tertiary);
-  --md-sys-color-tertiary-container: var(--sys-tertiary-container);
-  --md-sys-color-on-tertiary-container: var(--sys-on-tertiary-container);
-
-  --md-sys-color-error: var(--sys-error);
-  --md-sys-color-on-error: var(--sys-on-error);
-
-  --md-sys-color-background: var(--sys-background);
-  --md-sys-color-on-background: var(--sys-on-background);
-
-  --md-sys-color-surface: var(--sys-surface);
-  --md-sys-color-on-surface: var(--sys-on-surface);
-  --md-sys-color-surface-variant: var(--sys-surface-variant);
-  --md-sys-color-on-surface-variant: var(--sys-on-surface-variant);
-
-  --md-sys-color-outline: var(--sys-outline);
-  --md-sys-color-outline-variant: var(--sys-outline-variant);
-}
-
-body.light-theme {
-  @include mat.all-component-themes($m3-light-theme);
-  @include runtime-color-bridge;
-  color-scheme: light;
-}
-
-body.dark-theme {
-  @include mat.all-component-themes($m3-dark-theme);
-  @include runtime-color-bridge;
-  color-scheme: dark;
-}
-
-// -------------------------------------------------------------------------
-// 4. RUNTIME OVERRIDES
-// -------------------------------------------------------------------------
-body {
-  // Base setup
-  margin: 0;
   font-family: Roboto, 'Helvetica Neue', sans-serif;
+  margin: 0;
   background-color: var(--sys-background);
-  color: var(--sys-on-background);
+  color: var(--sys-text-primary);
+  min-height: 100vh;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
-}
 
-// -------------------------------------------------------------------------
-// 5. DISPLAY MODES
-// -------------------------------------------------------------------------
+  /* Improve Scrollbar Aesthetics */
+  scrollbar-width: thin;
+  scrollbar-color: var(--sys-scrollbar-thumb) var(--sys-scrollbar-track);
 
-body.mode-tv {
-  // TV Mode: Scale Typography using Material Tokens
-  font-size: 1.5rem;
-
-  // Hide Scrollbars
-  ::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+  &.light-theme {
+    @include mat.all-component-themes($light-theme);
   }
 
-  // Enforce High Contrast Headers
-  .mat-headline-2,
-  .mat-headline-1 {
-    font-size: 4rem !important;
-    font-weight: 700 !important;
-    letter-spacing: -0.02em;
+  &.dark-theme {
+    @include mat.all-component-themes($dark-theme);
+
+    /* In Dark Mode, update generic interaction vars if JS didn't catch them */
+    --sys-hover: rgba(255, 255, 255, 0.08);
+    --sys-focus: rgba(255, 255, 255, 0.12);
+    --sys-scrollbar-thumb: #555555;
   }
 
-  // Enhance Card Titles
-  .mat-mdc-card-title {
-    font-size: 1.75rem !important;
-    line-height: normal !important;
-  }
-
-  // High Contrast Borders for Charts
-  .bar,
-  .bar-segment {
-    stroke: var(--sys-background);
-    stroke-width: 2px;
+  /* Kiosk Mode: Hide scrollbars */
+  &.mode-tv {
+    ::-webkit-scrollbar {
+      width: 0;
+      background: transparent;
+    }
+    scrollbar-width: none;
   }
 }
 
-// -------------------------------------------------------------------------
-// 6. GLOBAL FORM CONTROLS
-// -------------------------------------------------------------------------
-input,
-textarea,
-select {
-  background-color: transparent;
-  color: var(--sys-on-surface);
-  border-color: var(--sys-outline);
-  caret-color: var(--sys-primary);
+/* Webkit Scrollbar Styling (Chrome/Safari) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-// Fix for autofill background messing up Dark Mode
-input:-webkit-autofill,
-textarea:-webkit-autofill,
-select:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 1000px var(--sys-surface) inset !important;
-  -webkit-text-fill-color: var(--sys-on-surface) !important;
+::-webkit-scrollbar-track {
+  background: var(--sys-scrollbar-track);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--sys-scrollbar-thumb);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sys-outline);
 }

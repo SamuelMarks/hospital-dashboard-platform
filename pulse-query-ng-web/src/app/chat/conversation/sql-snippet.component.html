@@ -14,7 +14,8 @@
         mat-stroked-button
         color="accent"
         class="text-xs h-6 px-2 leading-none"
-        (click)="run.emit(sql())"
+        (click)="emitRun()"
+        [disabled]="!sql()"
       >
         <mat-icon class="mr-1 text-xs" style="font-size: 14px; width: 14px; height: 14px"
           >play_arrow</mat-icon

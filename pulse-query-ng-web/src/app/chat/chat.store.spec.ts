@@ -189,7 +189,7 @@ describe('ChatStore', () => {
     } as any;
     store['patch']({ messages: [msg] });
     mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
-      of({}),
+      of({ ...msg, content: 'new', candidates: [{ id: 'c1', is_selected: true }] }),
     );
 
     store.voteCandidate('m1', 'c1');
@@ -213,13 +213,26 @@ describe('ChatStore', () => {
       ],
     } as any;
     store['patch']({ activeConversationId: 'c1', messages: [msg] });
+
+    // FIX: Mock return must echo back the full object with updated selected states,
+    // otherwise the store replaces the optimistic update with an empty/partial object.
+    const responseMsg = {
+      ...msg,
+      content: 'new', // Assuming c1 selected
+      candidates: [
+        { id: 'c1', content: 'new', sql_hash: 'h1', is_selected: true },
+        { id: 'c2', content: 'alt', sql_hash: 'h1', is_selected: true },
+        { id: 'c3', content: 'diff', sql_hash: 'h2', is_selected: false },
+      ],
+    };
     mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
-      of({}),
+      of(responseMsg),
     );
 
     store.voteCandidate('m1', 'c1');
 
     const candidates = store.messages()[0].candidates || [];
+
     expect(candidates.find((c) => c.id === 'c1')?.is_selected).toBe(true);
     expect(candidates.find((c) => c.id === 'c2')?.is_selected).toBe(true);
     expect(candidates.find((c) => c.id === 'c3')?.is_selected).toBe(false);
@@ -256,6 +269,54 @@ describe('ChatStore', () => {
     );
 
     store.voteCandidate('m1', 'c1');
+    expect(store.error()).toBe('Nope');
+  });
+
+  it('voteCandidate updates store from API response', () => {
+    const msg: MessageResponse = {
+      id: 'm1',
+      conversation_id: 'c1',
+      role: 'assistant',
+      content: 'old',
+      candidates: [{ id: 'c1', content: 'opt_new', is_selected: false }],
+    } as any;
+    store['patch']({ activeConversationId: 'c1', messages: [msg] });
+
+    const serverMsg: MessageResponse = {
+      ...msg,
+      content: 'server_verified',
+      candidates: [{ id: 'c1', content: 'opt_new', is_selected: true }],
+    } as any;
+
+    // Return the verified message from server
+    mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+      of(serverMsg),
+    );
+
+    store.voteCandidate('m1', 'c1');
+
+    // Check store used the server response
+    expect(store.messages()[0].content).toBe('server_verified');
+    expect(store.messages()[0].candidates?.[0].is_selected).toBe(true);
+  });
+
+  it('voteCandidate rolls back on API error', () => {
+    const msg: MessageResponse = {
+      id: 'm1',
+      conversation_id: 'c1',
+      role: 'assistant',
+      content: 'original',
+      candidates: [{ id: 'c1', content: 'new', is_selected: false }],
+    } as any;
+    store['patch']({ activeConversationId: 'c1', messages: [msg] });
+    mockApi.voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ error: { detail: 'Nope' } })),
+    );
+
+    store.voteCandidate('m1', 'c1');
+
+    // Store should revert to 'original' content
+    expect(store.messages()[0].content).toBe('original');
     expect(store.error()).toBe('Nope');
   });
 

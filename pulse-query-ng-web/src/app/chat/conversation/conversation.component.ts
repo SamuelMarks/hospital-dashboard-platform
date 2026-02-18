@@ -19,6 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 // Core
 import { ChatStore } from '../chat.store';
@@ -44,6 +45,7 @@ import { ArenaSqlService } from '../arena-sql.service';
     MatFormFieldModule,
     MatProgressSpinnerModule,
     MatCardModule,
+    MatProgressBarModule,
     VizMarkdownComponent,
     VizTableComponent,
     SqlSnippetComponent,
@@ -61,105 +63,186 @@ import { ArenaSqlService } from '../arena-sql.service';
       .message-list {
         flex: 1;
         overflow-y: auto;
-        padding: 16px;
+        padding: 24px;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 24px;
       }
-      .bubble-row {
+
+      /* Empty State */
+      .empty-state-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--sys-outline);
+        user-select: none;
+      }
+      .icon-hero {
+        font-size: 64px;
+        height: 64px;
+        width: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      /* Message Row Layout */
+      .message-row {
         display: flex;
         width: 100%;
       }
-      .bubble-row.user {
+      .message-row.user {
         justify-content: flex-end;
       }
-      .bubble-row.assistant {
+      .message-row.assistant {
         justify-content: flex-start;
       }
-      .bubble {
+
+      /* Chat Bubbles using MatCard */
+      .message-bubble {
         max-width: 90%;
-        padding: 12px 16px;
-        border-radius: 12px;
-        font-size: 14px;
-        line-height: 1.5;
-        position: relative;
-      }
-      .user .bubble {
-        background-color: var(--sys-primary);
-        color: white;
-        border-bottom-right-radius: 2px;
-      }
-      .assistant .bubble {
-        background-color: var(--sys-surface);
-        color: var(--sys-text-primary);
+        border-radius: 16px;
+        box-shadow: none !important;
         border: 1px solid var(--sys-surface-border);
-        border-bottom-left-radius: 2px;
+        background-color: var(--sys-surface);
+        color: var(--sys-on-surface);
       }
-      .input-area {
+      .user-bubble {
+        background-color: var(--sys-primary-container) !important;
+        color: var(--sys-on-primary-container) !important;
+        border: none;
+        border-bottom-right-radius: 4px;
+      }
+
+      .message-footer {
+        padding: 8px 16px;
+        font-size: 11px;
+        opacity: 0.7;
+        text-align: right;
+        color: inherit;
+      }
+
+      /* Arena (Comparison) Styling */
+      .arena-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--sys-surface-border);
+        padding-bottom: 8px;
+        width: 100%;
+      }
+      .mat-label-small {
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+
+      .candidates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        width: 100%;
+      }
+      .candidate-item {
+        border: 1px solid var(--sys-outline-variant);
+        border-radius: 8px;
+        background-color: var(--sys-background);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .candidate-meta {
+        background-color: var(--sys-surface-variant);
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 500;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--sys-on-surface-variant);
+      }
+      .candidate-body {
+        padding: 12px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        /* Ensure inner content expands but doesn't overflow horizontally */
+        min-width: 0;
+      }
+      .candidate-actions {
+        padding: 8px;
+        border-top: 1px solid var(--sys-surface-border);
+      }
+
+      /* Error Container Styling */
+      .error-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px;
+        border-radius: 4px;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        font-family: 'Roboto Mono', monospace;
+        font-size: 12px;
+        border-left: 3px solid var(--sys-error);
+      }
+      .icon-small {
+        width: 18px;
+        height: 18px;
+        font-size: 18px;
+      }
+
+      /* Loading & Composers */
+      .loading-bubble {
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 60px;
+      }
+
+      .composer-container {
         padding: 16px;
         background-color: var(--sys-surface);
         border-top: 1px solid var(--sys-surface-border);
-        display: flex;
-        gap: 8px;
-        align-items: flex-end;
-      }
-      .timestamp {
-        font-size: 10px;
-        opacity: 0.7;
-        margin-top: 4px;
-        text-align: right;
-        display: block;
+        position: relative;
+        z-index: 10;
       }
 
-      /* Comparison Grid */
-      .arena-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 12px;
-        min-width: 250px;
-        margin-top: 8px;
-      }
-      .candidate-card {
-        border: 1px solid var(--sys-surface-border);
-        background: #fafafa;
-        border-radius: 8px;
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        font-size: 13px;
-      }
-      .candidate-header {
-        font-weight: bold;
-        font-size: 11px;
-        text-transform: uppercase;
-        color: #666;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 4px;
-      }
-      .sql-group-badge {
-        font-size: 10px;
-        background: #e3f2fd;
-        color: #1565c0;
+      .group-badge {
+        background-color: var(--sys-secondary-container);
+        color: var(--sys-on-secondary-container);
         padding: 2px 6px;
-        border-radius: 10px;
-      }
-      .result-preview {
-        border-top: 1px solid #eee;
-        padding-top: 8px;
-        background: #fff;
         border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
       }
-      .result-preview .table-wrap {
+
+      .table-preview {
         max-height: 200px;
         overflow: auto;
+        margin-top: 8px;
+        border-radius: 4px;
+        border: 1px solid var(--sys-surface-border);
       }
-      .candidate-error {
-        background: #fff3f3;
-        color: #b71c1c;
-        padding: 6px 8px;
-        font-size: 11px;
-        border-left: 3px solid #b71c1c;
+
+      .global-error-toast {
+        padding: 12px;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        border-left: 4px solid var(--sys-error);
+        border-radius: 4px;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 12px;
       }
     `,
   ],
@@ -216,14 +299,20 @@ export class ConversationComponent implements AfterViewChecked {
     this.inputText = '';
   }
 
-  /** Clean Content. */
+  /**
+   * Cleans the message content for display via Markdown.
+   * Logic:
+   * - If no SQL snippet exists, return content as-is (could be plain text or markdown).
+   * - If SQL snippet exists, remove the code block from the markdown content to avoid
+   *   duplication, as 'app-sql-snippet' handles the SQL display.
+   */
   cleanContent(msg: MessageResponse): string {
     if (!msg.sql_snippet) return msg.content;
     // Remove code blocks
     return msg.content.replace(/```sql[\s\S]*?```/gi, '').trim();
   }
 
-  /** Clean Content Simple. */
+  /** Clean Content Simple for Candidates. */
   cleanContentSimple(txt: string): string {
     return txt.replace(/```sql[\s\S]*?```/gi, '').trim();
   }
@@ -304,6 +393,7 @@ export class ConversationComponent implements AfterViewChecked {
   /** Whether pending Candidates. */
   hasPendingCandidates(msg: MessageResponse): boolean {
     if (msg.role !== 'assistant' || !msg.candidates || msg.candidates.length === 0) return false;
+    // If any candidate is selected, we are no longer pending
     return !msg.candidates.some((c) => c.is_selected);
   }
 

@@ -1,145 +1,140 @@
 <div class="message-list" #scrollContainer>
+  <!-- Empty State -->
   @if (store.messages().length === 0 && !store.isGenerating()) {
-    <div class="flex flex-col items-center justify-center h-full text-gray-400 select-none">
-      <mat-icon class="text-6xl mb-4 text-gray-300">forum</mat-icon>
-      <p>Start a new analysis conversation.</p>
+    <div class="empty-state-wrapper">
+      <mat-icon class="icon-hero">assistant</mat-icon>
+      <h2>Data Assistant</h2>
+      <p>Ask questions about hospital census, throughput, or capacity.</p>
     </div>
   }
 
   @for (msg of store.messages(); track msg.id) {
-    <div class="bubble-row" [ngClass]="msg.role">
-      <div
-        class="bubble mat-elevation-z1"
-        [style.max-width.%]="hasPendingCandidates(msg) ? 100 : 80"
-      >
-        <!-- A: Pending Vote (Compare Options) -->
-        @if (hasPendingCandidates(msg)) {
-          <div class="mb-2 font-medium">
-            Please vote for the best response ({{ msg.candidates?.length }} Options):
-          </div>
-          @if (hasSqlCandidates(msg)) {
-            <button
-              mat-stroked-button
-              color="accent"
-              class="text-xs h-6 px-2 leading-none mb-2"
-              (click)="runAllCandidates(msg)"
-            >
-              Run All Queries
-            </button>
-          }
-
-          <div class="arena-grid">
-            @for (cand of msg.candidates; track cand.id) {
-              <div class="candidate-card mat-elevation-z1">
-                <div class="candidate-header">{{ cand.model_name }}</div>
-                @if (sqlGroupCount(msg, cand) > 1) {
-                  <div class="sql-group-badge">
-                    Same SQL ({{ sqlGroupCount(msg, cand) }} models)
-                  </div>
-                }
-
-                <div class="flex-grow">
-                  <!-- If short content, markdown. If mostly SQL, check snippet. -->
-                  <viz-markdown [content]="cleanContentSimple(cand.content)"></viz-markdown>
-                  @if (cand.sql_snippet) {
-                    <app-sql-snippet
-                      class="mt-2"
-                      [sql]="cand.sql_snippet"
-                      (run)="runCandidateQuery(cand)"
-                    ></app-sql-snippet>
-                    @if (isCandidateLoading(cand.id)) {
-                      <div class="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                        <mat-progress-spinner
-                          diameter="18"
-                          mode="indeterminate"
-                        ></mat-progress-spinner>
-                        Running query...
-                      </div>
-                    }
-                    @if (candidateError(cand.id)) {
-                      <div class="candidate-error mt-2">{{ candidateError(cand.id) }}</div>
-                    }
-                    @if (candidateResult(cand.id)) {
-                      <div class="result-preview mt-2">
-                        <div class="table-wrap">
-                          <viz-table [dataSet]="candidateResult(cand.id)"></viz-table>
-                        </div>
-                      </div>
-                    }
-                  } @else {
-                    <div class="text-xs text-gray-400 mt-2">No SQL detected.</div>
-                  }
-                </div>
-
-                <button
-                  mat-stroked-button
-                  color="primary"
-                  class="mt-2 w-full"
-                  (click)="vote(msg.id, cand.id)"
-                >
-                  Vote & Select [{{ cand.model_name }}]
+    <div class="message-row" [ngClass]="msg.role">
+      <!-- Chat Bubble -->
+      <mat-card class="message-bubble" [class.user-bubble]="msg.role === 'user'">
+        <mat-card-content>
+          <!-- A: Voting Mode (Arena) -->
+          @if (hasPendingCandidates(msg)) {
+            <div class="arena-header">
+              <span class="mat-label-small"> Compare {{ msg.candidates?.length }} Models </span>
+              @if (hasSqlCandidates(msg)) {
+                <button mat-button color="accent" (click)="runAllCandidates(msg)">
+                  <mat-icon>play_arrow</mat-icon> Run All
                 </button>
-              </div>
-            }
-          </div>
+              }
+            </div>
 
-          <!-- B: Standard Resolved View -->
-        } @else {
-          <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
-          @if (msg.sql_snippet) {
-            <app-sql-snippet [sql]="msg.sql_snippet" (run)="runQuery($event)"></app-sql-snippet>
+            <div class="candidates-grid">
+              @for (cand of msg.candidates; track cand.id) {
+                <div class="candidate-item mat-elevation-z2">
+                  <div class="candidate-meta">
+                    <span class="model-tag">{{ cand.model_name }}</span>
+                    @if (sqlGroupCount(msg, cand) > 1) {
+                      <span class="group-badge">
+                        Matches {{ sqlGroupCount(msg, cand) - 1 }} others
+                      </span>
+                    }
+                  </div>
+
+                  <div class="candidate-body">
+                    <!-- If Error exists, show readable error box -->
+                    @if (candidateError(cand.id)) {
+                      <div class="error-container">
+                        <mat-icon color="warn" class="icon-small">warning</mat-icon>
+                        <span>{{ candidateError(cand.id) }}</span>
+                      </div>
+                    }
+
+                    <viz-markdown [content]="cleanContentSimple(cand.content)"></viz-markdown>
+
+                    @if (cand.sql_snippet) {
+                      <app-sql-snippet
+                        class="mt-2"
+                        [sql]="cand.sql_snippet"
+                        (run)="runCandidateQuery(cand)"
+                      ></app-sql-snippet>
+                    }
+
+                    @if (isCandidateLoading(cand.id)) {
+                      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                    }
+
+                    @if (candidateResult(cand.id)) {
+                      <div class="table-preview mat-elevation-z1">
+                        <viz-table [dataSet]="candidateResult(cand.id)"></viz-table>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="candidate-actions">
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      class="w-full"
+                      (click)="vote(msg.id, cand.id)"
+                    >
+                      Select Model
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
           }
-        }
-
-        <span class="timestamp">{{ msg.created_at | date: 'shortTime' }}</span>
-      </div>
+          <!-- B: Standard Message -->
+          @else {
+            <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
+            @if (msg.sql_snippet) {
+              <app-sql-snippet [sql]="msg.sql_snippet" (run)="runQuery($event)"></app-sql-snippet>
+            }
+          }
+        </mat-card-content>
+        <mat-card-footer class="message-footer">
+          {{ msg.created_at | date: 'shortTime' }}
+        </mat-card-footer>
+      </mat-card>
     </div>
   }
 
+  <!-- Loading State -->
   @if (store.isGenerating()) {
-    <div class="bubble-row assistant">
-      <div class="bubble" style="padding: 8px 16px">
-        <div class="flex gap-1">
-          <span class="animate-bounce">.</span>
-          <span class="animate-bounce delay-100">.</span>
-          <span class="animate-bounce delay-200">.</span>
-        </div>
-      </div>
+    <div class="message-row assistant">
+      <mat-card class="message-bubble loading-bubble">
+        <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+      </mat-card>
     </div>
   }
 
+  <!-- Global Error -->
   @if (store.error(); as err) {
-    <div
-      class="w-full text-center p-2 mb-2 bg-red-50 text-red-600 text-xs rounded border border-red-200"
-    >
-      {{ err }}
+    <div class="global-error-toast mat-elevation-z4">
+      <mat-icon color="warn">error</mat-icon>
+      <span>{{ err }}</span>
     </div>
   }
 </div>
 
-<!-- Input Footer -->
-<div class="input-area">
-  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-grow">
+<!-- Input Area -->
+<div class="composer-container mat-elevation-z4">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
     <textarea
       matInput
-      placeholder="Ask question..."
+      placeholder="Ask about hospital data..."
       [(ngModel)]="inputText"
       (keydown.enter)="handleEnter($event)"
-      rows="1"
       cdkTextareaAutosize
+      cdkAutosizeMinRows="1"
+      cdkAutosizeMaxRows="5"
       [disabled]="store.isGenerating()"
     ></textarea>
+    <button
+      mat-icon-button
+      matSuffix
+      color="primary"
+      (click)="send()"
+      [disabled]="!inputText.trim() || store.isGenerating()"
+      aria-label="Send Message"
+    >
+      <mat-icon>send</mat-icon>
+    </button>
   </mat-form-field>
-
-  <!-- A11y Fix: Added label for E2E tests -->
-  <button
-    mat-icon-button
-    color="primary"
-    class="h-12 w-12"
-    (click)="send()"
-    [disabled]="!inputText.trim() || store.isGenerating()"
-    aria-label="Send Message"
-  >
-    <mat-icon>send</mat-icon>
-  </button>
 </div>

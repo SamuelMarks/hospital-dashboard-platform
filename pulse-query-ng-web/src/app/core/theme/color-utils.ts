@@ -40,7 +40,7 @@ export function generateThemeVariables(seedHex: string, isDark: boolean): CssVar
   const scheme = isDark ? theme.schemes.dark : theme.schemes.light;
 
   // 4. Map Scheme to CSS Variables
-  return mapSchemeToCssVars(scheme);
+  return mapSchemeToCssVars(scheme, isDark);
 }
 
 /**
@@ -56,11 +56,13 @@ function isValidHex(hex: string): boolean {
 /**
  * Transforms a Material Color Scheme object into CSS Variable dictionary.
  * Converts internal ARGB numbers back to Hex strings for CSS usage.
+ * Includes static semantic colors (Success/Warn) tailored for the visual mode.
  *
  * @param {Scheme} scheme - The M3 Scheme object.
+ * @param {boolean} isDark - Whether the scheme is dark mode.
  * @returns {CssVariableMap} The mapping of token names to hex values.
  */
-function mapSchemeToCssVars(scheme: Scheme): CssVariableMap {
+function mapSchemeToCssVars(scheme: Scheme, isDark: boolean): CssVariableMap {
   const toHex = (argb: number) => hexFromArgb(argb);
 
   return {
@@ -88,10 +90,10 @@ function mapSchemeToCssVars(scheme: Scheme): CssVariableMap {
     '--sys-error-container': toHex(scheme.errorContainer),
     '--sys-on-error-container': toHex(scheme.onErrorContainer),
 
-    // We map 'Warn' to 'Error' container conceptually, or standard Orange
-    // Since M3 doesn't have a distinct 'Warn', we use a static or computed amber for now.
-    // Here we will reuse error for semantic mapping or inject a custom variable if needed.
-    '--sys-warn': '#ffa000', // Keeps existing non-dynamic default or implement extension ref
+    // Extensions for Semantic Feedback
+    // M3 doesn't auto-generate "Success" or "Warn", so we use accessible statics or map to slots.
+    '--sys-warn': '#ffa000',
+    '--sys-success': isDark ? '#81c784' : '#2e7d32', // Green 300 (Dark) / Green 800 (Light)
 
     // Surface / Background
     '--sys-background': toHex(scheme.background),
@@ -104,7 +106,10 @@ function mapSchemeToCssVars(scheme: Scheme): CssVariableMap {
     '--sys-outline-variant': toHex(scheme.outlineVariant),
     '--sys-surface-border': toHex(scheme.outlineVariant), // Alias for existing app usage
 
-    // Interacttion States (Simulated opacities)
+    // Inverse - Removed to satisfy TS strict checks against @material/material-color-utilities v0.4.0 types
+    // The visual theme will rely on standard surface contrast for tooltips.
+
+    // Interaction States (Simulated opacities for Ripple/Hover)
     '--sys-hover': toHex(scheme.onSurface) + '14', // 8% opacity
     '--sys-selected': toHex(scheme.primary) + '1f', // 12% opacity
     '--sys-focus': toHex(scheme.onSurface) + '1f', // 12% opacity

@@ -20,9 +20,6 @@ describe('VizHeatmapComponent', () => {
 
   /**
    * Setup global browser mocks for Material components.
-   * Patches `window.matchMedia` to support CDK BreakpointObserver used by MatTooltip.
-   * This logic is required for JSDOM environments that lack full media query support,
-   * specifically providing the deprecated `addListener` method which some CDK versions check for.
    */
   beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -115,7 +112,7 @@ describe('VizHeatmapComponent', () => {
     expect(component.getCellTooltip(m, '1', 'A')).toContain('-5');
   });
 
-  it('should use fallback range when all values equal', () => {
+  it('should use fallback range (color-mix) when all values equal', () => {
     const data = {
       columns: ['svc', 'hr', 'val'],
       data: [{ svc: 'A', hr: 1, val: 0 }],
@@ -125,6 +122,8 @@ describe('VizHeatmapComponent', () => {
 
     const m = component.matrix();
     const color = component.getCellColor(m, '1', 'A');
-    expect(color).toContain('rgba');
+    // Expect modern color-mix syntax instead of legacy rgba
+    expect(color).toContain('color-mix(in srgb');
+    expect(color).toContain('var(--sys-error)');
   });
 });

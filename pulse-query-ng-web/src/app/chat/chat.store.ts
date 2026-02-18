@@ -19,8 +19,6 @@ import {
   MessageResponse,
   MessageCreate,
   ConversationCreate,
-  MessageVoteRequest,
-  ConversationUpdate,
 } from '../api-client';
 
 /** Chat State interface. */
@@ -98,7 +96,7 @@ export class ChatStore implements OnDestroy {
       )
       .subscribe({
         next: (list: ConversationResponse[]) => this.patch({ conversations: list }),
-        error: (err: any) => this.handleError(err),
+        error: (err: unknown) => this.handleError(err),
       });
   }
 
@@ -113,7 +111,7 @@ export class ChatStore implements OnDestroy {
       )
       .subscribe({
         next: (msgs: MessageResponse[]) => this.patch({ messages: msgs }),
-        error: (err: any) => this.handleError(err),
+        error: (err: unknown) => this.handleError(err),
       });
   }
 
@@ -152,7 +150,7 @@ export class ChatStore implements OnDestroy {
               messages: conv.messages || [],
             });
           },
-          error: (err: any) => {
+          error: (err: unknown) => {
             this.patch({ messages: [] });
             this.handleError(err);
           },
@@ -166,7 +164,7 @@ export class ChatStore implements OnDestroy {
           next: (aiMsg: MessageResponse) => {
             this.patch({ messages: [...this.messages(), aiMsg] });
           },
-          error: (err: any) => {
+          error: (err: unknown) => {
             const rolledBack = this.messages().filter((m) => m.id !== tempUserMsg.id);
             this.patch({ messages: rolledBack });
             this.handleError(err);
@@ -175,7 +173,14 @@ export class ChatStore implements OnDestroy {
     }
   }
 
-  /** Vote Candidate. */
+  /**
+   * Vote for a Candidate.
+   * Optimistically updates the UI to reflect the selection, then syncs with API.
+   * Promotes the candidate content to the main message body.
+   *
+   * @param {string} messageId - The parent message ID.
+   * @param {string} candidateId - The selected candidate ID.
+   */
   voteCandidate(messageId: string, candidateId: string): void {
     const activeId = this.activeConversationId();
     if (!activeId) return;
@@ -185,17 +190,24 @@ export class ChatStore implements OnDestroy {
     const idx = currentMsgs.findIndex((m) => m.id === messageId);
     if (idx === -1) return;
 
+    // Use spread for shallow copy (safer for tests than structuredClone)
     const msg = { ...currentMsgs[idx] };
     const cand = msg.candidates?.find((c) => c.id === candidateId);
     if (!cand) return;
 
-    msg.content = cand.content;
-    msg.sql_snippet = cand.sql_snippet;
+    // Ensure we handle potential undefined/null fields safely
+    msg.content = cand.content || '';
+    msg.sql_snippet = cand.sql_snippet || null; // Explicit null if undefined
     const selectedHash = cand.sql_hash;
-    msg.candidates = msg.candidates?.map((c) => ({
-      ...c,
-      is_selected: selectedHash ? c.sql_hash === selectedHash : c.id === candidateId,
-    }));
+
+    // Update selection state for all candidates (handles grouping by SQL Hash)
+    // Create new array to maintain immutability
+    if (msg.candidates) {
+      msg.candidates = msg.candidates.map((c) => ({
+        ...c,
+        is_selected: selectedHash ? c.sql_hash === selectedHash : c.id === candidateId,
+      }));
+    }
 
     const newMsgs = [...currentMsgs];
     newMsgs[idx] = msg;
@@ -205,10 +217,23 @@ export class ChatStore implements OnDestroy {
       .voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost(activeId, messageId, {
         candidate_id: candidateId,
       })
-      .subscribe({ error: (err) => this.handleError(err) });
+      .subscribe({
+        next: (serverMsg: MessageResponse) => {
+          // Re-synchronize with server truth
+          const safeMsgs = [...this.messages()];
+          const targetIdx = safeMsgs.findIndex((m) => m.id === messageId);
+          if (targetIdx !== -1) {
+            safeMsgs[targetIdx] = serverMsg;
+            this.patch({ messages: safeMsgs });
+          }
+        },
+        error: (err: unknown) => {
+          // Rollback on error
+          this.patch({ messages: currentMsgs });
+          this.handleError(err);
+        },
+      });
   }
-
-  // --- New Methods ---
 
   /** Deletes conversation. */
   deleteConversation(id: string): void {
@@ -221,7 +246,7 @@ export class ChatStore implements OnDestroy {
     }
 
     this.chatApi.deleteConversationApiV1ConversationsConversationIdDelete(id).subscribe({
-      error: (err) => {
+      error: (err: unknown) => {
         this.patch({ conversations: currentList }); // Rollback
         this.handleError(err);
       },
@@ -241,7 +266,7 @@ export class ChatStore implements OnDestroy {
     this.chatApi
       .updateConversationApiV1ConversationsConversationIdPut(id, { title: newTitle })
       .subscribe({
-        error: (err) => {
+        error: (err: unknown) => {
           this.patch({ conversations: currentList });
           this.handleError(err);
         },

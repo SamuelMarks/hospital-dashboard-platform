@@ -1,8 +1,10 @@
 /**
  * @fileoverview Reusable SQL Code Block Component.
  *
- * Renders a readonly snippet of SQL with syntax highlighting (via Prism/Simple)
+ * Renders a readonly snippet of SQL with syntax highlighting (via simple regex)
  * and an actionable "Run" button to open the query in the main Scratchpad.
+ * Designed to look like a dark-mode editor by default, preserving readability
+ * in both Light/Dark app modes.
  */
 
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
@@ -26,7 +28,8 @@ import { MatIconModule } from '@angular/material/icon';
         border: 1px solid var(--sys-surface-border);
         border-radius: 8px;
         overflow: hidden;
-        background-color: #282c34; /* Dark editor logic */
+        /* Force dark background for code readability regardless of theme */
+        background-color: #282c34;
         color: #abb2bf;
       }
       .header {
@@ -49,7 +52,7 @@ import { MatIconModule } from '@angular/material/icon';
         line-height: 1.5;
         overflow-x: auto;
       }
-      /* Simple Syntax Highlighting Tokens (Matches dark theme) */
+      /* Simple Syntax Highlighting Tokens (Matches One Dark theme) */
       .keyword {
         color: #c678dd;
         font-weight: bold;
@@ -68,23 +71,29 @@ import { MatIconModule } from '@angular/material/icon';
   templateUrl: './sql-snippet.component.html',
 })
 export class SqlSnippetComponent {
-  /** The SQL string to display. */
+  /**
+   * The SQL string to display and highlight.
+   */
   /* istanbul ignore next */
-  readonly sql = input.required<string>();
+  readonly sql = input<string | null | undefined>('');
 
-  /** Event emitted when user clicks "Run". Payload is the SQL string. */
+  /**
+   * Event emitted when user clicks "Run". Payload is the SQL string.
+   */
   readonly run = output<string>();
 
   /**
    * Computes simple HTML highlighting for basic SQL keywords.
    * Provides visual structure without a heavy library dependency.
+   *
+   * @returns {string} Safe HTML string with span tags for coloring.
    */
   get highlightedSql(): string {
     let code = this.sql() || '';
-    // Escape HTML
+    // Escape HTML to prevention injection
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // Tokens
+    // Token Replace
     code = code.replace(
       /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|inner|outer|ON|AND|OR|AS|WITH)\b/gi,
       '<span class="keyword">$1</span>',
@@ -96,8 +105,23 @@ export class SqlSnippetComponent {
     return code;
   }
 
-  /** Copy. */
+  /**
+   * Safe emission handler for the template.
+   */
+  emitRun(): void {
+    const val = this.sql();
+    if (val) {
+      this.run.emit(val);
+    }
+  }
+
+  /**
+   * Copies the raw SQL to the system clipboard.
+   */
   copy(): void {
-    navigator.clipboard.writeText(this.sql());
+    const val = this.sql();
+    if (val) {
+      navigator.clipboard.writeText(val);
+    }
   }
 }

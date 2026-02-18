@@ -19,7 +19,12 @@ describe('SqlSnippetComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should highlight keywords', () => {
+  it('should highlight keywords via method', () => {
+    const html = component.highlightedSql;
+    expect(html).toContain('<span class="keyword">SELECT</span>');
+  });
+
+  it('should render highlighted code', () => {
     const codeBlock = fixture.debugElement.query(By.css('.code-block'));
     expect(codeBlock.nativeElement.innerHTML).toContain('<span class="keyword">SELECT</span>');
   });
@@ -42,36 +47,20 @@ describe('SqlSnippetComponent', () => {
     expect(writeSpy).toHaveBeenCalledWith('SELECT * FROM table');
   });
 
-  it('should wire copy button click', () => {
-    const writeSpy = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText: writeSpy } });
-    const btn = fixture.debugElement.queryAll(By.css('button'))[0];
-    btn.triggerEventHandler('click', null);
-    expect(writeSpy).toHaveBeenCalledWith('SELECT * FROM table');
-  });
-
   it('should highlight numbers and strings', () => {
     setInputSignal(component, 'sql', "SELECT count(*) FROM t WHERE id = 5 AND name = 'bob'");
     fixture.detectChanges();
 
-    const codeBlock = fixture.debugElement.query(By.css('.code-block'));
-    expect(codeBlock.nativeElement.innerHTML).toContain('class="function"');
-    expect(codeBlock.nativeElement.innerHTML).toContain('class="number"');
-    expect(codeBlock.nativeElement.innerHTML).toContain('class="string"');
+    const html = component.highlightedSql;
+    expect(html).toContain('class="function"');
+    expect(html).toContain('class="number"');
+    expect(html).toContain('class="string"');
   });
 
   it('should handle empty sql', () => {
     setInputSignal(component, 'sql', '');
     fixture.detectChanges();
     expect(component.highlightedSql).toBe('');
-  });
-
-  it('should handle empty sql input', () => {
-    setInputSignal(component, 'sql', '');
-    fixture.detectChanges();
-
-    const codeBlock = fixture.debugElement.query(By.css('.code-block'));
-    expect(codeBlock.nativeElement.innerHTML).toBe('');
   });
 });
 

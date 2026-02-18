@@ -69,6 +69,7 @@ async def test_create_conversation_candidates_flow(client: AsyncClient, mock_use
 async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth, db_session) -> None:
   """
   Test that voting selects a candidate and promotes its content.
+  Also verifies the returned object has eager loaded candidates.
   """
   # 1. Setup Data
   conv = Conversation(user_id=mock_user_auth.id, title="Vote Chat")
@@ -80,7 +81,12 @@ async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth, db_sessi
   await db_session.commit()
 
   cand = MessageCandidate(
-    message_id=msg.id, model_name="Winner", content="Winning Content", sql_snippet="SELECT WIN", is_selected=False
+    message_id=msg.id,
+    model_name="Winner",
+    content="Winning Content",
+    sql_snippet="SELECT WIN",
+    is_selected=False,
+    sql_hash="win-hash",
   )
   db_session.add(cand)
   await db_session.commit()
@@ -97,6 +103,7 @@ async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth, db_sessi
   assert data["content"] == "Winning Content"
   assert data["sql_snippet"] == "SELECT WIN"
 
+  # 4. Verify Relations were eagerly loaded and correctly updated
   target = next(c for c in data["candidates"] if c["id"] == str(cand.id))
   assert target["is_selected"] is True
 

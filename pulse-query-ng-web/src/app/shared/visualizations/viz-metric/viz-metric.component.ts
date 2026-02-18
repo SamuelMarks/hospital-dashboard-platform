@@ -11,11 +11,11 @@ import { CommonModule } from '@angular/common';
  * Standard Metric Data Contract.
  */
 export interface MetricData {
-  /** value property. */
+  /** The primary numeric or string value. */
   value: number | string;
-  /** label property. */
+  /** Optional label override from the query. */
   label?: string;
-  /** trend property. */
+  /** Percentage trend for display. */
   trend?: number;
   /** Array of numeric values for sparkline rendering. */
   trend_data?: number[];
@@ -25,9 +25,11 @@ export interface MetricData {
  * Partial configuration schema for threshold logic.
  */
 export interface MetricConfig {
-  /** thresholds property. */
+  /** thresholds configuration. */
   thresholds?: {
+    /** Warning threshold value. */
     warning?: number;
+    /** Critical threshold value. */
     critical?: number;
   };
 }
@@ -37,7 +39,7 @@ export interface MetricConfig {
  *
  * **Features:**
  * - Displays primary value with Material Headline typography.
- * - Supports trend indicator (green/red) if `trend` property exists in data.
+ * - Supports trend indicator (green/red) based on semantic Theme variables.
  * - **Alerting:** Applies styling classes (`text-warn`, `text-critical`) if value exceeds configured thresholds.
  * - **Micro-Charts:** Renders an SVG Sparkline if `trend_data` is provided.
  */
@@ -60,7 +62,8 @@ export interface MetricConfig {
       }
       .metric-value {
         font-weight: 500;
-        color: #1976d2; /* Primary Blue */
+        /* Use System Primary Color */
+        color: var(--sys-primary);
         margin-bottom: 8px;
         transition: color 0.3s ease;
         position: relative;
@@ -69,7 +72,7 @@ export interface MetricConfig {
       .metric-label {
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: rgba(0, 0, 0, 0.6);
+        color: var(--sys-text-secondary);
         position: relative;
         z-index: 2;
       }
@@ -79,19 +82,20 @@ export interface MetricConfig {
         position: relative;
         z-index: 2;
       }
+      /* Use Semantic Variables for Trends */
       .trend-pos {
-        color: #2e7d32;
+        color: var(--sys-success, #2e7d32);
       }
       .trend-neg {
-        color: #c62828;
+        color: var(--sys-error);
       }
 
       /* Conditional Threshold Styles */
       .val-warn {
-        color: var(--sys-warn, #ffa000) !important;
+        color: var(--sys-warn) !important;
       }
       .val-critical {
-        color: var(--sys-error, #d32f2f) !important;
+        color: var(--sys-error) !important;
         font-weight: 700;
         transform: scale(1.1);
       }
@@ -108,17 +112,17 @@ export interface MetricConfig {
         pointer-events: none;
       }
       .spark-pos {
-        stroke: #2e7d32;
+        stroke: var(--sys-success, #2e7d32);
       }
       .spark-neg {
-        stroke: #c62828;
+        stroke: var(--sys-error);
       }
       .spark-fill-pos {
-        fill: #2e7d32;
+        fill: var(--sys-success, #2e7d32);
         opacity: 0.2;
       }
       .spark-fill-neg {
-        fill: #c62828;
+        fill: var(--sys-error);
         opacity: 0.2;
       }
     `,
@@ -136,7 +140,10 @@ export class VizMetricComponent {
   /* istanbul ignore next */
   readonly config = input<MetricConfig | null>(null);
 
-  /** Extracted Value for display. */
+  /**
+   * Extracted Value for display.
+   * Parses various data shapes (DuckDB result, primitive, Metric object).
+   */
   /* istanbul ignore next */
   readonly displayValue: Signal<string | number> = computed(() => {
     const d = this.data();
@@ -167,7 +174,10 @@ export class VizMetricComponent {
     return '-';
   });
 
-  /** Extracted Label. */
+  /**
+   * Extracted Label.
+   * Defaults to title override if present, otherwise infers from data.
+   */
   /* istanbul ignore next */
   readonly displayLabel: Signal<string> = computed(() => {
     const override = this.titleOverride();
@@ -183,7 +193,9 @@ export class VizMetricComponent {
     return '';
   });
 
-  /** Optional trend percentage. */
+  /**
+   * Optional trend percentage.
+   */
   /* istanbul ignore next */
   readonly parsedTrend: Signal<number | null> = computed(() => {
     const d = this.data();
@@ -193,18 +205,22 @@ export class VizMetricComponent {
     return null;
   });
 
-  /** Trend Series extraction. */
+  /**
+   * Trend Series extraction for Sparklines.
+   */
   /* istanbul ignore next */
   readonly trendSeries: Signal<number[]> = computed(() => {
     const d = this.data();
-    // 1. Explicit property
     if (d && typeof d === 'object' && Array.isArray(d.trend_data)) {
       return d.trend_data;
     }
     return [];
   });
 
-  /** Whether trend Up. */
+  /**
+   * Determines if trend is upward (positive).
+   * Used for coloring sparklines.
+   */
   /* istanbul ignore next */
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
@@ -223,14 +239,12 @@ export class VizMetricComponent {
 
     const min = Math.min(...raw);
     const max = Math.max(...raw);
-    // Avoid division by zero if flat line
     const range = max - min || 1;
 
-    // Normalize to 0-100 (x) and 0-50 (y, inverted)
     const points = raw.map((val, index) => {
       const x = (index / (raw.length - 1)) * 100;
-      const normalizedY = (val - min) / range; // 0.0 to 1.0
-      const y = 50 - (normalizedY * 40 + 5); // 5px padding, inverted
+      const normalizedY = (val - min) / range;
+      const y = 50 - (normalizedY * 40 + 5);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
 
@@ -245,11 +259,13 @@ export class VizMetricComponent {
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;
-    // Append lines to bottom-right (100,50) and bottom-left (0,50) then close
     return `${path} L 100,50 L 0,50 Z`;
   });
 
-  /** Computes the CSS class based on thresholds. */
+  /**
+   * Computes the CSS class based on thresholds.
+   * Returns 'val-critical', 'val-warn', or empty string.
+   */
   /* istanbul ignore next */
   readonly alertClass: Signal<string> = computed(() => {
     const val = this.displayValue();

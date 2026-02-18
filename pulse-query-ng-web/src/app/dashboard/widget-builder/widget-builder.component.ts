@@ -18,7 +18,7 @@ import {
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
-// Material
+// Material Imports
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,36 +30,48 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { provideNativeDateAdapter } from '@angular/material/core';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatCardModule } from '@angular/material/card';
+import { MatDividerModule } from '@angular/material/divider';
 
-// Core
+// Core Imports
 import {
   DashboardsService,
   ExecutionService,
   TemplatesService,
   TemplateResponse,
   WidgetIn,
-  WidgetCreateSql, // Import
-  WidgetCreateHttp, // Import
-  WidgetCreateText, // Import
   WidgetUpdate,
   WidgetResponse,
 } from '../../api-client';
 import { DashboardStore } from '../dashboard.store';
 
-// Components
-import { DynamicFormComponent } from '../template-wizard/dynamic-form.component';
+// Component Imports
 import { SqlBuilderComponent } from '../../editors/sql-builder.component';
 import { HttpConfigComponent } from '../../editors/http-config.component';
 import { WidgetComponent } from '../../widget/widget.component';
 import { TextEditorComponent } from '../../editors/text-editor.component';
 
-/** Widget Builder Data interface. */
+/**
+ * Data injected into the Widget Builder Dialog.
+ */
 export interface WidgetBuilderData {
-  /** dashboardId property. */
+  /** The ID of the dashboard being edited. */
   dashboardId: string;
 }
 
-/** Widget Builder component. */
+/**
+ * Widget Builder Component.
+ *
+ * A dialog-based wizard for creating and configuring new dashboard widgets.
+ * Supports:
+ * - Template Selection from Marketplace.
+ * - Custom SQL Entry.
+ * - HTTP Widget Configuration.
+ * - Static Text/Markdown.
+ * - Live Preview.
+ */
 @Component({
   selector: 'app-widget-builder',
   imports: [
@@ -77,12 +89,15 @@ export interface WidgetBuilderData {
     MatSelectModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
-    DynamicFormComponent,
+    MatRadioModule,
+    MatCardModule,
+    MatDividerModule,
     SqlBuilderComponent,
     HttpConfigComponent,
     WidgetComponent,
     TextEditorComponent,
   ],
+  providers: [provideNativeDateAdapter()],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './widget-builder.component.html',
   styles: [
@@ -92,6 +107,7 @@ export interface WidgetBuilderData {
         height: 85vh;
         width: 100vw;
         max-width: 1200px;
+        background-color: var(--sys-background);
       }
 
       /* Template Grid */
@@ -103,6 +119,7 @@ export interface WidgetBuilderData {
         cursor: pointer;
         transition: all 0.2s;
         outline: none;
+        color: var(--sys-text-primary);
       }
       .template-card:hover {
         background-color: var(--sys-hover);
@@ -115,7 +132,7 @@ export interface WidgetBuilderData {
         box-shadow: 0 0 0 1px var(--sys-primary);
       }
 
-      /* Custom Option Cards */
+      /* Source Options */
       .source-option {
         border: 1px solid var(--sys-surface-border);
         border-radius: 12px;
@@ -123,7 +140,8 @@ export interface WidgetBuilderData {
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
-        background-color: white;
+        background-color: var(--sys-surface);
+        color: var(--sys-text-primary);
       }
       .source-option:hover {
         background-color: var(--sys-hover);
@@ -135,7 +153,7 @@ export interface WidgetBuilderData {
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       }
 
-      /* Viz Selector */
+      /* Viz Selection */
       .viz-option {
         border: 1px solid var(--sys-surface-border);
         border-radius: 4px;
@@ -143,6 +161,7 @@ export interface WidgetBuilderData {
         text-align: center;
         cursor: pointer;
         color: var(--sys-text-secondary);
+        background-color: var(--sys-surface);
       }
       .viz-option:hover {
         background-color: var(--sys-hover);
@@ -152,53 +171,56 @@ export interface WidgetBuilderData {
         color: var(--sys-primary);
         border-color: var(--sys-primary);
       }
+
+      /* Dialog Header Override */
+      .dialog-header {
+        background-color: var(--sys-surface);
+        color: var(--sys-text-primary);
+        border-bottom: 1px solid var(--sys-surface-border);
+      }
     `,
   ],
 })
-/* v8 ignore start */
 export class WidgetBuilderComponent implements OnInit, OnDestroy {
-  /* v8 ignore stop */
-  /** fb property. */
+  /** FormBuilder for reactive forms. */
   private readonly fb = inject(FormBuilder);
-  /** Data. */
+  /** Injected data containing dashboard context. */
   readonly data = inject<WidgetBuilderData>(MAT_DIALOG_DATA);
-  /** dialogRef property. */
+  /** Reference to the hosting dialog. */
   private readonly dialogRef = inject(MatDialogRef<WidgetBuilderComponent>);
-  /** dashboardApi property. */
+  /** Dashboard API Client. */
   private readonly dashboardApi = inject(DashboardsService);
-  /** templatesApi property. */
+  /** Template API Client. */
   private readonly templatesApi = inject(TemplatesService);
-  /** execApi property. */
+  /** Execution API Client. */
   private readonly execApi = inject(ExecutionService);
-
-  // Pivot to DashboardStore for data checking
-  /** Store. */
+  /** Global Dashboard Store. */
   readonly store = inject(DashboardStore);
 
-  // --- STATE SIGNALS ---
-  /** Active Mode. */
+  // ... signals
+  /** Active wizard mode (Template vs Custom). */
   /* istanbul ignore next */
   readonly activeMode = signal<'template' | 'custom' | null>(null);
-  /** Selected Template. */
+  /** Currently selected template object. */
   /* istanbul ignore next */
   readonly selectedTemplate = signal<TemplateResponse | null>(null);
-  /** Selected Custom Type. */
+  /** Currently selected custom type. */
   /* istanbul ignore next */
   readonly selectedCustomType = signal<'SQL' | 'HTTP' | 'TEXT' | null>(null);
-  /** Draft Widget. */
+  /** The temporary widget being configured. */
   /* istanbul ignore next */
-  readonly draftWidget = signal<WidgetResponse | null>(null); // The widget being built
+  readonly draftWidget = signal<WidgetResponse | null>(null);
 
-  /** Templates. */
+  /** List of available templates. */
   /* istanbul ignore next */
   readonly templates = signal<TemplateResponse[]>([]);
-  /** Loading Templates. */
+  /** Template loading state. */
   /* istanbul ignore next */
   readonly loadingTemplates = signal(false);
-  /** Whether busy. */
+  /** Global busy/saving state. */
   /* istanbul ignore next */
   readonly isBusy = signal(false);
-  /** Categories. */
+  /** Filter categories for templates. */
   /* istanbul ignore next */
   readonly categories = signal<string[]>([
     'Operational',
@@ -207,44 +229,62 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     'Financial',
     'Flow',
   ]);
-  /** Selected Category. */
+  /** Currently active category filter. */
   /* istanbul ignore next */
   readonly selectedCategory = signal<string | null>(null);
 
-  // Derived Helpers
-  /** Selected Template Id. */
+  // Helpers
+  /** ID of the selected template. */
   /* istanbul ignore next */
   readonly selectedTemplateId = computed(() => this.selectedTemplate()?.id);
-  /** Draft Widget Id. */
+  /** ID of the current draft widget. */
   /* istanbul ignore next */
   readonly draftWidgetId = computed(() => this.draftWidget()?.id);
-  /** Params Schema. */
+  /** Parameters schema from selected template. */
   /* istanbul ignore next */
   readonly paramsSchema = computed(() => this.selectedTemplate()?.parameters_schema || {});
 
-  // Form Steps
-  /** Source Form. */
-  readonly sourceForm = this.fb.group({}); // Dummy for Step 1 validatior
+  /**
+   * Computed property to resolve the current widget type active in the builder.
+   * This bridges the gap between `draftWidget().type` and the template's requirements.
+   */
+  /* istanbul ignore next */
+  readonly currentType = computed(() => this.draftWidget()?.type || 'SQL');
 
-  /** Template Params. */
+  /**
+   * Alias for template usage to match `selectedType()` calls in HTML.
+   */
+  readonly selectedType = this.currentType;
+
+  /** Unused source form group (Step 1). */
+  readonly sourceForm = this.fb.group({});
+
+  /** Selection form group. */
+  readonly selectionForm = this.fb.group({
+    mode: ['predefined', Validators.required],
+    templateId: [''],
+    rawSql: [''],
+  });
+
+  /** Parameter values for template injection. */
   /* istanbul ignore next */
   readonly templateParams = signal<Record<string, any>>({});
-  /** Template Form Valid. */
+  /** Validity of the parameter form. */
   /* istanbul ignore next */
   readonly templateFormValid = signal(true);
 
   // Visuals Config
-  /** Title Control. */
+  /** Widget Title Control. */
   readonly titleControl = new FormControl('', {
     nonNullable: true,
     validators: [Validators.required],
   });
-  /** X Key Control. */
+  /** X-Axis Key Control. */
   readonly xKeyControl = new FormControl<string | null>(null);
-  /** Y Key Control. */
+  /** Y-Axis Key Control. */
   readonly yKeyControl = new FormControl<string | null>(null);
 
-  /** Visualizations. */
+  /** List of supported visualizations. */
   readonly visualizations = [
     { id: 'table', icon: 'table_chart', label: 'Table' },
     { id: 'metric', icon: 'exposure_plus_1', label: 'Metric Card' },
@@ -254,20 +294,19 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     { id: 'scalar', icon: 'speed', label: 'Gauge' },
   ];
 
-  /** Show Axes Config. */
+  /** Whether to show axis config options. */
   /* istanbul ignore next */
   readonly showAxesConfig = computed(() => {
-    // TEXT type skips visualization step logic usually, or hides this part
     if (this.draftWidget()?.type === 'TEXT') return false;
     const viz = this.draftWidget()?.visualization;
     return ['bar_chart', 'pie', 'line_graph'].includes(viz || '');
   });
 
-  /** Whether pie. */
+  /** Whether visualization is Pie chart. */
   /* istanbul ignore next */
   readonly isPie = computed(() => this.draftWidget()?.visualization === 'pie');
 
-  /** Available Columns. */
+  /** Available columns from execution result. */
   /* istanbul ignore next */
   readonly availableColumns = computed(() => {
     const id = this.draftWidgetId();
@@ -276,25 +315,25 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     return (res?.columns || []) as string[];
   });
 
-  /**
-   * Computed flag to control Step 2 completion status.
-   * - Templates: Requires active form validation.
-   * - Custom: Assumed valid if step reachable (validation internal to child component).
-   */
+  /** Whether data config step is valid. */
   /* istanbul ignore next */
   readonly dataConfigured = computed(() => {
     return this.activeMode() === 'template' ? this.templateFormValid() : true;
   });
 
-  // Search Logic
-  /** search$ property. */
-  private search$ = new Subject<string>();
-  /** sub property. */
-  private sub?: Subscription;
-  /** Selected Tab. */
-  selectedTab = 0; // 0=Templates, 1=Custom
+  /** Final compiled SQL string. */
+  readonly finalSql = signal('');
+  /** Latest execution result. */
+  readonly executionResult = signal<any | null>(null);
 
-  /** Ng On Init. */
+  /** Search stream subject. */
+  private search$ = new Subject<string>();
+  /** RXJS Subscription container. */
+  private sub?: Subscription;
+  /** Active Tab Index. */
+  selectedTab = 0;
+
+  /** Initialize component. */
   ngOnInit(): void {
     this.loadTemplates();
     this.sub = this.search$
@@ -311,27 +350,29 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.yKeyControl.valueChanges.subscribe(() => this.syncVizConfig());
   }
 
-  /** Ng On Destroy. */
+  /** Cleanup on destroy. */
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
-    // Cleanup draft if not saved (Dialog closed via other means checks this too)
-    // Here we mainly ensure subscriptions dead
+    const draft = this.draftWidget();
+    // If closed without explicit save/close event, we rely on backend cleanup?
+    // In this architecture, drafts persist until explicitly saved or deleted.
+    if (draft && !this.dialogRef.getState()) {
+      // Optional cleanup logic
+    }
   }
 
-  // --- Actions ---
-
-  /** Updates search. */
+  /** Triggers search update. */
   updateSearch(e: Event) {
     this.search$.next((e.target as HTMLInputElement).value);
   }
 
-  /** Toggles category. */
+  /** Toggles category filter. */
   toggleCategory(cat: string) {
     this.selectedCategory.update((c) => (c === cat ? null : cat));
     this.loadTemplates();
   }
 
-  /** Loads templates. */
+  /** Loads templates from API. */
   loadTemplates(search?: string) {
     this.loadingTemplates.set(true);
     this.templatesApi
@@ -340,26 +381,79 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       .subscribe((t) => this.templates.set(t));
   }
 
-  /** Select Template. */
+  /** Selects a template. */
   selectTemplate(t: TemplateResponse) {
     this.selectedTemplate.set(t);
     this.activeMode.set('template');
     this.selectedCustomType.set(null);
+    this.selectionForm.patchValue({ mode: 'predefined', templateId: t.id });
   }
 
-  /** Select Custom Type. */
+  /** Selects custom type. */
   selectCustomType(type: 'SQL' | 'HTTP' | 'TEXT') {
     this.selectedCustomType.set(type);
     this.activeMode.set('custom');
     this.selectedTemplate.set(null);
+    this.selectionForm.patchValue({ mode: 'custom' });
   }
 
-  /**
-   * Transition to Configure Step.
-   * Creates the backend widget placeholder AND advances the stepper.
-   *
-   * @param stepper - Optional reference to MatStepper to trigger transition.
-   */
+  /** Validates parameters based on mode. */
+  parseParams() {
+    const mode = this.selectionForm.value.mode;
+    if (mode !== 'predefined') {
+      this.templateParams.set({});
+      this.templateFormValid.set(true);
+    }
+  }
+
+  /** Compiles template SQL with parameters. */
+  renderPreview() {
+    const t = this.selectedTemplate();
+    if (!t) return;
+
+    let sql = t.sql_template || '';
+    const values = this.templateParams();
+
+    Object.keys(values).forEach((key) => {
+      let val = values[key];
+      sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
+    });
+
+    this.finalSql.set(sql);
+    this.executeDraft(sql);
+  }
+
+  /** Executes draft SQL. */
+  private executeDraft(sql: string) {
+    const draftId = this.draftWidgetId();
+    if (!draftId) return;
+
+    this.isBusy.set(true);
+    this.dashboardApi
+      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, { config: { query: sql } })
+      .subscribe({
+        next: () => {
+          this.execApi
+            .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
+            .pipe(finalize(() => this.isBusy.set(false)))
+            .subscribe((resMap: any) => {
+              this.executionResult.set(resMap[draftId]);
+            });
+        },
+        error: () => this.isBusy.set(false),
+      });
+  }
+
+  /** Updates parameter state. */
+  handleFormChange(values: Record<string, any>) {
+    this.templateParams.set(values);
+  }
+  /** Updates parameter validation status. */
+  handleStatusChange(status: 'VALID' | 'INVALID') {
+    this.templateFormValid.set(status === 'VALID');
+  }
+
+  /** Initializes the draft widget on the server. */
   initializeDraft(stepper?: MatStepper) {
     this.isBusy.set(true);
 
@@ -373,7 +467,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       const t = this.selectedTemplate()!;
       title = t.title;
       type = 'SQL';
-      config = { query: t.sql_template }; // Raw with handlebars
+      config = { query: t.sql_template };
     } else {
       if (type === 'SQL') {
         config = { query: 'SELECT * FROM hospital_data LIMIT 5' };
@@ -382,20 +476,17 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
         visualization = 'metric';
       } else if (type === 'TEXT') {
         config = { content: '### New Text Widget\nEdit this content.' };
-        visualization = 'markdown'; // Explicit viz type for text
+        visualization = 'markdown';
         title = 'Text Block';
       }
     }
 
-    // Fix: Explicitly cast payload based on discriminator
     let payload: WidgetIn;
-
     if (type === 'SQL') {
       payload = { title, type: 'SQL', visualization, config: config as any };
     } else if (type === 'HTTP') {
       payload = { title, type: 'HTTP', visualization, config: config as any };
     } else {
-      // Enforce literal type for visualization to satisfy union
       payload = { title, type: 'TEXT', visualization: 'markdown', config: config as any };
     }
 
@@ -405,18 +496,14 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (w) => {
           this.draftWidget.set(w);
-          this.titleControl.setValue(w.title); // Init visual title
-
-          // FIX: Trigger stepper transition now that data is ready
+          this.titleControl.setValue(w.title);
           stepper?.next();
         },
         error: (e) => console.error('Draft creation failed', e),
       });
   }
 
-  /**
-   * Step 2 Action: Process Template Params
-   */
+  /** Injects parameters into SQL and executes. */
   runTemplateQuery(stepper: MatStepper) {
     const w = this.draftWidget();
     const t = this.selectedTemplate();
@@ -424,18 +511,15 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
     this.isBusy.set(true);
 
-    // 1. Inject Params
     let sql = t.sql_template;
     const params = this.templateParams();
     Object.keys(params).forEach((key) => {
       sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(params[key]));
     });
 
-    // 2. Update Widget Config
     const update: WidgetUpdate = { config: { query: sql } };
     this.dashboardApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(w.id, update).subscribe({
       next: () => {
-        // 3. Trigger Refresh to get data
         this.store.refreshWidget(w.id);
         this.isBusy.set(false);
         stepper.next();
@@ -444,58 +528,42 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Step 2 Action: Custom Flows
-   * Allows moving to visualize if we assume user has configured/run in the child component.
-   */
+  /** Refreshes data before visualization step. */
   validateDataPresence(stepper: MatStepper) {
-    // We assume the user hit "Run" in the child component.
-    // We can also trigger a refresh here just in case.
     const id = this.draftWidgetId();
     if (id) this.store.refreshWidget(id);
     stepper.next();
   }
 
-  // --- Synchronization Handlers (CRITICAL FIX) ---
-  // Keeps parent `draftWidget` state in sync with changes occurring in child components (SQL/HTTP/Text Editors).
-  // Without this, `saveAndClose()` overwrites backend updates with stale initial config.
-
-  /** Handles sql Change. */
+  /** Handles SQL change in editor. */
   onSqlChange(newSql: string) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, query: newSql } });
   }
 
-  /** Handles config Change. */
+  /** Handles Config change in editor. */
   onConfigChange(newConfig: Record<string, any>) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, ...newConfig } });
   }
 
-  /** Handles content Change. */
+  /** Handles Content change in editor. */
   onContentChange(content: string) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, content } });
   }
 
-  // --- Step 3: Visualize ---
-
-  /** Updates viz Type. */
+  /** Updates Visualization selection. */
   updateVizType(id: string) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, visualization: id });
-    // Don't save to backend yet? Or should we?
-    // Live preview in 'app-widget' relies on input.
-    // 'app-widget' uses 'widgetInput()'. Updated signal propagates.
-    // BUT 'app-widget' logic for mapping might need correct config.
   }
 
-  /** Sync Viz Config. */
+  /** Synchronizes visualization config (axes mapping) to draft widget. */
   syncVizConfig() {
     const w = this.draftWidget();
     if (!w) return;
 
-    // To see changes live in Chart, we must update the 'config' object in the draft structure
     const currentConfig = { ...w.config };
     currentConfig['xKey'] = this.xKeyControl.value;
     currentConfig['yKey'] = this.yKeyControl.value;
@@ -503,16 +571,18 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.draftWidget.set({ ...w, config: currentConfig });
   }
 
-  // --- Finalize ---
+  /** Saves and closes dialog. */
+  saveWidget() {
+    this.saveAndClose();
+  }
 
-  /** Save And Close. */
+  /** Persists widget to backend and closes. */
   saveAndClose() {
     const w = this.draftWidget();
     if (!w) return;
 
     this.isBusy.set(true);
 
-    // Commit Visual Changes (Title, Viz Type, Axis Mappings)
     const update: WidgetUpdate = {
       title: this.titleControl.value,
       visualization: w.visualization,
@@ -522,18 +592,32 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.dashboardApi
       .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(w.id, update)
       .pipe(finalize(() => this.isBusy.set(false)))
-      .subscribe(() => {
-        this.draftWidget.set(null); // Clear signal so onDestroy doesn't delete it
-        this.dialogRef.close(true);
+      .subscribe({
+        next: () => {
+          this.draftWidget.set(null);
+          this.dialogRef.close(true);
+        },
+        error: (e) => console.error(e),
       });
   }
 
-  /** Whether cel. */
+  /** Cancels creation process. */
   cancel() {
     const id = this.draftWidgetId();
     if (id) {
       this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(id).subscribe();
     }
     this.dialogRef.close(false);
+  }
+
+  /** Returns highlighted SQL html (Stub). */
+  highlightedSql(): string {
+    return '';
+  }
+  /** Syncs scroll position (Stub). */
+  syncScroll(e: Event) {}
+  /** Casts result to table data. */
+  asTableData(res: any) {
+    return res || { columns: [], data: [] };
   }
 }

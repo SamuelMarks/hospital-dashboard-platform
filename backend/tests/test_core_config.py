@@ -18,6 +18,22 @@ def test_sqlalchemy_database_uri_builds_expected_url() -> None:
   assert settings.SQLALCHEMY_DATABASE_URI == "postgresql+asyncpg://alice:secret@db.local:5433/analytics"
 
 
+def test_llm_swarm_configures_safe_local_defaults(monkeypatch) -> None:
+  """Ensure default local URL prevents port collision with backend (8000)."""
+  # Clear all external keys to trigger default path
+  monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+  monkeypatch.delenv("LLM_LOCAL_URL", raising=False)
+
+  settings = Settings()
+  swarm = settings.LLM_SWARM
+
+  local = next(s for s in swarm if s["name"] == "Local LLM")
+
+  # Assert it defaults to Ollama port (11434) not FastAPI port (8000)
+  assert "11434" in local["api_base"]
+  assert "8000" not in local["api_base"]
+
+
 def test_llm_swarm_includes_optional_providers(monkeypatch) -> None:
   """Verify the swarm expands when API keys are present."""
   monkeypatch.setenv("OPENAI_API_KEY", "k-openai")

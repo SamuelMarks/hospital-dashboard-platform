@@ -90,9 +90,11 @@ describe('ConversationComponent', () => {
     messagesSig.set([msg]);
     fixture.detectChanges();
 
-    const grid = fixture.debugElement.query(By.css('.arena-grid'));
+    // Updated Query: Class changed from .arena-grid to .candidates-grid
+    const grid = fixture.debugElement.query(By.css('.candidates-grid'));
     expect(grid).toBeTruthy();
-    const cards = fixture.debugElement.queryAll(By.css('.candidate-card'));
+    // Updated Query: Class changed from .candidate-card to .candidate-item
+    const cards = fixture.debugElement.queryAll(By.css('.candidate-item'));
     expect(cards.length).toBe(2);
   });
 
@@ -108,6 +110,7 @@ describe('ConversationComponent', () => {
     messagesSig.set([msg]);
     fixture.detectChanges();
 
+    // Button selector might adjust with Material changes, but primary color attribute remains
     const btn = fixture.debugElement.query(By.css('button[color="primary"]'));
     btn.triggerEventHandler('click', null);
 
@@ -249,13 +252,13 @@ describe('ConversationComponent', () => {
     mockStore.isGenerating.set(false);
     mockStore.error.set(null);
     fixture.detectChanges();
-    expect(fixture.debugElement.nativeElement.textContent).toContain(
-      'Start a new analysis conversation',
-    );
+
+    // Updated expectation: The empty state text was changed to "Data Assistant"
+    expect(fixture.debugElement.nativeElement.textContent).toContain('Data Assistant');
 
     mockStore.isGenerating.set(true);
     fixture.detectChanges();
-    expect(fixture.debugElement.query(By.css('.animate-bounce'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('.loading-bubble'))).toBeTruthy();
 
     mockStore.error.set('Boom');
     fixture.detectChanges();

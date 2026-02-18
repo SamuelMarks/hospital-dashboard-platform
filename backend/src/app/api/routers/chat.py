@@ -353,7 +353,7 @@ async def vote_candidate(
   if not result.scalars().first():
     raise HTTPException(status_code=404, detail="Conversation not found")
 
-  # 2. Fetch Message
+  # 2. Fetch Message with candidates loaded
   msg_res = await db.execute(
     select(Message)
     .where(Message.id == message_id, Message.conversation_id == conversation_id)
@@ -369,6 +369,7 @@ async def vote_candidate(
     raise HTTPException(status_code=404, detail="Candidate not found")
 
   # 4. Apply Vote
+  # Handle equivalence grouping via SQL Hash if present
   selected_hash = target_candidate.sql_hash
   for c in msg.candidates:
     if selected_hash and c.sql_hash == selected_hash:
@@ -381,5 +382,11 @@ async def vote_candidate(
   msg.sql_snippet = target_candidate.sql_snippet
 
   await db.commit()
-  await db.refresh(msg)
-  return msg
+
+  # 5. Reload to return refreshed state
+  # Crucial for returning the updated 'is_selected' flags to the frontend
+  # Simple 'db.refresh' might not reload the 'candidates' relationship if it's considered loaded.
+  # We force a fresh selection.
+  final_stmt = select(Message).where(Message.id == message_id).options(selectinload(Message.candidates))
+  final_result = await db.execute(final_stmt)
+  return final_result.scalars().first()

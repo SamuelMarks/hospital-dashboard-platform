@@ -1,15 +1,16 @@
 <h2 mat-dialog-title>Add Widget from Marketplace</h2>
 
 <!-- WRAPPER: Flex -->
-<div class="flex flex-col h-full overflow-hidden">
+<!-- Fix: Use inline styles or vars for backgrounds to support dark mode -->
+<div class="flex flex-col h-full overflow-hidden" style="background-color: var(--sys-background)">
   <mat-dialog-content class="flex-grow">
-    <!-- Fix: disable animation to prevent visibility timeouts in E2E tests -->
+    <!-- Disable animation for E2E speed/stability -->
     <mat-stepper [linear]="true" #stepper class="h-full" animationDuration="0ms">
       <!-- STEP 1: Selection -->
       <mat-step [stepControl]="selectionForm">
         <ng-template matStepLabel>Select Template</ng-template>
 
-        <div class="step-content pt-4">
+        <div class="step-content pt-4" style="background-color: var(--sys-background)">
           <form [formGroup]="selectionForm">
             <mat-radio-group formControlName="mode" class="flex gap-6 mb-4">
               <mat-radio-button value="predefined">Marketplace</mat-radio-button>
@@ -42,8 +43,12 @@
 
               <!-- Grid -->
               <div
-                class="template-grid bg-gray-50 rounded border p-2 overflow-y-auto"
-                style="height: 400px; border-color: var(--sys-surface-border)"
+                class="template-grid rounded border p-2 overflow-y-auto"
+                style="
+                  height: 400px;
+                  border-color: var(--sys-surface-border);
+                  background-color: var(--sys-surface-variant);
+                "
               >
                 @for (t of templates(); track t.id) {
                   <mat-card
@@ -54,10 +59,19 @@
                     (keydown.enter)="selectTemplate(t)"
                   >
                     <mat-card-header>
-                      <mat-card-title class="text-sm font-medium">{{ t.title }}</mat-card-title>
-                      <mat-card-subtitle class="text-xs">{{ t.category }}</mat-card-subtitle>
+                      <mat-card-title
+                        class="text-sm font-medium"
+                        style="color: var(--sys-primary)"
+                        >{{ t.title }}</mat-card-title
+                      >
+                      <mat-card-subtitle class="text-xs" style="color: var(--sys-text-secondary)">{{
+                        t.category
+                      }}</mat-card-subtitle>
                     </mat-card-header>
-                    <mat-card-content class="mt-2 text-xs text-gray-600 line-clamp-3">
+                    <mat-card-content
+                      class="mt-2 text-xs text-gray-600 line-clamp-3"
+                      style="color: var(--sys-text-secondary)"
+                    >
                       {{ t.description }}
                     </mat-card-content>
                   </mat-card>
@@ -69,11 +83,18 @@
           <!-- Custom -->
           @if (selectionForm.get('mode')?.value === 'custom') {
             <div class="flex flex-col gap-2 mt-4" [formGroup]="selectionForm">
-              <label class="text-sm font-medium">Custom Logic (SQL)</label>
+              <label class="text-sm font-medium" style="color: var(--sys-text-primary)"
+                >Custom Logic (SQL)</label
+              >
               <textarea
                 matInput
                 formControlName="rawSql"
-                class="sql-preview h-64 border p-2 font-mono text-sm rounded bg-gray-50"
+                class="sql-preview h-64 border p-2 font-mono text-sm rounded"
+                style="
+                  background-color: var(--sys-surface-variant);
+                  border-color: var(--sys-surface-border);
+                  color: var(--sys-text-primary);
+                "
                 [placeholder]="placeholderText"
                 aria-label="SQL Code Editor"
               ></textarea>
@@ -85,8 +106,18 @@
       <!-- STEP 2: Parameters -->
       <mat-step [completed]="paramsValid()">
         <ng-template matStepLabel>Configure Parameters</ng-template>
-        <div class="step-content pt-4 h-96 overflow-y-auto">
-          <p class="text-sm text-gray-600 bg-blue-50 p-3 rounded border border-blue-100 mb-6">
+        <div
+          class="step-content pt-4 h-96 overflow-y-auto"
+          style="background-color: var(--sys-background)"
+        >
+          <p
+            class="text-sm text-gray-600 p-3 rounded border mb-6"
+            style="
+              background-color: var(--sys-primary-container);
+              color: var(--sys-on-primary-container);
+              border-color: var(--sys-primary);
+            "
+          >
             Fill in the values below to generate your report.
           </p>
           <app-dynamic-form
@@ -100,10 +131,18 @@
       <!-- STEP 3: Preview -->
       <mat-step>
         <ng-template matStepLabel>Preview & Save</ng-template>
-        <div class="step-content pt-4 h-full flex flex-col">
+        <div
+          class="step-content pt-4 h-full flex flex-col"
+          style="background-color: var(--sys-background)"
+        >
           <div class="flex flex-col gap-2 mb-4">
-            <label class="text-sm font-bold">Generated Query</label>
-            <div class="editor-wrapper shadow-inner h-48 border rounded overflow-hidden relative">
+            <label class="text-sm font-bold" style="color: var(--sys-text-primary)"
+              >Generated Query</label
+            >
+            <div
+              class="editor-wrapper shadow-inner h-48 border rounded overflow-hidden relative"
+              style="border-color: var(--sys-surface-border)"
+            >
               <div
                 class="highlight-layer absolute inset-0 p-4"
                 [innerHTML]="highlightedSql()"
@@ -119,21 +158,27 @@
 
           <div
             class="results-container relative flex-grow border rounded overflow-hidden"
-            style="min-height: 250px"
+            style="
+              min-height: 250px;
+              background-color: var(--sys-surface);
+              border-color: var(--sys-surface-border);
+            "
           >
             @if (isRunning()) {
-              <div class="absolute inset-0 z-10 bg-white/80 flex items-center justify-center">
+              <div
+                class="absolute inset-0 z-10 flex items-center justify-center bg-white/80"
+                style="background-color: rgba(var(--sys-surface), 0.8)"
+              >
                 <mat-spinner diameter="32"></mat-spinner>
               </div>
             }
 
             @if (executionResult(); as res) {
               @if (res.error) {
-                <div class="p-4 text-red-600 flex items-center justify-center">
+                <div class="p-4 flex items-center justify-center" style="color: var(--sys-error)">
                   <mat-icon>error</mat-icon> {{ res.error }}
                 </div>
               } @else {
-                <!-- Optimization: Defer loading visualization until this step is reached -->
                 @defer {
                   <viz-table [dataSet]="asTableData(res)" class="h-full block w-full"></viz-table>
                 } @loading {
@@ -148,7 +193,10 @@
   </mat-dialog-content>
 
   <!-- ACTIONS -->
-  <div class="bg-gray-100 p-4 border-t flex justify-end items-center gap-3 flex-none z-10">
+  <div
+    class="p-4 border-t flex justify-end items-center gap-3 flex-none z-10"
+    style="background-color: var(--sys-surface); border-color: var(--sys-surface-border)"
+  >
     <button mat-button (click)="cancel()">Cancel</button>
     @if (stepper.selectedIndex > 0) {
       <button mat-button (click)="stepper.previous()">Back</button>

@@ -18,7 +18,7 @@ vi.mock('@material/material-color-utilities', () => {
     // Stub theme generation
     themeFromSourceColor: (sourceArgb: number) => ({
       schemes: {
-        // Return a proxy that provides a white color int for any property accessed (primary, surface, etc.)
+        // Return a proxy that provides a white color int for any property accessed
         light: new Proxy({}, { get: () => 0xffffffff }),
         dark: new Proxy({}, { get: () => 0xffffffff }),
       },
@@ -48,29 +48,23 @@ describe('ColorUtils', () => {
     const map = generateThemeVariables('not-a-color', false);
 
     // Should fallback to Blue (#1976d2 which results in a specific primary ARGB)
-    // We check existence and non-empty
     expect(map['--sys-primary']).toBeTruthy();
   });
 
-  it('should generate different palettes for Light vs Dark mode', () => {
-    const seed = '#00ff00';
-    const light = generateThemeVariables(seed, false);
-    const dark = generateThemeVariables(seed, true);
+  it('should include semantic success colors', () => {
+    const light = generateThemeVariables('#0000ff', false);
+    const dark = generateThemeVariables('#0000ff', true);
 
-    // Surface colors differ significantly between light/dark
-    // Note: With the mock Proxy, exact values might match if logic isn't complex,
-    // but the mapping function processes them. Since we use the same mock for both,
-    // we expect the variable keys to exist.
-    // In a real test with real logic, these would differ.
-    // Here we mainly verify it executes without crashing.
-    expect(light['--sys-surface']).toBeDefined();
-    expect(dark['--sys-surface']).toBeDefined();
+    expect(light['--sys-success']).toBeDefined();
+    expect(dark['--sys-success']).toBeDefined();
+    // Verify differentiation
+    expect(light['--sys-success']).not.toBe(dark['--sys-success']);
   });
 
   it('should map semantic aliases correctly', () => {
     const map = generateThemeVariables('#0000ff', false);
 
-    // --sys-surface-border is an alias we use for outlineVariant
+    // --sys-surface-border is an alias for outlineVariant
     expect(map['--sys-surface-border']).toBe(map['--sys-outline-variant']);
   });
 });

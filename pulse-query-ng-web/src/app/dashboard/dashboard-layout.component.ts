@@ -14,7 +14,6 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 // Core Features
 import { DashboardStore } from './dashboard.store';
 import { DashboardsService, WidgetResponse, WidgetUpdate, TemplateResponse } from '../api-client';
-// ToolbarComponent removed (Moved to App Layout)
 import { FilterRibbonComponent } from './filter-ribbon.component';
 import { WidgetComponent } from '../widget/widget.component';
 import { WidgetGalleryComponent } from './widget-gallery/widget-gallery.component';
@@ -27,7 +26,12 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 
-/** Dashboard Layout component. */
+/**
+ * Dashboard Layout component.
+ *
+ * Wraps the dashboard view, managing the layout grid, sidebars (Edit mode),
+ * and the orchestration of adding/removing widgets via Drag-and-Drop.
+ */
 @Component({
   selector: 'app-dashboard-layout',
   templateUrl: './dashboard-layout.component.html',
@@ -37,7 +41,6 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.m
     CommonModule,
     DragDropModule,
     MatSidenavModule,
-    // ToolbarComponent removed
     FilterRibbonComponent,
     WidgetComponent,
     QueryCartComponent,
@@ -71,7 +74,7 @@ export class DashboardLayoutComponent implements OnInit {
   /** snackBar property. */
   private readonly snackBar = inject(MatSnackBar);
 
-  /** Whether tv Mode. */
+  /** Whether the app is in TV Mode (Kiosk). */
   readonly isTvMode = this.themeService.isTvMode;
 
   /** Ng On Init. */
@@ -95,18 +98,24 @@ export class DashboardLayoutComponent implements OnInit {
 
   /**
    * Unified Drop Handler.
+   * Distinguishes between internal reordering and external template/cart dropping.
+   *
+   * @param {CdkDragDrop<any[]>} event - The drop event.
    */
   onDrop(event: CdkDragDrop<any[]>): void {
     if (this.isTvMode()) return;
 
     if (event.previousContainer === event.container) {
+      // Internal Sort
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex);
     } else {
+      // External Drop (Widget Gallery or Query Cart)
       const data = event.item.data;
       const dashboard = this.store.dashboard();
 
       if (!dashboard || !data) return;
 
+      // CASE: Query Cart Item
       if (this.isQueryCartItem(data)) {
         this.store.setLoading(true);
         this.cartProvisioning.addToDashboard(data, dashboard.id).subscribe({
@@ -123,6 +132,8 @@ export class DashboardLayoutComponent implements OnInit {
         return;
       }
 
+      // CASE: Template Item
+      // Type assertion handles the TemplateResponse default path
       const template = data as TemplateResponse;
       this.store.setLoading(true);
 
@@ -140,26 +151,46 @@ export class DashboardLayoutComponent implements OnInit {
     }
   }
 
-  /** Type guard for query-cart drag data. */
+  /**
+   * Type guard for query-cart drag data.
+   * @param {unknown} value - The drag item data.
+   * @returns {boolean} True if item is a QueryCartItem.
+   */
   private isQueryCartItem(value: unknown): value is QueryCartItem {
     return (
       !!value && typeof value === 'object' && (value as QueryCartItem).kind === QUERY_CART_ITEM_KIND
     );
   }
 
-  /** Gets col Span. */
+  /**
+   * Calculates the Column Span (1-12) for the grid.
+   *
+   * @param {WidgetResponse} widget - The widget configuration.
+   * @returns {number} Span between 1 and 12.
+   */
   getColSpan(widget: WidgetResponse): number {
     const w = Number(widget.config?.['w']);
     return Math.max(1, Math.min(12, w || 6));
   }
 
-  /** Gets row Span. */
+  /**
+   * Calculates the Row Span.
+   *
+   * @param {WidgetResponse} widget - The widget configuration.
+   * @returns {number} Span between 1 and 4.
+   */
   getRowSpan(widget: WidgetResponse): number {
     const h = Number(widget.config?.['h']);
     return Math.max(1, Math.min(4, h || 2));
   }
 
-  /** Start Resizing. */
+  /**
+   * Initiates resizing logic for manual grid adjustments.
+   * Attaches global mouse listeners until released.
+   *
+   * @param {MouseEvent} event - The mousedown event.
+   * @param {WidgetResponse} widget - The target widget.
+   */
   startResizing(event: MouseEvent, widget: WidgetResponse): void {
     if (this.isTvMode()) return;
     event.preventDefault();
@@ -190,7 +221,12 @@ export class DashboardLayoutComponent implements OnInit {
     document.addEventListener('mouseup', onUp);
   }
 
-  /** Updates widget Width. */
+  /**
+   * Persists the new widget width to the API.
+   *
+   * @param {WidgetResponse} widget - The target widget.
+   * @param {number} newWidth - New column span.
+   */
   updateWidgetWidth(widget: WidgetResponse, newWidth: number): void {
     const update: WidgetUpdate = { config: { w: newWidth } };
     this.dashboardApi
@@ -201,7 +237,11 @@ export class DashboardLayoutComponent implements OnInit {
       });
   }
 
-  /** Edit Widget. */
+  /**
+   * Opens the Widget Editor modal.
+   *
+   * @param {WidgetResponse} widget - The widget to edit.
+   */
   editWidget(widget: WidgetResponse): void {
     if (this.isTvMode()) return;
     const dashboardId = this.store.dashboard()?.id;
@@ -220,7 +260,11 @@ export class DashboardLayoutComponent implements OnInit {
     });
   }
 
-  /** Confirm Delete Widget. */
+  /**
+   * Prompts for confirmation and deletes a widget.
+   *
+   * @param {WidgetResponse} widget - The widget to delete.
+   */
   confirmDeleteWidget(widget: WidgetResponse): void {
     if (this.isTvMode()) return;
     if (!confirm(`Delete "${widget.title}"?`)) return;

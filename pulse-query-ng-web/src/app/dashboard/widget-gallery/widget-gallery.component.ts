@@ -1,3 +1,4 @@
+// ... (imports same as before)
 import {
   Component,
   OnInit,
@@ -9,8 +10,6 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
-
-// Material
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,7 +21,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
 import { TemplatesService, TemplateResponse } from '../../api-client';
 
-/** Widget Gallery component. */
 @Component({
   selector: 'app-widget-gallery',
   imports: [
@@ -46,6 +44,7 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
         flex-direction: column;
         height: 100%;
         min-height: 0;
+        /* Sidebar background */
         background: var(--sys-surface);
         border-left: 1px solid var(--sys-surface-border);
         width: 100%;
@@ -55,7 +54,8 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
       .header {
         padding: 16px;
         border-bottom: 1px solid var(--sys-surface-border);
-        background: var(--sys-background);
+        background: var(--sys-surface);
+        color: var(--sys-text-primary);
       }
       .grid-container {
         flex: 1;
@@ -70,12 +70,17 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
         border: 1px solid var(--sys-surface-border);
         padding: 12px;
         border-radius: 8px;
-        background: white;
-        transition: box-shadow 0.2s;
+        /* Fix: Use dynamic color, not white */
+        background: var(--sys-background);
+        transition:
+          box-shadow 0.2s,
+          border-color 0.2s;
+        color: var(--sys-text-primary);
       }
       .template-card:hover {
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         border-color: var(--sys-primary);
+        background: var(--sys-surface-variant);
       }
       .template-card:active {
         cursor: grabbing;
@@ -85,7 +90,10 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
         box-sizing: border-box;
         border-radius: 8px;
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-        background: white;
+        /* Drag preview styling */
+        background: var(--sys-surface);
+        border: 1px solid var(--sys-primary);
+        color: var(--sys-text-primary);
         padding: 12px;
         width: 300px;
         z-index: 10000;
@@ -98,32 +106,29 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
         margin-top: 8px;
         margin-bottom: 4px;
       }
+
+      /* Ensure input/icons inherit color correctly in dark mode */
+      .text-primary {
+        color: var(--sys-primary);
+      }
+      .text-gray-500 {
+        color: var(--sys-text-secondary);
+      }
     `,
   ],
   templateUrl: './widget-gallery.component.html',
 })
 export class WidgetGalleryComponent implements OnInit {
-  /** templatesApi property. */
+  // ... (Component logic identical to previous version)
   private readonly templatesApi = inject(TemplatesService);
-
-  /** Templates. */
-  /* istanbul ignore next */
   readonly templates = signal<TemplateResponse[]>([]);
-  /** Loading. */
-  /* istanbul ignore next */
   readonly loading = signal(true);
-
-  // Mutable Search Model
-  /** Search Query. */
-  /* istanbul ignore next */
   readonly searchQuery = signal('');
 
-  /** Ng On Init. */
   ngOnInit() {
     this.loadTemplates();
   }
 
-  /** Loads templates. */
   loadTemplates() {
     this.loading.set(true);
     this.templatesApi.listTemplatesApiV1TemplatesGet(undefined, undefined, 100).subscribe({
@@ -135,8 +140,6 @@ export class WidgetGalleryComponent implements OnInit {
     });
   }
 
-  /** Filtered Templates. */
-  /* istanbul ignore next */
   readonly filteredTemplates = computed(() => {
     const q = this.searchQuery().toLowerCase();
     return this.templates().filter(
@@ -145,8 +148,6 @@ export class WidgetGalleryComponent implements OnInit {
     );
   });
 
-  /** Grouped Templates. */
-  /* istanbul ignore next */
   readonly groupedTemplates = computed(() => {
     const list = this.filteredTemplates();
     const groups: Record<string, TemplateResponse[]> = {};

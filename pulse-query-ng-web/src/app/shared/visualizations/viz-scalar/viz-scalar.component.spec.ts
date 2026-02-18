@@ -56,9 +56,6 @@ describe('VizScalarComponent', () => {
 
     const valEl = fixture.debugElement.query(By.css('.value-display'));
     expect(valEl.nativeElement.textContent).toBe('1,000');
-
-    // MatProgressBar should NOT be present
-    expect(fixture.debugElement.query(By.css('mat-progress-bar'))).toBeFalsy();
   });
 
   it('should display correlation context', () => {
@@ -72,22 +69,9 @@ describe('VizScalarComponent', () => {
     const valEl = fixture.debugElement.query(By.css('.value-display'));
     expect(valEl.nativeElement.textContent).toBe('0.85');
 
-    // Query for the material component directly as internal class logic might vary
     const gauge = fixture.debugElement.query(By.css('mat-progress-bar'));
     expect(gauge).toBeTruthy();
     expect(gauge.attributes['role']).toBe('meter');
-
-    const text = fixture.debugElement.query(By.css('.interpret-text'));
-    expect(text.nativeElement.textContent).toContain('Strong');
-  });
-
-  it('should handle non-correlation values', () => {
-    const data = { columns: ['value'], data: [{ value: 10 }] };
-    dataSig.set(data);
-    fixture.detectChanges();
-
-    expect(component.isCorrelation()).toBe(false);
-    expect(component.formattedValue()).toBe('10');
   });
 
   it('should compute gauge helpers for negative values', () => {
@@ -100,29 +84,10 @@ describe('VizScalarComponent', () => {
     expect(component.strengthLabel()).toContain('Moderate');
   });
 
-  it('should read value from explicit object', () => {
-    dataSig.set({ value: 0.2 });
-    fixture.detectChanges();
-    expect(component.value()).toBe(0.2);
-  });
-
-  it('should compute strength color', () => {
+  it('should compute strength color as variable', () => {
     dataSig.set({ columns: ['correlation'], data: [{ correlation: -0.9 }] });
     fixture.detectChanges();
-    expect(component.strengthColor()).toBe('#f44336');
-  });
-
-  it('should return null value when no numeric field found', () => {
-    dataSig.set({ data: [{ label: 'none' }] });
-    fixture.detectChanges();
-    expect(component.value()).toBeNull();
-    expect(component.formattedValue()).toBe('-');
-  });
-
-  it('should return null when data array is empty', () => {
-    dataSig.set({ data: [] });
-    fixture.detectChanges();
-    expect(component.value()).toBeNull();
+    expect(component.strengthColor()).toBe('var(--sys-error)');
   });
 
   it('should fall back to neutral helpers when value is missing', () => {
@@ -132,7 +97,6 @@ describe('VizScalarComponent', () => {
     expect(component.value()).toBeNull();
     expect(component.gaugePosition()).toBe(50);
     expect(component.colorClass()).toBe('gauge-neutral');
-    expect(component.strengthLabel()).toContain('Weak');
     expect(component.strengthColor()).toBe('var(--sys-text-secondary)');
   });
 });

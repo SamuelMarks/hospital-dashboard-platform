@@ -133,7 +133,7 @@ docker-compose up -d
 docker run -d --rm --name run-postgres \
   -e POSTGRES_USER='postgres' \
   -e POSTGRES_PASSWORD='postgres' \
-  -e POSTGRES_DB='app_db' \
+  -e POSTGRES_DB='pulse_query_db' \
   -p 5433:5432 postgres:alpine
 # 2. Install Dependencies
 uv sync

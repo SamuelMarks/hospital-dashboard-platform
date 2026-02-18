@@ -25,7 +25,7 @@ class Settings(BaseSettings):
   POSTGRES_SERVER: str = "localhost"
   POSTGRES_USER: str = "postgres"
   POSTGRES_PASSWORD: str = "postgres"
-  POSTGRES_DB: str = "app_db"
+  POSTGRES_DB: str = "pulse_query_db"
   POSTGRES_PORT: int = int(os.environ.get("PGPORT", os.environ.get("POSTGRES_PORT", 5432)))
 
   @property
@@ -43,7 +43,6 @@ class Settings(BaseSettings):
 
   # --- Multi-LLM Arena Configuration ---
   # This section dynamically builds the "Swarm" of LLMs based on available API Keys.
-  # It defaults to a local provider if no cloud keys are found.
 
   @property
   def LLM_SWARM(self) -> List[Dict[str, Any]]:
@@ -61,8 +60,19 @@ class Settings(BaseSettings):
 
     def _display_name(provider: str, model: str, local: bool = False, include_model: bool = True) -> str:
       model_lower = model.lower()
+      # Custom rewrites for popular open models
+      if "deepseek-r1" in model_lower:
+        return "DeepSeek R1"
+      if "deepseek-coder" in model_lower:
+        return "DeepSeek Coder"
+      if "qwen2.5-coder" in model_lower:
+        return "Qwen 2.5 Coder"
+
       if local:
-        return "Local LLM" if not include_model else f"Local LLM {model}"
+        if not include_model:
+          return "Local LLM"
+        return f"Local LLM {model}"
+
       if provider == "openai" and model_lower == "gpt-4o":
         return "GPT-4o"
       if provider == "mistral" and model_lower.startswith("mistral-large"):
@@ -89,19 +99,23 @@ class Settings(BaseSettings):
             "api_key": api_key,
             "api_base": api_base,
             "name": _display_name(provider, model, local=local, include_model=include_model_in_name),
+            "model_name": model,  # Explicitly identifying the model ID for client calls
           }
         )
 
     # 1. Local / Default Configuration (OpenAI-compatible; vLLM, LM Studio, etc.)
+    # Fix: Default port changed from 8000 (Backend Self) to 11434 (Ollama) to prevent recursion loops
     local_models = _parse_models("LLM_LOCAL_MODELS", ["local-model"])
-    local_url = os.environ.get("LLM_LOCAL_URL", "http://localhost:8000/v1")
+    local_url = os.environ.get("LLM_LOCAL_URL", "http://localhost:11434/v1")
     _add_models(
       provider="openai",
       models=local_models,
       api_key=os.environ.get("LLM_LOCAL_API_KEY", "EMPTY"),
       api_base=local_url,
       local=True,
-      include_model_in_name=len(local_models) > 1,
+      # Include model name if multiple locals or if user defined specific local models
+      # If default ["local-model"], length is 1, so False -> "Local LLM"
+      include_model_in_name=len(local_models) > 1 or (len(local_models) == 1 and local_models[0] != "local-model"),
     )
 
     # 2. OpenAI Cloud (If Key Present)
@@ -124,14 +138,19 @@ class Settings(BaseSettings):
         api_base=os.environ.get("GOOGLE_GEMINI_BASE_URL"),
       )
 
-    # 4. Ollama Local Models (If Models Listed)
-    ollama_models = _parse_models("OLLAMA_MODELS", [])
-    if ollama_models:
+    # 4. Ollama Local Models
+    collama_models = _parse_models("OLLAMA_MODELS", [])
+    # Default to host.docker.internal for Docker -> Host communication, fallback to localhost
+    ollama_host = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434/v1")
+
+    if collama_models:
       _add_models(
-        provider="ollama",
-        models=ollama_models,
-        api_key=None,
-        api_base=os.environ.get("OLLAMA_HOST"),
+        provider="openai",
+        models=collama_models,
+        api_key="ollama",  # Dummy key required
+        api_base=ollama_host,
+        local=False,  # Set False so Display Name is just the Model Name (e.g. "Llama3")
+        include_model_in_name=True,
       )
 
     # 5. Mistral Cloud (If Key Present)

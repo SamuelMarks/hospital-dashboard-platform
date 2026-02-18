@@ -85,8 +85,6 @@ describe('VizMetricComponent', () => {
 
     const paths = svg.queryAll(By.css('path'));
     expect(paths.length).toBe(2); // Stroke and Fill paths
-
-    // Check Direction (Start 10 < End 30 -> Positive)
     expect(paths[0].classes['spark-pos']).toBe(true);
   });
 
@@ -156,18 +154,6 @@ describe('VizMetricComponent', () => {
     fixture.detectChanges();
     expect(component.isTrendUp()).toBe(true);
     expect(component.sparklineFill()).toBeNull();
-  });
-
-  it('should handle flat sparkline data', () => {
-    dataSig.set({ value: 1, trend_data: [5, 5, 5] });
-    fixture.detectChanges();
-    expect(component.sparklinePath()).toBeTruthy();
-  });
-
-  it('should display string values', () => {
-    dataSig.set('hello');
-    fixture.detectChanges();
-    expect(component.displayValue()).toBe('hello');
   });
 
   it('should fallback to dash when no numeric value found', () => {

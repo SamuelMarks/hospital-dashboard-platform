@@ -8,7 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
  *
  * **Updates**:
  * - Replaced custom HTML gauge with `MatProgressBar`.
- * - Styles progress bar color based on correlation (Red=Neg, Green=Pos).
+ * - Styles progress bar color based on correlation using semantic variables.
  */
 @Component({
   selector: 'viz-scalar',
@@ -54,12 +54,12 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
         text-align: center;
       }
 
-      /* Dynamic Coloring for ProgressBar Track */
+      /* Dynamic Coloring for ProgressBar Track via Variables */
       ::ng-deep .gauge-pos .mdc-linear-progress__bar-inner {
-        border-color: #4caf50 !important;
+        border-color: var(--sys-success) !important;
       }
       ::ng-deep .gauge-neg .mdc-linear-progress__bar-inner {
-        border-color: #f44336 !important;
+        border-color: var(--sys-error) !important;
       }
       ::ng-deep .gauge-neutral .mdc-linear-progress__bar-inner {
         border-color: var(--sys-text-secondary) !important;
@@ -153,11 +153,11 @@ export class VizScalarComponent {
     return 'Strong Correlation';
   });
 
-  /** Strength Color. */
+  /** Strength Color using CSS variables. */
   /* istanbul ignore next */
   readonly strengthColor = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'var(--sys-text-secondary)';
-    return v > 0 ? '#4caf50' : '#f44336';
+    return v > 0 ? 'var(--sys-success)' : 'var(--sys-error)';
   });
 }

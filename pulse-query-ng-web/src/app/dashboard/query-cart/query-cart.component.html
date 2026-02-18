@@ -33,6 +33,7 @@
       </div>
 
       <div class="item-actions">
+        <!-- Click functionality for non-drag interaction -->
         <button
           mat-icon-button
           color="primary"
@@ -59,6 +60,7 @@
         </button>
       </div>
 
+      <!-- Ghost Preview when dragging -->
       <div *cdkDragPreview class="cart-item">
         <div class="item-title">{{ item.title }}</div>
         <div class="item-sql">Drop to add</div>

@@ -11,7 +11,6 @@ import {
 } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 
-// Material Imports
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -22,21 +21,15 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 
-/**
- * Validator to check if 'password' and 'confirmPassword' fields match.
- */
 export const passwordMatchValidator: ValidatorFn = (
   control: AbstractControl,
 ): ValidationErrors | null => {
   const password = control.get('password');
   const confirmPassword = control.get('confirmPassword');
-
-  // Only validate if both controls exist and have values
   if (password && confirmPassword && password.value !== confirmPassword.value) {
     confirmPassword.setErrors({ mismatch: true });
     return { mismatch: true };
   } else {
-    // Only clear error if the source of error is mismatch
     if (confirmPassword?.hasError('mismatch')) {
       confirmPassword.setErrors(null);
     }
@@ -44,7 +37,6 @@ export const passwordMatchValidator: ValidatorFn = (
   }
 };
 
-/** Register component. */
 @Component({
   selector: 'app-register',
   imports: [
@@ -66,12 +58,16 @@ export const passwordMatchValidator: ValidatorFn = (
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        background-color: #f5f5f5;
+        /* Dynamic Theming */
+        background-color: var(--sys-background);
+        color: var(--sys-on-background);
         padding: 16px;
       }
       mat-card {
         width: 100%;
         max-width: 450px;
+        background-color: var(--sys-surface);
+        color: var(--sys-on-surface);
       }
       mat-card-header {
         margin-bottom: 24px;
@@ -81,8 +77,8 @@ export const passwordMatchValidator: ValidatorFn = (
         margin-bottom: 4px;
       }
       .error-box {
-        background-color: #ffebee;
-        color: #c62828;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
         padding: 12px;
         border-radius: 4px;
         margin-bottom: 16px;
@@ -99,9 +95,10 @@ export const passwordMatchValidator: ValidatorFn = (
         margin-top: 16px;
         text-align: center;
         font-size: 14px;
+        color: var(--sys-text-secondary);
       }
       a {
-        color: #1976d2;
+        color: var(--sys-primary);
         text-decoration: none;
         font-weight: 500;
       }
@@ -113,25 +110,14 @@ export const passwordMatchValidator: ValidatorFn = (
   templateUrl: './register.component.html',
 })
 export class RegisterComponent {
-  /** authService property. */
   private readonly authService = inject(AuthService);
-  /** router property. */
   private readonly router = inject(Router);
-  /** fb property. */
   private readonly fb = inject(FormBuilder);
 
-  /** Whether loading. */
-  /* istanbul ignore next */
   readonly isLoading = signal(false);
-  /** Error Message. */
-  /* istanbul ignore next */
   readonly errorMessage = signal<string | null>(null);
-  /** Hide Password. */
-  /* istanbul ignore next */
   readonly hidePassword = signal(true);
 
-  // Define form with validators
-  /** Register Form. */
   readonly registerForm: FormGroup = this.fb.group(
     {
       email: ['', [Validators.required, Validators.email]],
@@ -141,19 +127,16 @@ export class RegisterComponent {
     { validators: passwordMatchValidator },
   );
 
-  /** Toggles password Visibility. */
   togglePasswordVisibility(event: Event): void {
     event.preventDefault();
     this.hidePassword.update((v) => !v);
   }
 
-  /** Handles submit. */
   onSubmit(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
       return;
     }
-
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
@@ -169,7 +152,6 @@ export class RegisterComponent {
       },
       error: (err) => {
         this.isLoading.set(false);
-        // Handle detail extracted from backend HTTPException
         const msg = err?.error?.detail || 'Registration failed. Please try again.';
         this.errorMessage.set(msg);
       },

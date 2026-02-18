@@ -5,7 +5,7 @@ Verifies broadcasting logic, latency recording, and error containment using any-
 
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock, AsyncMock
-from app.services.llm_client import LLMArenaClient
+from app.services.llm_client import LLMArenaClient, ArenaResponse
 
 # Import the class Settings to patch the property on the class level
 from app.core.config import Settings
@@ -130,15 +130,22 @@ async def test_arena_initialization_failure():
 
 
 @pytest.mark.asyncio
-async def test_arena_raises_when_no_providers_configured():
-  """If no providers are configured, the arena should raise."""
+async def test_arena_defaults_to_mock_when_no_providers():
+  """If configured swarms fail to load, arena should use Mock fallback."""
   with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
     mock_prop.return_value = []
 
+    # Initialize
     arena = LLMArenaClient()
 
-    with pytest.raises(RuntimeError):
-      await arena.generate_arena_competition([{"role": "user", "content": "hi"}])
+    assert len(arena.swarm) == 1
+    assert arena.swarm[0]["name"] == "System Mock"
+
+    # Run Generation
+    results = await arena.generate_arena_competition([{"role": "user", "content": "hi"}])
+
+    assert len(results) == 1
+    assert "System Mock" in results[0].content
 
 
 @pytest.mark.asyncio

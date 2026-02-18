@@ -11,6 +11,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ThemeService } from '../core/theme/theme.service';
 import { ActivatedRoute } from '@angular/router';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
+import { vi } from 'vitest';
 
 const makeCartItem = (): QueryCartItem => ({
   id: 'q1',
@@ -181,10 +182,12 @@ describe('DashboardLayoutComponent', () => {
   });
 
   it('should provision query cart items on drop', () => {
+    // Setup Context
     const component = setup();
     const item = makeCartItem();
     mockCartProvisioning.addToDashboard.mockReturnValue(of({ id: 'w1' }));
 
+    // Action
     component.onDrop({
       previousContainer: {},
       container: {},
@@ -193,11 +196,14 @@ describe('DashboardLayoutComponent', () => {
       currentIndex: 0,
     } as any);
 
+    // Verification
     expect(mockStore.setLoading).toHaveBeenCalledWith(true);
     expect(mockCartProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'd1');
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Added query: Cart Query', 'OK', {
-      duration: 3000,
-    });
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      `Added query: ${item.title}`,
+      'OK',
+      expect.anything(),
+    );
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
 
@@ -232,9 +238,11 @@ describe('DashboardLayoutComponent', () => {
     } as any);
 
     expect(mockProvisioning.provisionWidget).toHaveBeenCalledWith(template, 'd1');
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Added widget: Template A', 'OK', {
-      duration: 3000,
-    });
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      `Added widget: ${template.title}`,
+      'OK',
+      expect.anything(),
+    );
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
 

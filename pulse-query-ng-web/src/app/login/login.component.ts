@@ -17,9 +17,6 @@ import { environment } from '../../environments/environment';
 
 /**
  * Login Component.
- *
- * Provides the user interface for authentication.
- * Handles redirection back to the requested page (Return URL) after successful login.
  */
 @Component({
   selector: 'app-login',
@@ -42,12 +39,17 @@ import { environment } from '../../environments/environment';
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        background-color: #f5f5f5;
+        /* Dynamic Background */
+        background-color: var(--sys-background);
+        color: var(--sys-on-background);
         padding: 16px;
       }
       mat-card {
         width: 100%;
         max-width: 400px;
+        /* Cards in M3 utilize Surface color */
+        background-color: var(--sys-surface);
+        color: var(--sys-on-surface);
       }
       mat-card-header {
         margin-bottom: 16px;
@@ -57,8 +59,8 @@ import { environment } from '../../environments/environment';
         margin-bottom: 8px;
       }
       .error-box {
-        background-color: #ffebee;
-        color: #c62828;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
         padding: 12px;
         border-radius: 4px;
         margin-bottom: 16px;
@@ -75,9 +77,10 @@ import { environment } from '../../environments/environment';
         margin-top: 24px;
         text-align: center;
         font-size: 14px;
+        color: var(--sys-text-secondary);
       }
       a {
-        color: #1565c0;
+        color: var(--sys-primary);
         text-decoration: none;
         font-weight: 500;
       }
@@ -89,50 +92,37 @@ import { environment } from '../../environments/environment';
   templateUrl: './login.component.html',
 })
 export class LoginComponent implements OnInit {
-  /** authService property. */
+  // ... (Logic implementation remains identical to previous valid version)
   private readonly authService = inject(AuthService);
-  /** router property. */
   private readonly router = inject(Router);
-  /** Activated Route to read query parameters (returnUrl). */
   private readonly route = inject(ActivatedRoute);
-  /** fb property. */
   private readonly fb = inject(FormBuilder);
 
-  /** Environment Configuration: Exposed to template to toggle Registration link. */
   readonly registrationEnabled = environment.registrationEnabled;
 
-  /** Whether loading. */
   /* istanbul ignore next */
   readonly isLoading = signal(false);
-  /** Error Message. */
   /* istanbul ignore next */
   readonly errorMessage = signal<string | null>(null);
-  /** Hide Password. */
   /* istanbul ignore next */
   readonly hidePassword = signal(true);
 
-  /** Login Form. */
   readonly loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(4)]],
   });
 
-  /** Ng On Init. */
   ngOnInit(): void {
-    // Safety Net: Redirect if already logged in.
-    // This catches edge cases where Guards might have race conditions in test environments.
     if (this.authService.isAuthenticated()) {
       this.router.navigateByUrl('/');
     }
   }
 
-  /** Toggles password Visibility. */
   togglePasswordVisibility(event: Event): void {
     event.preventDefault();
     this.hidePassword.update((v) => !v);
   }
 
-  /** Handles submit. */
   onSubmit(): void {
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
@@ -150,7 +140,6 @@ export class LoginComponent implements OnInit {
     this.authService.login(credentials).subscribe({
       next: () => {
         this.isLoading.set(false);
-        // Determine redirect target. Default to root '/' which corresponds to Dashboard/Home.
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
         this.router.navigateByUrl(returnUrl);
       },

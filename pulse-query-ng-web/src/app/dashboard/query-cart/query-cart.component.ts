@@ -11,9 +11,6 @@ import { QueryCartItem } from '../../global/query-cart.models';
 import { QueryCartProvisioningService } from '../query-cart-provisioning.service';
 import { DashboardStore } from '../dashboard.store';
 
-/**
- * Sidebar panel that displays Query Cart items for drag-and-drop.
- */
 @Component({
   selector: 'app-query-cart',
   imports: [
@@ -33,6 +30,7 @@ import { DashboardStore } from '../dashboard.store';
         width: 100%;
         background: var(--sys-background);
         border-bottom: 1px solid var(--sys-surface-border);
+        color: var(--sys-text-primary);
       }
       .header {
         display: flex;
@@ -60,6 +58,7 @@ import { DashboardStore } from '../dashboard.store';
         color: var(--sys-on-primary-container);
       }
       .cart-list {
+        min-height: 100px;
         padding: 12px 16px 16px;
         display: flex;
         flex-direction: column;
@@ -82,7 +81,7 @@ import { DashboardStore } from '../dashboard.store';
         padding: 10px;
         border-radius: 10px;
         border: 1px solid var(--sys-surface-border);
-        background: white;
+        background: var(--sys-surface);
         cursor: grab;
       }
       .cart-item:active {
@@ -115,91 +114,82 @@ import { DashboardStore } from '../dashboard.store';
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .item-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-      .hint {
-        font-size: 11px;
-        color: var(--sys-text-secondary);
-        padding: 0 16px 12px;
-      }
+      /* Drag Preview Styles */
       .cdk-drag-preview {
         box-sizing: border-box;
         border-radius: 8px;
         padding: 10px 12px;
-        background: white;
+        background: var(--sys-surface);
+        border: 1px solid var(--sys-primary); /* Visualize active drag */
+        color: var(--sys-text-primary);
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         width: 260px;
       }
       .cdk-drag-placeholder {
         border: 1px dashed var(--sys-primary);
         border-radius: 10px;
-        background: rgba(0, 0, 0, 0.04);
+        background: rgba(var(--sys-primary), 0.04);
         height: 54px;
+      }
+      .item-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .item-actions button {
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        padding: 0;
+      }
+      .item-actions mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
     `,
   ],
   templateUrl: './query-cart.component.html',
 })
 export class QueryCartComponent {
-  /** cart property. */
   private readonly cart = inject(QueryCartService);
-  /** provisioning property. */
   private readonly provisioning = inject(QueryCartProvisioningService);
-  /** store property. */
   private readonly store = inject(DashboardStore);
-  /** snackBar property. */
   private readonly snackBar = inject(MatSnackBar);
 
-  /** Optional dashboard id to enable the "Add" action. */
-  /* istanbul ignore next */
   readonly dashboardId = input<string | null>(null);
-
-  /** Items from the cart service. */
   readonly items = this.cart.items;
-
-  /** Count of cart items. */
   readonly count = this.cart.count;
 
-  /** Drop list connection for dashboard grid. */
-  /* istanbul ignore next */
+  // Wire drag list to the main grid id 'dashboard-grid'
   readonly connectedDropLists = computed(() => ['dashboard-grid']);
 
-  /** Clears all items from the cart. */
   clear(): void {
     this.cart.clear();
   }
 
-  /** Removes a cart item. */
   remove(item: QueryCartItem): void {
     this.cart.remove(item.id);
   }
 
-  /** Prompts to rename a cart item. */
   rename(item: QueryCartItem): void {
     const next = window.prompt('Rename query', item.title);
     if (next !== null) this.cart.rename(item.id, next);
   }
 
-  /** Provisions the cart item into the active dashboard. */
   addToDashboard(item: QueryCartItem): void {
     const dashboardId = this.dashboardId();
     if (!dashboardId) return;
-
     this.provisioning.addToDashboard(item, dashboardId).subscribe({
       next: () => {
         this.snackBar.open(`Added query: ${item.title}`, 'OK', { duration: 3000 });
+        // Force refresh to show new widget data
         this.store.loadDashboard(dashboardId);
       },
-      error: () => {
-        this.snackBar.open('Failed to add query to dashboard', 'Close');
-      },
+      error: () => this.snackBar.open('Failed to add query to dashboard', 'Close'),
     });
   }
 
-  /** Builds a short, single-line preview of SQL text. */
   previewSql(sql: string): string {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     const max = 70;
