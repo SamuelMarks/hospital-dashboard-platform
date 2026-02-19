@@ -65,7 +65,6 @@ class SchemaService:
       # 2. MONOLITHIC PATTERNS (The "Cheat Sheet" for 8B Models)
       domain_logic = (
         "\n--- STANDARD SQL RECIPES (ADAPT THESE) ---\n"
-
         "RECIPE 1: CAPACITY & OCCUPANCY (Mental Model: Max Historic vs Current)\n"
         "Use when asked: 'Available beds', 'Capacity', 'Full units'\n"
         "WITH historic_peaks AS (\n"
@@ -83,7 +82,6 @@ class SchemaService:
         "FROM historic_peaks p \n"
         "LEFT JOIN current_census c ON p.Location = c.Location;\n"
         "\n"
-
         "RECIPE 2: BOTTLENECKS & FLOW (Mental Model: Filtered Aggregates)\n"
         "Use when asked: 'Bottlenecks', 'Throughput', 'Admits vs Discharges'\n"
         "SELECT \n"
@@ -93,7 +91,6 @@ class SchemaService:
         "FROM synthetic_hospital_data\n"
         "GROUP BY 1;\n"
         "\n"
-
         "RECIPE 3: TIME WINDOWS & TRENDS (Mental Model: Window Functions)\n"
         "Use when asked: 'Moving Average', 'Consecutive Days', 'Spikes'\n"
         "WITH daily AS (\n"
@@ -106,7 +103,6 @@ class SchemaService:
         "    AVG(val) OVER (ORDER BY dt ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) as rolling_7_day\n"
         "FROM daily;\n"
         "\n"
-
         "--- CRITICAL RULES ---\n"
         "1. NO HALLUCINATIONS: Do not use table names like 'hospital', 'beds', or 'rooms'. Use ONLY `synthetic_hospital_data`.\n"
         "2. NO RAW MAX: Do not write `MAX(count)`. Count is a function, not a column. You must aggregate in a CTE first.\n"

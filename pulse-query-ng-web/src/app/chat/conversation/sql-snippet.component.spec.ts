@@ -45,4 +45,19 @@ describe('SqlSnippetComponent', () => {
     const html = component.highlightedSql;
     expect(html).toContain('<span class="keyword">SELECT</span>');
   });
+
+  it('should highlight strings and numbers', () => {
+    Object.defineProperty(component, 'sql', { value: () => "SELECT 100, 'TEXT'" });
+    fixture.detectChanges();
+    const html = component.highlightedSql;
+    expect(html).toContain('<span class="number">100</span>');
+    expect(html).toContain('<span class="string">\'TEXT\'</span>');
+  });
+
+  it('should highlight comments', () => {
+    Object.defineProperty(component, 'sql', { value: () => 'SELECT 1 -- Note' });
+    fixture.detectChanges();
+    const html = component.highlightedSql;
+    expect(html).toContain('<span class="comment">-- Note</span>');
+  });
 });

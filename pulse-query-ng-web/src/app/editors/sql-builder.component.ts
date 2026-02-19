@@ -317,7 +317,9 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     return processed;
   }
 
-  /** Run Query. */
+  /**
+   * Feature 2 Fix: Checks result error property to display feedback instead of empty table.
+   */
   runQuery() {
     this.isRunning.set(true);
     this.validationError.set(null);
@@ -334,8 +336,18 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
             .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId())
             .pipe(finalize(() => this.isRunning.set(false)))
             .subscribe({
-              next: (map) => this.latestResult.set(map[this.widgetId()] as TableDataSet),
-              error: () => {},
+              next: (map) => {
+                const result = map[this.widgetId()];
+
+                // Logic Fix: Check for embedded error from backend runner
+                if (result && result.error) {
+                  this.validationError.set(result.error);
+                  this.latestResult.set(null); // Clear table to avoid ghost rendering
+                } else {
+                  this.latestResult.set(result as TableDataSet);
+                }
+              },
+              error: () => this.validationError.set('Network execution failed.'),
             });
         },
         error: (err: HttpErrorResponse) => {

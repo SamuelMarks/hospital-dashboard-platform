@@ -1,8 +1,7 @@
 /**
  * @fileoverview Reusable SQL Code Block Component.
  *
- * Renders a readonly snippet of SQL with syntax highlighting (via simple regex)
- * and an actionable "Run" button to open the query in the main Scratchpad.
+ * Renders a readonly snippet of SQL with improved syntax highlighting via regex.
  * Designed to look like a dark-mode editor by default, preserving readability
  * in both Light/Dark app modes.
  */
@@ -52,6 +51,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         line-height: 1.5;
         overflow-x: auto;
       }
+      /* Feature 1: Comprehensive Highlighting */
       .keyword {
         color: #c678dd;
         font-weight: bold;
@@ -64,6 +64,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
       }
       .number {
         color: #d19a66;
+      }
+      .comment {
+        color: #5c6370;
+        font-style: italic;
       }
     `,
   ],
@@ -80,17 +84,35 @@ export class SqlSnippetComponent {
   /** Emitter for Save to Cart. */
   readonly addToCart = output<string>();
 
-  /** Computes highlighting. */
+  /**
+   * Computes highlighting.
+   * Uses robust regex replacement to tokenize SQL for display.
+   */
   get highlightedSql(): string {
     let code = this.sql() || '';
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    code = code.replace(
-      /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|inner|outer|ON|AND|OR|AS|WITH)\b/gi,
-      '<span class="keyword">$1</span>',
-    );
-    code = code.replace(/\b(count|sum|avg|max|min)\b/gi, '<span class="function">$1</span>');
+
+    // 1. Strings (single quotes)
     code = code.replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>');
-    code = code.replace(/\b(\d+)\b/g, '<span class="number">$1</span>');
+
+    // 2. Comments (double dash)
+    code = code.replace(/(--.*$)/gm, '<span class="comment">$1</span>');
+
+    // 3. Numbers
+    code = code.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="number">$1</span>');
+
+    // 4. Keywords
+    const keywords =
+      'SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|OFFSET|JOIN|LEFT|RIGHT|INNER|OUTER|FULL|CROSS|ON|AND|OR|NOT|AS|WITH|CASE|WHEN|THEN|ELSE|END|DISTINCT|HAVING|UNION|ALL|INSERT|INTO|VALUES|UPDATE|SET|DELETE|CREATE|TABLE|DROP|ALTER|VIEW|INDEX|EXPLAIN|PRAGMA';
+    code = code.replace(new RegExp(`\\b(${keywords})\\b`, 'gi'), '<span class="keyword">$1</span>');
+
+    // 5. Functions
+    const functions = 'count|sum|avg|max|min|coalesce|round|cast|date_trunc|to_char|now';
+    code = code.replace(
+      new RegExp(`\\b(${functions})\\b`, 'gi'),
+      '<span class="function">$1</span>',
+    );
+
     return code;
   }
 

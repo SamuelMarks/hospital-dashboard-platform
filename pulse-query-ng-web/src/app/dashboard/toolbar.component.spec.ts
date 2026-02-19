@@ -10,17 +10,17 @@ import { AuthService } from '../core/auth/auth.service';
 import { ThemeService } from '../core/theme/theme.service';
 import { DashboardsService, DashboardResponse } from '../api-client';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { signal, WritableSignal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { NavigationEnd, NavigationStart, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
-import { of, Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { QueryCartService } from '../global/query-cart.service';
 import { RouterTestingModule } from '@angular/router/testing';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
-import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -47,10 +47,12 @@ describe('ToolbarComponent', () => {
   let mockAuthService: any;
   let mockThemeService: any;
   let mockCartService: any;
+  // Make mockSnackBar flexible to accept chaining
+  let mockSnackBar: { open: ReturnType<typeof vi.fn> }; 
   let router: Router;
   let routerEvents$: Subject<any>;
 
-  let dashboardSig: WritableSignal<DashboardResponse | null>;
+  let dashboardSig: WritableSignal<any>;
   let isLoadingSig: WritableSignal<boolean>;
   let isEditModeSig: WritableSignal<boolean>;
   let globalParamsSig: WritableSignal<any>;
@@ -65,6 +67,14 @@ describe('ToolbarComponent', () => {
     // Setup Mocks
     mockAskService = { open: vi.fn() };
     mockDialog = { open: vi.fn() };
+    
+    // SnackBar needs specific chaining structure: open().onAction().subscribe()
+    const snackRefMock = {
+      onAction: vi.fn().mockReturnValue(of(undefined))
+    };
+    mockSnackBar = {
+      open: vi.fn().mockReturnValue(snackRefMock),
+    };
 
     mockStore = {
       dashboard: dashboardSig,
@@ -90,13 +100,11 @@ describe('ToolbarComponent', () => {
     mockCartService = { count: signal(0) };
 
     routerEvents$ = new Subject();
-    const mockRouter = {
-      events: routerEvents$.asObservable(),
-      url: '/',
-    };
+    // RouterTestingModule handles Router injection, so we spy on it later
+    // but we need to ensure MatSnackBar provided in TestBed overrides module default
 
     await TestBed.configureTestingModule({
-      imports: [ToolbarComponent, NoopAnimationsModule],
+      imports: [ToolbarComponent, NoopAnimationsModule, RouterTestingModule.withRoutes([])],
       providers: [
         { provide: DashboardStore, useValue: mockStore },
         { provide: DashboardsService, useValue: {} },
@@ -105,7 +113,8 @@ describe('ToolbarComponent', () => {
         { provide: AuthService, useValue: mockAuthService },
         { provide: ThemeService, useValue: mockThemeService },
         { provide: QueryCartService, useValue: mockCartService },
-        { provide: Router, useValue: mockRouter },
+        // Providing MatSnackBar here ensures it's available for injection
+        { provide: MatSnackBar, useValue: mockSnackBar },
       ],
     })
       .overrideComponent(ToolbarComponent, {
@@ -117,10 +126,47 @@ describe('ToolbarComponent', () => {
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
 
+    // Spy on navigation
+    vi.spyOn(router, 'navigate');
+
     fixture.detectChanges();
   });
 
-  // ... (Existing unit tests)
+  // Feature 0 Test
+  it('should toggle edit mode when opening cart on dashboard', () => {
+    // Hack for test: Re-define the property as a writable signal just for this spec instance
+    // The component uses toSignal which creates a readonly signal.
+    Object.defineProperty(component, 'isDashboardRoute', {
+      value: signal(true),
+      writable: true,
+    });
+
+    dashboardSig.set({ id: 'd1' });
+    isEditModeSig.set(false);
+
+    component.openCart();
+
+    expect(mockStore.toggleEditMode).toHaveBeenCalled();
+  });
+
+  it('should show hint when opening cart off dashboard', () => {
+    // Simulate NON-dashboard route
+    Object.defineProperty(component, 'isDashboardRoute', {
+      value: signal(false),
+      writable: true,
+    });
+    dashboardSig.set(null);
+
+    component.openCart();
+
+    expect(mockStore.toggleEditMode).not.toHaveBeenCalled();
+    // Verify toast
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      expect.stringContaining('Open a dashboard'),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
 
   it('should toggle edit mode via store', () => {
     expect(component.logout).toBeDefined();
@@ -130,19 +176,21 @@ describe('ToolbarComponent', () => {
     let overlay: OverlayContainer;
 
     beforeEach(async () => {
-      TestBed.resetTestingModule()
-        .configureTestingModule({
-          imports: [ToolbarComponent, RouterTestingModule.withRoutes([]), NoopAnimationsModule],
-          providers: [
-            { provide: DashboardStore, useValue: mockStore },
-            { provide: AskDataService, useValue: mockAskService },
-            { provide: MatDialog, useValue: mockDialog },
-            { provide: AuthService, useValue: mockAuthService },
-            { provide: ThemeService, useValue: mockThemeService },
-            { provide: QueryCartService, useValue: mockCartService },
-          ],
-        })
-        .compileComponents();
+      TestBed.resetTestingModule(); // Clear previous config
+
+      await TestBed.configureTestingModule({
+        imports: [ToolbarComponent, RouterTestingModule.withRoutes([]), NoopAnimationsModule],
+        providers: [
+          { provide: DashboardStore, useValue: mockStore },
+          { provide: AskDataService, useValue: mockAskService },
+          { provide: MatDialog, useValue: mockDialog },
+          { provide: AuthService, useValue: mockAuthService },
+          { provide: ThemeService, useValue: mockThemeService },
+          { provide: QueryCartService, useValue: mockCartService },
+          // Re-provide SnackBar
+          { provide: MatSnackBar, useValue: mockSnackBar },
+        ],
+      }).compileComponents();
 
       fixture = TestBed.createComponent(ToolbarComponent);
       component = fixture.componentInstance;
@@ -152,7 +200,10 @@ describe('ToolbarComponent', () => {
 
     it('should render cart button globally', () => {
       // Force non-dashboard route
-      (component as any).isDashboardRoute = signal(false);
+      Object.defineProperty(component, 'isDashboardRoute', {
+        value: signal(false),
+        writable: true,
+      });
       fixture.detectChanges();
 
       const cartBtn = fixture.debugElement.query(By.css('[data-testid="btn-cart-location"]'));

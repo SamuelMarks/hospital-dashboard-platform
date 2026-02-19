@@ -156,13 +156,29 @@ describe('SqlBuilderComponent', () => {
     expect(component.isRunning()).toBe(false);
   });
 
-  it('should handle execution errors after update', () => {
+  // Feature 2 Test: Error Handling
+  it('should set validationError if execution returns error payload', () => {
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+
+    // Simulate backend successfully returning 200, but payload contains DuckDB error
+    mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
+      of({ w1: { error: 'Catalog Error: Table not found' } }),
+    );
+
+    component.runQuery();
+
+    expect(component.validationError()).toBe('Catalog Error: Table not found');
+    expect(component.latestResult()).toBeNull();
+  });
+
+  it('should handle execution network errors after update', () => {
     mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
     mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
       throwError(() => new Error('exec fail')),
     );
     component.runQuery();
     expect(component.isRunning()).toBe(false);
+    expect(component.validationError()).toBe('Network execution failed.');
   });
 
   it('should handle schema load errors and no editor', () => {
@@ -248,14 +264,14 @@ describe('SqlBuilderComponent', () => {
   });
 });
 
-@Component({ selector: 'viz-table', template: '<div data-testid=\"mock-table\"></div>' })
+@Component({ selector: 'viz-table', template: '<div data-testid="mock-table"></div>' })
 class MockVizTableComponent {
   readonly dataSet = input<unknown>();
 }
 
 @Component({
   selector: 'app-conversation',
-  template: '<div data-testid=\"mock-conversation\"></div>',
+  template: '<div data-testid="mock-conversation"></div>',
 })
 class MockConversationComponent {}
 
@@ -319,7 +335,7 @@ describe('SqlBuilderComponent template wiring', () => {
   it('should dismiss validation error from template button', () => {
     component.validationError.set('Bad SQL');
     fixture.detectChanges();
-    const closeBtn = fixture.debugElement.query(By.css('[data-testid=\"error-banner\"] button'));
+    const closeBtn = fixture.debugElement.query(By.css('[data-testid="error-banner"] button'));
     closeBtn.triggerEventHandler('click', null);
     expect(component.validationError()).toBeNull();
   });

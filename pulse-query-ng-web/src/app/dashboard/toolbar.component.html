@@ -41,6 +41,7 @@
     <!-- Global Cart Status (Always Visible) -->
     <button
       mat-icon-button
+      (click)="openCart()"
       matTooltip="Query Cart (Access in Dashboard Editor)"
       aria-label="Query Cart items"
       [matBadge]="cartCount()"

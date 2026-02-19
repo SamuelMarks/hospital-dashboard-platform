@@ -39,6 +39,8 @@ describe('HomeComponent', () => {
     };
     mockDialog = { open: vi.fn() };
     mockAskDataService = { open: vi.fn() };
+    // Spy on console to avoid noise in test output
+    vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Create the mock object explicitly to ensure reference identity
     mockSnackBar = {
@@ -278,11 +280,11 @@ describe('HomeComponent', () => {
   it('should render loading state and grid state', () => {
     component.isLoading.set(true);
     fixture.detectChanges();
-    expect(fixture.debugElement.query(By.css('[data-testid=\"loading-state\"]'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('[data-testid="loading-state"]'))).toBeTruthy();
 
     component.isLoading.set(false);
     fixture.detectChanges();
-    expect(fixture.debugElement.query(By.css('[data-testid=\"dashboard-grid\"]'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('[data-testid="dashboard-grid"]'))).toBeTruthy();
   });
 
   it('should show restore spinner when restoring', () => {
@@ -298,7 +300,7 @@ describe('HomeComponent', () => {
     component.dashboards.set([]);
     fixture.detectChanges();
 
-    const emptyState = fixture.debugElement.query(By.css('[data-testid=\"empty-state\"]'));
+    const emptyState = fixture.debugElement.query(By.css('[data-testid="empty-state"]'));
     expect(emptyState).toBeTruthy();
     const emptyButtons = emptyState.queryAll(By.css('button'));
     expect(emptyButtons.length).toBe(2);
@@ -317,7 +319,7 @@ describe('HomeComponent', () => {
       of({ id: 'd3', name: 'Copy', owner_id: 'u1', widgets: [] }),
     );
     mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(of({}));
-    const menuBtn = fixture.debugElement.query(By.css('[data-testid=\"btn-card-menu\"]'));
+    const menuBtn = fixture.debugElement.query(By.css('[data-testid="btn-card-menu"]'));
     const stopEvent = { stopPropagation: vi.fn() } as any;
     menuBtn.triggerEventHandler('click', stopEvent);
     expect(stopEvent.stopPropagation).toHaveBeenCalled();

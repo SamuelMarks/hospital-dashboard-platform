@@ -5,10 +5,7 @@
  * and System Settings (Theme Palette/Mode).
  *
  * **Changes:**
- * - Migrated template to external file `toolbar.component.html`.
- * - Implemented `ThemeService` integration for dynamic color seeding.
- * - Replaced custom CSS avatars with Material Icons.
- * - Added Color Picker logic.
+ * - Implements `openCart()` (Feature 0).
  */
 
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
@@ -28,6 +25,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { AuthService } from '../core/auth/auth.service';
 import { DashboardStore } from './dashboard.store';
@@ -53,6 +51,7 @@ import { QueryCartService } from '../global/query-cart.service';
     MatDividerModule,
     MatSlideToggleModule,
     MatBadgeModule,
+    MatSnackBarModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './toolbar.component.html',
@@ -195,17 +194,13 @@ export class ToolbarComponent {
   public readonly router = inject(Router);
   /** dialog property. */
   private readonly dialog = inject(MatDialog);
+  /** snackBar property. */
+  private readonly snackBar = inject(MatSnackBar);
   /** Cart Count. */
   readonly cartCount = this.cart.count;
 
   /**
    * Preset Seeds for Theme Generation.
-   * Includes:
-   * - Material Blue (#1565c0)
-   * - Deep Purple (#7b1fa2)
-   * - Teal (#00796b)
-   * - Red (#c62828)
-   * - Orange (#ef6c00)
    */
   readonly presetColors = ['#1565c0', '#7b1fa2', '#00796b', '#c62828', '#ef6c00'];
 
@@ -223,6 +218,26 @@ export class ToolbarComponent {
    */
   logout(): void {
     this.authService.logout();
+  }
+
+  /**
+   * Opens the Cart Interaction.
+   * If on a dashboard, toggles Edit Mode to show the sidebar.
+   * If not, guides the user.
+   */
+  openCart(): void {
+    if (this.isDashboardRoute() && this.store.dashboard()) {
+      if (!this.store.isEditMode()) {
+        this.store.toggleEditMode();
+      }
+    } else {
+      this.snackBar
+        .open('Open a dashboard to place items from the cart.', 'Go to Home', {
+          duration: 4000,
+        })
+        .onAction()
+        .subscribe(() => this.router.navigate(['/']));
+    }
   }
 
   /**
