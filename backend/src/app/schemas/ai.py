@@ -45,3 +45,14 @@ class SQLExecutionResponse(BaseModel):
   data: List[Dict[str, Any]]
   columns: List[str]
   error: Optional[str] = None
+
+
+class ModelInfo(BaseModel):
+  """
+  Information about a configured LLM in the Arena.
+  """
+
+  id: str
+  name: str
+  provider: str
+  is_local: bool

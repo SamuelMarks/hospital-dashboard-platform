@@ -9,8 +9,9 @@
  */
 
 /**
- * Payload for creating a new Message.
+ * Payload for sending a message from the User. Role is implicitly \'user\'.
  */
 export interface MessageCreate {
   content: string;
+  target_models?: Array<string> | null;
 }

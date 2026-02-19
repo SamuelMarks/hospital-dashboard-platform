@@ -6,19 +6,23 @@
  * - Active Message Stream.
  * - Loading States (isGenerating).
  * - Optimistic UI updates.
+ * - **Target Model Selection**.
  */
 
 import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
 import { Subject } from 'rxjs';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { finalize, takeUntil, retry } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import {
   ChatService,
+  AiService,
   ConversationResponse,
+  ConversationDetail,
   MessageResponse,
   MessageCreate,
   ConversationCreate,
+  ModelInfo,
 } from '../api-client';
 
 /** Chat State interface. */
@@ -35,6 +39,11 @@ export interface ChatState {
   isGenerating: boolean;
   /** error property. */
   error: string | null;
+
+  /** Available models for selection. */
+  availableModels: ModelInfo[];
+  /** Currently selected model IDs (if empty, implicit 'all'). */
+  selectedModelIds: string[];
 }
 
 /** Initial State constant. */
@@ -45,6 +54,8 @@ const initialState: ChatState = {
   isLoadingList: false,
   isGenerating: false,
   error: null,
+  availableModels: [],
+  selectedModelIds: [],
 };
 
 /** Chat store. */
@@ -52,6 +63,8 @@ const initialState: ChatState = {
 export class ChatStore implements OnDestroy {
   /** chatApi property. */
   private readonly chatApi = inject(ChatService);
+  /** aiApi property. */
+  private readonly aiApi = inject(AiService);
   /** _state property. */
   /* istanbul ignore next */
   private readonly _state = signal<ChatState>(initialState);
@@ -79,18 +92,26 @@ export class ChatStore implements OnDestroy {
   /* istanbul ignore next */
   readonly error = computed(() => this._state().error);
 
+  /** Available Models. */
+  /* istanbul ignore next */
+  readonly availableModels = computed(() => this._state().availableModels);
+  /** Selected Models. */
+  /* istanbul ignore next */
+  readonly selectedModelIds = computed(() => this._state().selectedModelIds);
+
   /** Ng On Destroy. */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  /** Loads history. */
+  /** Loads history and available models. */
   loadHistory(): void {
     this.patch({ isLoadingList: true, error: null });
     this.chatApi
       .listConversationsApiV1ConversationsGet()
       .pipe(
+        retry(2),
         finalize(() => this.patch({ isLoadingList: false })),
         takeUntil(this.destroy$),
       )
@@ -98,6 +119,23 @@ export class ChatStore implements OnDestroy {
         next: (list: ConversationResponse[]) => this.patch({ conversations: list }),
         error: (err: unknown) => this.handleError(err),
       });
+
+    // Load Models logic
+    try {
+      // Safe check for method existence
+      /* istanbul ignore next */
+      if (this.aiApi.listAvailableModelsApiV1AiModelsGet) {
+        this.aiApi
+          .listAvailableModelsApiV1AiModelsGet()
+          .pipe(retry(2))
+          .subscribe({
+            next: (models: ModelInfo[]) => this.patch({ availableModels: models }),
+            error: (err: unknown) => console.error('Failed to load models', err),
+          });
+      }
+    } catch {
+      console.warn('AI Models endpoint not available in client');
+    }
   }
 
   /** Select Conversation. */
@@ -106,6 +144,7 @@ export class ChatStore implements OnDestroy {
     this.chatApi
       .getMessagesApiV1ConversationsConversationIdMessagesGet(id)
       .pipe(
+        retry(2),
         finalize(() => this.patch({ isLoadingList: false })),
         takeUntil(this.destroy$),
       )
@@ -121,6 +160,16 @@ export class ChatStore implements OnDestroy {
     this.patch({ activeConversationId: null, messages: [], error: null });
   }
 
+  /** Toggles model selection. */
+  toggleModelSelection(modelId: string): void {
+    const current = this.selectedModelIds();
+    if (current.includes(modelId)) {
+      this.patch({ selectedModelIds: current.filter((id) => id !== modelId) });
+    } else {
+      this.patch({ selectedModelIds: [...current, modelId] });
+    }
+  }
+
   /** Send Message. */
   sendMessage(content: string): void {
     if (!content.trim()) return;
@@ -133,21 +182,32 @@ export class ChatStore implements OnDestroy {
       role: 'user',
       content: content,
       created_at: new Date().toISOString() as any,
+      candidates: [],
     };
     this.patch({ messages: [...this.messages(), tempUserMsg] });
 
+    const targetModels = this.selectedModelIds().length > 0 ? this.selectedModelIds() : undefined;
+
     if (!currentId) {
+      // Create new
       const payload: ConversationCreate = { message: content };
       this.chatApi
         .createConversationApiV1ConversationsPost(payload)
-        .pipe(finalize(() => this.patch({ isGenerating: false })))
+        .pipe(
+          retry(2),
+          finalize(() => this.patch({ isGenerating: false })),
+        )
         .subscribe({
-          next: (conv: ConversationResponse) => {
+          next: (convResponse: ConversationDetail | ConversationResponse) => {
+            const conv = convResponse as ConversationDetail;
+
             const updatedList = [conv, ...this.conversations()];
+            const messages = conv.messages || [];
+
             this.patch({
               activeConversationId: conv.id,
               conversations: updatedList,
-              messages: conv.messages || [],
+              messages: messages,
             });
           },
           error: (err: unknown) => {
@@ -156,10 +216,14 @@ export class ChatStore implements OnDestroy {
           },
         });
     } else {
-      const payload: MessageCreate = { content };
+      const payload: MessageCreate = { content, target_models: targetModels };
+
       this.chatApi
         .sendMessageApiV1ConversationsConversationIdMessagesPost(currentId, payload)
-        .pipe(finalize(() => this.patch({ isGenerating: false })))
+        .pipe(
+          retry(2),
+          finalize(() => this.patch({ isGenerating: false })),
+        )
         .subscribe({
           next: (aiMsg: MessageResponse) => {
             this.patch({ messages: [...this.messages(), aiMsg] });
@@ -175,13 +239,10 @@ export class ChatStore implements OnDestroy {
 
   /**
    * Vote for a Candidate.
-   * Optimistically updates the UI to reflect the selection, then syncs with API.
-   * Promotes the candidate content to the main message body.
-   *
-   * @param {string} messageId - The parent message ID.
-   * @param {string} candidateId - The selected candidate ID.
    */
   voteCandidate(messageId: string, candidateId: string): void {
+    console.log('[ChatStore] Voting for candidate', candidateId, 'in message', messageId);
+
     const activeId = this.activeConversationId();
     if (!activeId) return;
 
@@ -190,18 +251,14 @@ export class ChatStore implements OnDestroy {
     const idx = currentMsgs.findIndex((m) => m.id === messageId);
     if (idx === -1) return;
 
-    // Use spread for shallow copy (safer for tests than structuredClone)
     const msg = { ...currentMsgs[idx] };
     const cand = msg.candidates?.find((c) => c.id === candidateId);
     if (!cand) return;
 
-    // Ensure we handle potential undefined/null fields safely
     msg.content = cand.content || '';
-    msg.sql_snippet = cand.sql_snippet || null; // Explicit null if undefined
+    msg.sql_snippet = cand.sql_snippet || null;
     const selectedHash = cand.sql_hash;
 
-    // Update selection state for all candidates (handles grouping by SQL Hash)
-    // Create new array to maintain immutability
     if (msg.candidates) {
       msg.candidates = msg.candidates.map((c) => ({
         ...c,
@@ -214,9 +271,10 @@ export class ChatStore implements OnDestroy {
     this.patch({ messages: newMsgs });
 
     this.chatApi
-      .voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost(activeId, messageId, {
+      .voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(activeId, messageId, {
         candidate_id: candidateId,
       })
+      .pipe(retry(2))
       .subscribe({
         next: (serverMsg: MessageResponse) => {
           // Re-synchronize with server truth
@@ -237,7 +295,6 @@ export class ChatStore implements OnDestroy {
 
   /** Deletes conversation. */
   deleteConversation(id: string): void {
-    // Optimistic Remove
     const currentList = this.conversations();
     this.patch({ conversations: currentList.filter((c) => c.id !== id) });
 
@@ -245,12 +302,15 @@ export class ChatStore implements OnDestroy {
       this.createNewChat();
     }
 
-    this.chatApi.deleteConversationApiV1ConversationsConversationIdDelete(id).subscribe({
-      error: (err: unknown) => {
-        this.patch({ conversations: currentList }); // Rollback
-        this.handleError(err);
-      },
-    });
+    this.chatApi
+      .deleteConversationApiV1ConversationsConversationIdDelete(id)
+      .pipe(retry(2))
+      .subscribe({
+        error: (err: unknown) => {
+          this.patch({ conversations: currentList }); // Rollback
+          this.handleError(err);
+        },
+      });
   }
 
   /** Rename Conversation. */
@@ -265,6 +325,7 @@ export class ChatStore implements OnDestroy {
 
     this.chatApi
       .updateConversationApiV1ConversationsConversationIdPut(id, { title: newTitle })
+      .pipe(retry(2))
       .subscribe({
         error: (err: unknown) => {
           this.patch({ conversations: currentList });
@@ -273,12 +334,14 @@ export class ChatStore implements OnDestroy {
       });
   }
 
-  /** patch method. */
+  /** Patches state. */
   private patch(p: Partial<ChatState>): void {
     this._state.update((s) => ({ ...s, ...p }));
   }
-  /** handleError method. */
+
+  /** Handles error. */
   private handleError(e: unknown): void {
+    console.error('[ChatStore] API Error:', e);
     const msg = e instanceof HttpErrorResponse ? e.error?.detail || e.message : 'Error';
     this.patch({ error: msg });
   }

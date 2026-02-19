@@ -9,8 +9,9 @@
  */
 
 /**
- * Payload for creating a new Conversation.
+ * Payload for starting a new conversation. If \'message\' is provided, the conversation is initialized with it.
  */
 export interface ConversationCreate {
-  message: string;
+  title?: string | null;
+  message?: string | null;
 }

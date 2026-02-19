@@ -10,10 +10,9 @@
 
   @for (msg of store.messages(); track msg.id) {
     <div class="message-row" [ngClass]="msg.role">
-      <!-- Chat Bubble -->
       <mat-card class="message-bubble" [class.user-bubble]="msg.role === 'user'">
         <mat-card-content>
-          <!-- A: Voting Mode (Arena) -->
+          <!-- A: Voting Mode -->
           @if (hasPendingCandidates(msg)) {
             <div class="arena-header">
               <span class="mat-label-small"> Compare {{ msg.candidates?.length }} Models </span>
@@ -37,7 +36,6 @@
                   </div>
 
                   <div class="candidate-body">
-                    <!-- If Error exists, show readable error box -->
                     @if (candidateError(cand.id)) {
                       <div class="error-container">
                         <mat-icon color="warn" class="icon-small">warning</mat-icon>
@@ -52,6 +50,7 @@
                         class="mt-2"
                         [sql]="cand.sql_snippet"
                         (run)="runCandidateQuery(cand)"
+                        (addToCart)="saveToCart(cand.sql_snippet)"
                       ></app-sql-snippet>
                     }
 
@@ -59,6 +58,7 @@
                       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
                     }
 
+                    <!-- RE-ADDED: VizTable Preview (Fixes NG8113) -->
                     @if (candidateResult(cand.id)) {
                       <div class="table-preview mat-elevation-z1">
                         <viz-table [dataSet]="candidateResult(cand.id)"></viz-table>
@@ -84,7 +84,11 @@
           @else {
             <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
             @if (msg.sql_snippet) {
-              <app-sql-snippet [sql]="msg.sql_snippet" (run)="runQuery($event)"></app-sql-snippet>
+              <app-sql-snippet
+                [sql]="msg.sql_snippet"
+                (run)="runQuery($event)"
+                (addToCart)="saveToCart($event)"
+              ></app-sql-snippet>
             }
           }
         </mat-card-content>
@@ -95,7 +99,6 @@
     </div>
   }
 
-  <!-- Loading State -->
   @if (store.isGenerating()) {
     <div class="message-row assistant">
       <mat-card class="message-bubble loading-bubble">
@@ -104,7 +107,6 @@
     </div>
   }
 
-  <!-- Global Error -->
   @if (store.error(); as err) {
     <div class="global-error-toast mat-elevation-z4">
       <mat-icon color="warn">error</mat-icon>
@@ -113,8 +115,22 @@
   }
 </div>
 
-<!-- Input Area -->
 <div class="composer-container mat-elevation-z4">
+  <!-- Model Selection Chips -->
+  <div class="model-selector" *ngIf="store.availableModels().length > 0">
+    <mat-chip-listbox multiple aria-label="Select Models to Query">
+      @for (model of store.availableModels(); track model.id) {
+        <mat-chip-option
+          [selected]="store.selectedModelIds().includes(model.id)"
+          (click)="store.toggleModelSelection(model.id)"
+          [matTooltip]="model.name"
+        >
+          {{ model.name }}
+        </mat-chip-option>
+      }
+    </mat-chip-listbox>
+  </div>
+
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
     <textarea
       matInput

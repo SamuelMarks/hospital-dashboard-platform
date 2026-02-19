@@ -8,6 +8,9 @@
  * Do not edit the class manually.
  */
 
+/**
+ * OAuth2 access token response payload.
+ */
 export interface Token {
   access_token: string;
   token_type: string;

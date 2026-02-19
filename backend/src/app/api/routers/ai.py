@@ -5,7 +5,7 @@ Exposes the endpoint for generating SQL.
 Now returns an `ExperimentResponse` containing multiple candidates for user comparison.
 """
 
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,13 +13,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.database.postgres import get_db
 from app.models.user import User
-from app.schemas.ai import SQLGenerationRequest, SQLExecutionRequest, SQLExecutionResponse
+from app.schemas.ai import SQLGenerationRequest, SQLExecutionRequest, SQLExecutionResponse, ModelInfo
 from app.schemas.feedback import ExperimentResponse
 from app.services.sql_generator import sql_generator
 from app.database.duckdb import duckdb_manager
 from app.services.runners.sql import run_sql_widget
+from app.services.llm_client import llm_client
 
 router = APIRouter()
+
+
+@router.get("/models", response_model=List[ModelInfo])
+def list_available_models(current_user: Annotated[User, Depends(deps.get_current_user)]) -> List[ModelInfo]:
+  """
+  Returns the list of currently configured LLMs available for the Arena.
+  """
+  return llm_client.get_available_models()
 
 
 @router.post("/generate", response_model=ExperimentResponse)

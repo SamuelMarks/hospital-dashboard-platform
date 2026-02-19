@@ -1,52 +1,84 @@
 <mat-sidenav-container class="sidenav-container">
+  <!-- Side Drawer -->
   <mat-sidenav
     #drawer
     [mode]="(isHandset$ | async) ? 'over' : 'side'"
     [opened]="(isHandset$ | async) === false"
     class="history-drawer"
   >
-    <div class="history-header">
-      <button mat-stroked-button color="primary" class="w-full" (click)="newChat()">
-        <mat-icon>add</mat-icon> New Chat
-      </button>
-    </div>
+    <!-- Use Tabs to switch between History and Cart -->
+    <mat-tab-group class="sidebar-tabs" animationDuration="0ms">
+      <!-- TAB 1: HISTORY -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="mr-2 icon-sm">history</mat-icon> History
+        </ng-template>
 
-    @if (store.isDataLoading()) {
-      <div class="flex justify-center p-8"><mat-spinner diameter="32"></mat-spinner></div>
-    }
-
-    <div class="history-list" role="list">
-      @for (group of groupedHistory(); track group.label) {
-        <div class="group-label">{{ group.label }}</div>
-        @for (chat of group.items; track chat.id) {
-          <div class="nav-item-container" [class.active]="store.activeConversationId() === chat.id">
-            <div class="nav-content" (click)="selectChat(chat.id)">
-              <mat-icon class="mr-2 text-sm">chat_bubble_outline</mat-icon>
-              <span class="truncate text-sm">{{ chat.title }}</span>
-            </div>
-
-            <!-- Context Menu Button -->
-            <button
-              mat-icon-button
-              class="action-btn scale-75"
-              [matMenuTriggerFor]="menu"
-              (click)="$event.stopPropagation()"
-            >
-              <mat-icon>more_vert</mat-icon>
+        <div class="tab-column">
+          <div class="history-header">
+            <button mat-stroked-button color="primary" class="w-full" (click)="newChat()">
+              <mat-icon>add</mat-icon> New Chat
             </button>
-
-            <mat-menu #menu="matMenu">
-              <button mat-menu-item (click)="renameChat(chat)">
-                <mat-icon>edit</mat-icon> Rename
-              </button>
-              <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
-                <mat-icon color="warn">delete</mat-icon> Delete
-              </button>
-            </mat-menu>
           </div>
-        }
-      }
-    </div>
+
+          @if (store.isDataLoading()) {
+            <div class="flex justify-center p-8"><mat-spinner diameter="32"></mat-spinner></div>
+          }
+
+          <div class="history-list" role="list">
+            @for (group of groupedHistory(); track group.label) {
+              <div class="group-label">{{ group.label }}</div>
+              @for (chat of group.items; track chat.id) {
+                <div
+                  class="nav-item-container"
+                  [class.active]="store.activeConversationId() === chat.id"
+                >
+                  <div class="nav-content" (click)="selectChat(chat.id)">
+                    <mat-icon class="mr-2 text-sm">chat_bubble_outline</mat-icon>
+                    <span class="truncate text-sm">{{ chat.title }}</span>
+                  </div>
+
+                  <!-- Context Menu Button -->
+                  <button
+                    mat-icon-button
+                    class="action-btn scale-75"
+                    [matMenuTriggerFor]="menu"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+
+                  <mat-menu #menu="matMenu">
+                    <button mat-menu-item (click)="renameChat(chat)">
+                      <mat-icon>edit</mat-icon> Rename
+                    </button>
+                    <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
+                      <mat-icon color="warn">delete</mat-icon> Delete
+                    </button>
+                  </mat-menu>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- TAB 2: QUERY CART -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="mr-2 icon-sm">shopping_cart</mat-icon>
+          Cart
+          @if (cart.count() > 0) {
+            <span class="badgex">{{ cart.count() }}</span>
+          }
+        </ng-template>
+
+        <div class="tab-column overflow-y-auto">
+          <!-- Reuse the Query Cart Component -->
+          <app-query-cart></app-query-cart>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
   </mat-sidenav>
 
   <mat-sidenav-content role="main">

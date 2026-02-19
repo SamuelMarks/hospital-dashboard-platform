@@ -8,6 +8,9 @@
  * Do not edit the class manually.
  */
 
+/**
+ * Public representation of a user returned by the API.
+ */
 export interface UserResponse {
   id: string;
   email: string;

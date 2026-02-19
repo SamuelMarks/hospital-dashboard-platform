@@ -2,10 +2,17 @@
 <mat-toolbar color="white" class="border-b">
   <span class="flex-grow font-medium">Ask Data</span>
   <span class="text-xs text-gray-500 mr-4 font-normal">Ad-hoc Analysis Scratchpad</span>
-  <span class="text-xs text-gray-500 mr-4 font-normal flex items-center gap-1">
-    <mat-icon style="font-size: 14px; width: 14px; height: 14px">shopping_cart</mat-icon>
-    {{ cartCount() }} in cart
-  </span>
+
+  <!-- Query Cart Status & Access -->
+  <button
+    mat-stroked-button
+    class="cart-indicator mr-4"
+    [class.has-items]="cartCount() > 0"
+    matTooltip="Items saved to cart will appear in the Dashboard Editor sidebar"
+  >
+    <mat-icon class="icon-small" [class.text-primary]="cartCount() > 0">shopping_cart</mat-icon>
+    <span class="ml-2 font-medium">{{ cartCount() }} Saved</span>
+  </button>
 
   <button mat-icon-button (click)="vis.close()" data-testid="close-btn">
     <mat-icon>close</mat-icon>
@@ -31,8 +38,6 @@
   }
 
   <!-- Builder Instance -->
-  <!-- We render it immediately once scratchpad ID is known. 
-           Passed [initialTab]="1" to default to AI Assistant view for this context. -->
   @if (scratchpadIds(); as ids) {
     <app-sql-builder
       [dashboardId]="ids.dashboardId"

@@ -143,9 +143,13 @@ uv run alembic upgrade head
 
 # 4. Ingest Sample Data (DuckDB)
 # Loads CSVs from /data into the local DuckDB file
-uv run python3 scripts/ingest.py
+uv run python3 ./scripts/ingest.py
 
-# 5. Start the Server
+# 5. Ingest Model List
+# Load model list from ollama and env keys (like `OPENAI_API_KEY`, `GOOGLE_API_KEY`)
+uv run python3 ./scripts/update_models.py
+
+# 6. Start the Server
 uv run uvicorn --app-dir src app.main:app --reload
 ```
 *API will differ at `http://localhost:8000` (Docs at `/docs`)*

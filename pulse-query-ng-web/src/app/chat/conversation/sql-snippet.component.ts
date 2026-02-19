@@ -11,11 +11,12 @@ import { Component, input, output, ChangeDetectionStrategy } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 /** Sql Snippet component. */
 @Component({
   selector: 'app-sql-snippet',
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -28,7 +29,6 @@ import { MatIconModule } from '@angular/material/icon';
         border: 1px solid var(--sys-surface-border);
         border-radius: 8px;
         overflow: hidden;
-        /* Force dark background for code readability regardless of theme */
         background-color: #282c34;
         color: #abb2bf;
       }
@@ -52,7 +52,6 @@ import { MatIconModule } from '@angular/material/icon';
         line-height: 1.5;
         overflow-x: auto;
       }
-      /* Simple Syntax Highlighting Tokens (Matches One Dark theme) */
       .keyword {
         color: #c678dd;
         font-weight: bold;
@@ -71,29 +70,20 @@ import { MatIconModule } from '@angular/material/icon';
   templateUrl: './sql-snippet.component.html',
 })
 export class SqlSnippetComponent {
-  /**
-   * The SQL string to display and highlight.
-   */
+  /** SQL string. */
   /* istanbul ignore next */
   readonly sql = input<string | null | undefined>('');
 
-  /**
-   * Event emitted when user clicks "Run". Payload is the SQL string.
-   */
+  /** Emitter for Run. */
   readonly run = output<string>();
 
-  /**
-   * Computes simple HTML highlighting for basic SQL keywords.
-   * Provides visual structure without a heavy library dependency.
-   *
-   * @returns {string} Safe HTML string with span tags for coloring.
-   */
+  /** Emitter for Save to Cart. */
+  readonly addToCart = output<string>();
+
+  /** Computes highlighting. */
   get highlightedSql(): string {
     let code = this.sql() || '';
-    // Escape HTML to prevention injection
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    // Token Replace
     code = code.replace(
       /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|inner|outer|ON|AND|OR|AS|WITH)\b/gi,
       '<span class="keyword">$1</span>',
@@ -101,27 +91,24 @@ export class SqlSnippetComponent {
     code = code.replace(/\b(count|sum|avg|max|min)\b/gi, '<span class="function">$1</span>');
     code = code.replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>');
     code = code.replace(/\b(\d+)\b/g, '<span class="number">$1</span>');
-
     return code;
   }
 
-  /**
-   * Safe emission handler for the template.
-   */
+  /** Emits run event. */
   emitRun(): void {
     const val = this.sql();
-    if (val) {
-      this.run.emit(val);
-    }
+    if (val) this.run.emit(val);
   }
 
-  /**
-   * Copies the raw SQL to the system clipboard.
-   */
+  /** Emits save to cart event. */
+  emitAddToCart(): void {
+    const val = this.sql();
+    if (val) this.addToCart.emit(val);
+  }
+
+  /** Copies to clipboard. */
   copy(): void {
     const val = this.sql();
-    if (val) {
-      navigator.clipboard.writeText(val);
-    }
+    if (val) navigator.clipboard.writeText(val);
   }
 }

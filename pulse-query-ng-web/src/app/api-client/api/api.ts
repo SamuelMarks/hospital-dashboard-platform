@@ -1,7 +1,11 @@
 export * from './ai.service';
 import { AiService } from './ai.service';
+export * from './analytics.service';
+import { AnalyticsService } from './analytics.service';
 export * from './auth.service';
 import { AuthService } from './auth.service';
+export * from './chat.service';
+import { ChatService } from './chat.service';
 export * from './dashboards.service';
 import { DashboardsService } from './dashboards.service';
 export * from './default.service';
@@ -14,17 +18,15 @@ export * from './simulation.service';
 import { SimulationService } from './simulation.service';
 export * from './templates.service';
 import { TemplatesService } from './templates.service';
-export * from './chat.service';
-import { ChatService } from './chat.service';
-
 export const APIS = [
   AiService,
+  AnalyticsService,
   AuthService,
+  ChatService,
   DashboardsService,
   DefaultService,
   ExecutionService,
   SchemaService,
   SimulationService,
   TemplatesService,
-  ChatService,
 ];

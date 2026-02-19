@@ -66,6 +66,32 @@ async def test_create_conversation_candidates_flow(client: AsyncClient, mock_use
 
 
 @pytest.mark.asyncio
+async def test_generation_stops_on_total_failure(client: AsyncClient, mock_user_auth) -> None:
+  """
+  Test the Circuit Breaker logic:
+  If all models fail initially, do NOT retry/expand.
+  """
+  input_text = "Bad Config"
+
+  with patch("app.api.routers.chat.llm_client.generate_arena_competition") as mock_arena:
+    # Mock returning errors only
+    error_response = ArenaResponse("Model X", "mX", "", 0, error="404 Not Found")
+    mock_arena.return_value = [error_response]
+
+    response = await client.post(f"{CONVERSATIONS_URL}/", json={"message": input_text})
+
+    assert response.status_code == 200
+    data = response.json()
+    candidates = data["messages"][1]["candidates"]
+
+    # Should NOT have looped to 3 attempts. Should have 1 failure.
+    assert len(candidates) == 1
+    assert "Generation Failed" in candidates[0]["content"]
+    # The loop adds attempts, so if it didn't loop, call count is 1
+    assert mock_arena.call_count == 1
+
+
+@pytest.mark.asyncio
 async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth, db_session) -> None:
   """
   Test that voting selects a candidate and promotes its content.

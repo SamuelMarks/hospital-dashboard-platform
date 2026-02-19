@@ -14,6 +14,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { AskDataService } from './ask-data.service';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
@@ -30,12 +32,7 @@ import { QueryCartService } from './query-cart.service';
  * AskDataComponent
  *
  * The content definition for the Global "Ask Data" Sidenav.
- *
- * Responsibilities:
- * 1. Manages the lifecycle of a "Scratchpad" Dashboard (create checking on load).
- * 2. Hosts the `SqlBuilderComponent` for ad-hoc analysis.
- * 3. Provides a header with a Close action (delegates to Service).
- * 4. Saves ad-hoc SQL into the Query Cart.
+ * Orchestrates ad-hoc analysis via a hidden "Scratchpad" dashboard.
  */
 @Component({
   selector: 'app-ask-data',
@@ -46,6 +43,7 @@ import { QueryCartService } from './query-cart.service';
     MatIconModule,
     MatProgressSpinnerModule,
     MatToolbarModule,
+    MatTooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
@@ -76,45 +74,40 @@ import { QueryCartService } from './query-cart.service';
         z-index: 10;
         padding: 24px;
       }
+      .cart-indicator {
+        border-color: var(--sys-outline-variant);
+        color: var(--sys-text-secondary);
+      }
+      .cart-indicator.has-items {
+        border-color: var(--sys-primary);
+        background-color: var(--sys-primary-container);
+        color: var(--sys-on-primary-container);
+      }
+      .text-primary {
+        color: var(--sys-primary);
+      }
     `,
   ],
   templateUrl: './ask-data.component.html',
 })
-/* v8 ignore start */
 export class AskDataComponent implements OnDestroy {
-  /* v8 ignore stop */
-  /** Vis. */
   public readonly vis = inject(AskDataService);
-  /** cart property. */
   private readonly cart = inject(QueryCartService);
-
-  /** dashboardsApi property. */
   private readonly dashboardsApi = inject(DashboardsService);
-  /** auth property. */
   private readonly auth = inject(AuthService);
-  /** platformId property. */
   private readonly platformId = inject(PLATFORM_ID);
-  /** SCRATCHPAD_NAME property. */
+  private readonly snackBar = inject(MatSnackBar);
+
   private readonly SCRATCHPAD_NAME = 'Scratchpad (Temp)';
-  /** WIDGET_TITLE property. */
   private readonly WIDGET_TITLE = 'AdHoc Query';
 
-  /** Loading Context. */
-  /* istanbul ignore next */
   readonly loadingContext = signal(true);
-  /** Context Error. */
-  /* istanbul ignore next */
   readonly contextError = signal<string | null>(null);
-  /** Scratchpad Ids. */
-  /* istanbul ignore next */
   readonly scratchpadIds = signal<{ dashboardId: string; widgetId: string } | null>(null);
-  /** Cart Count. */
   readonly cartCount = this.cart.count;
 
-  /** Creates a new AskDataComponent. */
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
-      // Initialize immediately on construction (App startup), independent of visibility
       effect(() => {
         const isAuthenticated = this.auth.isAuthenticated();
         const hasContext = !!this.scratchpadIds();
@@ -134,7 +127,6 @@ export class AskDataComponent implements OnDestroy {
     }
   }
 
-  /** Ng On Destroy. */
   ngOnDestroy(): void {
     if (isPlatformBrowser(this.platformId)) {
       const ids = this.scratchpadIds();
@@ -148,7 +140,6 @@ export class AskDataComponent implements OnDestroy {
     }
   }
 
-  /** initializeScratchpad method. */
   private initializeScratchpad(): void {
     this.loadingContext.set(true);
     this.contextError.set(null);
@@ -166,7 +157,6 @@ export class AskDataComponent implements OnDestroy {
     });
   }
 
-  /** createDashboard method. */
   private createDashboard(): void {
     const scratchDash: DashboardCreate = { name: this.SCRATCHPAD_NAME };
     this.dashboardsApi.createDashboardApiV1DashboardsPost(scratchDash).subscribe({
@@ -175,7 +165,6 @@ export class AskDataComponent implements OnDestroy {
     });
   }
 
-  /** ensureWidget method. */
   private ensureWidget(dashboardId: string, widgets: WidgetResponse[]): void {
     const existingWidget = widgets.find((w) => w.title === this.WIDGET_TITLE);
 
@@ -196,21 +185,21 @@ export class AskDataComponent implements OnDestroy {
     }
   }
 
-  /** setContext method. */
   private setContext(dashboardId: string, widgetId: string): void {
     this.scratchpadIds.set({ dashboardId, widgetId });
     this.loadingContext.set(false);
   }
 
-  /** handleError method. */
   private handleError(msg: string, error: any): void {
     console.error(error);
     this.contextError.set(msg);
     this.loadingContext.set(false);
   }
 
-  /** Adds the current SQL to the query cart. */
   handleSaveToCart(sql: string): void {
     this.cart.add(sql);
+    this.snackBar.open('Query saved to Cart. Open dashboard editor to use.', 'OK', {
+      duration: 3000,
+    });
   }
 }

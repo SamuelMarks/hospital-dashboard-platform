@@ -5,14 +5,11 @@ import {
   ChangeDetectionStrategy,
   ViewChild,
   computed,
-  Signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { map, shareReplay } from 'rxjs/operators';
-import { Observable } from 'rxjs';
 
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,18 +18,13 @@ import { MatListModule } from '@angular/material/list';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatTabsModule } from '@angular/material/tabs';
 
 import { ChatStore } from './chat.store';
 import { ConversationResponse } from '../api-client';
 import { ConversationComponent } from './conversation/conversation.component';
-
-/** History Group interface. */
-interface HistoryGroup {
-  /** Label. */
-  label: string;
-  /** Items. */
-  items: ConversationResponse[];
-}
+import { QueryCartComponent } from '../dashboard/query-cart/query-cart.component';
+import { QueryCartService } from '../global/query-cart.service';
 
 /** Chat Layout component. */
 @Component({
@@ -47,11 +39,11 @@ interface HistoryGroup {
     ScrollingModule,
     MatProgressSpinnerModule,
     MatMenuModule,
+    MatTabsModule,
     ConversationComponent,
+    QueryCartComponent,
   ],
-  /* v8 ignore start */
   providers: [ChatStore],
-  /* v8 ignore stop */
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
     `
@@ -64,12 +56,29 @@ interface HistoryGroup {
         height: 100%;
       }
       .history-drawer {
-        width: 280px;
+        width: 320px;
         border-right: 1px solid var(--sys-surface-border);
         background-color: var(--sys-surface);
         display: flex;
         flex-direction: column;
       }
+      .sidebar-tabs {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      /* Fix MatTabs Flex growth */
+      ::ng-deep .sidebar-tabs .mat-mdc-tab-body-wrapper {
+        flex-grow: 1;
+        height: 100%;
+      }
+      .tab-column {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
       .history-header {
         padding: 16px;
         flex-shrink: 0;
@@ -105,7 +114,6 @@ interface HistoryGroup {
         font-weight: 500;
         color: var(--sys-primary);
       }
-      /* The clickable area */
       .nav-content {
         flex: 1;
         padding: 12px;
@@ -125,15 +133,29 @@ interface HistoryGroup {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      .icon-sm {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+      .badgex {
+        background: var(--sys-primary);
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        margin-left: 4px;
+      }
     `,
   ],
   templateUrl: './chat-layout.component.html',
 })
-/* v8 ignore start */
 export class ChatLayoutComponent implements OnInit {
-  /* v8 ignore stop */
   /** Store. */
   public readonly store = inject(ChatStore);
+  /** Cart Service. */
+  public readonly cart = inject(QueryCartService);
+
   /** breakpointObserver property. */
   private breakpointObserver = inject(BreakpointObserver);
   /** Drawer. */
@@ -146,7 +168,6 @@ export class ChatLayoutComponent implements OnInit {
   );
 
   /** Grouped History. */
-  /* istanbul ignore next */
   readonly groupedHistory = computed(() => {
     const list = this.store.conversations();
     if (!list) return [];
@@ -178,6 +199,7 @@ export class ChatLayoutComponent implements OnInit {
     this.store.selectConversation(id);
     this.closeDrawer();
   }
+
   /** New Chat. */
   newChat() {
     this.store.createNewChat();
@@ -186,7 +208,8 @@ export class ChatLayoutComponent implements OnInit {
 
   /** Rename Chat. */
   renameChat(chat: ConversationResponse) {
-    const newTitle = prompt('Rename conversation:', chat.title);
+    // Fix TS2345: Handle potential null/undefined title by defaulting to empty string
+    const newTitle = prompt('Rename conversation:', chat.title || '');
     if (newTitle && newTitle !== chat.title) {
       this.store.renameConversation(chat.id, newTitle);
     }

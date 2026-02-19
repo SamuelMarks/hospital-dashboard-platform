@@ -479,6 +479,7 @@ export class DashboardsService extends BaseService {
 
   /**
    * Delete Widget
+   * Delete a widget owned by the current user.
    * @endpoint delete /api/v1/dashboards/widgets/{widget_id}
    * @param widgetId
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

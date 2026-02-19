@@ -6,8 +6,18 @@ used across the backend (database URLs, LLM swarm configuration, etc.).
 """
 
 import os
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Optional
+
+# Calculate absolute path to .env file (Root of backend)
+# File structure: backend/src/app/core/config.py
+# .parents[0] = core
+# .parents[1] = app
+# .parents[2] = src
+# .parents[3] = backend  <-- The distinct root where .env lives
+BACKEND_ROOT = Path(__file__).resolve().parents[3]
+ENV_PATH = BACKEND_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -26,12 +36,7 @@ class Settings(BaseSettings):
   POSTGRES_USER: str = "postgres"
   POSTGRES_PASSWORD: str = "postgres"
   POSTGRES_DB: str = "pulse_query_db"
-  POSTGRES_PORT: int = int(os.environ.get("PGPORT", os.environ.get("POSTGRES_PORT", 5432)))
-
-  @property
-  def SQLALCHEMY_DATABASE_URI(self) -> str:
-    """Build the async SQLAlchemy database URI from environment settings."""
-    return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+  POSTGRES_PORT: int = 5432
 
   # Database: DuckDB
   DUCKDB_PATH: str = "hospital_analytics.duckdb"
@@ -41,141 +46,168 @@ class Settings(BaseSettings):
   CACHE_MAX_ENTRIES: int = 1000
   CACHE_MAX_ITEM_SIZE: int = 5_000_000
 
-  # --- Multi-LLM Arena Configuration ---
-  # This section dynamically builds the "Swarm" of LLMs based on available API Keys.
+  # --- LLM Configuration Fields ---
+
+  # Local Custom
+  LLM_LOCAL_URL: str = "http://localhost:11434/v1"
+  LLM_LOCAL_API_KEY: str = "EMPTY"
+  LLM_LOCAL_MODELS: str = ""
+
+  # Ollama (Auto-Detected)
+  OLLAMA_HOST: str = "http://localhost:11434/v1"
+  OLLAMA_MODELS: str = ""
+
+  # Cloud Providers
+  OPENAI_API_KEY: Optional[str] = None
+  OPENAI_MODELS: str = ""
+
+  GEMINI_API_KEY: Optional[str] = None
+  GOOGLE_API_KEY: Optional[str] = None
+  GOOGLE_GEMINI_BASE_URL: Optional[str] = None
+  GEMINI_MODELS: str = ""
+
+  MISTRAL_API_KEY: Optional[str] = None
+  MISTRAL_MODELS: str = ""
+
+  ANTHROPIC_API_KEY: Optional[str] = None
+  ANTHROPIC_MODELS: str = ""
+
+  @property
+  def SQLALCHEMY_DATABASE_URI(self) -> str:
+    return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
   @property
   def LLM_SWARM(self) -> List[Dict[str, Any]]:
-    """
-    Returns a list of configured providers for the Arena.
-    Structure: [{'provider': 'openai', 'model': 'gpt-4', 'api_key': '...'}, ...]
-    """
     swarm = []
 
-    def _parse_models(env_key: str, fallback: List[str] | None = None) -> List[str]:
-      raw = os.environ.get(env_key, "").strip()
-      if raw:
-        return [m.strip() for m in raw.split(",") if m.strip()]
-      return fallback or []
+    def _parse_models(raw_csv: str, fallback: List[str] | None = None) -> List[Tuple[str, str]]:
+      raw = raw_csv.strip()
+      if not raw:
+        if fallback:
+          return [(m, m) for m in fallback]
+        return []
 
-    def _display_name(provider: str, model: str, local: bool = False, include_model: bool = True) -> str:
-      model_lower = model.lower()
-      # Custom rewrites for popular open models
+      parsed = []
+      for part in raw.split(","):
+        clean = part.strip()
+        if not clean:
+          continue
+
+        if "|" in clean:
+          mid, name = clean.split("|", 1)
+          parsed.append((mid.strip(), name.strip()))
+        else:
+          parsed.append((clean, clean))
+      return parsed
+
+    def _display_name(
+      provider: str, model_id: str, raw_name: str, local: bool = False, include_model: bool = True
+    ) -> str:
+      is_custom_label = raw_name != model_id and raw_name.strip() != ""
+      if is_custom_label:
+        return raw_name
+
+      model_lower = model_id.lower()
       if "deepseek-r1" in model_lower:
-        return "DeepSeek R1"
-      if "deepseek-coder" in model_lower:
-        return "DeepSeek Coder"
-      if "qwen2.5-coder" in model_lower:
-        return "Qwen 2.5 Coder"
+        final_name = "DeepSeek R1"
+      elif "deepseek-coder" in model_lower:
+        final_name = "DeepSeek Coder"
+      elif "qwen2.5-coder" in model_lower:
+        final_name = "Qwen 2.5 Coder"
+      elif provider == "openai" and "gpt-4o" in model_lower:
+        final_name = "GPT-4o"
+      elif provider == "mistral" and "mistral-large" in model_lower:
+        final_name = "Mistral Large"
+      elif provider == "anthropic" and "claude-3-opus" in model_lower:
+        final_name = "Claude 3 Opus"
+      elif provider == "gemini" and "gemini-1.5-pro" in model_lower:
+        final_name = "Gemini 1.5 Pro"
+      elif local and model_id == "local-model":
+        final_name = "Local Model"
+      else:
+        final_name = model_id.replace("-", " ").title()
 
-      if local:
-        if not include_model:
-          return "Local LLM"
-        return f"Local LLM {model}"
+      if local and include_model:
+        if not final_name.startswith("Local"):
+          return f"Local LLM: {final_name}"
 
-      if provider == "openai" and model_lower == "gpt-4o":
-        return "GPT-4o"
-      if provider == "mistral" and model_lower.startswith("mistral-large"):
-        return "Mistral Large"
-      if provider == "anthropic" and model_lower.startswith("claude-3-opus"):
-        return "Claude 3 Opus"
-      if provider == "gemini" and model_lower.startswith("gemini-1.5-pro"):
-        return "Gemini 1.5 Pro"
-      return model.replace("-", " ").title()
+      return final_name
 
     def _add_models(
       provider: str,
-      models: List[str],
+      models: List[Tuple[str, str]],
       api_key: str | None,
       api_base: str | None,
       local: bool = False,
       include_model_in_name: bool = True,
     ) -> None:
-      for model in models:
+      for model_id, display_label in models:
+        final_name = _display_name(provider, model_id, display_label, local=local, include_model=include_model_in_name)
+
         swarm.append(
           {
             "provider": provider,
-            "model": model,
+            "model": model_id,
             "api_key": api_key,
             "api_base": api_base,
-            "name": _display_name(provider, model, local=local, include_model=include_model_in_name),
-            "model_name": model,  # Explicitly identifying the model ID for client calls
+            "name": final_name,
+            "model_name": model_id,
+            "is_local": local,
           }
         )
 
-    # 1. Local / Default Configuration (OpenAI-compatible; vLLM, LM Studio, etc.)
-    # Fix: Default port changed from 8000 (Backend Self) to 11434 (Ollama) to prevent recursion loops
-    local_models = _parse_models("LLM_LOCAL_MODELS", ["local-model"])
-    local_url = os.environ.get("LLM_LOCAL_URL", "http://localhost:11434/v1")
-    _add_models(
-      provider="openai",
-      models=local_models,
-      api_key=os.environ.get("LLM_LOCAL_API_KEY", "EMPTY"),
-      api_base=local_url,
-      local=True,
-      # Include model name if multiple locals or if user defined specific local models
-      # If default ["local-model"], length is 1, so False -> "Local LLM"
-      include_model_in_name=len(local_models) > 1 or (len(local_models) == 1 and local_models[0] != "local-model"),
-    )
-
-    # 2. OpenAI Cloud (If Key Present)
-    if os.environ.get("OPENAI_API_KEY"):
-      openai_models = _parse_models("OPENAI_MODELS", ["gpt-4o"])
+    # 1. Local / Default Configuration (Manual Override)
+    local_models_list = _parse_models(self.LLM_LOCAL_MODELS, [])
+    if local_models_list:
       _add_models(
         provider="openai",
-        models=openai_models,
-        api_key=os.environ["OPENAI_API_KEY"],
-        api_base=None,
-      )
-
-    # 3. Gemini Cloud (If Key Present)
-    if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"):
-      gemini_models = _parse_models("GEMINI_MODELS", ["gemini-1.5-pro"])
-      _add_models(
-        provider="gemini",
-        models=gemini_models,
-        api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"),
-        api_base=os.environ.get("GOOGLE_GEMINI_BASE_URL"),
-      )
-
-    # 4. Ollama Local Models
-    collama_models = _parse_models("OLLAMA_MODELS", [])
-    # Default to host.docker.internal for Docker -> Host communication, fallback to localhost
-    ollama_host = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434/v1")
-
-    if collama_models:
-      _add_models(
-        provider="openai",
-        models=collama_models,
-        api_key="ollama",  # Dummy key required
-        api_base=ollama_host,
-        local=False,  # Set False so Display Name is just the Model Name (e.g. "Llama3")
+        models=local_models_list,
+        api_key=self.LLM_LOCAL_API_KEY,
+        api_base=self.LLM_LOCAL_URL,
+        local=True,
         include_model_in_name=True,
       )
 
-    # 5. Mistral Cloud (If Key Present)
-    if os.environ.get("MISTRAL_API_KEY"):
-      mistral_models = _parse_models("MISTRAL_MODELS", ["mistral-large-latest"])
+    # 2. OpenAI Cloud
+    if self.OPENAI_API_KEY:
+      openai_models = _parse_models(self.OPENAI_MODELS, ["gpt-4o"])
+      _add_models(provider="openai", models=openai_models, api_key=self.OPENAI_API_KEY, api_base=None)
+
+    # 3. Gemini Cloud
+    if self.GEMINI_API_KEY or self.GOOGLE_API_KEY:
+      gemini_m = _parse_models(self.GEMINI_MODELS, ["gemini-1.5-pro"])
       _add_models(
-        provider="mistral",
-        models=mistral_models,
-        api_key=os.environ["MISTRAL_API_KEY"],
-        api_base=None,
+        provider="gemini",
+        models=gemini_m,
+        api_key=self.GEMINI_API_KEY or self.GOOGLE_API_KEY,
+        api_base=self.GOOGLE_GEMINI_BASE_URL,
       )
 
-    # 6. Anthropic Cloud (If Key Present)
-    if os.environ.get("ANTHROPIC_API_KEY"):
-      anthropic_models = _parse_models("ANTHROPIC_MODELS", ["claude-3-opus-20240229"])
+    # 4. Ollama Local Models
+    ollama_m = _parse_models(self.OLLAMA_MODELS, [])
+    if ollama_m:
       _add_models(
-        provider="anthropic",
-        models=anthropic_models,
-        api_key=os.environ["ANTHROPIC_API_KEY"],
-        api_base=None,
+        provider="openai",
+        models=ollama_m,
+        api_key="ollama",
+        api_base=self.OLLAMA_HOST,
+        local=True,
+        include_model_in_name=True,
       )
+
+    # 5. Mistral Cloud
+    if self.MISTRAL_API_KEY:
+      mistral_m = _parse_models(self.MISTRAL_MODELS, ["mistral-large-latest"])
+      _add_models(provider="mistral", models=mistral_m, api_key=self.MISTRAL_API_KEY, api_base=None)
+
+    # 6. Anthropic Cloud
+    if self.ANTHROPIC_API_KEY:
+      anthropic_m = _parse_models(self.ANTHROPIC_MODELS, ["claude-3-opus-20240229"])
+      _add_models(provider="anthropic", models=anthropic_m, api_key=self.ANTHROPIC_API_KEY, api_base=None)
 
     return swarm
 
-  model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
+  model_config = SettingsConfigDict(env_file=str(ENV_PATH), case_sensitive=True, extra="ignore")
 
 
 settings = Settings()

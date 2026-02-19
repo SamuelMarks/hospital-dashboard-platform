@@ -49,6 +49,10 @@ class AsyncSessionShim:
   def expunge_all(self) -> None:
     self._session.expunge_all()
 
+  def expire_all(self) -> None:
+    """Expires all persistent instances within this Session."""
+    self._session.expire_all()
+
   async def execute(self, *args: Any, **kwargs: Any) -> Any:
     return self._session.execute(*args, **kwargs)
 
@@ -95,7 +99,8 @@ async def db_session(init_db) -> AsyncGenerator[AsyncSession, None]:
   keeping tests isolated.
   """
   session = SessionLocal()
-  async_session = AsyncSessionShim(session)
+  # We return our shim, typed as AsyncSession for static analysis but executing synchronously
+  async_session = AsyncSessionShim(session)  # type: ignore
 
   yield async_session
 

@@ -8,6 +8,9 @@
  * Do not edit the class manually.
  */
 
+/**
+ * Payload for updating conversation metadata (e.g. rename).
+ */
 export interface ConversationUpdate {
   title: string;
 }

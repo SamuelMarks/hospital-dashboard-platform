@@ -8,6 +8,9 @@
  * Do not edit the class manually.
  */
 
+/**
+ * Payload for registering a new user.
+ */
 export interface UserCreate {
   email: string;
   password: string;

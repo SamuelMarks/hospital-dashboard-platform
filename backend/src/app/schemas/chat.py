@@ -26,7 +26,7 @@ class MessageCreate(MessageBase):
   Role is implicitly 'user'.
   """
 
-  pass
+  target_models: Optional[List[str]] = Field(default=None, description="Optional list of model IDs to query.")
 
 
 class MessageCandidateResponse(BaseModel):

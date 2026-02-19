@@ -1,5 +1,4 @@
 <mat-toolbar class="app-toolbar mat-elevation-z2">
-  <!-- Brand / Context Section -->
   <div
     class="title-group"
     routerLink="/"
@@ -18,7 +17,6 @@
     </span>
   </div>
 
-  <!-- Primary Navigation -->
   <div class="nav-links hidden sm:flex">
     <a
       mat-button
@@ -39,11 +37,22 @@
 
   <span class="toolbar-spacer"></span>
 
-  <!-- Action Area -->
   <div class="gap-2 items-center">
-    <!-- Dashboard Specific Actions -->
+    <!-- Global Cart Status (Always Visible) -->
+    <button
+      mat-icon-button
+      matTooltip="Query Cart (Access in Dashboard Editor)"
+      aria-label="Query Cart items"
+      [matBadge]="cartCount()"
+      matBadgeColor="accent"
+      matBadgeSize="small"
+      [matBadgeHidden]="cartCount() === 0"
+      data-testid="btn-cart-location"
+    >
+      <mat-icon>shopping_cart</mat-icon>
+    </button>
+
     @if (isDashboardRoute()) {
-      <!-- Edit Toggle -->
       <mat-slide-toggle
         color="primary"
         [checked]="store.isEditMode()"
@@ -55,20 +64,6 @@
         <span class="text-sm">Edit</span>
       </mat-slide-toggle>
 
-      <button
-        mat-icon-button
-        matTooltip="Query Cart is in the dashboard sidebar (Edit mode)."
-        aria-label="Query Cart location"
-        [matBadge]="cartCount()"
-        matBadgeColor="accent"
-        matBadgeSize="small"
-        [matBadgeHidden]="cartCount() === 0"
-        data-testid="btn-cart-location"
-      >
-        <mat-icon>shopping_cart</mat-icon>
-      </button>
-
-      <!-- Add Widget (Only in Edit Mode) -->
       @if (store.isEditMode()) {
         <button
           mat-stroked-button
@@ -98,7 +93,6 @@
       <div class="divider-vertical"></div>
     }
 
-    <!-- THEME MENU (New M3 Palette Picker) -->
     <button
       mat-icon-button
       [matMenuTriggerFor]="themeMenu"
@@ -110,16 +104,11 @@
 
     <mat-menu #themeMenu="matMenu">
       <div class="menu-header-compact">Appearance</div>
-
-      <!-- Mode Toggle -->
       <button mat-menu-item (click)="themeService.toggle()">
         <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
         <span>{{ themeService.isDark() ? 'Light Mode' : 'Dark Mode' }}</span>
       </button>
-
       <mat-divider></mat-divider>
-
-      <!-- Color Palette Preset Grid -->
       <div class="palette-grid p-3" (click)="$event.stopPropagation()">
         <span class="text-xs text-secondary mb-2 block">Seed Color</span>
         <div class="flex gap-2 flex-wrap">
@@ -132,7 +121,6 @@
               [attr.aria-label]="'Set theme color to ' + color"
             ></button>
           }
-          <!-- Custom Picker Wrapper -->
           <div
             class="color-dot relative overflow-hidden bg-gray-200 flex items-center justify-center border border-gray-300"
           >
@@ -151,12 +139,10 @@
       </div>
     </mat-menu>
 
-    <!-- Global Ask AI -->
     <button mat-stroked-button class="action-btn" (click)="askDataService.open()">
       <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
     </button>
 
-    <!-- User Profile -->
     <button
       mat-icon-button
       [matMenuTriggerFor]="userMenu"

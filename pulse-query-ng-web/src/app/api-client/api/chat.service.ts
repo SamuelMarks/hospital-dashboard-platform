@@ -24,15 +24,19 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { ConversationCreate } from '../model/conversation-create';
 // @ts-ignore
-import { ConversationUpdate } from '../model/conversation-update';
+import { ConversationDetail } from '../model/conversation-detail';
 // @ts-ignore
 import { ConversationResponse } from '../model/conversation-response';
+// @ts-ignore
+import { ConversationUpdate } from '../model/conversation-update';
+// @ts-ignore
+import { HTTPValidationError } from '../model/http-validation-error';
 // @ts-ignore
 import { MessageCreate } from '../model/message-create';
 // @ts-ignore
 import { MessageResponse } from '../model/message-response';
 // @ts-ignore
-import { MessageVoteRequest } from '../model/message-vote';
+import { MessageVoteRequest } from '../model/message-vote-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -53,143 +57,791 @@ export class ChatService extends BaseService {
 
   /**
    * Create Conversation
+   * Create a new conversation and optionally seed the first message.
    * @endpoint post /api/v1/conversations/
+   * @param conversationCreate
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
    */
+  public createConversationApiV1ConversationsPost(
+    conversationCreate: ConversationCreate,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<ConversationDetail>;
+  public createConversationApiV1ConversationsPost(
+    conversationCreate: ConversationCreate,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<ConversationDetail>>;
+  public createConversationApiV1ConversationsPost(
+    conversationCreate: ConversationCreate,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<ConversationDetail>>;
   public createConversationApiV1ConversationsPost(
     conversationCreate: ConversationCreate,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
   ): Observable<any> {
+    if (conversationCreate === null || conversationCreate === undefined) {
+      throw new Error(
+        'Required parameter conversationCreate was null or undefined when calling createConversationApiV1ConversationsPost.',
+      );
+    }
+
     let localVarHeaders = this.defaultHeaders;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['application/json'];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
     let localVarPath = `/api/v1/conversations/`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<ConversationResponse>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<ConversationDetail>('post', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
       body: conversationCreate,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      responseType: 'json',
-      ...(withCredentials ? { withCredentials } : {}),
-    });
-  }
-
-  /**
-   * Update Conversation (Rename)
-   * @endpoint put /api/v1/conversations/{conversation_id}
-   */
-  public updateConversationApiV1ConversationsConversationIdPut(
-    conversationId: string,
-    conversationUpdate: ConversationUpdate,
-    observe: any = 'body',
-    reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
-  ): Observable<any> {
-    let localVarHeaders = this.defaultHeaders;
-    let localVarPath = `/api/v1/conversations/${encodeURIComponent(String(conversationId))}`;
-    const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<ConversationResponse>('put', `${basePath}${localVarPath}`, {
-      body: conversationUpdate,
-      headers: localVarHeaders,
-      observe: observe,
-      responseType: 'json',
-      ...(withCredentials ? { withCredentials } : {}),
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
     });
   }
 
   /**
    * Delete Conversation
+   * Delete a conversation and its messages.
    * @endpoint delete /api/v1/conversations/{conversation_id}
+   * @param conversationId
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
    */
+  public deleteConversationApiV1ConversationsConversationIdDelete(
+    conversationId: string,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any>;
+  public deleteConversationApiV1ConversationsConversationIdDelete(
+    conversationId: string,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<any>>;
+  public deleteConversationApiV1ConversationsConversationIdDelete(
+    conversationId: string,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<any>>;
   public deleteConversationApiV1ConversationsConversationIdDelete(
     conversationId: string,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
   ): Observable<any> {
+    if (conversationId === null || conversationId === undefined) {
+      throw new Error(
+        'Required parameter conversationId was null or undefined when calling deleteConversationApiV1ConversationsConversationIdDelete.',
+      );
+    }
+
     let localVarHeaders = this.defaultHeaders;
-    let localVarPath = `/api/v1/conversations/${encodeURIComponent(String(conversationId))}`;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/conversations/${this.configuration.encodeParam({ name: 'conversationId', value: conversationId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}`;
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<any>('delete', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      responseType: 'json',
-      ...(withCredentials ? { withCredentials } : {}),
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
     });
   }
 
+  /**
+   * Get Messages
+   * Return the ordered message history for a conversation.
+   * @endpoint get /api/v1/conversations/{conversation_id}/messages
+   * @param conversationId
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public getMessagesApiV1ConversationsConversationIdMessagesGet(
+    conversationId: string,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<Array<MessageResponse>>;
+  public getMessagesApiV1ConversationsConversationIdMessagesGet(
+    conversationId: string,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<Array<MessageResponse>>>;
+  public getMessagesApiV1ConversationsConversationIdMessagesGet(
+    conversationId: string,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<Array<MessageResponse>>>;
   public getMessagesApiV1ConversationsConversationIdMessagesGet(
     conversationId: string,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
   ): Observable<any> {
+    if (conversationId === null || conversationId === undefined) {
+      throw new Error(
+        'Required parameter conversationId was null or undefined when calling getMessagesApiV1ConversationsConversationIdMessagesGet.',
+      );
+    }
+
     let localVarHeaders = this.defaultHeaders;
-    let localVarPath = `/api/v1/conversations/${encodeURIComponent(String(conversationId))}/messages`;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/conversations/${this.configuration.encodeParam({ name: 'conversationId', value: conversationId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/messages`;
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Array<MessageResponse>>('get', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      responseType: 'json',
-      ...(withCredentials ? { withCredentials } : {}),
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
     });
   }
 
+  /**
+   * List Conversations
+   * List recent conversations for the current user.
+   * @endpoint get /api/v1/conversations/
+   * @param limit
+   * @param offset
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
   public listConversationsApiV1ConversationsGet(
+    limit?: number,
+    offset?: number,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<Array<ConversationResponse>>;
+  public listConversationsApiV1ConversationsGet(
+    limit?: number,
+    offset?: number,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<Array<ConversationResponse>>>;
+  public listConversationsApiV1ConversationsGet(
+    limit?: number,
+    offset?: number,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<Array<ConversationResponse>>>;
+  public listConversationsApiV1ConversationsGet(
+    limit?: number,
+    offset?: number,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
   ): Observable<any> {
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'limit',
+      <any>limit,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'offset',
+      <any>offset,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
     let localVarPath = `/api/v1/conversations/`;
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Array<ConversationResponse>>(
       'get',
       `${basePath}${localVarPath}`,
       {
+        context: localVarHttpContext,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: <any>responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        responseType: 'json',
-        ...(withCredentials ? { withCredentials } : {}),
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
       },
     );
   }
 
+  /**
+   * Send Message
+   * Append a user message and generate assistant candidates.
+   * @endpoint post /api/v1/conversations/{conversation_id}/messages
+   * @param conversationId
+   * @param messageCreate
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public sendMessageApiV1ConversationsConversationIdMessagesPost(
+    conversationId: string,
+    messageCreate: MessageCreate,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<MessageResponse>;
+  public sendMessageApiV1ConversationsConversationIdMessagesPost(
+    conversationId: string,
+    messageCreate: MessageCreate,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<MessageResponse>>;
+  public sendMessageApiV1ConversationsConversationIdMessagesPost(
+    conversationId: string,
+    messageCreate: MessageCreate,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<MessageResponse>>;
   public sendMessageApiV1ConversationsConversationIdMessagesPost(
     conversationId: string,
     messageCreate: MessageCreate,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
   ): Observable<any> {
+    if (conversationId === null || conversationId === undefined) {
+      throw new Error(
+        'Required parameter conversationId was null or undefined when calling sendMessageApiV1ConversationsConversationIdMessagesPost.',
+      );
+    }
+    if (messageCreate === null || messageCreate === undefined) {
+      throw new Error(
+        'Required parameter messageCreate was null or undefined when calling sendMessageApiV1ConversationsConversationIdMessagesPost.',
+      );
+    }
+
     let localVarHeaders = this.defaultHeaders;
-    let localVarPath = `/api/v1/conversations/${encodeURIComponent(String(conversationId))}/messages`;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['application/json'];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/conversations/${this.configuration.encodeParam({ name: 'conversationId', value: conversationId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/messages`;
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<MessageResponse>('post', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
       body: messageCreate,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      responseType: 'json',
-      ...(withCredentials ? { withCredentials } : {}),
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
     });
   }
 
-  public voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost(
+  /**
+   * Update Conversation
+   * Update the title for an existing conversation.
+   * @endpoint put /api/v1/conversations/{conversation_id}
+   * @param conversationId
+   * @param conversationUpdate
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public updateConversationApiV1ConversationsConversationIdPut(
+    conversationId: string,
+    conversationUpdate: ConversationUpdate,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<ConversationResponse>;
+  public updateConversationApiV1ConversationsConversationIdPut(
+    conversationId: string,
+    conversationUpdate: ConversationUpdate,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<ConversationResponse>>;
+  public updateConversationApiV1ConversationsConversationIdPut(
+    conversationId: string,
+    conversationUpdate: ConversationUpdate,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<ConversationResponse>>;
+  public updateConversationApiV1ConversationsConversationIdPut(
+    conversationId: string,
+    conversationUpdate: ConversationUpdate,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    if (conversationId === null || conversationId === undefined) {
+      throw new Error(
+        'Required parameter conversationId was null or undefined when calling updateConversationApiV1ConversationsConversationIdPut.',
+      );
+    }
+    if (conversationUpdate === null || conversationUpdate === undefined) {
+      throw new Error(
+        'Required parameter conversationUpdate was null or undefined when calling updateConversationApiV1ConversationsConversationIdPut.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['application/json'];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/conversations/${this.configuration.encodeParam({ name: 'conversationId', value: conversationId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<ConversationResponse>('put', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      body: conversationUpdate,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
+      headers: localVarHeaders,
+      observe: observe,
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
+    });
+  }
+
+  /**
+   * Vote Candidate
+   * @endpoint post /api/v1/conversations/{conversation_id}/messages/{message_id}/vote
+   * @param conversationId
+   * @param messageId
+   * @param messageVoteRequest
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
+    conversationId: string,
+    messageId: string,
+    messageVoteRequest: MessageVoteRequest,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<MessageResponse>;
+  public voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
+    conversationId: string,
+    messageId: string,
+    messageVoteRequest: MessageVoteRequest,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<MessageResponse>>;
+  public voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
+    conversationId: string,
+    messageId: string,
+    messageVoteRequest: MessageVoteRequest,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<MessageResponse>>;
+  public voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
     conversationId: string,
     messageId: string,
     messageVoteRequest: MessageVoteRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
-    options?: { httpHeaderAccept?: 'application/json' },
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
   ): Observable<any> {
+    if (conversationId === null || conversationId === undefined) {
+      throw new Error(
+        'Required parameter conversationId was null or undefined when calling voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.',
+      );
+    }
+    if (messageId === null || messageId === undefined) {
+      throw new Error(
+        'Required parameter messageId was null or undefined when calling voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.',
+      );
+    }
+    if (messageVoteRequest === null || messageVoteRequest === undefined) {
+      throw new Error(
+        'Required parameter messageVoteRequest was null or undefined when calling voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.',
+      );
+    }
+
     let localVarHeaders = this.defaultHeaders;
-    let localVarPath = `/api/v1/conversations/${encodeURIComponent(String(conversationId))}/messages/${encodeURIComponent(String(messageId))}/vote`;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['application/json'];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/conversations/${this.configuration.encodeParam({ name: 'conversationId', value: conversationId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/messages/${this.configuration.encodeParam({ name: 'messageId', value: messageId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/vote`;
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<MessageResponse>('post', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
       body: messageVoteRequest,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      responseType: 'json',
-      ...(withCredentials ? { withCredentials } : {}),
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
     });
   }
 }

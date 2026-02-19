@@ -64,19 +64,14 @@ import { QueryCartService } from '../global/query-cart.service';
         position: relative;
         z-index: 10;
       }
-
-      /* M3 Surface Container Mapping */
       .app-toolbar {
         background-color: var(--sys-surface);
         color: var(--sys-on-surface);
         border-bottom: 1px solid var(--sys-surface-border);
       }
-
       .toolbar-spacer {
         flex: 1 1 auto;
       }
-
-      /* Brand Title */
       .title-group {
         display: flex;
         flex-direction: column;
@@ -94,8 +89,6 @@ import { QueryCartService } from '../global/query-cart.service';
         font-size: 16px;
         font-weight: 500;
       }
-
-      /* Navigation */
       .nav-links {
         display: flex;
         gap: 4px;
@@ -118,8 +111,6 @@ import { QueryCartService } from '../global/query-cart.service';
         border-bottom-color: var(--sys-primary);
         background: linear-gradient(to top, var(--sys-selected), transparent);
       }
-
-      /* Actions */
       .gap-2 {
         display: flex;
         gap: 8px;
@@ -133,8 +124,6 @@ import { QueryCartService } from '../global/query-cart.service';
       .text-secondary {
         color: var(--sys-text-secondary);
       }
-
-      /* Menu Styles */
       .menu-header {
         padding: 16px;
         display: flex;
@@ -162,8 +151,6 @@ import { QueryCartService } from '../global/query-cart.service';
         font-size: 48px;
         color: var(--sys-text-secondary);
       }
-
-      /* Color Palette */
       .palette-grid {
         min-width: 200px;
       }
@@ -184,8 +171,6 @@ import { QueryCartService } from '../global/query-cart.service';
         border-color: var(--sys-on-surface);
         box-shadow: 0 0 0 2px var(--sys-surface);
       }
-
-      /* Action Buttons */
       .action-btn {
         border-color: var(--sys-surface-border);
         color: var(--sys-primary);

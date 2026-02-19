@@ -75,6 +75,8 @@ class LLMArenaClient:
             "name": config["name"],  # Display Name
             "id": f"{config['provider']}/{config['model']}",  # Unique Tracking ID
             "model_name": config.get("model_name", config.get("model")),  # Actual Model ID
+            "provider": config["provider"],
+            "is_local": config.get("local", False),
           }
         )
         logger.info(f"Registered Arena Combatant: {config['name']} ({config['model']})")
@@ -91,8 +93,19 @@ class LLMArenaClient:
           "name": "System Mock",
           "id": "mock/fallback",
           "model_name": "mock-model",
+          "provider": "mock",
+          "is_local": True,
         }
       )
+
+  def get_available_models(self) -> List[Dict[str, Any]]:
+    """
+    Returns a list of configured models.
+    """
+    return [
+      {"id": m["id"], "name": m["name"], "provider": m["provider"], "is_local": m.get("is_local", False)}
+      for m in self.swarm
+    ]
 
   async def _generate_single(
     self,
@@ -159,15 +172,18 @@ class LLMArenaClient:
     temperature: float = 0.0,
     max_tokens: int = 512,
     stop: Optional[List[str]] = None,
+    target_model_ids: Optional[List[str]] = None,
   ) -> List[ArenaResponse]:
     """
     The Main Event: Broadcasts the prompt to all configured LLMs concurrently.
+    Can be scoped to specific models via `target_model_ids`.
 
     Args:
         messages: OpenAI-format history.
         temperature: Determinism factor.
         max_tokens: Length limit.
         stop: Stop sequences (crucial for SQL generation).
+        target_model_ids: Optional list of specific 'id's to query.
 
     Returns:
         List[ArenaResponse]: A list of results from every active model, including errors.
@@ -175,8 +191,18 @@ class LLMArenaClient:
     if not self.swarm:
       raise RuntimeError("No LLM providers are configured in the Arena.")
 
+    # Filter combatants
+    active_combatants = self.swarm
+    if target_model_ids:
+      active_combatants = [c for c in self.swarm if c["id"] in target_model_ids]
+
+    if not active_combatants:
+      # Fallback if filters didn't match anything -> Return empty or all?
+      # Returning empty to signify strict adherence. Filters might be malformed.
+      return []
+
     # Create tasks for all providers
-    tasks = [self._generate_single(combatant, messages, temperature, max_tokens, stop) for combatant in self.swarm]
+    tasks = [self._generate_single(combatant, messages, temperature, max_tokens, stop) for combatant in active_combatants]
 
     # Run all tasks concurrently
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -188,7 +214,7 @@ class LLMArenaClient:
         final_results.append(res)
       else:
         # This catches Python crashes inside _generate_single
-        combatant = self.swarm[i]
+        combatant = active_combatants[i]
         final_results.append(
           ArenaResponse(
             provider_name=combatant["name"],

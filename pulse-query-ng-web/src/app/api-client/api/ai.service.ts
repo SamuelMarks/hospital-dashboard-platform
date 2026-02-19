@@ -22,11 +22,17 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { ExperimentResponse } from '../model/experiment-response';
+// @ts-ignore
 import { HTTPValidationError } from '../model/http-validation-error';
 // @ts-ignore
-import { SQLGenerationRequest } from '../model/sql-generation-request';
+import { ModelInfo } from '../model/model-info';
 // @ts-ignore
-import { SQLGenerationResponse } from '../model/sql-generation-response';
+import { SQLExecutionRequest } from '../model/sql-execution-request';
+// @ts-ignore
+import { SQLExecutionResponse } from '../model/sql-execution-response';
+// @ts-ignore
+import { SQLGenerationRequest } from '../model/sql-generation-request';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
@@ -46,15 +52,123 @@ export class AiService extends BaseService {
   }
 
   /**
-   * Generate Sql Query
-   * Generates a SQL query based on a natural language prompt.  This endpoint uses the registered LLM service to interpret the user\&#39;s intent against the current database schema.  Args:     request (SQLGenerationRequest): The payload containing the natural language prompt.     current_user (User): The authenticated user (required to access this feature).  Returns:     SQLGenerationResponse: The generated SQL query string.  Raises:     HTTPException:         - 400: If the prompt is empty.         - 503: If the LLM service is unavailable or times out.
+   * Execute Sql Preview
+   * Executes SQL (read-only) and returns a small preview result. Intended for Arena candidate comparison in the UI.
+   * @endpoint post /api/v1/ai/execute
+   * @param sQLExecutionRequest
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public executeSqlPreviewApiV1AiExecutePost(
+    sQLExecutionRequest: SQLExecutionRequest,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<SQLExecutionResponse>;
+  public executeSqlPreviewApiV1AiExecutePost(
+    sQLExecutionRequest: SQLExecutionRequest,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<SQLExecutionResponse>>;
+  public executeSqlPreviewApiV1AiExecutePost(
+    sQLExecutionRequest: SQLExecutionRequest,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<SQLExecutionResponse>>;
+  public executeSqlPreviewApiV1AiExecutePost(
+    sQLExecutionRequest: SQLExecutionRequest,
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    if (sQLExecutionRequest === null || sQLExecutionRequest === undefined) {
+      throw new Error(
+        'Required parameter sQLExecutionRequest was null or undefined when calling executeSqlPreviewApiV1AiExecutePost.',
+      );
+    }
+
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    // to determine the Content-Type header
+    const consumes: string[] = ['application/json'];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/ai/execute`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<SQLExecutionResponse>('post', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
+      body: sQLExecutionRequest,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
+      headers: localVarHeaders,
+      observe: observe,
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
+    });
+  }
+
+  /**
+   * Generate Sql Comparison
+   * Generates SQL usage the Multi-LLM Arena.  This endpoint: 1. Broadcasts the prompt to all configured LLMs. 2. Persists the results as an Experiment. 3. Returns a list of candidates so the frontend can display a comparison view.  Args:     request (SQLGenerationRequest): The prompt payload.     current_user (User): Authenticated user.     db (AsyncSession): Database session for logging.  Returns:     ExperimentResponse: Object containing experiment ID and list of candidate SQLs.
    * @endpoint post /api/v1/ai/generate
    * @param sQLGenerationRequest
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
-  public generateSqlQueryApiV1AiGeneratePost(
+  public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
     observe?: 'body',
     reportProgress?: boolean,
@@ -63,8 +177,8 @@ export class AiService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<SQLGenerationResponse>;
-  public generateSqlQueryApiV1AiGeneratePost(
+  ): Observable<ExperimentResponse>;
+  public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
     observe?: 'response',
     reportProgress?: boolean,
@@ -73,8 +187,8 @@ export class AiService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpResponse<SQLGenerationResponse>>;
-  public generateSqlQueryApiV1AiGeneratePost(
+  ): Observable<HttpResponse<ExperimentResponse>>;
+  public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
     observe?: 'events',
     reportProgress?: boolean,
@@ -83,8 +197,8 @@ export class AiService extends BaseService {
       context?: HttpContext;
       transferCache?: boolean;
     },
-  ): Observable<HttpEvent<SQLGenerationResponse>>;
-  public generateSqlQueryApiV1AiGeneratePost(
+  ): Observable<HttpEvent<ExperimentResponse>>;
+  public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
     observe: any = 'body',
     reportProgress: boolean = false,
@@ -96,7 +210,7 @@ export class AiService extends BaseService {
   ): Observable<any> {
     if (sQLGenerationRequest === null || sQLGenerationRequest === undefined) {
       throw new Error(
-        'Required parameter sQLGenerationRequest was null or undefined when calling generateSqlQueryApiV1AiGeneratePost.',
+        'Required parameter sQLGenerationRequest was null or undefined when calling generateSqlComparisonApiV1AiGeneratePost.',
       );
     }
 
@@ -141,9 +255,97 @@ export class AiService extends BaseService {
 
     let localVarPath = `/api/v1/ai/generate`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<SQLGenerationResponse>('post', `${basePath}${localVarPath}`, {
+    return this.httpClient.request<ExperimentResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: sQLGenerationRequest,
+      responseType: <any>responseType_,
+      ...(withCredentials ? { withCredentials } : {}),
+      headers: localVarHeaders,
+      observe: observe,
+      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      reportProgress: reportProgress,
+    });
+  }
+
+  /**
+   * List Available Models
+   * Returns the list of currently configured LLMs available for the Arena.
+   * @endpoint get /api/v1/ai/models
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   */
+  public listAvailableModelsApiV1AiModelsGet(
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<Array<ModelInfo>>;
+  public listAvailableModelsApiV1AiModelsGet(
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<Array<ModelInfo>>>;
+  public listAvailableModelsApiV1AiModelsGet(
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<Array<ModelInfo>>>;
+  public listAvailableModelsApiV1AiModelsGet(
+    observe: any = 'body',
+    reportProgress: boolean = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<any> {
+    let localVarHeaders = this.defaultHeaders;
+
+    // authentication (OAuth2PasswordBearer) required
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    let localVarPath = `/api/v1/ai/models`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.httpClient.request<Array<ModelInfo>>('get', `${basePath}${localVarPath}`, {
+      context: localVarHttpContext,
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

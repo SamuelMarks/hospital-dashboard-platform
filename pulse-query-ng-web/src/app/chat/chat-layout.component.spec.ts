@@ -11,14 +11,20 @@ import { MatSidenav } from '@angular/material/sidenav';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
 import { readTemplate } from '../../test-utils/component-resources';
+import { QueryCartService } from '../global/query-cart.service';
+import { QueryCartComponent } from '../dashboard/query-cart/query-cart.component';
 
 @Component({ selector: 'app-conversation', template: '' })
 class MockConv {}
 
+@Component({ selector: 'app-query-cart', template: '' })
+class MockCart {}
+
 describe('ChatLayoutComponent', () => {
   let component: ChatLayoutComponent,
     fixture: ComponentFixture<ChatLayoutComponent>,
-    mockStore: any;
+    mockStore: any,
+    mockCartService: any;
   let overlay: OverlayContainer;
   let handsetState$: BehaviorSubject<{ matches: boolean }>;
 
@@ -33,6 +39,7 @@ describe('ChatLayoutComponent', () => {
       deleteConversation: vi.fn(),
       renameConversation: vi.fn(),
     };
+    mockCartService = { count: signal(5) };
 
     handsetState$ = new BehaviorSubject<{ matches: boolean }>({ matches: false });
 
@@ -40,14 +47,12 @@ describe('ChatLayoutComponent', () => {
       imports: [ChatLayoutComponent, NoopAnimationsModule],
       providers: [
         { provide: BreakpointObserver, useValue: { observe: () => handsetState$.asObservable() } },
+        { provide: QueryCartService, useValue: mockCartService },
       ],
     })
-      // FIX: Split overrides into separate calls.
-      // Mixing `remove/add` (Component Imports) with `set` (Providers) in the same
-      // overrideMetadata call is illegal in Angular Testing APIs.
       .overrideComponent(ChatLayoutComponent, {
-        remove: { imports: [ConversationComponent] },
-        add: { imports: [MockConv] },
+        remove: { imports: [ConversationComponent, QueryCartComponent] },
+        add: { imports: [MockConv, MockCart] },
       })
       .overrideComponent(ChatLayoutComponent, {
         set: { providers: [{ provide: ChatStore, useValue: mockStore }] },
@@ -65,6 +70,18 @@ describe('ChatLayoutComponent', () => {
 
   it('should load history on init', () => {
     expect(mockStore.loadHistory).toHaveBeenCalled();
+  });
+
+  it('should render history and cart tabs', () => {
+    const tabs = fixture.debugElement.queryAll(By.css('.mat-mdc-tab'));
+    expect(tabs.length).toBe(2);
+    expect(tabs[0].nativeElement.textContent).toContain('History');
+    expect(tabs[1].nativeElement.textContent).toContain('Cart');
+  });
+
+  it('should display cart count badge', () => {
+    const cartTab = fixture.debugElement.queryAll(By.css('.mat-mdc-tab'))[1];
+    expect(cartTab.nativeElement.textContent).toContain('5');
   });
 
   it('should trigger delete', () => {
@@ -101,42 +118,6 @@ describe('ChatLayoutComponent', () => {
     expect(mockStore.deleteConversation).not.toHaveBeenCalled();
   });
 
-  it('should group history into today and previous', () => {
-    const now = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    mockStore.conversations.set([
-      { id: 't', title: 'Today', updated_at: now.toISOString() },
-      { id: 'p', title: 'Prev', updated_at: yesterday.toISOString() },
-    ]);
-    fixture.detectChanges();
-
-    const groups = component.groupedHistory();
-    expect(groups.length).toBe(2);
-    expect(groups[0].label).toBe('Today');
-    expect(groups[1].label).toBe('Previous');
-  });
-
-  it('should group history only as today when no older entries', () => {
-    const now = new Date();
-    mockStore.conversations.set([{ id: 't', title: 'Today', updated_at: now.toISOString() }]);
-    fixture.detectChanges();
-
-    const groups = component.groupedHistory();
-    expect(groups.length).toBe(1);
-    expect(groups[0].label).toBe('Today');
-  });
-
-  it('should group history only as previous when no today entries', () => {
-    const now = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    mockStore.conversations.set([{ id: 'p', title: 'Prev', updated_at: yesterday.toISOString() }]);
-    fixture.detectChanges();
-
-    const groups = component.groupedHistory();
-    expect(groups.length).toBe(1);
-    expect(groups[0].label).toBe('Previous');
-  });
-
   it('should handle null history gracefully', () => {
     mockStore.conversations.set(null as any);
     fixture.detectChanges();
@@ -153,32 +134,6 @@ describe('ChatLayoutComponent', () => {
 
     component.newChat();
     expect(mockStore.createNewChat).toHaveBeenCalled();
-  });
-
-  it('should not close drawer when not over mode', () => {
-    const close = vi.fn();
-    component.drawer = { mode: 'side', close } as any;
-
-    component.selectChat('c1');
-    expect(close).not.toHaveBeenCalled();
-  });
-
-  it('should trigger new chat and select chat from template', () => {
-    component.drawer = { mode: 'over', close: vi.fn() } as any;
-    fixture.detectChanges();
-    const newChatBtn = fixture.debugElement.query(By.css('button[mat-stroked-button]'));
-    newChatBtn.triggerEventHandler('click', null);
-    expect(mockStore.createNewChat).toHaveBeenCalled();
-
-    const nav = fixture.debugElement.query(By.css('.nav-content'));
-    nav.triggerEventHandler('click', null);
-    expect(mockStore.selectConversation).toHaveBeenCalledWith('c1');
-  });
-
-  it('should render loading spinner when data loading', () => {
-    mockStore.isDataLoading.set(true);
-    fixture.detectChanges();
-    expect(fixture.debugElement.query(By.css('mat-spinner'))).toBeTruthy();
   });
 
   it('should show handset toolbar and toggle drawer', async () => {

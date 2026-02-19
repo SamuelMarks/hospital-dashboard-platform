@@ -2,14 +2,29 @@
   <div class="header">
     <span>Suggested Query</span>
     <div class="flex gap-2">
+      <!-- Copy -->
       <button
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="copy()"
         aria-label="Copy SQL"
+        matTooltip="Copy to Clipboard"
       >
         <mat-icon style="font-size: 16px">content_copy</mat-icon>
       </button>
+
+      <!-- Cart Action -->
+      <button
+        mat-icon-button
+        class="scale-75 text-gray-400 hover:text-white"
+        (click)="emitAddToCart()"
+        aria-label="Save to Cart"
+        matTooltip="Save to Query Cart"
+        data-testid="btn-cart"
+      >
+        <mat-icon style="font-size: 16px">shopping_cart</mat-icon>
+      </button>
+
       <button
         mat-stroked-button
         color="accent"

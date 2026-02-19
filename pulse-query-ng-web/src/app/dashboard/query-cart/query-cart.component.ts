@@ -11,6 +11,10 @@ import { QueryCartItem } from '../../global/query-cart.models';
 import { QueryCartProvisioningService } from '../query-cart-provisioning.service';
 import { DashboardStore } from '../dashboard.store';
 
+/**
+ * Query Cart Sidebar Component.
+ * Allows users to drag previously saved ad-hoc queries onto the dashboard grid.
+ */
 @Component({
   selector: 'app-query-cart',
   imports: [
@@ -63,7 +67,7 @@ import { DashboardStore } from '../dashboard.store';
         display: flex;
         flex-direction: column;
         gap: 10px;
-        max-height: 260px;
+        max-height: 380px;
         overflow-y: auto;
       }
       .empty-state {
@@ -73,6 +77,7 @@ import { DashboardStore } from '../dashboard.store';
         text-align: center;
         color: var(--sys-text-secondary);
         background: var(--sys-surface);
+        font-size: 13px;
       }
       .cart-item {
         display: flex;
@@ -83,6 +88,10 @@ import { DashboardStore } from '../dashboard.store';
         border: 1px solid var(--sys-surface-border);
         background: var(--sys-surface);
         cursor: grab;
+        transition: box-shadow 0.2s;
+      }
+      .cart-item:hover {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       .cart-item:active {
         cursor: grabbing;
@@ -113,6 +122,7 @@ import { DashboardStore } from '../dashboard.store';
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-family: monospace;
       }
       /* Drag Preview Styles */
       .cdk-drag-preview {
@@ -124,6 +134,7 @@ import { DashboardStore } from '../dashboard.store';
         color: var(--sys-text-primary);
         box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
         width: 260px;
+        z-index: 10000;
       }
       .cdk-drag-placeholder {
         border: 1px dashed var(--sys-primary);
@@ -147,6 +158,15 @@ import { DashboardStore } from '../dashboard.store';
         width: 16px;
         height: 16px;
       }
+      .hint {
+        padding: 12px;
+        text-align: center;
+        color: var(--sys-text-secondary);
+        font-size: 11px;
+        background: var(--sys-surface-variant);
+        margin: 16px 16px 0;
+        border-radius: 4px;
+      }
     `,
   ],
   templateUrl: './query-cart.component.html',
@@ -165,7 +185,9 @@ export class QueryCartComponent {
   readonly connectedDropLists = computed(() => ['dashboard-grid']);
 
   clear(): void {
-    this.cart.clear();
+    if (confirm('Clear all saved queries?')) {
+      this.cart.clear();
+    }
   }
 
   remove(item: QueryCartItem): void {

@@ -7,14 +7,14 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { MessageResponse } from './message-response';
 
 /**
- * API Response model for a Chat Conversation.
+ * API Response model for a Conversation metadata wrapper.
  */
 export interface ConversationResponse {
+  title?: string | null;
   id: string;
-  title: string;
+  user_id: string;
+  created_at: string;
   updated_at: string;
-  messages?: Array<MessageResponse>;
 }

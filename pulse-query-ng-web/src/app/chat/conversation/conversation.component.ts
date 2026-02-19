@@ -11,6 +11,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { finalize, retry } from 'rxjs/operators';
 
 // Material
 import { MatButtonModule } from '@angular/material/button';
@@ -20,10 +21,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 // Core
 import { ChatStore } from '../chat.store';
 import { AskDataService } from '../../global/ask-data.service';
+import { QueryCartService } from '../../global/query-cart.service';
 import { VizMarkdownComponent } from '../../shared/visualizations/viz-markdown/viz-markdown.component';
 import { SqlSnippetComponent } from './sql-snippet.component';
 import { MessageResponse, MessageCandidateResponse } from '../../api-client';
@@ -46,11 +51,14 @@ import { ArenaSqlService } from '../arena-sql.service';
     MatProgressSpinnerModule,
     MatCardModule,
     MatProgressBarModule,
+    MatChipsModule,
+    MatTooltipModule,
     VizMarkdownComponent,
     VizTableComponent,
     SqlSnippetComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './conversation.component.html',
   styles: [
     `
       :host {
@@ -68,8 +76,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         flex-direction: column;
         gap: 24px;
       }
-
-      /* Empty State */
       .empty-state-wrapper {
         display: flex;
         flex-direction: column;
@@ -86,8 +92,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         margin-bottom: 16px;
         opacity: 0.5;
       }
-
-      /* Message Row Layout */
       .message-row {
         display: flex;
         width: 100%;
@@ -98,8 +102,6 @@ import { ArenaSqlService } from '../arena-sql.service';
       .message-row.assistant {
         justify-content: flex-start;
       }
-
-      /* Chat Bubbles using MatCard */
       .message-bubble {
         max-width: 90%;
         border-radius: 16px;
@@ -114,7 +116,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         border: none;
         border-bottom-right-radius: 4px;
       }
-
       .message-footer {
         padding: 8px 16px;
         font-size: 11px;
@@ -122,8 +123,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         text-align: right;
         color: inherit;
       }
-
-      /* Arena (Comparison) Styling */
       .arena-header {
         display: flex;
         justify-content: space-between;
@@ -139,7 +138,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         font-weight: 500;
         letter-spacing: 0.5px;
       }
-
       .candidates-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -170,15 +168,12 @@ import { ArenaSqlService } from '../arena-sql.service';
         display: flex;
         flex-direction: column;
         gap: 12px;
-        /* Ensure inner content expands but doesn't overflow horizontally */
         min-width: 0;
       }
       .candidate-actions {
         padding: 8px;
         border-top: 1px solid var(--sys-surface-border);
       }
-
-      /* Error Container Styling */
       .error-container {
         display: flex;
         align-items: center;
@@ -196,8 +191,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         height: 18px;
         font-size: 18px;
       }
-
-      /* Loading & Composers */
       .loading-bubble {
         padding: 16px;
         display: flex;
@@ -206,7 +199,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         width: 80px;
         height: 60px;
       }
-
       .composer-container {
         padding: 16px;
         background-color: var(--sys-surface);
@@ -214,7 +206,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         position: relative;
         z-index: 10;
       }
-
       .group-badge {
         background-color: var(--sys-secondary-container);
         color: var(--sys-on-secondary-container);
@@ -223,7 +214,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         font-size: 10px;
         font-weight: 700;
       }
-
       .table-preview {
         max-height: 200px;
         overflow: auto;
@@ -231,7 +221,6 @@ import { ArenaSqlService } from '../arena-sql.service';
         border-radius: 4px;
         border: 1px solid var(--sys-surface-border);
       }
-
       .global-error-toast {
         padding: 12px;
         background-color: var(--sys-error-container);
@@ -244,33 +233,34 @@ import { ArenaSqlService } from '../arena-sql.service';
         gap: 12px;
         margin-top: 12px;
       }
+      .model-selector {
+        padding-bottom: 12px;
+      }
     `,
   ],
-  templateUrl: './conversation.component.html',
 })
-/* v8 ignore start */
 export class ConversationComponent implements AfterViewChecked {
-  /* v8 ignore stop */
-  /** Store. */
+  /** Access the chat store. */
   public readonly store = inject(ChatStore);
-  /** Scratchpad service for launching SQL in the editor. */
+  /** Access the scratchpad service. */
   private readonly scratchpadService = inject(AskDataService);
-  /** SQL execution service for candidate previews. */
+  /** Access the arena SQL service. */
   private readonly arenaSql = inject(ArenaSqlService);
+  /** Access the query cart service. */
+  private readonly cart = inject(QueryCartService);
+  /** Access the snackbar. */
+  private readonly snackBar = inject(MatSnackBar);
 
-  /** Scroll container reference for auto-scroll. */
+  /** Reference to the scroll container. */
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
-  /** Current input text for the chat composer. */
+  /** Input text model. */
   inputText = '';
 
-  /** Candidate preview results keyed by candidate ID. */
-  /* istanbul ignore next */
+  /** Signal map for candidate results. */
   readonly candidateResults = signal<Record<string, TableDataSet | null>>({});
-  /** Candidate execution errors keyed by candidate ID. */
-  /* istanbul ignore next */
+  /** Signal map for candidate errors. */
   readonly candidateErrors = signal<Record<string, string | null>>({});
-  /** Candidate loading state keyed by candidate ID. */
-  /* istanbul ignore next */
+  /** Signal map for candidate loading states. */
   readonly candidateLoading = signal<Record<string, boolean>>({});
 
   /** Creates a new ConversationComponent. */
@@ -281,10 +271,10 @@ export class ConversationComponent implements AfterViewChecked {
     });
   }
 
-  /** Ng After View Checked. */
+  /** Angular lifecycle hook. */
   ngAfterViewChecked() {}
 
-  /** Handles enter. */
+  /** Handles Enter key press. */
   handleEnter(e: Event): void {
     const event = e as KeyboardEvent;
     if (event.shiftKey) return;
@@ -292,37 +282,44 @@ export class ConversationComponent implements AfterViewChecked {
     this.send();
   }
 
-  /** Send. */
+  /** Sends the current message. */
   send(): void {
     if (!this.inputText.trim()) return;
     this.store.sendMessage(this.inputText);
     this.inputText = '';
   }
 
-  /**
-   * Cleans the message content for display via Markdown.
-   * Logic:
-   * - If no SQL snippet exists, return content as-is (could be plain text or markdown).
-   * - If SQL snippet exists, remove the code block from the markdown content to avoid
-   *   duplication, as 'app-sql-snippet' handles the SQL display.
-   */
+  /** Cleans message content removing SQL blocks. */
   cleanContent(msg: MessageResponse): string {
-    if (!msg.sql_snippet) return msg.content;
-    // Remove code blocks
-    return msg.content.replace(/```sql[\s\S]*?```/gi, '').trim();
+    const content = msg.content || '';
+    if (!content.trim() && !msg.sql_snippet) {
+      return '';
+    }
+    if (!msg.sql_snippet) return content;
+    return content.replace(/```sql[\s\S]*?```/gi, '').trim();
   }
 
-  /** Clean Content Simple for Candidates. */
+  /** Cleans content string. */
   cleanContentSimple(txt: string): string {
-    return txt.replace(/```sql[\s\S]*?```/gi, '').trim();
+    return (txt || '').replace(/```sql[\s\S]*?```/gi, '').trim();
   }
 
-  /** Run Query. */
+  /** Opens query in scratchpad. */
   runQuery(sql: string): void {
     this.scratchpadService.open();
   }
 
-  /** Run SQL for a specific candidate and store preview results. */
+  /** Saves query to cart. */
+  saveToCart(sql: string): void {
+    if (!sql) return;
+    this.cart.add(sql);
+    this.snackBar.open('Saved to Query Cart 🛒', 'OK', { duration: 2500 });
+  }
+
+  /**
+   * Runs a specific candidate's SQL query.
+   * Implements retry logic: Retry twice then fail.
+   */
   runCandidateQuery(candidate: MessageCandidateResponse): void {
     const sql = (candidate.sql_snippet || '').trim();
     if (!sql) return;
@@ -333,88 +330,92 @@ export class ConversationComponent implements AfterViewChecked {
     this.candidateLoading.update((state) => ({ ...state, [id]: true }));
     this.candidateErrors.update((state) => ({ ...state, [id]: null }));
 
-    this.arenaSql.execute({ sql, max_rows: 200 }).subscribe({
-      next: (res) => {
-        if (res.error !== null && res.error !== undefined) {
-          this.candidateErrors.update((state) => ({
-            ...state,
-            [id]: res.error || 'Execution failed.',
-          }));
+    this.arenaSql
+      .execute({ sql, max_rows: 200 })
+      .pipe(retry(2)) /* Retry applied here */
+      .subscribe({
+        next: (res) => {
+          if (res.error) {
+            this.candidateErrors.update((state) => ({ ...state, [id]: res.error || 'Err' }));
+            this.candidateResults.update((state) => ({ ...state, [id]: null }));
+          } else {
+            this.candidateResults.update((state) => ({
+              ...state,
+              [id]: { columns: res.columns, data: res.data },
+            }));
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          // Enhanced Error Extraction (Handles status 0/undefined detail)
+          let msg = err?.message || 'Unknown error';
+          if (err.status === 0) {
+            msg = 'Network Error: Cannot reach server.';
+          } else if (err.error && err.error.detail) {
+            msg = String(err.error.detail);
+          }
+
+          this.candidateErrors.update((state) => ({ ...state, [id]: msg }));
           this.candidateResults.update((state) => ({ ...state, [id]: null }));
-        } else {
-          this.candidateResults.update((state) => ({
-            ...state,
-            [id]: { columns: res.columns, data: res.data },
-          }));
-        }
-      },
-      error: (err: HttpErrorResponse) => {
-        const msg =
-          err?.error && err.error.detail
-            ? String(err.error.detail)
-            : err?.message || 'Execution failed.';
-        this.candidateErrors.update((state) => ({ ...state, [id]: msg }));
-        this.candidateResults.update((state) => ({ ...state, [id]: null }));
-        this.candidateLoading.update((state) => ({ ...state, [id]: false }));
-      },
-      complete: () => {
-        this.candidateLoading.update((state) => ({ ...state, [id]: false }));
-      },
-    });
+          this.candidateLoading.update((state) => ({ ...state, [id]: false }));
+        },
+        complete: () => {
+          this.candidateLoading.update((state) => ({ ...state, [id]: false }));
+        },
+      });
   }
 
-  /** Run SQL for all candidates with snippets. */
+  /** Runs all candidates in the message. */
   runAllCandidates(msg: MessageResponse): void {
     if (!msg.candidates) return;
     msg.candidates.forEach((c) => this.runCandidateQuery(c));
   }
 
-  /** Returns count of candidates that share the same SQL hash. */
+  /** Counts duplicate SQL hashes for grouping. */
   sqlGroupCount(msg: MessageResponse, cand: MessageCandidateResponse): number {
     if (!cand.sql_hash || !msg.candidates) return 0;
     return msg.candidates.filter((c) => c.sql_hash === cand.sql_hash).length;
   }
 
-  /** Candidate loading state. */
+  /** Checks loading state for a candidate. */
   isCandidateLoading(id: string): boolean {
     return !!this.candidateLoading()[id];
   }
 
-  /** Candidate error message. */
+  /** Gets candidate error message. */
   candidateError(id: string): string | null {
     return this.candidateErrors()[id] || null;
   }
 
-  /** Candidate result dataset. */
+  /** Gets candidate result data. */
   candidateResult(id: string): TableDataSet | null {
     return this.candidateResults()[id] || null;
   }
 
-  /** Whether pending Candidates. */
+  /** Checks if message has unselected candidates. */
   hasPendingCandidates(msg: MessageResponse): boolean {
     if (msg.role !== 'assistant' || !msg.candidates || msg.candidates.length === 0) return false;
-    // If any candidate is selected, we are no longer pending
-    return !msg.candidates.some((c) => c.is_selected);
+    const isPending = !msg.candidates.some((c) => c.is_selected);
+    if (!isPending && (!msg.content || msg.content.trim() === '')) {
+      return true;
+    }
+    return isPending;
   }
 
-  /** Whether any candidate includes a SQL snippet. */
+  /** Checks if message has any SQL snippets in candidates. */
   hasSqlCandidates(msg: MessageResponse): boolean {
     return !!msg.candidates?.some((c) => !!c.sql_snippet);
   }
 
-  /** Vote. */
+  /** Votes for a candidate. */
   vote(msgId: string, candId: string): void {
     this.store.voteCandidate(msgId, candId);
   }
 
-  /** Scrolls the message list to the latest entry. */
+  /** Scrolls chat to bottom. */
   private scrollToBottom(): void {
-    const container = this.scrollContainer?.nativeElement;
-    if (!container) return;
     setTimeout(() => {
       const el = this.scrollContainer?.nativeElement;
-      if (!el) return;
-      el.scrollTop = el.scrollHeight;
+      if (el) el.scrollTop = el.scrollHeight;
     }, 50);
   }
 }
