@@ -1,43 +1,67 @@
-<!-- Header -->
-<mat-toolbar color="white" class="border-b">
-  <span class="flex-grow font-medium">Ask Data</span>
-  <span class="text-xs text-gray-500 mr-4 font-normal">Ad-hoc Analysis Scratchpad</span>
-
-  <!-- Query Cart Status & Access -->
-  <button
-    mat-stroked-button
-    class="cart-indicator mr-4"
-    [class.has-items]="cartCount() > 0"
-    matTooltip="Items saved to cart will appear in the Dashboard Editor sidebar"
+<!-- Enhanced Header with Elevation and Spacing -->
+<mat-toolbar
+  class="ask-data-toolbar border-b px-6 mat-elevation-z1 relative z-10 w-full"
+  style="background: var(--sys-surface); color: var(--sys-text-primary)"
+>
+  <mat-icon class="mr-3 text-primary icon-medium scale-110" style="color: var(--sys-primary)"
+    >smart_toy</mat-icon
   >
-    <mat-icon class="icon-small" [class.text-primary]="cartCount() > 0">shopping_cart</mat-icon>
-    <span class="ml-2 font-medium">{{ cartCount() }} Saved</span>
-  </button>
+  <div class="flex flex-col leading-tight">
+    <span class="font-medium text-base">Ask Data</span>
+    <span
+      class="text-[10px] text-secondary uppercase tracking-widest font-bold"
+      style="color: var(--sys-text-secondary)"
+      >Ad-Hoc Analysis</span
+    >
+  </div>
 
-  <button mat-icon-button (click)="vis.close()" data-testid="close-btn">
-    <mat-icon>close</mat-icon>
-  </button>
+  <span class="flex-grow"></span>
+
+  <!-- Controls -->
+  <div class="flex items-center gap-3">
+    <button
+      mat-stroked-button
+      class="cart-btn"
+      [class.active]="cartCount() > 0"
+      matTooltip="Dragging saved queries to dashboards"
+    >
+      <mat-icon class="icon-small text-lg mr-1">{{
+        cartCount() > 0 ? 'shopping_cart_checkout' : 'shopping_cart'
+      }}</mat-icon>
+      <span class="font-medium">{{ cartCount() }} Saved</span>
+    </button>
+
+    <button mat-icon-button (click)="vis.close()" data-testid="close-btn" class="ml-2 close-btn">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
 </mat-toolbar>
 
-<!-- Content -->
-<div class="content-area">
+<!-- Content Area -->
+<div
+  class="content-area flex-grow relative overflow-hidden bg-background"
+  style="background-color: var(--sys-background)"
+>
   <!-- Loading State -->
   @if (loadingContext()) {
     <div class="center-overlay" data-testid="loading-state">
-      <mat-spinner diameter="40" class="mb-4"></mat-spinner>
-      <span class="text-sm text-gray-600">Initializing Environment...</span>
+      <mat-spinner diameter="32"></mat-spinner>
+      <p class="mt-4 text-xs text-secondary" style="color: var(--sys-text-secondary)">
+        Initializing Analytics Engine...
+      </p>
     </div>
   }
 
   <!-- Error State -->
-  @if (contextError()) {
+  @if (contextError(); as err) {
     <div class="center-overlay" data-testid="error-state">
-      <mat-icon class="text-red-500 text-4xl mb-2">error_outline</mat-icon>
-      <span class="text-red-600 font-medium">{{ contextError() }}</span>
+      <mat-icon class="text-4xl mb-2" style="color: var(--sys-error)">error_outline</mat-icon>
+      <p class="text-sm px-8 text-center" style="color: var(--sys-text-primary)">{{ err }}</p>
+      <button mat-stroked-button color="primary" class="mt-4" (click)="vis.close()">Close</button>
     </div>
   }
 
-  <!-- Builder Instance -->
+  <!-- Builder State -->
   @if (scratchpadIds(); as ids) {
     <app-sql-builder
       [dashboardId]="ids.dashboardId"

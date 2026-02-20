@@ -1,21 +1,11 @@
-/**
- * @fileoverview Generic Wrapper Component for Dashboard Widgets.
- *
- * Includes:
- * - **M3 Card Standardization**: Uses `appearance="outlined"` for semantic borders.
- * - **Safe Mode** Reset Logic via Error Boundary.
- * - Toolbar integration with standard Material tokens.
- */
-
 import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-// Material Imports
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 
 import { DashboardStore } from '../dashboard/dashboard.store';
 import { WidgetResponse, DashboardsService, WidgetUpdate } from '../api-client';
@@ -24,23 +14,19 @@ import {
   SkeletonVariant,
 } from '../shared/components/skeleton-loader.component';
 import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
+import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
-// Visualizations
 import {
   VizTableComponent,
   TableDataSet,
 } from '../shared/visualizations/viz-table/viz-table.component';
 import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
-import {
-  VizChartComponent,
-  ChartConfig,
-} from '../shared/visualizations/viz-chart/viz-chart.component';
+import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 
-/** Widget component. */
 @Component({
   selector: 'app-widget',
   imports: [
@@ -67,6 +53,7 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
     '(keydown.escape)': 'onEscape($event)',
     '(focus)': 'onFocus()',
   },
+  templateUrl: './widget.component.html',
   styles: [
     `
       :host {
@@ -225,55 +212,32 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
       }
     `,
   ],
-  templateUrl: './widget.component.html',
 })
-/* v8 ignore start */
 export class WidgetComponent {
-  /* v8 ignore stop */
-  /** store property. */
   private readonly store = inject(DashboardStore);
-  /** dashApi property. */
   private readonly dashApi = inject(DashboardsService);
+  private readonly dialog = inject(MatDialog);
 
-  /** Widget Input. */
-  /* istanbul ignore next */
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' });
-
-  /** Edit. */
   readonly edit = output<void>();
-  /** Duplicate. */
   readonly duplicate = output<void>();
-  /** Delete. */
   readonly delete = output<void>();
 
-  /** Whether loading Local. */
-  /* istanbul ignore next */
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id));
-  /** Raw Result. */
-  /* istanbul ignore next */
   readonly rawResult = computed(() => this.store.dataMap()[this.widgetInput().id]);
-  /** Whether edit Mode. */
   readonly isEditMode = this.store.isEditMode;
-  /** Whether focused. */
-  /* istanbul ignore next */
   readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id);
 
-  /** Error Message. */
-  /* istanbul ignore next */
   readonly errorMessage = computed(() => {
     const res = this.rawResult();
     return res && res.error ? res.error : null;
   });
 
-  /** Visualization Type. */
-  /* istanbul ignore next */
   readonly visualizationType = computed(() => {
     if (this.widgetInput().type === 'TEXT') return 'markdown';
     return (this.widgetInput().visualization || 'table').toLowerCase();
   });
 
-  /** Skeleton Type. */
-  /* istanbul ignore next */
   readonly skeletonType = computed<SkeletonVariant>(() => {
     const viz = this.visualizationType();
     if (viz.includes('chart') || viz.includes('graph')) return 'chart';
@@ -283,26 +247,19 @@ export class WidgetComponent {
     return 'card';
   });
 
-  /** Typed Data As Table. */
-  /* istanbul ignore next */
   readonly typedDataAsTable = computed(() => this.rawResult() as TableDataSet);
-  /** Chart Config. */
-  /* istanbul ignore next */
-  readonly chartConfig = computed(() => this.widgetInput().config as ChartConfig);
+  readonly chartConfig = computed(() => this.widgetInput().config as any);
 
-  /** Manual Refresh. */
   manualRefresh(): void {
     this.store.refreshWidget(this.widgetInput().id);
   }
 
-  /** Toggles focus. */
   toggleFocus(): void {
     const id = this.widgetInput().id;
     const current = this.store.focusedWidgetId();
     this.store.setFocusedWidget(current === id ? null : id);
   }
 
-  /** Handles escape. */
   onEscape(event: Event): void {
     (event as KeyboardEvent).stopPropagation();
     if (this.isFocused()) {
@@ -312,24 +269,30 @@ export class WidgetComponent {
     }
   }
 
-  /** Handles focus. */
   onFocus(): void {}
 
-  /** Reset Widget. */
   resetWidget(): void {
-    if (!confirm('Reset this widget configuration to a safe default?')) return;
-
-    const safeConfig = this.widgetInput().type === 'SQL' ? { query: 'SELECT 1 as SafeMode' } : {};
-
-    const update: WidgetUpdate = {
-      visualization: 'table',
-      config: safeConfig,
-    };
-
-    this.dashApi
-      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(this.widgetInput().id, update)
-      .subscribe(() => {
-        this.store.loadDashboard(this.widgetInput().dashboard_id);
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Reset Widget',
+          message: 'This will reset configuration to defaults. Continue?',
+          isDestructive: true,
+          confirmJson: 'Reset',
+        },
+      })
+      .afterClosed()
+      .subscribe((res) => {
+        if (res) {
+          const safeConfig =
+            this.widgetInput().type === 'SQL' ? { query: 'SELECT 1 as SafeMode' } : {};
+          const update: WidgetUpdate = { visualization: 'table', config: safeConfig };
+          this.dashApi
+            .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(this.widgetInput().id, update)
+            .subscribe(() => {
+              this.store.loadDashboard(this.widgetInput().dashboard_id);
+            });
+        }
       });
   }
 }

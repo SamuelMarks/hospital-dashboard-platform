@@ -74,8 +74,15 @@ import { QueryCartService } from './query-cart.service';
         z-index: 10;
         padding: 24px;
       }
+      .ask-data-toolbar {
+        background-color: var(--sys-surface);
+        height: 64px;
+        margin-bottom: 0;
+        color: var(--sys-text-primary);
+        border-bottom: 1px solid var(--sys-surface-border);
+      }
       .cart-indicator {
-        border-color: var(--sys-outline-variant);
+        border: 1px solid var(--sys-outline-variant);
         color: var(--sys-text-secondary);
       }
       .cart-indicator.has-items {
@@ -85,6 +92,19 @@ import { QueryCartService } from './query-cart.service';
       }
       .text-primary {
         color: var(--sys-primary);
+      }
+      .cart-btn {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        height: 36px;
+        border-radius: 18px;
+        transition: all 0.2s;
+      }
+      .cart-btn.active {
+        background-color: var(--sys-primary-container);
+        color: var(--sys-on-primary-container);
+        border-color: transparent;
       }
     `,
   ],

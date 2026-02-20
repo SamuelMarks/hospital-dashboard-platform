@@ -27,11 +27,13 @@ import { Component, input } from '@angular/core';
 import { readTemplate } from '../../test-utils/component-resources';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { ConversationComponent } from '../chat/conversation/conversation.component';
+import { vi } from 'vitest';
 
 describe('SqlBuilderComponent', () => {
   let component: SqlBuilderComponent;
   let fixture: ComponentFixture<SqlBuilderComponent>;
 
+  // Declare variables in describe scope so 'it' blocks can see them
   let mockDashApi: any;
   let mockExecApi: any;
   let mockSchemaApi: any;
@@ -182,12 +184,19 @@ describe('SqlBuilderComponent', () => {
   });
 
   it('should handle schema load errors and no editor', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     mockSchemaApi.getDatabaseSchemaApiV1SchemaGet.mockReturnValue(
       throwError(() => new Error('fail')),
     );
     (component as any).editorView = null;
     (component as any).loadSchemaForAutocomplete();
-    expect(true).toBe(true);
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Failed to load schema for autocomplete',
+      expect.anything(),
+    );
+    consoleSpy.mockRestore();
   });
 
   it('should dispatch schema config when editor exists', () => {

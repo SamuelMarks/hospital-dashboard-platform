@@ -62,12 +62,17 @@ describe('TextEditorComponent', () => {
   });
 
   it('should handle API errors', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
       throwError(() => new Error('fail')),
     );
     component.form.patchValue({ content: 'Err Text' });
     component.save();
+
     expect(component.isRunning()).toBe(false);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 
   it('should coerce falsy content to empty string', () => {

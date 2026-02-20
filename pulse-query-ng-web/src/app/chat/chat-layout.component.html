@@ -1,9 +1,9 @@
 <mat-sidenav-container class="sidenav-container">
-  <!-- Side Drawer -->
+  <!-- Side Drawer (Collapsible) -->
   <mat-sidenav
     #drawer
     [mode]="(isHandset$ | async) ? 'over' : 'side'"
-    [opened]="(isHandset$ | async) === false"
+    [opened]="(isHandset$ | async) ? false : sidebarOpen()"
     class="history-drawer"
   >
     <!-- Use Tabs to switch between History and Cart -->
@@ -81,14 +81,28 @@
     </mat-tab-group>
   </mat-sidenav>
 
-  <mat-sidenav-content role="main">
+  <mat-sidenav-content role="main" class="relative flex flex-col h-full overflow-hidden">
     @if (isHandset$ | async) {
-      <mat-toolbar color="primary">
+      <mat-toolbar color="primary" class="flex-none">
         <button mat-icon-button (click)="drawer.toggle()"><mat-icon>menu</mat-icon></button>
         <span>Assistant</span>
       </mat-toolbar>
     }
-    <div class="h-full flex flex-col pt-16 md:pt-0">
+
+    <!-- Desktop Toggle Button -->
+    @if (!(isHandset$ | async)) {
+      <button
+        mat-icon-button
+        class="absolute left-2 top-2 z-10 bg-surface shadow-sm border border-border opacity-50 hover:opacity-100 transition-opacity"
+        (click)="toggleSidebar()"
+        matTooltip="Toggle Sidebar"
+        style="background: var(--sys-surface); border-color: var(--sys-surface-border)"
+      >
+        <mat-icon>{{ sidebarOpen() ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+      </button>
+    }
+
+    <div class="flex-grow min-h-0 h-full flex flex-col pt-0">
       <app-conversation class="flex-grow min-h-0"></app-conversation>
     </div>
   </mat-sidenav-content>

@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   ViewChild,
   computed,
+  signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
@@ -19,12 +20,15 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatDialog } from '@angular/material/dialog';
 
 import { ChatStore } from './chat.store';
 import { ConversationResponse } from '../api-client';
 import { ConversationComponent } from './conversation/conversation.component';
 import { QueryCartComponent } from '../dashboard/query-cart/query-cart.component';
 import { QueryCartService } from '../global/query-cart.service';
+import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
+import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
 /** Chat Layout component. */
 @Component({
@@ -45,6 +49,7 @@ import { QueryCartService } from '../global/query-cart.service';
   ],
   providers: [ChatStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './chat-layout.component.html',
   styles: [
     `
       :host {
@@ -148,26 +153,22 @@ import { QueryCartService } from '../global/query-cart.service';
       }
     `,
   ],
-  templateUrl: './chat-layout.component.html',
 })
 export class ChatLayoutComponent implements OnInit {
-  /** Store. */
   public readonly store = inject(ChatStore);
-  /** Cart Service. */
   public readonly cart = inject(QueryCartService);
+  private readonly dialog = inject(MatDialog);
+  private readonly breakpointObserver = inject(BreakpointObserver);
 
-  /** breakpointObserver property. */
-  private breakpointObserver = inject(BreakpointObserver);
-  /** Drawer. */
   @ViewChild('drawer') drawer!: MatSidenav;
 
-  /** Whether handset$. */
   isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset).pipe(
     map((r) => r.matches),
     shareReplay(),
   );
 
-  /** Grouped History. */
+  readonly sidebarOpen = signal(true);
+
   readonly groupedHistory = computed(() => {
     const list = this.store.conversations();
     if (!list) return [];
@@ -189,40 +190,57 @@ export class ChatLayoutComponent implements OnInit {
     return groups;
   });
 
-  /** Ng On Init. */
   ngOnInit() {
     this.store.loadHistory();
   }
 
-  /** Select Chat. */
+  toggleSidebar() {
+    this.sidebarOpen.update((v) => !v);
+  }
+
   selectChat(id: string) {
     this.store.selectConversation(id);
     this.closeDrawer();
   }
 
-  /** New Chat. */
   newChat() {
     this.store.createNewChat();
     this.closeDrawer();
   }
 
-  /** Rename Chat. */
   renameChat(chat: ConversationResponse) {
-    // Fix TS2345: Handle potential null/undefined title by defaulting to empty string
-    const newTitle = prompt('Rename conversation:', chat.title || '');
-    if (newTitle && newTitle !== chat.title) {
-      this.store.renameConversation(chat.id, newTitle);
-    }
+    this.dialog
+      .open(PromptDialogComponent, {
+        data: {
+          title: 'Rename Conversation',
+          value: chat.title || '',
+          label: 'Topic Title',
+        },
+      })
+      .afterClosed()
+      .subscribe((res) => {
+        if (res && res !== chat.title) {
+          this.store.renameConversation(chat.id, res);
+        }
+      });
   }
 
-  /** Deletes chat. */
   deleteChat(chat: ConversationResponse) {
-    if (confirm(`Delete "${chat.title}"?`)) {
-      this.store.deleteConversation(chat.id);
-    }
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Delete Chat',
+          message: `Permanently delete "${chat.title}"?`,
+          isDestructive: true,
+          confirmJson: 'Delete',
+        },
+      })
+      .afterClosed()
+      .subscribe((res) => {
+        if (res) this.store.deleteConversation(chat.id);
+      });
   }
 
-  /** closeDrawer method. */
   private closeDrawer() {
     if (this.drawer?.mode === 'over') this.drawer.close();
   }

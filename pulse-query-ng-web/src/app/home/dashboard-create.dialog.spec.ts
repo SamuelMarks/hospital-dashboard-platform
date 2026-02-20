@@ -5,6 +5,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
+import { vi } from 'vitest';
 
 describe('DashboardCreateDialog', () => {
   let component: DashboardCreateDialog;
@@ -65,6 +66,8 @@ describe('DashboardCreateDialog', () => {
   });
 
   it('should handle API errors', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     mockApi.createDashboardApiV1DashboardsPost.mockReturnValue(throwError(() => new Error('Fail')));
 
     component.form.controls['name'].setValue('Fail Name');
@@ -77,6 +80,8 @@ describe('DashboardCreateDialog', () => {
     fixture.detectChanges();
     const errorMsg = fixture.debugElement.query(By.css('[data-testid="error-msg"]'));
     expect(errorMsg).toBeTruthy();
+
+    consoleSpy.mockRestore();
   });
 
   it('should not submit when form is invalid', () => {

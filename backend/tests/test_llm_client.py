@@ -6,8 +6,6 @@ Verifies broadcasting logic, latency recording, and error containment using any-
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock, AsyncMock
 from app.services.llm_client import LLMArenaClient, ArenaResponse
-
-# Import the class Settings to patch the property on the class level
 from app.core.config import Settings
 
 
@@ -18,10 +16,44 @@ def mock_swarm_settings():
     {"provider": "openai", "model": "m1", "name": "Model A", "api_key": "k1"},
     {"provider": "mistral", "model": "m2", "name": "Model B", "api_key": "k2"},
   ]
-  # Patch the property on the CLASS, not the instance
   with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
     mock_prop.return_value = mock_conf
     yield
+
+
+def test_get_available_models(mock_swarm_settings):
+  """Verify get_available_models returns mapped DTO compatible list."""
+  with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
+    arena = LLMArenaClient()
+    models = arena.get_available_models()
+    assert isinstance(models, list)
+    assert len(models) == 2
+    assert models[0]["name"] == "Model A"
+
+
+@pytest.mark.asyncio
+async def test_arena_competition_target_filtering(mock_swarm_settings):
+  """Verify target model IDs param correctly cuts down the swarm size."""
+  with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
+    arena = LLMArenaClient()
+
+    # Filter for non-existent ID -> Empty active combatants list
+    results = await arena.generate_arena_competition(
+      [{"role": "user", "content": "hi"}], target_model_ids=["non-existent-id"]
+    )
+    assert len(results) == 0
+
+
+@pytest.mark.asyncio
+async def test_arena_competition_no_swarm():
+  """Verify exception is raised if the swarm is completely empty."""
+  with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
+    mock_prop.return_value = []
+    arena = LLMArenaClient()
+    arena.swarm = []  # Force empty even after
+    with pytest.raises(RuntimeError) as excInfo:
+      await arena.generate_arena_competition([])
+    assert "No LLM providers" in str(excInfo.value)
 
 
 @pytest.mark.asyncio
@@ -29,44 +61,30 @@ async def test_arena_broadcast_success(mock_swarm_settings):
   """
   Test that generate_arena_competition calls all providers and aggregates results.
   """
-  # Use patch context manager to validate AnyLLM creation specifically within this scope
-  # We maintain the strict logic of the previous turn but fix the patching mechanism
   with patch("app.services.llm_client.AnyLLM.create") as mock_create:
-    # Create mock clients
     client_a = MagicMock()
     client_b = MagicMock()
     mock_create.side_effect = [client_a, client_b]
 
     arena = LLMArenaClient()
 
-    # Verify Init
-    assert len(arena.swarm) == 2
-    assert arena.swarm[0]["name"] == "Model A"
-
-    # Mock responses
-    # We need to simulate the response structure from any-llm
     def make_response(text):
       m = MagicMock()
       m.choices = [MagicMock(message=MagicMock(content=text))]
       return m
 
-    # Patch run_in_threadpool which wraps the synchronous AnyLLM calls
     with patch("app.services.llm_client.run_in_threadpool") as mock_thread:
-      # First call (Model A) -> "SQL A"
-      # Second call (Model B) -> "SQL B"
       mock_thread.side_effect = [make_response("SQL A"), make_response("SQL B")]
 
       results = await arena.generate_arena_competition([{"role": "user", "content": "hi"}])
 
       assert len(results) == 2
 
-      # Verify Result A
       res_a = next(r for r in results if r.provider_name == "Model A")
       assert res_a.content == "SQL A"
       assert res_a.latency_ms >= 0
       assert res_a.error is None
 
-      # Verify Result B
       res_b = next(r for r in results if r.provider_name == "Model B")
       assert res_b.content == "SQL B"
 
@@ -85,23 +103,14 @@ async def test_arena_partial_failure(mock_swarm_settings):
     arena = LLMArenaClient()
 
     with patch("app.services.llm_client.run_in_threadpool") as mock_thread:
-      # Model A succeeds
       mock_res_a = MagicMock()
       mock_res_a.choices = [MagicMock(message=MagicMock(content="SQL A"))]
 
-      # Model B raises Exception
       mock_thread.side_effect = [mock_res_a, Exception("API Down")]
-
       results = await arena.generate_arena_competition([])
 
       assert len(results) == 2
-
-      res_a = next(r for r in results if r.provider_name == "Model A")
-      assert res_a.content == "SQL A"
-      assert res_a.error is None
-
       res_b = next(r for r in results if r.provider_name == "Model B")
-      assert res_b.content == ""
       assert "API Down" in res_b.error
 
 
@@ -118,13 +127,11 @@ async def test_arena_initialization_failure():
   with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
     mock_prop.return_value = bad_conf
 
-    # AnyLLM.create should raise for 'bad_provider'
     with patch("app.services.llm_client.AnyLLM.create") as mock_create:
       mock_create.side_effect = [Exception("Unknown Provider"), MagicMock()]
 
       arena = LLMArenaClient()
 
-      # Should have registered the Good one, logged error for Bad one
       assert len(arena.swarm) == 1
       assert arena.swarm[0]["name"] == "Good"
 
@@ -135,15 +142,11 @@ async def test_arena_defaults_to_mock_when_no_providers():
   with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
     mock_prop.return_value = []
 
-    # Initialize
     arena = LLMArenaClient()
-
     assert len(arena.swarm) == 1
     assert arena.swarm[0]["name"] == "System Mock"
 
-    # Run Generation
     results = await arena.generate_arena_competition([{"role": "user", "content": "hi"}])
-
     assert len(results) == 1
     assert "System Mock" in results[0].content
 

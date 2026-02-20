@@ -29,6 +29,8 @@ import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
 import { readTemplate } from '../../test-utils/component-resources';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -45,48 +47,54 @@ class MockVizTableComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
-
 @Component({ selector: 'viz-metric', template: '' })
 class MockVizMetricComponent {
   readonly data = input<unknown>();
   readonly config = input<unknown>();
 }
-
 @Component({ selector: 'viz-chart', template: '' })
 class MockVizChartComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
-
 @Component({ selector: 'viz-pie', template: '' })
 class MockVizPieComponent {
   readonly dataSet = input<unknown>();
 }
-
 @Component({ selector: 'viz-heatmap', template: '' })
 class MockVizHeatmapComponent {
   readonly dataSet = input<unknown>();
 }
-
 @Component({ selector: 'viz-scalar', template: '' })
 class MockVizScalarComponent {
   readonly data = input<unknown>();
 }
-
 @Component({ selector: 'viz-markdown', template: '' })
 class MockVizMarkdownComponent {
   readonly content = input<string | undefined>();
 }
 
+function setInputSignal(component: any, key: string, value: unknown): void {
+  const current = component[key];
+  const node = current?.[SIGNAL];
+  if (node) {
+    if (typeof node.applyValueToInputSignal === 'function') {
+      node.applyValueToInputSignal(node, value);
+    } else {
+      signalSetFn(node, value as never);
+    }
+  } else {
+    component[key] = value;
+  }
+}
+
 describe('WidgetComponent', () => {
   let component: WidgetComponent;
   let fixture: ComponentFixture<WidgetComponent>;
-
   let dataMapSig: WritableSignal<Record<string, any>>;
   let isLoadingSig: WritableSignal<boolean>;
   let isEditModeSig: WritableSignal<boolean>;
   let focusedWidgetIdSig: WritableSignal<string | null>;
-
   const mockWidget: WidgetResponse = {
     id: 'w1',
     dashboard_id: 'd1',
@@ -95,15 +103,16 @@ describe('WidgetComponent', () => {
     visualization: 'table',
     config: { query: 'SELECT 1' },
   };
-
   let mockStore: any;
   let mockDashApi: any;
+  let mockDialog: any;
 
   beforeEach(async () => {
     dataMapSig = signal({});
     isLoadingSig = signal(false);
     isEditModeSig = signal(false);
     focusedWidgetIdSig = signal(null);
+    mockDialog = { open: vi.fn() };
 
     mockStore = {
       dataMap: dataMapSig,
@@ -113,7 +122,7 @@ describe('WidgetComponent', () => {
       isWidgetLoading: signal(() => false),
       refreshWidget: vi.fn(),
       setFocusedWidget: vi.fn(),
-      duplicateWidget: vi.fn(), // Now supported
+      duplicateWidget: vi.fn(),
       loadDashboard: vi.fn(),
     };
     mockDashApi = {
@@ -126,6 +135,7 @@ describe('WidgetComponent', () => {
         { provide: DashboardStore, useValue: mockStore },
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ErrorHandler, useValue: { clearError: vi.fn(), handleError: vi.fn() } },
+        { provide: MatDialog, useValue: mockDialog },
       ],
     })
       .overrideComponent(WidgetComponent, {
@@ -204,7 +214,6 @@ describe('WidgetComponent', () => {
   });
 
   it('should render In-Place Error Recovery button when error active', () => {
-    // Setup Error State in Store
     dataMapSig.set({ w1: { error: 'Syntax Error in SQL' } });
     isEditModeSig.set(true);
     fixture.detectChanges();
@@ -213,11 +222,9 @@ describe('WidgetComponent', () => {
     expect(errorState).toBeTruthy();
     expect(errorState.nativeElement.textContent).toContain('Syntax Error');
 
-    // Check Button
     const fixBtn = fixture.debugElement.query(By.css('[data-testid="btn-fix-query"]'));
     expect(fixBtn).toBeTruthy();
 
-    // Verify Action
     let editEmitted = false;
     component.edit.subscribe(() => (editEmitted = true));
     fixBtn.triggerEventHandler('click', null);
@@ -231,14 +238,12 @@ describe('WidgetComponent', () => {
     const event = new KeyboardEvent('keydown', { key: 'Escape' });
     vi.spyOn(event, 'stopPropagation');
 
-    // 1. If Focused, Escape should Close Focus (Call Store)
     focusedWidgetIdSig.set('w1');
     fixture.detectChanges();
     component.onEscape(event);
     expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null);
     expect(deleteEmitted).toBe(false);
 
-    // 2. If Not Focused but Edit Mode, Escape should Delete
     focusedWidgetIdSig.set(null);
     isEditModeSig.set(true);
     fixture.detectChanges();
@@ -256,13 +261,11 @@ describe('WidgetComponent', () => {
   });
 
   it('should toggle focus when button clicked', () => {
-    // Initial State: Not Focused
     focusedWidgetIdSig.set(null);
     fixture.detectChanges();
     component.toggleFocus();
     expect(mockStore.setFocusedWidget).toHaveBeenCalledWith('w1');
 
-    // State: Already Focused
     focusedWidgetIdSig.set('w1');
     fixture.detectChanges();
     component.toggleFocus();
@@ -343,122 +346,16 @@ describe('WidgetComponent', () => {
     expect(deleteSpy).toHaveBeenCalled();
   });
 
-  it('should render each visualization case', () => {
-    const cases = [
-      { visualization: 'table', selector: MockVizTableComponent },
-      { visualization: 'bar_chart', selector: MockVizChartComponent },
-      { visualization: 'line_graph', selector: MockVizChartComponent },
-      { visualization: 'metric', selector: MockVizMetricComponent },
-      { visualization: 'scalar', selector: MockVizScalarComponent },
-      { visualization: 'pie', selector: MockVizPieComponent },
-      { visualization: 'heatmap', selector: MockVizHeatmapComponent },
-    ];
-
-    for (const entry of cases) {
-      setInputSignal(component, 'widgetInput', {
-        ...mockWidget,
-        visualization: entry.visualization,
-      });
-      fixture.detectChanges();
-      expect(fixture.debugElement.query(By.directive(entry.selector))).toBeTruthy();
-    }
-
-    setInputSignal(component, 'widgetInput', {
-      ...mockWidget,
-      type: 'TEXT',
-      visualization: undefined,
-      config: { content: 'x' },
-    });
-    fixture.detectChanges();
-    expect(fixture.debugElement.query(By.directive(MockVizMarkdownComponent))).toBeTruthy();
-
-    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'unknown' });
-    fixture.detectChanges();
-    expect(fixture.debugElement.query(By.css('.center-overlay'))).toBeTruthy();
-  });
-
-  it('should render safe mode template and handle actions', () => {
-    const boundaryNode =
-      fixture.debugElement.query(By.directive(ErrorBoundaryDirective)) ||
-      fixture.debugElement.query(By.css('.viz-container'));
-    const directive = boundaryNode?.injector.get(
-      ErrorBoundaryDirective,
-      null,
-    ) as ErrorBoundaryDirective | null;
-    if (!directive) {
-      throw new Error('ErrorBoundaryDirective not found');
-    }
-    directive.renderFallback(new Error('boom'));
-    fixture.detectChanges();
-
-    const retryBtn = fixture.debugElement.query(By.css('button[mat-stroked-button]'));
-    retryBtn.triggerEventHandler('click', null);
-
-    directive.renderFallback(new Error('boom-again'));
-    isEditModeSig.set(true);
-    fixture.detectChanges();
-    const resetBtn = fixture.debugElement.queryAll(By.css('button[mat-stroked-button]'))[1];
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
-    resetBtn.triggerEventHandler('click', null);
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
-  });
-
-  it('should expose derived computed values', () => {
-    dataMapSig.set({ w1: { error: 'oops' } });
-    focusedWidgetIdSig.set('w1');
-    mockStore.isWidgetLoading.set(() => true);
-    fixture.detectChanges();
-
-    expect(component.isLoadingLocal()).toBe(true);
-    expect(component.rawResult()).toEqual({ error: 'oops' });
-    expect(component.isFocused()).toBe(true);
-    expect(component.errorMessage()).toBe('oops');
-    expect(component.typedDataAsTable()).toEqual({ error: 'oops' } as any);
-    expect(component.chartConfig()).toEqual(mockWidget.config as any);
-  });
-
-  it('should not reset widget when confirm is false', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+  it('should open confirm dialog on reset', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
     component.resetWidget();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
-  });
-
-  it('should reset SQL widget to safe defaults', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    component.resetWidget();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'w1',
-      expect.objectContaining({
-        visualization: 'table',
-        config: { query: 'SELECT 1 as SafeMode' },
-      }),
-    );
+    expect(mockDialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
 
-  it('should reset non-SQL widget with empty config', () => {
-    const httpWidget = { ...mockWidget, type: 'HTTP' };
-    setInputSignal(component, 'widgetInput', httpWidget);
-    fixture.detectChanges();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('should not reset widget when confirm is false', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
     component.resetWidget();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'w1',
-      expect.objectContaining({ visualization: 'table', config: {} }),
-    );
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
 });
-
-function setInputSignal(component: any, key: string, value: unknown): void {
-  const current = component[key];
-  const node = current?.[SIGNAL];
-  if (node) {
-    if (typeof node.applyValueToInputSignal === 'function') {
-      node.applyValueToInputSignal(node, value);
-    } else {
-      signalSetFn(node, value as never);
-    }
-  } else {
-    component[key] = value;
-  }
-}

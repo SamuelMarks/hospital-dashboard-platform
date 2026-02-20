@@ -156,11 +156,15 @@ describe('TemplateWizardComponent', () => {
   });
 
   it('should handle loadTemplates error', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     mockTemplatesApi.listTemplatesApiV1TemplatesGet.mockReturnValue(
       throwError(() => new Error('fail')),
     );
     component.loadTemplates('bad');
     expect(component.loadingTemplates()).toBe(false);
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
   });
 
   it('should handle form change and status', () => {

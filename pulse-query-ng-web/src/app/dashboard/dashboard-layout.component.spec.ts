@@ -11,6 +11,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ThemeService } from '../core/theme/theme.service';
 import { ActivatedRoute } from '@angular/router';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
+import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 import { vi } from 'vitest';
 
 const makeCartItem = (): QueryCartItem => ({
@@ -182,12 +183,10 @@ describe('DashboardLayoutComponent', () => {
   });
 
   it('should provision query cart items on drop', () => {
-    // Setup Context
     const component = setup();
     const item = makeCartItem();
     mockCartProvisioning.addToDashboard.mockReturnValue(of({ id: 'w1' }));
 
-    // Action
     component.onDrop({
       previousContainer: {},
       container: {},
@@ -196,7 +195,6 @@ describe('DashboardLayoutComponent', () => {
       currentIndex: 0,
     } as any);
 
-    // Verification
     expect(mockStore.setLoading).toHaveBeenCalledWith(true);
     expect(mockCartProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'd1');
     expect(mockSnackBar.open).toHaveBeenCalledWith(
@@ -208,6 +206,8 @@ describe('DashboardLayoutComponent', () => {
   });
 
   it('should handle errors when cart provisioning fails', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const component = setup();
     const item = makeCartItem();
     mockCartProvisioning.addToDashboard.mockReturnValue(throwError(() => new Error('fail')));
@@ -222,6 +222,8 @@ describe('DashboardLayoutComponent', () => {
 
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to add query to dashboard', 'Close');
     expect(mockStore.setLoading).toHaveBeenCalledWith(false);
+
+    consoleSpy.mockRestore();
   });
 
   it('should provision template widgets on drop', () => {
@@ -247,6 +249,8 @@ describe('DashboardLayoutComponent', () => {
   });
 
   it('should handle template provisioning errors', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
     const component = setup();
     const template = makeTemplate();
     mockProvisioning.provisionWidget.mockReturnValue(throwError(() => new Error('fail')));
@@ -264,8 +268,11 @@ describe('DashboardLayoutComponent', () => {
       'Close',
     );
     expect(mockStore.setLoading).toHaveBeenCalledWith(false);
+
+    consoleSpy.mockRestore();
   });
 
+  // ... rest of the tests remain unchanged
   it('should identify query cart drag data', () => {
     const component = setup() as any;
     expect(component.isQueryCartItem(null)).toBe(false);
@@ -432,22 +439,31 @@ describe('DashboardLayoutComponent', () => {
 
     component.confirmDeleteWidget(makeWidget());
 
-    expect(mockStore.optimisticRemoveWidget).not.toHaveBeenCalled();
+    expect(mockDialog.open).not.toHaveBeenCalled();
+  });
+
+  it('should open confirm dialog on delete', () => {
+    const component = setup();
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.confirmDeleteWidget(makeWidget());
+
+    expect(mockDialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
+    expect(mockStore.optimisticRemoveWidget).toHaveBeenCalled();
   });
 
   it('should return early when delete confirmation is cancelled', () => {
     const component = setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
 
     component.confirmDeleteWidget(makeWidget());
 
     expect(mockStore.optimisticRemoveWidget).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
   it('should restore widget on delete error', () => {
     const component = setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
     mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(
       throwError(() => new Error('fail')),
     );
@@ -456,6 +472,5 @@ describe('DashboardLayoutComponent', () => {
 
     expect(mockStore.optimisticRemoveWidget).toHaveBeenCalledWith('w1');
     expect(mockStore.optimisticRestoreWidget).toHaveBeenCalledWith(expect.any(Object));
-    confirmSpy.mockRestore();
   });
 });

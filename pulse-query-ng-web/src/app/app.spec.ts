@@ -1,6 +1,5 @@
 /**
  * @fileoverview Unit tests for the App Root Component.
- * Includes manual mocking of @material/material-color-utilities.
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -36,52 +35,25 @@ describe('App', () => {
   let fixture: ComponentFixture<App>;
   let component: App;
   let queryParams$: Subject<Record<string, any>>;
-  let mockThemeService: {
-    isTvMode: ReturnType<typeof signal>;
-    setTvMode: ReturnType<typeof vi.fn>;
-  };
-  let mockDashboardsService: {
-    listDashboardsApiV1DashboardsGet: ReturnType<typeof vi.fn>;
-    createDashboardApiV1DashboardsPost: ReturnType<typeof vi.fn>;
-    createWidgetApiV1DashboardsDashboardIdWidgetsPost: ReturnType<typeof vi.fn>;
-    deleteDashboardApiV1DashboardsDashboardIdDelete: ReturnType<typeof vi.fn>;
-  };
-  let mockCartService: { count: ReturnType<typeof signal>; add: ReturnType<typeof vi.fn> };
-  let mockAuthService: {
-    currentUser: ReturnType<typeof signal>;
-    isAuthenticated: ReturnType<typeof signal>;
-    logout: ReturnType<typeof vi.fn>;
-  };
-  let mockDashboardStore: {
-    dashboard: ReturnType<typeof signal>;
-    isEditMode: ReturnType<typeof signal>;
-    toggleEditMode: ReturnType<typeof vi.fn>;
-    refreshAll: ReturnType<typeof vi.fn>;
-    isLoading: ReturnType<typeof signal>;
-    loadDashboard: ReturnType<typeof vi.fn>;
-  };
-  let mockDialog: { open: ReturnType<typeof vi.fn> };
 
-  // Mock Service Configuration
-  let mockAskDataService: {
-    isOpen: WritableSignal<boolean>;
-    close: ReturnType<typeof vi.fn>;
-  };
+  let mockThemeService: any;
+  let mockDashboardsService: any;
+  let mockCartService: any;
+  let mockAuthService: any;
+  let mockDashboardStore: any;
+  let mockDialog: any;
+  let mockAskDataService: any;
 
   beforeEach(async () => {
+    // Force resolving resources because lazy chunks might trigger loader in JSDOM
     await resolveComponentResourcesForTests();
 
-    // Initialize mock signal for state testing
-    mockAskDataService = {
-      isOpen: signal(false),
-      close: vi.fn(),
-      // open: vi.fn()
-    };
+    mockAskDataService = { isOpen: signal(false), close: vi.fn() };
     mockDashboardsService = {
-      listDashboardsApiV1DashboardsGet: vi.fn().mockReturnValue(of([])),
-      createDashboardApiV1DashboardsPost: vi.fn().mockReturnValue(of({ id: 'd1', widgets: [] })),
-      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn().mockReturnValue(of({ id: 'w1' })),
-      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn().mockReturnValue(of({})),
+      listDashboardsApiV1DashboardsGet: vi.fn(),
+      createDashboardApiV1DashboardsPost: vi.fn(),
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
+      deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn(),
     };
     mockCartService = { count: signal(0), add: vi.fn() };
     mockAuthService = {
@@ -97,16 +69,11 @@ describe('App', () => {
       isLoading: signal(false),
       loadDashboard: vi.fn(),
     };
-    mockDialog = {
-      open: vi.fn().mockReturnValue({ afterClosed: () => of(false) }),
-    };
+    mockDialog = { open: vi.fn().mockReturnValue({ afterClosed: () => of(false) }) };
     queryParams$ = new Subject<Record<string, any>>();
-    mockThemeService = {
-      isTvMode: signal(false),
-      setTvMode: vi.fn(),
-    };
+    mockThemeService = { isTvMode: signal(false), setTvMode: vi.fn() };
 
-    TestBed.configureTestingModule({
+    await TestBed.configureTestingModule({
       imports: [App, NoopAnimationsModule],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
@@ -118,22 +85,13 @@ describe('App', () => {
         { provide: DashboardStore, useValue: mockDashboardStore },
         { provide: MatDialog, useValue: mockDialog },
         { provide: PLATFORM_ID, useValue: 'server' },
-        // Provide Router to satisfy ActivatedRoute dependency in App component
         provideRouter([]),
+        { provide: ActivatedRoute, useValue: { queryParams: queryParams$.asObservable() } },
       ],
-    });
-    TestBed.overrideComponent(AskDataComponent, {
-      set: { template: '', imports: [] },
-    });
-    TestBed.overrideComponent(ToolbarComponent, {
-      set: { template: '', imports: [] },
-    });
-    await resolveComponentResourcesForTests();
-    await TestBed.compileComponents();
-
-    TestBed.overrideProvider(ActivatedRoute, {
-      useValue: { queryParams: queryParams$.asObservable() },
-    });
+    })
+      .overrideComponent(AskDataComponent, { set: { template: '', imports: [] } })
+      .overrideComponent(ToolbarComponent, { set: { template: '', imports: [] } })
+      .compileComponents();
 
     fixture = TestBed.createComponent(App);
     component = fixture.componentInstance;
@@ -152,45 +110,33 @@ describe('App', () => {
 
   it('should have an accessible mat-sidenav', () => {
     const sidenav = fixture.debugElement.query(By.css('mat-sidenav'));
-    expect(sidenav).toBeTruthy();
-    // Check for A11y label
     expect(sidenav.attributes['aria-label']).toBe('Ask Data Assistant');
   });
 
   it('should respond to service signal changes', () => {
     const sidenavElement = fixture.debugElement.query(By.css('mat-sidenav'));
-
-    // Initial State: Closed
     expect(component.askData.isOpen()).toBe(false);
     expect(sidenavElement.componentInstance.opened).toBe(false);
-
-    // Update Signal: Open
     mockAskDataService.isOpen.set(true);
     fixture.detectChanges();
-
     expect(sidenavElement.componentInstance.opened).toBe(true);
   });
 
   it('should call service.close() when sidenav emits closed event', () => {
     const sidenav = fixture.debugElement.query(By.css('mat-sidenav'));
-
-    // Simulate the close event (e.g. clicking backdrop)
     sidenav.triggerEventHandler('closed', {});
-
     expect(mockAskDataService.close).toHaveBeenCalled();
   });
 
   it('should contain router-outlet inside main content area', () => {
     const content = fixture.debugElement.query(By.css('mat-sidenav-content'));
     expect(content.attributes['role']).toBe('main');
-
     const outlet = content.query(By.directive(RouterOutlet));
     expect(outlet).toBeTruthy();
   });
 
   it('should render the AskData component inside the drawer', () => {
     const sidenav = fixture.debugElement.query(By.css('mat-sidenav'));
-    // Ensure content (even if projected) is queried correctly
     const askData = sidenav.query(By.css('app-ask-data'));
     expect(askData).toBeTruthy();
   });

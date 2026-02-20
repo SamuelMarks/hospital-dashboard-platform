@@ -25,6 +25,7 @@ import { ProvisioningService } from './provisioning.service';
 import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
+import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
 /**
  * Dashboard Layout component.
@@ -267,10 +268,24 @@ export class DashboardLayoutComponent implements OnInit {
    */
   confirmDeleteWidget(widget: WidgetResponse): void {
     if (this.isTvMode()) return;
-    if (!confirm(`Delete "${widget.title}"?`)) return;
-    this.store.optimisticRemoveWidget(widget.id);
-    this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widget.id).subscribe({
-      error: () => this.store.optimisticRestoreWidget(widget),
-    });
+
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Delete Widget',
+          message: `Remove "${widget.title}" from this dashboard?`,
+          isDestructive: true,
+          confirmJson: 'Delete',
+        },
+      })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.store.optimisticRemoveWidget(widget.id);
+          this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widget.id).subscribe({
+            error: () => this.store.optimisticRestoreWidget(widget),
+          });
+        }
+      });
   }
 }

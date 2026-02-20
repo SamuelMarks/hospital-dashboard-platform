@@ -5,16 +5,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 
 import { QueryCartService } from '../../global/query-cart.service';
 import { QueryCartItem } from '../../global/query-cart.models';
 import { QueryCartProvisioningService } from '../query-cart-provisioning.service';
 import { DashboardStore } from '../dashboard.store';
+import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-dialog.component';
+import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-dialog.component';
 
-/**
- * Query Cart Sidebar Component.
- * Allows users to drag previously saved ad-hoc queries onto the dashboard grid.
- */
 @Component({
   selector: 'app-query-cart',
   imports: [
@@ -26,6 +25,7 @@ import { DashboardStore } from '../dashboard.store';
     MatSnackBarModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './query-cart.component.html',
   styles: [
     `
       :host {
@@ -169,25 +169,28 @@ import { DashboardStore } from '../dashboard.store';
       }
     `,
   ],
-  templateUrl: './query-cart.component.html',
 })
 export class QueryCartComponent {
   private readonly cart = inject(QueryCartService);
   private readonly provisioning = inject(QueryCartProvisioningService);
   private readonly store = inject(DashboardStore);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
 
   readonly dashboardId = input<string | null>(null);
   readonly items = this.cart.items;
   readonly count = this.cart.count;
-
-  // Wire drag list to the main grid id 'dashboard-grid'
   readonly connectedDropLists = computed(() => ['dashboard-grid']);
 
   clear(): void {
-    if (confirm('Clear all saved queries?')) {
-      this.cart.clear();
-    }
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: { title: 'Clear Cart', message: 'Remove all saved queries?', isDestructive: true },
+      })
+      .afterClosed()
+      .subscribe((res) => {
+        if (res) this.cart.clear();
+      });
   }
 
   remove(item: QueryCartItem): void {
@@ -195,8 +198,14 @@ export class QueryCartComponent {
   }
 
   rename(item: QueryCartItem): void {
-    const next = window.prompt('Rename query', item.title);
-    if (next !== null) this.cart.rename(item.id, next);
+    this.dialog
+      .open(PromptDialogComponent, {
+        data: { title: 'Rename Query', value: item.title, label: 'Title' },
+      })
+      .afterClosed()
+      .subscribe((res) => {
+        if (res) this.cart.rename(item.id, res);
+      });
   }
 
   addToDashboard(item: QueryCartItem): void {
@@ -205,7 +214,6 @@ export class QueryCartComponent {
     this.provisioning.addToDashboard(item, dashboardId).subscribe({
       next: () => {
         this.snackBar.open(`Added query: ${item.title}`, 'OK', { duration: 3000 });
-        // Force refresh to show new widget data
         this.store.loadDashboard(dashboardId);
       },
       error: () => this.snackBar.open('Failed to add query to dashboard', 'Close'),

@@ -40,6 +40,45 @@ def test_extract_and_validate_sql_invalid_sql() -> None:
   assert chat_router._extract_and_validate_sql("```sql\nSELEC * FROM t\n```") is None
 
 
+def test_extract_and_validate_sql_no_match() -> None:
+  """Text without sql blocks should return None."""
+  assert chat_router._extract_and_validate_sql("Just plain text with no code blocks.") is None
+
+
+@pytest.mark.asyncio
+async def test_generate_assistant_reply_empty_response(db_session, chat_user) -> None:
+  """Tests behavior when ZERO models respond within the Arena (line 140 coverage)."""
+  conv = Conversation(user_id=chat_user.id, title="Test")
+  db_session.add(conv)
+  await db_session.commit()
+
+  mock_arena = AsyncMock(return_value=[])
+  with (
+    patch("app.api.routers.chat.llm_client.generate_arena_competition", mock_arena),
+    patch("app.api.routers.chat.schema_service.get_schema_context_string", return_value="schema"),
+  ):
+    msg = await chat_router._generate_assistant_reply(db_session, conv.id)
+    assert len(msg.candidates) == 1
+    assert "All providers failed" in msg.candidates[0].content or "no models responded" in msg.candidates[0].content
+
+
+@pytest.mark.asyncio
+async def test_generate_assistant_reply_empty_content(db_session, chat_user) -> None:
+  """Tests fallback when an LLM successfully responds but leaves content empty string (line 160 coverage)."""
+  conv = Conversation(user_id=chat_user.id, title="Test")
+  db_session.add(conv)
+  await db_session.commit()
+
+  mock_arena = AsyncMock(return_value=[ArenaResponse("M1", "m1", "", 10, None)])
+  with (
+    patch("app.api.routers.chat.llm_client.generate_arena_competition", mock_arena),
+    patch("app.api.routers.chat.schema_service.get_schema_context_string", return_value="schema"),
+  ):
+    msg = await chat_router._generate_assistant_reply(db_session, conv.id)
+    assert len(msg.candidates) >= 1
+    assert "(Empty Response)" in [c.content for c in msg.candidates]
+
+
 @pytest.mark.asyncio
 async def test_generate_assistant_reply_expands_candidates(db_session, chat_user) -> None:
   """When fewer than 3 responses are returned, extras should be generated."""
@@ -207,6 +246,36 @@ async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user
   data = response.json()
   selected = [c for c in data["candidates"] if c["is_selected"]]
   assert len(selected) == 2
+
+
+@pytest.mark.asyncio
+async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user, db_session) -> None:
+  """Covers the line branch when a candidate is missing sql_hash and strictly uses fallback ID."""
+  conv = Conversation(user_id=chat_user.id, title="No Hash")
+  db_session.add(conv)
+  await db_session.commit()
+
+  msg = Message(conversation_id=conv.id, role="assistant", content="Pending Vote", sql_snippet=None)
+  db_session.add(msg)
+  await db_session.commit()
+
+  c1 = MessageCandidate(
+    message_id=msg.id,
+    model_name="A",
+    content="A",
+    sql_snippet=None,
+    sql_hash=None,
+    is_selected=False,
+  )
+  db_session.add(c1)
+  await db_session.commit()
+
+  vote_url = f"/api/v1/conversations/{conv.id}/messages/{msg.id}/vote"
+  response = await client.post(vote_url, json={"candidate_id": str(c1.id)})
+
+  assert response.status_code == 200
+  data = response.json()
+  assert data["candidates"][0]["is_selected"] is True
 
 
 @pytest.mark.asyncio

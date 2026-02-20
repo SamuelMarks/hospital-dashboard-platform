@@ -16,8 +16,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DashboardsService, DashboardResponse } from '../api-client';
 import { DashboardCreateDialog } from './dashboard-create.dialog';
 import { AskDataService } from '../global/ask-data.service';
+import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
+import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
-/** Home component. */
 @Component({
   selector: 'app-home',
   imports: [
@@ -33,6 +34,7 @@ import { AskDataService } from '../global/ask-data.service';
     MatSnackBarModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './home.component.html',
   styles: [
     `
       :host {
@@ -124,10 +126,8 @@ import { AskDataService } from '../global/ask-data.service';
       }
     `,
   ],
-  templateUrl: './home.component.html',
 })
 export class HomeComponent implements OnInit {
-  // ... (Component logic identical to previous valid version)
   private readonly dashboardsApi = inject(DashboardsService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
@@ -191,24 +191,30 @@ export class HomeComponent implements OnInit {
   }
 
   renameDashboard(dash: DashboardResponse): void {
-    const newName = window.prompt('Enter new dashboard name:', dash.name);
-    if (newName && newName.trim() !== '' && newName !== dash.name) {
-      const originalName = dash.name;
-      this.dashboards.update((items) =>
-        items.map((d) => (d.id === dash.id ? { ...d, name: newName } : d)),
-      );
-      this.dashboardsApi
-        .updateDashboardApiV1DashboardsDashboardIdPut(dash.id, { name: newName })
-        .subscribe({
-          error: (err) => {
-            console.error(err);
-            this.dashboards.update((items) =>
-              items.map((d) => (d.id === dash.id ? { ...d, name: originalName } : d)),
-            );
-            this.snackBar.open(`Rename failed. Reverted.`, 'Close', { duration: 5000 });
-          },
-        });
-    }
+    this.dialog
+      .open(PromptDialogComponent, {
+        data: { title: 'Rename Dashboard', value: dash.name, label: 'Name' },
+      })
+      .afterClosed()
+      .subscribe((newName) => {
+        if (newName && newName.trim() !== '' && newName !== dash.name) {
+          const originalName = dash.name;
+          this.dashboards.update((items) =>
+            items.map((d) => (d.id === dash.id ? { ...d, name: newName } : d)),
+          );
+          this.dashboardsApi
+            .updateDashboardApiV1DashboardsDashboardIdPut(dash.id, { name: newName })
+            .subscribe({
+              error: (err) => {
+                console.error(err);
+                this.dashboards.update((items) =>
+                  items.map((d) => (d.id === dash.id ? { ...d, name: originalName } : d)),
+                );
+                this.snackBar.open(`Rename failed. Reverted.`, 'Close', { duration: 5000 });
+              },
+            });
+        }
+      });
   }
 
   cloneDashboard(dash: DashboardResponse): void {
@@ -225,16 +231,27 @@ export class HomeComponent implements OnInit {
   }
 
   deleteDashboard(dash: DashboardResponse): void {
-    if (window.confirm(`Delete "${dash.name}"?`)) {
-      const originalList = this.dashboards();
-      this.dashboards.update((items) => items.filter((d) => d.id !== dash.id));
-      this.dashboardsApi.deleteDashboardApiV1DashboardsDashboardIdDelete(dash.id).subscribe({
-        error: (err) => {
-          console.error(err);
-          this.dashboards.set(originalList);
-          this.snackBar.open(`Failed to delete. Restored item.`, 'Close', { duration: 5000 });
+    this.dialog
+      .open(ConfirmDialogComponent, {
+        data: {
+          title: 'Delete Dashboard',
+          message: `Permanently delete "${dash.name}"?`,
+          isDestructive: true,
         },
+      })
+      .afterClosed()
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          const originalList = this.dashboards();
+          this.dashboards.update((items) => items.filter((d) => d.id !== dash.id));
+          this.dashboardsApi.deleteDashboardApiV1DashboardsDashboardIdDelete(dash.id).subscribe({
+            error: (err) => {
+              console.error(err);
+              this.dashboards.set(originalList);
+              this.snackBar.open(`Failed to delete. Restored item.`, 'Close', { duration: 5000 });
+            },
+          });
+        }
       });
-    }
   }
 }
