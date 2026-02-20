@@ -45,6 +45,29 @@ def test_extract_and_validate_sql_no_match() -> None:
   assert chat_router._extract_and_validate_sql("Just plain text with no code blocks.") is None
 
 
+def test_extract_and_validate_sql_empty_string() -> None:
+  """Empty string should return None."""
+  assert chat_router._extract_and_validate_sql("") is None
+  assert chat_router._extract_and_validate_sql(None) is None
+
+
+@pytest.mark.asyncio
+async def test_generate_assistant_reply_with_target_models(db_session, chat_user) -> None:
+  """Tests behavior when specific target models are provided (covers line 140/150)."""
+  conv = Conversation(user_id=chat_user.id, title="Test")
+  db_session.add(conv)
+  await db_session.commit()
+
+  mock_arena = AsyncMock(return_value=[ArenaResponse("M1", "m1", "SELECT 1", 10, None)])
+  with (
+    patch("app.api.routers.chat.llm_client.generate_arena_competition", mock_arena),
+    patch("app.api.routers.chat.schema_service.get_schema_context_string", return_value="schema"),
+  ):
+    msg = await chat_router._generate_assistant_reply(db_session, conv.id, target_models=["m1"])
+
+  assert len(msg.candidates) >= 1
+
+
 @pytest.mark.asyncio
 async def test_generate_assistant_reply_empty_response(db_session, chat_user) -> None:
   """Tests behavior when ZERO models respond within the Arena (line 140 coverage)."""

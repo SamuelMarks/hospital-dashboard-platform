@@ -1,27 +1,25 @@
+// pulse-query-ng-web/src/test-utils/component-resources.ts
 import { ResourceLoader } from '@angular/compiler';
 import { ɵresolveComponentResources as resolveComponentResources } from '@angular/core';
 import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-/** Absolute path to the test-utils directory. */
 const testUtilsDir = dirname(fileURLToPath(import.meta.url));
 
-/** Returns true if the directory looks like the app root. */
 function isAppRoot(dir: string): boolean {
   return existsSync(join(dir, 'src', 'app')) && existsSync(join(dir, 'package.json'));
 }
 
-/** Walk upward from a start directory to find the app root. */
 function findAppRoot(startDir: string): string | undefined {
   let current = startDir;
   while (true) {
-    /* istanbul ignore next */
+    /* v8 ignore next */
     if (isAppRoot(current)) {
       return current;
     }
     const parent = dirname(current);
-    /* istanbul ignore next */
+    /* v8 ignore next */
     if (parent === current) {
       return undefined;
     }
@@ -29,28 +27,20 @@ function findAppRoot(startDir: string): string | undefined {
   }
 }
 
-/** Current working directory used for resolution. */
 const cwd = process.cwd();
-/** Workspace-level nested path for monorepo cases. */
 const nestedCwd = resolve(cwd, 'pulse-query-ng-web');
-/** Absolute path to the application root. */
 const appRoot =
   findAppRoot(testUtilsDir) ??
-  /* istanbul ignore next */
+  /* v8 ignore next */
   (isAppRoot(cwd) ? cwd : undefined) ??
-  /* istanbul ignore next */
+  /* v8 ignore next */
   (isAppRoot(nestedCwd) ? nestedCwd : cwd);
-/** Absolute path to the application's src directory. */
 const srcRoot = resolve(appRoot, 'src');
 
-/** Resource loader that resolves component resources from disk for tests. */
 class FsResourceLoader extends ResourceLoader {
-  /** Cached resource contents keyed by the requested URL. */
   private readonly cache = new Map<string, string>();
-  /** Cached resolved file paths keyed by basename; null means missing. */
   private readonly nameCache = new Map<string, string | null>();
 
-  /** Resolve a resource URL into its file contents. */
   get(url: string): string {
     if (this.cache.has(url)) {
       return this.cache.get(url)!;
@@ -69,7 +59,7 @@ class FsResourceLoader extends ResourceLoader {
 
     let filePath = directCandidates.find(existsSync);
 
-    /* istanbul ignore next */
+    /* v8 ignore next */
     if (!filePath) {
       const targetName = basename(url);
       if (this.nameCache.has(targetName)) {
@@ -90,9 +80,8 @@ class FsResourceLoader extends ResourceLoader {
   }
 }
 
-/** Recursively search for the first matching file name under a directory. */
 function findFirstFile(rootDir: string, fileName: string): string | undefined {
-  /* istanbul ignore next */
+  /* v8 ignore next */
   if (!existsSync(rootDir)) {
     return undefined;
   }
@@ -110,12 +99,9 @@ function findFirstFile(rootDir: string, fileName: string): string | undefined {
   return undefined;
 }
 
-/** Shared loader instance used by the test environment. */
 export const resourceLoader = new FsResourceLoader();
 
-/** Resolve component resources using the test resource loader. */
 export const resolveComponentResourcesForTests = () =>
   resolveComponentResources((url) => Promise.resolve(resourceLoader.get(url)));
 
-/** Read a component template as a string via the test resource loader. */
 export const readTemplate = (url: string) => resourceLoader.get(url);

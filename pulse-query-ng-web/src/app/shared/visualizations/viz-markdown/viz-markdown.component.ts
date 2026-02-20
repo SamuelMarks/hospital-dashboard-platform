@@ -1,8 +1,4 @@
-/**
- * @fileoverview Safe Markdown Renderer.
- * Allows displaying static text content with basic formatting.
- */
-
+// pulse-query-ng-web/src/app/shared/visualizations/viz-markdown/viz-markdown.component.ts
 import {
   Component,
   input,
@@ -14,10 +10,6 @@ import {
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
-/**
- * Component to render markdown content safely.
- * Uses a lightweight regex parser to avoid external dependencies.
- */
 @Component({
   selector: 'viz-markdown',
   imports: [CommonModule],
@@ -34,7 +26,6 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
         font-size: 14px;
         line-height: 1.5;
       }
-      /* Scoped Markdown Styles */
       .md-content ::ng-deep h1 {
         font-size: 1.5em;
         font-weight: bold;
@@ -88,49 +79,29 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   templateUrl: './viz-markdown.component.html',
 })
 export class VizMarkdownComponent {
-  /** Content. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly content = input<string>('');
-  /** sanitizer property. */
   private readonly sanitizer = inject(DomSanitizer);
 
-  /** Safe Html. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly safeHtml = computed<SafeHtml>(() => {
     const raw = this.content() || '';
     const html = this.parseMarkdown(raw);
-    // Sanitize to prevent XSS (removes scripts, etc.)
     return this.sanitizer.sanitize(SecurityContext.HTML, html) || '';
   });
 
-  /**
-   * Lightweight Markdown Parser.
-   * Supports: Headers (#), Bold (**), Italic (*), Lists (-), Blockquotes (>), Code (`).
-   */
   private parseMarkdown(text: string): string {
-    let md = text.replace(/&/g, '&amp;').replace(/</g, '&lt;'); // Escape HTML to prevent injection before parsing properties
-
-    // Headers
+    let md = text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     md = md.replace(/^### (.*$)/gim, '<h3>$1</h3>');
     md = md.replace(/^## (.*$)/gim, '<h2>$1</h2>');
     md = md.replace(/^# (.*$)/gim, '<h1>$1</h1>');
-
-    // Formatting
     md = md.replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>');
     md = md.replace(/\*(.*)\*/gim, '<em>$1</em>');
     md = md.replace(/`(.*?)`/gim, '<code>$1</code>');
-
-    // Lists (Unordered) - Simple logic assuming newline separation
     md = md.replace(/^- (.*$)/gim, '<ul><li>$1</li></ul>');
-    // Fix adjacent lists: </ul><ul> -> ''
     md = md.replace(/<\/ul>\s*<ul>/gim, '');
-
-    // Blockquotes
     md = md.replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>');
-
-    // Line breaks
     md = md.replace(/\n/gim, '<br>');
-
     return md;
   }
 }

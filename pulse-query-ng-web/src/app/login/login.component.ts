@@ -1,9 +1,9 @@
+// pulse-query-ng-web/src/app/login/login.component.ts
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 
-// Material Imports
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -15,9 +15,6 @@ import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 import { environment } from '../../environments/environment';
 
-/**
- * Login Component.
- */
 @Component({
   selector: 'app-login',
   imports: [
@@ -33,13 +30,13 @@ import { environment } from '../../environments/environment';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
+    // Same styles
     `
       :host {
         display: flex;
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        /* Dynamic Background */
         background-color: var(--sys-background);
         color: var(--sys-on-background);
         padding: 16px;
@@ -47,7 +44,6 @@ import { environment } from '../../environments/environment';
       mat-card {
         width: 100%;
         max-width: 400px;
-        /* Cards in M3 utilize Surface color */
         background-color: var(--sys-surface);
         color: var(--sys-on-surface);
       }
@@ -92,7 +88,6 @@ import { environment } from '../../environments/environment';
   templateUrl: './login.component.html',
 })
 export class LoginComponent implements OnInit {
-  // ... (Logic implementation remains identical to previous valid version)
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -100,11 +95,11 @@ export class LoginComponent implements OnInit {
 
   readonly registrationEnabled = environment.registrationEnabled;
 
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly isLoading = signal(false);
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly errorMessage = signal<string | null>(null);
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly hidePassword = signal(true);
 
   readonly loginForm: FormGroup = this.fb.group({

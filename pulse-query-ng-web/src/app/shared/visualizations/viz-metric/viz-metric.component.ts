@@ -1,48 +1,21 @@
-/**
- * @fileoverview Single Value ("Big Number") Visualization with Sparklines.
- * Supports Trend Indicators, simple textual fallback, Conditional Alert Thresholds,
- * and Micro-Chart (Sparkline) rendering.
- */
-
+// pulse-query-ng-web/src/app/shared/visualizations/viz-metric/viz-metric.component.ts
 import { Component, input, computed, ChangeDetectionStrategy, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-/**
- * Standard Metric Data Contract.
- */
 export interface MetricData {
-  /** The primary numeric or string value. */
   value: number | string;
-  /** Optional label override from the query. */
   label?: string;
-  /** Percentage trend for display. */
   trend?: number;
-  /** Array of numeric values for sparkline rendering. */
   trend_data?: number[];
 }
 
-/**
- * Partial configuration schema for threshold logic.
- */
 export interface MetricConfig {
-  /** thresholds configuration. */
   thresholds?: {
-    /** Warning threshold value. */
     warning?: number;
-    /** Critical threshold value. */
     critical?: number;
   };
 }
 
-/**
- * Visualization: Metric Card.
- *
- * **Features:**
- * - Displays primary value with Material Headline typography.
- * - Supports trend indicator (green/red) based on semantic Theme variables.
- * - **Alerting:** Applies styling classes (`text-warn`, `text-critical`) if value exceeds configured thresholds.
- * - **Micro-Charts:** Renders an SVG Sparkline if `trend_data` is provided.
- */
 @Component({
   selector: 'viz-metric',
   imports: [CommonModule],
@@ -62,7 +35,6 @@ export interface MetricConfig {
       }
       .metric-value {
         font-weight: 500;
-        /* Use System Primary Color */
         color: var(--sys-primary);
         margin-bottom: 8px;
         transition: color 0.3s ease;
@@ -82,15 +54,12 @@ export interface MetricConfig {
         position: relative;
         z-index: 2;
       }
-      /* Use Semantic Variables for Trends */
       .trend-pos {
         color: var(--sys-success, #2e7d32);
       }
       .trend-neg {
         color: var(--sys-error);
       }
-
-      /* Conditional Threshold Styles */
       .val-warn {
         color: var(--sys-warn) !important;
       }
@@ -99,8 +68,6 @@ export interface MetricConfig {
         font-weight: 700;
         transform: scale(1.1);
       }
-
-      /* Sparkline Layer */
       .sparkline-container {
         position: absolute;
         bottom: 0;
@@ -130,62 +97,42 @@ export interface MetricConfig {
   templateUrl: './viz-metric.component.html',
 })
 export class VizMetricComponent {
-  /** Input Data: Can be primitive, SQL Result Set, or Metric Objects. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly data = input<any | null>();
-  /** Override title provided by parent widget wrapper. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly titleOverride = input<string>('');
-  /** Configuration object containing optional thresholds. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly config = input<MetricConfig | null>(null);
 
-  /**
-   * Extracted Value for display.
-   * Parses various data shapes (DuckDB result, primitive, Metric object).
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly displayValue: Signal<string | number> = computed(() => {
     const d = this.data();
     if (d === null || d === undefined) return '-';
     if (typeof d !== 'number' && typeof d !== 'object') return String(d);
-
-    // Shape: Explicit Metric Object
     if (typeof d === 'object' && 'value' in d && !Array.isArray(d)) return d.value;
 
-    // Shape: DuckDB Table Result
     if (typeof d === 'object' && Array.isArray(d.data) && d.data.length > 0) {
       const firstRow = d.data[0];
       const keys = Object.keys(firstRow);
       return keys.length > 0 ? firstRow[keys[0]] : '-';
     }
 
-    // Shape: Simple Object
     if (typeof d === 'object' && !Array.isArray(d)) {
       const keys = Object.keys(d);
       for (const k of keys) {
         if (typeof d[k] === 'number') return d[k];
       }
     }
-
-    // Primitive number
     if (typeof d === 'number') return d;
-
     return '-';
   });
 
-  /**
-   * Extracted Label.
-   * Defaults to title override if present, otherwise infers from data.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly displayLabel: Signal<string> = computed(() => {
     const override = this.titleOverride();
     if (override) return override;
-
     const d = this.data();
     if (!d || typeof d !== 'object') return '';
-
     if (Array.isArray(d.data) && d.columns?.length > 0) {
       return d.columns[0];
     }
@@ -193,10 +140,7 @@ export class VizMetricComponent {
     return '';
   });
 
-  /**
-   * Optional trend percentage.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly parsedTrend: Signal<number | null> = computed(() => {
     const d = this.data();
     if (d && typeof d === 'object' && 'trend' in d) {
@@ -205,10 +149,7 @@ export class VizMetricComponent {
     return null;
   });
 
-  /**
-   * Trend Series extraction for Sparklines.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly trendSeries: Signal<number[]> = computed(() => {
     const d = this.data();
     if (d && typeof d === 'object' && Array.isArray(d.trend_data)) {
@@ -217,22 +158,14 @@ export class VizMetricComponent {
     return [];
   });
 
-  /**
-   * Determines if trend is upward (positive).
-   * Used for coloring sparklines.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
     if (series.length < 2) return true;
     return series[series.length - 1] >= series[0];
   });
 
-  /**
-   * Generates SVG Path Data for the Sparkline Stroke.
-   * Maps data points to a 100x50 coordinate system.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly sparklinePath = computed<string | null>(() => {
     const raw = this.trendSeries();
     if (!raw || raw.length < 2) return null;
@@ -251,22 +184,14 @@ export class VizMetricComponent {
     return 'M ' + points.join(' L ');
   });
 
-  /**
-   * Generates SVG Path Data for the Area Fill.
-   * Closes the path loop to the bottom edge.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;
     return `${path} L 100,50 L 0,50 Z`;
   });
 
-  /**
-   * Computes the CSS class based on thresholds.
-   * Returns 'val-critical', 'val-warn', or empty string.
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly alertClass: Signal<string> = computed(() => {
     const val = this.displayValue();
     const conf = this.config();

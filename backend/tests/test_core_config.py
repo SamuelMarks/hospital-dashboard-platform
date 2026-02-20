@@ -54,8 +54,9 @@ def test_llm_swarm_exhaustive_parsing() -> None:
     OPENAI_MODELS="",  # Tests empty fallback to ["gpt-4o"]
     GEMINI_API_KEY="x",
     GEMINI_MODELS="gemini-1.5-pro",
+    # Include un-customized IDs explicitly so they hit line 112 directly
     OLLAMA_MODELS=(
-      "deepseek-r1|Local DS,deepseek-coder:base,qwen2.5-coder,gpt-4o,mistral-large,claude-3-opus,local-model"
+      "deepseek-r1,deepseek-coder:base,qwen2.5-coder,gpt-4o,mistral-large,claude-3-opus,local-model,custom-id|Local DS"
     ),
     MISTRAL_API_KEY="x",
     MISTRAL_MODELS="mistral-large",
@@ -68,6 +69,7 @@ def test_llm_swarm_exhaustive_parsing() -> None:
 
   # Validated mapped heuristic names
   assert "Local DS" in names
+  assert "Local LLM: DeepSeek R1" in names
   assert "Local LLM: DeepSeek Coder" in names
   assert "Local LLM: Qwen 2.5 Coder" in names
   assert "Local LLM: GPT-4o" in names

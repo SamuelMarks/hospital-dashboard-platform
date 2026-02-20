@@ -1,12 +1,9 @@
-import { Component, input, ChangeDetectionStrategy, computed } from '@angular/core';
+// pulse-query-ng-web/src/app/shared/components/skeleton-loader.component.ts
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-/** Skeleton Variant type. */
 export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 
-/**
- * Skeleton Loader Component.
- */
 @Component({
   selector: 'app-skeleton-loader',
   imports: [CommonModule],
@@ -47,8 +44,6 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
           transform: translateX(100%);
         }
       }
-
-      /* Layouts */
       .layout-card {
         height: 100%;
         display: flex;
@@ -104,8 +99,6 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
         height: 24px;
         width: 100%;
       }
-
-      /* Pie Variant */
       .layout-pie {
         height: 100%;
         display: flex;
@@ -122,7 +115,6 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
   templateUrl: './skeleton-loader.component.html',
 })
 export class SkeletonLoaderComponent {
-  /** Variant. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly variant = input<SkeletonVariant>('card');
 }

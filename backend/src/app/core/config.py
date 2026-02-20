@@ -74,10 +74,15 @@ class Settings(BaseSettings):
 
   @property
   def SQLALCHEMY_DATABASE_URI(self) -> str:
+    """Constructs the async PostgreSQL connection string from environment variables."""
     return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
   @property
   def LLM_SWARM(self) -> List[Dict[str, Any]]:
+    """
+    Compiles the configuration for all active LLM providers.
+    Parses definitions for local execution and cloud APIs, standardizing tags for the Arena.
+    """
     swarm = []
 
     def _parse_models(raw_csv: str, fallback: List[str] | None = None) -> List[Tuple[str, str]]:

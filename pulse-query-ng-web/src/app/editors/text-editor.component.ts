@@ -1,7 +1,4 @@
-/**
- * @fileoverview Text Editor Component for Static Markdown Widget.
- */
-
+// pulse-query-ng-web/src/app/editors/text-editor.component.ts
 import {
   Component,
   input,
@@ -12,13 +9,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  FormsModule,
-  ReactiveFormsModule,
-  FormBuilder,
-  Validators,
-  FormControl,
-} from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { DashboardsService, WidgetUpdate } from '../api-client';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -26,9 +17,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
 
-/**
- * Editor to input Markdown Content.
- */
 @Component({
   selector: 'app-text-editor',
   imports: [
@@ -78,39 +66,28 @@ import { finalize } from 'rxjs';
   templateUrl: './text-editor.component.html',
 })
 export class TextEditorComponent implements OnInit {
-  /** fb property. */
   private readonly fb = inject(FormBuilder);
-  /** dashboardsApi property. */
   private readonly dashboardsApi = inject(DashboardsService);
 
-  /** Dashboard Id. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly dashboardId = input.required<string>();
-  /** Widget Id. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly widgetId = input.required<string>();
-  /** Initial Content. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly initialContent = input<string>('');
 
-  /** Content Change. */
   readonly contentChange = output<string>();
-
-  /** Whether running. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly isRunning = signal(false);
 
-  /** Form. */
   readonly form = this.fb.group({
     content: ['', Validators.required],
   });
 
-  /** Ng On Init. */
   ngOnInit() {
     this.form.patchValue({ content: this.initialContent() });
   }
 
-  /** Save. */
   save() {
     if (this.form.invalid) return;
 

@@ -1,7 +1,4 @@
-/**
- * @fileoverview Reusable Data Table Visualization.
- */
-
+// pulse-query-ng-web/src/app/shared/visualizations/viz-table/viz-table.component.ts
 import {
   Component,
   input,
@@ -45,10 +42,9 @@ export interface TableConfig {
       }
       table {
         width: 100%;
-        background-color: var(--sys-surface); /* Fix: Explicit surface background */
+        background-color: var(--sys-surface);
       }
       th.mat-header-cell {
-        /* Fix: Use semantic surface variant for header contrast in Light/Dark */
         background: var(--sys-surface-variant);
         font-weight: 600;
         color: var(--sys-on-surface-variant);
@@ -59,8 +55,6 @@ export interface TableConfig {
         color: var(--sys-on-surface);
         border-bottom-color: var(--sys-surface-variant);
       }
-
-      /* Delta Formatting */
       .val-pos {
         color: var(--sys-success, #2e7d32);
         font-weight: 500;
@@ -69,8 +63,6 @@ export interface TableConfig {
         color: var(--sys-error, #c62828);
         font-weight: 500;
       }
-
-      /* Alert Formatting (Cell Level) */
       .cell-warn {
         color: var(--sys-warn, #ffa000);
         font-weight: bold;
@@ -85,9 +77,9 @@ export interface TableConfig {
   templateUrl: './viz-table.component.html',
 })
 export class VizTableComponent {
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly dataSet = input<TableDataSet | null | undefined>();
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly config = input<TableConfig | null>(null);
 
   dataSource = new MatTableDataSource<Record<string, any>>([]);
@@ -107,7 +99,7 @@ export class VizTableComponent {
     });
   }
 
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
   getCellValue(row: Record<string, any>, col: string): string {

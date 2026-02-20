@@ -1,15 +1,9 @@
+// pulse-query-ng-web/src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts
 import { Component, input, computed, ChangeDetectionStrategy, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
-/**
- * Visualization: Scalar & Correlation Gauge.
- *
- * **Updates**:
- * - Replaced custom HTML gauge with `MatProgressBar`.
- * - Styles progress bar color based on correlation using semantic variables.
- */
 @Component({
   selector: 'viz-scalar',
   imports: [CommonModule, MatTooltipModule, MatProgressBarModule],
@@ -39,7 +33,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
         letter-spacing: 1px;
         text-align: center;
       }
-
       .gauge-wrapper {
         width: 100%;
         max-width: 200px;
@@ -53,8 +46,6 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
         color: var(--sys-text-secondary);
         text-align: center;
       }
-
-      /* Dynamic Coloring for ProgressBar Track via Variables */
       ::ng-deep .gauge-pos .mdc-linear-progress__bar-inner {
         border-color: var(--sys-success) !important;
       }
@@ -69,16 +60,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
   templateUrl: './viz-scalar.component.html',
 })
 export class VizScalarComponent {
-  /** Data. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly data = input<any | null>();
 
-  /** Extract numeric value from dataset. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly value: Signal<number | null> = computed(() => {
     const d = this.data();
     if (!d) return null;
-
     if (!Array.isArray(d.data) && typeof d.value === 'number') return d.value;
 
     if (Array.isArray(d.data) && d.data.length > 0) {
@@ -89,8 +77,7 @@ export class VizScalarComponent {
     return null;
   });
 
-  /** Formatted Value. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly formattedValue = computed(() => {
     const v = this.value();
     if (v === null) return '-';
@@ -98,8 +85,7 @@ export class VizScalarComponent {
     return v.toLocaleString();
   });
 
-  /** Label. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly label = computed(() => {
     const d = this.data();
     if (d?.columns && d.columns.length > 0)
@@ -107,8 +93,7 @@ export class VizScalarComponent {
     return 'Result';
   });
 
-  /** Detect if metric is a correlation coefficient (-1 to 1). */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly isCorrelation = computed(() => {
     const v = this.value();
     const l = this.label().toLowerCase();
@@ -123,28 +108,20 @@ export class VizScalarComponent {
     return false;
   });
 
-  /**
-   * Maps -1...1 to 0...100 for ProgressBar.
-   * -1 => 0%
-   * 0 => 50%
-   * 1 => 100%
-   */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly gaugePosition = computed(() => {
     const v = this.value() || 0;
     return ((v + 1) / 2) * 100;
   });
 
-  /** Determines color class for ProgressBar styling. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly colorClass = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'gauge-neutral';
     return v > 0 ? 'gauge-pos' : 'gauge-neg';
   });
 
-  /** Strength Label. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly strengthLabel = computed(() => {
     const v = this.value() || 0;
     const abs = Math.abs(v);
@@ -153,8 +130,7 @@ export class VizScalarComponent {
     return 'Strong Correlation';
   });
 
-  /** Strength Color using CSS variables. */
-  /* istanbul ignore next */
+  /* v8 ignore next */
   readonly strengthColor = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'var(--sys-text-secondary)';
