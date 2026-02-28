@@ -3,6 +3,7 @@
 README.md
 api.base.service.ts
 api.module.ts
+api/admin.service.ts
 api/ai.service.ts
 api/analytics.service.ts
 api/api.ts
@@ -18,6 +19,8 @@ configuration.ts
 encoder.ts
 git_push.sh
 index.ts
+model/admin-settings-response.ts
+model/admin-settings-update-request.ts
 model/column-info.ts
 model/conversation-create.ts
 model/conversation-detail.ts

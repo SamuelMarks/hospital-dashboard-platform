@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
   id: UUID
   email: EmailStr
   is_active: bool
+  is_admin: bool
 
   # Pydantic V2 config to read from SQLAlchemy models
   model_config = ConfigDict(from_attributes=True)

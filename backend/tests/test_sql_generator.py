@@ -37,6 +37,10 @@ async def test_generation_flow_mocked():
   mock_db = MagicMock()
   mock_db.add = MagicMock()
 
+  mock_result = MagicMock()
+  mock_result.scalars.return_value.all.return_value = []
+  mock_db.execute = AsyncMock(return_value=mock_result)
+
   # Mock side-effects for persistence
   added_objects = []
 

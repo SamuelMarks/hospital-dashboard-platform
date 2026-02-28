@@ -31,6 +31,7 @@ import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
+import { Router } from '@angular/router';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -106,6 +107,7 @@ describe('WidgetComponent', () => {
   let mockStore: any;
   let mockDashApi: any;
   let mockDialog: any;
+  let mockRouter: any;
 
   beforeEach(async () => {
     dataMapSig = signal({});
@@ -113,6 +115,7 @@ describe('WidgetComponent', () => {
     isEditModeSig = signal(false);
     focusedWidgetIdSig = signal(null);
     mockDialog = { open: vi.fn() };
+    mockRouter = { navigate: vi.fn() };
 
     mockStore = {
       dataMap: dataMapSig,
@@ -136,6 +139,7 @@ describe('WidgetComponent', () => {
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ErrorHandler, useValue: { clearError: vi.fn(), handleError: vi.fn() } },
         { provide: MatDialog, useValue: mockDialog },
+        { provide: Router, useValue: mockRouter },
       ],
     })
       .overrideComponent(WidgetComponent, {
@@ -357,5 +361,45 @@ describe('WidgetComponent', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
     component.resetWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+  });
+
+  it('should simulate widget if SQL', () => {
+    component.simulateWidget();
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/simulation'], {
+      queryParams: { sql: 'SELECT 1' },
+    });
+  });
+
+  it('should ignore simulate widget if TEMPLATE', () => {
+    setInputSignal(component, 'widgetInput', {
+      ...mockWidget,
+      type: 'TEMPLATE',
+      config: { template_id: 't1' },
+    });
+    fixture.detectChanges();
+    component.simulateWidget();
+    expect(mockRouter.navigate).toHaveBeenCalledTimes(0);
+  });
+
+  it('should reset non-SQL widget', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
+    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT' });
+    component.resetWidget();
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
+      visualization: 'table',
+      config: {},
+    });
+  });
+
+  it('should ignore simulate if SQL but no query', () => {
+    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'SQL', config: {} });
+    component.simulateWidget();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should do nothing on unknown type in simulate', () => {
+    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT' });
+    component.simulateWidget();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 });

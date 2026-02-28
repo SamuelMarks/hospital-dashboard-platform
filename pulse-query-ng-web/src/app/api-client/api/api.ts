@@ -1,3 +1,5 @@
+export * from './admin.service';
+import { AdminService } from './admin.service';
 export * from './ai.service';
 import { AiService } from './ai.service';
 export * from './analytics.service';
@@ -18,7 +20,10 @@ export * from './simulation.service';
 import { SimulationService } from './simulation.service';
 export * from './templates.service';
 import { TemplatesService } from './templates.service';
+export * from './mpax-arena.service';
+import { MpaxArenaService } from './mpax-arena.service';
 export const APIS = [
+  AdminService,
   AiService,
   AnalyticsService,
   AuthService,
@@ -29,4 +34,5 @@ export const APIS = [
   SchemaService,
   SimulationService,
   TemplatesService,
+  MpaxArenaService,
 ];

@@ -69,6 +69,7 @@ export class SqlSnippetComponent {
   readonly sql = input<string | null | undefined>('');
   readonly run = output<string>();
   readonly addToCart = output<string>();
+  readonly simulate = output<string>();
 
   get highlightedSql(): string {
     let code = this.sql() || '';
@@ -98,6 +99,11 @@ export class SqlSnippetComponent {
   emitAddToCart(): void {
     const val = this.sql();
     if (val) this.addToCart.emit(val);
+  }
+
+  emitSimulate(): void {
+    const val = this.sql();
+    if (val) this.simulate.emit(val);
   }
 
   copy(): void {

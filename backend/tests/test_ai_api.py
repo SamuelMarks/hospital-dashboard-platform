@@ -42,6 +42,25 @@ async def test_list_available_models() -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_available_models_all() -> None:
+  """
+  Verifies the GET /models endpoint successfully returns the list of available LLMs when show_all=true.
+  """
+  mock_user = AsyncMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  with patch("app.api.routers.ai.llm_client.get_available_models") as mock_get:
+    mock_get.return_value = [{"id": "mock-m1", "name": "Mock Model 1", "provider": "openai", "is_local": False}]
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
+      response = await ac.get(f"{AI_MODELS_ENDPOINT}?show_all=true")
+
+  assert response.status_code == 200
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
 async def test_generate_sql_success() -> None:
   """
   Test the happy path for Text-to-SQL generation via Arena.

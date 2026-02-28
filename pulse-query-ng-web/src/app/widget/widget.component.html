@@ -24,6 +24,19 @@
         <mat-icon>{{ isFocused() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
       </button>
 
+      <!-- Simulate Action -->
+      @if (widgetInput().type === 'SQL') {
+        <button
+          mat-icon-button
+          class="icon-btn-compact"
+          (click)="simulateWidget()"
+          matTooltip="Simulate Scenario"
+          style="color: var(--sys-secondary)"
+        >
+          <mat-icon>science</mat-icon>
+        </button>
+      }
+
       <!-- Edit Mode Actions -->
       @if (isEditMode()) {
         <button

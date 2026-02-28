@@ -6,6 +6,12 @@
   </div>
 
   <div class="btn-group">
+    @if (authService.currentUser()?.is_admin) {
+      <button mat-stroked-button color="primary" routerLink="/admin" matTooltip="Admin Settings">
+        <mat-icon>settings</mat-icon> Admin
+      </button>
+    }
+
     <!-- New: Ask AI Button for Global Accessibility -->
     <button
       mat-stroked-button

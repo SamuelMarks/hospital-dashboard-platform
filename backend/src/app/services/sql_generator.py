@@ -24,6 +24,7 @@ from app.services.sql_utils import sql_fingerprint
 from app.models.feedback import ExperimentLog, ModelCandidate
 from app.models.user import User
 from app.schemas.feedback import ExperimentResponse
+from app.services.admin import get_admin_settings
 
 # Prompt Strategies
 from app.services.prompt_engineering.interfaces import PromptStrategy
@@ -170,8 +171,9 @@ class SQLGeneratorService:
     else:
       logger.info(f"Broadcast [{actual_strategy_name}]: '{user_query[:30]}...' to {len(self.llm.swarm)} models.")
       # We set temperature low for SQL generation consistency
+      admin_settings = await get_admin_settings(db)
       results: List[ArenaResponse] = await self.llm.generate_arena_competition(
-        messages=messages, temperature=0.1, max_tokens=600
+        messages=messages, temperature=0.1, max_tokens=600, admin_settings=admin_settings
       )
 
     # 5. Persistence

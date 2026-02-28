@@ -271,11 +271,13 @@ export class AiService extends BaseService {
    * List Available Models
    * Returns the list of currently configured LLMs available for the Arena.
    * @endpoint get /api/v1/ai/models
+   * @param showAll
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public listAvailableModelsApiV1AiModelsGet(
+    showAll?: boolean,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -285,6 +287,7 @@ export class AiService extends BaseService {
     },
   ): Observable<Array<ModelInfo>>;
   public listAvailableModelsApiV1AiModelsGet(
+    showAll?: boolean,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -294,6 +297,7 @@ export class AiService extends BaseService {
     },
   ): Observable<HttpResponse<Array<ModelInfo>>>;
   public listAvailableModelsApiV1AiModelsGet(
+    showAll?: boolean,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -303,6 +307,7 @@ export class AiService extends BaseService {
     },
   ): Observable<HttpEvent<Array<ModelInfo>>>;
   public listAvailableModelsApiV1AiModelsGet(
+    showAll?: boolean,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -311,6 +316,16 @@ export class AiService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'show_all',
+      <any>showAll,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (OAuth2PasswordBearer) required
@@ -346,6 +361,7 @@ export class AiService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Array<ModelInfo>>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

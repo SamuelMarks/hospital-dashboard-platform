@@ -7,12 +7,36 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "target_ward": { "type": "string", "default": "ICU", "title": "Ward Pattern" },
-        "start_dow": { "type": "integer", "default": 4, "title": "Current Day (0=Sun, 4=Thu)" },
-        "days_gap": { "type": "integer", "default": 3, "title": "Days until Target" },
-        "capacity": { "type": "integer", "default": 20, "title": "Ward Capacity" },
-        "util_threshold": { "type": "number", "default": 0.9, "title": "Utili Threshold (0.0-1.0)" },
-        "target_beds": { "type": "integer", "default": 2, "title": "Target Avail Beds" }
+        "target_ward": {
+          "type": "string",
+          "default": "ICU",
+          "title": "Ward Pattern"
+        },
+        "start_dow": {
+          "type": "integer",
+          "default": 4,
+          "title": "Current Day (0=Sun, 4=Thu)"
+        },
+        "days_gap": {
+          "type": "integer",
+          "default": 3,
+          "title": "Days until Target"
+        },
+        "capacity": {
+          "type": "integer",
+          "default": 20,
+          "title": "Ward Capacity"
+        },
+        "util_threshold": {
+          "type": "number",
+          "default": 0.9,
+          "title": "Utili Threshold (0.0-1.0)"
+        },
+        "target_beds": {
+          "type": "integer",
+          "default": 2,
+          "title": "Target Avail Beds"
+        }
       },
       "required": ["target_ward", "start_dow", "capacity"]
     }
@@ -25,7 +49,11 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "min_threshold": { "type": "integer", "default": 0, "title": "Minimum Net Flow" }
+        "min_threshold": {
+          "type": "integer",
+          "default": 0,
+          "title": "Minimum Net Flow"
+        }
       },
       "required": ["min_threshold"]
     }
@@ -38,7 +66,11 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "min_avg_census": { "type": "integer", "default": 5, "title": "Min Avg Census" }
+        "min_avg_census": {
+          "type": "integer",
+          "default": 5,
+          "title": "Min Avg Census"
+        }
       },
       "required": ["min_avg_census"]
     }
@@ -65,7 +97,11 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "unit_name": { "type": "string", "default": "PCU_Mixed_A", "title": "Mixed Unit Name" }
+        "unit_name": {
+          "type": "string",
+          "default": "PCU_Mixed_A",
+          "title": "Mixed Unit Name"
+        }
       },
       "required": ["unit_name"]
     }
@@ -78,8 +114,16 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "unit_name": { "type": "string", "default": "ICU_General", "title": "Unit Name" },
-        "capacity": { "type": "integer", "default": 20, "title": "Unit Capacity" }
+        "unit_name": {
+          "type": "string",
+          "default": "ICU_General",
+          "title": "Unit Name"
+        },
+        "capacity": {
+          "type": "integer",
+          "default": 20,
+          "title": "Unit Capacity"
+        }
       },
       "required": ["unit_name", "capacity"]
     }
@@ -154,7 +198,11 @@
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "unit_name": { "type": "string", "default": "PCU_Nursery_A", "title": "Target Unit" }
+        "unit_name": {
+          "type": "string",
+          "default": "PCU_Nursery_A",
+          "title": "Target Unit"
+        }
       },
       "required": ["unit_name"]
     }
@@ -195,7 +243,11 @@
       "type": "object",
       "properties": {
         "unit_name": { "type": "string", "default": "PCU_Nursery_A" },
-        "dow": { "type": "integer", "default": 2, "description": "0=Sun, 2=Tue" },
+        "dow": {
+          "type": "integer",
+          "default": 2,
+          "description": "0=Sun, 2=Tue"
+        },
         "capacity": { "type": "integer", "default": 20 }
       },
       "required": ["unit_name", "dow", "capacity"]
@@ -265,7 +317,12 @@
         "maternity_cap": { "type": "integer", "default": 20 },
         "nursery_cap": { "type": "integer", "default": 20 }
       },
-      "required": ["maternity_unit", "nursery_unit", "maternity_cap", "nursery_cap"]
+      "required": [
+        "maternity_unit",
+        "nursery_unit",
+        "maternity_cap",
+        "nursery_cap"
+      ]
     }
   },
   {

@@ -1,0 +1,13 @@
+@@ -1,9 +1,12 @@
++"""Schema definitions for admin settings operations."""
+ from pydantic import BaseModel, ConfigDict
+ from typing import Dict, List, Optional
+ 
+ class AdminSettingsResponse(BaseModel):
++    """Response schema containing the currently configured admin settings."""
+     api_keys: Dict[str, str] = {}
+     visible_models: List[str] = []
+     model_config = ConfigDict(from_attributes=True)
+ 
+ class AdminSettingsUpdateRequest(BaseModel):
++    """Request schema for updating admin settings."""

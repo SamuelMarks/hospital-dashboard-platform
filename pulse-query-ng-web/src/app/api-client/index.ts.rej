@@ -1,0 +1,18 @@
+@@ -8,6 +8,7 @@
+ export * from './api/schema.service';
+ export * from './api/simulation.service';
+ export * from './api/templates.service';
++export * from './api/mpax-arena.service';
+ export * from './variables';
+ export * from './configuration';
+ export * from './api.module';
+@@ -21,6 +22,9 @@
+ export * from './model/execution-validation-response';
+ export * from './model/experiment-create';
+ export * from './model/experiment-response';
++export * from './model/mpax-arena-candidate';
++export * from './model/mpax-arena-request';
++export * from './model/mpax-arena-response';
+ export * from './model/feedback-update';
+ export * from './model/h-t-t-p-validation-error';
+ export * from './model/model-candidate-response';

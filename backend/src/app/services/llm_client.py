@@ -12,6 +12,7 @@ from typing import List, Dict, Any, NamedTuple, Optional
 from any_llm import AnyLLM
 from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
+from app.schemas.admin import AdminSettingsResponse
 
 logger = logging.getLogger(__name__)
 
@@ -98,14 +99,17 @@ class LLMArenaClient:
         }
       )
 
-  def get_available_models(self) -> List[Dict[str, Any]]:
+  def get_available_models(self, admin_settings: Optional[AdminSettingsResponse] = None) -> List[Dict[str, Any]]:
     """
-    Returns a list of configured models.
+    Returns a list of configured models. Filters by admin settings if provided.
     """
-    return [
+    models = [
       {"id": m["id"], "name": m["name"], "provider": m["provider"], "is_local": m.get("is_local", False)}
       for m in self.swarm
     ]
+    if admin_settings and admin_settings.visible_models:
+      return [m for m in models if m["id"] in admin_settings.visible_models]
+    return models
 
   async def _generate_single(
     self,
@@ -114,6 +118,7 @@ class LLMArenaClient:
     temperature: float,
     max_tokens: int,
     stop: Optional[List[str]],
+    admin_settings: Optional[AdminSettingsResponse] = None,
   ) -> ArenaResponse:
     """
     Internal wrapper to execute a request against a single provider
@@ -135,6 +140,12 @@ class LLMArenaClient:
     try:
       # Offload blocking IO to threadpool to keep asyncio loop healthy
       # We pass 'model' here to satisfy OpenAI SDK requirements
+      kwargs = {}
+      if admin_settings and admin_settings.api_keys:
+        provider = combatant["provider"]
+        if provider in admin_settings.api_keys:
+          kwargs["api_key"] = admin_settings.api_keys[provider]
+
       response = await run_in_threadpool(
         client.completion,
         model=target_model_name,
@@ -142,6 +153,7 @@ class LLMArenaClient:
         temperature=temperature,
         max_tokens=max_tokens,
         stop=stop,
+        **kwargs,
       )
 
       # Measure Latency
@@ -173,6 +185,7 @@ class LLMArenaClient:
     max_tokens: int = 512,
     stop: Optional[List[str]] = None,
     target_model_ids: Optional[List[str]] = None,
+    admin_settings: Optional[AdminSettingsResponse] = None,
   ) -> List[ArenaResponse]:
     """
     The Main Event: Broadcasts the prompt to all configured LLMs concurrently.
@@ -201,8 +214,14 @@ class LLMArenaClient:
       # Returning empty to signify strict adherence. Filters might be malformed.
       return []
 
+    if not target_model_ids and admin_settings and admin_settings.visible_models:
+      active_combatants = [c for c in active_combatants if c["id"] in admin_settings.visible_models]
+
     # Create tasks for all providers
-    tasks = [self._generate_single(combatant, messages, temperature, max_tokens, stop) for combatant in active_combatants]
+    tasks = [
+      self._generate_single(combatant, messages, temperature, max_tokens, stop, admin_settings)
+      for combatant in active_combatants
+    ]
 
     # Run all tasks concurrently
     results = await asyncio.gather(*tasks, return_exceptions=True)

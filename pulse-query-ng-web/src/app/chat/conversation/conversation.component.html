@@ -51,6 +51,7 @@
                         [sql]="cand.sql_snippet"
                         (run)="runCandidateQuery(cand)"
                         (addToCart)="saveToCart(cand.sql_snippet)"
+                        (simulate)="simulateQuery(cand.sql_snippet)"
                       ></app-sql-snippet>
                     }
 
@@ -88,6 +89,7 @@
                 [sql]="msg.sql_snippet"
                 (run)="runQuery($event)"
                 (addToCart)="saveToCart($event)"
+                (simulate)="simulateQuery($event)"
               ></app-sql-snippet>
             }
           }

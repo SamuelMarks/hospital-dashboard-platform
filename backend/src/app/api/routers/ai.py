@@ -23,12 +23,20 @@ from app.services.llm_client import llm_client
 router = APIRouter()
 
 
+from app.services.admin import get_admin_settings
+
+
 @router.get("/models", response_model=List[ModelInfo])
-def list_available_models(current_user: Annotated[User, Depends(deps.get_current_user)]) -> List[ModelInfo]:
+async def list_available_models(
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+  show_all: bool = False,
+) -> List[ModelInfo]:
   """
   Returns the list of currently configured LLMs available for the Arena.
   """
-  return llm_client.get_available_models()
+  admin_settings = await get_admin_settings(db) if not show_all else None
+  return llm_client.get_available_models(admin_settings)
 
 
 @router.post("/generate", response_model=ExperimentResponse)

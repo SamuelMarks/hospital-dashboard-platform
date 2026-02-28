@@ -720,6 +720,7 @@ export class ChatService extends BaseService {
 
   /**
    * Vote Candidate
+   * Records a user\&#39;s vote for a specific generated candidate.  This selects the chosen candidate by its ID (or matching SQL hash), sets its &#x60;is_selected&#x60; flag to True, and promotes its text and SQL contents to the parent Message object.
    * @endpoint post /api/v1/conversations/{conversation_id}/messages/{message_id}/vote
    * @param conversationId
    * @param messageId

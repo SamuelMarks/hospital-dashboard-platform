@@ -2,6 +2,7 @@ import { Component, input, output, inject, computed, ChangeDetectionStrategy } f
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -217,6 +218,7 @@ export class WidgetComponent {
   private readonly store = inject(DashboardStore);
   private readonly dashApi = inject(DashboardsService);
   private readonly dialog = inject(MatDialog);
+  private readonly router = inject(Router);
 
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' });
   readonly edit = output<void>();
@@ -252,6 +254,15 @@ export class WidgetComponent {
 
   manualRefresh(): void {
     this.store.refreshWidget(this.widgetInput().id);
+  }
+
+  simulateWidget(): void {
+    const widget = this.widgetInput();
+    if (widget.type === 'SQL' && widget.config['query']) {
+      this.router.navigate(['/simulation'], { queryParams: { sql: widget.config['query'] } });
+    } else if (widget.type === 'TEMPLATE') {
+      // We could add template to sql logic here, but simply pass widgetId if we want
+    }
   }
 
   toggleFocus(): void {

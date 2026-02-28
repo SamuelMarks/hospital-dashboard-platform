@@ -1,5 +1,4 @@
-data
-====
+# data
 
 Synthetic_hospital_data and Synthetic_hospital_data_transfers files are completely synthetic provided by the hospital
 and permitted to be publicly posted anywhere.

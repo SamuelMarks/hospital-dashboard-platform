@@ -6,6 +6,7 @@ Verifies broadcasting logic, latency recording, and error containment using any-
 import pytest
 from unittest.mock import MagicMock, patch, PropertyMock, AsyncMock
 from app.services.llm_client import LLMArenaClient, ArenaResponse
+from app.schemas.admin import AdminSettingsResponse
 from app.core.config import Settings
 
 
@@ -112,6 +113,36 @@ async def test_arena_partial_failure(mock_swarm_settings):
       assert len(results) == 2
       res_b = next(r for r in results if r.provider_name == "Model B")
       assert "API Down" in res_b.error
+
+
+@pytest.mark.asyncio
+async def test_arena_broadcast_admin_settings(mock_swarm_settings):
+  """
+  Test that generate_arena_competition passes api keys from admin settings.
+  """
+  with patch("app.services.llm_client.AnyLLM.create") as mock_create:
+    client_a = MagicMock()
+    mock_create.side_effect = [client_a, MagicMock()]
+    arena = LLMArenaClient()
+    settings = AdminSettingsResponse(
+      api_keys={"openai": "override-key"}, visible_models=[arena.swarm[0]["id"], arena.swarm[1]["id"]]
+    )
+
+    with patch("app.services.llm_client.run_in_threadpool") as mock_thread:
+      mock_thread.return_value = MagicMock()
+      await arena.generate_arena_competition([{"role": "user", "content": "hi"}], admin_settings=settings)
+      call_args = mock_thread.call_args_list[0]
+      assert call_args.kwargs.get("api_key") == "override-key"
+
+
+def test_get_available_models_filtered(mock_swarm_settings):
+  """Verify get_available_models filters based on admin_settings."""
+  with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
+    arena = LLMArenaClient()
+    settings = AdminSettingsResponse(api_keys={}, visible_models=[arena.swarm[0]["id"]])
+    models = arena.get_available_models(settings)
+    assert len(models) == 1
+    assert models[0]["id"] == arena.swarm[0]["id"]
 
 
 @pytest.mark.asyncio

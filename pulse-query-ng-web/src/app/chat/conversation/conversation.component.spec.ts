@@ -17,24 +17,8 @@ import { of, throwError } from 'rxjs';
 import { readTemplate } from '../../../test-utils/component-resources';
 import { VizMarkdownComponent } from '../../shared/visualizations/viz-markdown/viz-markdown.component';
 import { SqlSnippetComponent } from './sql-snippet.component';
+import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-
-// Mocks
-@Component({ selector: 'viz-markdown', template: '' })
-class MockVizMarkdownComponent {
-  readonly content = input<string>('');
-}
-
-@Component({
-  selector: 'app-sql-snippet',
-  template:
-    '<button class="run-btn" (click)="run.emit(sql())"></button><button class="cart-btn" (click)="addToCart.emit(sql())"></button>',
-})
-class MockSqlSnippetComponent {
-  readonly sql = input<string>('');
-  readonly run = output<string>();
-  readonly addToCart = output<string>();
-}
 
 describe('ConversationComponent', () => {
   let component: ConversationComponent;
@@ -44,6 +28,7 @@ describe('ConversationComponent', () => {
   let mockArenaSql: any;
   let mockCart: any;
   let mockSnackBar: any;
+  let mockRouter: any;
   let messagesSig: WritableSignal<MessageResponse[]>;
 
   beforeEach(async () => {
@@ -52,7 +37,6 @@ describe('ConversationComponent', () => {
       messages: messagesSig,
       isGenerating: signal(false),
       error: signal(null),
-      // Add missing mocks for the template
       availableModels: signal([]),
       selectedModelIds: signal([]),
       toggleModelSelection: vi.fn(),
@@ -63,6 +47,7 @@ describe('ConversationComponent', () => {
     mockArenaSql = { execute: vi.fn().mockReturnValue(of({ data: [], columns: [] })) };
     mockCart = { add: vi.fn() };
     mockSnackBar = { open: vi.fn() };
+    mockRouter = { navigate: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [ConversationComponent, NoopAnimationsModule],
@@ -73,14 +58,9 @@ describe('ConversationComponent', () => {
         { provide: ArenaSqlService, useValue: mockArenaSql },
         { provide: QueryCartService, useValue: mockCart },
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: Router, useValue: mockRouter },
       ],
     })
-      // Replace with mock snippet to test outputs
-      // FIX: Explicitly remove the real components to avoid selector collision
-      .overrideComponent(ConversationComponent, {
-        remove: { imports: [SqlSnippetComponent, VizMarkdownComponent] },
-        add: { imports: [MockVizMarkdownComponent, MockSqlSnippetComponent] },
-      })
       .overrideComponent(ConversationComponent, {
         set: { template: readTemplate('./conversation.component.html') },
       })
@@ -103,8 +83,8 @@ describe('ConversationComponent', () => {
     messagesSig.set([msg]);
     fixture.detectChanges();
 
-    const cartBtn = fixture.debugElement.query(By.css('.cart-btn'));
-    cartBtn.triggerEventHandler('click', null);
+    const snippet = fixture.debugElement.query(By.directive(SqlSnippetComponent));
+    snippet.triggerEventHandler('addToCart', 'SELECT 1');
 
     expect(mockCart.add).toHaveBeenCalledWith('SELECT 1');
     expect(mockSnackBar.open).toHaveBeenCalledWith(
@@ -128,9 +108,8 @@ describe('ConversationComponent', () => {
     messagesSig.set([msg]);
     fixture.detectChanges();
 
-    const cartBtn = fixture.debugElement.query(By.css('.candidate-body .cart-btn'));
-    expect(cartBtn).toBeTruthy();
-    cartBtn.triggerEventHandler('click', null);
+    const snippet = fixture.debugElement.query(By.directive(SqlSnippetComponent));
+    snippet.triggerEventHandler('addToCart', 'SELECT C');
 
     expect(mockCart.add).toHaveBeenCalledWith('SELECT C');
   });
@@ -153,5 +132,30 @@ describe('ConversationComponent', () => {
 
     expect(component.candidateErrors()['c10']).toBe('Boom');
     expect(component.candidateLoading()['c10']).toBe(false);
+  });
+
+  it('should navigate to simulation on simulate event', () => {
+    const msg: MessageResponse = {
+      id: 'm3',
+      conversation_id: 'c1',
+      role: 'assistant',
+      content: 'Here is SQL',
+      sql_snippet: 'SELECT * FROM patients',
+      created_at: '',
+    };
+    messagesSig.set([msg]);
+    fixture.detectChanges();
+
+    const snippet = fixture.debugElement.query(By.directive(SqlSnippetComponent));
+    snippet.triggerEventHandler('simulate', 'SELECT * FROM patients');
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/simulation'], {
+      queryParams: { sql: 'SELECT * FROM patients' },
+    });
+  });
+
+  it('should do nothing if simulate is called with empty sql', () => {
+    component.simulateQuery('');
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 });

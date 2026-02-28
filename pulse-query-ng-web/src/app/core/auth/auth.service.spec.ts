@@ -20,7 +20,12 @@ describe('AuthService', () => {
   let mockRouter: { navigate: ReturnType<typeof vi.fn> };
 
   const mockToken: Token = { access_token: 'abc-123', token_type: 'bearer' };
-  const mockUser: UserResponse = { id: 'u1', email: 'test@test.com', is_active: true };
+  const mockUser: UserResponse = {
+    id: 'u1',
+    email: 'test@test.com',
+    is_active: true,
+    is_admin: false,
+  };
 
   beforeEach(() => {
     mockApiClient = {

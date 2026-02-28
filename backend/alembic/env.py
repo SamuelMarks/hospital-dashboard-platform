@@ -15,6 +15,7 @@ from app.database.postgres import Base
 # This is crucial for 'autogenerate' AND for identifying tables in migration scripts
 from app.models.user import User
 from app.models.dashboard import Dashboard, Widget
+from app.models.admin_setting import AdminSetting
 
 config = context.config
 

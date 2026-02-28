@@ -8,6 +8,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { guestGuard } from './core/auth/guest.guard';
 import { registrationGuard } from './core/auth/registration.guard';
+import { adminGuard } from './core/auth/admin.guard';
 
 /**
  * The main application route definitions.
@@ -40,6 +41,12 @@ export const routes: Routes = [
     title: 'Home - Pulse Query',
   },
   {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./admin/admin.component').then((m) => m.AdminComponent),
+    title: 'Admin - Pulse Query',
+  },
+  {
     path: 'dashboard/:id',
     canActivate: [authGuard],
     loadComponent: () =>
@@ -62,6 +69,14 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./analytics/analytics.component').then((m) => m.AnalyticsComponent),
     title: 'Analytics - Pulse Query',
+  },
+
+  {
+    path: 'mpax-arena',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./mpax-arena/mpax-arena.component').then((m) => m.MpaxArenaComponent),
+    title: 'MPAX Arena - Pulse Query',
   },
 
   // --- Feature Modules (Lazy Loaded) ---

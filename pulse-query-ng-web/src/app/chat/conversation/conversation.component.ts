@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize, retry } from 'rxjs/operators';
 
@@ -248,6 +249,8 @@ export class ConversationComponent implements AfterViewChecked {
   private readonly arenaSql = inject(ArenaSqlService);
   /** Access the query cart service. */
   private readonly cart = inject(QueryCartService);
+  /** Access the router. */
+  private readonly router = inject(Router);
   /** Access the snackbar. */
   private readonly snackBar = inject(MatSnackBar);
 
@@ -314,6 +317,12 @@ export class ConversationComponent implements AfterViewChecked {
     if (!sql) return;
     this.cart.add(sql);
     this.snackBar.open('Saved to Query Cart 🛒', 'OK', { duration: 2500 });
+  }
+
+  /** Navigates to simulation with sql. */
+  simulateQuery(sql: string): void {
+    if (!sql) return;
+    this.router.navigate(['/simulation'], { queryParams: { sql } });
   }
 
   /**

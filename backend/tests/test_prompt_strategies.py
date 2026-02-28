@@ -21,6 +21,9 @@ def mock_db_session() -> MagicMock:
   session.flush = AsyncMock()
   session.commit = AsyncMock()
   session.add = MagicMock()
+  session.execute = AsyncMock(
+    return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
+  )
 
   # Side effect: Populate ID and CreatedAt on refresh
   async def mock_refresh(instance):

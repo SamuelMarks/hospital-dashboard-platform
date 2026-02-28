@@ -4,6 +4,7 @@ var ROUTES_INDEX = {
   children: [
     { name: 'login', kind: 'route-path', filename: 'src/app/app.routes.ts' },
     { name: 'register', kind: 'route-path', filename: 'src/app/app.routes.ts' },
+    { name: 'admin', kind: 'route-path', filename: 'src/app/app.routes.ts' },
     { name: 'dashboard/:id', kind: 'route-path', filename: 'src/app/app.routes.ts' },
     { name: 'chat', kind: 'route-path', filename: 'src/app/app.routes.ts' },
     { name: 'analytics', kind: 'route-path', filename: 'src/app/app.routes.ts' },

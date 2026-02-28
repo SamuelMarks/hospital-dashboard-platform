@@ -18,6 +18,7 @@ import { DashboardCreateDialog } from './dashboard-create.dialog';
 import { AskDataService } from '../global/ask-data.service';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
+import { AuthService } from '../core/auth/auth.service';
 
 @Component({
   selector: 'app-home',
@@ -133,6 +134,7 @@ export class HomeComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   public readonly askDataService = inject(AskDataService);
+  public readonly authService = inject(AuthService);
 
   readonly dashboards = signal<DashboardResponse[]>([]);
   readonly isLoading = signal(true);

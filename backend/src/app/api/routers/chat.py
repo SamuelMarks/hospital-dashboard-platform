@@ -32,6 +32,7 @@ from app.schemas.chat import (
 )
 from app.services.schema import schema_service
 from app.services.llm_client import llm_client, ArenaResponse
+from app.services.admin import get_admin_settings
 from app.services.sql_utils import sql_fingerprint
 
 router = APIRouter()
@@ -121,12 +122,17 @@ async def _generate_assistant_reply(
 
   # 3. Call LLM Arena to get Responsens
   responses: List[ArenaResponse] = []
+  admin_settings = await get_admin_settings(db)
 
   try:
     # Broadcast to providers (scoped by target_models if present)
     # Notice: Single-line invocation avoids .coverage mis-reporting lines
     responses = await llm_client.generate_arena_competition(
-      messages=messages_payload, temperature=0.7, max_tokens=1000, target_model_ids=target_models
+      messages=messages_payload,
+      temperature=0.7,
+      max_tokens=1000,
+      target_model_ids=target_models,
+      admin_settings=admin_settings,
     )
 
     # Ensure we have at least 3 candidates for voting if possible.
@@ -148,7 +154,11 @@ async def _generate_assistant_reply(
       attempts += 1
       # Vary temperature slightly to encourage different solutions
       more = await llm_client.generate_arena_competition(
-        messages=messages_payload, temperature=0.7 + (attempts * 0.1), max_tokens=1000, target_model_ids=target_models
+        messages=messages_payload,
+        temperature=0.7 + (attempts * 0.1),
+        max_tokens=1000,
+        target_model_ids=target_models,
+        admin_settings=admin_settings,
       )
       if more:
         responses.extend(more)

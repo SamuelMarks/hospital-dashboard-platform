@@ -8,6 +8,13 @@ describe('SqlSnippetComponent', () => {
   let component: SqlSnippetComponent;
   let fixture: ComponentFixture<SqlSnippetComponent>;
 
+  beforeAll(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn() },
+      configurable: true,
+    });
+  });
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SqlSnippetComponent],
@@ -41,6 +48,17 @@ describe('SqlSnippetComponent', () => {
     expect(emitted).toBe('SELECT * FROM table');
   });
 
+  it('should emit simulate event', () => {
+    let emitted = '';
+    component.simulate.subscribe((s: string) => (emitted = s));
+
+    // It's the button with the science icon
+    const btn = fixture.debugElement.query(By.css('button[aria-label="Simulate Scenario"]'));
+    expect(btn).toBeTruthy();
+    btn.triggerEventHandler('click', null);
+    expect(emitted).toBe('SELECT * FROM table');
+  });
+
   it('should highlight keywords via method', () => {
     const html = component.highlightedSql;
     expect(html).toContain('<span class="keyword">SELECT</span>');
@@ -59,5 +77,49 @@ describe('SqlSnippetComponent', () => {
     fixture.detectChanges();
     const html = component.highlightedSql;
     expect(html).toContain('<span class="comment">-- Note</span>');
+  });
+
+  it('should copy to clipboard', () => {
+    Object.defineProperty(component, 'sql', { value: () => 'SELECT 1' });
+    const spy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
+    component.copy();
+    expect(spy).toHaveBeenCalledWith('SELECT 1');
+  });
+
+  it('should ignore copy if no sql', () => {
+    Object.defineProperty(component, 'sql', { value: () => null });
+    const spy = vi.spyOn(navigator.clipboard, 'writeText');
+    spy.mockClear();
+    component.copy();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('should handle falsy sql in highlightedSql', () => {
+    Object.defineProperty(component, 'sql', { value: () => null });
+    expect(component.highlightedSql).toBe('');
+  });
+
+  it('should ignore emitRun if no sql', () => {
+    Object.defineProperty(component, 'sql', { value: () => null });
+    let emitted = false;
+    component.run.subscribe(() => (emitted = true));
+    component.emitRun();
+    expect(emitted).toBe(false);
+  });
+
+  it('should ignore emitAddToCart if no sql', () => {
+    Object.defineProperty(component, 'sql', { value: () => null });
+    let emitted = false;
+    component.addToCart.subscribe(() => (emitted = true));
+    component.emitAddToCart();
+    expect(emitted).toBe(false);
+  });
+
+  it('should ignore emitSimulate if no sql', () => {
+    Object.defineProperty(component, 'sql', { value: () => null });
+    let emitted = false;
+    component.simulate.subscribe(() => (emitted = true));
+    component.emitSimulate();
+    expect(emitted).toBe(false);
   });
 });

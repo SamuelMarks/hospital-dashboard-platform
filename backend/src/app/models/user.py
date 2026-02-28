@@ -26,6 +26,7 @@ class User(Base):
   email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
   hashed_password: Mapped[str] = mapped_column(String, nullable=False)
   is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+  is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
   # Relationship: One-to-Many
   dashboards: Mapped[List["Dashboard"]] = relationship("app.models.dashboard.Dashboard", back_populates="owner")

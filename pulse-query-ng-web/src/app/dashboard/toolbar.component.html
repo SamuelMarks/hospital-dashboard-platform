@@ -33,6 +33,9 @@
     <a mat-button routerLink="/analytics" routerLinkActive="active-link" class="nav-link"
       >Analytics</a
     >
+    @if (authService.currentUser()?.is_admin) {
+      <a mat-button routerLink="/admin" routerLinkActive="active-link" class="nav-link">Admin</a>
+    }
   </div>
 
   <span class="toolbar-spacer"></span>
@@ -161,6 +164,11 @@
       <button mat-menu-item routerLink="/">
         <mat-icon>dashboard</mat-icon><span>My Dashboards</span>
       </button>
+      @if (authService.currentUser()?.is_admin) {
+        <button mat-menu-item routerLink="/admin">
+          <mat-icon>settings</mat-icon><span>Admin Settings</span>
+        </button>
+      }
       <mat-divider></mat-divider>
       <button mat-menu-item (click)="logout()">
         <mat-icon color="warn">logout</mat-icon><span>Logout</span>

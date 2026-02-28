@@ -1,0 +1,3425 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Hospital Analytics Platform",
+    "description": "Backend API for the Hospital Analytics Platform.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register User",
+        "description": "Register a new user in the system.\n\nSteps:\n1. Verify email uniqueness.\n2. Create User record.\n3. Flush session (to generate User ID).\n4. Call Provisioning Service to create default dashboard/widgets.\n5. Commit transaction.\n\nArgs:\n    user_in (UserCreate): The payload containing email and password.\n    db (AsyncSession): Database session.\n\nReturns:\n    User: The newly created user object.\n\nRaises:\n    HTTPException: If email already exists.",
+        "operationId": "register_user_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login Access Token",
+        "description": "OAuth2 compatible token login, get an access token for future requests.\n\nArgs:\n    form_data (OAuth2PasswordRequestForm): Login credentials (username=email).\n    db (AsyncSession): Database session.\n\nReturns:\n    Token: Access token and type.",
+        "operationId": "login_access_token_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_access_token_api_v1_auth_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["auth"],
+        "summary": "Read Users Me",
+        "description": "Fetch the current logged in user profile.",
+        "operationId": "read_users_me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/dashboards/": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboards",
+        "description": "List all dashboards owned by the current user.",
+        "operationId": "list_dashboards_api_v1_dashboards__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Dashboards Api V1 Dashboards  Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Create Dashboard",
+        "description": "Create a new empty dashboard.",
+        "operationId": "create_dashboard_api_v1_dashboards__post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/clone": {
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Clone Dashboard",
+        "description": "Creates a deep copy of an existing dashboard and all its widgets.\nThe new dashboard will have the name \"Copy of {original_name}\".\n\nArgs:\n    dashboard_id (UUID): The ID of the dashboard to clone.\n    current_user (User): Authenticated user (must own the dashboard).\n    db (AsyncSession): Database session.\n\nReturns:\n    DashboardResponse: The newly created dashboard populated with cloned widgets.",
+        "operationId": "clone_dashboard_api_v1_dashboards__dashboard_id__clone_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/restore-defaults": {
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Restore Default Dashboard",
+        "description": "Re-creates the standard 'Hospital Command Center' dashboard.\nIf the dashboard already exists, creates a copy with a suffix to prevent data loss.\nPopulates the dashboard with all currently active templates in the registry.",
+        "operationId": "restore_default_dashboard_api_v1_dashboards_restore_defaults_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Get Dashboard",
+        "description": "Get a specific dashboard details.",
+        "operationId": "get_dashboard_api_v1_dashboards__dashboard_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["dashboards"],
+        "summary": "Update Dashboard",
+        "description": "Rename a dashboard.",
+        "operationId": "update_dashboard_api_v1_dashboards__dashboard_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["dashboards"],
+        "summary": "Delete Dashboard",
+        "description": "Delete dashboard (and cascades to widgets).",
+        "operationId": "delete_dashboard_api_v1_dashboards__dashboard_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/widgets": {
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Create Widget",
+        "description": "Add a widget to the dashboard with Dry-Run Validation.",
+        "operationId": "create_widget_api_v1_dashboards__dashboard_id__widgets_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/WidgetCreateSql"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WidgetCreateHttp"
+                  },
+                  {
+                    "$ref": "#/components/schemas/WidgetCreateText"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "SQL": "#/components/schemas/WidgetCreateSql",
+                    "HTTP": "#/components/schemas/WidgetCreateHttp",
+                    "TEXT": "#/components/schemas/WidgetCreateText"
+                  }
+                },
+                "title": "Widget In"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/widgets/{widget_id}": {
+      "put": {
+        "tags": ["dashboards"],
+        "summary": "Update Widget",
+        "description": "Update widget configuration (e.g., resize, change query) with Dry-Run.",
+        "operationId": "update_widget_api_v1_dashboards_widgets__widget_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "widget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Widget Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["dashboards"],
+        "summary": "Delete Widget",
+        "description": "Delete a widget owned by the current user.",
+        "operationId": "delete_widget_api_v1_dashboards_widgets__widget_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "widget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Widget Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/reorder": {
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Reorder Widgets",
+        "description": "Bulk update widget positions and groups.\nUsed for Drag-and-Drop persistence.",
+        "operationId": "reorder_widgets_api_v1_dashboards__dashboard_id__reorder_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetReorderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Reorder Widgets Api V1 Dashboards  Dashboard Id  Reorder Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/refresh": {
+      "post": {
+        "tags": ["execution"],
+        "summary": "Refresh Dashboard",
+        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects global_params into SQL queries before execution.",
+        "operationId": "refresh_dashboard_api_v1_dashboards__dashboard_id__refresh_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "default": {},
+                "title": "Global Params"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "propertyNames": {
+                    "format": "uuid"
+                  },
+                  "title": "Response Refresh Dashboard Api V1 Dashboards  Dashboard Id  Refresh Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/refresh": {
+      "post": {
+        "tags": ["execution"],
+        "summary": "Refresh Widget",
+        "description": "Refreshes data for a SINGLE widget.\nSupports ?force_refresh=true to bypass cache.",
+        "operationId": "refresh_widget_api_v1_dashboards__dashboard_id__widgets__widget_id__refresh_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "widget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Widget Id"
+            }
+          },
+          {
+            "name": "force_refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Force Refresh"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "propertyNames": {
+                    "format": "uuid"
+                  },
+                  "title": "Response Refresh Widget Api V1 Dashboards  Dashboard Id  Widgets  Widget Id  Refresh Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/models": {
+      "get": {
+        "tags": ["ai"],
+        "summary": "List Available Models",
+        "description": "Returns the list of currently configured LLMs available for the Arena.",
+        "operationId": "list_available_models_api_v1_ai_models_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "show_all",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Show All"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelInfo"
+                  },
+                  "title": "Response List Available Models Api V1 Ai Models Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/generate": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Generate Sql Comparison",
+        "description": "Generates SQL usage the Multi-LLM Arena.\n\nThis endpoint:\n1. Broadcasts the prompt to all configured LLMs.\n2. Persists the results as an Experiment.\n3. Returns a list of candidates so the frontend can display a comparison view.\n\nArgs:\n    request (SQLGenerationRequest): The prompt payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session for logging.\n\nReturns:\n    ExperimentResponse: Object containing experiment ID and list of candidate SQLs.",
+        "operationId": "generate_sql_comparison_api_v1_ai_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SQLGenerationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/execute": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Execute Sql Preview",
+        "description": "Executes SQL (read-only) and returns a small preview result.\nIntended for Arena candidate comparison in the UI.",
+        "operationId": "execute_sql_preview_api_v1_ai_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SQLExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SQLExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/templates/": {
+      "get": {
+        "tags": ["templates"],
+        "summary": "List Templates",
+        "description": "Retrieve a list of available widget templates with filtering and pagination.\n\nArgs:\n    db (AsyncSession): Database session dependency.\n    category (Optional[str]): Filter templates by category name.\n    search (Optional[str]): Case-insensitive search term for title or description.\n    limit (int): Maximum number of records to return.\n    current_user (User): Authenticated user dependency.\n\nReturns:\n    List[WidgetTemplate]: Filtered list of templates.",
+        "operationId": "list_templates_api_v1_templates__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter templates by category",
+              "title": "Category"
+            },
+            "description": "Filter templates by category"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search title or description",
+              "title": "Search"
+            },
+            "description": "Search title or description"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Max records to return",
+              "default": 30,
+              "title": "Limit"
+            },
+            "description": "Max records to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateResponse"
+                  },
+                  "title": "Response List Templates Api V1 Templates  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["templates"],
+        "summary": "Create Template",
+        "description": "Register a new analytics template in the system.\n\nArgs:\n    template_in (TemplateCreate): Validated template payload.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user.\n\nReturns:\n    WidgetTemplate: The persisted template object.",
+        "operationId": "create_template_api_v1_templates__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/templates/{template_id}": {
+      "get": {
+        "tags": ["templates"],
+        "summary": "Get Template",
+        "description": "Retrieve details for a specific template.\n\nArgs:\n    template_id (UUID): The unique ID of the template.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user.\n\nReturns:\n    WidgetTemplate: The requested template.\n\nRaises:\n    HTTPException: 404 if not found.",
+        "operationId": "get_template_api_v1_templates__template_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["templates"],
+        "summary": "Update Template",
+        "description": "Update an existing template's definition.\n\nArgs:\n    template_id (UUID): The unique ID of the template.\n    template_in (TemplateUpdate): Partial update payload.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user.\n\nReturns:\n    WidgetTemplate: The updated template.\n\nRaises:\n    HTTPException: 404 if not found.",
+        "operationId": "update_template_api_v1_templates__template_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["templates"],
+        "summary": "Delete Template",
+        "description": "Hard delete a template from the registry.\n\nArgs:\n    template_id (UUID): The unique ID of the template.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user.\n\nRaises:\n    HTTPException: 404 if not found.",
+        "operationId": "delete_template_api_v1_templates__template_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/simulation/run": {
+      "post": {
+        "tags": ["simulation"],
+        "summary": "Run Simulation",
+        "description": "Executes an optimization scenario.\n\nThis endpoint takes a snapshot of demand (defined by SQL) and applies\nuser-defined capacity and constraints to solve the bed allocation problem.\n\nArgs:\n    request: Configuration containing SQL source and capacity map.\n    current_user: Authenticated user.\n\nReturns:\n    ScenarioResult: The calculated assignments.",
+        "operationId": "run_simulation_api_v1_simulation_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/schema/": {
+      "get": {
+        "tags": ["schema"],
+        "summary": "Get Database Schema",
+        "description": "Retrieve the current OLAP database schema (Tables and Columns).\n\nThis endpoint introspects the active DuckDB connection.\nIt is synchronous to ensure FastAPI executes it in a threadpool, preventing\nblocking of the main event loop during database I/O.\n\nArgs:\n    current_user: Authenticated user (required for access).\n\nReturns:\n    List[TableInfo]: A structured list of tables and their column definitions.",
+        "operationId": "get_database_schema_api_v1_schema__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableInfo"
+                  },
+                  "type": "array",
+                  "title": "Response Get Database Schema Api V1 Schema  Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/conversations/": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "List Conversations",
+        "description": "List recent conversations for the current user.",
+        "operationId": "list_conversations_api_v1_conversations__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
+                  },
+                  "title": "Response List Conversations Api V1 Conversations  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["chat"],
+        "summary": "Create Conversation",
+        "description": "Create a new conversation and optionally seed the first message.",
+        "operationId": "create_conversation_api_v1_conversations__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{conversation_id}": {
+      "put": {
+        "tags": ["chat"],
+        "summary": "Update Conversation",
+        "description": "Update the title for an existing conversation.",
+        "operationId": "update_conversation_api_v1_conversations__conversation_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["chat"],
+        "summary": "Delete Conversation",
+        "description": "Delete a conversation and its messages.",
+        "operationId": "delete_conversation_api_v1_conversations__conversation_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/messages": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Get Messages",
+        "description": "Return the ordered message history for a conversation.",
+        "operationId": "get_messages_api_v1_conversations__conversation_id__messages_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  },
+                  "title": "Response Get Messages Api V1 Conversations  Conversation Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["chat"],
+        "summary": "Send Message",
+        "description": "Append a user message and generate assistant candidates.",
+        "operationId": "send_message_api_v1_conversations__conversation_id__messages_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/conversations/{conversation_id}/messages/{message_id}/vote": {
+      "post": {
+        "tags": ["chat"],
+        "summary": "Vote Candidate",
+        "description": "Records a user's vote for a specific generated candidate.\n\nThis selects the chosen candidate by its ID (or matching SQL hash), sets its `is_selected`\nflag to True, and promotes its text and SQL contents to the parent Message object.",
+        "operationId": "vote_candidate_api_v1_conversations__conversation_id__messages__message_id__vote_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageVoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/llm": {
+      "get": {
+        "tags": ["analytics"],
+        "summary": "List Llm Outputs",
+        "description": "Returns a flattened view of chat arena candidates, including:\n- user query (nearest prior user message)\n- LLM candidate output and SQL snippet\n- user selection (is_selected)",
+        "operationId": "list_llm_outputs_api_v1_analytics_llm_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LlmOutputAnalyticsRow"
+                  },
+                  "title": "Response List Llm Outputs Api V1 Analytics Llm Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "tags": ["admin"],
+        "summary": "Read Admin Settings",
+        "description": "Get system-wide admin settings like API keys and visible models.",
+        "operationId": "read_admin_settings_api_v1_admin_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettingsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": ["admin"],
+        "summary": "Write Admin Settings",
+        "description": "Update system-wide admin settings like API keys and visible models.",
+        "operationId": "write_admin_settings_api_v1_admin_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSettingsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ]
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "description": "Health check endpoint for the API root.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminSettingsResponse": {
+        "properties": {
+          "api_keys": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Api Keys"
+          },
+          "visible_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Visible Models"
+          }
+        },
+        "type": "object",
+        "required": ["api_keys", "visible_models"],
+        "title": "AdminSettingsResponse"
+      },
+      "AdminSettingsUpdateRequest": {
+        "properties": {
+          "api_keys": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Api Keys"
+          },
+          "visible_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Visible Models"
+          }
+        },
+        "type": "object",
+        "required": ["api_keys", "visible_models"],
+        "title": "AdminSettingsUpdateRequest"
+      },
+      "Body_login_access_token_api_v1_auth_login_post": {
+        "properties": {
+          "grant_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^password$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "format": "password",
+            "title": "Password"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope",
+            "default": ""
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          }
+        },
+        "type": "object",
+        "required": ["username", "password"],
+        "title": "Body_login_access_token_api_v1_auth_login_post"
+      },
+      "ColumnInfo": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": ["name", "type"],
+        "title": "ColumnInfo",
+        "description": "Metadata for a single database column."
+      },
+      "ConversationCreate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "Initial message to kickstart the chat."
+          }
+        },
+        "type": "object",
+        "title": "ConversationCreate",
+        "description": "Payload for starting a new conversation.\nIf 'message' is provided, the conversation is initialized with it."
+      },
+      "ConversationDetail": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/MessageResponse"
+            },
+            "type": "array",
+            "title": "Messages",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "created_at", "updated_at"],
+        "title": "ConversationDetail",
+        "description": "Detailed view including message history."
+      },
+      "ConversationResponse": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": ["id", "user_id", "created_at", "updated_at"],
+        "title": "ConversationResponse",
+        "description": "API Response model for a Conversation metadata wrapper."
+      },
+      "ConversationUpdate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": ["title"],
+        "title": "ConversationUpdate",
+        "description": "Payload for updating conversation metadata (e.g. rename)."
+      },
+      "DashboardCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": ["name"],
+        "title": "DashboardCreate",
+        "description": "Payload for creating a Dashboard."
+      },
+      "DashboardResponse": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "owner_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Owner Id"
+          },
+          "widgets": {
+            "items": {
+              "$ref": "#/components/schemas/WidgetResponse"
+            },
+            "type": "array",
+            "title": "Widgets",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["name", "id", "owner_id"],
+        "title": "DashboardResponse",
+        "description": "API Response model for a Dashboard.\nIncludes the nested list of Widgets."
+      },
+      "ExperimentResponse": {
+        "properties": {
+          "prompt_text": {
+            "type": "string",
+            "title": "Prompt Text"
+          },
+          "prompt_strategy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Strategy",
+            "default": "default"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCandidateResponse"
+            },
+            "type": "array",
+            "title": "Candidates",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["prompt_text", "id", "user_id", "created_at"],
+        "title": "ExperimentResponse",
+        "description": "Return schema containing the UUID and list of anonymous candidates."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HttpConfig": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X",
+            "description": "Grid X position",
+            "default": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y",
+            "description": "Grid Y position",
+            "default": 0
+          },
+          "w": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "W",
+            "description": "Grid Width (cols)",
+            "default": 6
+          },
+          "h": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "H",
+            "description": "Grid Height (rows)",
+            "default": 4
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url",
+            "description": "The fully qualified target URL."
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            "title": "Method",
+            "description": "HTTP Method",
+            "default": "GET"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Headers",
+            "description": "Request Headers"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Params",
+            "description": "Query Parameters"
+          },
+          "body": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body",
+            "description": "JSON Body payload"
+          },
+          "meta_forward_auth": {
+            "type": "boolean",
+            "title": "Meta Forward Auth",
+            "description": "If true, forwards the user's JWT to the target.",
+            "default": false
+          },
+          "xKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xkey",
+            "description": "JSON path for X-Axis/Labels"
+          },
+          "yKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ykey",
+            "description": "JSON path for Y-Axis/Values"
+          }
+        },
+        "type": "object",
+        "required": ["url"],
+        "title": "HttpConfig",
+        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (Dict[str, str]): Custom request headers.\n    params (Dict[str, str]): URL Query parameters.\n    body (Optional[Any]): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (Optional[str]): key path for X-Axis/Labels.\n    yKey (Optional[str]): key path for Y-Axis/Values."
+      },
+      "LlmOutputAnalyticsRow": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["chat", "ai"],
+            "title": "Source"
+          },
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          },
+          "assistant_message_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assistant Message Id"
+          },
+          "conversation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "conversation_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Title"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "query_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Query Text"
+          },
+          "prompt_strategy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Strategy"
+          },
+          "llm": {
+            "type": "string",
+            "title": "Llm"
+          },
+          "sql_snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Snippet"
+          },
+          "sql_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Hash"
+          },
+          "is_selected": {
+            "type": "boolean",
+            "title": "Is Selected"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "candidate_id",
+          "user_id",
+          "user_email",
+          "llm",
+          "is_selected",
+          "created_at"
+        ],
+        "title": "LlmOutputAnalyticsRow",
+        "description": "Flattened analytics row for LLM candidate outputs."
+      },
+      "MessageCandidateResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "sql_snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Snippet"
+          },
+          "sql_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Hash"
+          },
+          "is_selected": {
+            "type": "boolean",
+            "title": "Is Selected"
+          }
+        },
+        "type": "object",
+        "required": ["id", "model_name", "content", "is_selected"],
+        "title": "MessageCandidateResponse",
+        "description": "DTO for a single Arena Candidate."
+      },
+      "MessageCreate": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "target_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Models",
+            "description": "Optional list of model IDs to query."
+          }
+        },
+        "type": "object",
+        "required": ["content"],
+        "title": "MessageCreate",
+        "description": "Payload for sending a message from the User.\nRole is implicitly 'user'."
+      },
+      "MessageResponse": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "conversation_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Conversation Id"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "sql_snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Snippet"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MessageCandidateResponse"
+            },
+            "type": "array",
+            "title": "Candidates",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": ["content", "id", "conversation_id", "role", "created_at"],
+        "title": "MessageResponse",
+        "description": "API Response model for a persisted Message."
+      },
+      "MessageVoteRequest": {
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Candidate Id"
+          }
+        },
+        "type": "object",
+        "required": ["candidate_id"],
+        "title": "MessageVoteRequest",
+        "description": "Payload for voting on a candidate."
+      },
+      "ModelCandidateResponse": {
+        "properties": {
+          "model_tag": {
+            "type": "string",
+            "title": "Model Tag"
+          },
+          "generated_sql": {
+            "type": "string",
+            "title": "Generated Sql"
+          },
+          "sql_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Hash"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "experiment_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Experiment Id"
+          },
+          "is_selected": {
+            "type": "boolean",
+            "title": "Is Selected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_tag",
+          "generated_sql",
+          "id",
+          "experiment_id",
+          "is_selected"
+        ],
+        "title": "ModelCandidateResponse",
+        "description": "Public response schema for the frontend.\nHides 'model_identifier' to maintain double-blind benchmarking."
+      },
+      "ModelInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "is_local": {
+            "type": "boolean",
+            "title": "Is Local"
+          }
+        },
+        "type": "object",
+        "required": ["id", "name", "provider", "is_local"],
+        "title": "ModelInfo",
+        "description": "Information about a configured LLM in the Arena."
+      },
+      "SQLExecutionRequest": {
+        "properties": {
+          "sql": {
+            "type": "string",
+            "title": "Sql"
+          },
+          "max_rows": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Rows",
+            "default": 100
+          },
+          "global_params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Global Params"
+          }
+        },
+        "type": "object",
+        "required": ["sql"],
+        "title": "SQLExecutionRequest",
+        "description": "Request model for executing SQL and returning a preview result."
+      },
+      "SQLExecutionResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": ["data", "columns"],
+        "title": "SQLExecutionResponse",
+        "description": "Response model containing SQL execution results."
+      },
+      "SQLGenerationRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          }
+        },
+        "type": "object",
+        "required": ["prompt"],
+        "title": "SQLGenerationRequest",
+        "description": "Request model for generating SQL from natural language."
+      },
+      "ScenarioConstraint": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type",
+            "description": "Constraint type (e.g., 'force_flow')"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          }
+        },
+        "type": "object",
+        "required": ["type", "service", "unit"],
+        "title": "ScenarioConstraint",
+        "description": "Represents a specific rule for the solver.\nExample: Force 'Gen_Peds' into 'Nursery' with minimum 5 beds."
+      },
+      "ScenarioResult": {
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationAssignment"
+            },
+            "type": "array",
+            "title": "Assignments"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": ["assignments", "status"],
+        "title": "ScenarioResult",
+        "description": "Response containing the optimization outcome."
+      },
+      "ScenarioRunRequest": {
+        "properties": {
+          "demand_source_sql": {
+            "type": "string",
+            "title": "Demand Source Sql",
+            "description": "SQL Query. Supports 2 cols (Service, Count) or 3 cols (Service, CurrentUnit, Count)."
+          },
+          "capacity_parameters": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Capacity Parameters",
+            "description": "Map of Unit Name to available bed capacity."
+          },
+          "constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioConstraint"
+            },
+            "type": "array",
+            "title": "Constraints",
+            "description": "List of hard constraints to apply."
+          },
+          "affinity_overrides": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Affinity Overrides",
+            "description": "Optional overrides for clinical affinity scores."
+          }
+        },
+        "type": "object",
+        "required": ["demand_source_sql", "capacity_parameters"],
+        "title": "ScenarioRunRequest",
+        "description": "Payload to trigger a simulation run."
+      },
+      "SimulationAssignment": {
+        "properties": {
+          "Service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "Unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "Patient_Count": {
+            "type": "number",
+            "title": "Patient Count"
+          },
+          "Original_Count": {
+            "type": "number",
+            "title": "Original Count",
+            "description": "Count in this unit before optimization (if provided).",
+            "default": 0.0
+          },
+          "Delta": {
+            "type": "number",
+            "title": "Delta",
+            "description": "Net change (Proposed - Original).",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": ["Service", "Unit", "Patient_Count"],
+        "title": "SimulationAssignment",
+        "description": "Single row in the optimization result."
+      },
+      "SqlConfig": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X",
+            "description": "Grid X position",
+            "default": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y",
+            "description": "Grid Y position",
+            "default": 0
+          },
+          "w": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "W",
+            "description": "Grid Width (cols)",
+            "default": 6
+          },
+          "h": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "H",
+            "description": "Grid Height (rows)",
+            "default": 4
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query",
+            "description": "The raw SQL query to execute."
+          },
+          "xKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xkey",
+            "description": "Column for X-Axis/Labels"
+          },
+          "yKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ykey",
+            "description": "Column for Y-Axis/Values"
+          }
+        },
+        "type": "object",
+        "required": ["query"],
+        "title": "SqlConfig",
+        "description": "Configuration schema for SQL-type widgets.\nEnforces the presence of a SQL query string.\n\nAttributes:\n    query (str): The raw SQL query to execute.\n    xKey (Optional[str]): Column name to mapping for X-Axis/Labels.\n    yKey (Optional[str]): Column name to mapping for Y-Axis/Values."
+      },
+      "TableInfo": {
+        "properties": {
+          "table_name": {
+            "type": "string",
+            "title": "Table Name"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnInfo"
+            },
+            "type": "array",
+            "title": "Columns"
+          }
+        },
+        "type": "object",
+        "required": ["table_name", "columns"],
+        "title": "TableInfo",
+        "description": "Metadata for a database table, including its columns."
+      },
+      "TemplateCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sql_template": {
+            "type": "string",
+            "title": "Sql Template",
+            "description": "SQL with {{handlebars}} placeholders"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Category"
+          },
+          "parameters_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Parameters Schema",
+            "description": "JSON Schema definition for dynamic form generation."
+          }
+        },
+        "type": "object",
+        "required": ["title", "sql_template", "category"],
+        "title": "TemplateCreate",
+        "description": "Payload for creating a new template.\nInherits validation from TemplateBase."
+      },
+      "TemplateResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sql_template": {
+            "type": "string",
+            "title": "Sql Template",
+            "description": "SQL with {{handlebars}} placeholders"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 2,
+            "title": "Category"
+          },
+          "parameters_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Parameters Schema",
+            "description": "JSON Schema definition for dynamic form generation."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": ["title", "sql_template", "category", "id"],
+        "title": "TemplateResponse",
+        "description": "API Response model for a Template.\nInclude database ID."
+      },
+      "TemplateUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "sql_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Template"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "parameters_schema": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameters Schema"
+          }
+        },
+        "type": "object",
+        "title": "TemplateUpdate",
+        "description": "Payload for updating an existing template.\nPartial fields allowed."
+      },
+      "TextConfig": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X",
+            "description": "Grid X position",
+            "default": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y",
+            "description": "Grid Y position",
+            "default": 0
+          },
+          "w": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "W",
+            "description": "Grid Width (cols)",
+            "default": 6
+          },
+          "h": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "H",
+            "description": "Grid Height (rows)",
+            "default": 4
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "Markdown text content."
+          }
+        },
+        "type": "object",
+        "required": ["content"],
+        "title": "TextConfig",
+        "description": "Configuration schema for Static Text/Markdown widgets.\n\nAttributes:\n    content (str): The static text content (Markdown supported)."
+      },
+      "Token": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type"
+          }
+        },
+        "type": "object",
+        "required": ["access_token", "token_type"],
+        "title": "Token",
+        "description": "OAuth2 access token response payload."
+      },
+      "UserCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": ["email", "password"],
+        "title": "UserCreate",
+        "description": "Payload for registering a new user."
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "is_admin": {
+            "type": "boolean",
+            "title": "Is Admin"
+          }
+        },
+        "type": "object",
+        "required": ["id", "email", "is_active", "is_admin"],
+        "title": "UserResponse",
+        "description": "Public representation of a user returned by the API."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      },
+      "WidgetCreateHttp": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "type": {
+            "type": "string",
+            "const": "HTTP",
+            "title": "Type"
+          },
+          "visualization": {
+            "type": "string",
+            "title": "Visualization",
+            "description": "Visualization ID (e.g. 'table', 'metric')"
+          },
+          "config": {
+            "$ref": "#/components/schemas/HttpConfig",
+            "description": "HTTP-specific configuration"
+          }
+        },
+        "type": "object",
+        "required": ["title", "type", "visualization", "config"],
+        "title": "WidgetCreateHttp",
+        "description": "Payload for creating an HTTP Widget.\nStrictly enforces `type=\"HTTP\"` and `config` matching HttpConfig."
+      },
+      "WidgetCreateSql": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "type": {
+            "type": "string",
+            "const": "SQL",
+            "title": "Type"
+          },
+          "visualization": {
+            "type": "string",
+            "title": "Visualization",
+            "description": "Visualization ID (e.g. 'table', 'bar_chart')"
+          },
+          "config": {
+            "$ref": "#/components/schemas/SqlConfig",
+            "description": "SQL-specific configuration"
+          }
+        },
+        "type": "object",
+        "required": ["title", "type", "visualization", "config"],
+        "title": "WidgetCreateSql",
+        "description": "Payload for creating a SQL Widget.\nStrictly enforces `type=\"SQL\"` and `config` matching SqlConfig."
+      },
+      "WidgetCreateText": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "type": {
+            "type": "string",
+            "const": "TEXT",
+            "title": "Type"
+          },
+          "visualization": {
+            "type": "string",
+            "const": "markdown",
+            "title": "Visualization",
+            "description": "Fixed visualization ID for text.",
+            "default": "markdown"
+          },
+          "config": {
+            "$ref": "#/components/schemas/TextConfig",
+            "description": "Text-specific configuration"
+          }
+        },
+        "type": "object",
+        "required": ["title", "type", "config"],
+        "title": "WidgetCreateText",
+        "description": "Payload for creating a Text Widget.\nStrictly enforces `type=\"TEXT\"` and `config` matching TextConfig."
+      },
+      "WidgetReorderItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          }
+        },
+        "type": "object",
+        "required": ["id", "order"],
+        "title": "WidgetReorderItem",
+        "description": "Represents a single widget's new position."
+      },
+      "WidgetReorderRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WidgetReorderItem"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": ["items"],
+        "title": "WidgetReorderRequest",
+        "description": "Bulk update payload for persisting drag-and-drop results."
+      },
+      "WidgetResponse": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "visualization": {
+            "type": "string",
+            "title": "Visualization"
+          },
+          "config": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Config"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "dashboard_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Dashboard Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "type",
+          "visualization",
+          "config",
+          "id",
+          "dashboard_id"
+        ],
+        "title": "WidgetResponse",
+        "description": "API Response model for a persisted Widget."
+      },
+      "WidgetUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "visualization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visualization"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config"
+          }
+        },
+        "type": "object",
+        "title": "WidgetUpdate",
+        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a loose dict for config, but individual fields\nare validated if matched.\n\nAttributes:\n    title (Optional[str]): New title.\n    visualization (Optional[str]): New visualization type.\n    config (Optional[Dict]): Partial configuration updates."
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordBearer": {
+        "type": "oauth2",
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/v1/auth/login"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,64 +1,52 @@
-/**
- * @fileoverview Unit tests for SimulationComponent.
- * Includes manual mocking of @material/material-color-utilities.
- */
-
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimulationComponent } from './simulation.component';
 import { SimulationStore } from './simulation.store';
 import { signal, NO_ERRORS_SCHEMA, Component, input } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { MatSliderModule } from '@angular/material/slider';
 import { By } from '@angular/platform-browser';
-import { vi } from 'vitest';
-import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
+import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
+import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { readTemplate } from '../../test-utils/component-resources';
+import { ActivatedRoute } from '@angular/router';
+import { of, BehaviorSubject } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'viz-chart',
+  selector: 'viz-table',
   template: '',
 })
-class MockVizChartComponent {
+class MockVizTableComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
-
-// MOCK: @material/material-color-utilities
-vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xffffffff,
-  hexFromArgb: () => '#ffffff',
-  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
-  Scheme: class {},
-  Theme: class {},
-  __esModule: true,
-}));
 
 describe('SimulationComponent', () => {
   let component: SimulationComponent;
   let fixture: ComponentFixture<SimulationComponent>;
   let mockStore: any;
+  let queryParamsSubject: BehaviorSubject<any>;
 
   beforeEach(async () => {
+    queryParamsSubject = new BehaviorSubject({});
+
     mockStore = {
-      isActive: signal(false),
-      params: signal({
-        users: 100,
-        rate: 100,
-        errorInjection: false,
-        failureRate: 0,
-        latencyInjection: false,
-      }),
-      metrics: signal({ activeConnections: 0, rps: 0, errorCount: 0, avgLatency: 0 }),
-      history: signal([]),
-      toggleSimulation: vi.fn(),
-      updateParams: vi.fn(),
-      reset: vi.fn(),
+      demandSql: signal('SELECT 1'),
+      capacityParams: signal([{ unit: 'ICU', capacity: 10 }]),
+      isSimulating: signal(false),
+      error: signal(null),
+      results: signal(null),
+      setDemandSql: vi.fn(),
+      addCapacityParam: vi.fn(),
+      updateCapacityParam: vi.fn(),
+      removeCapacityParam: vi.fn(),
+      runSimulation: vi.fn(),
     };
 
     TestBed.overrideComponent(SimulationComponent, {
-      remove: { imports: [VizChartComponent] },
-      add: { imports: [MockVizChartComponent] },
+      remove: { imports: [VizTableComponent] },
+      add: { imports: [MockVizTableComponent] },
     });
+
     TestBed.overrideComponent(SimulationComponent, {
       set: {
         providers: [{ provide: SimulationStore, useValue: mockStore }],
@@ -69,8 +57,14 @@ describe('SimulationComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [SimulationComponent, NoopAnimationsModule, MatSliderModule],
+      imports: [SimulationComponent, NoopAnimationsModule, FormsModule],
       schemas: [NO_ERRORS_SCHEMA],
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParams: queryParamsSubject.asObservable() },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SimulationComponent);
@@ -82,64 +76,49 @@ describe('SimulationComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should toggle simulation via store', () => {
-    const btn = fixture.debugElement.query(By.css('button[mat-flat-button]'));
-    btn.triggerEventHandler('click', null);
-    expect(mockStore.toggleSimulation).toHaveBeenCalled();
+  it('should initialize demand sql from query params', () => {
+    queryParamsSubject.next({ sql: 'SELECT * FROM test' });
+    expect(mockStore.setDemandSql).toHaveBeenCalledWith('SELECT * FROM test');
   });
 
-  it('should have accessible sliders', () => {
-    const sliderInput = fixture.debugElement.query(By.css('input[matSliderThumb]'));
-    expect(sliderInput).toBeTruthy();
-    expect(sliderInput.attributes['aria-label']).toBeTruthy();
+  it('should trigger updateDemandSql', () => {
+    component.updateDemandSql('SELECT 2');
+    expect(mockStore.setDemandSql).toHaveBeenCalledWith('SELECT 2');
   });
 
-  it('should compute chart data from history', () => {
-    mockStore.history.set([{ timestamp: Date.now(), rps: 100, errors: 5 }]);
-    fixture.detectChanges();
-
-    const d = component.chartData();
-    expect(d.data.length).toBe(2); // 1 success row, 1 error row
-    // Fix: Access property via bracket notation since it comes from Record<string, any>
-    expect(d.data[1]['value']).toBe(5);
+  it('should add capacity param', () => {
+    component.addCapacity();
+    expect(mockStore.addCapacityParam).toHaveBeenCalled();
   });
 
-  it('should update params via store', () => {
-    component.updateParam('users', 200);
-    expect(mockStore.updateParams).toHaveBeenCalledWith({ users: 200 });
-  });
-
-  it('should wire slider and toggle ngModelChange handlers', () => {
-    mockStore.params.set({
-      users: 10,
-      rate: 5,
-      errorInjection: true,
-      failureRate: 2,
-      latencyInjection: false,
+  it('should update capacity param', () => {
+    component.updateCapacity(0, 'unit', 'NewUnit');
+    expect(mockStore.updateCapacityParam).toHaveBeenCalledWith(0, {
+      unit: 'NewUnit',
+      capacity: 10,
     });
-    fixture.detectChanges();
 
-    const sliders = fixture.debugElement.queryAll(By.css('input[matSliderThumb]'));
-    expect(sliders.length).toBeGreaterThanOrEqual(3);
-    sliders[0].triggerEventHandler('ngModelChange', 42);
-    sliders[1].triggerEventHandler('ngModelChange', 99);
-    sliders[2].triggerEventHandler('ngModelChange', 7);
-
-    const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
-    toggles[0].triggerEventHandler('ngModelChange', false);
-    toggles[1].triggerEventHandler('ngModelChange', true);
-
-    expect(mockStore.updateParams).toHaveBeenCalledWith({ users: 42 });
-    expect(mockStore.updateParams).toHaveBeenCalledWith({ rate: 99 });
-    expect(mockStore.updateParams).toHaveBeenCalledWith({ failureRate: 7 });
-    expect(mockStore.updateParams).toHaveBeenCalledWith({ errorInjection: false });
-    expect(mockStore.updateParams).toHaveBeenCalledWith({ latencyInjection: true });
+    component.updateCapacity(0, 'capacity', 42);
+    expect(mockStore.updateCapacityParam).toHaveBeenCalledWith(0, { unit: 'ICU', capacity: 42 });
   });
 
-  it('should render active status when simulation running', () => {
-    mockStore.isActive.set(true);
+  it('should remove capacity param', () => {
+    component.removeCapacity(0);
+    expect(mockStore.removeCapacityParam).toHaveBeenCalledWith(0);
+  });
+
+  it('should render results table when results exist', () => {
+    mockStore.results.set({ columns: ['Service'], data: [{ Service: 'A' }] });
     fixture.detectChanges();
-    const status = fixture.debugElement.query(By.css('.status-panel span.font-bold'));
-    expect(status.nativeElement.textContent).toContain('Running');
+    const table = fixture.debugElement.query(By.css('viz-table'));
+    expect(table).toBeTruthy();
+  });
+
+  it('should render error when error exists', () => {
+    mockStore.error.set('Failed validation');
+    fixture.detectChanges();
+    const err = fixture.debugElement.query(By.css('.error-box'));
+    expect(err).toBeTruthy();
+    expect(err.nativeElement.textContent).toContain('Failed validation');
   });
 });

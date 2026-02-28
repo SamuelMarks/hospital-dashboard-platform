@@ -1,21 +1,21 @@
-services: 
+services:
   # Application Database
-  db: 
+  db:
     image: postgres:18-alpine
     restart: always
-    environment: 
+    environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=pulse_query_db
-    expose: 
-      - "5432" 
-    ports: 
-      - "5433:5432" 
+    expose:
+      - "5432"
+    ports:
+      - "5433:5432"
 
   # Backend Service (Optional if running via 'uv', but mandatory for full stack compose)
   # Un-commenting this structure for reference on connecting to Ollama
-  # backend: 
+  # backend:
   #   build: .
   #   extra_hosts:
-  #     - "host.docker.internal:host-gateway" 
+  #     - "host.docker.internal:host-gateway"
   #   env_file: .env

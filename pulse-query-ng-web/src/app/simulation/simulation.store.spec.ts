@@ -1,99 +1,123 @@
-/**
- * @fileoverview Unit tests for SimulationStore.
- */
-
 import { TestBed } from '@angular/core/testing';
 import { SimulationStore } from './simulation.store';
+import { SimulationService } from '../api-client';
+import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 
 describe('SimulationStore', () => {
   let store: SimulationStore;
+  let mockApi: any;
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    mockApi = {
+      runSimulationApiV1SimulationRunPost: vi.fn(),
+    };
+
     TestBed.configureTestingModule({
-      providers: [SimulationStore],
+      providers: [SimulationStore, { provide: SimulationService, useValue: mockApi }],
     });
     store = TestBed.inject(SimulationStore);
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('should initialize with defaults', () => {
-    expect(store.isActive()).toBe(false);
-    expect(store.params().users).toBe(50);
+    expect(store.isSimulating()).toBe(false);
+    expect(store.capacityParams().length).toBeGreaterThan(0);
+    expect(store.demandSql()).toContain('SELECT');
   });
 
-  it('should toggle active state', () => {
-    store.toggleSimulation();
-    expect(store.isActive()).toBe(true);
-    store.toggleSimulation();
-    expect(store.isActive()).toBe(false);
+  it('should update demand sql', () => {
+    store.setDemandSql('SELECT 1');
+    expect(store.demandSql()).toBe('SELECT 1');
   });
 
-  it('should update params', () => {
-    store.updateParams({ users: 999 });
-    expect(store.params().users).toBe(999);
+  it('should add capacity param', () => {
+    const initialLength = store.capacityParams().length;
+    store.addCapacityParam();
+    expect(store.capacityParams().length).toBe(initialLength + 1);
+    expect(store.capacityParams()[initialLength]).toEqual({ unit: '', capacity: 0 });
   });
 
-  it('should generate metrics on tick when active', () => {
-    store.toggleSimulation();
-
-    // Simulate time passing for setInterval
-    vi.advanceTimersByTime(1100);
-
-    const m = store.metrics();
-    // Default active connections matches users param
-    expect(m.activeConnections).toBe(50);
-    expect(m.rps).toBeGreaterThan(0);
-
-    // History should have accumulated points
-    expect(store.history().length).toBeGreaterThan(0);
-
-    store.reset(); // Should stop timer
+  it('should update capacity param', () => {
+    store.updateCapacityParam(0, { unit: 'TestUnit', capacity: 99 });
+    expect(store.capacityParams()[0]).toEqual({ unit: 'TestUnit', capacity: 99 });
   });
 
-  it('should calculate failure scenarios', () => {
-    store.updateParams({ errorInjection: true, failureRate: 100, rate: 100 });
-    store.toggleSimulation();
-
-    vi.advanceTimersByTime(1100);
-
-    const m = store.metrics();
-    // with 100% failure rate, error count should roughly match rps
-    expect(m.errorCount).toBeGreaterThan(0);
+  it('should remove capacity param', () => {
+    const initialLength = store.capacityParams().length;
+    store.removeCapacityParam(0);
+    expect(store.capacityParams().length).toBe(initialLength - 1);
   });
 
-  it('should apply latency injection when enabled', () => {
-    store.updateParams({ latencyInjection: true });
-    store.toggleSimulation();
+  it('should run simulation successfully', () => {
+    const mockResult = {
+      status: 'success',
+      assignments: [
+        { Service: 'Cardiology', Unit: 'ICU', Original_Count: 10, Patient_Count: 12, Delta: 2 },
+      ],
+    };
+    mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(of(mockResult));
 
-    vi.advanceTimersByTime(1100);
-    const m = store.metrics();
-    expect(m.avgLatency).toBeGreaterThan(20);
+    store.setDemandSql('SELECT mock');
+    store.updateCapacityParam(0, { unit: 'ICU', capacity: 20 });
+    // empty unit should be ignored
+    store.updateCapacityParam(1, { unit: '  ', capacity: 0 });
+
+    store.runSimulation();
+
+    expect(store.isSimulating()).toBe(false);
+    expect(store.error()).toBeNull();
+
+    const results = store.results();
+    expect(results).toBeTruthy();
+    expect(results!.columns).toEqual([
+      'Service',
+      'Unit',
+      'Original_Count',
+      'Patient_Count',
+      'Delta',
+    ]);
+    expect(results!.data.length).toBe(1);
+    expect(results!.data[0]['Service']).toBe('Cardiology');
+    expect(results!.data[0]['Delta']).toBe(2);
+
+    expect(mockApi.runSimulationApiV1SimulationRunPost).toHaveBeenCalledWith({
+      demand_source_sql: 'SELECT mock',
+      capacity_parameters: expect.objectContaining({ ICU: 20 }),
+      constraints: [],
+    });
   });
 
-  it('should reset state', () => {
-    store.updateParams({ users: 200 });
-    store.toggleSimulation();
-    store.reset();
+  it('should handle simulation error with detail', () => {
+    mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(
+      throwError(() => ({
+        error: { detail: 'Custom backend error' },
+      })),
+    );
 
-    expect(store.isActive()).toBe(false);
-    expect(store.history().length).toBe(0);
+    store.runSimulation();
+
+    expect(store.isSimulating()).toBe(false);
+    expect(store.error()).toBe('Custom backend error');
+    expect(store.results()).toBeNull();
   });
 
-  it('should stop timers on destroy', () => {
-    store.toggleSimulation();
-    store.ngOnDestroy();
-    expect((store as any).timer).toBeNull();
+  it('should handle simulation error with message fallback', () => {
+    mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(
+      throwError(() => new Error('Network error')),
+    );
+
+    store.runSimulation();
+
+    expect(store.isSimulating()).toBe(false);
+    expect(store.error()).toBe('Network error');
   });
 
-  it('should avoid starting engine twice', () => {
-    (store as any).startEngine();
-    const firstTimer = (store as any).timer;
-    (store as any).startEngine();
-    expect((store as any).timer).toBe(firstTimer);
-    (store as any).stopEngine();
+  it('should handle simulation error with generic fallback', () => {
+    mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(throwError(() => ({})));
+
+    store.runSimulation();
+
+    expect(store.isSimulating()).toBe(false);
+    expect(store.error()).toBe('Simulation failed');
   });
 });

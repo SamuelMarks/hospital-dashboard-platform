@@ -1,178 +1,92 @@
-/**
- * @fileoverview State Management for Simulation Logic.
- *
- * Handles:
- * - Simulation Parameters (Inputs).
- * - Real-time Metrics (Outputs).
- * - Ticker/Timer logic for synthetic data generation.
- */
+import { Injectable, signal, inject } from '@angular/core';
+import { SimulationService as ApiSimulationService, ScenarioResult } from '../api-client';
+import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.component';
 
-import { Injectable, signal, computed, effect, OnDestroy } from '@angular/core';
-
-/** Sim Params interface. */
-export interface SimParams {
-  /** users property. */
-  users: number;
-  /** rate property. */
-  rate: number;
-  /** errorInjection property. */
-  errorInjection: boolean;
-  /** failureRate property. */
-  failureRate: number;
-  /** latencyInjection property. */
-  latencyInjection: boolean;
+export interface UnitCapacity {
+  unit: string;
+  capacity: number;
 }
 
-/** Sim Metrics interface. */
-export interface SimMetrics {
-  /** activeConnections property. */
-  activeConnections: number;
-  /** rps property. */
-  rps: number;
-  /** errorCount property. */
-  errorCount: number;
-  /** avgLatency property. */
-  avgLatency: number;
-}
-
-/** History Point interface. */
-export interface HistoryPoint {
-  /** timestamp property. */
-  timestamp: number;
-  /** rps property. */
-  rps: number;
-  /** errors property. */
-  errors: number;
-}
-
-/** Simulation store. */
 @Injectable()
-export class SimulationStore implements OnDestroy {
-  // State Signals
-  /** Whether active. */
-  /* istanbul ignore next */
-  readonly isActive = signal(false);
+export class SimulationStore {
+  private readonly api = inject(ApiSimulationService);
 
-  /** Params. */
-  /* istanbul ignore next */
-  readonly params = signal<SimParams>({
-    users: 50,
-    rate: 100,
-    errorInjection: false,
-    failureRate: 5,
-    latencyInjection: false,
-  });
+  readonly demandSql = signal<string>(
+    'SELECT Service, CurrentUnit as Unit, COUNT(*) as Count FROM hospital_data GROUP BY Service, CurrentUnit;',
+  );
+  readonly capacityParams = signal<UnitCapacity[]>([
+    { unit: 'ICU', capacity: 10 },
+    { unit: 'MedSurg', capacity: 50 },
+    { unit: 'ED', capacity: 20 },
+    { unit: 'OR', capacity: 5 },
+    { unit: 'NICU', capacity: 15 },
+    { unit: 'Nursery', capacity: 30 },
+  ]);
 
-  /** Metrics. */
-  /* istanbul ignore next */
-  readonly metrics = signal<SimMetrics>({
-    activeConnections: 0,
-    rps: 0,
-    errorCount: 0,
-    avgLatency: 0,
-  });
+  readonly isSimulating = signal<boolean>(false);
+  readonly error = signal<string | null>(null);
+  readonly results = signal<TableDataSet | null>(null);
 
-  /** History. */
-  /* istanbul ignore next */
-  readonly history = signal<HistoryPoint[]>([]);
+  setDemandSql(sql: string) {
+    this.demandSql.set(sql);
+  }
 
-  /** timer property. */
-  private timer: any = null;
+  addCapacityParam() {
+    this.capacityParams.update((params) => [...params, { unit: '', capacity: 0 }]);
+  }
 
-  /** Creates a new SimulationStore. */
-  constructor() {
-    // Effect to start/stop engine based on active state
-    effect(() => {
-      if (this.isActive()) {
-        this.startEngine();
-      } else {
-        this.stopEngine();
+  updateCapacityParam(index: number, param: UnitCapacity) {
+    this.capacityParams.update((params) => {
+      const newParams = [...params];
+      newParams[index] = param;
+      return newParams;
+    });
+  }
+
+  removeCapacityParam(index: number) {
+    this.capacityParams.update((params) => {
+      const newParams = [...params];
+      newParams.splice(index, 1);
+      return newParams;
+    });
+  }
+
+  runSimulation() {
+    this.isSimulating.set(true);
+    this.error.set(null);
+    this.results.set(null);
+
+    const capacityMap: { [key: string]: number } = {};
+    this.capacityParams().forEach((p) => {
+      if (p.unit.trim()) {
+        capacityMap[p.unit.trim()] = p.capacity;
       }
     });
-  }
 
-  /** Ng On Destroy. */
-  ngOnDestroy(): void {
-    this.stopEngine();
-  }
+    this.api
+      .runSimulationApiV1SimulationRunPost({
+        demand_source_sql: this.demandSql(),
+        capacity_parameters: capacityMap,
+        constraints: [],
+      })
+      .subscribe({
+        next: (res: ScenarioResult) => {
+          const columns = ['Service', 'Unit', 'Original_Count', 'Patient_Count', 'Delta'];
+          const data = res.assignments.map((a) => ({
+            Service: a.Service,
+            Unit: a.Unit,
+            Original_Count: a.Original_Count,
+            Patient_Count: a.Patient_Count,
+            Delta: a.Delta,
+          }));
 
-  /** Toggles simulation. */
-  toggleSimulation() {
-    this.isActive.update((v) => !v);
-  }
-
-  /** Updates params. */
-  updateParams(partial: Partial<SimParams>) {
-    this.params.update((current) => ({ ...current, ...partial }));
-  }
-
-  /** Reset. */
-  reset() {
-    this.isActive.set(false);
-    this.metrics.set({ activeConnections: 0, rps: 0, errorCount: 0, avgLatency: 0 });
-    this.history.set([]);
-  }
-
-  /** startEngine method. */
-  private startEngine() {
-    if (this.timer) return;
-
-    // Simulation Tick (1s)
-    this.timer = setInterval(() => {
-      this.tick();
-    }, 1000);
-  }
-
-  /** stopEngine method. */
-  private stopEngine() {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-  }
-
-  /**
-   * Generates synthetic metrics based on current parameters.
-   * "Fake Logic" to mimic backend fluctuation.
-   */
-  private tick() {
-    const p = this.params();
-
-    // Variance factor (+/- 10%)
-    const variance = Math.random() * 0.2 + 0.9;
-
-    // Calculate RPS
-    const currentRps = Math.floor(p.rate * variance);
-
-    // Errors
-    let errors = 0;
-    if (p.errorInjection) {
-      const failRate = p.failureRate / 100;
-      // Binomial approx
-      errors = Math.floor(currentRps * failRate);
-    }
-
-    // Latency
-    let latency = 20 + Math.random() * 10; // Base 20-30ms
-    if (p.latencyInjection) {
-      latency += Math.random() * 500 + 100; // Spike
-    }
-    // Latency increases slightly with load
-    latency += p.users * 0.1;
-
-    // Update Metrics
-    this.metrics.update((m) => ({
-      activeConnections: p.users,
-      rps: currentRps,
-      errorCount: m.errorCount + errors,
-      avgLatency: latency,
-    }));
-
-    // Update History (Keep last 60 points)
-    this.history.update((h) => {
-      const pt = { timestamp: Date.now(), rps: currentRps, errors };
-      const next = [...h, pt];
-      return next.slice(-60);
-    });
+          this.results.set({ columns, data });
+          this.isSimulating.set(false);
+        },
+        error: (err) => {
+          this.error.set(err.error?.detail || err.message || 'Simulation failed');
+          this.isSimulating.set(false);
+        },
+      });
   }
 }

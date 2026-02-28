@@ -1,58 +1,36 @@
-/**
- * @fileoverview Simulation Controller UI.
- *
- * Provides controls to simulate database workload scenarios (Traffic spikes, errors, latency).
- * Uses local state store for management.
- */
-
-import { Component, ChangeDetectionStrategy, inject, OnInit, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 
 // Material
 import { MatCardModule } from '@angular/material/card';
-import { MatSliderModule } from '@angular/material/slider';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { SimulationStore } from './simulation.store';
-import {
-  VizChartComponent,
-  ChartConfig,
-} from '../shared/visualizations/viz-chart/viz-chart.component';
-import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.component';
+import { SimulationStore, UnitCapacity } from './simulation.store';
+import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 
-/**
- * Main View for Database Simulation.
- *
- * **Accessibility (a11y):**
- * - `mat-slider` inputs are labeled via `aria-label` attribute on the handle input.
- * - Live status updates use ARIA live regions implicitly via Angular bindings or explicit alerts.
- */
 @Component({
   selector: 'app-simulation',
-  // 'standalone: true' omitted (default).
   imports: [
     CommonModule,
     FormsModule,
     MatCardModule,
-    MatSliderModule,
-    MatSlideToggleModule,
     MatButtonModule,
     MatIconModule,
     MatDividerModule,
-    MatChipsModule,
-    MatTooltipModule,
-    VizChartComponent,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    VizTableComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  /* v8 ignore start */
-  providers: [SimulationStore], // Component-level Store
-  /* v8 ignore stop */
+  providers: [SimulationStore],
   styles: [
     `
       :host {
@@ -63,106 +41,69 @@ import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.compo
       }
       .grid-layout {
         display: grid;
-        grid-template-columns: 350px 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 24px;
       }
-      .control-panel {
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-      }
-      .slider-group {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 8px;
-      }
-      .slider-header {
-        display: flex;
-        justify-content: space-between;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--sys-text-secondary);
-      }
-
-      .status-panel {
+      .panel {
         background: var(--sys-surface);
         border-radius: 8px;
         padding: 16px;
         border: 1px solid var(--sys-surface-border);
       }
-      .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 16px;
-        margin-top: 16px;
+      .capacity-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 8px;
       }
-      .metric-item {
-        text-align: center;
-        padding: 12px;
-        background: var(--sys-background);
+      .capacity-row mat-form-field {
+        flex: 1;
+      }
+      .results-panel {
+        margin-top: 24px;
+      }
+      .sql-input {
+        font-family: monospace;
+        min-height: 150px;
+      }
+      .error-box {
+        padding: 16px;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        border-left: 4px solid var(--sys-error);
         border-radius: 4px;
-      }
-      .metric-val {
-        font-size: 24px;
-        font-weight: 300;
-        line-height: 1.2;
-      }
-      .metric-lbl {
-        font-size: 11px;
-        text-transform: uppercase;
-        color: var(--sys-text-secondary);
+        margin-bottom: 16px;
       }
     `,
   ],
   templateUrl: './simulation.component.html',
 })
-/* v8 ignore start */
 export class SimulationComponent implements OnInit {
-  /* v8 ignore stop */
-  /** Store. */
   readonly store = inject(SimulationStore);
+  private readonly route = inject(ActivatedRoute);
 
-  /** Params. */
-  readonly params = this.store.params;
-  /** Metrics. */
-  readonly metrics = this.store.metrics;
-
-  /** Chart Config. */
-  readonly chartConfig: ChartConfig = {
-    xKey: 'time',
-    yKey: 'value',
-    stackBy: 'type',
-  };
-
-  /** Chart Data. */
-  /* istanbul ignore next */
-  readonly chartData = computed<TableDataSet>(() => {
-    const history = this.store.history();
-    // Flatten History for VizChart
-    // Format: [{time: '10:00:01', type: 'Success', value: 50}, {time: '10:00:01', type: 'Error', value: 2}]
-    const rows: Record<string, any>[] = [];
-
-    history.forEach((h) => {
-      const dateStr = new Date(h.timestamp).toLocaleTimeString();
-      rows.push({ time: dateStr, type: 'Success', value: h.rps - h.errors });
-      rows.push({ time: dateStr, type: 'Error', value: h.errors });
-    });
-
-    return {
-      columns: ['time', 'type', 'value'],
-      data: rows,
-    };
-  });
-
-  /** Ng On Init. */
   ngOnInit() {
-    // Ensure we start clean
-    this.store.reset();
+    this.route.queryParams.subscribe((params) => {
+      if (params['sql']) {
+        this.store.setDemandSql(params['sql']);
+      }
+    });
   }
 
-  /** Updates param. */
-  updateParam(key: string, value: any) {
-    this.store.updateParams({ [key]: value });
+  updateDemandSql(sql: string) {
+    this.store.setDemandSql(sql);
+  }
+
+  addCapacity() {
+    this.store.addCapacityParam();
+  }
+
+  updateCapacity(index: number, field: 'unit' | 'capacity', value: any) {
+    const current = this.store.capacityParams()[index];
+    this.store.updateCapacityParam(index, { ...current, [field]: value });
+  }
+
+  removeCapacity(index: number) {
+    this.store.removeCapacityParam(index);
   }
 }

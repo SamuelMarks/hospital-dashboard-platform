@@ -26,6 +26,16 @@
       </button>
 
       <button
+        mat-icon-button
+        class="scale-75 text-gray-400 hover:text-white"
+        (click)="emitSimulate()"
+        aria-label="Simulate Scenario"
+        matTooltip="Simulate Scenario"
+      >
+        <mat-icon style="font-size: 16px">science</mat-icon>
+      </button>
+
+      <button
         mat-stroked-button
         color="accent"
         class="text-xs h-6 px-2 leading-none"

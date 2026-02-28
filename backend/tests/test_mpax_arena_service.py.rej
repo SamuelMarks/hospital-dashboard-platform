@@ -1,0 +1,19 @@
+@@ -102,7 +102,8 @@
+         mock_llm.return_value = [
+             MagicMock(provider_name="m1", content='{"ICU": 20}'),
+             MagicMock(provider_name="m2", content='} bad json {'),
+-            MagicMock(provider_name="m3", content='{ bad }')
++            MagicMock(provider_name="m3", content='{ bad }'),
++            MagicMock(provider_name="m4", content='no brackets here')
+         ]
+         with patch("app.services.mpax_arena_service.simulation_service.run_scenario") as mock_sim:
+             good_res = MagicMock()
+@@ -112,7 +113,7 @@
+             
+             res = await service.run_mpax_arena(req, mock_db, mock_user)
+             assert res.mode == "critic"
+-            assert len(res.candidates) == 4
++            assert len(res.candidates) == 4
+             assert res.candidates[0].mpax_score == 90 # 100 - (2*5)
+             assert res.candidates[1].mpax_score == 0
+ 
