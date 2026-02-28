@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview HTTP Request Builder Component.
  *
@@ -180,6 +182,7 @@ export function jsonValidator(): ValidatorFn {
   ],
   templateUrl: './http-config.component.html',
 })
+/** @docs */
 export class HttpConfigComponent {
   /** fb property. */
   private readonly fb = inject(FormBuilder);

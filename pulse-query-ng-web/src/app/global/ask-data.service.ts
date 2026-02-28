@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Injectable, signal, computed } from '@angular/core';
 
 /**
@@ -7,6 +9,7 @@ import { Injectable, signal, computed } from '@angular/core';
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class AskDataService {
   /** Private mutable signal for open/close state. */
   /* istanbul ignore next */

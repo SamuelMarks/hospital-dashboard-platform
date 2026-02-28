@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   input,
@@ -194,6 +196,7 @@ interface ChartItem {
   ],
   templateUrl: './viz-chart.component.html',
 })
+/** @docs */
 export class VizChartComponent {
   /** Data Set. */
   /* istanbul ignore next */

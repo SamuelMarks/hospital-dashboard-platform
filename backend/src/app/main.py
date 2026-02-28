@@ -21,6 +21,7 @@ from app.api.routers import (
   analytics,
   admin,
   mpax_arena,
+  benchmarks,
 )
 from app.database.postgres import engine, Base
 from app.database.duckdb_init import init_duckdb_on_startup
@@ -80,6 +81,7 @@ app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}/analytics", 
 # Register Admin Router
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(mpax_arena.router, prefix=f"{settings.API_V1_STR}/mpax_arena", tags=["mpax_arena"])
+app.include_router(benchmarks.router, prefix=f"{settings.API_V1_STR}/benchmarks", tags=["benchmarks"])
 
 
 @app.get("/")

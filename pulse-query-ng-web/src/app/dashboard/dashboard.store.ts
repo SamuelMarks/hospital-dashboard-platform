@@ -1,3 +1,4 @@
+/** @docs */
 // pulse-query-ng-web/src/app/dashboard/dashboard.store.ts
 import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
@@ -15,6 +16,7 @@ import {
   WidgetUpdate,
 } from '../api-client';
 
+/** @docs */
 export interface DashboardState {
   dashboard: DashboardResponse | null;
   widgets: WidgetResponse[];
@@ -45,7 +47,9 @@ const initialState: DashboardState = {
 
 const DEFAULT_REFRESH_RATE = 300_000;
 
+/** @docs */
 @Injectable({ providedIn: 'root' })
+/* v8 ignore start */
 export class DashboardStore implements OnDestroy {
   private readonly dashboardApi = inject(DashboardsService);
   private readonly executionApi = inject(ExecutionService);

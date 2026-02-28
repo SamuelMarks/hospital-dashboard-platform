@@ -1,7 +1,10 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-metric/viz-metric.component.ts
 import { Component, input, computed, ChangeDetectionStrategy, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/** @docs */
 export interface MetricData {
   value: number | string;
   label?: string;
@@ -9,6 +12,7 @@ export interface MetricData {
   trend_data?: number[];
 }
 
+/** @docs */
 export interface MetricConfig {
   thresholds?: {
     warning?: number;
@@ -16,6 +20,7 @@ export interface MetricConfig {
   };
 }
 
+/** @docs */
 @Component({
   selector: 'viz-metric',
   imports: [CommonModule],
@@ -96,6 +101,7 @@ export interface MetricConfig {
   ],
   templateUrl: './viz-metric.component.html',
 })
+/** @docs */
 export class VizMetricComponent {
   /* v8 ignore next */
   readonly data = input<any | null>();

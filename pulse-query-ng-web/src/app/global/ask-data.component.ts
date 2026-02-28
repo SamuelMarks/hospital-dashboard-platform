@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   inject,
@@ -110,6 +112,7 @@ import { QueryCartService } from './query-cart.service';
   ],
   templateUrl: './ask-data.component.html',
 })
+/** @docs */
 export class AskDataComponent implements OnDestroy {
   public readonly vis = inject(AskDataService);
   private readonly cart = inject(QueryCartService);

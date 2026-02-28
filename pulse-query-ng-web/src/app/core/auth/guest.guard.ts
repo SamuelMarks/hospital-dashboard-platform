@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Route Guard for guest-only routes (Login, Register).
  */

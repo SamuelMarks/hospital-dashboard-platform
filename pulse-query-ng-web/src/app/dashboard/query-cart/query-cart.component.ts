@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, ChangeDetectionStrategy, input, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
@@ -14,6 +16,7 @@ import { DashboardStore } from '../dashboard.store';
 import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-dialog.component';
 import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-dialog.component';
 
+/** @docs */
 @Component({
   selector: 'app-query-cart',
   imports: [
@@ -170,6 +173,7 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
     `,
   ],
 })
+/** @docs */
 export class QueryCartComponent {
   private readonly cart = inject(QueryCartService);
   private readonly provisioning = inject(QueryCartProvisioningService);

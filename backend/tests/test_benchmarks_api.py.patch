@@ -1,0 +1,9 @@
+--- backend/tests/test_benchmarks_api.py
++++ backend/tests/test_benchmarks_api.py
+@@ -10,7 +10,8 @@
+     with patch("app.api.routers.benchmarks.Path.exists", return_value=True):
+         with patch("builtins.open", mock_open(read_data=mock_data)):
+             async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+                 response = await client.get("/sql")
+                 assert response.status_code == 200
+                 assert response.json() == [{"theme": "test"}]

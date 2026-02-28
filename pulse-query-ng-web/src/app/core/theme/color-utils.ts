@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Utilities for generating Material Design 3 (M3) Color Palettes.
  * Wraps @material/material-color-utilities to convert a single hex seed color

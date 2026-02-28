@@ -21,6 +21,8 @@ import { HttpConfigComponent } from '../../editors/http-config.component';
 import { TextEditorComponent } from '../../editors/text-editor.component';
 import { WidgetComponent } from '../../widget/widget.component';
 
+import { resolveComponentResourcesForTests } from '../../../test-utils/component-resources';
+
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
   argbFromHex: () => 0xffffffff,
@@ -103,6 +105,8 @@ describe('WidgetBuilderComponent', () => {
         add: { schemas: [NO_ERRORS_SCHEMA] },
       })
       .compileComponents();
+
+    await resolveComponentResourcesForTests();
 
     fixture = TestBed.createComponent(WidgetBuilderComponent);
     component = fixture.componentInstance;

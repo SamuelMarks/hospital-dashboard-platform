@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   input,
@@ -13,6 +15,7 @@ import { TableDataSet } from '../viz-table/viz-table.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ThemeService } from '../../../core/theme/theme.service';
 
+/** @docs */
 @Component({
   selector: 'viz-heatmap',
   imports: [CommonModule, MatTooltipModule],
@@ -56,6 +59,7 @@ import { ThemeService } from '../../../core/theme/theme.service';
   ],
   templateUrl: './viz-heatmap.component.html',
 })
+/** @docs */
 export class VizHeatmapComponent {
   readonly dataSet = input.required<TableDataSet | null>();
 

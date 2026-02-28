@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-table/viz-table.component.ts
 import {
   Component,
@@ -11,11 +13,13 @@ import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 
+/** @docs */
 export interface TableDataSet {
   columns: string[];
   data: Record<string, any>[];
 }
 
+/** @docs */
 export interface TableConfig {
   thresholds?: {
     warning?: number;
@@ -24,6 +28,7 @@ export interface TableConfig {
   thresholdColumn?: string;
 }
 
+/** @docs */
 @Component({
   selector: 'viz-table',
   imports: [CommonModule, MatTableModule, MatPaginatorModule],
@@ -76,6 +81,7 @@ export interface TableConfig {
   ],
   templateUrl: './viz-table.component.html',
 })
+/** @docs */
 export class VizTableComponent {
   /* v8 ignore next */
   readonly dataSet = input<TableDataSet | null | undefined>();

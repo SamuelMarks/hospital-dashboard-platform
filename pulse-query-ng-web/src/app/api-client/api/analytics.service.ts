@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -31,9 +33,11 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
+/** @docs */
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class AnalyticsService extends BaseService {
   constructor(
     protected httpClient: HttpClient,

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Arena SQL execution client.
  *

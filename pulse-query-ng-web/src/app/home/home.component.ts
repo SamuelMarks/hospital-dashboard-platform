@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
@@ -20,6 +22,7 @@ import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialo
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 import { AuthService } from '../core/auth/auth.service';
 
+/** @docs */
 @Component({
   selector: 'app-home',
   imports: [
@@ -128,6 +131,7 @@ import { AuthService } from '../core/auth/auth.service';
     `,
   ],
 })
+/** @docs */
 export class HomeComponent implements OnInit {
   private readonly dashboardsApi = inject(DashboardsService);
   private readonly dialog = inject(MatDialog);

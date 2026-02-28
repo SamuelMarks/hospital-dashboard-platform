@@ -40,4 +40,39 @@ describe('PromptDialogComponent', () => {
     component.save();
     expect(mockRef.close).not.toHaveBeenCalled();
   });
+
+  it('should handle missing optional data', async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [PromptDialogComponent, NoopAnimationsModule],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { title: 'Input', value: null } },
+        { provide: MatDialogRef, useValue: mockRef },
+      ],
+    }).compileComponents();
+
+    const newFixture = TestBed.createComponent(PromptDialogComponent);
+    const newComponent = newFixture.componentInstance;
+    newFixture.detectChanges();
+    expect(newComponent.value()).toBe('');
+  });
+
+  it('should handle optional data like message', async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [PromptDialogComponent, NoopAnimationsModule],
+      providers: [
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: { title: 'Input', value: null, message: 'Hint msg' },
+        },
+        { provide: MatDialogRef, useValue: mockRef },
+      ],
+    }).compileComponents();
+
+    const newFixture = TestBed.createComponent(PromptDialogComponent);
+    const newComponent = newFixture.componentInstance;
+    newFixture.detectChanges();
+    expect(newComponent.data.message).toBe('Hint msg');
+  });
 });

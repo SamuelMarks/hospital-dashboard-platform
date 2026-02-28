@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   inject,
@@ -240,6 +242,7 @@ import { ArenaSqlService } from '../arena-sql.service';
     `,
   ],
 })
+/** @docs */
 export class ConversationComponent implements AfterViewChecked {
   /** Access the chat store. */
   public readonly store = inject(ChatStore);

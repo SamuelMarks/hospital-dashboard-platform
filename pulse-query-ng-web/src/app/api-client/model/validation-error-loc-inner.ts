@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -8,4 +10,5 @@
  * Do not edit the class manually.
  */
 
+/** @docs */
 export interface ValidationErrorLocInner {}

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -12,6 +14,7 @@ import { CustomHttpParameterCodec } from './encoder';
 import { Configuration } from './configuration';
 import { OpenApiHttpParams, QueryParamStyle, concatHttpParamsObject } from './query.params';
 
+/** @docs */
 export class BaseService {
   protected basePath = 'http://localhost';
   public defaultHeaders = new HttpHeaders();

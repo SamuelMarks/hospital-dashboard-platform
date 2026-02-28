@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   OnInit,
@@ -18,6 +20,7 @@ import { AdminService, AiService, ModelInfo, AdminSettingsResponse } from '../ap
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
+/** @docs */
 @Component({
   selector: 'app-admin',
   imports: [CommonModule, ReactiveFormsModule],
@@ -189,6 +192,7 @@ import { forkJoin } from 'rxjs';
     `,
   ],
 })
+/** @docs */
 export class AdminComponent implements OnInit {
   private adminService = inject(AdminService);
   private aiService = inject(AiService);

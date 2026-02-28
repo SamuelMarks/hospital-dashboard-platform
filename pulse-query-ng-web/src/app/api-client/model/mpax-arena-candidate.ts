@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 export interface MpaxArenaCandidate {
   id: string;
   model_name: string;

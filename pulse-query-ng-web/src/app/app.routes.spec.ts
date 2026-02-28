@@ -18,6 +18,8 @@ vi.mock('./home/home.component', () => ({ HomeComponent: class {} }));
 vi.mock('./dashboard/dashboard-layout.component', () => ({ DashboardLayoutComponent: class {} }));
 vi.mock('./chat/chat-layout.component', () => ({ ChatLayoutComponent: class {} }));
 vi.mock('./analytics/analytics.component', () => ({ AnalyticsComponent: class {} }));
+vi.mock('./admin/admin.component', () => ({ AdminComponent: class {} }));
+vi.mock('./mpax-arena/mpax-arena.component', () => ({ MpaxArenaComponent: class {} }));
 vi.mock('./simulation/simulation.routes', () => ({ simulationRoutes: [] }));
 
 // MOCK: @material/material-color-utilities
@@ -114,5 +116,19 @@ describe('AppRoutes', () => {
     const route = routes.find((r) => r.path === '**');
     expect(route).toBeDefined();
     expect(route?.redirectTo).toBe('');
+  });
+
+  it('should define admin route', async () => {
+    const route = routes.find((r) => r.path === 'admin');
+    expect(route).toBeDefined();
+    const component = await route?.loadComponent!();
+    expect(component).toBeTruthy();
+  });
+
+  it('should define mpax-arena route', async () => {
+    const route = routes.find((r) => r.path === 'mpax-arena');
+    expect(route).toBeDefined();
+    const component = await route?.loadComponent!();
+    expect(component).toBeTruthy();
   });
 });

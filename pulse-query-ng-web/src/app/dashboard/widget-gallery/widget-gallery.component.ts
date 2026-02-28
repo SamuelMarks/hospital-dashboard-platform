@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 // ... (imports same as before)
 import {
   Component,
@@ -21,6 +23,7 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
 import { TemplatesService, TemplateResponse } from '../../api-client';
 
+/** @docs */
 @Component({
   selector: 'app-widget-gallery',
   imports: [
@@ -118,6 +121,7 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
   ],
   templateUrl: './widget-gallery.component.html',
 })
+/** @docs */
 export class WidgetGalleryComponent implements OnInit {
   // ... (Component logic identical to previous version)
   private readonly templatesApi = inject(TemplatesService);

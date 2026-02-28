@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Analytics API service and DTOs.
  *

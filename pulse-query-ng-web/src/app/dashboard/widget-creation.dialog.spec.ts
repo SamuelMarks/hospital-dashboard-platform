@@ -76,6 +76,7 @@ describe('WidgetCreationDialog', () => {
         set: {
           template: readTemplate('./widget-creation.dialog.html'),
           templateUrl: undefined,
+          styleUrls: undefined,
           schemas: [NO_ERRORS_SCHEMA],
         },
       })

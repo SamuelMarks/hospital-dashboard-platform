@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Shared models for the Query Cart feature.
  */

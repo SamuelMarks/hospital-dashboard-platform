@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Injectable, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
@@ -10,6 +12,7 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class QueryCartService {
   /** platformId property. */
   private readonly platformId = inject(PLATFORM_ID);

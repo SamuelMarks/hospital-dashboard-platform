@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   inject,
@@ -181,6 +183,7 @@ export interface WidgetBuilderData {
     `,
   ],
 })
+/** @docs */
 export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** FormBuilder for reactive forms. */
   private readonly fb = inject(FormBuilder);

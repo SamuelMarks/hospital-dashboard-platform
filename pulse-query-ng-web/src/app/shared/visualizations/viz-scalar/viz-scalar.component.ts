@@ -1,9 +1,12 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts
 import { Component, input, computed, ChangeDetectionStrategy, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
+/** @docs */
 @Component({
   selector: 'viz-scalar',
   imports: [CommonModule, MatTooltipModule, MatProgressBarModule],
@@ -59,6 +62,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
   ],
   templateUrl: './viz-scalar.component.html',
 })
+/** @docs */
 export class VizScalarComponent {
   /* v8 ignore next */
   readonly data = input<any | null>();

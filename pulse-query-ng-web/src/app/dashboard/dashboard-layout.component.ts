@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';

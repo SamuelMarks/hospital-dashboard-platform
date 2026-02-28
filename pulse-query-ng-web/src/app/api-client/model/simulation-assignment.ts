@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *

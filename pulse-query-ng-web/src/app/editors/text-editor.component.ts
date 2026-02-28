@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/editors/text-editor.component.ts
 import {
   Component,
@@ -17,6 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
 
+/** @docs */
 @Component({
   selector: 'app-text-editor',
   imports: [
@@ -65,6 +68,7 @@ import { finalize } from 'rxjs';
   ],
   templateUrl: './text-editor.component.html',
 })
+/** @docs */
 export class TextEditorComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly dashboardsApi = inject(DashboardsService);

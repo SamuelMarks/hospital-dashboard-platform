@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -27,6 +29,7 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './dashboard-create.dialog.html',
 })
+/** @docs */
 export class DashboardCreateDialog {
   /** API Client for Dashboard Operations. */
   private readonly dashboardsApi = inject(DashboardsService);

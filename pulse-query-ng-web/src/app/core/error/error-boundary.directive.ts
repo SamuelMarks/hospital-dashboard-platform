@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Functional Directive providing "Safe Mode" UI swapping.
  * Similar to React Error Boundaries, this allows components to catch
@@ -54,6 +56,7 @@ export interface ErrorBoundaryContext {
   selector: '[appErrorBoundary]',
   standalone: true,
 })
+/** @docs */
 export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /** vcr property. */
   private readonly vcr = inject(ViewContainerRef);

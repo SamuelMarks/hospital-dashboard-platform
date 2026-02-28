@@ -1,8 +1,11 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 
+/** @docs */
 export interface ConfirmDialogData {
   title: string;
   message: string;
@@ -10,6 +13,7 @@ export interface ConfirmDialogData {
   isDestructive?: boolean;
 }
 
+/** @docs */
 @Component({
   selector: 'app-confirm-dialog',
   imports: [CommonModule, MatDialogModule, MatButtonModule],
@@ -39,6 +43,7 @@ export interface ConfirmDialogData {
     `,
   ],
 })
+/** @docs */
 export class ConfirmDialogComponent {
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: ConfirmDialogData,

@@ -76,6 +76,38 @@ describe('ChatStore', () => {
       expect(store.conversations().length).toBe(1);
       expect(store.availableModels().length).toBe(1);
       expect(store.error()).toBeNull();
+
+      // Test the getters to cover line 83
+      expect(store.isDataLoading()).toBe(false);
+      expect(store.activeConversationId()).toBeNull();
+      expect(store.messages()).toEqual([]);
+      expect(store.isGenerating()).toBe(false);
+      expect(store.state().conversations.length).toBe(1);
+    });
+
+    it('handles various error payloads', () => {
+      mockAiApi.listAvailableModelsApiV1AiModelsGet.mockReturnValue(of([]));
+
+      // String error detail
+      mockApi.listConversationsApiV1ConversationsGet.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ error: { detail: 'String error' } })),
+      );
+      store.loadHistory();
+      expect(store.error()).toBe('String error');
+
+      // Object error detail
+      mockApi.listConversationsApiV1ConversationsGet.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ error: { detail: { code: 400 } } })),
+      );
+      store.loadHistory();
+      expect(store.error()).toBe('{"code":400}');
+
+      // No error detail
+      mockApi.listConversationsApiV1ConversationsGet.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ statusText: 'Bad' })),
+      );
+      store.loadHistory();
+      expect(store.error()).toContain('Http failure response');
     });
 
     it('sets error string on API failure', () => {
@@ -258,11 +290,13 @@ describe('ChatStore', () => {
     });
 
     it('renames optimistically and updates server', () => {
-      store['patch']({ conversations: [MOCK_CONV] });
+      const conv2 = { ...MOCK_CONV, id: 'c2', title: 'Two' };
+      store['patch']({ conversations: [MOCK_CONV, conv2] });
       mockApi.updateConversationApiV1ConversationsConversationIdPut.mockReturnValue(of({}));
 
       store.renameConversation('c1', 'Renamed');
       expect(store.conversations()[0].title).toBe('Renamed');
+      expect(store.conversations()[1].title).toBe('Two'); // covers the `: c` path
     });
 
     it('rolls back on server failure', () => {

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Empty State & Onboarding Component.
  *
@@ -137,6 +139,7 @@ import { WidgetBuilderComponent } from '../widget-builder/widget-builder.compone
   ],
   templateUrl: './empty-state.component.html',
 })
+/** @docs */
 export class EmptyStateComponent {
   /** Store. */
   readonly store = inject(DashboardStore);

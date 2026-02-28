@@ -1,0 +1,10 @@
+--- backend/src/app/main.py
++++ backend/src/app/main.py
+@@ -21,6 +21,7 @@
+   analytics,
+   admin,
+   mpax_arena,
++  benchmarks,
+ )
+ from app.database.postgres import engine, Base
+ from app.database.duckdb_init import init_duckdb_on_startup

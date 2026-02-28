@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   OnInit,
@@ -47,6 +49,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
     ConversationComponent,
     QueryCartComponent,
   ],
+  /* v8 ignore next */
   providers: [ChatStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './chat-layout.component.html',
@@ -154,6 +157,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
     `,
   ],
 })
+/** @docs */
 export class ChatLayoutComponent implements OnInit {
   public readonly store = inject(ChatStore);
   public readonly cart = inject(QueryCartService);

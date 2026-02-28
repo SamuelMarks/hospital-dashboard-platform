@@ -1,0 +1,4556 @@
+[
+  {
+    "id": "2ac38278-fa2f-4433-80d6-9119a9ed7dbe",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 13 incoming Cardiology patients. Currently, StepDown has 5 open beds and MedSurg has 26 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 5,
+      "MedSurg": 26
+    },
+    "expected_metrics": {
+      "total_demand": 13,
+      "total_capacity": 31,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e3c00b77-be34-4c72-bfd0-67e66ef83d0e",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "19 high-acuity Trauma patients need immediate placement. ICU (high acuity) has 21 beds. PCU (lower acuity) has 5 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 19
+      }
+    ],
+    "base_capacity": {
+      "ICU": 21,
+      "PCU": 5
+    },
+    "expected_metrics": {
+      "total_demand": 19,
+      "total_capacity": 26,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "ab10113f-61f1-4033-b934-4703472e2365",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "5 high-acuity Trauma patients need immediate placement. Telemetry (high acuity) has 7 beds. Nursery (lower acuity) has 27 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 7,
+      "Nursery": 27
+    },
+    "expected_metrics": {
+      "total_demand": 5,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "751d96d3-a38d-485f-961e-f4dfa8d5454b",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 10 Orthopedics patients and 17 Neurology patients holding in the ED. Available beds: 5 in MedSurg, 16 in StepDown, and 16 in ICU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 10
+      },
+      {
+        "Service": "Neurology",
+        "Count": 17
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 5,
+      "StepDown": 16,
+      "ICU": 16
+    },
+    "expected_metrics": {
+      "total_demand": 27,
+      "total_capacity": 37,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "7bff39eb-885b-4989-bcd6-622a50d95dda",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "29 high-acuity Orthopedics patients need immediate placement. PCU (high acuity) has 19 beds. Telemetry (lower acuity) has 14 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "Telemetry": 14
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 33,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "036f790f-09a0-4cff-bfb8-6826e54d572b",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "23 high-acuity Neurology patients need immediate placement. ICU (high acuity) has 9 beds. PCU (lower acuity) has 8 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 23
+      }
+    ],
+    "base_capacity": {
+      "ICU": 9,
+      "PCU": 8
+    },
+    "expected_metrics": {
+      "total_demand": 23,
+      "total_capacity": 17,
+      "expected_overflow": 6
+    }
+  },
+  {
+    "id": "97bc3666-dcc0-49d5-8a38-97ddb3da52e8",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 27 Trauma patients and 11 Oncology patients holding in the ED. Available beds: 23 in StepDown, 13 in MedSurg, and 7 in PCU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 27
+      },
+      {
+        "Service": "Oncology",
+        "Count": 11
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 23,
+      "MedSurg": 13,
+      "PCU": 7
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 43,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "94697b6f-d30a-47de-b464-d54bda72977d",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "34 high-acuity Oncology patients need immediate placement. Nursery (high acuity) has 10 beds. MedSurg (lower acuity) has 25 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 34
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 10,
+      "MedSurg": 25
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "b012df77-25e8-41b3-8c29-3eca7a7f4349",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 30 Pediatrics patients and 13 Cardiology patients holding in the ED. Available beds: 4 in MedSurg, 11 in ICU, and 15 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 30
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 4,
+      "ICU": 11,
+      "StepDown": 15
+    },
+    "expected_metrics": {
+      "total_demand": 43,
+      "total_capacity": 30,
+      "expected_overflow": 13
+    }
+  },
+  {
+    "id": "9fac7786-ef31-46f8-a732-cf48a47ef007",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 9. We have 21 Oncology patients requiring admission. PCU is available with 28 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 21
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 9,
+      "PCU": 28
+    },
+    "expected_metrics": {
+      "total_demand": 21,
+      "total_capacity": 37,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "b1374d9c-4942-434b-b4e2-6748e3dc4574",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "13 high-acuity Trauma patients need immediate placement. Telemetry (high acuity) has 17 beds. StepDown (lower acuity) has 7 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 17,
+      "StepDown": 7
+    },
+    "expected_metrics": {
+      "total_demand": 13,
+      "total_capacity": 24,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "1271074e-8791-4e1e-bfc4-62ac8fec0d0a",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 29 incoming Neurology patients. Currently, MedSurg has 21 open beds and Telemetry has 19 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 21,
+      "Telemetry": 19
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 40,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e2e5d434-3188-41b3-94d0-ddd35623fcc6",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "26 high-acuity Pediatrics patients need immediate placement. PCU (high acuity) has 11 beds. ICU (lower acuity) has 18 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 26
+      }
+    ],
+    "base_capacity": {
+      "PCU": 11,
+      "ICU": 18
+    },
+    "expected_metrics": {
+      "total_demand": 26,
+      "total_capacity": 29,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "515d433d-9d78-4559-941b-5bf659501897",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by Cardiology. We have 37 Cardiology patients and 8 Oncology patients. PCU has 22 beds, StepDown has 14 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 37
+      },
+      {
+        "Service": "Oncology",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "PCU": 22,
+      "StepDown": 14
+    },
+    "expected_metrics": {
+      "total_demand": 45,
+      "total_capacity": 36,
+      "expected_overflow": 9
+    }
+  },
+  {
+    "id": "b021feb5-3f73-4e63-ab35-655b21a45572",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 2. We have 25 Orthopedics patients requiring admission. PCU is available with 8 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 2,
+      "PCU": 8
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 10,
+      "expected_overflow": 15
+    }
+  },
+  {
+    "id": "1adbe91b-4a39-40dd-8854-e06ffeff7012",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 10 Neurology patients and 28 Cardiology patients holding in the ED. Available beds: 17 in MedSurg, 7 in Nursery, and 9 in ICU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 10
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 28
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 17,
+      "Nursery": 7,
+      "ICU": 9
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 33,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "3042594e-fafa-4762-a9a4-17b969a0291c",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 15. We have 38 Oncology patients requiring admission. MedSurg is available with 11 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 38
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 15,
+      "MedSurg": 11
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 26,
+      "expected_overflow": 12
+    }
+  },
+  {
+    "id": "a75ef91a-ad3c-4b00-9fa1-a4dbde8d1ea2",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 38 Trauma patients and 19 Oncology patients holding in the ED. Available beds: 5 in PCU, 12 in StepDown, and 12 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 38
+      },
+      {
+        "Service": "Oncology",
+        "Count": 19
+      }
+    ],
+    "base_capacity": {
+      "PCU": 5,
+      "StepDown": 12,
+      "Telemetry": 12
+    },
+    "expected_metrics": {
+      "total_demand": 57,
+      "total_capacity": 29,
+      "expected_overflow": 28
+    }
+  },
+  {
+    "id": "b96128b0-df82-4afc-98f8-e55451f27997",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 19 incoming Orthopedics patients. Currently, Nursery has 4 open beds and PCU has 27 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 19
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 4,
+      "PCU": 27
+    },
+    "expected_metrics": {
+      "total_demand": 19,
+      "total_capacity": 31,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e3cfa7d8-a072-4dc2-a5de-1ffc093e684f",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 17. We have 22 Cardiology patients requiring admission. ICU is available with 11 beds.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 17,
+      "ICU": 11
+    },
+    "expected_metrics": {
+      "total_demand": 22,
+      "total_capacity": 28,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5518c71c-cdb1-4db9-ac7e-abde2f8f616d",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "17 high-acuity General Surgery patients need immediate placement. MedSurg (high acuity) has 5 beds. Telemetry (lower acuity) has 26 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 17
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 5,
+      "Telemetry": 26
+    },
+    "expected_metrics": {
+      "total_demand": 17,
+      "total_capacity": 31,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "1f57aae8-8f91-487c-bbf6-27d2321ac707",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 8 Trauma patients and 17 Pediatrics patients holding in the ED. Available beds: 25 in Telemetry, 15 in ICU, and 8 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 8
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 17
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 25,
+      "ICU": 15,
+      "Nursery": 8
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 48,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "16797d77-e474-480a-b8bc-44e79372710f",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 10. We have 32 Neurology patients requiring admission. Telemetry is available with 19 beds.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 10,
+      "Telemetry": 19
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 29,
+      "expected_overflow": 3
+    }
+  },
+  {
+    "id": "92a9f7bd-2601-4d97-8cd9-29214737f2b3",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 10 incoming Trauma patients. Currently, ICU has 9 open beds and PCU has 10 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "ICU": 9,
+      "PCU": 10
+    },
+    "expected_metrics": {
+      "total_demand": 10,
+      "total_capacity": 19,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "f9224336-8d36-4ab4-8d76-00a0ebdc062d",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Telemetry is heavily favored by Trauma. We have 29 Trauma patients and 5 Neurology patients. Telemetry has 14 beds, ICU has 13 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 29
+      },
+      {
+        "Service": "Neurology",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 14,
+      "ICU": 13
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 27,
+      "expected_overflow": 7
+    }
+  },
+  {
+    "id": "99efd46b-b791-4475-887e-1742bbc7b948",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 14 Trauma patients and 11 Oncology patients holding in the ED. Available beds: 11 in PCU, 11 in Nursery, and 6 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 14
+      },
+      {
+        "Service": "Oncology",
+        "Count": 11
+      }
+    ],
+    "base_capacity": {
+      "PCU": 11,
+      "Nursery": 11,
+      "Telemetry": 6
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 28,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "4e8168a3-7774-4b0d-8f4f-e4495523a197",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "8 high-acuity Oncology patients need immediate placement. ICU (high acuity) has 17 beds. StepDown (lower acuity) has 21 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "ICU": 17,
+      "StepDown": 21
+    },
+    "expected_metrics": {
+      "total_demand": 8,
+      "total_capacity": 38,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "12d3b6c3-5175-4b23-84be-ea6326e6bf9a",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 20 incoming General Surgery patients. Currently, MedSurg has 5 open beds and ICU has 23 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 20
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 5,
+      "ICU": 23
+    },
+    "expected_metrics": {
+      "total_demand": 20,
+      "total_capacity": 28,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "65fd9f0c-fb33-44c2-ac47-8b91fa8b3ff6",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "38 high-acuity General Surgery patients need immediate placement. Nursery (high acuity) has 10 beds. ICU (lower acuity) has 11 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 38
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 10,
+      "ICU": 11
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 21,
+      "expected_overflow": 17
+    }
+  },
+  {
+    "id": "e60a7015-fde5-49dc-bfcc-e1d1b48bbea3",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced MedSurg capacity to 4. We have 25 Orthopedics patients requiring admission. StepDown is available with 5 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 4,
+      "StepDown": 5
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 9,
+      "expected_overflow": 16
+    }
+  },
+  {
+    "id": "dc5b263f-61ac-4d22-8509-f6b9ed2d41bd",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "37 high-acuity General Surgery patients need immediate placement. ICU (high acuity) has 6 beds. Nursery (lower acuity) has 16 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 37
+      }
+    ],
+    "base_capacity": {
+      "ICU": 6,
+      "Nursery": 16
+    },
+    "expected_metrics": {
+      "total_demand": 37,
+      "total_capacity": 22,
+      "expected_overflow": 15
+    }
+  },
+  {
+    "id": "b68432c7-531f-41aa-965c-8b714eabfa5a",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced MedSurg capacity to 23. We have 38 Orthopedics patients requiring admission. Telemetry is available with 22 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 38
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 23,
+      "Telemetry": 22
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 45,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "c72a9d0f-692c-4564-8c2d-7bb9460dfb59",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 22 incoming Neurology patients. Currently, ICU has 21 open beds and PCU has 11 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "ICU": 21,
+      "PCU": 11
+    },
+    "expected_metrics": {
+      "total_demand": 22,
+      "total_capacity": 32,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d4161f93-c0c6-4d86-ad66-c6e823522613",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 4. We have 21 Oncology patients requiring admission. Nursery is available with 25 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 21
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 4,
+      "Nursery": 25
+    },
+    "expected_metrics": {
+      "total_demand": 21,
+      "total_capacity": 29,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "698b7c1b-3aad-4e40-838c-bc091d8c0194",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 15 Cardiology patients and 28 Pediatrics patients holding in the ED. Available beds: 16 in StepDown, 22 in MedSurg, and 18 in PCU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 15
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 28
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 16,
+      "MedSurg": 22,
+      "PCU": 18
+    },
+    "expected_metrics": {
+      "total_demand": 43,
+      "total_capacity": 56,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "8863e27d-d3ed-441e-8a74-9ffa2522bf9a",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "28 high-acuity Cardiology patients need immediate placement. ICU (high acuity) has 19 beds. MedSurg (lower acuity) has 9 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 28
+      }
+    ],
+    "base_capacity": {
+      "ICU": 19,
+      "MedSurg": 9
+    },
+    "expected_metrics": {
+      "total_demand": 28,
+      "total_capacity": 28,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "180f205e-0fd4-43a8-b9ac-f4637970cd37",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 9. We have 18 Cardiology patients requiring admission. ICU is available with 26 beds.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 18
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 9,
+      "ICU": 26
+    },
+    "expected_metrics": {
+      "total_demand": 18,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "4cb44de8-af6f-493d-87b7-a704bcf08460",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 20 Pediatrics patients and 10 General Surgery patients holding in the ED. Available beds: 7 in Telemetry, 18 in Nursery, and 5 in MedSurg. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 20
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 7,
+      "Nursery": 18,
+      "MedSurg": 5
+    },
+    "expected_metrics": {
+      "total_demand": 30,
+      "total_capacity": 30,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "0b805903-24de-474b-9673-9f06ee18cf69",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 24. We have 15 Oncology patients requiring admission. MedSurg is available with 8 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 15
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 24,
+      "MedSurg": 8
+    },
+    "expected_metrics": {
+      "total_demand": 15,
+      "total_capacity": 32,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5002d932-a86b-4bbb-af27-8bedadc85a2b",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 27 incoming Pediatrics patients. Currently, MedSurg has 9 open beds and PCU has 12 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 27
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 9,
+      "PCU": 12
+    },
+    "expected_metrics": {
+      "total_demand": 27,
+      "total_capacity": 21,
+      "expected_overflow": 6
+    }
+  },
+  {
+    "id": "0009420c-9345-455b-9776-41a6d939f89a",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 18. We have 27 Trauma patients requiring admission. ICU is available with 17 beds.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 27
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 18,
+      "ICU": 17
+    },
+    "expected_metrics": {
+      "total_demand": 27,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "cee0f030-b04e-4227-86b3-b84fda026517",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 7 incoming Cardiology patients. Currently, MedSurg has 21 open beds and Nursery has 18 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 7
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 21,
+      "Nursery": 18
+    },
+    "expected_metrics": {
+      "total_demand": 7,
+      "total_capacity": 39,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "64772be2-0988-475e-9718-b38486fb0de9",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 17 Trauma patients and 13 General Surgery patients holding in the ED. Available beds: 3 in Nursery, 27 in ICU, and 18 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 17
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 3,
+      "ICU": 27,
+      "Telemetry": 18
+    },
+    "expected_metrics": {
+      "total_demand": 30,
+      "total_capacity": 48,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "0480f277-ec99-4b6a-b197-cb09af48a0bf",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 32 incoming General Surgery patients. Currently, PCU has 23 open beds and MedSurg has 15 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "PCU": 23,
+      "MedSurg": 15
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 38,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "fcc2326b-5e83-43ce-82b6-260d061d5b09",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 25 incoming Oncology patients. Currently, Nursery has 24 open beds and StepDown has 14 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 24,
+      "StepDown": 14
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 38,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "1224891a-bcf9-408b-931f-c508a4f49aa8",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 2. We have 30 Trauma patients requiring admission. MedSurg is available with 14 beds.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 30
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 2,
+      "MedSurg": 14
+    },
+    "expected_metrics": {
+      "total_demand": 30,
+      "total_capacity": 16,
+      "expected_overflow": 14
+    }
+  },
+  {
+    "id": "e2e0402f-1b6c-42b7-9ae6-fd6f6bd6605c",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 23. We have 33 Trauma patients requiring admission. StepDown is available with 11 beds.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 23,
+      "StepDown": 11
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "c5195a80-dd11-421c-8090-7a31f7cbdbb4",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 9. We have 10 Oncology patients requiring admission. Nursery is available with 26 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 9,
+      "Nursery": 26
+    },
+    "expected_metrics": {
+      "total_demand": 10,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "f2dd3103-7f6c-4352-a825-a263cff9e3fe",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced MedSurg capacity to 21. We have 20 Pediatrics patients requiring admission. ICU is available with 29 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 20
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 21,
+      "ICU": 29
+    },
+    "expected_metrics": {
+      "total_demand": 20,
+      "total_capacity": 50,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5c561890-ea8d-4eac-9126-2bc76bff48d3",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Nursery is heavily favored by Trauma. We have 36 Trauma patients and 17 Oncology patients. Nursery has 9 beds, MedSurg has 9 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 36
+      },
+      {
+        "Service": "Oncology",
+        "Count": 17
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 9,
+      "MedSurg": 9
+    },
+    "expected_metrics": {
+      "total_demand": 53,
+      "total_capacity": 18,
+      "expected_overflow": 35
+    }
+  },
+  {
+    "id": "f6af7a2c-8d46-4c1f-8a86-288d19b8798a",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 8 incoming Pediatrics patients. Currently, MedSurg has 9 open beds and PCU has 8 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 9,
+      "PCU": 8
+    },
+    "expected_metrics": {
+      "total_demand": 8,
+      "total_capacity": 17,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d76911d1-dce4-4d3f-910c-649452f70379",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 25. We have 33 Pediatrics patients requiring admission. Nursery is available with 21 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "PCU": 25,
+      "Nursery": 21
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 46,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "dcec9cec-2523-4544-8d58-50e8acf3b98a",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "21 high-acuity Trauma patients need immediate placement. PCU (high acuity) has 9 beds. Telemetry (lower acuity) has 25 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 21
+      }
+    ],
+    "base_capacity": {
+      "PCU": 9,
+      "Telemetry": 25
+    },
+    "expected_metrics": {
+      "total_demand": 21,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "18aece48-2068-40dd-8385-fab8d731a8fe",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "9 high-acuity Trauma patients need immediate placement. MedSurg (high acuity) has 11 beds. StepDown (lower acuity) has 12 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 11,
+      "StepDown": 12
+    },
+    "expected_metrics": {
+      "total_demand": 9,
+      "total_capacity": 23,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "3337c3ff-db70-4a0f-b14d-d3ed0720f1c3",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 19 Orthopedics patients and 17 General Surgery patients holding in the ED. Available beds: 24 in ICU, 9 in MedSurg, and 11 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 19
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 17
+      }
+    ],
+    "base_capacity": {
+      "ICU": 24,
+      "MedSurg": 9,
+      "Nursery": 11
+    },
+    "expected_metrics": {
+      "total_demand": 36,
+      "total_capacity": 44,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "7df5f069-183e-44e6-914d-31d5da285c50",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 31 incoming Trauma patients. Currently, StepDown has 8 open beds and Nursery has 18 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 31
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 8,
+      "Nursery": 18
+    },
+    "expected_metrics": {
+      "total_demand": 31,
+      "total_capacity": 26,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "5e65f263-2c88-496b-b2c7-8dfe81246a6f",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "5 high-acuity Oncology patients need immediate placement. Nursery (high acuity) has 11 beds. Telemetry (lower acuity) has 29 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 11,
+      "Telemetry": 29
+    },
+    "expected_metrics": {
+      "total_demand": 5,
+      "total_capacity": 40,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d606052f-253a-4f37-ad0b-1041b46a61f1",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by General Surgery. We have 36 General Surgery patients and 12 Oncology patients. PCU has 10 beds, Nursery has 18 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 36
+      },
+      {
+        "Service": "Oncology",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "PCU": 10,
+      "Nursery": 18
+    },
+    "expected_metrics": {
+      "total_demand": 48,
+      "total_capacity": 28,
+      "expected_overflow": 20
+    }
+  },
+  {
+    "id": "dd59f8ab-55dc-4161-8f09-30d5988c9d63",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 34 incoming Trauma patients. Currently, PCU has 21 open beds and Telemetry has 22 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 34
+      }
+    ],
+    "base_capacity": {
+      "PCU": 21,
+      "Telemetry": 22
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 43,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "b5f83e94-2780-4d69-8d06-3137988fd6dc",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by General Surgery. We have 32 General Surgery patients and 9 Pediatrics patients. PCU has 16 beds, ICU has 10 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 32
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "PCU": 16,
+      "ICU": 10
+    },
+    "expected_metrics": {
+      "total_demand": 41,
+      "total_capacity": 26,
+      "expected_overflow": 15
+    }
+  },
+  {
+    "id": "81a11e27-6298-4c2e-ac35-9c6bd13cf219",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 26 Trauma patients and 29 Orthopedics patients holding in the ED. Available beds: 14 in MedSurg, 13 in Telemetry, and 18 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 26
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 14,
+      "Telemetry": 13,
+      "StepDown": 18
+    },
+    "expected_metrics": {
+      "total_demand": 55,
+      "total_capacity": 45,
+      "expected_overflow": 10
+    }
+  },
+  {
+    "id": "e6d70cea-0d9a-4bcd-b1cf-780716a0e9e8",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 27 Pediatrics patients and 12 Cardiology patients holding in the ED. Available beds: 22 in Telemetry, 7 in ICU, and 6 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 27
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 22,
+      "ICU": 7,
+      "Nursery": 6
+    },
+    "expected_metrics": {
+      "total_demand": 39,
+      "total_capacity": 35,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "45181e6f-8dfa-40f6-8cc6-fc41ab4c42fc",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 20 incoming Neurology patients. Currently, ICU has 17 open beds and Nursery has 26 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 20
+      }
+    ],
+    "base_capacity": {
+      "ICU": 17,
+      "Nursery": 26
+    },
+    "expected_metrics": {
+      "total_demand": 20,
+      "total_capacity": 43,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "bb72a5dd-8644-4967-9ed7-8ffdcc74659f",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "15 high-acuity Neurology patients need immediate placement. PCU (high acuity) has 21 beds. StepDown (lower acuity) has 28 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 15
+      }
+    ],
+    "base_capacity": {
+      "PCU": 21,
+      "StepDown": 28
+    },
+    "expected_metrics": {
+      "total_demand": 15,
+      "total_capacity": 49,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "9cbffde3-44f4-4ae8-9dcd-59c19eb208f7",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 24. We have 29 Orthopedics patients requiring admission. ICU is available with 11 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 24,
+      "ICU": 11
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d1aae5ed-e4e2-4c42-bcd9-a17a6e9a7ee2",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "12 high-acuity Oncology patients need immediate placement. MedSurg (high acuity) has 20 beds. ICU (lower acuity) has 30 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 20,
+      "ICU": 30
+    },
+    "expected_metrics": {
+      "total_demand": 12,
+      "total_capacity": 50,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d32c4263-da18-4753-94bf-0e103f576a4e",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 37 General Surgery patients and 25 Trauma patients holding in the ED. Available beds: 12 in PCU, 5 in StepDown, and 18 in ICU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 37
+      },
+      {
+        "Service": "Trauma",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "PCU": 12,
+      "StepDown": 5,
+      "ICU": 18
+    },
+    "expected_metrics": {
+      "total_demand": 62,
+      "total_capacity": 35,
+      "expected_overflow": 27
+    }
+  },
+  {
+    "id": "e3920d40-8edc-4cb3-9e40-2f6c6b056781",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "StepDown is heavily favored by Cardiology. We have 32 Cardiology patients and 10 Trauma patients. StepDown has 25 beds, Telemetry has 21 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 32
+      },
+      {
+        "Service": "Trauma",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 25,
+      "Telemetry": 21
+    },
+    "expected_metrics": {
+      "total_demand": 42,
+      "total_capacity": 46,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "b6d134ff-4de6-4d06-80e0-691dbdcc2a9d",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "22 high-acuity Pediatrics patients need immediate placement. Telemetry (high acuity) has 9 beds. PCU (lower acuity) has 7 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 9,
+      "PCU": 7
+    },
+    "expected_metrics": {
+      "total_demand": 22,
+      "total_capacity": 16,
+      "expected_overflow": 6
+    }
+  },
+  {
+    "id": "e1b8c99b-780c-48da-ae54-22c1df414558",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Nursery is heavily favored by Neurology. We have 26 Neurology patients and 5 Trauma patients. Nursery has 17 beds, PCU has 15 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 26
+      },
+      {
+        "Service": "Trauma",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 17,
+      "PCU": 15
+    },
+    "expected_metrics": {
+      "total_demand": 31,
+      "total_capacity": 32,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "35835a43-21fb-4b4b-9da7-a97fc0558ccf",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "StepDown is heavily favored by Neurology. We have 22 Neurology patients and 22 Orthopedics patients. StepDown has 2 beds, PCU has 21 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 22
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 2,
+      "PCU": 21
+    },
+    "expected_metrics": {
+      "total_demand": 44,
+      "total_capacity": 23,
+      "expected_overflow": 21
+    }
+  },
+  {
+    "id": "c4929606-ff0e-431a-a3ce-8c26da10dc96",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 35 incoming Neurology patients. Currently, Telemetry has 24 open beds and PCU has 20 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 35
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 24,
+      "PCU": 20
+    },
+    "expected_metrics": {
+      "total_demand": 35,
+      "total_capacity": 44,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "15132bdc-604c-4adb-8582-7779c9efcd86",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 24 incoming Cardiology patients. Currently, MedSurg has 20 open beds and Telemetry has 16 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 24
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 20,
+      "Telemetry": 16
+    },
+    "expected_metrics": {
+      "total_demand": 24,
+      "total_capacity": 36,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "132b26df-d710-46a4-9313-6a48c1f101bd",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "27 high-acuity General Surgery patients need immediate placement. Telemetry (high acuity) has 16 beds. Nursery (lower acuity) has 13 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 27
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 16,
+      "Nursery": 13
+    },
+    "expected_metrics": {
+      "total_demand": 27,
+      "total_capacity": 29,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "0a7f1175-9b52-41fc-b91c-faeb83e5b3e1",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 12 Neurology patients and 28 Cardiology patients holding in the ED. Available beds: 19 in PCU, 29 in MedSurg, and 10 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 12
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 28
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "MedSurg": 29,
+      "StepDown": 10
+    },
+    "expected_metrics": {
+      "total_demand": 40,
+      "total_capacity": 58,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "9ffcb686-2117-481b-8790-c75df075c73f",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 11. We have 11 Neurology patients requiring admission. StepDown is available with 12 beds.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 11
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 11,
+      "StepDown": 12
+    },
+    "expected_metrics": {
+      "total_demand": 11,
+      "total_capacity": 23,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "680453b0-12bc-4cf7-bd2e-accdaa2214b9",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 3. We have 22 Orthopedics patients requiring admission. Nursery is available with 22 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "PCU": 3,
+      "Nursery": 22
+    },
+    "expected_metrics": {
+      "total_demand": 22,
+      "total_capacity": 25,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "4ca66ce6-0cf8-4b98-acce-d177975c7ad8",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced ICU capacity to 16. We have 35 Oncology patients requiring admission. PCU is available with 15 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 35
+      }
+    ],
+    "base_capacity": {
+      "ICU": 16,
+      "PCU": 15
+    },
+    "expected_metrics": {
+      "total_demand": 35,
+      "total_capacity": 31,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "d90b2aab-d36d-4690-b5c9-bc93a69031f4",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 36 incoming Orthopedics patients. Currently, ICU has 20 open beds and PCU has 25 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 36
+      }
+    ],
+    "base_capacity": {
+      "ICU": 20,
+      "PCU": 25
+    },
+    "expected_metrics": {
+      "total_demand": 36,
+      "total_capacity": 45,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5d8610d4-ee43-4ac1-8cfd-d6b9bb079380",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 15. We have 12 Neurology patients requiring admission. ICU is available with 24 beds.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 15,
+      "ICU": 24
+    },
+    "expected_metrics": {
+      "total_demand": 12,
+      "total_capacity": 39,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "75026c5d-c185-41b3-88ec-0ef02a32f6f5",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "24 high-acuity Trauma patients need immediate placement. Telemetry (high acuity) has 21 beds. StepDown (lower acuity) has 6 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 24
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 21,
+      "StepDown": 6
+    },
+    "expected_metrics": {
+      "total_demand": 24,
+      "total_capacity": 27,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "4d514e6e-88dd-453f-8120-de68f48f6280",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 19. We have 20 Oncology patients requiring admission. ICU is available with 7 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 20
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 19,
+      "ICU": 7
+    },
+    "expected_metrics": {
+      "total_demand": 20,
+      "total_capacity": 26,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "3187258f-b3d7-4e5c-99b9-3ea3206bc3d4",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 23 incoming Trauma patients. Currently, PCU has 9 open beds and Nursery has 14 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 23
+      }
+    ],
+    "base_capacity": {
+      "PCU": 9,
+      "Nursery": 14
+    },
+    "expected_metrics": {
+      "total_demand": 23,
+      "total_capacity": 23,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "22dea09c-d61c-499b-b5d2-a693428a2d30",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "MedSurg is heavily favored by Cardiology. We have 32 Cardiology patients and 8 Oncology patients. MedSurg has 19 beds, StepDown has 12 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 32
+      },
+      {
+        "Service": "Oncology",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 19,
+      "StepDown": 12
+    },
+    "expected_metrics": {
+      "total_demand": 40,
+      "total_capacity": 31,
+      "expected_overflow": 9
+    }
+  },
+  {
+    "id": "09ebde4a-c151-4d1c-a4f4-39b578c9d7a7",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 24 Pediatrics patients and 24 Neurology patients holding in the ED. Available beds: 25 in ICU, 23 in PCU, and 14 in MedSurg. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 24
+      },
+      {
+        "Service": "Neurology",
+        "Count": 24
+      }
+    ],
+    "base_capacity": {
+      "ICU": 25,
+      "PCU": 23,
+      "MedSurg": 14
+    },
+    "expected_metrics": {
+      "total_demand": 48,
+      "total_capacity": 62,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "9846a76d-f05e-4181-ae3a-a106ff581595",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by Cardiology. We have 22 Cardiology patients and 21 Trauma patients. PCU has 19 beds, StepDown has 20 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 22
+      },
+      {
+        "Service": "Trauma",
+        "Count": 21
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "StepDown": 20
+    },
+    "expected_metrics": {
+      "total_demand": 43,
+      "total_capacity": 39,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "4c00478b-86f1-463f-943a-b95ee34019b0",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 6 incoming General Surgery patients. Currently, Telemetry has 9 open beds and StepDown has 26 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 6
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 9,
+      "StepDown": 26
+    },
+    "expected_metrics": {
+      "total_demand": 6,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "daf3776a-3826-454c-9038-d875631e223e",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 22 General Surgery patients and 10 Cardiology patients holding in the ED. Available beds: 20 in MedSurg, 18 in Telemetry, and 20 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 22
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 20,
+      "Telemetry": 18,
+      "Nursery": 20
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 58,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5710e9f5-12f4-4963-b7f4-f72978c69c24",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 11 incoming Trauma patients. Currently, Telemetry has 12 open beds and StepDown has 18 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 11
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 12,
+      "StepDown": 18
+    },
+    "expected_metrics": {
+      "total_demand": 11,
+      "total_capacity": 30,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "bb22e659-e19f-4ff9-adf5-7ea7839c7fe7",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 10 Oncology patients and 15 Trauma patients holding in the ED. Available beds: 10 in Nursery, 15 in ICU, and 8 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 10
+      },
+      {
+        "Service": "Trauma",
+        "Count": 15
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 10,
+      "ICU": 15,
+      "Telemetry": 8
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 33,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e9bc5a66-fe3c-4fce-9724-aa1009989278",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Pediatrics. We have 31 Pediatrics patients and 6 General Surgery patients. ICU has 8 beds, Nursery has 21 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 31
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 6
+      }
+    ],
+    "base_capacity": {
+      "ICU": 8,
+      "Nursery": 21
+    },
+    "expected_metrics": {
+      "total_demand": 37,
+      "total_capacity": 29,
+      "expected_overflow": 8
+    }
+  },
+  {
+    "id": "0f5e1b4c-d7ad-40df-a831-9db1981af6fd",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "18 high-acuity Pediatrics patients need immediate placement. PCU (high acuity) has 19 beds. Telemetry (lower acuity) has 9 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 18
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "Telemetry": 9
+    },
+    "expected_metrics": {
+      "total_demand": 18,
+      "total_capacity": 28,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "ac409ecb-a5e7-48cf-82df-d576b5d44cef",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Oncology. We have 15 Oncology patients and 14 Trauma patients. ICU has 19 beds, PCU has 5 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 15
+      },
+      {
+        "Service": "Trauma",
+        "Count": 14
+      }
+    ],
+    "base_capacity": {
+      "ICU": 19,
+      "PCU": 5
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 24,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "2f29713d-d511-4f14-932f-3b0918828438",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 36 incoming Neurology patients. Currently, Telemetry has 11 open beds and ICU has 21 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 36
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 11,
+      "ICU": 21
+    },
+    "expected_metrics": {
+      "total_demand": 36,
+      "total_capacity": 32,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "c13b631e-da95-4fbb-b3e6-9b49828b362f",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Telemetry is heavily favored by Pediatrics. We have 40 Pediatrics patients and 9 Trauma patients. Telemetry has 14 beds, MedSurg has 11 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 40
+      },
+      {
+        "Service": "Trauma",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 14,
+      "MedSurg": 11
+    },
+    "expected_metrics": {
+      "total_demand": 49,
+      "total_capacity": 25,
+      "expected_overflow": 24
+    }
+  },
+  {
+    "id": "b968d305-8be5-49bc-b2a0-62441f668797",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 5 incoming Orthopedics patients. Currently, StepDown has 25 open beds and Nursery has 14 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 25,
+      "Nursery": 14
+    },
+    "expected_metrics": {
+      "total_demand": 5,
+      "total_capacity": 39,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5266e053-0601-4733-9009-18c83c153822",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 19. We have 40 Trauma patients requiring admission. StepDown is available with 17 beds.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 40
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 19,
+      "StepDown": 17
+    },
+    "expected_metrics": {
+      "total_demand": 40,
+      "total_capacity": 36,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "0289a928-a347-417b-8fad-23ebccb86c72",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 19 Pediatrics patients and 29 Neurology patients holding in the ED. Available beds: 15 in PCU, 6 in MedSurg, and 15 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 19
+      },
+      {
+        "Service": "Neurology",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "PCU": 15,
+      "MedSurg": 6,
+      "Telemetry": 15
+    },
+    "expected_metrics": {
+      "total_demand": 48,
+      "total_capacity": 36,
+      "expected_overflow": 12
+    }
+  },
+  {
+    "id": "3eaf4601-d545-49f3-b24f-15b2635f74f7",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Telemetry is heavily favored by Oncology. We have 7 Oncology patients and 9 Trauma patients. Telemetry has 18 beds, MedSurg has 23 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 7
+      },
+      {
+        "Service": "Trauma",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 18,
+      "MedSurg": 23
+    },
+    "expected_metrics": {
+      "total_demand": 16,
+      "total_capacity": 41,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "f580b13e-798c-46f4-be0a-ac7acbcd0b6c",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 5 incoming Pediatrics patients. Currently, ICU has 6 open beds and Nursery has 18 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "ICU": 6,
+      "Nursery": 18
+    },
+    "expected_metrics": {
+      "total_demand": 5,
+      "total_capacity": 24,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "109040a9-2183-4765-b706-81ad1f45310d",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 10 incoming Trauma patients. Currently, StepDown has 23 open beds and Nursery has 22 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 23,
+      "Nursery": 22
+    },
+    "expected_metrics": {
+      "total_demand": 10,
+      "total_capacity": 45,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "043c93d2-f2f9-43be-950c-02cb18fa06cf",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 9 Oncology patients and 12 Pediatrics patients holding in the ED. Available beds: 22 in Telemetry, 26 in Nursery, and 14 in ICU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 9
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 22,
+      "Nursery": 26,
+      "ICU": 14
+    },
+    "expected_metrics": {
+      "total_demand": 21,
+      "total_capacity": 62,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d0670440-21d4-4e02-a17e-7dd2c29cafc5",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 24. We have 33 Oncology patients requiring admission. ICU is available with 14 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 24,
+      "ICU": 14
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 38,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "95955ab5-0ee9-457b-95c1-616d3e1ffb8f",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 32 incoming Orthopedics patients. Currently, StepDown has 9 open beds and PCU has 21 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 9,
+      "PCU": 21
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 30,
+      "expected_overflow": 2
+    }
+  },
+  {
+    "id": "008c6c2a-7905-4235-a0c7-2216216400c7",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "29 high-acuity Oncology patients need immediate placement. MedSurg (high acuity) has 23 beds. PCU (lower acuity) has 12 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 23,
+      "PCU": 12
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "aab1d128-23f0-4f30-b0e3-5fab3c3728a7",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "21 high-acuity Neurology patients need immediate placement. Telemetry (high acuity) has 2 beds. StepDown (lower acuity) has 30 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 21
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 2,
+      "StepDown": 30
+    },
+    "expected_metrics": {
+      "total_demand": 21,
+      "total_capacity": 32,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "c2ee5d00-d1a4-49ee-9b72-5be9d5f40329",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 27 Oncology patients and 23 General Surgery patients holding in the ED. Available beds: 11 in MedSurg, 25 in ICU, and 18 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 27
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 23
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 11,
+      "ICU": 25,
+      "Telemetry": 18
+    },
+    "expected_metrics": {
+      "total_demand": 50,
+      "total_capacity": 54,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "1ee81d11-12f9-4ddb-86ff-ab6092cbbcd4",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 11 Trauma patients and 12 Orthopedics patients holding in the ED. Available beds: 14 in MedSurg, 23 in Telemetry, and 16 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 11
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 14,
+      "Telemetry": 23,
+      "Nursery": 16
+    },
+    "expected_metrics": {
+      "total_demand": 23,
+      "total_capacity": 53,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "cd78746f-d645-4b53-9c44-68e7e887f258",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "22 high-acuity Orthopedics patients need immediate placement. StepDown (high acuity) has 20 beds. ICU (lower acuity) has 26 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 20,
+      "ICU": 26
+    },
+    "expected_metrics": {
+      "total_demand": 22,
+      "total_capacity": 46,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "495d5efe-1ad3-4229-8837-2f0c40cd0624",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "19 high-acuity Oncology patients need immediate placement. StepDown (high acuity) has 8 beds. MedSurg (lower acuity) has 24 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 19
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 8,
+      "MedSurg": 24
+    },
+    "expected_metrics": {
+      "total_demand": 19,
+      "total_capacity": 32,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "3cb64297-0b21-40cf-8f16-3cb62efb2b15",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 20. We have 33 Oncology patients requiring admission. ICU is available with 16 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "PCU": 20,
+      "ICU": 16
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 36,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "b1237cac-b8c0-4e92-a864-ef48feb4b1dd",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 17 incoming Orthopedics patients. Currently, PCU has 19 open beds and Telemetry has 16 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 17
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "Telemetry": 16
+    },
+    "expected_metrics": {
+      "total_demand": 17,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "c99d0393-fedd-4751-a27c-8b2d573db777",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 6. We have 34 Orthopedics patients requiring admission. PCU is available with 29 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 34
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 6,
+      "PCU": 29
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "0348d647-a4fc-47c3-945c-d63a6f53c7fe",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "StepDown is heavily favored by Pediatrics. We have 5 Pediatrics patients and 13 General Surgery patients. StepDown has 19 beds, ICU has 8 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 5
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 19,
+      "ICU": 8
+    },
+    "expected_metrics": {
+      "total_demand": 18,
+      "total_capacity": 27,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "4ef0c8cd-ccef-4c1a-9a57-71dc5bd1da0a",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 28 Oncology patients and 8 Pediatrics patients holding in the ED. Available beds: 23 in PCU, 12 in StepDown, and 20 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 28
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "PCU": 23,
+      "StepDown": 12,
+      "Telemetry": 20
+    },
+    "expected_metrics": {
+      "total_demand": 36,
+      "total_capacity": 55,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "8570ae20-ecaf-47b7-8064-8a824aa4bf78",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 9 incoming General Surgery patients. Currently, StepDown has 16 open beds and Nursery has 27 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 16,
+      "Nursery": 27
+    },
+    "expected_metrics": {
+      "total_demand": 9,
+      "total_capacity": 43,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "6220390d-58c5-40e4-9c4d-d88757ded786",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Cardiology. We have 36 Cardiology patients and 8 Neurology patients. ICU has 5 beds, PCU has 12 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 36
+      },
+      {
+        "Service": "Neurology",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "ICU": 5,
+      "PCU": 12
+    },
+    "expected_metrics": {
+      "total_demand": 44,
+      "total_capacity": 17,
+      "expected_overflow": 27
+    }
+  },
+  {
+    "id": "b19320ec-0a1d-4ac6-9227-3d65bcdf0aee",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by Trauma. We have 14 Trauma patients and 18 Orthopedics patients. PCU has 22 beds, Nursery has 8 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 14
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 18
+      }
+    ],
+    "base_capacity": {
+      "PCU": 22,
+      "Nursery": 8
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 30,
+      "expected_overflow": 2
+    }
+  },
+  {
+    "id": "1f56af31-c175-42a7-a739-65872cfe7033",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "33 high-acuity Trauma patients need immediate placement. ICU (high acuity) has 9 beds. StepDown (lower acuity) has 16 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "ICU": 9,
+      "StepDown": 16
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 25,
+      "expected_overflow": 8
+    }
+  },
+  {
+    "id": "de64fb98-24e2-4355-b3f0-59d05dd03f08",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 22 General Surgery patients and 11 Oncology patients holding in the ED. Available beds: 5 in StepDown, 19 in ICU, and 7 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 22
+      },
+      {
+        "Service": "Oncology",
+        "Count": 11
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 5,
+      "ICU": 19,
+      "Telemetry": 7
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 31,
+      "expected_overflow": 2
+    }
+  },
+  {
+    "id": "bc07e677-d680-445c-b25b-fd183d5bd4e8",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 6. We have 26 Oncology patients requiring admission. ICU is available with 30 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 26
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 6,
+      "ICU": 30
+    },
+    "expected_metrics": {
+      "total_demand": 26,
+      "total_capacity": 36,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "2de1009c-a9d0-4683-81c3-0b8ee9c2756f",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 19 incoming Pediatrics patients. Currently, MedSurg has 6 open beds and Nursery has 30 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 19
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 6,
+      "Nursery": 30
+    },
+    "expected_metrics": {
+      "total_demand": 19,
+      "total_capacity": 36,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "5cfe739a-9807-4890-a43e-c5464a76ebe4",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 16 Pediatrics patients and 8 Neurology patients holding in the ED. Available beds: 23 in MedSurg, 5 in Nursery, and 9 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 16
+      },
+      {
+        "Service": "Neurology",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 23,
+      "Nursery": 5,
+      "StepDown": 9
+    },
+    "expected_metrics": {
+      "total_demand": 24,
+      "total_capacity": 37,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "818e2861-0eba-412a-833e-2f90b5dd12a2",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 16 incoming Orthopedics patients. Currently, Nursery has 3 open beds and StepDown has 9 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 16
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 3,
+      "StepDown": 9
+    },
+    "expected_metrics": {
+      "total_demand": 16,
+      "total_capacity": 12,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "e8e87f4c-3907-40ca-9c05-d9cae5d48a02",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "28 high-acuity Cardiology patients need immediate placement. ICU (high acuity) has 20 beds. Telemetry (lower acuity) has 8 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 28
+      }
+    ],
+    "base_capacity": {
+      "ICU": 20,
+      "Telemetry": 8
+    },
+    "expected_metrics": {
+      "total_demand": 28,
+      "total_capacity": 28,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e9710f68-69e9-46bb-8006-d1d3e4c7d270",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "34 high-acuity Neurology patients need immediate placement. ICU (high acuity) has 2 beds. Nursery (lower acuity) has 6 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 34
+      }
+    ],
+    "base_capacity": {
+      "ICU": 2,
+      "Nursery": 6
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 8,
+      "expected_overflow": 26
+    }
+  },
+  {
+    "id": "72ae28bf-7a48-4a1b-b17a-cf910cf17b88",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Trauma. We have 9 Trauma patients and 7 Oncology patients. ICU has 12 beds, Telemetry has 24 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 9
+      },
+      {
+        "Service": "Oncology",
+        "Count": 7
+      }
+    ],
+    "base_capacity": {
+      "ICU": 12,
+      "Telemetry": 24
+    },
+    "expected_metrics": {
+      "total_demand": 16,
+      "total_capacity": 36,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "197543e0-ae58-4292-b8d9-8e9859805d51",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 29 incoming Neurology patients. Currently, Nursery has 18 open beds and PCU has 14 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 18,
+      "PCU": 14
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 32,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "11f27cc1-67de-4a41-bc0b-ea96e1a09595",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "32 high-acuity General Surgery patients need immediate placement. ICU (high acuity) has 9 beds. PCU (lower acuity) has 18 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "ICU": 9,
+      "PCU": 18
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 27,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "64a30b88-2397-4ac4-8352-65a9a8526079",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by Trauma. We have 32 Trauma patients and 15 Pediatrics patients. PCU has 23 beds, ICU has 13 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 32
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 15
+      }
+    ],
+    "base_capacity": {
+      "PCU": 23,
+      "ICU": 13
+    },
+    "expected_metrics": {
+      "total_demand": 47,
+      "total_capacity": 36,
+      "expected_overflow": 11
+    }
+  },
+  {
+    "id": "8f203d6d-d53d-4395-ada8-09d91fc240dc",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced ICU capacity to 5. We have 10 Oncology patients requiring admission. PCU is available with 28 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "ICU": 5,
+      "PCU": 28
+    },
+    "expected_metrics": {
+      "total_demand": 10,
+      "total_capacity": 33,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "9828385a-9821-4cde-bbcb-efaaa6343726",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 13. We have 12 General Surgery patients requiring admission. PCU is available with 26 beds.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 13,
+      "PCU": 26
+    },
+    "expected_metrics": {
+      "total_demand": 12,
+      "total_capacity": 39,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "60c09595-a300-4463-ac2b-b38aa691815e",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 37 incoming Orthopedics patients. Currently, StepDown has 6 open beds and PCU has 26 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 37
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 6,
+      "PCU": 26
+    },
+    "expected_metrics": {
+      "total_demand": 37,
+      "total_capacity": 32,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "0338e1d5-95b7-45ee-aafe-cddb0ddf348a",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced StepDown capacity to 10. We have 12 Pediatrics patients requiring admission. Nursery is available with 23 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 10,
+      "Nursery": 23
+    },
+    "expected_metrics": {
+      "total_demand": 12,
+      "total_capacity": 33,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "73f989ec-187b-47eb-b630-c2ad27b8afe5",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Nursery is heavily favored by Pediatrics. We have 22 Pediatrics patients and 5 General Surgery patients. Nursery has 7 beds, PCU has 13 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 22
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 5
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 7,
+      "PCU": 13
+    },
+    "expected_metrics": {
+      "total_demand": 27,
+      "total_capacity": 20,
+      "expected_overflow": 7
+    }
+  },
+  {
+    "id": "4347f847-cb4d-4771-b035-4a52895c989c",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 9 Orthopedics patients and 9 Cardiology patients holding in the ED. Available beds: 25 in MedSurg, 25 in PCU, and 5 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 9
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 25,
+      "PCU": 25,
+      "Telemetry": 5
+    },
+    "expected_metrics": {
+      "total_demand": 18,
+      "total_capacity": 55,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "3b594f76-ce8d-4fcf-bc5c-ee2e91b18419",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 34 incoming Oncology patients. Currently, MedSurg has 7 open beds and Telemetry has 16 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 34
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 7,
+      "Telemetry": 16
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 23,
+      "expected_overflow": 11
+    }
+  },
+  {
+    "id": "b29d744b-1014-4bcc-a8be-0ebda2970555",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 14 Pediatrics patients and 10 General Surgery patients holding in the ED. Available beds: 21 in Nursery, 6 in ICU, and 7 in PCU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 14
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 21,
+      "ICU": 6,
+      "PCU": 7
+    },
+    "expected_metrics": {
+      "total_demand": 24,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "128d7f31-e267-4729-ab5b-5a562a0bbed9",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 31 Trauma patients and 13 Oncology patients holding in the ED. Available beds: 8 in Telemetry, 29 in PCU, and 8 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 31
+      },
+      {
+        "Service": "Oncology",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 8,
+      "PCU": 29,
+      "Nursery": 8
+    },
+    "expected_metrics": {
+      "total_demand": 44,
+      "total_capacity": 45,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "4ea1af10-f0e0-41df-8806-bc08e06a57aa",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 38 Trauma patients and 26 Cardiology patients holding in the ED. Available beds: 11 in StepDown, 6 in Nursery, and 12 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 38
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 26
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 11,
+      "Nursery": 6,
+      "Telemetry": 12
+    },
+    "expected_metrics": {
+      "total_demand": 64,
+      "total_capacity": 29,
+      "expected_overflow": 35
+    }
+  },
+  {
+    "id": "4650e695-b44e-4601-a880-2e3a0950d6bd",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by General Surgery. We have 18 General Surgery patients and 29 Cardiology patients. ICU has 6 beds, MedSurg has 29 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 18
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "ICU": 6,
+      "MedSurg": 29
+    },
+    "expected_metrics": {
+      "total_demand": 47,
+      "total_capacity": 35,
+      "expected_overflow": 12
+    }
+  },
+  {
+    "id": "5c6fd617-b72a-4b6b-af22-5c35bd3dc9f0",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 16 Orthopedics patients and 9 Cardiology patients holding in the ED. Available beds: 14 in ICU, 22 in Telemetry, and 12 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 16
+      },
+      {
+        "Service": "Cardiology",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "ICU": 14,
+      "Telemetry": 22,
+      "Nursery": 12
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 48,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "ad8e9ed7-86b7-4d9d-9635-96aaedae6c01",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "7 high-acuity General Surgery patients need immediate placement. StepDown (high acuity) has 2 beds. ICU (lower acuity) has 19 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 7
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 2,
+      "ICU": 19
+    },
+    "expected_metrics": {
+      "total_demand": 7,
+      "total_capacity": 21,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e8bbc6f7-fdd4-4b64-8a04-f0e0f062cccd",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 23 General Surgery patients and 8 Trauma patients holding in the ED. Available beds: 14 in Nursery, 5 in Telemetry, and 15 in PCU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 23
+      },
+      {
+        "Service": "Trauma",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 14,
+      "Telemetry": 5,
+      "PCU": 15
+    },
+    "expected_metrics": {
+      "total_demand": 31,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "799f1a4a-ea9a-41c3-837a-42160d58fc89",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 9. We have 32 Pediatrics patients requiring admission. StepDown is available with 18 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 9,
+      "StepDown": 18
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 27,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "d9c21cda-6036-45cf-a2da-f3830b4f61cd",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "26 high-acuity Cardiology patients need immediate placement. StepDown (high acuity) has 7 beds. PCU (lower acuity) has 7 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 26
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 7,
+      "PCU": 7
+    },
+    "expected_metrics": {
+      "total_demand": 26,
+      "total_capacity": 14,
+      "expected_overflow": 12
+    }
+  },
+  {
+    "id": "209c7976-8639-4772-baa1-7e1e5bcc8025",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "20 high-acuity General Surgery patients need immediate placement. StepDown (high acuity) has 6 beds. PCU (lower acuity) has 13 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 20
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 6,
+      "PCU": 13
+    },
+    "expected_metrics": {
+      "total_demand": 20,
+      "total_capacity": 19,
+      "expected_overflow": 1
+    }
+  },
+  {
+    "id": "4ab52400-e5be-46b1-ba09-549f70dfceb2",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 20. We have 36 General Surgery patients requiring admission. ICU is available with 29 beds.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 36
+      }
+    ],
+    "base_capacity": {
+      "PCU": 20,
+      "ICU": 29
+    },
+    "expected_metrics": {
+      "total_demand": 36,
+      "total_capacity": 49,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "0544608c-82ff-4d7d-9023-cba2aac40a2c",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "14 high-acuity Oncology patients need immediate placement. Nursery (high acuity) has 4 beds. StepDown (lower acuity) has 20 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 14
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 4,
+      "StepDown": 20
+    },
+    "expected_metrics": {
+      "total_demand": 14,
+      "total_capacity": 24,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "68c3585c-3a4f-4061-8080-5dff541172c2",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 37 Pediatrics patients and 7 Orthopedics patients holding in the ED. Available beds: 11 in Nursery, 19 in ICU, and 19 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 37
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 7
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 11,
+      "ICU": 19,
+      "StepDown": 19
+    },
+    "expected_metrics": {
+      "total_demand": 44,
+      "total_capacity": 49,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "d4a03bc1-394b-43a2-a34e-6750af31bc5b",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 37 incoming Cardiology patients. Currently, StepDown has 16 open beds and ICU has 23 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 37
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 16,
+      "ICU": 23
+    },
+    "expected_metrics": {
+      "total_demand": 37,
+      "total_capacity": 39,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "613fef8a-c171-4dfb-9016-ed241572f05c",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by Pediatrics. We have 35 Pediatrics patients and 21 General Surgery patients. PCU has 6 beds, MedSurg has 6 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 35
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 21
+      }
+    ],
+    "base_capacity": {
+      "PCU": 6,
+      "MedSurg": 6
+    },
+    "expected_metrics": {
+      "total_demand": 56,
+      "total_capacity": 12,
+      "expected_overflow": 44
+    }
+  },
+  {
+    "id": "58440c4d-11c1-4350-9760-6197dc9c3488",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 7 incoming Pediatrics patients. Currently, PCU has 24 open beds and ICU has 19 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 7
+      }
+    ],
+    "base_capacity": {
+      "PCU": 24,
+      "ICU": 19
+    },
+    "expected_metrics": {
+      "total_demand": 7,
+      "total_capacity": 43,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "39acdd90-c935-41fd-aaf4-64a00908ddea",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "23 high-acuity General Surgery patients need immediate placement. MedSurg (high acuity) has 15 beds. StepDown (lower acuity) has 29 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 23
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 15,
+      "StepDown": 29
+    },
+    "expected_metrics": {
+      "total_demand": 23,
+      "total_capacity": 44,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "f03d4a40-1ca3-4e52-921f-bf81619e7656",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "26 high-acuity Cardiology patients need immediate placement. PCU (high acuity) has 19 beds. StepDown (lower acuity) has 26 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 26
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "StepDown": 26
+    },
+    "expected_metrics": {
+      "total_demand": 26,
+      "total_capacity": 45,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "cce46ece-9817-42b9-b2fd-8fd07405343f",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 26 Orthopedics patients and 7 Oncology patients holding in the ED. Available beds: 20 in PCU, 26 in Nursery, and 9 in MedSurg. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 26
+      },
+      {
+        "Service": "Oncology",
+        "Count": 7
+      }
+    ],
+    "base_capacity": {
+      "PCU": 20,
+      "Nursery": 26,
+      "MedSurg": 9
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 55,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "52763312-0b00-4d67-900f-fafdb097b54c",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 10 Orthopedics patients and 14 Oncology patients holding in the ED. Available beds: 19 in PCU, 17 in Telemetry, and 15 in MedSurg. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 10
+      },
+      {
+        "Service": "Oncology",
+        "Count": 14
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "Telemetry": 17,
+      "MedSurg": 15
+    },
+    "expected_metrics": {
+      "total_demand": 24,
+      "total_capacity": 51,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "594ea7f4-eaa1-4e70-8f14-d73cde9b200f",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 13. We have 32 Oncology patients requiring admission. Nursery is available with 5 beds.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "PCU": 13,
+      "Nursery": 5
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 18,
+      "expected_overflow": 14
+    }
+  },
+  {
+    "id": "ddcef9b7-e0ba-4ded-9b54-af3f595f45a3",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 19 Neurology patients and 9 Pediatrics patients holding in the ED. Available beds: 6 in StepDown, 7 in Telemetry, and 14 in MedSurg. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 19
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 6,
+      "Telemetry": 7,
+      "MedSurg": 14
+    },
+    "expected_metrics": {
+      "total_demand": 28,
+      "total_capacity": 27,
+      "expected_overflow": 1
+    }
+  },
+  {
+    "id": "b20f081f-f17d-4e44-a22b-3bd527127b28",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 26 incoming General Surgery patients. Currently, PCU has 21 open beds and Nursery has 9 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 26
+      }
+    ],
+    "base_capacity": {
+      "PCU": 21,
+      "Nursery": 9
+    },
+    "expected_metrics": {
+      "total_demand": 26,
+      "total_capacity": 30,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "c65ebbda-3d89-4fec-b012-d02d12de6324",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 15. We have 33 Neurology patients requiring admission. Nursery is available with 16 beds.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "PCU": 15,
+      "Nursery": 16
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 31,
+      "expected_overflow": 2
+    }
+  },
+  {
+    "id": "baa4633f-7a02-4209-acbb-fce29dce73a2",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "PCU is heavily favored by General Surgery. We have 39 General Surgery patients and 12 Orthopedics patients. PCU has 11 beds, Telemetry has 30 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 39
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "PCU": 11,
+      "Telemetry": 30
+    },
+    "expected_metrics": {
+      "total_demand": 51,
+      "total_capacity": 41,
+      "expected_overflow": 10
+    }
+  },
+  {
+    "id": "64e80690-7e20-4252-8fc8-49daeb651bf4",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 14. We have 23 Orthopedics patients requiring admission. Telemetry is available with 21 beds.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 23
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 14,
+      "Telemetry": 21
+    },
+    "expected_metrics": {
+      "total_demand": 23,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "090431b0-943e-41cd-86d3-c108c26c668b",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Nursery capacity to 17. We have 8 Pediatrics patients requiring admission. MedSurg is available with 16 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 17,
+      "MedSurg": 16
+    },
+    "expected_metrics": {
+      "total_demand": 8,
+      "total_capacity": 33,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "ba7d6ca6-65fa-4583-9b35-63fc5125e8f1",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "22 high-acuity Pediatrics patients need immediate placement. StepDown (high acuity) has 18 beds. ICU (lower acuity) has 9 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 22
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 18,
+      "ICU": 9
+    },
+    "expected_metrics": {
+      "total_demand": 22,
+      "total_capacity": 27,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "c93be161-8869-47d4-ba7f-4cae4428f240",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 8 incoming Neurology patients. Currently, StepDown has 18 open beds and ICU has 16 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 8
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 18,
+      "ICU": 16
+    },
+    "expected_metrics": {
+      "total_demand": 8,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "19f25e1a-7fb0-4ce5-b763-ea8dacec036c",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "MedSurg is heavily favored by Cardiology. We have 11 Cardiology patients and 27 Orthopedics patients. MedSurg has 22 beds, ICU has 15 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 11
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 27
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 22,
+      "ICU": 15
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 37,
+      "expected_overflow": 1
+    }
+  },
+  {
+    "id": "d8d2acbd-c045-468b-903d-d90b7d945600",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 2. We have 33 Cardiology patients requiring admission. MedSurg is available with 7 beds.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 33
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 2,
+      "MedSurg": 7
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 9,
+      "expected_overflow": 24
+    }
+  },
+  {
+    "id": "bcf677fc-da82-4bb3-a456-e9fb6a703c31",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 12 Neurology patients and 29 Pediatrics patients holding in the ED. Available beds: 11 in Nursery, 12 in PCU, and 14 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 12
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 11,
+      "PCU": 12,
+      "Telemetry": 14
+    },
+    "expected_metrics": {
+      "total_demand": 41,
+      "total_capacity": 37,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "04867142-0a30-464b-84af-12ffab7207d3",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 9 incoming Cardiology patients. Currently, Telemetry has 17 open beds and Nursery has 24 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 17,
+      "Nursery": 24
+    },
+    "expected_metrics": {
+      "total_demand": 9,
+      "total_capacity": 41,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "57882842-6ef4-4820-90bb-682265b9b1ba",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "32 high-acuity General Surgery patients need immediate placement. PCU (high acuity) has 21 beds. MedSurg (lower acuity) has 16 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 32
+      }
+    ],
+    "base_capacity": {
+      "PCU": 21,
+      "MedSurg": 16
+    },
+    "expected_metrics": {
+      "total_demand": 32,
+      "total_capacity": 37,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "8094b795-3937-4aea-9dd8-01c3ad1f1ae0",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "9 high-acuity Trauma patients need immediate placement. PCU (high acuity) has 19 beds. ICU (lower acuity) has 21 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "ICU": 21
+    },
+    "expected_metrics": {
+      "total_demand": 9,
+      "total_capacity": 40,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "514f2225-a2c6-4e34-9a5a-ae10d36c4768",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Pediatrics. We have 21 Pediatrics patients and 28 Trauma patients. ICU has 2 beds, Telemetry has 16 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 21
+      },
+      {
+        "Service": "Trauma",
+        "Count": 28
+      }
+    ],
+    "base_capacity": {
+      "ICU": 2,
+      "Telemetry": 16
+    },
+    "expected_metrics": {
+      "total_demand": 49,
+      "total_capacity": 18,
+      "expected_overflow": 31
+    }
+  },
+  {
+    "id": "6988b59a-dcb2-4829-9bc6-5f5220ced6de",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 13 Neurology patients and 6 Oncology patients holding in the ED. Available beds: 13 in PCU, 22 in ICU, and 15 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 13
+      },
+      {
+        "Service": "Oncology",
+        "Count": 6
+      }
+    ],
+    "base_capacity": {
+      "PCU": 13,
+      "ICU": 22,
+      "StepDown": 15
+    },
+    "expected_metrics": {
+      "total_demand": 19,
+      "total_capacity": 50,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "1898cd49-b207-416f-8332-98640a3ca0ac",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced Telemetry capacity to 24. We have 13 Pediatrics patients requiring admission. PCU is available with 29 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 24,
+      "PCU": 29
+    },
+    "expected_metrics": {
+      "total_demand": 13,
+      "total_capacity": 53,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "3f9f7dc7-fa30-4516-818f-7eebc9b51329",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 25 incoming Orthopedics patients. Currently, ICU has 18 open beds and MedSurg has 17 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "ICU": 18,
+      "MedSurg": 17
+    },
+    "expected_metrics": {
+      "total_demand": 25,
+      "total_capacity": 35,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "7511b1dd-65b4-492b-8da9-eea09554a630",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 8 Cardiology patients and 25 Oncology patients holding in the ED. Available beds: 12 in MedSurg, 13 in StepDown, and 8 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 8
+      },
+      {
+        "Service": "Oncology",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 12,
+      "StepDown": 13,
+      "Nursery": 8
+    },
+    "expected_metrics": {
+      "total_demand": 33,
+      "total_capacity": 33,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "b8c5ca94-6ef8-477e-b2e1-904a3e99169f",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 26 Trauma patients and 10 Pediatrics patients holding in the ED. Available beds: 17 in PCU, 27 in Telemetry, and 20 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 26
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 10
+      }
+    ],
+    "base_capacity": {
+      "PCU": 17,
+      "Telemetry": 27,
+      "Nursery": 20
+    },
+    "expected_metrics": {
+      "total_demand": 36,
+      "total_capacity": 64,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "e1f8a99d-204f-44e0-902e-1a4cf340dae7",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 10 Pediatrics patients and 18 General Surgery patients holding in the ED. Available beds: 21 in StepDown, 10 in ICU, and 14 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 10
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 18
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 21,
+      "ICU": 10,
+      "Telemetry": 14
+    },
+    "expected_metrics": {
+      "total_demand": 28,
+      "total_capacity": 45,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "009a8dee-31f6-4673-8a2c-952a2c2544e3",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 33 Cardiology patients and 24 Pediatrics patients holding in the ED. Available beds: 24 in StepDown, 18 in PCU, and 10 in Nursery. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 33
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 24
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 24,
+      "PCU": 18,
+      "Nursery": 10
+    },
+    "expected_metrics": {
+      "total_demand": 57,
+      "total_capacity": 52,
+      "expected_overflow": 5
+    }
+  },
+  {
+    "id": "4777d6a3-6863-4638-87e0-dcbfddfb4cde",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Orthopedics. We have 22 Orthopedics patients and 25 Trauma patients. ICU has 3 beds, StepDown has 7 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 22
+      },
+      {
+        "Service": "Trauma",
+        "Count": 25
+      }
+    ],
+    "base_capacity": {
+      "ICU": 3,
+      "StepDown": 7
+    },
+    "expected_metrics": {
+      "total_demand": 47,
+      "total_capacity": 10,
+      "expected_overflow": 37
+    }
+  },
+  {
+    "id": "c4a4849b-1555-4098-914b-6857e5af547b",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 14 General Surgery patients and 24 Oncology patients holding in the ED. Available beds: 23 in PCU, 30 in MedSurg, and 19 in ICU. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 14
+      },
+      {
+        "Service": "Oncology",
+        "Count": 24
+      }
+    ],
+    "base_capacity": {
+      "PCU": 23,
+      "MedSurg": 30,
+      "ICU": 19
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 72,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "1b853f06-bd5c-4c37-99d0-e1b758a7174a",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 29 incoming Neurology patients. Currently, MedSurg has 3 open beds and StepDown has 24 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 29
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 3,
+      "StepDown": 24
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 27,
+      "expected_overflow": 2
+    }
+  },
+  {
+    "id": "f088b1e8-2b61-43da-a1be-c1bc092fdb7d",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Telemetry is heavily favored by Orthopedics. We have 38 Orthopedics patients and 16 Pediatrics patients. Telemetry has 14 beds, ICU has 15 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 38
+      },
+      {
+        "Service": "Pediatrics",
+        "Count": 16
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 14,
+      "ICU": 15
+    },
+    "expected_metrics": {
+      "total_demand": 54,
+      "total_capacity": 29,
+      "expected_overflow": 25
+    }
+  },
+  {
+    "id": "6b980538-0e2f-4b5b-ab86-5f0505a08c66",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced PCU capacity to 19. We have 38 Cardiology patients requiring admission. MedSurg is available with 8 beds.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 38
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "MedSurg": 8
+    },
+    "expected_metrics": {
+      "total_demand": 38,
+      "total_capacity": 27,
+      "expected_overflow": 11
+    }
+  },
+  {
+    "id": "34d45a0f-fc8a-435a-ab65-826445193830",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 36 Oncology patients and 11 Trauma patients holding in the ED. Available beds: 5 in MedSurg, 9 in Nursery, and 7 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 36
+      },
+      {
+        "Service": "Trauma",
+        "Count": 11
+      }
+    ],
+    "base_capacity": {
+      "MedSurg": 5,
+      "Nursery": 9,
+      "StepDown": 7
+    },
+    "expected_metrics": {
+      "total_demand": 47,
+      "total_capacity": 21,
+      "expected_overflow": 26
+    }
+  },
+  {
+    "id": "bb9c3148-382c-473b-ae4f-2fcdef61db06",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Telemetry is heavily favored by Neurology. We have 27 Neurology patients and 27 Oncology patients. Telemetry has 4 beds, ICU has 22 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 27
+      },
+      {
+        "Service": "Oncology",
+        "Count": 27
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 4,
+      "ICU": 22
+    },
+    "expected_metrics": {
+      "total_demand": 54,
+      "total_capacity": 26,
+      "expected_overflow": 28
+    }
+  },
+  {
+    "id": "0f0d2100-6883-45da-86c6-f463fb1980e3",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 37 Pediatrics patients and 12 Neurology patients holding in the ED. Available beds: 5 in PCU, 11 in MedSurg, and 9 in StepDown. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 37
+      },
+      {
+        "Service": "Neurology",
+        "Count": 12
+      }
+    ],
+    "base_capacity": {
+      "PCU": 5,
+      "MedSurg": 11,
+      "StepDown": 9
+    },
+    "expected_metrics": {
+      "total_demand": 49,
+      "total_capacity": 25,
+      "expected_overflow": 24
+    }
+  },
+  {
+    "id": "87e3400f-6e62-4c2b-9cee-442c5e117533",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced ICU capacity to 19. We have 34 Pediatrics patients requiring admission. StepDown is available with 9 beds.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 34
+      }
+    ],
+    "base_capacity": {
+      "ICU": 19,
+      "StepDown": 9
+    },
+    "expected_metrics": {
+      "total_demand": 34,
+      "total_capacity": 28,
+      "expected_overflow": 6
+    }
+  },
+  {
+    "id": "056af20c-cc51-4333-9676-d6d2f058fa98",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 31 incoming Orthopedics patients. Currently, PCU has 4 open beds and Telemetry has 9 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Orthopedics",
+        "Count": 31
+      }
+    ],
+    "base_capacity": {
+      "PCU": 4,
+      "Telemetry": 9
+    },
+    "expected_metrics": {
+      "total_demand": 31,
+      "total_capacity": 13,
+      "expected_overflow": 18
+    }
+  },
+  {
+    "id": "0edb929c-b4cf-4335-b000-1eb0aeda7ab6",
+    "theme": "Predictive Availability (Capacity Surge)",
+    "complexity": "Medium",
+    "prompt": "We have 13 incoming Trauma patients. Currently, PCU has 19 open beds and Nursery has 25 open beds. Where should they go to minimize overflow?",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "PCU": 19,
+      "Nursery": 25
+    },
+    "expected_metrics": {
+      "total_demand": 13,
+      "total_capacity": 44,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "9dfeff21-4d80-487a-a46f-71f52aa86144",
+    "theme": "Bottleneck Analysis (Resource Constriction)",
+    "complexity": "Medium",
+    "prompt": "A staffing shortage has reduced ICU capacity to 7. We have 24 Trauma patients requiring admission. PCU is available with 15 beds.",
+    "demand_data": [
+      {
+        "Service": "Trauma",
+        "Count": 24
+      }
+    ],
+    "base_capacity": {
+      "ICU": 7,
+      "PCU": 15
+    },
+    "expected_metrics": {
+      "total_demand": 24,
+      "total_capacity": 22,
+      "expected_overflow": 2
+    }
+  },
+  {
+    "id": "3780c40d-639a-413a-8462-ae502b616be9",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 40 General Surgery patients and 13 Orthopedics patients holding in the ED. Available beds: 6 in ICU, 25 in StepDown, and 14 in MedSurg. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 40
+      },
+      {
+        "Service": "Orthopedics",
+        "Count": 13
+      }
+    ],
+    "base_capacity": {
+      "ICU": 6,
+      "StepDown": 25,
+      "MedSurg": 14
+    },
+    "expected_metrics": {
+      "total_demand": 53,
+      "total_capacity": 45,
+      "expected_overflow": 8
+    }
+  },
+  {
+    "id": "a42c0ec2-f7af-46e7-90ab-ea11a9d48468",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "15 high-acuity General Surgery patients need immediate placement. Nursery (high acuity) has 21 beds. MedSurg (lower acuity) has 28 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "General Surgery",
+        "Count": 15
+      }
+    ],
+    "base_capacity": {
+      "Nursery": 21,
+      "MedSurg": 28
+    },
+    "expected_metrics": {
+      "total_demand": 15,
+      "total_capacity": 49,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "93ec77be-8005-4614-bc59-6b5191af075e",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "18 high-acuity Cardiology patients need immediate placement. ICU (high acuity) has 20 beds. PCU (lower acuity) has 18 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 18
+      }
+    ],
+    "base_capacity": {
+      "ICU": 20,
+      "PCU": 18
+    },
+    "expected_metrics": {
+      "total_demand": 18,
+      "total_capacity": 38,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "343265b5-1403-4613-a2be-e710fec6d18b",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "StepDown is heavily favored by Oncology. We have 20 Oncology patients and 30 General Surgery patients. StepDown has 23 beds, PCU has 17 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Oncology",
+        "Count": 20
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 30
+      }
+    ],
+    "base_capacity": {
+      "StepDown": 23,
+      "PCU": 17
+    },
+    "expected_metrics": {
+      "total_demand": 50,
+      "total_capacity": 40,
+      "expected_overflow": 10
+    }
+  },
+  {
+    "id": "28600976-ea15-45a4-9836-b9691d0898d4",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "ICU is heavily favored by Cardiology. We have 31 Cardiology patients and 20 Oncology patients. ICU has 16 beds, MedSurg has 11 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Cardiology",
+        "Count": 31
+      },
+      {
+        "Service": "Oncology",
+        "Count": 20
+      }
+    ],
+    "base_capacity": {
+      "ICU": 16,
+      "MedSurg": 11
+    },
+    "expected_metrics": {
+      "total_demand": 51,
+      "total_capacity": 27,
+      "expected_overflow": 24
+    }
+  },
+  {
+    "id": "21fe2f20-3423-48a6-8bdb-306640dd0eee",
+    "theme": "Clinical Risk (Acuity Stepping)",
+    "complexity": "Medium",
+    "prompt": "30 high-acuity Neurology patients need immediate placement. PCU (high acuity) has 13 beds. StepDown (lower acuity) has 21 beds. Recommend a routing policy.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 30
+      }
+    ],
+    "base_capacity": {
+      "PCU": 13,
+      "StepDown": 21
+    },
+    "expected_metrics": {
+      "total_demand": 30,
+      "total_capacity": 34,
+      "expected_overflow": 0
+    }
+  },
+  {
+    "id": "08e2ed44-46c5-4178-aec1-16a50d8ac8f9",
+    "theme": "Day-of-Week Volatility (Weekend Surge)",
+    "complexity": "High",
+    "prompt": "It is Sunday night. Discharges are frozen. We have 20 Neurology patients and 9 Trauma patients holding in the ED. Available beds: 5 in ICU, 6 in StepDown, and 14 in Telemetry. Route them efficiently.",
+    "demand_data": [
+      {
+        "Service": "Neurology",
+        "Count": 20
+      },
+      {
+        "Service": "Trauma",
+        "Count": 9
+      }
+    ],
+    "base_capacity": {
+      "ICU": 5,
+      "StepDown": 6,
+      "Telemetry": 14
+    },
+    "expected_metrics": {
+      "total_demand": 29,
+      "total_capacity": 25,
+      "expected_overflow": 4
+    }
+  },
+  {
+    "id": "9eece827-ce30-4b46-8a64-8f172b400af9",
+    "theme": "Service Dominance (Priority Affinities)",
+    "complexity": "High",
+    "prompt": "Telemetry is heavily favored by Pediatrics. We have 25 Pediatrics patients and 23 General Surgery patients. Telemetry has 25 beds, MedSurg has 15 beds. Allocate to minimize overflow.",
+    "demand_data": [
+      {
+        "Service": "Pediatrics",
+        "Count": 25
+      },
+      {
+        "Service": "General Surgery",
+        "Count": 23
+      }
+    ],
+    "base_capacity": {
+      "Telemetry": 25,
+      "MedSurg": 15
+    },
+    "expected_metrics": {
+      "total_demand": 48,
+      "total_capacity": 40,
+      "expected_overflow": 8
+    }
+  }
+]

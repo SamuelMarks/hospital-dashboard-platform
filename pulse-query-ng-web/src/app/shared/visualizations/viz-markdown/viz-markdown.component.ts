@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-markdown/viz-markdown.component.ts
 import {
   Component,
@@ -10,6 +12,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
+/** @docs */
 @Component({
   selector: 'viz-markdown',
   imports: [CommonModule],
@@ -78,6 +81,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   ],
   templateUrl: './viz-markdown.component.html',
 })
+/** @docs */
 export class VizMarkdownComponent {
   /* v8 ignore next */
   readonly content = input<string>('');

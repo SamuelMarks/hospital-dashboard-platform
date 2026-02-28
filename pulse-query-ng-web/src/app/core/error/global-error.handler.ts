@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Global Error Handler Strategy & Bus.
  * Replaces Angular's default ErrorHandler to intercept unhandled exceptions
@@ -21,6 +23,7 @@ import { BehaviorSubject } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class GlobalErrorHandler implements ErrorHandler {
   /** injector property. */
   private readonly injector = inject(Injector);

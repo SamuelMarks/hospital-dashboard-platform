@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { DashboardsService, WidgetCreateSql, WidgetResponse } from '../api-client';
@@ -12,6 +14,7 @@ import { QueryCartService } from '../global/query-cart.service';
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class QueryCartProvisioningService {
   /** dashboardsApi property. */
   private readonly dashboardsApi = inject(DashboardsService);

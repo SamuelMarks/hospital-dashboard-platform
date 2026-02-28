@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -25,8 +27,10 @@ export interface WidgetCreateHttp {
   config: HttpConfig;
 }
 export namespace WidgetCreateHttp {
+  /** @docs */
   export const TypeEnum = {
     Http: 'HTTP',
   } as const;
+  /** @docs */
   export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum];
 }

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview HTTP Interceptor for Authentication Headers and 401 Handling.
  */

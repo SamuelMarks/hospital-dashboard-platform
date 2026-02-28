@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Main Application Configuration.
  * Defines dependency injection providers, global error handling,

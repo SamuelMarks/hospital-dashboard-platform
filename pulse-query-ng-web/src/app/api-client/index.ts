@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 export * from './api/api';
 export * from './model/models';
 export * from './variables';

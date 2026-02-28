@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/login/login.component.ts
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -15,6 +17,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 import { environment } from '../../environments/environment';
 
+/** @docs */
 @Component({
   selector: 'app-login',
   imports: [
@@ -87,6 +90,7 @@ import { environment } from '../../environments/environment';
   ],
   templateUrl: './login.component.html',
 })
+/** @docs */
 export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);

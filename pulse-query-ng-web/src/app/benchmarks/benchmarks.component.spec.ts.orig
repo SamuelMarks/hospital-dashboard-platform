@@ -1,0 +1,78 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { BenchmarksComponent } from './benchmarks.component';
+import { BenchmarksService } from './benchmarks.service';
+import { of, throwError } from 'rxjs';
+import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { Component, input } from '@angular/core';
+import { Router } from '@angular/router';
+
+@Component({ selector: 'app-sql-snippet', template: '', standalone: true })
+class MockSqlSnippetComponent {
+  readonly sql = input<string>('');
+}
+
+describe('BenchmarksComponent', () => {
+  let component: BenchmarksComponent;
+  let fixture: ComponentFixture<BenchmarksComponent>;
+  let mockService: any;
+  let mockRouter: any;
+
+  beforeEach(async () => {
+    mockService = {
+      getSqlBenchmarks: vi.fn().mockReturnValue(of([
+        { _meta: "ignored" },
+        { theme: "T1", question: "Q1", complexity: "Low", gold_sql: "S1" }
+      ])),
+      getMpaxBenchmarks: vi.fn().mockReturnValue(of([
+        { id: "1", theme: "T1", prompt: "P1", expected_metrics: { total_demand: 10, total_capacity: 5, expected_overflow: 5 } }
+      ]))
+    };
+    mockRouter = { navigate: vi.fn() };
+
+    TestBed.overrideComponent(BenchmarksComponent, {
+      remove: { imports: [MockSqlSnippetComponent] },
+      add: { imports: [MockSqlSnippetComponent] }
+    });
+
+    await TestBed.configureTestingModule({
+      imports: [BenchmarksComponent, NoopAnimationsModule],
+      providers: [
+        { provide: BenchmarksService, useValue: mockService },
+        { provide: Router, useValue: mockRouter }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(BenchmarksComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should initialize and load benchmarks', () => {
+    fixture.detectChanges();
+    
+    expect(component.loading()).toBe(false);
+    expect(component.error()).toBeNull();
+    expect(component.sqlCount()).toBe(1); // filtered metadata
+    expect(component.mpaxCount()).toBe(1);
+    expect(component.sqlBenchmarks().length).toBe(2);
+  });
+
+  it('should handle error during load', () => {
+    mockService.getSqlBenchmarks.mockReturnValue(throwError(() => new Error('Network error')));
+    fixture.detectChanges();
+
+    expect(component.loading()).toBe(false);
+    expect(component.error()).toBe('Network error');
+  });
+
+  it('should navigate on mpax click', () => {
+    fixture.detectChanges();
+    const item = { prompt: "Test prompt" };
+    component.simulateMpax(item);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/mpax-arena'], { queryParams: { prompt: "Test prompt" } });
+  });
+});

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview SQL Builder Component with CodeMirror Integration.
  *

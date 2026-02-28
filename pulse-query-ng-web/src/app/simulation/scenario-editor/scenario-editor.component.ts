@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, inject, computed, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';

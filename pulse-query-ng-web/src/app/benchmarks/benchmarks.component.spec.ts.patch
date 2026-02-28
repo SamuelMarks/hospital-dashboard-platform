@@ -1,0 +1,11 @@
+--- pulse-query-ng-web/src/app/benchmarks/benchmarks.component.spec.ts
++++ pulse-query-ng-web/src/app/benchmarks/benchmarks.component.spec.ts
+@@ -10,7 +10,7 @@
+ 
+ @Component({ selector: 'app-sql-snippet', template: '', standalone: true })
+ class MockSqlSnippetComponent {
+-  readonly sql = input<string>('');
++  readonly sql = input<string | null | undefined>('');
+ }
+ 
+ describe('BenchmarksComponent', () => {

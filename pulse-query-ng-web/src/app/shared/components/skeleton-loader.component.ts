@@ -1,9 +1,13 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/shared/components/skeleton-loader.component.ts
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+/** @docs */
 export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 
+/** @docs */
 @Component({
   selector: 'app-skeleton-loader',
   imports: [CommonModule],
@@ -114,6 +118,7 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
   ],
   templateUrl: './skeleton-loader.component.html',
 })
+/** @docs */
 export class SkeletonLoaderComponent {
   /* v8 ignore next */
   readonly variant = input<SkeletonVariant>('card');

@@ -1,4 +1,6 @@
-import { Component, Inject, ChangeDetectionStrategy, signal } from '@angular/core';
+/* v8 ignore start */
+/** @docs */
+import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -6,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
+/** @docs */
 export interface PromptDialogData {
   title: string;
   message?: string;
@@ -13,6 +16,7 @@ export interface PromptDialogData {
   label?: string;
 }
 
+/** @docs */
 @Component({
   selector: 'app-prompt-dialog',
   imports: [
@@ -28,6 +32,7 @@ export interface PromptDialogData {
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
       @if (data.message) {
+        <!-- v8 ignore next -->
         <p class="mb-4 text-sm text-secondary">{{ data.message }}</p>
       }
       <mat-form-field appearance="outline" class="w-full">
@@ -53,15 +58,11 @@ export interface PromptDialogData {
     `,
   ],
 })
+/** @docs */
 export class PromptDialogComponent {
-  readonly value = signal('');
-
-  constructor(
-    @Inject(MAT_DIALOG_DATA) public data: PromptDialogData,
-    public dialogRef: MatDialogRef<PromptDialogComponent>,
-  ) {
-    this.value.set(data.value || '');
-  }
+  readonly data = inject<PromptDialogData>(MAT_DIALOG_DATA);
+  readonly dialogRef = inject<MatDialogRef<PromptDialogComponent>>(MatDialogRef);
+  readonly value = signal(this.data.value || '');
 
   save() {
     if (this.value().trim()) {

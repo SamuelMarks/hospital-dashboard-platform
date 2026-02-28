@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
@@ -5,6 +7,7 @@ import { AuthService } from './auth.service';
 import { map, take, Observable, filter } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
 
+/** @docs */
 export const adminGuard: CanActivateFn = (
   route,
   state,

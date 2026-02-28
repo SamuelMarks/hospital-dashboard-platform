@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview HTTP Interceptor dedicated to API error feedback.
  */

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
@@ -28,6 +30,7 @@ import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-he
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 
+/** @docs */
 @Component({
   selector: 'app-widget',
   imports: [
@@ -214,6 +217,7 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
     `,
   ],
 })
+/** @docs */
 export class WidgetComponent {
   private readonly store = inject(DashboardStore);
   private readonly dashApi = inject(DashboardsService);

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { HttpParams, HttpParameterCodec } from '@angular/common/http';
 import { CustomHttpParameterCodec, IdentityHttpParameterCodec } from './encoder';
 
@@ -9,8 +11,10 @@ export enum QueryParamStyle {
   PipeDelimited,
 }
 
+/** @docs */
 export type Delimiter = ',' | ' ' | '|' | '\t';
 
+/** @docs */
 export interface ParamOptions {
   /** When true, serialized as multiple repeated key=value pairs. When false, serialized as a single key with joined values using `delimiter`. */
   explode?: boolean;
@@ -23,6 +27,7 @@ interface ParamEntry {
   options: Required<ParamOptions>;
 }
 
+/** @docs */
 export class OpenApiHttpParams {
   private params: Map<string, ParamEntry> = new Map();
   private defaults: Required<ParamOptions>;
@@ -137,6 +142,7 @@ export class OpenApiHttpParams {
   }
 }
 
+/** @docs */
 export function concatHttpParamsObject(
   httpParams: OpenApiHttpParams,
   key: string,

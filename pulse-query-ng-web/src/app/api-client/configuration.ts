@@ -1,6 +1,9 @@
+/* v8 ignore start */
+/** @docs */
 import { HttpHeaders, HttpParams, HttpParameterCodec } from '@angular/common/http';
 import { Param } from './param';
 
+/** @docs */
 export interface ConfigurationParameters {
   /**
    *  @deprecated Since 5.0. Use credentials instead
@@ -34,6 +37,7 @@ export interface ConfigurationParameters {
   credentials?: { [key: string]: string | (() => string | undefined) };
 }
 
+/** @docs */
 export class Configuration {
   /**
    *  @deprecated Since 5.0. Use credentials instead

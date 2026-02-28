@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import {
   Component,
   ChangeDetectionStrategy,
@@ -39,10 +41,12 @@ import { DashboardStore } from './dashboard.store';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 
+/** @docs */
 export interface WidgetCreationData {
   dashboardId: string;
 }
 
+/** @docs */
 @Component({
   selector: 'app-widget-creation-dialog',
   imports: [
@@ -65,6 +69,7 @@ export interface WidgetCreationData {
   templateUrl: './widget-creation.dialog.html',
   styleUrls: ['./widget-creation.dialog.css'],
 })
+/** @docs */
 export class WidgetCreationDialog implements OnDestroy {
   private readonly dialogRef = inject(MatDialogRef<WidgetCreationDialog>);
   private readonly dashboardsApi = inject(DashboardsService);

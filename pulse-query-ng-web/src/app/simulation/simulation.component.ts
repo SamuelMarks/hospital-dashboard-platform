@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,6 +17,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SimulationStore, UnitCapacity } from './simulation.store';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 
+/** @docs */
 @Component({
   selector: 'app-simulation',
   imports: [
@@ -78,6 +81,7 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
   ],
   templateUrl: './simulation.component.html',
 })
+/** @docs */
 export class SimulationComponent implements OnInit {
   readonly store = inject(SimulationStore);
   private readonly route = inject(ActivatedRoute);

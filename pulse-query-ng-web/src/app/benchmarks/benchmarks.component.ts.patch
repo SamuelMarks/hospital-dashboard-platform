@@ -1,0 +1,35 @@
+--- pulse-query-ng-web/src/app/benchmarks/benchmarks.component.ts
++++ pulse-query-ng-web/src/app/benchmarks/benchmarks.component.ts
+@@ -107,17 +107,24 @@
+   `]
+ })
+ export class BenchmarksComponent implements OnInit {
++  /** inject BenchmarksService */
+   private readonly benchmarksService = inject(BenchmarksService);
++  /** inject Router */
+   private readonly router = inject(Router);
+ 
++  /** loading state */
+   loading = signal<boolean>(true);
++  /** error state */
+   error = signal<string | null>(null);
+   
++  /** array of sql benchmarks */
+   sqlBenchmarks = signal<SqlBenchmark[]>([]);
++  /** array of mpax benchmarks */
+   mpaxBenchmarks = signal<MpaxBenchmark[]>([]);
+ 
++  /** number of sql benchmarks */
+   sqlCount = signal<number>(0);
++  /** number of mpax benchmarks */
+   mpaxCount = signal<number>(0);
+ 
+   ngOnInit() {
+@@ -138,6 +145,7 @@
+     });
+   }
+ 
++  /** Navigates to MPAX Arena with preset prompt */
+   simulateMpax(item: MpaxBenchmark) {
+     // Send to MPAX Arena pre-filled
+     this.router.navigate(['/mpax-arena'], { queryParams: { prompt: item.prompt } });

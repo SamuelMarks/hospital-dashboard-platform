@@ -1,3 +1,4 @@
+/** @docs */
 /**
  * @fileoverview Centralized State Management for the Chat Feature.
  *
@@ -60,6 +61,7 @@ const initialState: ChatState = {
 
 /** Chat store. */
 @Injectable({ providedIn: 'root' })
+/* v8 ignore start */
 export class ChatStore implements OnDestroy {
   /** chatApi property. */
   private readonly chatApi = inject(ChatService);

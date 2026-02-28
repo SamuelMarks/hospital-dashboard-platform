@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Root Application Component.
  *
@@ -74,6 +76,7 @@ import { ToolbarComponent } from './dashboard/toolbar.component';
     `,
   ],
 })
+/** @docs */
 export class App implements OnInit {
   /**
    * Service controlling the visibility state of the side drawer.

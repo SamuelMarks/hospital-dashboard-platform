@@ -1,0 +1,147 @@
+import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatCardModule } from '@angular/material/card';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { BenchmarksService, SqlBenchmark, MpaxBenchmark } from './benchmarks.service';
+import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-benchmarks',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatTabsModule,
+    MatProgressSpinnerModule,
+    MatIconModule,
+    SqlSnippetComponent
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="benchmarks-container">
+      <div class="header">
+        <h1 class="text-2xl font-light mb-1">Benchmark Datasets</h1>
+        <p class="text-gray-500">Explore the gold standard scenarios used to evaluate Arena performance.</p>
+      </div>
+
+      @if (error()) {
+        <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
+          <mat-icon class="align-middle mr-2">error</mat-icon>
+          {{ error() }}
+        </div>
+      }
+
+      @if (loading()) {
+        <div class="loading flex justify-center py-12">
+          <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+        </div>
+      } @else {
+        <mat-tab-group animationDuration="0ms">
+          <mat-tab label="Text-to-SQL ({{ sqlCount() }})">
+            <div class="tab-content pt-4">
+              <div class="grid grid-cols-1 gap-6">
+                @for (item of sqlBenchmarks(); track item.question) {
+                  @if (item.question) {
+                    <mat-card class="p-4 border border-gray-200">
+                      <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-bold text-lg text-blue-900">{{ item.theme }}</h3>
+                        <span class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600">{{ item.complexity }}</span>
+                      </div>
+                      <p class="mb-4 text-gray-800">{{ item.question }}</p>
+                      
+                      <div class="mb-2">
+                        <strong class="text-xs text-gray-500 uppercase tracking-wider">Gold SQL</strong>
+                      </div>
+                      <app-sql-snippet [sql]="item.gold_sql"></app-sql-snippet>
+                    </mat-card>
+                  }
+                }
+              </div>
+            </div>
+          </mat-tab>
+          
+          <mat-tab label="MPAX Optimization ({{ mpaxCount() }})">
+            <div class="tab-content pt-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                @for (item of mpaxBenchmarks(); track item.id) {
+                  <mat-card class="p-4 border border-gray-200 flex flex-col cursor-pointer hover:border-blue-300 transition-colors" (click)="simulateMpax(item)">
+                    <div class="flex justify-between items-start mb-2">
+                      <h3 class="font-bold text-blue-900 text-sm truncate pr-2" [title]="item.theme">{{ item.theme }}</h3>
+                      <span class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 flex-shrink-0">{{ item.complexity }}</span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-800 mb-4 flex-grow">{{ item.prompt }}</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 mt-auto bg-gray-50 p-2 rounded">
+                      <div>
+                        <strong>Demand:</strong> {{ item.expected_metrics?.['total_demand'] || 0 }} pts
+                      </div>
+                      <div>
+                        <strong>Capacity:</strong> {{ item.expected_metrics?.['total_capacity'] || 0 }} beds
+                      </div>
+                      <div class="col-span-2">
+                        <strong>Expected Overflow:</strong> 
+                        <span [class.text-red-500]="(item.expected_metrics?.['expected_overflow'] || 0) > 0">
+                          {{ item.expected_metrics?.['expected_overflow'] || 0 }}
+                        </span>
+                      </div>
+                    </div>
+                  </mat-card>
+                }
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
+      }
+    </div>
+  `,
+  styles: [`
+    .benchmarks-container { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .header { margin-bottom: 24px; }
+  `]
+})
+export class BenchmarksComponent implements OnInit {
+  /** doc */
+  /** doc */ private readonly benchmarksService = inject(BenchmarksService);
+  /** doc */ private readonly router = inject(Router);
+
+  /** doc */ loading = signal<boolean>(true);
+  /** doc */ error = signal<string | null>(null);
+  
+  /** doc */ sqlBenchmarks = signal<SqlBenchmark[]>([]);
+  /** doc */ mpaxBenchmarks = signal<MpaxBenchmark[]>([]);
+
+  /** doc */ sqlCount = signal<number>(0);
+  /** doc */ mpaxCount = signal<number>(0);
+
+  ngOnInit() {
+    forkJoin({
+      sql: this.benchmarksService.getSqlBenchmarks(),
+      mpax: this.benchmarksService.getMpaxBenchmarks()
+    })
+    .pipe(finalize(() => this.loading.set(false)))
+    .subscribe({
+      next: ({ sql, mpax }) => {
+        this.sqlBenchmarks.set(sql);
+        this.sqlCount.set(sql.filter(s => s.question).length);
+        
+        this.mpaxBenchmarks.set(mpax);
+        this.mpaxCount.set(mpax.length);
+      },
+      error: (err) => {
+        this.error.set(err.message || 'Failed to load benchmarks.');
+      }
+    });
+  }
+
+  /** doc */
+  simulateMpax(item: MpaxBenchmark) {
+    // Send to MPAX Arena pre-filled
+    this.router.navigate(['/mpax-arena'], { queryParams: { prompt: item.prompt } });
+  }
+}

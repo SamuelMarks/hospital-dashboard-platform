@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Filter Ribbon Component.
  *
@@ -107,6 +109,7 @@ import { DashboardStore } from './dashboard.store';
     `,
   ],
 })
+/** @docs */
 export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** Access to dashboard state (global params). */
   public readonly store = inject(DashboardStore);

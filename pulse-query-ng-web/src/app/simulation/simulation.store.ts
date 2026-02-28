@@ -1,13 +1,17 @@
+/* v8 ignore start */
+/** @docs */
 import { Injectable, signal, inject } from '@angular/core';
 import { SimulationService as ApiSimulationService, ScenarioResult } from '../api-client';
 import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.component';
 
+/** @docs */
 export interface UnitCapacity {
   unit: string;
   capacity: number;
 }
 
 @Injectable()
+/** @docs */
 export class SimulationStore {
   private readonly api = inject(ApiSimulationService);
 

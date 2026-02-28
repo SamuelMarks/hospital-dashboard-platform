@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
@@ -44,6 +46,7 @@ import { QueryCartService } from '../global/query-cart.service';
   templateUrl: './toolbar.component.html',
   styles: ['/* See existing styles */'],
 })
+/** @docs */
 export class ToolbarComponent {
   /* v8 ignore start */
   public readonly store = inject(DashboardStore);

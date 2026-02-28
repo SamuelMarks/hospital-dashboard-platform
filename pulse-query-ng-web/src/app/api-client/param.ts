@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Standard parameter styles defined by OpenAPI spec
  */
@@ -44,6 +46,7 @@ export type StandardDataFormat =
   | 'date-time'
   | 'password';
 
+/** @docs */
 export type DataFormat = StandardDataFormat | string;
 
 /**

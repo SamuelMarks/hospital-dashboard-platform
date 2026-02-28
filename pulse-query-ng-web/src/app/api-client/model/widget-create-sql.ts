@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -25,8 +27,10 @@ export interface WidgetCreateSql {
   config: SqlConfig;
 }
 export namespace WidgetCreateSql {
+  /** @docs */
   export const TypeEnum = {
     Sql: 'SQL',
   } as const;
+  /** @docs */
   export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum];
 }

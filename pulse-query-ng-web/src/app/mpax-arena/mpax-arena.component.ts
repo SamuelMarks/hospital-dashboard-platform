@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +15,7 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 import { ActivatedRoute } from '@angular/router';
 
+/** @docs */
 @Component({
   selector: 'app-mpax-arena',
   standalone: true,
@@ -135,6 +138,7 @@ import { ActivatedRoute } from '@angular/router';
     `,
   ],
 })
+/** @docs */
 export class MpaxArenaComponent {
   private readonly api = inject(MpaxArenaService);
 

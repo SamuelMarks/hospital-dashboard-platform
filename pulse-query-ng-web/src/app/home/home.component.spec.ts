@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HomeComponent } from './home.component';
 import { DashboardsService, DashboardResponse } from '../api-client';
@@ -6,7 +8,9 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError, Subject } from 'rxjs';
+import { signal } from '@angular/core';
 import { AskDataService } from '../global/ask-data.service';
+import { AuthService } from '../core/auth/auth.service';
 import { readTemplate } from '../../test-utils/component-resources';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
@@ -46,9 +50,15 @@ describe('HomeComponent', () => {
       imports: [HomeComponent, NoopAnimationsModule],
       providers: [
         provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: MatDialog, useValue: mockDialog },
         { provide: AskDataService, useValue: mockAskDataService },
+        {
+          provide: AuthService,
+          useValue: { currentUser: signal(null), isAuthenticated: signal(false), logout: vi.fn() },
+        },
         // Force provider override
         { provide: MatSnackBar, useValue: mockSnackBar },
       ],

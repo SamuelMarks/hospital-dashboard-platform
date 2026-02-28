@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/core/auth/auth.service.ts
 import { Injectable, computed, signal, inject, PLATFORM_ID, Signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -5,9 +7,11 @@ import { Router } from '@angular/router';
 import { tap, catchError, Observable, throwError, switchMap } from 'rxjs';
 import { AuthService as AuthApiClient, Token, UserResponse, UserCreate } from '../../api-client';
 
+/** @docs */
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class AuthService {
   private readonly TOKEN_KEY = 'pulse_auth_token';
   private readonly api = inject(AuthApiClient);

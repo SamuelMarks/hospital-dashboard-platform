@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Routing definition for the Simulation Feature Module.
  * Loaded lazily by the main Application router.

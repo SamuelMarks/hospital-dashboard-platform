@@ -115,4 +115,53 @@ describe('ChatLayoutComponent', () => {
     const toolbar = fixture.debugElement.query(By.css('mat-toolbar'));
     expect(toolbar).toBeTruthy();
   });
+
+  it('should group older chats in Previous', () => {
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 5);
+    mockStore.conversations.set([{ id: 'c1', title: 'C1', updated_at: oldDate.toISOString() }]);
+    const groups = component.groupedHistory();
+    expect(groups.length).toBe(1);
+    expect(groups[0].label).toBe('Previous');
+  });
+
+  it('should return empty group if list is null', () => {
+    mockStore.conversations.set(null);
+    expect(component.groupedHistory()).toEqual([]);
+  });
+
+  it('should ignore rename if same or cancelled', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of('C1') });
+    component.renameChat({ id: 'c1', title: 'C1', updated_at: '' } as any);
+    expect(mockStore.renameConversation).not.toHaveBeenCalled();
+
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(null) });
+    component.renameChat({ id: 'c1', title: '', updated_at: '' } as any); // test chat.title || '' fallback
+    expect(mockStore.renameConversation).not.toHaveBeenCalled();
+  });
+
+  it('should not delete if dialog cancelled', () => {
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    component.deleteChat({ id: 'c1', title: 'C1', updated_at: '' } as any);
+    expect(mockStore.deleteConversation).not.toHaveBeenCalled();
+  });
+
+  it('should select chat and close drawer if over', () => {
+    component.drawer = { mode: 'over', close: vi.fn() } as any;
+    component.selectChat('c2');
+    expect(mockStore.selectConversation).toHaveBeenCalledWith('c2');
+    expect(component.drawer.close).toHaveBeenCalled();
+
+    // test mode !== 'over'
+    component.drawer = { mode: 'side', close: vi.fn() } as any;
+    component.selectChat('c2');
+    expect(component.drawer.close).not.toHaveBeenCalled();
+  });
+
+  it('should new chat and close drawer if over', () => {
+    component.drawer = { mode: 'over', close: vi.fn() } as any;
+    component.newChat();
+    expect(mockStore.createNewChat).toHaveBeenCalled();
+    expect(component.drawer.close).toHaveBeenCalled();
+  });
 });

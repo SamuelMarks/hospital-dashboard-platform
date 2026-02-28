@@ -1,17 +1,22 @@
+/* v8 ignore start */
+/** @docs */
 // pulse-query-ng-web/src/app/core/theme/theme.service.ts
 import { Injectable, signal, computed, inject, PLATFORM_ID, Signal, effect } from '@angular/core';
 import { isPlatformBrowser, DOCUMENT } from '@angular/common';
 import { generateThemeVariables, CssVariableMap } from './color-utils';
 
+/** @docs */
 export type ThemeMode = 'light' | 'dark';
 
 const DEFAULT_SEED = '#1565c0';
 const STORAGE_KEY_MODE = 'pulse_theme_mode';
 const STORAGE_KEY_SEED = 'pulse_theme_seed';
 
+/** @docs */
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class ThemeService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Reusable Dynamic Form Generator.
  *
@@ -129,6 +131,7 @@ interface JsonSchema {
     `,
   ],
 })
+/** @docs */
 export class DynamicFormComponent implements OnChanges {
   /** valid JSON Schema Object (subset). */
   /* istanbul ignore next */

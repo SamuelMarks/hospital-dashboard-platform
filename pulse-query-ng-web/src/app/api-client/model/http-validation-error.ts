@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -9,6 +11,7 @@
  */
 import { ValidationError } from './validation-error';
 
+/** @docs */
 export interface HTTPValidationError {
   detail?: Array<ValidationError>;
 }

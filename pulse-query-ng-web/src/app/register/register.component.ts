@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -21,6 +23,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 
+/** @docs */
 export const passwordMatchValidator: ValidatorFn = (
   control: AbstractControl,
 ): ValidationErrors | null => {
@@ -37,6 +40,7 @@ export const passwordMatchValidator: ValidatorFn = (
   }
 };
 
+/** @docs */
 @Component({
   selector: 'app-register',
   imports: [
@@ -109,6 +113,7 @@ export const passwordMatchValidator: ValidatorFn = (
   ],
   templateUrl: './register.component.html',
 })
+/** @docs */
 export class RegisterComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);

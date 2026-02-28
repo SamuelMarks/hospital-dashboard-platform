@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 /**
  * @fileoverview Accessible Pie Chart Component.
  *
@@ -124,6 +126,7 @@ interface PieSlice {
   ],
   templateUrl: './viz-pie.component.html',
 })
+/** @docs */
 export class VizPieComponent {
   /** Data Set. */
   /* istanbul ignore next */

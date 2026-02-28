@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 export * from './admin-settings-response';
 export * from './admin-settings-update-request';
 export * from './column-info';

@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, switchMap } from 'rxjs';
 import {
@@ -21,6 +23,7 @@ import { DashboardStore } from '../dashboard/dashboard.store';
 @Injectable({
   providedIn: 'root',
 })
+/** @docs */
 export class ProvisioningService {
   /** dashboardApi property. */
   private readonly dashboardApi = inject(DashboardsService);

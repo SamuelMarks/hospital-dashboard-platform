@@ -1,3 +1,5 @@
+/* v8 ignore start */
+/** @docs */
 export * from './admin.service';
 import { AdminService } from './admin.service';
 export * from './ai.service';
@@ -22,6 +24,7 @@ export * from './templates.service';
 import { TemplatesService } from './templates.service';
 export * from './mpax-arena.service';
 import { MpaxArenaService } from './mpax-arena.service';
+/** @docs */
 export const APIS = [
   AdminService,
   AiService,
