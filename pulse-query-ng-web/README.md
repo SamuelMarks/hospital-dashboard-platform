@@ -1,6 +1,8 @@
 # PulseQueryNgWeb
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.5.
+> **Purpose:** This file contains developer documentation specific to the Pulse Query Angular frontend application, including instructions for starting the dev server, testing, building, and generating the API client.
+
+This project is the strictly-typed, Standalone-Component-based frontend for the Pulse Query platform. It was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.5 and utilizes a Signal-based state architecture.
 
 ## 🔗 API Client Generation
 

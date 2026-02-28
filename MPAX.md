@@ -1,5 +1,7 @@
 # MPAX & LLM Arena Integration
 
+> **Purpose:** This file documents the integration of the JAX-based MPAX mathematical solver into the Multi-LLM Arena, detailing the five evaluation modes and the automated scoring methodology for capacity planning scenarios.
+
 The Pulse Query platform natively integrates **MPAX**, a JAX-based mathematical optimization solver, into the Multi-LLM Arena. This allows us to compare deterministic "Symbolic AI" (linear programming) against Generative AI (LLMs) across five distinct "What-If" evaluation modes.
 
 ## The 5 Integration Modes

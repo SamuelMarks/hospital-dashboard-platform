@@ -1,5 +1,7 @@
 # Architecture
 
+> **Purpose:** This document details the technical design, system overview, component diagrams, and interactions that define the Pulse Query platform. It serves as the primary technical reference for understanding the split-stack architecture and data flow.
+
 **Pulse Query** is an enterprise-grade hospital analytics platform designed to bridge the gap between operational data (EHR logs) and strategic decision-making (Capacity Planning). It employs a **Split-Stack Architecture** optimized for strict typing, rapid analytical queries, and complex optimization modeling.
 
 ---

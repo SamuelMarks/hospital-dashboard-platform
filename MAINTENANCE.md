@@ -1,5 +1,7 @@
 # Maintenance
 
+> **Purpose:** This document outlines the developer workflows for extending, testing, and deploying the Pulse Query platform, and acts as a central guide for maintaining the split-stack architecture and data engineering pipelines.
+
 This document outlines the workflows for extending, testing, and deploying the **Pulse Query** platform. It provides specific instructions for maintaining the split-stack architecture (Angular + FastAPI) and the data engineering pipelines.
 
 ---

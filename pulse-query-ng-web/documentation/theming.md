@@ -1,5 +1,7 @@
 # Theme System (Material 3)
 
+> **Purpose:** This document explains the Angular Material 3 theming implementation, detailing how dynamic colors are generated at runtime and injected into the styling system.
+
 ## Overview
 
 - The app uses Angular Material 3 with runtime-generated colors.

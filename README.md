@@ -4,6 +4,8 @@ Pulse Query: Hospital Analytics Platform
 [![Test Python and Angular](https://github.com/SamuelMarks/hospital-dashboard-platform/actions/workflows/test-python-and-angular.yml/badge.svg)](https://github.com/SamuelMarks/hospital-dashboard-platform/actions/workflows/test-python-and-angular.yml)
 ![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen) ![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen)
 
+> **Purpose:** This file serves as the main entry point for the Pulse Query repository, providing a high-level overview of the platform, its key features, and initial setup instructions for developers.
+
 **Pulse Query** is an enterprise-grade hospital analytics platform designed to bridge the gap between operational data (EHR logs) and strategic decision-making (Capacity Planning). 
 
 It features a **Split-Stack Architecture** that combines the strict typing of a modern Angular frontend with the raw analytical power of DuckDB and the mathematical optimization capabilities of JAX/MPAX on the backend.

@@ -235,6 +235,7 @@ class MpaxArenaService:
     return MpaxArenaResponse(experiment_id=experiment_id, mode=mode, ground_truth_mpax=mpax_gt, candidates=candidates)
 
   def _extract_sql(self, text: str) -> Optional[str]:
+    """Extract SQL code from a markdown-formatted string."""
     if "```sql" in text:
       return text.split("```sql")[1].split("```")[0].strip()
     return None
