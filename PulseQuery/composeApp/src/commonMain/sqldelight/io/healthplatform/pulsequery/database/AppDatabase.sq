@@ -1,0 +1,13 @@
+CREATE TABLE AppConfig (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
+insertConfig:
+INSERT OR REPLACE INTO AppConfig(key, value) VALUES (?, ?);
+
+getConfig:
+SELECT value FROM AppConfig WHERE key = ?;
+
+clearConfig:
+DELETE FROM AppConfig WHERE key = ?;
