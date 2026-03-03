@@ -14,13 +14,14 @@ import {
   input,
   output,
   NO_ERRORS_SCHEMA,
-} from '@angular/core';
+ChangeDetectionStrategy } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { readTemplate } from '../../test-utils/component-resources';
 import { vi } from 'vitest';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-builder',
   template: '<div data-testid="mock-sql-builder"></div>',
 })

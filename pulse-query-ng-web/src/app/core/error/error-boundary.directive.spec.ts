@@ -1,11 +1,11 @@
-import { Component, ErrorHandler } from '@angular/core';
+import { Component, ErrorHandler , ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ErrorBoundaryDirective } from './error-boundary.directive';
 
 @Component({
-  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ErrorBoundaryDirective],
   template: `
     <ng-template #fallback let-error let-retry="retry">

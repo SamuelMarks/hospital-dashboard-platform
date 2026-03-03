@@ -40,7 +40,7 @@
 
                   <!-- Context Menu Button -->
                   <button
-                    mat-icon-button
+                    mat-icon-button aria-label="action"
                     class="action-btn scale-75"
                     [matMenuTriggerFor]="menu"
                     (click)="$event.stopPropagation()"
@@ -84,7 +84,7 @@
   <mat-sidenav-content role="main" class="relative flex flex-col h-full overflow-hidden">
     @if (isHandset$ | async) {
       <mat-toolbar color="primary" class="flex-none">
-        <button mat-icon-button (click)="drawer.toggle()"><mat-icon>menu</mat-icon></button>
+        <button mat-icon-button aria-label="action" (click)="drawer.toggle()"><mat-icon>menu</mat-icon></button>
         <span>Assistant</span>
       </mat-toolbar>
     }
@@ -92,7 +92,7 @@
     <!-- Desktop Toggle Button -->
     @if (!(isHandset$ | async)) {
       <button
-        mat-icon-button
+        mat-icon-button aria-label="Toggle Sidebar"
         class="absolute left-2 top-2 z-10 bg-surface shadow-sm border border-border opacity-50 hover:opacity-100 transition-opacity"
         (click)="toggleSidebar()"
         matTooltip="Toggle Sidebar"

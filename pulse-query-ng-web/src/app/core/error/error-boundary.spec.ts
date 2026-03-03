@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for Error Boundary Directive.
  */
 
-import { Component, TemplateRef } from '@angular/core';
+import { Component, TemplateRef , ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ErrorBoundaryDirective, ErrorBoundaryContext } from './error-boundary.directive';
 import { ErrorHandler } from '@angular/core';
@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
  * Host component to test structural directive usage.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: false,
   template: `
     <div *appErrorBoundary="fallbackTpl">
@@ -40,6 +41,7 @@ class TestHostComponent {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: false,
   template: `
     <div *appErrorBoundary="missingTemplate">

@@ -29,7 +29,7 @@
           @if (prop.description) {
             <mat-hint>{{ prop.description }}</mat-hint>
           }
-          <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
+          @if (hasError(key, 'required')) { <mat-error>Required</mat-error> }
         </mat-form-field>
       } @else if (prop.format === 'date') {
         <!-- Case 3: Date Picker -->
@@ -41,7 +41,7 @@
           @if (prop.description) {
             <mat-hint>{{ prop.description }}</mat-hint>
           }
-          <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
+          @if (hasError(key, 'required')) { <mat-error>Required</mat-error> }
         </mat-form-field>
       } @else {
         <!-- Case 4: Standard Input (Text/Number) -->
@@ -57,9 +57,9 @@
           @if (prop.description) {
             <mat-hint>{{ prop.description }}</mat-hint>
           }
-          <mat-error *ngIf="hasError(key, 'required')">Required</mat-error>
-          <mat-error *ngIf="hasError(key, 'min')">Min value: {{ prop.minimum }}</mat-error>
-          <mat-error *ngIf="hasError(key, 'max')">Max value: {{ prop.maximum }}</mat-error>
+          @if (hasError(key, 'required')) { <mat-error>Required</mat-error> }
+          @if (hasError(key, 'min')) { <mat-error>Min value: {{ prop.minimum }}</mat-error> }
+          @if (hasError(key, 'max')) { <mat-error>Max value: {{ prop.maximum }}</mat-error> }
         </mat-form-field>
       }
     }

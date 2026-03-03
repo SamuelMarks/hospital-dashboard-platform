@@ -10,7 +10,7 @@
  * - **TV Mode**: Listens for `?mode=tv` to enable Kiosk state.
  */
 
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit , ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet, ActivatedRoute } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { AskDataComponent } from './global/ask-data.component';
@@ -32,6 +32,7 @@ import { ToolbarComponent } from './dashboard/toolbar.component';
  * @class
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   imports: [RouterOutlet, MatSidenavModule, AskDataComponent, ToolbarComponent],
   templateUrl: './app.html',

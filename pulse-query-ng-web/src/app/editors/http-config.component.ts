@@ -97,7 +97,7 @@ export function jsonValidator(): ValidatorFn {
  */
 @Component({
   selector: 'app-http-config',
-  // 'standalone: true' removed (default).
+  // '' removed (default).
   imports: [
     CommonModule,
     ReactiveFormsModule,

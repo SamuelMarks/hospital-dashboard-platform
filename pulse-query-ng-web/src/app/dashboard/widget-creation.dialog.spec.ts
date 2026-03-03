@@ -7,19 +7,21 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { of, throwError } from 'rxjs';
-import { signal, Component, input, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
+import { signal, Component, input, WritableSignal, NO_ERRORS_SCHEMA , ChangeDetectionStrategy } from '@angular/core';
 import { vi } from 'vitest';
 import { readTemplate } from '../../test-utils/component-resources';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-@Component({ selector: 'app-sql-builder', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'app-sql-builder', template: '' })
 class MockSqlBuilder {
   readonly dashboardId = input<string | undefined>();
   readonly widgetId = input<string | undefined>();
   readonly initialSql = input<string | undefined>();
 }
 
-@Component({ selector: 'app-http-config', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'app-http-config', template: '' })
 class MockHttpConfig {
   readonly dashboardId = input<string | undefined>();
   readonly widgetId = input<string | undefined>();

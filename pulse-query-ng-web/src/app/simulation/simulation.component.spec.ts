@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimulationComponent } from './simulation.component';
 import { SimulationStore } from './simulation.store';
-import { signal, NO_ERRORS_SCHEMA, Component, input } from '@angular/core';
+import { signal, NO_ERRORS_SCHEMA, Component, input , ChangeDetectionStrategy } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
@@ -12,6 +12,7 @@ import { of, BehaviorSubject } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-table',
   template: '',
 })

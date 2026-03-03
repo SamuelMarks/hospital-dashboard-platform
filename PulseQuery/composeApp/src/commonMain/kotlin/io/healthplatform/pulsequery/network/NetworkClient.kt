@@ -7,9 +7,9 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.header
+import io.ktor.client.request.url
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
-import io.ktor.http.URLProtocol
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
@@ -21,10 +21,12 @@ import kotlinx.serialization.json.Json
  * @return A fully configured [HttpClient] instance.
  */
 fun createHttpClient(
-    baseUrl: String = "api.pulsequery.com", // Will be overridden via DI / Environment
+    baseUrl: String = "https://api.pulsequery.com", // Will be overridden via DI / Environment
     tokenProvider: () -> String?
 ): HttpClient {
     return HttpClient {
+        expectSuccess = true
+        
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
@@ -44,11 +46,7 @@ fun createHttpClient(
         }
         
         defaultRequest {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = baseUrl
-            }
-            header(HttpHeaders.ContentType, ContentType.Application.Json)
+            url(baseUrl)
             tokenProvider()?.let { token ->
                 header(HttpHeaders.Authorization, "Bearer $token")
             }

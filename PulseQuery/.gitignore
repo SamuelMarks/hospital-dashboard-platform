@@ -1,19 +1,39 @@
+# IDE and OS files
+.idea/
+.DS_Store
 *.iml
-.kotlin
-.gradle
+.vscode/
+
+# Build and Kotlin/Gradle
+.gradle/
+.kotlin/
+build/
 **/build/
-xcuserdata
 !src/**/build/
 local.properties
-.idea
-.DS_Store
-captures
-.externalNativeBuild
-.cxx
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Xcode specific
+xcuserdata/
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# Web, JS, and Node
 node_modules/
+kotlin-js-store/
+.kotlin-js-store/
+
+# Logs
+*.log
+
+# Scripts and Temporary
+*.py
+*.pyc
+__pycache__/
+testUrl.kts

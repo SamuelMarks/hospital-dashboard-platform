@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component, input, output, signal, NO_ERRORS_SCHEMA } from '@angular/core';
+import { Component, input, output, signal, NO_ERRORS_SCHEMA , ChangeDetectionStrategy } from '@angular/core';
 import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog';
 import { WidgetResponse, DashboardsService, DashboardResponse } from '../api-client';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-builder',
   template: '<div data-testid="mock-sql-builder"></div>',
 })
@@ -23,6 +24,7 @@ class MockSqlBuilderComponent {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-http-config',
   template: '<div data-testid="mock-http-config"></div>',
 })

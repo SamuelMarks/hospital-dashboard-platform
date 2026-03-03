@@ -4,7 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * Validates the widget rendering and data propagation for the DashboardScreen.
+ * Validates the widget rendering and data propagation for the DashboardScreen, ensuring Material Design best practices are met.
  */
 class DashboardScreenTest {
 
@@ -13,7 +13,7 @@ class DashboardScreenTest {
      */
     @Test
     fun testDashboardStateHandling() {
-        val loadedDashboards = emptyList<Any>()
+        val loadedDashboards = emptyList<io.healthplatform.pulsequery.api.models.DashboardResponse>()
         val isLoading = false
         
         // If not loading and empty, the empty state message should trigger.

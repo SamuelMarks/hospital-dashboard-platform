@@ -159,9 +159,12 @@ open class ApiClient(
             this.method = requestConfig.method.httpMethod
             headers.filter { header -> !UNSAFE_HEADERS.contains(header.key) }.forEach { header -> this.header(header.key, header.value) }
             if (requestConfig.method in listOf(RequestMethod.PUT, RequestMethod.POST, RequestMethod.PATCH)) {
-                val contentType = (requestConfig.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
-                    ?: ContentType.Application.Json)
-                this.contentType(contentType)
+                val contentType = requestConfig.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
+                if (contentType != null) {
+                    this.contentType(contentType)
+                } else if (body !is io.ktor.http.content.OutgoingContent) {
+                    this.contentType(ContentType.Application.Json)
+                }
                 this.setBody(body)
             }
         }

@@ -4,11 +4,12 @@ import { BenchmarksService } from './benchmarks.service';
 import { of, throwError } from 'rxjs';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { Component, input } from '@angular/core';
+import { Component, input , ChangeDetectionStrategy } from '@angular/core';
 import { Router } from '@angular/router';
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 
-@Component({ selector: 'app-sql-snippet', template: '', standalone: true })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'app-sql-snippet', template: '', })
 class MockSqlSnippetComponent {
   readonly sql = input<string | null | undefined>('');
 }

@@ -1,5 +1,6 @@
 package io.healthplatform.pulsequery.di
 
+import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.api.apis.AdminApi
 import io.healthplatform.pulsequery.api.apis.AiApi
 import io.healthplatform.pulsequery.api.apis.AnalyticsApi
@@ -11,6 +12,7 @@ import io.healthplatform.pulsequery.api.apis.SchemaApi
 import io.healthplatform.pulsequery.api.apis.SimulationApi
 import io.healthplatform.pulsequery.api.apis.TemplatesApi
 import io.healthplatform.pulsequery.network.createHttpClient
+import io.healthplatform.pulsequery.getDefaultLocalHost
 
 /**
  * Lightweight, manual Dependency Injection container for PulseQuery.
@@ -25,79 +27,136 @@ object AppContainer {
     var currentToken: String? = null
 
     /**
-     * Shared Ktor HttpClient, initialized lazily.
+     * Stores the current authenticated user profile.
      */
-    val httpClient by lazy {
-        createHttpClient(baseUrl = "api.pulsequery.com", tokenProvider = { currentToken })
+    var currentUser: UserResponse? = null
+
+    /**
+     * Clears authentication state (logout).
+     */
+    fun logout() {
+        currentToken = null
+        currentUser = null
     }
 
     /**
-     * Auth API instance, generated via OpenAPI.
+     * The base URL to use for API requests.
      */
-    val authApi by lazy {
-        AuthApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    var currentBaseUrl: String = getDefaultLocalHost()
+        set(value) {
+            field = value
+            _httpClient = null
+            _authApi = null
+            _dashboardsApi = null
+            _chatApi = null
+            _analyticsApi = null
+            _simulationApi = null
+            _adminApi = null
+            _aiApi = null
+            _schemaApi = null
+            _templatesApi = null
+            _executionApi = null
+        }
 
-    /**
-     * Dashboards API instance for fetching workspace dashboards.
-     */
-    val dashboardsApi by lazy {
-        DashboardsApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
+    fun setHttpClientForTest(client: io.ktor.client.HttpClient) { 
+        _httpClient = client 
     }
+    private var _httpClient: io.ktor.client.HttpClient? = null
+    val httpClient: io.ktor.client.HttpClient
+        get() {
+            if (_httpClient == null) {
+                _httpClient = createHttpClient(baseUrl = currentBaseUrl, tokenProvider = { currentToken })
+            }
+            return _httpClient!!
+        }
 
-    /**
-     * Chat API instance for conversational queries.
-     */
-    val chatApi by lazy {
-        ChatApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _authApi: AuthApi? = null
+    val authApi: AuthApi
+        get() {
+            if (_authApi == null) {
+                _authApi = AuthApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _authApi!!
+        }
 
-    /**
-     * Analytics API instance for telemetry and platform usage data.
-     */
-    val analyticsApi by lazy {
-        AnalyticsApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _dashboardsApi: DashboardsApi? = null
+    val dashboardsApi: DashboardsApi
+        get() {
+            if (_dashboardsApi == null) {
+                _dashboardsApi = DashboardsApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _dashboardsApi!!
+        }
 
-    /**
-     * Simulation API instance for executing scenario modeling and predictions.
-     */
-    val simulationApi by lazy {
-        SimulationApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _chatApi: ChatApi? = null
+    val chatApi: ChatApi
+        get() {
+            if (_chatApi == null) {
+                _chatApi = ChatApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _chatApi!!
+        }
 
-    /**
-     * Admin API instance for managing platform configurations.
-     */
-    val adminApi by lazy {
-        AdminApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _analyticsApi: AnalyticsApi? = null
+    val analyticsApi: AnalyticsApi
+        get() {
+            if (_analyticsApi == null) {
+                _analyticsApi = AnalyticsApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _analyticsApi!!
+        }
 
-    /**
-     * AI API instance for generating and previewing queries.
-     */
-    val aiApi by lazy {
-        AiApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _simulationApi: SimulationApi? = null
+    val simulationApi: SimulationApi
+        get() {
+            if (_simulationApi == null) {
+                _simulationApi = SimulationApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _simulationApi!!
+        }
 
-    /**
-     * Schema API instance for exploring the active database structures.
-     */
-    val schemaApi by lazy {
-        SchemaApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _adminApi: AdminApi? = null
+    val adminApi: AdminApi
+        get() {
+            if (_adminApi == null) {
+                _adminApi = AdminApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _adminApi!!
+        }
 
-    /**
-     * Templates API instance for managing saved widget configurations.
-     */
-    val templatesApi by lazy {
-        TemplatesApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _aiApi: AiApi? = null
+    val aiApi: AiApi
+        get() {
+            if (_aiApi == null) {
+                _aiApi = AiApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _aiApi!!
+        }
 
-    /**
-     * Execution API instance for refreshing dashboards and widgets.
-     */
-    val executionApi by lazy {
-        ExecutionApi(baseUrl = "https://api.pulsequery.com", httpClient = httpClient)
-    }
+    private var _schemaApi: SchemaApi? = null
+    val schemaApi: SchemaApi
+        get() {
+            if (_schemaApi == null) {
+                _schemaApi = SchemaApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _schemaApi!!
+        }
+
+    private var _templatesApi: TemplatesApi? = null
+    val templatesApi: TemplatesApi
+        get() {
+            if (_templatesApi == null) {
+                _templatesApi = TemplatesApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _templatesApi!!
+        }
+
+    private var _executionApi: ExecutionApi? = null
+    val executionApi: ExecutionApi
+        get() {
+            if (_executionApi == null) {
+                _executionApi = ExecutionApi(baseUrl = currentBaseUrl, httpClient = httpClient)
+            }
+            return _executionApi!!
+        }
 }

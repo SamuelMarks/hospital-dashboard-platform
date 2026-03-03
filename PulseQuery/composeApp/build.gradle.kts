@@ -58,6 +58,7 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
@@ -87,6 +88,7 @@ kotlin {
             implementation(libs.kotlin.test)
             @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
             implementation(compose.uiTest)
+            implementation(libs.ktor.client.mock)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -107,7 +109,7 @@ kotlin {
             implementation(libs.ktor.client.darwin)
             
             // iOS Database
-            implementation(libs.sqldelight.native)
+            api(libs.sqldelight.native)
         }
     }
 }

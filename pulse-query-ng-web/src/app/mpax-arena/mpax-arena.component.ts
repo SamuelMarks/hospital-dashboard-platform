@@ -18,7 +18,6 @@ import { ActivatedRoute } from '@angular/router';
 /** @docs */
 @Component({
   selector: 'app-mpax-arena',
-  standalone: true,
   imports: [
     CommonModule,
     FormsModule,

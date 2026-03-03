@@ -10,7 +10,7 @@
         <th mat-header-cell *matHeaderCellDef scope="col">{{ col }}</th>
         <td mat-cell *matCellDef="let row">
           <!-- Applied heuristic styling and threshold class binding -->
-          <span [ngClass]="getCellClass(row, col)">
+          <span [class]="getCellClass(row, col)">
             {{ getCellValue(row, col) }}
           </span>
         </td>

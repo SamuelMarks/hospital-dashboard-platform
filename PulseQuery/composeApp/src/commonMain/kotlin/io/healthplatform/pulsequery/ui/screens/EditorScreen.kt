@@ -1,8 +1,17 @@
+/**
+ * Component for rendering the EditorScreen.
+ * Provides the main user interface for this screen.
+ */
 package io.healthplatform.pulsequery.ui.screens
+
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,13 +25,10 @@ import kotlinx.coroutines.launch
 
 /**
  * Editor Screen for writing, previewing, and saving custom SQL queries.
- * Maps to /api/v1/ai/execute
- *
- * @param onNavigateBack Callback to return to the previous screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditorScreen(onNavigateBack: () -> Unit) {
+fun EditorScreen() {
     var sqlQuery by remember { mutableStateOf("SELECT * FROM patient_admissions LIMIT 10;") }
     var result by remember { mutableStateOf<SQLExecutionResponse?>(null) }
     var isLoading by remember { mutableStateOf(false) }
@@ -53,16 +59,18 @@ fun EditorScreen(onNavigateBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("SQL Editor") },
-                navigationIcon = {
-                    TextButton(onClick = onNavigateBack) {
-                        Text("< Back", color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
                 )
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { executeSql() },
+                icon = { if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp)) else Icon(Icons.Filled.PlayArrow, contentDescription = "Execute") },
+                text = { Text("Execute") },
+                expanded = !isLoading
             )
         }
     ) { paddingValues ->
@@ -70,41 +78,43 @@ fun EditorScreen(onNavigateBack: () -> Unit) {
             modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Query Editor",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-
             OutlinedTextField(
                 value = sqlQuery,
                 onValueChange = { sqlQuery = it },
-                modifier = Modifier.fillMaxWidth().height(200.dp),
+                modifier = Modifier.fillMaxWidth().height(250.dp),
                 textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-                placeholder = { Text("Enter SQL query here...") }
+                placeholder = { Text("Enter SQL query here...") },
+                label = { Text("Query") },
+                shape = MaterialTheme.shapes.medium
             )
 
-            Button(
-                onClick = { executeSql() },
-                modifier = Modifier.align(Alignment.End),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
-                } else {
-                    Text("Execute")
+            if (errorMessage != null) {
+                ElevatedCard(
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
             }
 
-            if (errorMessage != null) {
-                Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
-            }
-
             result?.let { res ->
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider()
                 
                 if (res.error != null) {
-                    Text(text = "SQL Error: ${res.error}", color = MaterialTheme.colorScheme.error)
+                    ElevatedCard(
+                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "SQL Error: ${res.error}",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
                 } else {
                     Text(
                         text = "Results (${res.data.size} rows)",
@@ -112,19 +122,31 @@ fun EditorScreen(onNavigateBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.primary
                     )
                     
-                    // Simple table/list view for JSON map results
                     LazyColumn(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp) // space for FAB
                     ) {
                         items(res.data) { row ->
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(modifier = Modifier.padding(8.dp)) {
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
                                     row.entries.forEach { (key, value) ->
-                                        Text(
-                                            text = "$key: $value",
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(
+                                                text = key,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = value.toString(),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
                                     }
                                 }
                             }

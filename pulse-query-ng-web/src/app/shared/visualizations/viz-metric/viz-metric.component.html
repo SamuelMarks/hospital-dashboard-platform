@@ -6,18 +6,18 @@
       fill="none"
       stroke-width="2"
       vector-effect="non-scaling-stroke"
-      [ngClass]="isTrendUp() ? 'spark-pos' : 'spark-neg'"
+      [class]="isTrendUp() ? 'spark-pos' : 'spark-neg'"
     ></path>
     <path
       [attr.d]="sparklineFill()"
       stroke="none"
-      [ngClass]="isTrendUp() ? 'spark-fill-pos' : 'spark-fill-neg'"
+      [class]="isTrendUp() ? 'spark-fill-pos' : 'spark-fill-neg'"
     ></path>
   </svg>
 }
 
 <!-- Primary Value -->
-<div class="mat-headline-2 metric-value" [ngClass]="alertClass()">
+<div class="mat-headline-2 metric-value" [class]="alertClass()">
   {{ displayValue() }}
 </div>
 
@@ -28,7 +28,7 @@
 
 <!-- Trend Indicator -->
 @if (parsedTrend() !== null) {
-  <div class="mat-caption trend" [ngClass]="parsedTrend()! > 0 ? 'trend-pos' : 'trend-neg'">
+  <div class="mat-caption trend" [class]="parsedTrend()! > 0 ? 'trend-pos' : 'trend-neg'">
     <span aria-hidden="true">{{ parsedTrend()! > 0 ? '▲' : '▼' }}</span>
     {{ parsedTrend() }}%
   </div>

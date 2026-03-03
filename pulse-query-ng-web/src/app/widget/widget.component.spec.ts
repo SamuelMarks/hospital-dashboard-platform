@@ -14,7 +14,7 @@ import {
   WritableSignal,
   NO_ERRORS_SCHEMA,
   ErrorHandler,
-} from '@angular/core';
+ChangeDetectionStrategy } from '@angular/core';
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -43,34 +43,41 @@ vi.mock('@material/material-color-utilities', () => ({
   __esModule: true,
 }));
 
-@Component({ selector: 'viz-table', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-table', template: '' })
 class MockVizTableComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
-@Component({ selector: 'viz-metric', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-metric', template: '' })
 class MockVizMetricComponent {
   readonly data = input<unknown>();
   readonly config = input<unknown>();
 }
-@Component({ selector: 'viz-chart', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-chart', template: '' })
 class MockVizChartComponent {
   readonly dataSet = input<unknown>();
   readonly config = input<unknown>();
 }
-@Component({ selector: 'viz-pie', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-pie', template: '' })
 class MockVizPieComponent {
   readonly dataSet = input<unknown>();
 }
-@Component({ selector: 'viz-heatmap', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-heatmap', template: '' })
 class MockVizHeatmapComponent {
   readonly dataSet = input<unknown>();
 }
-@Component({ selector: 'viz-scalar', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-scalar', template: '' })
 class MockVizScalarComponent {
   readonly data = input<unknown>();
 }
-@Component({ selector: 'viz-markdown', template: '' })
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-markdown', template: '' })
 class MockVizMarkdownComponent {
   readonly content = input<string | undefined>();
 }

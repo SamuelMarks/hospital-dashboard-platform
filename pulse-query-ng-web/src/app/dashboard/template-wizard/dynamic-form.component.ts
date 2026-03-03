@@ -83,7 +83,7 @@ interface JsonSchema {
  */
 @Component({
   selector: 'app-dynamic-form',
-  // 'standalone: true' removed (default).
+  // '' removed (default).
   providers: [provideNativeDateAdapter()],
   imports: [
     CommonModule,

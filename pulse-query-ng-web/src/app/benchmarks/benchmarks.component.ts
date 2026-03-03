@@ -15,7 +15,6 @@ import { Router } from '@angular/router';
 /** @docs */
 @Component({
   selector: 'app-benchmarks',
-  standalone: true,
   imports: [
     CommonModule,
     MatCardModule,

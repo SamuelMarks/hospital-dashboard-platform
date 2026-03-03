@@ -81,7 +81,7 @@
       }
 
       <button
-        mat-icon-button
+        mat-icon-button aria-label="action"
         (click)="store.refreshAll()"
         [disabled]="store.isLoading()"
         [attr.aria-label]="store.isLoading() ? 'Refreshing Data' : 'Refresh Dashboard'"

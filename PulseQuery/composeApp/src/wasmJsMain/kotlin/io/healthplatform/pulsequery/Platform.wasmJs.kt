@@ -5,3 +5,5 @@ class WasmPlatform: Platform {
 }
 
 actual fun getPlatform(): Platform = WasmPlatform()
+
+actual fun getDefaultLocalHost(): String = "http://localhost:8000"

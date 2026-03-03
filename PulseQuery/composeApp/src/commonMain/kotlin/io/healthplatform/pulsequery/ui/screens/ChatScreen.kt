@@ -1,3 +1,7 @@
+/**
+ * Component for rendering the ChatScreen.
+ * Provides the main user interface for this screen.
+ */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.foundation.background
@@ -5,12 +9,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.models.ConversationCreate
+import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.di.AppContainer
@@ -18,34 +29,51 @@ import kotlinx.coroutines.launch
 
 /**
  * Main chat interface for querying the system using natural language.
- * Provides a conversational UI mapped to the ChatApi endpoints.
  *
  * @param conversationId Optional existing conversation ID to load. If null, starts a new conversation.
- * @param onNavigateBack Callback when the user clicks the back button in the top bar.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    conversationId: String? = null,
-    onNavigateBack: () -> Unit
+    conversationId: String? = null
 ) {
-    var activeConversationId by remember { mutableStateOf(conversationId) }
+    var activeConversation by remember { mutableStateOf<ConversationResponse?>(null) }
+    var conversations by remember { mutableStateOf<List<ConversationResponse>>(emptyList()) }
     var messages by remember { mutableStateOf<List<MessageResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
+    var showConversationsDialog by remember { mutableStateOf(false) }
     
     val coroutineScope = rememberCoroutineScope()
 
-    /**
-     * Fetches historical messages from the API if an active conversation ID is set.
-     */
+    fun loadConversations() {
+        coroutineScope.launch {
+            try {
+                val response = AppContainer.chatApi.listConversationsApiV1ConversationsGet()
+                conversations = response.body()
+                if (activeConversation == null && conversationId != null) {
+                    activeConversation = conversations.find { it.id == conversationId }
+                }
+            } catch (e: Exception) {
+                println("Failed to load conversations: ${e.message}")
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadConversations()
+    }
+
     fun loadMessages() {
-        if (activeConversationId == null) return
+        if (activeConversation == null) {
+            messages = emptyList()
+            return
+        }
         coroutineScope.launch {
             isLoading = true
             try {
                 val response = AppContainer.chatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
-                    conversationId = activeConversationId!!
+                    conversationId = activeConversation!!.id
                 )
                 messages = response.body()
             } catch (e: Exception) {
@@ -56,38 +84,51 @@ fun ChatScreen(
         }
     }
 
-    LaunchedEffect(activeConversationId) {
+    LaunchedEffect(activeConversation) {
         loadMessages()
     }
 
-    /**
-     * Submits a message to the active conversation, or initializes a new one.
-     */
+    fun deleteConversation(id: String) {
+        coroutineScope.launch {
+            try {
+                AppContainer.chatApi.deleteConversationApiV1ConversationsConversationIdDelete(id)
+                if (activeConversation?.id == id) {
+                    activeConversation = null
+                    messages = emptyList()
+                }
+                loadConversations()
+            } catch (e: Exception) {
+                println("Failed to delete conversation: ${e.message}")
+            }
+        }
+    }
+
     fun sendMessage() {
         if (inputText.isBlank()) return
         
         val textToSend = inputText.trim()
-        inputText = "" // Clear input field immediately for responsiveness
+        inputText = ""
         
         coroutineScope.launch {
             isLoading = true
             try {
-                if (activeConversationId == null) {
+                if (activeConversation == null) {
                     val response = AppContainer.chatApi.createConversationApiV1ConversationsPost(
-                        io.healthplatform.pulsequery.api.models.ConversationCreate(
-                            title = "New Chat",
+                        ConversationCreate(
+                            title = textToSend.take(20),
                             message = textToSend
                         )
                     )
-                    val newConversation = response.body()
-                    activeConversationId = newConversation.id
+                    val detail: io.healthplatform.pulsequery.api.models.ConversationDetail = response.body()
+                    activeConversation = io.healthplatform.pulsequery.api.models.ConversationResponse(id = detail.id, userId = detail.userId, createdAt = detail.createdAt, updatedAt = detail.updatedAt, title = detail.title)
+                    loadConversations()
                 } else {
                     val messagePayload = MessageCreate(content = textToSend)
-                    val response = AppContainer.chatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
-                        conversationId = activeConversationId!!,
+                    AppContainer.chatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
+                        conversationId = activeConversation!!.id,
                         messageCreate = messagePayload
                     )
-                    messages = messages + response.body()
+                    loadMessages()
                 }
             } catch (e: Exception) {
                 println("Failed to send message: ${e.message}")
@@ -100,16 +141,21 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("PulseQuery Chat") },
-                navigationIcon = {
-                    TextButton(onClick = onNavigateBack) {
-                        Text("< Back", color = MaterialTheme.colorScheme.onPrimary)
+                title = { Text(activeConversation?.title ?: "New Chat") },
+                actions = {
+                    IconButton(onClick = { 
+                        activeConversation = null
+                        messages = emptyList()
+                    }) {
+                        Icon(Icons.Filled.Add, contentDescription = "New Conversation")
+                    }
+                    IconButton(onClick = { showConversationsDialog = true }) {
+                        Icon(Icons.Filled.List, contentDescription = "History")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
                 )
             )
         }
@@ -127,6 +173,13 @@ fun ChatScreen(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (messages.isEmpty() && !isLoading) {
+                    item {
+                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Start a new conversation", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
                 items(messages) { message ->
                     ChatBubble(message = message)
                 }
@@ -146,30 +199,56 @@ fun ChatScreen(
                     value = inputText,
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask a clinical query...") },
+                    placeholder = { Text("Ask a query...") },
                     shape = RoundedCornerShape(24.dp),
-                    maxLines = 4
+                    maxLines = 4,
+                    trailingIcon = {
+                        IconButton(onClick = { sendMessage() }, enabled = inputText.isNotBlank() && !isLoading) {
+                            Icon(Icons.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                FloatingActionButton(
-                    onClick = { sendMessage() },
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(64.dp)
-                ) {
-                    Text("Send")
-                }
             }
+        }
+
+        if (showConversationsDialog) {
+            AlertDialog(
+                onDismissRequest = { showConversationsDialog = false },
+                title = { Text("Conversations History") },
+                text = {
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                        items(conversations) { conv ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        activeConversation = conv
+                                        showConversationsDialog = false
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(conv.title ?: "Untitled", maxLines = 1)
+                                }
+                                IconButton(onClick = { deleteConversation(conv.id) }) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showConversationsDialog = false }) { Text("Close") }
+                }
+            )
         }
     }
 }
 
 /**
  * A single message bubble displaying the content.
- * Aligns to the start or end depending on whether the user or system authored it.
- *
- * @param message The domain model representing the chat payload.
  */
 @Composable
 fun ChatBubble(message: MessageResponse) {
@@ -206,7 +285,7 @@ fun ChatBubble(message: MessageResponse) {
                 if (!message.candidates.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Candidate variations available. (Voting UI placeholder)",
+                        text = "Candidate variations available.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )

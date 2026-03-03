@@ -15,7 +15,7 @@
     <div class="action-group">
       <!-- Focus / Fullscreen -->
       <button
-        mat-icon-button
+        mat-icon-button aria-label="action"
         class="icon-btn-compact"
         (click)="toggleFocus()"
         [matTooltip]="isFocused() ? 'Minimize' : 'Full Screen'"
@@ -27,7 +27,7 @@
       <!-- Simulate Action -->
       @if (widgetInput().type === 'SQL') {
         <button
-          mat-icon-button
+          mat-icon-button aria-label="Simulate Scenario"
           class="icon-btn-compact"
           (click)="simulateWidget()"
           matTooltip="Simulate Scenario"
@@ -40,7 +40,7 @@
       <!-- Edit Mode Actions -->
       @if (isEditMode()) {
         <button
-          mat-icon-button
+          mat-icon-button aria-label="Duplicate"
           class="icon-btn-compact"
           (click)="duplicate.emit()"
           matTooltip="Duplicate"
@@ -50,7 +50,7 @@
           <mat-icon>content_copy</mat-icon>
         </button>
         <button
-          mat-icon-button
+          mat-icon-button aria-label="Edit"
           class="icon-btn-compact"
           (click)="edit.emit()"
           matTooltip="Edit"
@@ -60,7 +60,7 @@
           <mat-icon>edit</mat-icon>
         </button>
         <button
-          mat-icon-button
+          mat-icon-button aria-label="Delete"
           class="icon-btn-compact"
           (click)="delete.emit()"
           matTooltip="Delete"
@@ -74,7 +74,7 @@
       <!-- Refresh Button -->
       @if (widgetInput().type !== 'TEXT') {
         <button
-          mat-icon-button
+          mat-icon-button aria-label="Refresh"
           class="icon-btn-compact"
           (click)="manualRefresh()"
           [disabled]="isLoadingLocal()"

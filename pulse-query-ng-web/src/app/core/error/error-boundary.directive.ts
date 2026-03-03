@@ -54,8 +54,7 @@ export interface ErrorBoundaryContext {
  */
 @Directive({
   selector: '[appErrorBoundary]',
-  standalone: true,
-})
+  })
 /** @docs */
 export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /** vcr property. */
