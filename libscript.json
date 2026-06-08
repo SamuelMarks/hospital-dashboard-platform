@@ -1,0 +1,11 @@
+{
+  "domain": "pulse-query.healthplatform.io",
+  "infrastructure": {
+    "node": {
+      "size": "Standard_B2s"
+    }
+  },
+  "ingress": {
+    "tls": "letsencrypt"
+  }
+}
