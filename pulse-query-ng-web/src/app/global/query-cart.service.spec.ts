@@ -1,3 +1,4 @@
+import { safeStorage } from '../core/storage.utils';
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { QueryCartService } from './query-cart.service';
@@ -11,8 +12,8 @@ describe('QueryCartService', () => {
   });
 
   beforeEach(() => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.clear();
+    if (typeof safeStorage !== 'undefined') {
+      safeStorage.clear();
     }
   });
 
@@ -125,7 +126,7 @@ describe('QueryCartService', () => {
         kind: QUERY_CART_ITEM_KIND,
       },
     ];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
     TestBed.configureTestingModule({
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
@@ -140,7 +141,7 @@ describe('QueryCartService', () => {
     const stored: Array<Partial<QueryCartItem>> = [
       { id: 'bad', title: 'Missing Kind', sql: 'SELECT 1', createdAt: '2024-01-01T00:00:00Z' },
     ];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
     TestBed.configureTestingModule({
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
@@ -151,7 +152,7 @@ describe('QueryCartService', () => {
   });
 
   it('should ignore invalid storage payloads', () => {
-    localStorage.setItem(STORAGE_KEY, '{bad json');
+    safeStorage.setItem(STORAGE_KEY, '{bad json');
 
     TestBed.configureTestingModule({
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
@@ -162,7 +163,7 @@ describe('QueryCartService', () => {
   });
 
   it('should ignore non-array storage payloads', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ foo: 'bar' }));
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify({ foo: 'bar' }));
 
     TestBed.configureTestingModule({
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
@@ -235,15 +236,15 @@ describe('QueryCartService', () => {
     });
 
     const service = TestBed.inject(QueryCartService);
-    const originalSetItem = localStorage.setItem;
-    localStorage.setItem = vi.fn(() => {
+    const originalSetItem = safeStorage.setItem;
+    safeStorage.setItem = vi.fn(() => {
       throw new Error('fail');
     });
 
     service.add('SELECT 4');
     TestBed.flushEffects();
 
-    localStorage.setItem = originalSetItem;
+    safeStorage.setItem = originalSetItem;
     expect(service.count()).toBe(1);
   });
 
@@ -263,7 +264,7 @@ describe('QueryCartService', () => {
       },
     ]);
 
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = safeStorage.getItem(STORAGE_KEY);
     expect(stored).toContain('SELECT 5');
   });
 
@@ -303,7 +304,7 @@ describe('QueryCartService', () => {
         kind: QUERY_CART_ITEM_KIND,
       },
     ];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    safeStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 
     TestBed.configureTestingModule({
       providers: [{ provide: PLATFORM_ID, useValue: 'server' }],

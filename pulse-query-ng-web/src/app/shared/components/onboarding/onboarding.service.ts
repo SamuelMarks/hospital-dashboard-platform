@@ -1,8 +1,9 @@
+import { safeStorage } from '../../../core/storage.utils';
 /** @docs */
 /**
  * @fileoverview Onboarding Service.
  * Manages the onboarding wizard state and completion tracking.
- * Persists completion status to localStorage so the wizard only shows once.
+ * Persists completion status to safeStorage so the wizard only shows once.
  */
 
 import { Injectable, inject, PLATFORM_ID, signal, computed, Signal } from '@angular/core';
@@ -89,11 +90,11 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   providedIn: 'root',
 })
 export class OnboardingService {
-  private readonly platformId = inject(PLATFORM_ID);
+  /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
 
-  private readonly _isVisible = signal(false);
-  private readonly _currentStepIndex = signal(0);
-  private readonly _isComplete = signal(false);
+  /** Is visible. */ private readonly _isVisible = signal(false);
+  /** Current step index. */ private readonly _currentStepIndex = signal(0);
+  /** Is complete signal. */ private readonly _isComplete = signal(false);
 
   /**
    * Whether the onboarding wizard is currently visible.
@@ -137,11 +138,11 @@ export class OnboardingService {
   /**
    * Progress percentage (0-100).
    */
-  readonly progress: Signal<number> = computed(
-    () => Math.round(((this._currentStepIndex() + 1) / ONBOARDING_STEPS.length) * 100),
+  readonly progress: Signal<number> = computed(() =>
+    Math.round(((this._currentStepIndex() + 1) / ONBOARDING_STEPS.length) * 100),
   );
 
-  constructor() {
+  /** Constructor. */ constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.checkAndShowOnboarding();
     }
@@ -194,7 +195,7 @@ export class OnboardingService {
     this._isVisible.set(false);
 
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem(STORAGE_KEY, 'true');
+      safeStorage.setItem(STORAGE_KEY, 'true');
     }
   }
 
@@ -214,8 +215,8 @@ export class OnboardingService {
     this._isVisible.set(false);
 
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STEPS_KEY);
+      safeStorage.removeItem(STORAGE_KEY);
+      safeStorage.removeItem(STEPS_KEY);
     }
   }
 
@@ -223,7 +224,7 @@ export class OnboardingService {
    * Checks whether onboarding should be shown and triggers it if needed.
    */
   private checkAndShowOnboarding(): void {
-    const isComplete = localStorage.getItem(STORAGE_KEY) === 'true';
+    const isComplete = safeStorage.getItem(STORAGE_KEY) === 'true';
 
     if (!isComplete) {
       // Small delay to let the app fully render before showing the wizard

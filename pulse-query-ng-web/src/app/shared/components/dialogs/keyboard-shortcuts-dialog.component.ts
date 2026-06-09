@@ -10,7 +10,10 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import { KeyboardShortcutsService, KeyboardShortcut } from '../../../core/keyboard/keyboard-shortcuts.service';
+import {
+  KeyboardShortcutsService,
+  KeyboardShortcut,
+} from '../../../core/keyboard/keyboard-shortcuts.service';
 
 /**
  * Keyboard Shortcuts Help Dialog Component.
@@ -25,13 +28,7 @@ import { KeyboardShortcutsService, KeyboardShortcut } from '../../../core/keyboa
  */
 @Component({
   selector: 'app-keyboard-shortcuts-dialog',
-  imports: [
-    CommonModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatIconModule,
-    MatDividerModule,
-  ],
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="dialog-container">
@@ -169,8 +166,11 @@ import { KeyboardShortcutsService, KeyboardShortcut } from '../../../core/keyboa
   ],
 })
 export class KeyboardShortcutsDialogComponent {
-  private readonly dialogRef = inject(MatDialogRef<KeyboardShortcutsDialogComponent>);
-  private readonly keyboardService = inject(KeyboardShortcutsService);
+  /** Injected MatDialogRef. */ private readonly dialogRef = inject(
+    MatDialogRef<KeyboardShortcutsDialogComponent>,
+  );
+  /** Injected KeyboardService. */ private readonly keyboardService =
+    inject(KeyboardShortcutsService);
 
   /**
    * Computed signal containing shortcuts grouped by category.

@@ -71,8 +71,8 @@ const MAX_HISTORY_SIZE = 50;
   providedIn: 'root',
 })
 export class UndoRedoService {
-  private readonly _undoStack = signal<Command[]>([]);
-  private readonly _redoStack = signal<Command[]>([]);
+  /** Undo stack. */ private readonly _undoStack = signal<Command[]>([]);
+  /** Redo stack. */ private readonly _redoStack = signal<Command[]>([]);
 
   /**
    * Whether undo is available.

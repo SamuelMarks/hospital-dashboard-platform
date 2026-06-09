@@ -301,11 +301,11 @@ describe('UndoRedoService', () => {
    */
   it('should handle async commands', async () => {
     const executeFn = vi.fn(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await Promise.resolve();
     });
 
     const undoFn = vi.fn(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await Promise.resolve();
     });
 
     const command: Command = {

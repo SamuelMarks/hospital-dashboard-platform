@@ -13,6 +13,8 @@ import { ThemeService } from '../theme/theme.service';
 import { MatDialog } from '@angular/material/dialog';
 import { signal } from '@angular/core';
 
+import { Subject } from 'rxjs';
+
 vi.mock('@material/material-color-utilities', () => ({
   argbFromHex: () => 0xffffffff,
   hexFromArgb: () => '#ffffff',
@@ -29,7 +31,13 @@ vi.mock('@material/material-color-utilities', () => ({
 
 describe('KeyboardShortcutsService', () => {
   let service: KeyboardShortcutsService;
-  let mockThemeService: { toggle: ReturnType<typeof vi.fn>; isDark: ReturnType<typeof signal>; mode: ReturnType<typeof signal>; seedColor: ReturnType<typeof signal>; isTvMode: ReturnType<typeof signal> };
+  let mockThemeService: {
+    toggle: ReturnType<typeof vi.fn>;
+    isDark: ReturnType<typeof signal>;
+    mode: ReturnType<typeof signal>;
+    seedColor: ReturnType<typeof signal>;
+    isTvMode: ReturnType<typeof signal>;
+  };
   let mockDialog: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
@@ -215,5 +223,26 @@ describe('KeyboardShortcutsService', () => {
     const editing = shortcuts.get('editing') ?? [];
     expect(editing.some((s) => s.id === 'undo')).toBe(true);
     expect(editing.some((s) => s.id === 'redo')).toBe(true);
+  });
+
+  it('should call default shortcut handlers', () => {
+    const shortcuts = service.getShortcutsByCategory();
+    const actions = shortcuts.get('actions') ?? [];
+    const editing = shortcuts.get('editing') ?? [];
+
+    const helpShortcut = actions.find((s) => s.id === 'help-shortcuts');
+    helpShortcut?.handler();
+    expect(service.isHelpVisible()).toBe(true);
+
+    const undoShortcut = editing.find((s) => s.id === 'undo');
+    const redoShortcut = editing.find((s) => s.id === 'redo');
+
+    expect(undoShortcut).toBeDefined();
+    expect(redoShortcut).toBeDefined();
+
+    // We mock the undoRedoService via Injector in the service if needed,
+    // but the simplest is just calling it and expecting no throw since it's injected.
+    expect(() => undoShortcut?.handler()).not.toThrow();
+    expect(() => redoShortcut?.handler()).not.toThrow();
   });
 });

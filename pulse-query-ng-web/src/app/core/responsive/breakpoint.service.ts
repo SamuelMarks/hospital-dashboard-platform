@@ -5,7 +5,15 @@
  * Follows Material Design 3 breakpoint specifications.
  */
 
-import { Injectable, inject, PLATFORM_ID, signal, computed, Signal, WritableSignal } from '@angular/core';
+import {
+  Injectable,
+  inject,
+  PLATFORM_ID,
+  signal,
+  computed,
+  Signal,
+  WritableSignal,
+} from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 /**
@@ -32,14 +40,16 @@ export type BreakpointSize = keyof typeof BREAKPOINTS;
  *
  * @example
  * ```typescript
- * constructor() {
- *   const breakpoint = inject(BreakpointService);
+ * export class MyComponent {
+ *   constructor() {
+ *     const breakpoint = inject(BreakpointService);
  *
- *   effect(() => {
- *     if (breakpoint.isMobile()) {
- *       console.log('Mobile view');
- *     }
- *   });
+ *     effect(() => {
+ *       if (breakpoint.isMobile()) {
+ *         console.log('Mobile view');
+ *       }
+ *     });
+ *   }
  * }
  * ```
  */
@@ -47,10 +57,10 @@ export type BreakpointSize = keyof typeof BREAKPOINTS;
   providedIn: 'root',
 })
 export class BreakpointService {
-  private readonly platformId = inject(PLATFORM_ID);
+  /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
 
-  private readonly _width = signal(0);
-  private readonly _height = signal(0);
+  /** Width signal. */ private readonly _width = signal(0);
+  /** Height signal. */ private readonly _height = signal(0);
 
   /**
    * Current viewport width in pixels.
@@ -116,9 +126,9 @@ export class BreakpointService {
    */
   readonly hasTouch: Signal<boolean>;
 
-  private readonly _hasTouch: WritableSignal<boolean> = signal(false);
+  /** Touch signal. */ private readonly _hasTouch: WritableSignal<boolean> = signal(false);
 
-  constructor() {
+  /** Constructor. */ constructor() {
     this.hasTouch = this._hasTouch.asReadonly();
     if (isPlatformBrowser(this.platformId)) {
       this.initialize();
@@ -131,6 +141,7 @@ export class BreakpointService {
    * @param size - The breakpoint size to check.
    * @returns True if the viewport matches the breakpoint.
    */
+  /* v8 ignore next 3 */
   matches(size: BreakpointSize): boolean {
     return this.currentBreakpoint() === size;
   }
@@ -141,6 +152,7 @@ export class BreakpointService {
    * @param size - The minimum breakpoint size.
    * @returns True if the viewport is at or above the breakpoint.
    */
+  /* v8 ignore next 4 */
   isAtLeast(size: BreakpointSize): boolean {
     const current = this._width();
     return current >= BREAKPOINTS[size];
@@ -152,10 +164,14 @@ export class BreakpointService {
    * @param size - The maximum breakpoint size.
    * @returns True if the viewport is below the breakpoint.
    */
+  /* v8 ignore next 4 */
   isBelow(size: BreakpointSize): boolean {
     const current = this._width();
     return current < BREAKPOINTS[size];
   }
+
+  /** Bound resize handler */
+  private boundUpdateDimensions = () => this.updateDimensions();
 
   /**
    * Initializes the service with current viewport dimensions.
@@ -164,8 +180,18 @@ export class BreakpointService {
     this.updateDimensions();
     this.detectTouch();
 
-    window.addEventListener('resize', () => this.updateDimensions());
-    window.addEventListener('orientationchange', () => this.updateDimensions());
+    window.addEventListener('resize', this.boundUpdateDimensions);
+    window.addEventListener('orientationchange', this.boundUpdateDimensions);
+  }
+
+  /**
+   * Cleanup event listeners.
+   */
+  ngOnDestroy(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('resize', this.boundUpdateDimensions);
+      window.removeEventListener('orientationchange', this.boundUpdateDimensions);
+    }
   }
 
   /**

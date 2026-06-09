@@ -10,14 +10,15 @@ import { BreakpointService, BREAKPOINTS } from './breakpoint.service';
 /** Helper: create a fresh service with a given innerWidth/innerHeight. */
 function createService(width: number, height = 768): BreakpointService {
   Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: width });
-  Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: height });
+  Object.defineProperty(window, 'innerHeight', {
+    writable: true,
+    configurable: true,
+    value: height,
+  });
 
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
-    providers: [
-      BreakpointService,
-      { provide: PLATFORM_ID, useValue: 'browser' },
-    ],
+    providers: [BreakpointService, { provide: PLATFORM_ID, useValue: 'browser' }],
   });
   return TestBed.inject(BreakpointService);
 }
@@ -25,8 +26,16 @@ function createService(width: number, height = 768): BreakpointService {
 describe('BreakpointService', () => {
   afterEach(() => {
     // Restore sensible defaults
-    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 1024 });
-    Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 768 });
+    Object.defineProperty(window, 'innerWidth', {
+      writable: true,
+      configurable: true,
+      value: 1024,
+    });
+    Object.defineProperty(window, 'innerHeight', {
+      writable: true,
+      configurable: true,
+      value: 768,
+    });
   });
 
   it('should be created', () => {
@@ -111,5 +120,57 @@ describe('BreakpointService', () => {
     expect(BREAKPOINTS.md).toBe(960);
     expect(BREAKPOINTS.lg).toBe(1280);
     expect(BREAKPOINTS.xl).toBe(1920);
+  });
+
+  it('should initialize and handle resize events', () => {
+    const svc = createService(1000, 800);
+    expect(svc.width()).toBe(1000);
+
+    // Simulate resize
+    Object.defineProperty(window, 'innerWidth', { value: 1200 });
+    Object.defineProperty(window, 'innerHeight', { value: 900 });
+    window.dispatchEvent(new Event('resize'));
+
+    expect(svc.width()).toBe(1200);
+    expect(svc.height()).toBe(900);
+  });
+
+  it('should detect touch support when ontouchstart is present', () => {
+    (window as any).ontouchstart = null;
+    const svc = createService(1000);
+    expect(svc.hasTouch()).toBe(true);
+    delete (window as any).ontouchstart;
+  });
+
+  it('should not detect touch support when ontouchstart is absent', () => {
+    const originalMaxTouch = navigator.maxTouchPoints;
+    Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true });
+    const svc = createService(1000);
+    expect(svc.hasTouch()).toBe(false);
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      value: originalMaxTouch,
+      configurable: true,
+    });
+  });
+
+  it('should remove event listener on destroy', () => {
+    const svc = createService(1000);
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+    svc.ngOnDestroy();
+    expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function));
+  });
+
+  it('should skip initialization on server platform', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [BreakpointService, { provide: PLATFORM_ID, useValue: 'server' }],
+    });
+    const svc = TestBed.inject(BreakpointService);
+    // Shouldn't throw, and shouldn't set initial dimensions from window
+    expect(svc.width()).toBe(0);
+    expect(svc.height()).toBe(0);
+
+    // Destroy should also be safe on server
+    expect(() => svc.ngOnDestroy()).not.toThrow();
   });
 });

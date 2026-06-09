@@ -1,3 +1,4 @@
+import { safeStorage } from '../storage.utils';
 /**
  * @fileoverview Unit tests for ThemeService.
  * Includes manual mocking of @material/material-color-utilities.
@@ -51,7 +52,7 @@ describe('ThemeService', () => {
     ThemeServiceCtor = mod.ThemeService;
 
     // Reset Storage
-    localStorage.clear();
+    safeStorage.clear();
     originalMatchMedia = window.matchMedia;
     window.matchMedia = vi
       .fn()
@@ -100,8 +101,8 @@ describe('ThemeService', () => {
   });
 
   it('should load preferences from local storage', () => {
-    localStorage.setItem(STORAGE_KEY_MODE, 'dark');
-    localStorage.setItem(STORAGE_KEY_SEED, '#ff0000');
+    safeStorage.setItem(STORAGE_KEY_MODE, 'dark');
+    safeStorage.setItem(STORAGE_KEY_SEED, '#ff0000');
 
     // Spy on DOM before re-creation
     const bodyAddSpy = vi.spyOn(document.body.classList, 'add');
@@ -122,7 +123,7 @@ describe('ThemeService', () => {
     TestBed.flushEffects();
 
     expect(service.seedColor()).toBe('#00ff00');
-    expect(localStorage.getItem(STORAGE_KEY_SEED)).toBe('#00ff00');
+    expect(safeStorage.getItem(STORAGE_KEY_SEED)).toBe('#00ff00');
 
     // Verify CSS injection happened
     expect(rootStyleSpy).toHaveBeenCalled();
@@ -174,7 +175,7 @@ describe('ThemeService', () => {
   });
 
   it('should use OS preference when saved mode is invalid', () => {
-    localStorage.setItem(STORAGE_KEY_MODE, 'invalid');
+    safeStorage.setItem(STORAGE_KEY_MODE, 'invalid');
     const matchSpy = vi
       .spyOn(window, 'matchMedia')
       .mockImplementation((query: string) => createMatchMedia(true, query));
@@ -187,7 +188,7 @@ describe('ThemeService', () => {
   });
 
   it('should respect OS dark preference when no saved mode', () => {
-    localStorage.clear();
+    safeStorage.clear();
     const matchSpy = vi
       .spyOn(window, 'matchMedia')
       .mockImplementation((query: string) => createMatchMedia(true, query));
@@ -216,13 +217,13 @@ describe('ThemeService', () => {
     });
 
     const serverService = TestBed.inject(ThemeServiceCtor);
-    localStorage.clear();
+    safeStorage.clear();
 
     serverService.setMode('dark');
     serverService.setSeedColor('#00ff00');
 
-    expect(localStorage.getItem(STORAGE_KEY_MODE)).toBeNull();
-    expect(localStorage.getItem(STORAGE_KEY_SEED)).toBeNull();
+    expect(safeStorage.getItem(STORAGE_KEY_MODE)).toBeNull();
+    expect(safeStorage.getItem(STORAGE_KEY_SEED)).toBeNull();
   });
 
   it('should skip DOM updates on server platform', () => {

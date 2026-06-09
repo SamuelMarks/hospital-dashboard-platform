@@ -1,3 +1,4 @@
+import { safeStorage } from '../../../core/storage.utils';
 /** @docs */
 /**
  * @fileoverview Unit tests for OnboardingService.
@@ -10,13 +11,9 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 
 describe('OnboardingService', () => {
   function createService(platformId = 'browser'): OnboardingService {
-    localStorage.clear();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
-      providers: [
-        OnboardingService,
-        { provide: PLATFORM_ID, useValue: platformId },
-      ],
+      providers: [OnboardingService, { provide: PLATFORM_ID, useValue: platformId }],
     });
     return TestBed.inject(OnboardingService);
   }
@@ -26,7 +23,7 @@ describe('OnboardingService', () => {
   });
 
   afterEach(() => {
-    localStorage.clear();
+    safeStorage.clear();
     vi.useRealTimers();
   });
 
@@ -43,7 +40,7 @@ describe('OnboardingService', () => {
   });
 
   it('should not show wizard when already complete', () => {
-    localStorage.setItem('pulse_onboarding_complete', 'true');
+    safeStorage.setItem('pulse_onboarding_complete', 'true');
     const svc = createService();
     vi.advanceTimersByTime(500);
     expect(svc.isVisible()).toBe(false);
@@ -57,7 +54,7 @@ describe('OnboardingService', () => {
   });
 
   it('start() shows wizard at step 0', () => {
-    localStorage.setItem('pulse_onboarding_complete', 'true');
+    safeStorage.setItem('pulse_onboarding_complete', 'true');
     const svc = createService();
     vi.advanceTimersByTime(500);
     svc.start();
@@ -128,24 +125,24 @@ describe('OnboardingService', () => {
     svc.skip();
     expect(svc.isVisible()).toBe(false);
     expect(svc.isComplete()).toBe(true);
-    expect(localStorage.getItem('pulse_onboarding_complete')).toBe('true');
+    expect(safeStorage.getItem('pulse_onboarding_complete')).toBe('true');
   });
 
-  it('complete() persists to localStorage', () => {
+  it('complete() persists to safeStorage', () => {
     const svc = createService();
     vi.advanceTimersByTime(500);
     svc.complete();
-    expect(localStorage.getItem('pulse_onboarding_complete')).toBe('true');
+    expect(safeStorage.getItem('pulse_onboarding_complete')).toBe('true');
   });
 
-  it('reset() clears state and localStorage', () => {
+  it('reset() clears state and safeStorage', () => {
     const svc = createService();
     vi.advanceTimersByTime(500);
     svc.complete();
     svc.reset();
     expect(svc.isComplete()).toBe(false);
     expect(svc.isVisible()).toBe(false);
-    expect(localStorage.getItem('pulse_onboarding_complete')).toBeNull();
+    expect(safeStorage.getItem('pulse_onboarding_complete')).toBeNull();
   });
 
   it('hasPrev is false on first step', () => {

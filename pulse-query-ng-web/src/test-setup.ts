@@ -167,3 +167,35 @@ ComponentRef.prototype.setInput = function (name: string, value: unknown) {
     throw err;
   }
 };
+
+const storageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value.toString();
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (idx: number) => Object.keys(store)[idx] || null,
+  };
+})();
+
+if (typeof window !== 'undefined') {
+  try {
+    (window as any).localStorage = storageMock;
+    (window as any).sessionStorage = storageMock;
+  } catch (e) {}
+}
+
+try {
+  (globalThis as any).localStorage = storageMock;
+  (globalThis as any).sessionStorage = storageMock;
+} catch (e) {}

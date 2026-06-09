@@ -185,7 +185,9 @@ describe('OnboardingWizardComponent', () => {
   });
 
   it('should have aria-modal="true" on overlay', () => {
-    expect(fixture.nativeElement.querySelector('.overlay')?.getAttribute('aria-modal')).toBe('true');
+    expect(fixture.nativeElement.querySelector('.overlay')?.getAttribute('aria-modal')).toBe(
+      'true',
+    );
   });
 
   it('should have aria-label on skip button', () => {

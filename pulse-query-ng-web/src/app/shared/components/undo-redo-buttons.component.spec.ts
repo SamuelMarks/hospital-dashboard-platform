@@ -98,7 +98,6 @@ describe('UndoRedoButtonsComponent', () => {
     fixture.detectChanges();
     const btn = fixture.nativeElement.querySelector('[data-testid="redo-button"]');
     btn?.click();
-    await fixture.whenStable();
     expect(mockUndoRedoService.redo).toHaveBeenCalledTimes(1);
   });
 

@@ -1,3 +1,4 @@
+import { safeStorage } from '../storage.utils';
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/core/theme/theme.service.ts
@@ -74,8 +75,8 @@ export class ThemeService {
   }
 
   private loadPreferences(): void {
-    const savedMode = localStorage.getItem(STORAGE_KEY_MODE) as ThemeMode;
-    const savedSeed = localStorage.getItem(STORAGE_KEY_SEED);
+    const savedMode = safeStorage.getItem(STORAGE_KEY_MODE) as ThemeMode;
+    const savedSeed = safeStorage.getItem(STORAGE_KEY_SEED);
 
     if (savedMode && (savedMode === 'light' || savedMode === 'dark')) {
       this._mode.set(savedMode);
@@ -92,8 +93,8 @@ export class ThemeService {
 
   private savePreferences(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    localStorage.setItem(STORAGE_KEY_MODE, this._mode());
-    localStorage.setItem(STORAGE_KEY_SEED, this._seedColor());
+    safeStorage.setItem(STORAGE_KEY_MODE, this._mode());
+    safeStorage.setItem(STORAGE_KEY_SEED, this._seedColor());
   }
 
   private applyThemeToDom(mode: ThemeMode, seed: string, isTv: boolean): void {

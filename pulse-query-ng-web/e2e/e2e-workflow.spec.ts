@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('End-to-End Workflow', () => {
-  test('Complete user journey from login to creating a dashboard and adding a widget', async ({ page }) => {
+  test('Complete user journey from login to creating a dashboard and adding a widget', async ({
+    page,
+  }) => {
     // Navigate to login
     await page.goto('/login');
     await page.fill('input[type="email"]', 'admin@example.com');

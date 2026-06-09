@@ -4,16 +4,22 @@ import { MpaxArenaService, MpaxArenaResponse } from '../api-client';
 import { of, throwError } from 'rxjs';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { Component, input , ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-markdown', template: '', })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'viz-markdown',
+  template: '',
+})
 class MockVizMarkdownComponent {
   readonly content = input<string>('');
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'app-sql-snippet', template: '', })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-sql-snippet',
+  template: '',
+})
 class MockSqlSnippetComponent {
   readonly sql = input<string>('');
 }

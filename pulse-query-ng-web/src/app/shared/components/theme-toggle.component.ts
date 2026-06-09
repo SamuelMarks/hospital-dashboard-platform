@@ -46,7 +46,8 @@ import { ThemeService } from '../../core/theme/theme.service';
   ],
 })
 export class ThemeToggleComponent {
-  private readonly themeService = inject(ThemeService);
+  /** Injected ThemeService. */
+  /** Injected ThemeService. */ private readonly themeService = inject(ThemeService);
 
   /**
    * Signal indicating whether dark mode is active.

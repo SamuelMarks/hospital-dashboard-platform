@@ -1,3 +1,4 @@
+import { safeStorage } from '../storage.utils';
 /**
  * @fileoverview Unit tests for AuthService.
  * Verifies session logic, storage interactions, and API chaining.
@@ -37,7 +38,7 @@ describe('AuthService', () => {
       navigate: vi.fn(),
     };
 
-    localStorage.clear();
+    safeStorage.clear();
 
     TestBed.configureTestingModule({
       providers: [
@@ -52,7 +53,7 @@ describe('AuthService', () => {
   });
 
   afterEach(() => {
-    localStorage.clear();
+    safeStorage.clear();
   });
 
   it('should be created', () => {
@@ -66,7 +67,7 @@ describe('AuthService', () => {
 
       service.login({ email: 'u', password: 'p' }).subscribe();
 
-      expect(localStorage.getItem('pulse_auth_token')).toBe('abc-123');
+      expect(safeStorage.getItem('pulse_auth_token')).toBe('abc-123');
       expect(service.currentUser()).toEqual(mockUser);
       expect(service.isAuthenticated()).toBe(true);
     });
@@ -87,38 +88,38 @@ describe('AuthService', () => {
   });
 
   it('should return token from storage in browser', () => {
-    localStorage.setItem('pulse_auth_token', 'stored');
+    safeStorage.setItem('pulse_auth_token', 'stored');
     expect(service.getToken()).toBe('stored');
     expect(service.hasStoredToken()).toBe(true);
   });
 
   it('should treat stored token as authenticated when user is not loaded', () => {
-    localStorage.setItem('pulse_auth_token', 'stored');
+    safeStorage.setItem('pulse_auth_token', 'stored');
     expect(service.isAuthenticated()).toBe(true);
   });
 
   it('should return false when no token is stored', () => {
-    localStorage.removeItem('pulse_auth_token');
+    safeStorage.removeItem('pulse_auth_token');
     expect(service.hasStoredToken()).toBe(false);
   });
 
   describe('logout', () => {
     it('should clear storage and redirect', () => {
-      localStorage.setItem('pulse_auth_token', 'garbage');
+      safeStorage.setItem('pulse_auth_token', 'garbage');
 
       service.logout();
 
-      expect(localStorage.getItem('pulse_auth_token')).toBeNull();
+      expect(safeStorage.getItem('pulse_auth_token')).toBeNull();
       expect(service.currentUser()).toBeNull();
       expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
     });
 
     it('should allow logout without redirect', () => {
-      localStorage.setItem('pulse_auth_token', 'garbage');
+      safeStorage.setItem('pulse_auth_token', 'garbage');
 
       service.logout(false);
 
-      expect(localStorage.getItem('pulse_auth_token')).toBeNull();
+      expect(safeStorage.getItem('pulse_auth_token')).toBeNull();
       expect(mockRouter.navigate).not.toHaveBeenCalled();
     });
   });
@@ -144,7 +145,7 @@ describe('AuthService', () => {
 
   describe('initialize', () => {
     it('should restore session if local token exists', async () => {
-      localStorage.setItem('pulse_auth_token', 'valid');
+      safeStorage.setItem('pulse_auth_token', 'valid');
       mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
 
       await service.initialize();
@@ -171,7 +172,7 @@ describe('AuthService', () => {
     });
 
     const serverService = TestBed.inject(AuthService);
-    localStorage.setItem('pulse_auth_token', 'valid');
+    safeStorage.setItem('pulse_auth_token', 'valid');
 
     await serverService.initialize();
     expect(serverService.getToken()).toBeNull();
@@ -191,7 +192,7 @@ describe('AuthService', () => {
     });
 
     const serverService = TestBed.inject(AuthService);
-    const storageSpy = vi.spyOn(localStorage, 'setItem');
+    const storageSpy = vi.spyOn(safeStorage, 'setItem');
     mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(of(mockToken));
     mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
 
@@ -214,7 +215,7 @@ describe('AuthService', () => {
     });
 
     const serverService = TestBed.inject(AuthService);
-    const removeSpy = vi.spyOn(localStorage, 'removeItem');
+    const removeSpy = vi.spyOn(safeStorage, 'removeItem');
 
     serverService.logout(false);
 

@@ -12,7 +12,7 @@ import {
   ChatService,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
-import { signal, NO_ERRORS_SCHEMA , ChangeDetectionStrategy } from '@angular/core';
+import { signal, NO_ERRORS_SCHEMA, ChangeDetectionStrategy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -274,7 +274,10 @@ describe('SqlBuilderComponent', () => {
 });
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'viz-table', template: '<div data-testid="mock-table"></div>' })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'viz-table',
+  template: '<div data-testid="mock-table"></div>',
+})
 class MockVizTableComponent {
   readonly dataSet = input<unknown>();
 }

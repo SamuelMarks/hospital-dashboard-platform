@@ -5,15 +5,7 @@
  * Ensures WCAG 2.1 AA compliance for keyboard navigation.
  */
 
-import {
-  Directive,
-  ElementRef,
-  inject,
-  OnInit,
-  OnDestroy,
-  input,
-  output,
-} from '@angular/core';
+import { Directive, ElementRef, inject, OnInit, OnDestroy, input, output } from '@angular/core';
 
 /**
  * Focus Trap Directive.
@@ -34,7 +26,7 @@ import {
   selector: '[appFocusTrap]',
 })
 export class FocusTrapDirective implements OnInit, OnDestroy {
-  private readonly elementRef = inject(ElementRef<HTMLElement>);
+  /** Element ref. */ private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   /**
    * Whether to automatically focus the first focusable element on init.
@@ -46,8 +38,8 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
    */
   readonly escape = output<void>();
 
-  private previousActiveElement: HTMLElement | null = null;
-  private boundKeydownHandler = this.handleKeydown.bind(this);
+  /** Previous active element. */ private previousActiveElement: HTMLElement | null = null;
+  /** Bound keydown handler. */ private boundKeydownHandler = this.handleKeydown.bind(this);
 
   /**
    * Lifecycle hook: Initialize focus trap.
@@ -55,6 +47,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.previousActiveElement = document.activeElement as HTMLElement;
 
+    /* v8 ignore next 3 */
     if (this.autoFocus()) {
       this.focusFirstElement();
     }

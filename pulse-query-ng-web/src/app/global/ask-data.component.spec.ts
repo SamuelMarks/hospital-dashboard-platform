@@ -14,7 +14,8 @@ import {
   input,
   output,
   NO_ERRORS_SCHEMA,
-ChangeDetectionStrategy } from '@angular/core';
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { readTemplate } from '../../test-utils/component-resources';

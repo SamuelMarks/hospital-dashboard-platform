@@ -39,7 +39,9 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
       class="overlay"
       role="dialog"
       aria-modal="true"
-      [attr.aria-label]="'Onboarding step ' + (onboarding.currentStepIndex() + 1) + ' of ' + onboarding.totalSteps()"
+      [attr.aria-label]="
+        'Onboarding step ' + (onboarding.currentStepIndex() + 1) + ' of ' + onboarding.totalSteps()
+      "
     >
       <div class="wizard-card" data-testid="onboarding-wizard">
         <!-- Header -->
@@ -286,8 +288,8 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
   ],
 })
 export class OnboardingWizardComponent {
-  readonly onboarding = inject(OnboardingService);
-  private readonly router = inject(Router);
+  /** Onboarding service. */ readonly onboarding = inject(OnboardingService);
+  /** Injected Router. */ private readonly router = inject(Router);
 
   /**
    * All onboarding steps (for dot navigation).

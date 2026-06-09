@@ -5,7 +5,16 @@
  * Provides a centralized system for registering, handling, and displaying shortcuts.
  */
 
-import { Injectable, inject, PLATFORM_ID, signal, Signal, Injector, runInInjectionContext, OnDestroy } from '@angular/core';
+import {
+  Injectable,
+  inject,
+  PLATFORM_ID,
+  signal,
+  Signal,
+  Injector,
+  runInInjectionContext,
+  OnDestroy,
+} from '@angular/core';
 import { isPlatformBrowser, DOCUMENT } from '@angular/common';
 import { Router } from '@angular/router';
 import { ThemeService } from '../theme/theme.service';
@@ -60,24 +69,25 @@ export interface KeyboardShortcut {
   providedIn: 'root',
 })
 export class KeyboardShortcutsService implements OnDestroy {
-  private readonly platformId = inject(PLATFORM_ID);
-  private readonly document = inject(DOCUMENT);
-  private readonly router = inject(Router);
-  private readonly themeService = inject(ThemeService);
-  private readonly dialog = inject(MatDialog);
-  private readonly injector = inject(Injector);
-  private readonly undoRedoService = inject(UndoRedoService);
+  /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
+  /** Injected DOCUMENT. */ private readonly document = inject(DOCUMENT);
+  /** Injected Router. */ private readonly router = inject(Router);
+  /** Injected ThemeService. */ private readonly themeService = inject(ThemeService);
+  /** Injected MatDialog. */ private readonly dialog = inject(MatDialog);
+  /** Injected Injector. */ private readonly injector = inject(Injector);
+  /** Injected UndoRedoService. */ private readonly undoRedoService = inject(UndoRedoService);
 
-  private readonly shortcuts = new Map<string, KeyboardShortcut>();
-  private readonly _isHelpVisible = signal(false);
-  private readonly boundKeydownHandler = (e: KeyboardEvent) => this.handleKeyboardEvent(e);
+  /** Map of shortcuts. */ private readonly shortcuts = new Map<string, KeyboardShortcut>();
+  /** Help visibility. */ private readonly _isHelpVisible = signal(false);
+  /** Bound keydown handler. */ private readonly boundKeydownHandler = (e: KeyboardEvent) =>
+    this.handleKeyboardEvent(e);
 
   /**
    * Signal indicating whether the keyboard shortcuts help dialog is visible.
    */
   readonly isHelpVisible: Signal<boolean> = this._isHelpVisible.asReadonly();
 
-  constructor() {
+  /** Constructor. */ constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.initializeDefaultShortcuts();
       this.attachGlobalListener();
@@ -135,9 +145,8 @@ export class KeyboardShortcutsService implements OnDestroy {
     this._isHelpVisible.set(true);
 
     runInInjectionContext(this.injector, async () => {
-      const { KeyboardShortcutsDialogComponent } = await import(
-        '../../shared/components/dialogs/keyboard-shortcuts-dialog.component'
-      );
+      const { KeyboardShortcutsDialogComponent } =
+        await import('../../shared/components/dialogs/keyboard-shortcuts-dialog.component');
 
       this.dialog
         .open(KeyboardShortcutsDialogComponent, {
@@ -235,7 +244,9 @@ export class KeyboardShortcutsService implements OnDestroy {
       description: 'Undo last action',
       keys: 'mod+z',
       category: 'editing',
-      handler: () => { void this.undoRedoService.undo(); },
+      handler: () => {
+        void this.undoRedoService.undo();
+      },
     });
 
     this.register({
@@ -243,7 +254,9 @@ export class KeyboardShortcutsService implements OnDestroy {
       description: 'Redo last action',
       keys: 'mod+shift+z',
       category: 'editing',
-      handler: () => { void this.undoRedoService.redo(); },
+      handler: () => {
+        void this.undoRedoService.redo();
+      },
     });
   }
 
@@ -269,9 +282,7 @@ export class KeyboardShortcutsService implements OnDestroy {
   private handleKeyboardEvent(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;
     const isTyping =
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.isContentEditable;
+      target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
     if (isTyping) {
       // Allow ? to open help even while typing

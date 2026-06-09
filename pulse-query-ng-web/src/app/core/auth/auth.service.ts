@@ -1,3 +1,4 @@
+import { safeStorage } from '../storage.utils';
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/core/auth/auth.service.ts
@@ -39,7 +40,7 @@ export class AuthService {
 
   getToken(): string | null {
     if (isPlatformBrowser(this.platformId)) {
-      return localStorage.getItem(this.TOKEN_KEY);
+      return safeStorage.getItem(this.TOKEN_KEY);
     }
     return null;
   }
@@ -61,7 +62,7 @@ export class AuthService {
 
   logout(redirect: boolean = true): void {
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem(this.TOKEN_KEY);
+      safeStorage.removeItem(this.TOKEN_KEY);
     }
     this._currentUser.set(null);
     if (redirect) {
@@ -71,14 +72,14 @@ export class AuthService {
 
   hasStoredToken(): boolean {
     if (isPlatformBrowser(this.platformId)) {
-      return !!localStorage.getItem(this.TOKEN_KEY);
+      return !!safeStorage.getItem(this.TOKEN_KEY);
     }
     return false;
   }
 
   private handleAuthSuccess(token: Token): void {
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem(this.TOKEN_KEY, token.access_token);
+      safeStorage.setItem(this.TOKEN_KEY, token.access_token);
     }
     this.fetchMe();
   }

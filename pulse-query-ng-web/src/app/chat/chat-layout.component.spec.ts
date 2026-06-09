@@ -3,7 +3,7 @@ import { ChatLayoutComponent } from './chat-layout.component';
 import { ChatStore } from './chat.store';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { BehaviorSubject, of } from 'rxjs';
-import { signal, Component , ChangeDetectionStrategy } from '@angular/core';
+import { signal, Component, ChangeDetectionStrategy } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ConversationComponent } from './conversation/conversation.component';
 import { By } from '@angular/platform-browser';
@@ -18,11 +18,17 @@ import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialo
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'app-conversation', template: '' })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-conversation',
+  template: '',
+})
 class MockConv {}
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush, selector: 'app-query-cart', template: '' })
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-query-cart',
+  template: '',
+})
 class MockCart {}
 
 describe('ChatLayoutComponent', () => {

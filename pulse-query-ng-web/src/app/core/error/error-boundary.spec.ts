@@ -2,7 +2,7 @@
  * @fileoverview Unit tests for Error Boundary Directive.
  */
 
-import { Component, TemplateRef , ChangeDetectionStrategy } from '@angular/core';
+import { Component, TemplateRef, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ErrorBoundaryDirective, ErrorBoundaryContext } from './error-boundary.directive';
 import { ErrorHandler } from '@angular/core';

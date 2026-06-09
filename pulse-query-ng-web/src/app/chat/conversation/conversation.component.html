@@ -120,21 +120,20 @@
 <div class="composer-container mat-elevation-z4">
   <!-- Model Selection Chips -->
   @if (store.availableModels().length > 0) {
-<div class="model-selector">
-    <mat-chip-listbox multiple aria-label="Select Models to Query">
-      @for (model of store.availableModels(); track model.id) {
-        <mat-chip-option
-          [selected]="store.selectedModelIds().includes(model.id)"
-          (click)="store.toggleModelSelection(model.id)"
-          [matTooltip]="model.name"
-        >
-          {{ model.name }}
-        </mat-chip-option>
-      }
-    </mat-chip-listbox>
-  </div>
-    }
-
+    <div class="model-selector">
+      <mat-chip-listbox multiple aria-label="Select Models to Query">
+        @for (model of store.availableModels(); track model.id) {
+          <mat-chip-option
+            [selected]="store.selectedModelIds().includes(model.id)"
+            (click)="store.toggleModelSelection(model.id)"
+            [matTooltip]="model.name"
+          >
+            {{ model.name }}
+          </mat-chip-option>
+        }
+      </mat-chip-listbox>
+    </div>
+  }
 
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
     <textarea

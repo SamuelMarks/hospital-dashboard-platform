@@ -1,3 +1,4 @@
+import { safeStorage } from '../core/storage.utils';
 /* v8 ignore start */
 /** @docs */
 import { Injectable, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
@@ -108,7 +109,7 @@ export class QueryCartService {
   /** loadFromStorage method. */
   private loadFromStorage(): void {
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = safeStorage.getItem(this.storageKey);
       if (!raw) return;
       const parsed = JSON.parse(raw) as QueryCartItem[];
       const safe = Array.isArray(parsed) ? parsed.filter(this.isValidItem) : [];
@@ -121,7 +122,7 @@ export class QueryCartService {
   /** persistToStorage method. */
   private persistToStorage(items: QueryCartItem[]): void {
     try {
-      localStorage.setItem(this.storageKey, JSON.stringify(items));
+      safeStorage.setItem(this.storageKey, JSON.stringify(items));
     } catch {
       // Ignore storage errors (quota, disabled, etc.)
     }

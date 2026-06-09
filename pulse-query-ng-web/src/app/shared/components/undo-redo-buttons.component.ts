@@ -73,7 +73,8 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
   ],
 })
 export class UndoRedoButtonsComponent {
-  readonly undoRedoService = inject(UndoRedoService);
+  /** Injected UndoRedoService. */
+  /** Undo redo service. */ readonly undoRedoService = inject(UndoRedoService);
 
   /**
    * Generates tooltip text for undo button.
