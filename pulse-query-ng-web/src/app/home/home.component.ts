@@ -21,6 +21,9 @@ import { AskDataService } from '../global/ask-data.service';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 import { AuthService } from '../core/auth/auth.service';
+import { ThemeToggleComponent } from '../shared/components/theme-toggle.component';
+import { OnboardingWizardComponent } from '../shared/components/onboarding/onboarding-wizard.component';
+import { OnboardingService } from '../shared/components/onboarding/onboarding.service';
 
 /** @docs */
 @Component({
@@ -36,6 +39,8 @@ import { AuthService } from '../core/auth/auth.service';
     MatDialogModule,
     MatTooltipModule,
     MatSnackBarModule,
+    ThemeToggleComponent,
+    OnboardingWizardComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './home.component.html',
@@ -139,6 +144,7 @@ export class HomeComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   public readonly askDataService = inject(AskDataService);
   public readonly authService = inject(AuthService);
+  public readonly onboardingService = inject(OnboardingService);
 
   readonly dashboards = signal<DashboardResponse[]>([]);
   readonly isLoading = signal(true);

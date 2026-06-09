@@ -1,3 +1,8 @@
+<!-- Onboarding Wizard (shown to new users) -->
+@if (onboardingService.isVisible()) {
+  <app-onboarding-wizard />
+}
+
 <!-- Header -->
 <div class="header">
   <div class="header-text">
@@ -6,6 +11,9 @@
   </div>
 
   <div class="btn-group">
+    <!-- Theme Toggle -->
+    <app-theme-toggle />
+
     @if (authService.currentUser()?.is_admin) {
       <button mat-stroked-button color="primary" routerLink="/admin" matTooltip="Admin Settings">
         <mat-icon>settings</mat-icon> Admin

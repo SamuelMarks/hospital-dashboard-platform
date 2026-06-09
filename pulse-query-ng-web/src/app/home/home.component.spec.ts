@@ -11,6 +11,8 @@ import { of, throwError, Subject } from 'rxjs';
 import { signal } from '@angular/core';
 import { AskDataService } from '../global/ask-data.service';
 import { AuthService } from '../core/auth/auth.service';
+import { ThemeService } from '../core/theme/theme.service';
+import { OnboardingService } from '../shared/components/onboarding/onboarding.service';
 import { readTemplate } from '../../test-utils/component-resources';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
@@ -23,6 +25,8 @@ describe('HomeComponent', () => {
   let mockDialog: any;
   let mockSnackBar: any;
   let mockAskDataService: any;
+  let mockThemeService: any;
+  let mockOnboardingService: any;
   let router: Router;
 
   const mockDashboardList: DashboardResponse[] = [
@@ -45,6 +49,30 @@ describe('HomeComponent', () => {
         onAction: () => of(void 0),
       }),
     };
+    mockThemeService = {
+      isDark: signal(false),
+      mode: signal('light' as const),
+      seedColor: signal('#1565c0'),
+      isTvMode: signal(false),
+      toggle: vi.fn(),
+    };
+    mockOnboardingService = {
+      isVisible: signal(false),
+      isComplete: signal(true),
+      currentStepIndex: signal(0),
+      currentStep: signal({ id: 'welcome', title: 'Welcome', description: 'Desc', icon: 'home' }),
+      totalSteps: signal(5),
+      hasNext: signal(true),
+      hasPrev: signal(false),
+      progress: signal(20),
+      next: vi.fn(),
+      prev: vi.fn(),
+      skip: vi.fn(),
+      complete: vi.fn(),
+      start: vi.fn(),
+      goToStep: vi.fn(),
+      reset: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [HomeComponent, NoopAnimationsModule],
@@ -59,6 +87,8 @@ describe('HomeComponent', () => {
           provide: AuthService,
           useValue: { currentUser: signal(null), isAuthenticated: signal(false), logout: vi.fn() },
         },
+        { provide: ThemeService, useValue: mockThemeService },
+        { provide: OnboardingService, useValue: mockOnboardingService },
         // Force provider override
         { provide: MatSnackBar, useValue: mockSnackBar },
       ],
