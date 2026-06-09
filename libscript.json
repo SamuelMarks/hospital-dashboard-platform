@@ -2,10 +2,30 @@
   "domain": "pulse-query.healthplatform.io",
   "infrastructure": {
     "node": {
-      "size": "Standard_B2s"
+      "size": "Standard_D2s_v7"
+    },
+    "network": {
+      "ports": ["22", "80", "443", "5432"]
     }
   },
   "ingress": {
-    "tls": "letsencrypt"
+    "tls": "letsencrypt",
+    "port": 8000
+  },
+  "hooks": {
+    "install": [
+      "sudo apt-get update && sudo apt-get install -y python3-pip python3-venv && cd backend && python3 -m pip install uv --break-system-packages && python3 -m uv sync"
+    ],
+    "build": [
+      "echo 'No frontend build for pulse-query'"
+    ]
+  },
+  "services": {
+    "backend": {
+      "command": "cd backend && python3 -m uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      "env": {
+        "ENVIRONMENT": "production"
+      }
+    }
   }
 }
