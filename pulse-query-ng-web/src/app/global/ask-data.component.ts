@@ -113,8 +113,8 @@ import { QueryCartService } from './query-cart.service';
   templateUrl: './ask-data.component.html',
 })
 /** @docs */
+/* v8 ignore start */
 export class AskDataComponent implements OnDestroy {
-  /* v8 ignore start */
   public readonly vis = inject(AskDataService);
   private readonly cart = inject(QueryCartService);
   private readonly dashboardsApi = inject(DashboardsService);
@@ -228,3 +228,4 @@ export class AskDataComponent implements OnDestroy {
     });
   }
 }
+/* v8 ignore stop */

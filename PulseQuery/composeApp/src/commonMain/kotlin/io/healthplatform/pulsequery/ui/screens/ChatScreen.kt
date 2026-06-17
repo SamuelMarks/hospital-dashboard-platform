@@ -12,8 +12,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -150,7 +150,7 @@ fun ChatScreen(
                         Icon(Icons.Filled.Add, contentDescription = "New Conversation")
                     }
                     IconButton(onClick = { showConversationsDialog = true }) {
-                        Icon(Icons.Filled.List, contentDescription = "History")
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -204,7 +204,7 @@ fun ChatScreen(
                     maxLines = 4,
                     trailingIcon = {
                         IconButton(onClick = { sendMessage() }, enabled = inputText.isNotBlank() && !isLoading) {
-                            Icon(Icons.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 )

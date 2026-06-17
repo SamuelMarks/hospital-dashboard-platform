@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Science
@@ -43,7 +43,7 @@ fun App() {
 
         val items = listOf(
             "dashboard" to Icons.Filled.Dashboard,
-            "chat" to Icons.Filled.Chat,
+            "chat" to Icons.AutoMirrored.Filled.Chat,
             "analytics" to Icons.Filled.Analytics,
             "editor" to Icons.Filled.Edit,
             "simulation" to Icons.Filled.Science,

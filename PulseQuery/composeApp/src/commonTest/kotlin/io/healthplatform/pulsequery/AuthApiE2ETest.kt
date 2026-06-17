@@ -40,7 +40,7 @@ class AuthApiE2ETest {
             val meResponse = AppContainer.authApi.readUsersMeApiV1AuthMeGet()
             assertTrue(meResponse.success, "Fetch Me failed: ${meResponse.status}")
             
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("EXCEPTION CAUGHT: ${e.message}")
             throw e
         }

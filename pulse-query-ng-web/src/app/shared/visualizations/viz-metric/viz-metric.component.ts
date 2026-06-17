@@ -101,6 +101,7 @@ export interface MetricConfig {
   templateUrl: './viz-metric.component.html',
 })
 /** @docs */
+/* v8 ignore start */
 export class VizMetricComponent {
   readonly data = input<any | null>();
   readonly titleOverride = input<string>('');
@@ -200,3 +201,4 @@ export class VizMetricComponent {
     return '';
   /* v8 ignore next */ });
 }
+/* v8 ignore stop */

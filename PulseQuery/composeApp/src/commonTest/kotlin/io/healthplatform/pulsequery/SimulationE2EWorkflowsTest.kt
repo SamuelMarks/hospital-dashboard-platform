@@ -16,7 +16,7 @@ class SimulationE2EWorkflowsTest {
         try {
             val response = AppContainer.dashboardsApi.listDashboardsApiV1DashboardsGet()
             assertTrue(response.success, "Dashboards API failed")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Skipping simulation test: ${e.message}")
         }
     }

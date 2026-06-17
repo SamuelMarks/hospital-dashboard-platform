@@ -19,7 +19,7 @@ class FailedLoginTest {
             )
             val token = loginResponse.body().accessToken
             println("Token: $token")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("EXCEPTION THROWN: ${e::class.simpleName}: ${e.message}")
             didThrow = true
         }

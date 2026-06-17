@@ -9,8 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +38,7 @@ fun WizardScreen() {
                 navigationIcon = {
                     if (state !is WizardState.Landing) {
                         IconButton(onClick = { viewModel.reset() }) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
                 },
@@ -146,7 +146,7 @@ fun SplitScreenContent(
         }
 
         // Divider
-        Divider(modifier = Modifier.fillMaxHeight().width(1.dp))
+        HorizontalDivider(modifier = Modifier.fillMaxHeight().width(1.dp))
 
         // Right Panel: Visuals/Branching
         Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(16.dp)) {
@@ -233,7 +233,7 @@ fun MessageInputRow(onMessageSent: (String) -> Unit) {
                         inputText = ""
                     }
                 }) {
-                    Icon(Icons.Filled.Send, contentDescription = "Send")
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
                 }
             }
         )

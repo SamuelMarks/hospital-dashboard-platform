@@ -32,7 +32,7 @@ class AndroidAuthApiTest {
                 setBody(FormDataContent(Parameters.Empty))
             }
             println("SUCCESS")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("ERROR: ${e.message}")
             e.printStackTrace()
             throw e

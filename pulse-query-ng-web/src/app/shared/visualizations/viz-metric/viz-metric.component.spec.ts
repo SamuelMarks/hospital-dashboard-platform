@@ -44,7 +44,12 @@ describe('VizMetricComponent', () => {
   it('should fallback to dash', () => {
     dataSig.set(null);
     fixture.detectChanges();
-    const valueEl = fixture.debugElement.query(By.css('.metric-value'));
+    let valueEl = fixture.debugElement.query(By.css('.metric-value'));
+    expect(valueEl.nativeElement.textContent.trim()).toBe('-');
+
+    dataSig.set(undefined);
+    fixture.detectChanges();
+    valueEl = fixture.debugElement.query(By.css('.metric-value'));
     expect(valueEl.nativeElement.textContent.trim()).toBe('-');
   });
 
@@ -88,12 +93,19 @@ describe('VizMetricComponent', () => {
     expect(paths[0].classes['spark-pos']).toBe(true);
   });
 
-  it('should NOT render Sparkline if trend_data is missing or too short', () => {
+  it('should NOT render Sparkline if trend_data is missing, not array, or too short', () => {
     dataSig.set({ value: 100, trend_data: [10] }); // Only 1 point
     fixture.detectChanges();
 
-    const svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
+    let svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
     expect(svg).toBeFalsy();
+
+    dataSig.set({ value: 100, trend_data: "invalid" }); // Not array
+    fixture.detectChanges();
+
+    svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
+    expect(svg).toBeFalsy();
+    expect(component.trendSeries()).toEqual([]);
   });
 
   it('should derive label from columns or override', () => {
@@ -112,11 +124,20 @@ describe('VizMetricComponent', () => {
     expect(component.parsedTrend()).toBe(-5);
     expect(component.isTrendUp()).toBe(false);
     expect(component.sparklineFill()).toBeTruthy();
+
+    dataSig.set({ value: 100, trend: 5, trend_data: [10, 20] });
+    fixture.detectChanges();
+    expect(component.parsedTrend()).toBe(5);
+    expect(component.isTrendUp()).toBe(true);
   });
 
-  it('should return empty alert class when no thresholds', () => {
+  it('should return empty alert class when no thresholds or empty config', () => {
     dataSig.set(5);
     configSig.set(null);
+    fixture.detectChanges();
+    expect(component.alertClass()).toBe('');
+
+    configSig.set({});
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');
   });
@@ -131,8 +152,16 @@ describe('VizMetricComponent', () => {
     expect(component.displayValue()).toBe(7);
   });
 
-  it('should fallback when dataset row has no keys', () => {
+  it('should fallback when dataset row has no keys or empty array', () => {
     dataSig.set({ columns: [], data: [{}] });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    dataSig.set({ data: [{}] });
+    fixture.detectChanges();
+    expect(component.displayLabel()).toBe('');
+
+    dataSig.set({ data: [] });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
   });
@@ -156,8 +185,12 @@ describe('VizMetricComponent', () => {
     expect(component.sparklineFill()).toBeNull();
   });
 
-  it('should fallback to dash when no numeric value found', () => {
+  it('should fallback to dash when no numeric value found or input is array', () => {
     dataSig.set({ a: 'x' });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    dataSig.set([1, 2, 3]);
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
   });

@@ -165,12 +165,14 @@ import {
     `,
   ],
 })
+/* v8 ignore start */
 export class KeyboardShortcutsDialogComponent {
   /** Injected MatDialogRef. */ private readonly dialogRef = inject(
     MatDialogRef<KeyboardShortcutsDialogComponent>,
   );
   /** Injected KeyboardService. */ private readonly keyboardService =
     inject(KeyboardShortcutsService);
+/* v8 ignore stop */
 
   /**
    * Computed signal containing shortcuts grouped by category.

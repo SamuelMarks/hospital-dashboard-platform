@@ -117,7 +117,7 @@ describe('AskDataComponent', () => {
 
   describe('Initialization', () => {
     it('should Create new scratchpad if none exist', () => {
-      mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
+      mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([{ id: 'other', name: 'Other Dash', owner_id: 'u1' } as DashboardResponse]));
 
       mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
         of({
@@ -315,6 +315,13 @@ describe('AskDataComponent', () => {
         'OK',
         { duration: 3000 }
       );
+    });
+
+    it('should change cart icon and active class when count > 0', () => {
+      mockCartService.count.set(1);
+      fixture.detectChanges();
+      const cartBtn = fixture.debugElement.query(By.css('.cart-btn'));
+      expect(cartBtn.classes['active']).toBeTruthy();
     });
   });
 

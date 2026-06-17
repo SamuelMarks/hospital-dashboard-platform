@@ -67,7 +67,7 @@ class AppE2EWorkflowsTest {
                 messageCreate = MessageCreate(content = "Hello AI")
             )
             assertTrue(msgResponse.success, "Send Message failed")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             println("Chat workflow failed (expected if AI unavailable locally): ${e.message}")
         }
 

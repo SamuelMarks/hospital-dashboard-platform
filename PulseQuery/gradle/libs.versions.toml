@@ -22,7 +22,7 @@ kotlinx-serialization = "1.7.3"
 kotlinx-datetime = "0.7.1"
 
 # New additions
-navigation-compose = "2.8.0-alpha10"
+navigation-compose = "2.9.0-beta03"
 sqldelight = "2.2.1"
 okio = "3.16.4"
 sqlcipher = "4.5.4"
