@@ -100,4 +100,29 @@ describe('ProvisioningService', () => {
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalled();
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
   });
+
+  it('provisions widget with default position', () => {
+    const template: TemplateResponse = {
+      id: 't1',
+      title: 'Template',
+      category: 'Ops',
+      sql_template: 'SELECT 1',
+      parameters_schema: {},
+    };
+
+    const created: WidgetResponse = { id: 'w1', dashboard_id: 'd1' } as WidgetResponse;
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(created));
+
+    service.provisionWidget(template, 'd1').subscribe((widget) => {
+      expect(widget).toBe(created);
+    });
+
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'd1',
+      expect.objectContaining({
+        config: expect.objectContaining({ x: 0, y: 0 })
+      })
+    );
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+  });
 });

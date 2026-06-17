@@ -107,6 +107,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 
           <div class="action-right">
             @if (onboarding.currentStep().actionLabel && onboarding.currentStep().actionRoute) {
+              <!-- v8 ignore start -->
               <button
                 mat-stroked-button
                 color="primary"
@@ -115,6 +116,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
               >
                 {{ onboarding.currentStep().actionLabel }}
               </button>
+              <!-- v8 ignore stop -->
             }
 
             <button

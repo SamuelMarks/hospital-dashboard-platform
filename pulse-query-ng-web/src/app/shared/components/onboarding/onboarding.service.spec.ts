@@ -53,6 +53,19 @@ describe('OnboardingService', () => {
     expect(svc.isVisible()).toBe(false);
   });
 
+  it('complete() should not use safeStorage on server platform', () => {
+    const svc = createService('server');
+    svc.complete();
+    expect(svc.isComplete()).toBe(true);
+    expect(safeStorage.getItem('pulse_onboarding_complete')).toBeNull();
+  });
+
+  it('reset() should not use safeStorage on server platform', () => {
+    const svc = createService('server');
+    svc.reset();
+    expect(svc.isComplete()).toBe(false);
+  });
+
   it('start() shows wizard at step 0', () => {
     safeStorage.setItem('pulse_onboarding_complete', 'true');
     const svc = createService();

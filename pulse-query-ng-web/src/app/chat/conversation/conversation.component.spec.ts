@@ -158,4 +158,201 @@ describe('ConversationComponent', () => {
     component.simulateQuery('');
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
+
+  describe('handleEnter and send', () => {
+    it('should not send if shift key is pressed', () => {
+      const e = { shiftKey: true, preventDefault: vi.fn() } as unknown as KeyboardEvent;
+      component.handleEnter(e);
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      expect(mockStore.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should send and clear inputText if valid', () => {
+      component.inputText = 'Hello';
+      const e = { shiftKey: false, preventDefault: vi.fn() } as unknown as KeyboardEvent;
+      component.handleEnter(e);
+      expect(e.preventDefault).toHaveBeenCalled();
+      expect(mockStore.sendMessage).toHaveBeenCalledWith('Hello');
+      expect(component.inputText).toBe('');
+    });
+
+    it('should not send if inputText is empty', () => {
+      component.inputText = '   ';
+      component.send();
+      expect(mockStore.sendMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cleanContent and cleanContentSimple', () => {
+    it('cleanContent: should return empty string if content and snippet are empty', () => {
+      expect(component.cleanContent({ content: '   ' } as any)).toBe('');
+    });
+    it('cleanContent: should handle missing content gracefully', () => {
+      expect(component.cleanContent({} as any)).toBe('');
+    });
+    it('cleanContent: should return content if no sql_snippet', () => {
+      expect(component.cleanContent({ content: 'hi' } as any)).toBe('hi');
+    });
+    it('cleanContent: should strip sql block if sql_snippet exists', () => {
+      expect(component.cleanContent({ content: 'test ```sql \n SELECT 1 \n ``` end', sql_snippet: 'a' } as any)).toBe('test  end');
+    });
+    it('cleanContentSimple: should strip sql block and handle empty', () => {
+      expect(component.cleanContentSimple('test ```sql\n SELECT \n```')).toBe('test');
+      expect(component.cleanContentSimple(null as any)).toBe('');
+    });
+  });
+
+  describe('runQuery', () => {
+    it('should open scratchpad', () => {
+      component.runQuery('SELECT');
+      expect(mockScratchpad.open).toHaveBeenCalled();
+    });
+  });
+
+  describe('saveToCart', () => {
+    it('should not add if sql is empty', () => {
+      component.saveToCart('');
+      expect(mockCart.add).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('runCandidateQuery', () => {
+    it('should early exit if sql is empty', () => {
+      component.runCandidateQuery({ id: 'c1', sql_snippet: '   ' } as any);
+      expect(mockArenaSql.execute).not.toHaveBeenCalled();
+    });
+
+    it('should early exit if sql is missing', () => {
+      component.runCandidateQuery({ id: 'c1' } as any);
+      expect(mockArenaSql.execute).not.toHaveBeenCalled();
+    });
+
+    it('should early exit if already loading', () => {
+      component.candidateLoading.set({ c1: true });
+      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      expect(mockArenaSql.execute).not.toHaveBeenCalled();
+    });
+
+    it('should set error if res.error is present', () => {
+      mockArenaSql.execute.mockReturnValue(of({ error: 'Some err' }));
+      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      expect(component.candidateErrors()['c1']).toBe('Some err');
+      expect(component.candidateResults()['c1']).toBeNull();
+    });
+
+    it('should handle status 0 error', () => {
+      mockArenaSql.execute.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 0 }))
+      );
+      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      expect(component.candidateErrors()['c1']).toBe('Network Error: Cannot reach server.');
+    });
+
+    it('should handle error without detail', () => {
+      mockArenaSql.execute.mockReturnValue(
+        throwError(() => new Error('Generic error'))
+      );
+      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      expect(component.candidateErrors()['c1']).toBe('Generic error');
+    });
+
+    it('should handle error without message', () => {
+      mockArenaSql.execute.mockReturnValue(
+        throwError(() => ({}))
+      );
+      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      expect(component.candidateErrors()['c1']).toBe('Unknown error');
+    });
+  });
+
+  describe('runAllCandidates', () => {
+    it('should do nothing if no candidates', () => {
+      component.runAllCandidates({} as any);
+      expect(mockArenaSql.execute).not.toHaveBeenCalled();
+    });
+    it('should run for each candidate', () => {
+      component.runAllCandidates({ candidates: [{ id: '1', sql_snippet: 's1' }, { id: '2', sql_snippet: 's2' }] } as any);
+      expect(mockArenaSql.execute).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('sqlGroupCount', () => {
+    it('should return 0 if no sql_hash or no candidates', () => {
+      expect(component.sqlGroupCount({} as any, { sql_hash: 'a' } as any)).toBe(0);
+      expect(component.sqlGroupCount({ candidates: [] } as any, {} as any)).toBe(0);
+    });
+    it('should return matching count', () => {
+      expect(component.sqlGroupCount({ candidates: [{ sql_hash: 'a' }, { sql_hash: 'a' }, { sql_hash: 'b' }] } as any, { sql_hash: 'a' } as any)).toBe(2);
+    });
+  });
+
+  describe('candidate accessors', () => {
+    it('isCandidateLoading', () => {
+      component.candidateLoading.set({ c1: true });
+      expect(component.isCandidateLoading('c1')).toBe(true);
+      expect(component.isCandidateLoading('c2')).toBe(false);
+    });
+    it('candidateError', () => {
+      component.candidateErrors.set({ c1: 'err' });
+      expect(component.candidateError('c1')).toBe('err');
+      expect(component.candidateError('c2')).toBeNull();
+    });
+    it('candidateResult', () => {
+      component.candidateResults.set({ c1: { data: [], columns: [] } as any });
+      expect(component.candidateResult('c1')).toEqual({ data: [], columns: [] });
+      expect(component.candidateResult('c2')).toBeNull();
+    });
+  });
+
+  describe('hasPendingCandidates', () => {
+    it('should return false if not assistant or no candidates', () => {
+      expect(component.hasPendingCandidates({ role: 'user' } as any)).toBe(false);
+      expect(component.hasPendingCandidates({ role: 'assistant', candidates: [] } as any)).toBe(false);
+    });
+    it('should return true if none selected', () => {
+      expect(component.hasPendingCandidates({ role: 'assistant', candidates: [{ is_selected: false }] } as any)).toBe(true);
+    });
+    it('should return true if some selected but content is empty', () => {
+      expect(component.hasPendingCandidates({ role: 'assistant', content: '   ', candidates: [{ is_selected: true }] } as any)).toBe(true);
+    });
+    it('should return false if some selected and content is present', () => {
+      expect(component.hasPendingCandidates({ role: 'assistant', content: 'hi', candidates: [{ is_selected: true }] } as any)).toBe(false);
+    });
+  });
+
+  describe('hasSqlCandidates', () => {
+    it('should return true if any candidate has sql_snippet', () => {
+      expect(component.hasSqlCandidates({ candidates: [{ sql_snippet: '' }, { sql_snippet: 'select' }] } as any)).toBe(true);
+    });
+    it('should return false if none have sql_snippet or no candidates', () => {
+      expect(component.hasSqlCandidates({ candidates: [{ sql_snippet: '' }] } as any)).toBe(false);
+      expect(component.hasSqlCandidates({} as any)).toBe(false);
+    });
+  });
+
+  describe('vote', () => {
+    it('should call store.voteCandidate', () => {
+      component.vote('m1', 'c1');
+      expect(mockStore.voteCandidate).toHaveBeenCalledWith('m1', 'c1');
+    });
+  });
+
+  describe('scrollToBottom', () => {
+    it('should set scrollTop to scrollHeight if element exists', () => {
+      vi.useFakeTimers();
+      component['scrollContainer'] = { nativeElement: { scrollTop: 0, scrollHeight: 100 } } as any;
+      component['scrollToBottom']();
+      vi.advanceTimersByTime(50);
+      expect(component['scrollContainer'].nativeElement.scrollTop).toBe(100);
+      vi.useRealTimers();
+    });
+    it('should do nothing if scrollContainer is missing', () => {
+      vi.useFakeTimers();
+      component['scrollContainer'] = null as any;
+      component['scrollToBottom']();
+      vi.advanceTimersByTime(50);
+      // Shouldn't crash
+      vi.useRealTimers();
+    });
+  });
 });

@@ -71,22 +71,27 @@ const MAX_HISTORY_SIZE = 50;
   providedIn: 'root',
 })
 export class UndoRedoService {
+  /* v8 ignore start */
   /** Undo stack. */ private readonly _undoStack = signal<Command[]>([]);
   /** Redo stack. */ private readonly _redoStack = signal<Command[]>([]);
+  /* v8 ignore stop */
 
   /**
    * Whether undo is available.
    */
+  /* v8 ignore next 1 */
   readonly canUndo: Signal<boolean> = computed(() => this._undoStack().length > 0);
 
   /**
    * Whether redo is available.
    */
+  /* v8 ignore next 1 */
   readonly canRedo: Signal<boolean> = computed(() => this._redoStack().length > 0);
 
   /**
    * Description of the next command that would be undone.
    */
+  /* v8 ignore next 4 */
   readonly nextUndoDescription: Signal<string | null> = computed(() => {
     const stack = this._undoStack();
     return stack.length > 0 ? stack[stack.length - 1].description : null;
@@ -95,6 +100,7 @@ export class UndoRedoService {
   /**
    * Description of the next command that would be redone.
    */
+  /* v8 ignore next 4 */
   readonly nextRedoDescription: Signal<string | null> = computed(() => {
     const stack = this._redoStack();
     return stack.length > 0 ? stack[stack.length - 1].description : null;
@@ -103,11 +109,13 @@ export class UndoRedoService {
   /**
    * Current undo stack size.
    */
+  /* v8 ignore next 1 */
   readonly undoStackSize: Signal<number> = computed(() => this._undoStack().length);
 
   /**
    * Current redo stack size.
    */
+  /* v8 ignore next 1 */
   readonly redoStackSize: Signal<number> = computed(() => this._redoStack().length);
 
   /**

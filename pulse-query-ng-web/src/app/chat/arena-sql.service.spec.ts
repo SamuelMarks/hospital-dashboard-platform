@@ -28,12 +28,15 @@ describe('ArenaSqlService', () => {
 
   it('falls back to environment apiUrl when base path is missing', () => {
     const http = { post: vi.fn().mockReturnValue(of({ data: [], columns: [] })) } as any;
+    const original = environment.apiUrl;
+    (environment as any).apiUrl = 'http://env.api';
     const service = new ArenaSqlService(http);
 
     service.execute({ sql: 'SELECT 1' }).subscribe();
 
     const [url] = http.post.mock.calls[0];
-    expect(url).toBe(`${environment.apiUrl}/api/v1/ai/execute`);
+    expect(url).toBe(`http://env.api/api/v1/ai/execute`);
+    (environment as any).apiUrl = original;
   });
 
   it('falls back to localhost when environment apiUrl is empty', () => {

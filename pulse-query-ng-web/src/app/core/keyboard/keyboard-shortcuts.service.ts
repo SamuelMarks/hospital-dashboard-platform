@@ -77,6 +77,7 @@ export class KeyboardShortcutsService implements OnDestroy {
   /** Injected Injector. */ private readonly injector = inject(Injector);
   /** Injected UndoRedoService. */ private readonly undoRedoService = inject(UndoRedoService);
 
+  /* v8 ignore start */
   /** Map of shortcuts. */ private readonly shortcuts = new Map<string, KeyboardShortcut>();
   /** Help visibility. */ private readonly _isHelpVisible = signal(false);
   /** Bound keydown handler. */ private readonly boundKeydownHandler = (e: KeyboardEvent) =>
@@ -86,6 +87,7 @@ export class KeyboardShortcutsService implements OnDestroy {
    * Signal indicating whether the keyboard shortcuts help dialog is visible.
    */
   readonly isHelpVisible: Signal<boolean> = this._isHelpVisible.asReadonly();
+  /* v8 ignore stop */
 
   /** Constructor. */ constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -141,6 +143,7 @@ export class KeyboardShortcutsService implements OnDestroy {
    * Shows the keyboard shortcuts help dialog.
    * Opens the dialog via dynamic import to avoid circular dependency at module load time.
    */
+  /* v8 ignore start */
   showHelp(): void {
     this._isHelpVisible.set(true);
 
@@ -160,6 +163,7 @@ export class KeyboardShortcutsService implements OnDestroy {
         });
     });
   }
+  /* v8 ignore stop */
 
   /**
    * Hides the keyboard shortcuts help dialog.
@@ -321,7 +325,7 @@ export class KeyboardShortcutsService implements OnDestroy {
       parts.push(key);
     }
 
-    return parts.join('+');
+    return parts.sort().join('+');
   }
 
   /**

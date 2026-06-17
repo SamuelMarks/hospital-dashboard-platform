@@ -168,4 +168,38 @@ describe('VizMetricComponent', () => {
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');
   });
+
+  it('should display non-number non-object values as strings', () => {
+    dataSig.set("hello world");
+    fixture.detectChanges();
+    const valueEl = fixture.debugElement.query(By.css('.metric-value'));
+    expect(valueEl.nativeElement.textContent.trim()).toBe('hello world');
+  });
+
+  it('should handle sparkline when min and max are equal', () => {
+    dataSig.set({ value: 100, trend_data: [5, 5] });
+    fixture.detectChanges();
+    const svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
+    expect(svg).toBeTruthy();
+  });
+  it('should return empty string if value is not number', () => {
+    dataSig.set("hello");
+    configSig.set({ thresholds: { warning: 50, critical: 100 } });
+    fixture.detectChanges();
+    expect(component.alertClass()).toBe('');
+  });
+
+  it('should apply warning class when critical is undefined but warning is met', () => {
+    dataSig.set(60);
+    configSig.set({ thresholds: { warning: 50 } });
+    fixture.detectChanges();
+    expect(component.alertClass()).toBe('val-warn');
+  });
+
+  it('should apply critical class when warning is undefined but critical is met', () => {
+    dataSig.set(110);
+    configSig.set({ thresholds: { critical: 100 } });
+    fixture.detectChanges();
+    expect(component.alertClass()).toBe('val-critical');
+  });
 });

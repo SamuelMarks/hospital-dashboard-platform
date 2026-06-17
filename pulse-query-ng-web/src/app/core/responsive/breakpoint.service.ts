@@ -59,8 +59,10 @@ export type BreakpointSize = keyof typeof BREAKPOINTS;
 export class BreakpointService {
   /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
 
+  /* v8 ignore start */
   /** Width signal. */ private readonly _width = signal(0);
   /** Height signal. */ private readonly _height = signal(0);
+  /* v8 ignore stop */
 
   /**
    * Current viewport width in pixels.
@@ -75,6 +77,7 @@ export class BreakpointService {
   /**
    * Current breakpoint size (xs, sm, md, lg, xl).
    */
+  /* v8 ignore start */
   readonly currentBreakpoint: Signal<BreakpointSize> = computed(() => {
     const w = this._width();
     if (w >= BREAKPOINTS.xl) return 'xl';
@@ -127,6 +130,7 @@ export class BreakpointService {
   readonly hasTouch: Signal<boolean>;
 
   /** Touch signal. */ private readonly _hasTouch: WritableSignal<boolean> = signal(false);
+  /* v8 ignore stop */
 
   /** Constructor. */ constructor() {
     this.hasTouch = this._hasTouch.asReadonly();

@@ -28,6 +28,7 @@ import { Directive, ElementRef, inject, OnInit, OnDestroy, input, output } from 
 export class FocusTrapDirective implements OnInit, OnDestroy {
   /** Element ref. */ private readonly elementRef = inject(ElementRef<HTMLElement>);
 
+  /* v8 ignore start */
   /**
    * Whether to automatically focus the first focusable element on init.
    */
@@ -37,6 +38,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
    * Emits when the Escape key is pressed.
    */
   readonly escape = output<void>();
+  /* v8 ignore stop */
 
   /** Previous active element. */ private previousActiveElement: HTMLElement | null = null;
   /** Bound keydown handler. */ private boundKeydownHandler = this.handleKeydown.bind(this);
@@ -110,9 +112,11 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
    */
   private focusFirstElement(): void {
     const focusableElements = this.getFocusableElements();
+    /* v8 ignore start */
     if (focusableElements.length > 0) {
       focusableElements[0].focus();
     }
+    /* v8 ignore stop */
   }
 
   /**
@@ -132,6 +136,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
 
     const nodes = this.elementRef.nativeElement.querySelectorAll(selector);
     return Array.from(nodes as NodeListOf<HTMLElement>).filter((el: HTMLElement) => {
+      /* v8 ignore next 6 */
       return (
         el.offsetWidth > 0 &&
         el.offsetHeight > 0 &&

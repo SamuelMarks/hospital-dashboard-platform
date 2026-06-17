@@ -148,6 +148,24 @@ describe('ToolbarComponent', () => {
     expect(injectedSnackBar.open).not.toHaveBeenCalled();
   });
 
+  it('should do nothing when opening cart on dashboard if edit mode is already true', async () => {
+    // Arrange
+    const dash = { id: 'd1', name: 'Dash' };
+    mockStore.dashboard.set(dash);
+    mockStore.isEditMode.set(true);
+    mockRouter.url = '/dashboard/d1';
+    routerEvents$.next(new NavigationEnd(1, '/dashboard/d1', '/dashboard/d1'));
+
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Act
+    component.openCart();
+
+    // Assert
+    expect(mockStore.toggleEditMode).not.toHaveBeenCalled();
+  });
+
   it('should logout via auth service', () => {
     const spy = TestBed.inject(AuthService).logout;
     component.logout();
@@ -188,6 +206,18 @@ describe('ToolbarComponent', () => {
 
     expect(dialogSpy).toHaveBeenCalled();
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
+  });
+
+  it('should open widget builder dialog but not load dashboard if false is returned', () => {
+    const dash = { id: 'd1' };
+    mockStore.dashboard.set(dash);
+    const dialogSpy = TestBed.inject(MatDialog).open as any;
+    dialogSpy.mockReturnValue({ afterClosed: () => of(false) });
+
+    component.openWidgetBuilder();
+
+    expect(dialogSpy).toHaveBeenCalled();
+    expect(mockStore.loadDashboard).not.toHaveBeenCalled();
   });
 
   it('should not open widget builder if dashboard missing', () => {

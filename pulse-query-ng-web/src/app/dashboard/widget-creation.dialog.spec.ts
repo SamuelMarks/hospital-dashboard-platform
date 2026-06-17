@@ -122,4 +122,171 @@ describe('WidgetCreationDialog', () => {
 
     consoleSpy.mockRestore();
   });
+
+  it('should compute supportsMapping correctly', () => {
+    component.selectedViz.set('bar_chart');
+    expect(component.supportsMapping()).toBe(true);
+
+    component.selectedViz.set('table');
+    expect(component.supportsMapping()).toBe(false);
+
+    component.selectedViz.set(null);
+    expect(component.supportsMapping()).toBe(false);
+  });
+
+  it('should compute isPie correctly', () => {
+    component.selectedViz.set('pie');
+    expect(component.isPie()).toBe(true);
+
+    component.selectedViz.set('table');
+    expect(component.isPie()).toBe(false);
+  });
+
+  it('should compute availableColumns correctly', () => {
+    expect(component.availableColumns()).toEqual([]);
+
+    component.draftWidget.set(MOCK_WIDGET);
+    expect(component.availableColumns()).toEqual(['colA', 'colB']);
+
+    dataMapSig.set({});
+    expect(component.availableColumns()).toEqual([]);
+
+    dataMapSig.set({ w1: { columns: 'not array' } });
+    expect(component.availableColumns()).toEqual([]);
+  });
+
+  it('should delete draft on destroy', () => {
+    component.draftWidget.set(MOCK_WIDGET);
+    component.ngOnDestroy();
+    expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).toHaveBeenCalledWith('w1');
+  });
+
+  it('should handle error on delete draft on destroy', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(throwError(() => new Error('err')));
+    component.draftWidget.set(MOCK_WIDGET);
+    component.ngOnDestroy();
+    expect(consoleSpy).toHaveBeenCalledWith('Draft cleanup failed', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('should not delete draft on destroy if no draft', () => {
+    component.draftWidget.set(null);
+    component.ngOnDestroy();
+    expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).not.toHaveBeenCalled();
+  });
+
+  it('should create draft widget for SQL', () => {
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_WIDGET));
+    component.setType('SQL');
+    component.selectedViz.set('table');
+    
+    component.createDraftWidget();
+    
+    expect(component.draftWidget()).toEqual(MOCK_WIDGET);
+    expect(component.configForm.value.title).toBe('New Table');
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+  });
+
+  it('should create draft widget for HTTP', () => {
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_WIDGET));
+    component.setType('HTTP');
+    component.selectedViz.set('bar_chart');
+    
+    component.createDraftWidget();
+    
+    expect(component.draftWidget()).toEqual(MOCK_WIDGET);
+    expect(component.configForm.value.title).toBe('New Bar Chart');
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+    
+    component.createDraftWidget();
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not create draft widget if already creating', () => {
+    component.isCreatingDraft.set(true);
+    component.createDraftWidget();
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).not.toHaveBeenCalled();
+  });
+
+  it('should cancel and close dialog', () => {
+    component.cancel();
+    expect(mockDialogRef.close).toHaveBeenCalledWith(false);
+  });
+
+  describe('finalizeWidget', () => {
+    const dashResp: DashboardResponse = {
+      id: MOCK_DASH_ID,
+      name: 'Dash',
+      widgets: [MOCK_WIDGET],
+      owner_id: 'user1'
+    };
+
+    beforeEach(() => {
+      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(dashResp));
+      mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+      component.draftWidget.set(MOCK_WIDGET);
+      component.configForm.patchValue({ title: 'Updated Title', xKey: 'x', yKey: 'y' });
+    });
+
+    it('should finalize widget with mapping support', () => {
+      component.selectedViz.set('bar_chart');
+      component.finalizeWidget();
+      
+      expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+        'w1',
+        expect.objectContaining({
+          title: 'Updated Title',
+          config: expect.objectContaining({
+            query: 'FOO',
+            xKey: 'x',
+            yKey: 'y'
+          })
+        })
+      );
+      expect(component.draftWidget()).toBeNull();
+      expect(mockDialogRef.close).toHaveBeenCalledWith(true);
+    });
+
+    it('should finalize widget without mapping support', () => {
+      component.selectedViz.set('table');
+      component.finalizeWidget();
+      
+      expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+        'w1',
+        expect.objectContaining({
+          title: 'Updated Title',
+          config: { query: 'FOO' }
+        })
+      );
+      expect(component.draftWidget()).toBeNull();
+      expect(mockDialogRef.close).toHaveBeenCalledWith(true);
+    });
+
+    it('should return early if no draft', () => {
+      component.draftWidget.set(null);
+      component.finalizeWidget();
+      expect(mockDashApi.getDashboardApiV1DashboardsDashboardIdGet).not.toHaveBeenCalled();
+    });
+
+    it('should return early if form is invalid', () => {
+      component.configForm.patchValue({ title: '' });
+      component.finalizeWidget();
+      expect(mockDashApi.getDashboardApiV1DashboardsDashboardIdGet).not.toHaveBeenCalled();
+    });
+
+    it('should return early if widget not found in dashboard', () => {
+      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of({
+        id: MOCK_DASH_ID,
+        title: 'Dash',
+        widgets: [],
+        owner_id: 'user1',
+        version: 1,
+        created_at: '',
+        updated_at: ''
+      }));
+      component.finalizeWidget();
+      expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+    });
+  });
 });

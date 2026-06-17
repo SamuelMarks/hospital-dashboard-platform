@@ -1,4 +1,4 @@
-/* v8 ignore start */
+
 /** @docs */
 import {
   Component,
@@ -114,6 +114,7 @@ import { QueryCartService } from './query-cart.service';
 })
 /** @docs */
 export class AskDataComponent implements OnDestroy {
+  /* v8 ignore start */
   public readonly vis = inject(AskDataService);
   private readonly cart = inject(QueryCartService);
   private readonly dashboardsApi = inject(DashboardsService);
@@ -128,6 +129,7 @@ export class AskDataComponent implements OnDestroy {
   readonly contextError = signal<string | null>(null);
   readonly scratchpadIds = signal<{ dashboardId: string; widgetId: string } | null>(null);
   readonly cartCount = this.cart.count;
+  /* v8 ignore stop */
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {

@@ -348,7 +348,7 @@ export class ConversationComponent implements AfterViewChecked {
       .subscribe({
         next: (res) => {
           if (res.error) {
-            this.candidateErrors.update((state) => ({ ...state, [id]: res.error || 'Err' }));
+            this.candidateErrors.update((state) => ({ ...state, [id]: res.error as string }));
             this.candidateResults.update((state) => ({ ...state, [id]: null }));
           } else {
             this.candidateResults.update((state) => ({

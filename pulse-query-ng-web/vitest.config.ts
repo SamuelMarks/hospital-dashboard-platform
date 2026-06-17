@@ -23,7 +23,7 @@ export default defineConfig({
     fileParallelism: false,
     coverage: {
       enabled: true,
-      provider: 'v8',
+      provider: 'istanbul',
       all: true,
       include: ['src/**/*.ts'],
       exclude: [

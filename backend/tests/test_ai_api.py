@@ -27,7 +27,7 @@ async def test_list_available_models() -> None:
   mock_user = AsyncMock()
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
-  with patch("app.api.routers.ai.llm_client.get_available_models") as mock_get:
+  with patch("app.api.routers.ai.llm_client.get_available_models") as mock_get, patch("app.api.routers.ai.get_admin_settings", return_value=None):
     mock_get.return_value = [{"id": "mock-m1", "name": "Mock Model 1", "provider": "openai", "is_local": False}]
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
@@ -49,7 +49,7 @@ async def test_list_available_models_all() -> None:
   mock_user = AsyncMock()
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
-  with patch("app.api.routers.ai.llm_client.get_available_models") as mock_get:
+  with patch("app.api.routers.ai.llm_client.get_available_models") as mock_get, patch("app.api.routers.ai.get_admin_settings", return_value=None):
     mock_get.return_value = [{"id": "mock-m1", "name": "Mock Model 1", "provider": "openai", "is_local": False}]
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:

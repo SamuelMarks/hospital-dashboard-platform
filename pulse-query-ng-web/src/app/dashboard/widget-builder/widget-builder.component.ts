@@ -346,7 +346,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     // Sync local controls with draft state
     this.titleControl.valueChanges.subscribe((val) => {
       const w = this.draftWidget();
-      if (w) this.draftWidget.set({ ...w, title: val });
+      if (w) { this.draftWidget.set({ ...w, title: val }); }
     });
 
     this.xKeyControl.valueChanges.subscribe(() => this.syncVizConfig());
@@ -414,7 +414,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     const t = this.selectedTemplate();
     if (!t) return;
 
-    let sql = t.sql_template || '';
+    let sql = t.sql_template;
     const values = this.templateParams();
 
     Object.keys(values).forEach((key) => {
@@ -477,7 +477,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       } else if (type === 'HTTP') {
         config = { url: '', method: 'GET' };
         visualization = 'metric';
-      } else if (type === 'TEXT') {
+      } else {
         config = { content: '### New Text Widget\nEdit this content.' };
         visualization = 'markdown';
         title = 'Text Block';

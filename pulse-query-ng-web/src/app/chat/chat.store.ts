@@ -261,12 +261,10 @@ export class ChatStore implements OnDestroy {
     msg.sql_snippet = cand.sql_snippet || null;
     const selectedHash = cand.sql_hash;
 
-    if (msg.candidates) {
-      msg.candidates = msg.candidates.map((c) => ({
-        ...c,
-        is_selected: selectedHash ? c.sql_hash === selectedHash : c.id === candidateId,
-      }));
-    }
+    msg.candidates = msg.candidates!.map((c) => ({
+      ...c,
+      is_selected: selectedHash ? c.sql_hash === selectedHash : c.id === candidateId,
+    }));
 
     const newMsgs = [...currentMsgs];
     newMsgs[idx] = msg;

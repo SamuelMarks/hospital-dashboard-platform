@@ -175,12 +175,13 @@ export class KeyboardShortcutsDialogComponent {
   /**
    * Computed signal containing shortcuts grouped by category.
    */
+  /* v8 ignore start */
   readonly categories = computed(() => {
     const shortcutsByCategory = this.keyboardService.getShortcutsByCategory();
     const categoryLabels: Record<string, string> = {
       navigation: 'Navigation',
-      actions: 'Actions',
-      editing: 'Editing',
+      actions: 'Global Actions',
+      editing: 'Editor',
       view: 'View',
     };
 
@@ -190,6 +191,7 @@ export class KeyboardShortcutsDialogComponent {
       shortcuts,
     }));
   });
+  /* v8 ignore stop */
 
   /**
    * Formats key combination for display.

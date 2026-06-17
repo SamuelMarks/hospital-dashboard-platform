@@ -10,7 +10,7 @@ import {
   ConversationDetail,
   MessageResponse,
 } from '../api-client';
-import { of, throwError } from 'rxjs';
+import { of, throwError, Subject } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
 describe('ChatStore', () => {
@@ -127,6 +127,13 @@ describe('ChatStore', () => {
       store.loadHistory();
       expect(console.error).toHaveBeenCalled();
     });
+
+    it('handles AI Models endpoint missing gracefully', () => {
+      mockApi.listConversationsApiV1ConversationsGet.mockReturnValue(of([]));
+      delete mockAiApi.listAvailableModelsApiV1AiModelsGet;
+      store.loadHistory();
+      expect(store.error()).toBeNull();
+    });
   });
 
   describe('selectConversation', () => {
@@ -193,6 +200,15 @@ describe('ChatStore', () => {
       expect(store.messages().length).toBe(1);
     });
 
+    it('creates new conversation and handles undefined messages', () => {
+      const resp: ConversationDetail = { ...MOCK_CONV } as any;
+      mockApi.createConversationApiV1ConversationsPost.mockReturnValue(of(resp));
+
+      store.sendMessage('hello');
+
+      expect(store.messages().length).toBe(0);
+    });
+
     it('handles new conversation creation error', () => {
       mockApi.createConversationApiV1ConversationsPost.mockReturnValue(
         throwError(() => new Error('Net Error')),
@@ -202,11 +218,16 @@ describe('ChatStore', () => {
       expect(store.error()).toBe('Net Error');
     });
 
-    it('sends directly if active conversation exists', () => {
+    it('sends directly if active conversation exists with selected models', () => {
+      store.toggleModelSelection('M1');
       store['patch']({ activeConversationId: 'c1', messages: [] });
       mockApi.sendMessageApiV1ConversationsConversationIdMessagesPost.mockReturnValue(of(MOCK_MSG));
       store.sendMessage('hello');
 
+      expect(mockApi.sendMessageApiV1ConversationsConversationIdMessagesPost).toHaveBeenCalledWith(
+        'c1',
+        { content: 'hello', target_models: ['M1'] }
+      );
       expect(store.messages()[1].id).toBe('m1');
     });
 
@@ -236,6 +257,22 @@ describe('ChatStore', () => {
       ).not.toHaveBeenCalled();
     });
 
+    it('early returns if candidate not found', () => {
+      store['patch']({ activeConversationId: 'c1', messages: [MOCK_MSG] });
+      store.voteCandidate('m1', 'non-existent');
+      expect(
+        mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('early returns if message not found in existing conversation', () => {
+      store['patch']({ activeConversationId: 'c1', messages: [MOCK_MSG] });
+      store.voteCandidate('non-existent', 'cand1');
+      expect(
+        mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost,
+      ).not.toHaveBeenCalled();
+    });
+
     it('updates optimistic selection and confirms with server', () => {
       store['patch']({ activeConversationId: 'c1', messages: [MOCK_MSG] });
 
@@ -247,6 +284,86 @@ describe('ChatStore', () => {
       store.voteCandidate('m1', 'cand1');
 
       expect(store.messages()[0].content).toBe('Updated from server');
+    });
+
+    it('updates optimistic selection with fallback content and null sql_snippet', () => {
+      const msgNoCandContent: MessageResponse = { 
+        ...MOCK_MSG, 
+        candidates: [
+          { id: 'cand2', model_name: 'M2', is_selected: false } as any,
+          { id: 'cand3', model_name: 'M3', is_selected: false } as any
+        ] 
+      };
+      store['patch']({ activeConversationId: 'c1', messages: [msgNoCandContent] });
+
+      mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+        of(MOCK_MSG)
+      );
+
+      store.voteCandidate('m1', 'cand2');
+      // Should handle content fallback to '' and sql_snippet to null before server reply
+      // Because we mock API with `of(MOCK_MSG)` it replies instantly and overwrites with MOCK_MSG
+      expect(
+        mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost
+      ).toHaveBeenCalled();
+    });
+
+    it('handles sql_hash logic during optimistic update', () => {
+      const msgWithHash: MessageResponse = { 
+        ...MOCK_MSG, 
+        candidates: [
+          { id: 'c1', model_name: 'M1', sql_hash: 'hashA', is_selected: false },
+          { id: 'c2', model_name: 'M2', sql_hash: 'hashA', is_selected: false },
+          { id: 'c3', model_name: 'M3', sql_hash: 'hashB', is_selected: false }
+        ] as any
+      };
+      store['patch']({ activeConversationId: 'c1', messages: [msgWithHash] });
+      
+      const subject = new Subject<MessageResponse>();
+      mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(subject.asObservable());
+
+      store.voteCandidate('m1', 'c1');
+      
+      // Before server response, check optimistic update
+      const optMsg = store.messages()[0];
+      expect(optMsg.candidates?.[0].is_selected).toBe(true);
+      expect(optMsg.candidates?.[1].is_selected).toBe(true); // Same hash
+      expect(optMsg.candidates?.[2].is_selected).toBe(false); // Different hash
+
+      // Resolve subject
+      subject.next(MOCK_MSG);
+    });
+
+    it('handles missing candidates array during optimistic update', () => {
+      const msgNoCandidates: MessageResponse = { ...MOCK_MSG };
+      delete msgNoCandidates.candidates; // undefined candidates array
+      store['patch']({ activeConversationId: 'c1', messages: [msgNoCandidates] });
+
+      // Vote for non-existent candidate, should return early
+      store.voteCandidate('m1', 'cand1');
+      expect(
+        mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('does nothing on server reply if message was deleted locally in the meantime', () => {
+      store['patch']({ activeConversationId: 'c1', messages: [MOCK_MSG] });
+
+      const subject = new Subject<MessageResponse>();
+      mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+        subject.asObservable(),
+      );
+
+      store.voteCandidate('m1', 'cand1');
+
+      // delete locally
+      store['patch']({ messages: [] });
+
+      // server replies
+      subject.next(MOCK_MSG);
+
+      // should still be empty
+      expect(store.messages().length).toBe(0);
     });
 
     it('rolls back on server error', () => {
@@ -321,6 +438,11 @@ describe('ChatStore', () => {
       const err = new HttpErrorResponse({ status: 500, statusText: 'Dead', url: 'http' });
       store['handleError'](err);
       expect(store.error()).toContain('Http failure');
+    });
+    
+    it('uses raw string if error is neither HttpErrorResponse nor Error', () => {
+      store['handleError']('Just a string');
+      expect(store.error()).toBe('Error');
     });
   });
 });

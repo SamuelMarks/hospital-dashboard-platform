@@ -134,4 +134,14 @@ describe('KeyboardShortcutsDialogComponent', () => {
       expect(Array.isArray(cat.shortcuts)).toBe(true);
     }
   });
+
+  it('should fall back to raw category name if not mapped', () => {
+    const keyboardService = TestBed.inject(KeyboardShortcutsService);
+    vi.spyOn(keyboardService, 'getShortcutsByCategory').mockReturnValue(
+      new Map([['custom_cat', []]])
+    );
+    const newFixture = TestBed.createComponent(KeyboardShortcutsDialogComponent);
+    const cats = newFixture.componentInstance.categories();
+    expect(cats[0].label).toBe('custom_cat');
+  });
 });

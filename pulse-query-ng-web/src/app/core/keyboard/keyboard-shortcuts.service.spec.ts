@@ -48,12 +48,12 @@ describe('KeyboardShortcutsService', () => {
       seedColor: signal('#1565c0'),
       isTvMode: signal(false),
     };
-    mockDialog = { open: vi.fn().mockReturnValue({ afterClosed: () => ({ subscribe: vi.fn() }) }) };
+    mockDialog = { open: vi.fn().mockReturnValue({ afterClosed: () => ({ subscribe: (cb: () => void) => cb() }) }) };
 
     TestBed.configureTestingModule({
       providers: [
         KeyboardShortcutsService,
-        provideRouter([]),
+        { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: ThemeService, useValue: mockThemeService },
         { provide: MatDialog, useValue: mockDialog },
         { provide: PLATFORM_ID, useValue: 'browser' },
@@ -172,7 +172,7 @@ describe('KeyboardShortcutsService', () => {
     document.body.removeChild(input);
   });
 
-  it('should show help when ? pressed in an input', () => {
+  it('should show help when ? pressed in an input without modifiers', () => {
     const input = document.createElement('input');
     document.body.appendChild(input);
     input.focus();
@@ -185,22 +185,120 @@ describe('KeyboardShortcutsService', () => {
     document.body.removeChild(input);
   });
 
-  it('should not fire a disabled shortcut', () => {
-    const handler = vi.fn();
-    service.register({
-      id: 'test-disabled',
-      description: 'Disabled shortcut',
-      keys: 'alt+y',
-      category: 'actions',
-      handler,
-      enabled: false,
-    });
+  it('should NOT show help when ? pressed in an input with modifiers', () => {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
 
-    const event = new KeyboardEvent('keydown', { key: 'y', altKey: true, bubbles: true });
+    const event = new KeyboardEvent('keydown', { key: '?', ctrlKey: true, bubbles: true });
+    Object.defineProperty(event, 'target', { value: input, enumerable: true });
     document.dispatchEvent(event);
-    expect(handler).not.toHaveBeenCalled();
+
+    expect(service.isHelpVisible()).toBe(false);
+    document.body.removeChild(input);
   });
 
+  it('should ignore unmapped key combinations', () => {
+    const event = new KeyboardEvent('keydown', { key: 'UnmappedKey', bubbles: true });
+    expect(() => document.dispatchEvent(event)).not.toThrow();
+  });
+
+  it('should handle metaKey and ctrlKey as mod', () => {
+    const handler = vi.fn();
+    service.register({
+      id: 'test-mod',
+      description: 'Mod test',
+      keys: 'mod+m',
+      category: 'actions',
+      handler,
+    });
+
+    // Test metaKey
+    const metaEvent = new KeyboardEvent('keydown', { key: 'm', metaKey: true, bubbles: true });
+    document.dispatchEvent(metaEvent);
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    // Test ctrlKey
+    const ctrlEvent = new KeyboardEvent('keydown', { key: 'm', ctrlKey: true, bubbles: true });
+    document.dispatchEvent(ctrlEvent);
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle shift modifier properly', () => {
+    const handler = vi.fn();
+    service.register({
+      id: 'test-shift',
+      description: 'Shift test',
+      keys: 'shift+s',
+      category: 'actions',
+      handler,
+    });
+
+    const shiftEvent = new KeyboardEvent('keydown', { key: 's', shiftKey: true, bubbles: true });
+    document.dispatchEvent(shiftEvent);
+    expect(handler).toHaveBeenCalledTimes(1);
+    
+    // Pressing 'Shift' key alone should not trigger it
+    const shiftOnlyEvent = new KeyboardEvent('keydown', { key: 'Shift', shiftKey: true, bubbles: true });
+    document.dispatchEvent(shiftOnlyEvent);
+    expect(handler).toHaveBeenCalledTimes(1); // Still 1
+  });
+
+  it('should normalize ctrl, meta, cmd, command in shortcut definition', () => {
+    const handler1 = vi.fn();
+    service.register({ id: 'test-ctrl', description: 'desc', keys: 'ctrl+a', category: 'actions', handler: handler1 });
+    
+    const handler2 = vi.fn();
+    service.register({ id: 'test-cmd', description: 'desc', keys: 'cmd+b', category: 'actions', handler: handler2 });
+
+    const handler3 = vi.fn();
+    service.register({ id: 'test-command', description: 'desc', keys: 'command+c', category: 'actions', handler: handler3 });
+
+    // Ensure they were all registered with normalized key 'mod'
+    const event1 = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true });
+    document.dispatchEvent(event1);
+    expect(handler1).toHaveBeenCalledTimes(1);
+
+    const event2 = new KeyboardEvent('keydown', { key: 'b', metaKey: true, bubbles: true });
+    document.dispatchEvent(event2);
+    expect(handler2).toHaveBeenCalledTimes(1);
+
+    const event3 = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true });
+    document.dispatchEvent(event3);
+    expect(handler3).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not throw a disabled shortcut', () => {
+  const handler = vi.fn();
+  service.register({
+    id: 'test-disabled',
+    description: 'Disabled shortcut',
+    keys: 'd',
+    category: 'actions',
+    handler,
+    enabled: false,
+  });
+
+  const event = new KeyboardEvent('keydown', { key: 'd', bubbles: true });
+  document.dispatchEvent(event);
+
+  expect(handler).not.toHaveBeenCalled();
+});
+
+it('should skip initialization on server platform', () => {
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({
+    providers: [
+      KeyboardShortcutsService,
+      { provide: PLATFORM_ID, useValue: 'server' },
+      provideRouter([]),
+      { provide: ThemeService, useValue: mockThemeService },
+      { provide: MatDialog, useValue: mockDialog },
+    ],
+  });
+  const serverService = TestBed.inject(KeyboardShortcutsService);
+  expect(serverService).toBeTruthy();
+});
   it('should default enabled to true when not specified', () => {
     const handler = vi.fn();
     service.register({
@@ -225,24 +323,36 @@ describe('KeyboardShortcutsService', () => {
     expect(editing.some((s) => s.id === 'redo')).toBe(true);
   });
 
-  it('should call default shortcut handlers', () => {
+  it('should call all default shortcut handlers', () => {
     const shortcuts = service.getShortcutsByCategory();
     const actions = shortcuts.get('actions') ?? [];
     const editing = shortcuts.get('editing') ?? [];
+    const nav = shortcuts.get('navigation') ?? [];
+    const view = shortcuts.get('view') ?? [];
 
     const helpShortcut = actions.find((s) => s.id === 'help-shortcuts');
     helpShortcut?.handler();
     expect(service.isHelpVisible()).toBe(true);
 
+    const helpAltShortcut = actions.find((s) => s.id === 'help-shortcuts-alt');
+    helpAltShortcut?.handler();
+
     const undoShortcut = editing.find((s) => s.id === 'undo');
     const redoShortcut = editing.find((s) => s.id === 'redo');
-
-    expect(undoShortcut).toBeDefined();
-    expect(redoShortcut).toBeDefined();
-
-    // We mock the undoRedoService via Injector in the service if needed,
-    // but the simplest is just calling it and expecting no throw since it's injected.
     expect(() => undoShortcut?.handler()).not.toThrow();
     expect(() => redoShortcut?.handler()).not.toThrow();
+
+    const navHome = nav.find((s) => s.id === 'nav-home');
+    const navChat = nav.find((s) => s.id === 'nav-chat');
+    const navAnalytics = nav.find((s) => s.id === 'nav-analytics');
+    const navSim = nav.find((s) => s.id === 'nav-simulation');
+    
+    expect(() => navHome?.handler()).not.toThrow();
+    expect(() => navChat?.handler()).not.toThrow();
+    expect(() => navAnalytics?.handler()).not.toThrow();
+    expect(() => navSim?.handler()).not.toThrow();
+
+    const viewTheme = view.find((s) => s.id === 'view-theme');
+    expect(() => viewTheme?.handler()).not.toThrow();
   });
 });

@@ -2,30 +2,110 @@
   "domain": "pulse-query.healthplatform.io",
   "infrastructure": {
     "node": {
-      "size": "Standard_D2s_v7"
+      "size": "Standard_D16s_v7",
+      "data_disks": [
+        {
+          "size_gb": 100,
+          "mount_path": "/mnt/data",
+          "name": "data-disk"
+        }
+      ]
     },
     "network": {
-      "ports": ["22", "80", "443", "5432"]
+      "ports": [
+        "22",
+        "80",
+        "443",
+        "5432"
+      ]
     }
   },
   "ingress": {
     "tls": "letsencrypt",
-    "port": 8000
+    "port": 4200
   },
   "hooks": {
     "install": [
-      "sudo apt-get update && sudo apt-get install -y python3-pip python3-venv && cd backend && python3 -m pip install uv --break-system-packages && python3 -m uv sync"
+      "sudo mkdir -p /mnt/data",
+      "sudo mount /dev/nvme1n1 /mnt/data || sudo mount /dev/disk/azure/scsi1/lun0 /mnt/data || true",
+      "(cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npm install)",
+      "(cd backend && /home/azureuser/.local/bin/uv sync)",
+      "sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx",
+      "printf 'server { listen 80; server_name pulse-query.healthplatform.io; proxy_read_timeout 3600; proxy_connect_timeout 3600; proxy_send_timeout 3600; location / { proxy_pass http://127.0.0.1:4200; } location /api/ { proxy_pass http://127.0.0.1:8000; } }' | sudo tee /etc/nginx/conf.d/pulse-query.healthplatform.io.conf",
+      "sudo systemctl restart nginx || true",
+      "sudo certbot --nginx -n --agree-tos -d pulse-query.healthplatform.io -m admin@healthplatform.io --redirect || true"
     ],
     "build": [
-      "echo 'No frontend build for pulse-query'"
+      "(cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npm run build)"
+    ],
+    "pre_start": [
+      "sudo -u postgres createdb pulse_query || true"
     ]
   },
   "services": {
-    "backend": {
-      "command": "cd backend && python3 -m uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "pulse-web": {
+      "command": "cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npx -y serve -s dist/pulse-query-ng-web/browser -l 4200",
+      "env": {}
+    },
+    "pulse-backend": {
+      "command": "cd backend && /home/azureuser/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
       "env": {
-        "ENVIRONMENT": "production"
+        "ENVIRONMENT": "production",
+        "SQLALCHEMY_DATABASE_URI": "postgresql+asyncpg://postgres:password@127.0.0.1:5432/pulse_query",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "password",
+        "POSTGRES_SERVER": "127.0.0.1",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "pulse_query"
       }
+    }
+  },
+  "dependencies": {
+    "required": {
+      "databases": [
+        {
+          "name": "postgres",
+          "version": "latest",
+          "env": "DATABASE_URL",
+          "vars": {
+            "database_name": "pulse_query"
+          }
+        }
+      ],
+      "servers": [
+        {
+          "name": "nginx",
+          "daemon": {
+            "os_native": true
+          },
+          "vars": {
+            "NGINX_SERVER_NAME": "pulse-query.healthplatform.io",
+            "PROXY_PASS": "http://127.0.0.1:4200",
+            "LOCATION": "/"
+          }
+        }
+      ],
+      "toolchains": [
+        {
+          "name": "nodejs",
+          "version": "20.x"
+        },
+        {
+          "name": "python",
+          "version": "3.11"
+        },
+        {
+          "name": "duckdb",
+          "version": "latest"
+        },
+        {
+          "name": "ollama",
+          "version": "latest"
+        }
+      ],
+      "capabilities": [
+        "systemd"
+      ]
     }
   }
 }

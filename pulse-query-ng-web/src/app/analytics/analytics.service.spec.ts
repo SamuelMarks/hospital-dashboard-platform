@@ -28,13 +28,16 @@ describe('AnalyticsService', () => {
 
   it('falls back to environment apiUrl when base path is missing', () => {
     const http = { get: vi.fn().mockReturnValue(of([])) } as any;
+    const original = environment.apiUrl;
+    (environment as any).apiUrl = 'http://env.api';
     const service = new AnalyticsService(http);
 
     service.listLlmOutputs().subscribe();
 
     const [url, options] = http.get.mock.calls[0];
-    expect(url).toBe(`${environment.apiUrl}/api/v1/analytics/llm`);
+    expect(url).toBe(`http://env.api/api/v1/analytics/llm`);
     expect(options.params.toString()).toBe('limit=500&offset=0');
+    (environment as any).apiUrl = original;
   });
 
   it('falls back to localhost when environment apiUrl is empty', () => {

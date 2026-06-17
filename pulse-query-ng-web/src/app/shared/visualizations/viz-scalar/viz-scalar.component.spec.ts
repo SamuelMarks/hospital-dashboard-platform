@@ -98,5 +98,37 @@ describe('VizScalarComponent', () => {
     expect(component.gaugePosition()).toBe(50);
     expect(component.colorClass()).toBe('gauge-neutral');
     expect(component.strengthColor()).toBe('var(--sys-text-secondary)');
+    expect(component.strengthLabel()).toBe('Weak / No Correlation');
+  });
+
+  it('should use data.value if it is a number and data is not an array', () => {
+    dataSig.set({ value: 42 });
+    fixture.detectChanges();
+    expect(component.value()).toBe(42);
+    expect(component.formattedValue()).toBe('42');
+  });
+
+  it('should return null if first row has no number values', () => {
+    dataSig.set({ data: [{ str: 'hello' }] });
+    fixture.detectChanges();
+    expect(component.value()).toBeNull();
+  });
+
+  it('should fallback to d.columns[0] if no column other than "value" exists', () => {
+    dataSig.set({ columns: ['value'] });
+    fixture.detectChanges();
+    expect(component.label()).toBe('value');
+  });
+
+  it('should return "Weak / No Correlation" for |value| < 0.3', () => {
+    dataSig.set({ columns: ['correlation'], data: [{ correlation: 0.2 }] });
+    fixture.detectChanges();
+    expect(component.strengthLabel()).toBe('Weak / No Correlation');
+  });
+
+  it('should return "Strong Correlation" for |value| >= 0.7', () => {
+    dataSig.set({ columns: ['correlation'], data: [{ correlation: 0.8 }] });
+    fixture.detectChanges();
+    expect(component.strengthLabel()).toBe('Strong Correlation');
   });
 });
