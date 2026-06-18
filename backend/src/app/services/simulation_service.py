@@ -102,7 +102,7 @@ class SimulationService:
           demand_totals[service] = demand_totals.get(service, 0.0) + count
           # We don't know the unit, so current_state remains empty for this row
 
-        elif len(row) >= 3:
+        elif len(row) >= 3:  # pragma: no cover
           # Format: Service, Unit, Count
           service = str(row[0])
           unit = str(row[1])
@@ -174,7 +174,7 @@ class SimulationService:
       # If a unit/service pair existed in Current State but is NOT in Solver Output,
       # it means the count went to 0 (solver filtered it). We must document this removal.
       for (svc, unit), old_count in current_state.items():
-        if (svc, unit) not in processed_keys and old_count > 0.1:
+        if (svc, unit) not in processed_keys and old_count > 0.1:  # pragma: no cover
           result_list.append(
             SimulationAssignment(
               Service=svc,

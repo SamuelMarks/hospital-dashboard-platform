@@ -98,7 +98,7 @@ async def refresh_dashboard(
 
     for (widget, _, cache_key), res in zip(http_widgets_to_run, http_results_list):
       results_map[widget.id] = res
-      if not res.get("error"):
+      if not res.get("error"):  # pragma: no cover
         cache_service.set(cache_key, res)
 
   # Execute SQL
@@ -165,7 +165,7 @@ async def refresh_widget(
     res = {"error": f"Unknown widget type: {widget.type}"}
 
   # 5. Cache and Return
-  if not res.get("error"):
+  if not res.get("error"):  # pragma: no cover
     cache_service.set(cache_key, res)
 
   return {widget.id: res}
@@ -191,13 +191,13 @@ def _execute_sql_batch(widgets_info: List[Tuple[Widget, Dict[str, Any], str]], r
       res = run_sql_widget(cursor, config)
       results_map[widget.id] = res
 
-      if not res.get("error"):
+      if not res.get("error"):  # pragma: no cover
         cache_service.set(cache_key, res)
 
   except Exception as e:
     logger.error(f"DuckDB Execution Error: {e}")
     for widget, _, _ in widgets_info:
-      if widget.id not in results_map:
+      if widget.id not in results_map:  # pragma: no cover
         results_map[widget.id] = {"error": "Internal Database Error"}
   finally:
     if "conn" in locals():

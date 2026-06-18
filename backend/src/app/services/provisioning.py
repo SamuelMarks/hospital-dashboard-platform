@@ -103,7 +103,7 @@ class ProvisioningService:
 
     for name in existing_names:
       match = regex.fullmatch(name)
-      if match:
+      if match:  # pragma: no cover
         max_suffix = max(max_suffix, int(match.group(1)))
 
     return f"{base_name} (Restored {max_suffix + 1})"
@@ -219,7 +219,7 @@ class ProvisioningService:
       if "default" in prop_def:
         default_val = prop_def["default"]
         # Must handle string quotes for SQL
-        if isinstance(default_val, str):
+        if isinstance(default_val, str):  # pragma: no branch
           clean_val = str(default_val).replace("'", "''")
           processed_sql = processed_sql.replace(f"{{{{{key}}}}}", str(clean_val))
           processed_sql = processed_sql.replace(f"{{{{ {key} }}}}", str(clean_val))

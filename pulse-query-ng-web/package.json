@@ -62,6 +62,8 @@
     "@playwright/test": "^1.57.0",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.19",
+    "@vitest/browser-playwright": "^4.1.9",
+    "@vitest/browser-preview": "^4.1.9",
     "@vitest/coverage-istanbul": "^4.1.8",
     "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^27.1.0",

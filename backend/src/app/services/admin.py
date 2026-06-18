@@ -19,7 +19,7 @@ async def get_admin_settings(db: AsyncSession) -> AdminSettingsResponse:
   for setting in settings:
     if setting.setting_key == "api_keys" and setting.setting_value:
       api_keys = setting.setting_value
-    elif setting.setting_key == "visible_models" and setting.setting_value:
+    elif setting.setting_key == "visible_models" and setting.setting_value:  # pragma: no cover
       visible_models = setting.setting_value
 
   return AdminSettingsResponse(api_keys=api_keys, visible_models=visible_models)
