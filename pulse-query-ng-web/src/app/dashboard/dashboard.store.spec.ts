@@ -368,7 +368,9 @@ describe('DashboardStore', () => {
     });
 
     it('loadDashboard handles undefined widgets safely', () => {
-      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of({ ...d1, widgets: undefined }));
+      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
+        of({ ...d1, widgets: undefined }),
+      );
       store.loadDashboard('d1');
       expect(store.widgets()).toEqual([]);
     });
@@ -386,24 +388,32 @@ describe('DashboardStore', () => {
         config: { query: 'SELECT 1', x: 2, y: 3 },
       });
       store['patch']({ dashboard: d1, widgets: [source] });
-      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of({ ...source, id: 'w2' }));
-      
+      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+        of({ ...source, id: 'w2' }),
+      );
+
       store.duplicateWidget(source);
-      
-      expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith('d1', expect.objectContaining({
-        config: expect.objectContaining({ x: 3, y: 4 })
-      }));
+
+      expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+        'd1',
+        expect.objectContaining({
+          config: expect.objectContaining({ x: 3, y: 4 }),
+        }),
+      );
     });
 
     it('healBrokenWidgets skips if title does not match, config is null, or query is valid', () => {
       const w1 = makeWidget({ title: 'Other Title', config: { query: 'SELECT Visit_ID' } });
       const w2 = makeWidget({ title: 'Widget Admission Lag', config: null as any });
-      const w3 = makeWidget({ title: 'Widget Admission Lag', config: { query: 'SELECT Visit_Type' } });
-      
+      const w3 = makeWidget({
+        title: 'Widget Admission Lag',
+        config: { query: 'SELECT Visit_Type' },
+      });
+
       const dash = makeDashboard({ widgets: [w1, w2, w3] });
       mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(dash));
       store.loadDashboard('d1');
-      
+
       expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
     });
 
@@ -412,9 +422,9 @@ describe('DashboardStore', () => {
       const w2 = makeWidget({ id: 'w2', config: { order: -1 } });
       const w3 = makeWidget({ id: 'w3', config: { order: 2 } });
       const w4 = makeWidget({ id: 'w4', config: { order: 0 } });
-      
+
       store['patch']({ widgets: [w1, w2, w3, w4] });
-      
+
       const sorted = store.sortedWidgets();
       expect(sorted.length).toBe(4);
     });
@@ -422,7 +432,7 @@ describe('DashboardStore', () => {
     it('reads isWidgetLoading and globalParams', () => {
       store.setGlobalParams({ test: 123 });
       expect(store.globalParams()).toEqual({ test: 123 });
-      
+
       store['patch']({ loadingWidgetIds: new Set(['w1']) });
       const isWidgetLoadingFn = store.isWidgetLoading();
       expect(isWidgetLoadingFn('w1')).toBe(true);

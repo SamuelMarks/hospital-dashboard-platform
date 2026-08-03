@@ -1,0 +1,41 @@
+"""API router for serving benchmark datasets."""
+
+import json
+from pathlib import Path
+from typing import Any, Dict, List
+
+from fastapi import APIRouter, HTTPException, status
+
+router = APIRouter()
+
+DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data"
+
+
+@router.get("/sql", response_model=list[dict[str, Any]])
+async def get_sql_benchmarks() -> list[dict[str, Any]]:
+  """Returns the gold standard text-to-SQL benchmarks."""
+  file_path = DATA_DIR / "benchmark_gold.json"
+  if not file_path.exists():
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SQL benchmarks not found.")
+
+  try:
+    with open(file_path, "r") as f:
+      data = json.load(f)
+      return data
+  except Exception as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error reading benchmarks: {e!s}")
+
+
+@router.get("/mpax", response_model=list[dict[str, Any]])
+async def get_mpax_benchmarks() -> list[dict[str, Any]]:
+  """Returns the generated MPAX what-if scenarios."""
+  file_path = DATA_DIR / "mpax_benchmark_scenarios.json"
+  if not file_path.exists():
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="MPAX benchmarks not found.")
+
+  try:
+    with open(file_path, "r") as f:
+      data = json.load(f)
+      return data
+  except Exception as e:
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error reading benchmarks: {e!s}")

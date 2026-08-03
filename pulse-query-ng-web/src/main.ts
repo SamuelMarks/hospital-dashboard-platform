@@ -1,3 +1,5 @@
+/// <reference types="@angular/localize" />
+
 /**
  * @fileoverview Main entry point for the Angular application.
  * Bootstraps the root component using the standalone application configuration.

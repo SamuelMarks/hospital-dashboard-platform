@@ -1,0 +1,48 @@
+repos:
+  - repo: local
+    hooks:
+      - id: backend-sqlite-setup
+        name: Backend SQLite Setup
+        entry: bash -c "cd pulse-query-backend && uv sync --all-extras && USE_SQLITE_ALEMBIC=1 uv run alembic upgrade head"
+        language: system
+        pass_filenames: false
+      - id: backend-lint
+        name: Backend Lint
+        entry: bash -c "cd pulse-query-backend && uv run ruff check ."
+        language: system
+        pass_filenames: false
+      - id: backend-format
+        name: Backend Format
+        entry: bash -c "cd pulse-query-backend && uv run ruff format --check ."
+        language: system
+        pass_filenames: false
+      - id: backend-test
+        name: Backend Tests
+        entry: bash -c "cd pulse-query-backend && uv run pytest"
+        language: system
+        pass_filenames: false
+      - id: frontend-lint
+        name: Frontend Lint
+        entry: bash -c "cd pulse-query-ng-web && npm install --legacy-peer-deps && npm run lint"
+        language: system
+        pass_filenames: false
+      - id: frontend-format
+        name: Frontend Format
+        entry: bash -c "cd pulse-query-ng-web && npm run format"
+        language: system
+        pass_filenames: false
+      - id: frontend-test
+        name: Frontend Tests
+        entry: bash -c "cd pulse-query-ng-web && npm run test -- --watch=false"
+        language: system
+        pass_filenames: false
+      - id: e2e-test
+        name: E2E Tests
+        entry: bash -c "cd e2e && npm install --legacy-peer-deps && npx playwright test"
+        language: system
+        pass_filenames: false
+      - id: update-coverage-badges
+        name: Update Coverage Badges
+        entry: bash -c "uv run python3 scripts/update_coverage_badges.py --stage"
+        language: system
+        pass_filenames: false

@@ -6,29 +6,33 @@ This is a comprehensive Native UI implementation for the PulseQuery platform. Bu
 
 This application maintains parity with the core capabilities defined in the broader platform while strictly adhering to a fully typed Kotlin cross-platform toolchain:
 
-*   **Architecture Pattern**: MVI / MVVM driven through Native Compose State Flows.
-*   **Routing**: Official **Jetpack Navigation Compose** (`navigation-compose`), enforcing typed and stack-managed transitions.
-*   **Networking**: Configured via **Ktor Client** and `kotlinx.serialization` parsing OpenAPI-generated typed endpoints (`AuthApi`, `ChatApi`, `SimulationApi`, etc.).
-*   **Cache / Offline**: Integrated **SQLDelight** (`AppDatabase.sq`) utilizing platform-specific SQLite drivers (Android/iOS/JVM) for secure session and settings tracking.
-*   **User Interface**: Implemented with **Material Design 3**, dynamically responding to system themes, alongside custom `Canvas`-drawn metric charts (`BarChart`, `LineChart`) to guarantee rendering across experimental environments like Wasm.
+- **Architecture Pattern**: MVI / MVVM driven through Native Compose State Flows.
+- **Routing**: Official **Jetpack Navigation Compose** (`navigation-compose`), enforcing typed and stack-managed transitions.
+- **Networking**: Configured via **Ktor Client** and `kotlinx.serialization` parsing OpenAPI-generated typed endpoints (`AuthApi`, `ChatApi`, `SimulationApi`, etc.).
+- **Cache / Offline**: Integrated **SQLDelight** (`AppDatabase.sq`) utilizing platform-specific SQLite drivers (Android/iOS/JVM) for secure session and settings tracking.
+- **User Interface**: Implemented with **Material Design 3**, dynamically responding to system themes, alongside custom `Canvas`-drawn metric charts (`BarChart`, `LineChart`) to guarantee rendering across experimental environments like Wasm.
 
 ## Setup & Running
 
 This project requires **Java 17+** (JDK 21 recommended) and a connected device, emulator, or running backend server.
 
 ### Android
+
 ```bash
 ./gradlew :composeApp:assembleDebug
 # Or run directly via Android Studio / IntelliJ IDEA
 ```
 
 ### Desktop (JVM)
+
 ```bash
 ./gradlew :composeApp:run
 ```
 
 ### iOS
+
 Open `iosApp/iosApp.xcodeproj` in Xcode to run on a simulator/device. Ensure CocoaPods/Framework bindings are linked via:
+
 ```bash
 ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
 ```

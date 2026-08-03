@@ -13,7 +13,7 @@ import {
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
 import { signal, NO_ERRORS_SCHEMA, ChangeDetectionStrategy } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, withXhr } from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -69,7 +69,7 @@ describe('SqlBuilderComponent', () => {
     await TestBed.configureTestingModule({
       imports: [SqlBuilderComponent, NoopAnimationsModule],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ExecutionService, useValue: mockExecApi },
@@ -314,7 +314,7 @@ describe('SqlBuilderComponent template wiring', () => {
     await TestBed.configureTestingModule({
       imports: [SqlBuilderComponent, NoopAnimationsModule],
       providers: [
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ExecutionService, useValue: mockExecApi },

@@ -8,7 +8,6 @@ import { simulationRoutes } from './simulation.routes';
 import { vi } from 'vitest';
 
 // Mock component to prevent actual loading during route test
-vi.mock('./simulation.component', () => ({ SimulationComponent: class {} }));
 
 // MOCK: @material/material-color-utilities
 // Prevents import mapping errors causing "Cannot find module" during route checks

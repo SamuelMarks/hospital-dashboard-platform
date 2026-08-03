@@ -124,6 +124,8 @@ describe('QueryCartComponent', () => {
 
   it('should preview sql (long)', () => {
     const sql = 'SELECT * FROM test WHERE 1 = 1 AND 2 = 2 AND 3 = 3 AND 4 = 4 AND 5 = 5 AND 6 = 6';
-    expect(component.previewSql(sql)).toBe('SELECT * FROM test WHERE 1 = 1 AND 2 = 2 AND 3 = 3 AND 4 = 4 AND 5 = 5...');
+    expect(component.previewSql(sql)).toBe(
+      'SELECT * FROM test WHERE 1 = 1 AND 2 = 2 AND 3 = 3 AND 4 = 4 AND 5 = 5...',
+    );
   });
 });

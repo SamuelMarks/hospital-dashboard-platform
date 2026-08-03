@@ -272,8 +272,9 @@ export class VizChartComponent {
     if (!ds || !ds.data || ds.data.length === 0) return { x: '', y: '', stack: '' };
     const cols = ds.columns || Object.keys(ds.data[0]);
 
-    let x = conf?.xKey || cols.find((c) => typeof ds.data[0][c] === 'string') || cols[0];
-    let y = conf?.yKey || cols.find((c) => typeof ds.data[0][c] === 'number') || cols[1] || cols[0];
+    const x = conf?.xKey || cols.find((c) => typeof ds.data[0][c] === 'string') || cols[0];
+    const y =
+      conf?.yKey || cols.find((c) => typeof ds.data[0][c] === 'number') || cols[1] || cols[0];
     let stack = conf?.stackBy || '';
 
     if (!conf?.stackBy && cols.length >= 3) {

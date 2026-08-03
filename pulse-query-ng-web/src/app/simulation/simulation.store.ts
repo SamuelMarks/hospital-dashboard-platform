@@ -60,7 +60,7 @@ export class SimulationStore {
     this.error.set(null);
     this.results.set(null);
 
-    const capacityMap: { [key: string]: number } = {};
+    const capacityMap: Record<string, number> = {};
     this.capacityParams().forEach((p) => {
       if (p.unit.trim()) {
         capacityMap[p.unit.trim()] = p.capacity;

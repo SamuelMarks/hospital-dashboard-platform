@@ -274,7 +274,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.schemaApi.getDatabaseSchemaApiV1SchemaGet().subscribe({
       next: (tables) => {
         if (!this.editorView) return;
-        const schemaConfig: { [key: string]: string[] } = {};
+        const schemaConfig: Record<string, string[]> = {};
         tables.forEach((t) => {
           schemaConfig[t.table_name] = t.columns.map((c) => c.name);
         });

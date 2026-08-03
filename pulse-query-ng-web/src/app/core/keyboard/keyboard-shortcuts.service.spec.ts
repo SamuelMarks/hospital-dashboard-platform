@@ -48,7 +48,11 @@ describe('KeyboardShortcutsService', () => {
       seedColor: signal('#1565c0'),
       isTvMode: signal(false),
     };
-    mockDialog = { open: vi.fn().mockReturnValue({ afterClosed: () => ({ subscribe: (cb: () => void) => cb() }) }) };
+    mockDialog = {
+      open: vi
+        .fn()
+        .mockReturnValue({ afterClosed: () => ({ subscribe: (cb: () => void) => cb() }) }),
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -237,22 +241,44 @@ describe('KeyboardShortcutsService', () => {
     const shiftEvent = new KeyboardEvent('keydown', { key: 's', shiftKey: true, bubbles: true });
     document.dispatchEvent(shiftEvent);
     expect(handler).toHaveBeenCalledTimes(1);
-    
+
     // Pressing 'Shift' key alone should not trigger it
-    const shiftOnlyEvent = new KeyboardEvent('keydown', { key: 'Shift', shiftKey: true, bubbles: true });
+    const shiftOnlyEvent = new KeyboardEvent('keydown', {
+      key: 'Shift',
+      shiftKey: true,
+      bubbles: true,
+    });
     document.dispatchEvent(shiftOnlyEvent);
     expect(handler).toHaveBeenCalledTimes(1); // Still 1
   });
 
   it('should normalize ctrl, meta, cmd, command in shortcut definition', () => {
     const handler1 = vi.fn();
-    service.register({ id: 'test-ctrl', description: 'desc', keys: 'ctrl+a', category: 'actions', handler: handler1 });
-    
+    service.register({
+      id: 'test-ctrl',
+      description: 'desc',
+      keys: 'ctrl+a',
+      category: 'actions',
+      handler: handler1,
+    });
+
     const handler2 = vi.fn();
-    service.register({ id: 'test-cmd', description: 'desc', keys: 'cmd+b', category: 'actions', handler: handler2 });
+    service.register({
+      id: 'test-cmd',
+      description: 'desc',
+      keys: 'cmd+b',
+      category: 'actions',
+      handler: handler2,
+    });
 
     const handler3 = vi.fn();
-    service.register({ id: 'test-command', description: 'desc', keys: 'command+c', category: 'actions', handler: handler3 });
+    service.register({
+      id: 'test-command',
+      description: 'desc',
+      keys: 'command+c',
+      category: 'actions',
+      handler: handler3,
+    });
 
     // Ensure they were all registered with normalized key 'mod'
     const event1 = new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true });
@@ -269,36 +295,36 @@ describe('KeyboardShortcutsService', () => {
   });
 
   it('should not throw a disabled shortcut', () => {
-  const handler = vi.fn();
-  service.register({
-    id: 'test-disabled',
-    description: 'Disabled shortcut',
-    keys: 'd',
-    category: 'actions',
-    handler,
-    enabled: false,
+    const handler = vi.fn();
+    service.register({
+      id: 'test-disabled',
+      description: 'Disabled shortcut',
+      keys: 'd',
+      category: 'actions',
+      handler,
+      enabled: false,
+    });
+
+    const event = new KeyboardEvent('keydown', { key: 'd', bubbles: true });
+    document.dispatchEvent(event);
+
+    expect(handler).not.toHaveBeenCalled();
   });
 
-  const event = new KeyboardEvent('keydown', { key: 'd', bubbles: true });
-  document.dispatchEvent(event);
-
-  expect(handler).not.toHaveBeenCalled();
-});
-
-it('should skip initialization on server platform', () => {
-  TestBed.resetTestingModule();
-  TestBed.configureTestingModule({
-    providers: [
-      KeyboardShortcutsService,
-      { provide: PLATFORM_ID, useValue: 'server' },
-      provideRouter([]),
-      { provide: ThemeService, useValue: mockThemeService },
-      { provide: MatDialog, useValue: mockDialog },
-    ],
+  it('should skip initialization on server platform', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        KeyboardShortcutsService,
+        { provide: PLATFORM_ID, useValue: 'server' },
+        provideRouter([]),
+        { provide: ThemeService, useValue: mockThemeService },
+        { provide: MatDialog, useValue: mockDialog },
+      ],
+    });
+    const serverService = TestBed.inject(KeyboardShortcutsService);
+    expect(serverService).toBeTruthy();
   });
-  const serverService = TestBed.inject(KeyboardShortcutsService);
-  expect(serverService).toBeTruthy();
-});
   it('should default enabled to true when not specified', () => {
     const handler = vi.fn();
     service.register({
@@ -346,7 +372,7 @@ it('should skip initialization on server platform', () => {
     const navChat = nav.find((s) => s.id === 'nav-chat');
     const navAnalytics = nav.find((s) => s.id === 'nav-analytics');
     const navSim = nav.find((s) => s.id === 'nav-simulation');
-    
+
     expect(() => navHome?.handler()).not.toThrow();
     expect(() => navChat?.handler()).not.toThrow();
     expect(() => navAnalytics?.handler()).not.toThrow();

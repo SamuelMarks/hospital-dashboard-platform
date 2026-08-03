@@ -26,17 +26,17 @@ jobs:
           - 5433:5432
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Use Node.js LTS
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: lts/*
           cache: "npm"
           cache-dependency-path: ./pulse-query-ng-web/package-lock.json
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v8
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.12"
           enable-cache: true
@@ -49,7 +49,7 @@ jobs:
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           uv pip install -r "requirements.txt" -r "requirements-dev.txt"
           uv pip install .
-        working-directory: backend
+        working-directory: pulse-query-backend
 
       - name: Database setup
         run: |
@@ -58,20 +58,20 @@ jobs:
           export $(grep -v '^#' .env | xargs -d '\n')
           alembic upgrade head
           python3 scripts/ingest.py
-        working-directory: backend
+        working-directory: pulse-query-backend
 
       - name: Python tests
         run: |
           export $(grep -v '^#' .env | xargs -d '\n')
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           pytest
-        working-directory: backend
+        working-directory: pulse-query-backend
 
       - name: Python doc coverage
         run: |
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           interrogate src/app
-        working-directory: backend
+        working-directory: pulse-query-backend
 
       - name: Angular dependencies install
         run: |
@@ -87,15 +87,15 @@ jobs:
   kotlin_multiplatform:
     name: Test Kotlin Multiplatform
     runs-on: ubuntu-latest
-    
+
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
           cache: gradle
 
       - name: Run KMP Tests

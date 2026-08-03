@@ -120,8 +120,8 @@ describe('ProvisioningService', () => {
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
       expect.objectContaining({
-        config: expect.objectContaining({ x: 0, y: 0 })
-      })
+        config: expect.objectContaining({ x: 0, y: 0 }),
+      }),
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
   });

@@ -127,7 +127,8 @@ export class VizMetricComponent {
     }
     if (typeof d === 'number') return d;
     return '-';
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly displayLabel: Signal<string> = computed(() => {
     const override = this.titleOverride();
@@ -139,7 +140,8 @@ export class VizMetricComponent {
     }
     if ('label' in d) return d.label;
     return '';
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly parsedTrend: Signal<number | null> = computed(() => {
     const d = this.data();
@@ -147,7 +149,8 @@ export class VizMetricComponent {
       return d.trend;
     }
     return null;
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly trendSeries: Signal<number[]> = computed(() => {
     const d = this.data();
@@ -155,13 +158,15 @@ export class VizMetricComponent {
       return d.trend_data;
     }
     return [];
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
     if (series.length < 2) return true;
     return series[series.length - 1] >= series[0];
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly sparklinePath = computed<string | null>(() => {
     const raw = this.trendSeries();
@@ -176,16 +181,19 @@ export class VizMetricComponent {
       const normalizedY = (val - min) / range;
       const y = 50 - (normalizedY * 40 + 5);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
-    /* v8 ignore next */ });
+      /* v8 ignore next */
+    });
 
     return 'M ' + points.join(' L ');
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;
     return `${path} L 100,50 L 0,50 Z`;
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 
   readonly alertClass: Signal<string> = computed(() => {
     const val = this.displayValue();
@@ -199,6 +207,7 @@ export class VizMetricComponent {
     if (warning !== undefined && val >= warning) return 'val-warn';
 
     return '';
-  /* v8 ignore next */ });
+    /* v8 ignore next */
+  });
 }
 /* v8 ignore stop */

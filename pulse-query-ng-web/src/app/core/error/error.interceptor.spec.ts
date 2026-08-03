@@ -9,6 +9,7 @@ import {
   HttpClient,
   HttpErrorResponse,
   HttpRequest,
+  withXhr,
 } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -25,7 +26,7 @@ describe('errorInterceptor', () => {
 
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClient(withXhr(), withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         { provide: MatSnackBar, useValue: mockSnackBar },
       ],

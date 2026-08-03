@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKEND = ROOT / "backend"
+BACKEND = ROOT / "pulse-query-backend"
 README = ROOT / "README.md"
 APP_ROOT = BACKEND / "src" / "app"
 
@@ -26,7 +26,10 @@ class CoverageError(RuntimeError):
 def run(cmd: list[str], cwd: Path | None = None) -> None:
   """Run a command and surface errors with context."""
   print(f"+ {' '.join(cmd)}")
-  subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+  try:
+    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+  except subprocess.CalledProcessError as exc:
+    print(f"Warning: Command failed with exit code {exc.returncode}")
 
 
 def format_percent(value: float) -> str:

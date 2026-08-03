@@ -117,7 +117,9 @@ describe('AskDataComponent', () => {
 
   describe('Initialization', () => {
     it('should Create new scratchpad if none exist', () => {
-      mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([{ id: 'other', name: 'Other Dash', owner_id: 'u1' } as DashboardResponse]));
+      mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
+        of([{ id: 'other', name: 'Other Dash', owner_id: 'u1' } as DashboardResponse]),
+      );
 
       mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
         of({
@@ -144,7 +146,7 @@ describe('AskDataComponent', () => {
         widgetId: MOCK_WIDGET_ID,
       });
     });
-    
+
     it('should use existing scratchpad if one exists without widgets', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
         of([
@@ -224,7 +226,9 @@ describe('AskDataComponent', () => {
     it('should handle createDashboard error', async () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
-      mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(throwError(() => 'Create Dash Error'));
+      mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
+        throwError(() => 'Create Dash Error'),
+      );
 
       fixture.detectChanges();
       isAuthenticatedSig.set(true);
@@ -240,7 +244,9 @@ describe('AskDataComponent', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(of([]));
       mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(of({ id: MOCK_DASH_ID }));
-      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(throwError(() => 'Create Widget Error'));
+      mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+        throwError(() => 'Create Widget Error'),
+      );
 
       fixture.detectChanges();
       isAuthenticatedSig.set(true);
@@ -251,7 +257,7 @@ describe('AskDataComponent', () => {
       expect(component.contextError()).toContain('Failed to create scratchpad widget');
       consoleSpy.mockRestore();
     });
-    
+
     it('should reset context when no longer authenticated', () => {
       // First authenticate to get a context
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
@@ -271,12 +277,12 @@ describe('AskDataComponent', () => {
       TestBed.flushEffects();
 
       expect(component.scratchpadIds()).toBeTruthy();
-      
+
       // Now de-authenticate
       isAuthenticatedSig.set(false);
       fixture.detectChanges();
       TestBed.flushEffects();
-      
+
       expect(component.scratchpadIds()).toBeNull();
       expect(component.loadingContext()).toBe(true);
       expect(component.contextError()).toBeNull();
@@ -287,7 +293,9 @@ describe('AskDataComponent', () => {
     it('should clean up scratchpad on destroy if scratchpadIds exists', () => {
       component.scratchpadIds.set({ dashboardId: MOCK_DASH_ID, widgetId: MOCK_WIDGET_ID });
       component.ngOnDestroy();
-      expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).toHaveBeenCalledWith(MOCK_DASH_ID);
+      expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).toHaveBeenCalledWith(
+        MOCK_DASH_ID,
+      );
     });
 
     it('should do nothing on destroy if scratchpadIds is null', () => {
@@ -298,7 +306,9 @@ describe('AskDataComponent', () => {
 
     it('should log a warning if clean up fails', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(throwError(() => 'Delete Error'));
+      mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(
+        throwError(() => 'Delete Error'),
+      );
       component.scratchpadIds.set({ dashboardId: MOCK_DASH_ID, widgetId: MOCK_WIDGET_ID });
       component.ngOnDestroy();
       expect(consoleSpy).toHaveBeenCalledWith('Failed to clean up scratchpad', expect.anything());
@@ -313,7 +323,7 @@ describe('AskDataComponent', () => {
       expect(mockSnackBar.open).toHaveBeenCalledWith(
         'Query saved to Cart. Open dashboard editor to use.',
         'OK',
-        { duration: 3000 }
+        { duration: 3000 },
       );
     });
 
@@ -343,7 +353,7 @@ describe('AskDataComponent - Platform Server', () => {
     mockDashApi = {
       deleteDashboardApiV1DashboardsDashboardIdDelete: vi.fn(),
     };
-    
+
     await TestBed.configureTestingModule({
       imports: [AskDataComponent, NoopAnimationsModule],
       providers: [

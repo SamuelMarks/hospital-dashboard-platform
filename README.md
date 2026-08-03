@@ -1,12 +1,13 @@
 Pulse Query: Hospital Analytics Platform
 ========================================
+
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![CI Pipeline](https://github.com/SamuelMarks/hospital-dashboard-platform/actions/workflows/ci-pipeline.yml/badge.svg)](https://github.com/SamuelMarks/hospital-dashboard-platform/actions/workflows/ci-pipeline.yml)
 ![Test Coverage](https://img.shields.io/badge/test_coverage-100%25-brightgreen) ![Doc Coverage](https://img.shields.io/badge/doc_coverage-100%25-brightgreen)
 
 > **Purpose:** This file serves as the main entry point for the Pulse Query repository, providing a high-level overview of the platform, its key features, and initial setup instructions for developers.
 
-**Pulse Query** is an enterprise-grade hospital analytics platform designed to bridge the gap between operational data (EHR logs) and strategic decision-making (Capacity Planning). 
+**Pulse Query** is an enterprise-grade hospital analytics platform designed to bridge the gap between operational data (EHR logs) and strategic decision-making (Capacity Planning).
 
 It features a **Split-Stack Architecture** that combines the strict typing of a modern Angular frontend with the raw analytical power of DuckDB and the mathematical optimization capabilities of JAX/MPAX on the backend.
 
@@ -57,10 +58,10 @@ flowchart TD
     User --> UI
     UI --> SDK
     SDK -- "JSON / HTTPS" --> API
-    
+
     API --> PG
     API --> Orchestrator
-    
+
     Orchestrator -- "SQL" --> Duck
     Orchestrator -- "JAX" --> MPAX
     Orchestrator -. "Proxy" .-> External
@@ -90,8 +91,8 @@ flowchart TD
 ### Core Components
 
 1.  **Dual-Database Strategy**:
-    *   **PostgreSQL**: Manages application state (Users, Dashboards, Widgets, Templates).
-    *   **DuckDB**: High-performance OLAP engine for querying hospital CSV data directly.
+    - **PostgreSQL**: Manages application state (Users, Dashboards, Widgets, Templates).
+    - **DuckDB**: High-performance OLAP engine for querying hospital CSV data directly.
 2.  **MPAX / JAX Solver**: Performs linear programming optimization for "What-If" capability planning scenarios (e.g., maximizing bed utilization under constraints).
 3.  **Strictly Typed Frontend**: An Angular application that generates its entire API client layer from the Backend's OpenAPI specification, ensuring contract reliability.
 
@@ -99,17 +100,17 @@ flowchart TD
 
 ## ✨ Key Features
 
-*   **📊 Dynamic Dashboards**: Build responsive dashboards with grids of widgets powered by DuckDB SQL or external HTTP APIs.
-*   **🤖 AI Assistant**: Natural‑language to SQL generation with multi‑model candidate outputs and human selection.
-*   **🏟️ LLM Arena Analytics**: Inspect which user queries generated which SQL, by which LLM, and how each candidate was scored/selected.
-*   **🧪 Experiment Logs**: `/api/v1/ai` experiment runs are captured alongside chat arena results for unified analysis and comparison.
-*   **🔎 SQL Preview for Candidates**: Execute candidate SQL against the preview endpoint to compare results before selecting.
-*   **🧰 Query Cart**: Stage ad‑hoc SQL and drag it into dashboards for rapid iteration and collaboration.
-*   **🧩 Template Marketplace**: Pre‑packaged analytics templates ("Utilization Spikes", "Seasonal Growth") with parameterized inputs.
-*   **📐 Widget Builder**: Configure SQL widgets, HTTP‑backed widgets, and text/markdown summaries in one flow.
-*   **🔮 Simulation & Optimization**: Run complex scenarios to optimize patient‑to‑bed allocation using mathematical solvers.
-*   **🛡️ Analytical Security**: AST‑based SQL validation ensures only safe `SELECT` and `CTE` queries are executed.
-*   **🔗 Contract‑First Frontend**: OpenAPI‑generated Angular client ensures frontend/backend schema consistency.
+- **📊 Dynamic Dashboards**: Build responsive dashboards with grids of widgets powered by DuckDB SQL or external HTTP APIs.
+- **🤖 AI Assistant**: Natural‑language to SQL generation with multi‑model candidate outputs and human selection.
+- **🏟️ LLM Arena Analytics**: Inspect which user queries generated which SQL, by which LLM, and how each candidate was scored/selected.
+- **🧪 Experiment Logs**: `/api/v1/ai` experiment runs are captured alongside chat arena results for unified analysis and comparison.
+- **🔎 SQL Preview for Candidates**: Execute candidate SQL against the preview endpoint to compare results before selecting.
+- **🧰 Query Cart**: Stage ad‑hoc SQL and drag it into dashboards for rapid iteration and collaboration.
+- **🧩 Template Marketplace**: Pre‑packaged analytics templates ("Utilization Spikes", "Seasonal Growth") with parameterized inputs.
+- **📐 Widget Builder**: Configure SQL widgets, HTTP‑backed widgets, and text/markdown summaries in one flow.
+- **🔮 Simulation & Optimization**: Run complex scenarios to optimize patient‑to‑bed allocation using mathematical solvers.
+- **🛡️ Analytical Security**: AST‑based SQL validation ensures only safe `SELECT` and `CTE` queries are executed.
+- **🔗 Contract‑First Frontend**: OpenAPI‑generated Angular client ensures frontend/pulse-query-backend schema consistency.
 
 ---
 
@@ -117,17 +118,17 @@ flowchart TD
 
 ### Prerequisites
 
-*   **Docker** (for PostgreSQL database)
-*   **Python 3.12+**
-*   **Node.js 18+** & **NPM**
-*   **uv** (Python dependency manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **Docker** (for PostgreSQL database)
+- **Python 3.12+**
+- **Node.js 18+** & **NPM**
+- **uv** (Python dependency manager): `curl -LsSf https://astral.sh/uv/install.sh | sh`
 
 ### 1. Backend Setup
 
 The backend handles data ingestion and API serving.
 
 ```bash
-cd backend
+cd pulse-query-backend
 
 # 1. Start Infrastructure (Postgres)
 docker-compose up -d
@@ -154,7 +155,8 @@ uv run python3 ./scripts/update_models.py
 # 6. Start the Server
 uv run uvicorn --app-dir src app.main:app --reload
 ```
-*API will differ at `http://localhost:8000` (Docs at `/docs`)*
+
+_API will differ at `http://localhost:8000` (Docs at `/docs`)_
 
 ### 2. Frontend Setup
 
@@ -174,7 +176,8 @@ npm install
 # 3. Run Development Server
 npm start
 ```
-*UI will differ at `http://localhost:4200`*
+
+_UI will differ at `http://localhost:4200`_
 
 ---
 
@@ -182,12 +185,12 @@ npm start
 
 This project uses **Contract-First Development**.
 
-*   **Backend Changes**: If you modify Pydantic schemas or API routes in FastAPI, you **must** run `./generate_client.sh` to update the Frontend SDK.
-*   **Data Updates**: To reset the analytical data, delete `backend/hospital_analytics.duckdb` and re-run `uv run python scripts/ingest.py`.
-*   **Testing**:
-    *   Backend: `uv run pytest`
-    *   Frontend: `npm test`
-    *   E2E: `npx playwright test` (Requires running backend/frontend)
+- **Backend Changes**: If you modify Pydantic schemas or API routes in FastAPI, you **must** run `./generate_client.sh` to update the Frontend SDK.
+- **Data Updates**: To reset the analytical data, delete `pulse-query-backend/hospital_analytics.duckdb` and re-run `uv run python scripts/ingest.py`.
+- **Testing**:
+  - Backend: `uv run pytest`
+  - Frontend: `npm test`
+  - E2E: `npx playwright test` (Requires running pulse-query-backend/frontend)
 
 See [MAINTENANCE.md](MAINTENANCE.md) for detailed contribution guides.
 

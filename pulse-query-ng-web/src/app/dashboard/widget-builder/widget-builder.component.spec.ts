@@ -67,7 +67,9 @@ describe('WidgetBuilderComponent', () => {
       deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn().mockReturnValue(of({})),
     };
     mockExecApi = {
-      refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn().mockReturnValue(of({ 'draft-1': { data: 'test' } })),
+      refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi
+        .fn()
+        .mockReturnValue(of({ 'draft-1': { data: 'test' } })),
     };
     mockTplApi = {
       listTemplatesApiV1TemplatesGet: vi.fn().mockReturnValue(of([MOCK_TEMPLATE])),
@@ -164,7 +166,10 @@ describe('WidgetBuilderComponent', () => {
     component.updateSearch(event);
     vi.advanceTimersByTime(300);
     vi.useRealTimers();
-    expect(mockTplApi.listTemplatesApiV1TemplatesGet).toHaveBeenCalledWith(undefined, 'search term');
+    expect(mockTplApi.listTemplatesApiV1TemplatesGet).toHaveBeenCalledWith(
+      undefined,
+      'search term',
+    );
   });
 
   it('toggleCategory should toggle category filter and reload templates', () => {
@@ -224,7 +229,7 @@ describe('WidgetBuilderComponent', () => {
     expect(component.finalSql()).toBe('SELECT 123 FROM table');
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'draft-1',
-      { config: { query: 'SELECT 123 FROM table' } }
+      { config: { query: 'SELECT 123 FROM table' } },
     );
     expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalled();
   });
@@ -233,7 +238,9 @@ describe('WidgetBuilderComponent', () => {
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
     component.draftWidget.set(MOCK_DRAFT);
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(throwError(() => new Error('error')));
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+      throwError(() => new Error('error')),
+    );
     component.renderPreview();
     expect(component.isBusy()).toBe(false);
   });
@@ -258,7 +265,11 @@ describe('WidgetBuilderComponent', () => {
 
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
-      expect.objectContaining({ title: 'Admissions', type: 'SQL', config: { query: 'SELECT {{param}} FROM table' } })
+      expect.objectContaining({
+        title: 'Admissions',
+        type: 'SQL',
+        config: { query: 'SELECT {{param}} FROM table' },
+      }),
     );
     expect(mockStepper.next).toHaveBeenCalled();
   });
@@ -269,7 +280,10 @@ describe('WidgetBuilderComponent', () => {
     component.initializeDraft();
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
-      expect.objectContaining({ type: 'SQL', config: { query: 'SELECT * FROM hospital_data LIMIT 5' } })
+      expect.objectContaining({
+        type: 'SQL',
+        config: { query: 'SELECT * FROM hospital_data LIMIT 5' },
+      }),
     );
   });
 
@@ -279,7 +293,11 @@ describe('WidgetBuilderComponent', () => {
     component.initializeDraft();
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
-      expect.objectContaining({ type: 'HTTP', visualization: 'metric', config: { url: '', method: 'GET' } })
+      expect.objectContaining({
+        type: 'HTTP',
+        visualization: 'metric',
+        config: { url: '', method: 'GET' },
+      }),
     );
   });
 
@@ -289,13 +307,19 @@ describe('WidgetBuilderComponent', () => {
     component.initializeDraft();
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
-      expect.objectContaining({ type: 'TEXT', visualization: 'markdown', config: { content: '### New Text Widget\nEdit this content.' } })
+      expect.objectContaining({
+        type: 'TEXT',
+        visualization: 'markdown',
+        config: { content: '### New Text Widget\nEdit this content.' },
+      }),
     );
   });
 
   it('initializeDraft should log error if creation fails', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(throwError(() => new Error('err')));
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
+      throwError(() => new Error('err')),
+    );
     component.activeMode.set('custom');
     component.selectedCustomType.set('SQL');
     component.initializeDraft();
@@ -317,7 +341,7 @@ describe('WidgetBuilderComponent', () => {
     component.runTemplateQuery(mockStepper);
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'draft-1',
-      { config: { query: 'SELECT 123 FROM table' } }
+      { config: { query: 'SELECT 123 FROM table' } },
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('draft-1');
     expect(mockStepper.next).toHaveBeenCalled();
@@ -328,7 +352,9 @@ describe('WidgetBuilderComponent', () => {
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(throwError(() => new Error('err')));
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+      throwError(() => new Error('err')),
+    );
     component.runTemplateQuery(mockStepper);
     expect(component.isBusy()).toBe(false);
   });
@@ -340,7 +366,7 @@ describe('WidgetBuilderComponent', () => {
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('draft-1');
     expect(mockStepper.next).toHaveBeenCalled();
   });
-  
+
   it('validateDataPresence should only call next if no draft', () => {
     const mockStepper = { next: vi.fn() } as any;
     component.draftWidget.set(null);
@@ -378,7 +404,7 @@ describe('WidgetBuilderComponent', () => {
     component.onContentChange('content');
     expect(component.draftWidget()?.config['content']).toBe('content');
   });
-  
+
   it('onContentChange should do nothing if no draft', () => {
     component.draftWidget.set(null);
     component.onContentChange('content');
@@ -409,7 +435,7 @@ describe('WidgetBuilderComponent', () => {
     component.saveWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'draft-1',
-      { title: 'New Title', visualization: 'table', config: { query: 'SELECT 1' } }
+      { title: 'New Title', visualization: 'table', config: { query: 'SELECT 1' } },
     );
     expect(component.draftWidget()).toBeNull();
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
@@ -418,7 +444,9 @@ describe('WidgetBuilderComponent', () => {
   it('saveWidget should handle error', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     component.draftWidget.set(MOCK_DRAFT);
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(throwError(() => new Error('err')));
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+      throwError(() => new Error('err')),
+    );
     component.saveWidget();
     expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
   });
@@ -432,7 +460,9 @@ describe('WidgetBuilderComponent', () => {
   it('cancel should delete draft and close dialog', () => {
     component.draftWidget.set(MOCK_DRAFT);
     component.cancel();
-    expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).toHaveBeenCalledWith('draft-1');
+    expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).toHaveBeenCalledWith(
+      'draft-1',
+    );
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
   });
 
@@ -448,7 +478,7 @@ describe('WidgetBuilderComponent', () => {
     expect(component.asTableData(null)).toEqual({ columns: [], data: [] });
     expect(component.asTableData({ data: 1 })).toEqual({ data: 1 });
   });
-  
+
   it('executeDraft should handle no draftId', () => {
     component.draftWidget.set(null);
     component.selectedTemplate.set(MOCK_TEMPLATE);
@@ -456,7 +486,7 @@ describe('WidgetBuilderComponent', () => {
     // Check that it doesn't try to call the API
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
-  
+
   it('should do nothing on title changes if no draft', () => {
     component.draftWidget.set(null);
     component.titleControl.setValue('Another Title');

@@ -38,7 +38,7 @@ for (const sf of sourceFiles) {
     if (v.isExported()) {
       addDoc(v);
       for (const decl of v.getDeclarations()) {
-         addDoc(decl);
+        addDoc(decl);
       }
     }
   }
@@ -46,7 +46,7 @@ for (const sf of sourceFiles) {
     addDoc(enumDec);
     for (const member of enumDec.getMembers()) addDoc(member);
   }
-  
+
   sf.saveSync();
 }
 console.log('Docs added completely');

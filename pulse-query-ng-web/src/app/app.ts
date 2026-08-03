@@ -10,9 +10,10 @@
  * - **TV Mode**: Listens for `?mode=tv` to enable Kiosk state.
  */
 
-import { Component, inject, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectionStrategy, LOCALE_ID } from '@angular/core';
 import { RouterOutlet, ActivatedRoute } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { DOCUMENT } from '@angular/common';
 import { AskDataComponent } from './global/ask-data.component';
 import { AskDataService } from './global/ask-data.service';
 import { ThemeService } from './core/theme/theme.service';
@@ -91,8 +92,13 @@ export class App implements OnInit {
   /** route property. */
   private readonly route = inject(ActivatedRoute);
 
+  private readonly document = inject(DOCUMENT);
+  private readonly localeId = inject(LOCALE_ID);
+
   /** Ng On Init. */
   ngOnInit(): void {
+    this.document.documentElement.lang = this.localeId;
+
     // Global listener for Kiosk Mode parameter
     this.route.queryParams.subscribe((params) => {
       if (params['mode'] === 'tv') {

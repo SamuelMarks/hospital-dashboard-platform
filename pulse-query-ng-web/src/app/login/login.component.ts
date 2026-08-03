@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/login/login.component.ts
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
@@ -17,6 +16,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 import { environment } from '../../environments/environment';
 
+/* v8 ignore start */
 /** @docs */
 @Component({
   selector: 'app-login',
@@ -92,6 +92,7 @@ import { environment } from '../../environments/environment';
 })
 /** @docs */
 export class LoginComponent implements OnInit {
+  /* v8 ignore stop */
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -99,11 +100,8 @@ export class LoginComponent implements OnInit {
 
   readonly registrationEnabled = environment.registrationEnabled;
 
-  /* v8 ignore next */
   readonly isLoading = signal(false);
-  /* v8 ignore next */
   readonly errorMessage = signal<string | null>(null);
-  /* v8 ignore next */
   readonly hidePassword = signal(true);
 
   readonly loginForm: FormGroup = this.fb.group({
@@ -144,7 +142,7 @@ export class LoginComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading.set(false);
-        const msg = err?.error?.detail || 'Invalid email or password. Please try again.';
+        const msg = err?.error?.detail || $localize`Invalid email or password. Please try again.`;
         this.errorMessage.set(msg);
       },
     });

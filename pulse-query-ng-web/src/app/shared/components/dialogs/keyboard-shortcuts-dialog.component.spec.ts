@@ -138,7 +138,7 @@ describe('KeyboardShortcutsDialogComponent', () => {
   it('should fall back to raw category name if not mapped', () => {
     const keyboardService = TestBed.inject(KeyboardShortcutsService);
     vi.spyOn(keyboardService, 'getShortcutsByCategory').mockReturnValue(
-      new Map([['custom_cat', []]])
+      new Map([['custom_cat', []]]),
     );
     const newFixture = TestBed.createComponent(KeyboardShortcutsDialogComponent);
     const cats = newFixture.componentInstance.categories();

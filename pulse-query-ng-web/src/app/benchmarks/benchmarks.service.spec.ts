@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { BenchmarksService } from './benchmarks.service';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 
 describe('BenchmarksService', () => {
   let service: BenchmarksService;
@@ -9,7 +9,7 @@ describe('BenchmarksService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [BenchmarksService, provideHttpClient(), provideHttpClientTesting()],
+      providers: [BenchmarksService, provideHttpClient(withXhr()), provideHttpClientTesting()],
     });
     service = TestBed.inject(BenchmarksService);
     httpMock = TestBed.inject(HttpTestingController);

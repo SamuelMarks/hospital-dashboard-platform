@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HomeComponent } from './home.component';
@@ -45,14 +45,14 @@ describe('HomeComponent', () => {
     };
     mockDialog = { open: vi.fn() };
     mockAskDataService = { open: vi.fn() };
-    
+
     // We need to trigger the onAction observable from the snackbar
     const snackBarAction$ = new Subject<void>();
     mockSnackBar = {
       open: vi.fn().mockReturnValue({
         onAction: () => snackBarAction$.asObservable(),
       }),
-      _action$: snackBarAction$ // expose for tests
+      _action$: snackBarAction$, // expose for tests
     };
     mockThemeService = {
       isDark: signal(false),
@@ -83,7 +83,7 @@ describe('HomeComponent', () => {
       imports: [HomeComponent, NoopAnimationsModule],
       providers: [
         provideRouter([]),
-        provideHttpClient(),
+        provideHttpClient(withXhr()),
         provideHttpClientTesting(),
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: MatDialog, useValue: mockDialog },
@@ -119,16 +119,20 @@ describe('HomeComponent', () => {
   // --- loadDashboards ---
   it('should handle loadDashboards error and retry', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValueOnce(throwError(() => new Error('load err')));
-    
+    mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValueOnce(
+      throwError(() => new Error('load err')),
+    );
+
     component.loadDashboards();
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to load dashboards', 'Retry', { duration: 5000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to load dashboards', 'Retry', {
+      duration: 5000,
+    });
     expect(component.isLoading()).toBe(false);
-    
+
     // Simulate clicking retry
     mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValueOnce(of(mockDashboardList));
     mockSnackBar._action$.next();
-    
+
     expect(mockDashApi.listDashboardsApiV1DashboardsGet).toHaveBeenCalledTimes(3); // 1 init, 1 err, 1 retry
     consoleSpy.mockRestore();
   });
@@ -137,14 +141,14 @@ describe('HomeComponent', () => {
   it('should open create dialog and navigate on success', () => {
     const newDash = { id: 'd3', name: 'New Dash' };
     mockDialog.open.mockReturnValue({ afterClosed: () => of(newDash) });
-    
+
     component.openCreateDialog();
-    
+
     expect(mockDialog.open).toHaveBeenCalledWith(DashboardCreateDialog, expect.anything());
     expect(component.dashboards()).toContainEqual(newDash);
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard', 'd3']);
   });
-  
+
   it('should handle openCreateDialog without result', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(null) });
     component.openCreateDialog();
@@ -154,21 +158,27 @@ describe('HomeComponent', () => {
   // --- restoreDefaults ---
   it('should restore default dashboard successfully', () => {
     const newDash = { id: 'd-def', name: 'Default' };
-    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(of(newDash));
-    
+    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(
+      of(newDash),
+    );
+
     component.restoreDefaults();
-    
+
     expect(component.dashboards()[0]).toEqual(newDash);
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard', 'd-def']);
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Default dashboard created.', 'Close', { duration: 3000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Default dashboard created.', 'Close', {
+      duration: 3000,
+    });
   });
 
   it('should handle error when restoring defaults', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(throwError(() => new Error('restore err')));
-    
+    mockDashApi.restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost.mockReturnValue(
+      throwError(() => new Error('restore err')),
+    );
+
     component.restoreDefaults();
-    
+
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to restore defaults.', 'Close');
     consoleSpy.mockRestore();
   });
@@ -191,19 +201,23 @@ describe('HomeComponent', () => {
       name: 'New Name',
     });
     // Check optimistic update
-    expect(component.dashboards().find(d => d.id === 'd1')?.name).toBe('New Name');
+    expect(component.dashboards().find((d) => d.id === 'd1')?.name).toBe('New Name');
   });
-  
+
   it('should revert rename when API fails', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockDialog.open.mockReturnValue({ afterClosed: () => of('New Name') });
-    mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut.mockReturnValue(throwError(() => new Error('update err')));
+    mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut.mockReturnValue(
+      throwError(() => new Error('update err')),
+    );
 
     component.renameDashboard(mockDashboardList[0]);
 
     // Should revert back to original
-    expect(component.dashboards().find(d => d.id === 'd1')?.name).toBe('Finance');
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Rename failed. Reverted.', 'Close', { duration: 5000 });
+    expect(component.dashboards().find((d) => d.id === 'd1')?.name).toBe('Finance');
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Rename failed. Reverted.', 'Close', {
+      duration: 5000,
+    });
     consoleSpy.mockRestore();
   });
 
@@ -211,19 +225,23 @@ describe('HomeComponent', () => {
   it('should clone dashboard successfully', () => {
     const clonedDash = { id: 'd1-clone', name: 'Finance (Clone)' };
     mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue(of(clonedDash));
-    
+
     component.cloneDashboard(mockDashboardList[0]);
-    
+
     expect(component.dashboards()).toContainEqual(clonedDash);
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Cloned "Finance" successfully', 'Close', { duration: 3000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Cloned "Finance" successfully', 'Close', {
+      duration: 3000,
+    });
   });
 
   it('should handle clone dashboard error', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue(throwError(() => new Error('clone err')));
-    
+    mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue(
+      throwError(() => new Error('clone err')),
+    );
+
     component.cloneDashboard(mockDashboardList[0]);
-    
+
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to clone.', 'Close', { duration: 5000 });
     consoleSpy.mockRestore();
   });
@@ -234,9 +252,9 @@ describe('HomeComponent', () => {
     mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(of({}));
 
     component.deleteDashboard(mockDashboardList[0]);
-    
+
     // Check it's removed
-    expect(component.dashboards().find(d => d.id === 'd1')).toBeUndefined();
+    expect(component.dashboards().find((d) => d.id === 'd1')).toBeUndefined();
   });
 
   it('should optimistic delete and revert on error', () => {
@@ -253,12 +271,14 @@ describe('HomeComponent', () => {
     component.deleteDashboard(mockDashboardList[0]);
 
     // Check restore happened
-    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to delete. Restored item.', 'Close', { duration: 5000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to delete. Restored item.', 'Close', {
+      duration: 5000,
+    });
     expect(component.dashboards().length).toBe(2);
 
     consoleSpy.mockRestore();
   });
-  
+
   it('should do nothing if delete is cancelled', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
     component.deleteDashboard(mockDashboardList[0]);

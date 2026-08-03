@@ -344,7 +344,7 @@ export class HttpConfigComponent {
   }
 
   /** arrToObj method. */
-  private arrToObj(arr: Array<{ key: string; value: string }>): Record<string, string> {
+  private arrToObj(arr: { key: string; value: string }[]): Record<string, string> {
     const obj: Record<string, string> = {};
     arr.forEach((i) => {
       if (i.key) obj[i.key] = i.value;

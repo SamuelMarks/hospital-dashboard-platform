@@ -12,12 +12,7 @@
       ]
     },
     "network": {
-      "ports": [
-        "22",
-        "80",
-        "443",
-        "5432"
-      ]
+      "ports": ["22", "80", "443", "5432"]
     }
   },
   "ingress": {
@@ -29,7 +24,7 @@
       "sudo mkdir -p /mnt/data",
       "sudo mount /dev/nvme1n1 /mnt/data || sudo mount /dev/disk/azure/scsi1/lun0 /mnt/data || true",
       "(cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npm install)",
-      "(cd backend && /home/azureuser/.local/bin/uv sync)",
+      "(cd pulse-query-backend && /home/azureuser/.local/bin/uv sync)",
       "sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx",
       "printf 'server { listen 80; server_name pulse-query.healthplatform.io; proxy_read_timeout 3600; proxy_connect_timeout 3600; proxy_send_timeout 3600; location / { proxy_pass http://127.0.0.1:4200; } location /api/ { proxy_pass http://127.0.0.1:8000; } }' | sudo tee /etc/nginx/conf.d/pulse-query.healthplatform.io.conf",
       "sudo systemctl restart nginx || true",
@@ -38,9 +33,7 @@
     "build": [
       "(cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npm run build)"
     ],
-    "pre_start": [
-      "sudo -u postgres createdb pulse_query || true"
-    ]
+    "pre_start": ["sudo -u postgres createdb pulse_query || true"]
   },
   "services": {
     "pulse-web": {
@@ -48,7 +41,7 @@
       "env": {}
     },
     "pulse-backend": {
-      "command": "cd backend && /home/azureuser/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      "command": "cd pulse-query-backend && /home/azureuser/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
       "env": {
         "ENVIRONMENT": "production",
         "SQLALCHEMY_DATABASE_URI": "postgresql+asyncpg://postgres:password@127.0.0.1:5432/pulse_query",
@@ -103,9 +96,7 @@
           "version": "latest"
         }
       ],
-      "capabilities": [
-        "systemd"
-      ]
+      "capabilities": ["systemd"]
     }
   }
 }

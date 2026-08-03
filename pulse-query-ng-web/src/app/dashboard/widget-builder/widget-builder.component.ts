@@ -346,7 +346,9 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     // Sync local controls with draft state
     this.titleControl.valueChanges.subscribe((val) => {
       const w = this.draftWidget();
-      if (w) { this.draftWidget.set({ ...w, title: val }); }
+      if (w) {
+        this.draftWidget.set({ ...w, title: val });
+      }
     });
 
     this.xKeyControl.valueChanges.subscribe(() => this.syncVizConfig());
@@ -418,7 +420,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     const values = this.templateParams();
 
     Object.keys(values).forEach((key) => {
-      let val = values[key];
+      const val = values[key];
       sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
     });
 

@@ -100,7 +100,7 @@ describe('VizMetricComponent', () => {
     let svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
     expect(svg).toBeFalsy();
 
-    dataSig.set({ value: 100, trend_data: "invalid" }); // Not array
+    dataSig.set({ value: 100, trend_data: 'invalid' }); // Not array
     fixture.detectChanges();
 
     svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
@@ -203,7 +203,7 @@ describe('VizMetricComponent', () => {
   });
 
   it('should display non-number non-object values as strings', () => {
-    dataSig.set("hello world");
+    dataSig.set('hello world');
     fixture.detectChanges();
     const valueEl = fixture.debugElement.query(By.css('.metric-value'));
     expect(valueEl.nativeElement.textContent.trim()).toBe('hello world');
@@ -216,7 +216,7 @@ describe('VizMetricComponent', () => {
     expect(svg).toBeTruthy();
   });
   it('should return empty string if value is not number', () => {
-    dataSig.set("hello");
+    dataSig.set('hello');
     configSig.set({ thresholds: { warning: 50, critical: 100 } });
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');

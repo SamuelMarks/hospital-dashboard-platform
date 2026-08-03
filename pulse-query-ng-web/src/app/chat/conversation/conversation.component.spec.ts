@@ -194,7 +194,12 @@ describe('ConversationComponent', () => {
       expect(component.cleanContent({ content: 'hi' } as any)).toBe('hi');
     });
     it('cleanContent: should strip sql block if sql_snippet exists', () => {
-      expect(component.cleanContent({ content: 'test ```sql \n SELECT 1 \n ``` end', sql_snippet: 'a' } as any)).toBe('test  end');
+      expect(
+        component.cleanContent({
+          content: 'test ```sql \n SELECT 1 \n ``` end',
+          sql_snippet: 'a',
+        } as any),
+      ).toBe('test  end');
     });
     it('cleanContentSimple: should strip sql block and handle empty', () => {
       expect(component.cleanContentSimple('test ```sql\n SELECT \n```')).toBe('test');
@@ -241,25 +246,19 @@ describe('ConversationComponent', () => {
     });
 
     it('should handle status 0 error', () => {
-      mockArenaSql.execute.mockReturnValue(
-        throwError(() => new HttpErrorResponse({ status: 0 }))
-      );
+      mockArenaSql.execute.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
       component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
       expect(component.candidateErrors()['c1']).toBe('Network Error: Cannot reach server.');
     });
 
     it('should handle error without detail', () => {
-      mockArenaSql.execute.mockReturnValue(
-        throwError(() => new Error('Generic error'))
-      );
+      mockArenaSql.execute.mockReturnValue(throwError(() => new Error('Generic error')));
       component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
       expect(component.candidateErrors()['c1']).toBe('Generic error');
     });
 
     it('should handle error without message', () => {
-      mockArenaSql.execute.mockReturnValue(
-        throwError(() => ({}))
-      );
+      mockArenaSql.execute.mockReturnValue(throwError(() => ({})));
       component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
       expect(component.candidateErrors()['c1']).toBe('Unknown error');
     });
@@ -271,7 +270,12 @@ describe('ConversationComponent', () => {
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
     it('should run for each candidate', () => {
-      component.runAllCandidates({ candidates: [{ id: '1', sql_snippet: 's1' }, { id: '2', sql_snippet: 's2' }] } as any);
+      component.runAllCandidates({
+        candidates: [
+          { id: '1', sql_snippet: 's1' },
+          { id: '2', sql_snippet: 's2' },
+        ],
+      } as any);
       expect(mockArenaSql.execute).toHaveBeenCalledTimes(2);
     });
   });
@@ -282,7 +286,12 @@ describe('ConversationComponent', () => {
       expect(component.sqlGroupCount({ candidates: [] } as any, {} as any)).toBe(0);
     });
     it('should return matching count', () => {
-      expect(component.sqlGroupCount({ candidates: [{ sql_hash: 'a' }, { sql_hash: 'a' }, { sql_hash: 'b' }] } as any, { sql_hash: 'a' } as any)).toBe(2);
+      expect(
+        component.sqlGroupCount(
+          { candidates: [{ sql_hash: 'a' }, { sql_hash: 'a' }, { sql_hash: 'b' }] } as any,
+          { sql_hash: 'a' } as any,
+        ),
+      ).toBe(2);
     });
   });
 
@@ -307,22 +316,45 @@ describe('ConversationComponent', () => {
   describe('hasPendingCandidates', () => {
     it('should return false if not assistant or no candidates', () => {
       expect(component.hasPendingCandidates({ role: 'user' } as any)).toBe(false);
-      expect(component.hasPendingCandidates({ role: 'assistant', candidates: [] } as any)).toBe(false);
+      expect(component.hasPendingCandidates({ role: 'assistant', candidates: [] } as any)).toBe(
+        false,
+      );
     });
     it('should return true if none selected', () => {
-      expect(component.hasPendingCandidates({ role: 'assistant', candidates: [{ is_selected: false }] } as any)).toBe(true);
+      expect(
+        component.hasPendingCandidates({
+          role: 'assistant',
+          candidates: [{ is_selected: false }],
+        } as any),
+      ).toBe(true);
     });
     it('should return true if some selected but content is empty', () => {
-      expect(component.hasPendingCandidates({ role: 'assistant', content: '   ', candidates: [{ is_selected: true }] } as any)).toBe(true);
+      expect(
+        component.hasPendingCandidates({
+          role: 'assistant',
+          content: '   ',
+          candidates: [{ is_selected: true }],
+        } as any),
+      ).toBe(true);
     });
     it('should return false if some selected and content is present', () => {
-      expect(component.hasPendingCandidates({ role: 'assistant', content: 'hi', candidates: [{ is_selected: true }] } as any)).toBe(false);
+      expect(
+        component.hasPendingCandidates({
+          role: 'assistant',
+          content: 'hi',
+          candidates: [{ is_selected: true }],
+        } as any),
+      ).toBe(false);
     });
   });
 
   describe('hasSqlCandidates', () => {
     it('should return true if any candidate has sql_snippet', () => {
-      expect(component.hasSqlCandidates({ candidates: [{ sql_snippet: '' }, { sql_snippet: 'select' }] } as any)).toBe(true);
+      expect(
+        component.hasSqlCandidates({
+          candidates: [{ sql_snippet: '' }, { sql_snippet: 'select' }],
+        } as any),
+      ).toBe(true);
     });
     it('should return false if none have sql_snippet or no candidates', () => {
       expect(component.hasSqlCandidates({ candidates: [{ sql_snippet: '' }] } as any)).toBe(false);

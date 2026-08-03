@@ -1,7 +1,6 @@
 import { vi } from 'vitest';
 
-const bootstrapApplication = vi.fn();
-const provideClientHydration = vi.fn(() => []);
+const mockBootstrapApplication = vi.fn();
 
 vi.mock('@material/material-color-utilities', () => ({
   argbFromHex: () => 0xffffffff,
@@ -13,25 +12,21 @@ vi.mock('@material/material-color-utilities', () => ({
 }));
 
 vi.mock('@angular/platform-browser', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@angular/platform-browser')>();
+  const mod = await importOriginal();
+  const { vi } = await import('vitest');
   return {
-    ...actual,
-    bootstrapApplication,
-    provideClientHydration,
+    ...(mod as any),
+    bootstrapApplication: vi.fn(),
+    provideClientHydration: vi.fn(() => []),
   };
 });
 
-vi.mock('./app/app', () => ({
-  App: class {},
-}));
-
-vi.mock('./app/app.config.server', () => ({
-  config: {},
-}));
-
 describe('main.server bootstrap', () => {
-  beforeEach(() => {
+  let bootstrapApplication: any;
+  beforeEach(async () => {
     vi.resetModules();
+    const pb = await import('@angular/platform-browser');
+    bootstrapApplication = pb.bootstrapApplication as any;
     bootstrapApplication.mockReset();
   });
 

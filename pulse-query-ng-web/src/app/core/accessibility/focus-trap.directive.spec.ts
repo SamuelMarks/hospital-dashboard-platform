@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
  * @fileoverview Unit tests for FocusTrapDirective.
  */
 
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { FocusTrapDirective } from './focus-trap.directive';
@@ -12,6 +12,7 @@ import { FocusTrapDirective } from './focus-trap.directive';
 @Component({
   selector: 'app-test-focus-trap',
   imports: [FocusTrapDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <div appFocusTrap [autoFocus]="autoFocus()" (escape)="onEscape()">
       <button id="first">First</button>
@@ -260,7 +261,7 @@ describe('FocusTrapDirective', () => {
 
     const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
     const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
-    
+
     const focusable = (directiveInstance as any).getFocusableElements();
     expect(focusable).not.toContain(zeroDim);
     expect(focusable).not.toContain(attrHidden);
@@ -283,7 +284,7 @@ describe('FocusTrapDirective', () => {
 
     const f = TestBed.createComponent(DefaultAutoFocusComponent);
     document.body.appendChild(f.nativeElement);
-    
+
     const btn = f.nativeElement.querySelector('#def-btn') as HTMLElement;
     Object.defineProperty(btn, 'offsetWidth', { value: 100, configurable: true });
     Object.defineProperty(btn, 'offsetHeight', { value: 100, configurable: true });

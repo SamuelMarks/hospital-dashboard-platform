@@ -60,7 +60,8 @@ export default defineConfig({
        * --active is CRITICAL: It forces uv to respect the VIRTUAL_ENV environment variable
        * set in the user's shell, ensuring it finds installed packages like 'any_llm'.
        */
-      command: 'cd ../backend && uv run --active uvicorn --app-dir src app.main:app --port 8000',
+      command:
+        'cd ../pulse-query-backend && uv run --active uvicorn --app-dir src app.main:app --port 8000',
       url: 'http://127.0.0.1:8000/api/v1/openapi.json', // Healthcheck endpoint to wait for
       reuseExistingServer: !process.env['CI'],
       stdout: 'pipe',

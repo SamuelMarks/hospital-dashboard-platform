@@ -12,15 +12,6 @@ import { registrationGuard } from './core/auth/registration.guard';
 import { vi } from 'vitest';
 
 // Mocks for referenced components to avoid full compilation during route testing
-vi.mock('./login/login.component', () => ({ LoginComponent: class {} }));
-vi.mock('./register/register.component', () => ({ RegisterComponent: class {} }));
-vi.mock('./home/home.component', () => ({ HomeComponent: class {} }));
-vi.mock('./dashboard/dashboard-layout.component', () => ({ DashboardLayoutComponent: class {} }));
-vi.mock('./chat/chat-layout.component', () => ({ ChatLayoutComponent: class {} }));
-vi.mock('./analytics/analytics.component', () => ({ AnalyticsComponent: class {} }));
-vi.mock('./admin/admin.component', () => ({ AdminComponent: class {} }));
-vi.mock('./mpax-arena/mpax-arena.component', () => ({ MpaxArenaComponent: class {} }));
-vi.mock('./simulation/simulation.routes', () => ({ simulationRoutes: [] }));
 
 // MOCK: @material/material-color-utilities
 // Ensures lazy loaded chunks don't fail due to deep imports in ThemeService dependency tree

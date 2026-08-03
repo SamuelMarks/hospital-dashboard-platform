@@ -33,3 +33,4 @@ MANIFEST
 docs/_build
 
 node_modules
+e2e_test.db

@@ -9,16 +9,16 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./specs",
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env["CI"],
   /* Retry on CI only */
   retries: process.env["CI"] ? 2 : 0,
   /* Opt out of parallel tests on CI to ensure resource stability if using a shared DB file (DuckDB) */
-  workers: process.env["CI"] ? 1 : undefined,
+  workers: 1,
 
   /* Reporter to use. */
-  reporter: "html",
+  reporter: "list",
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -37,6 +37,23 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-    // We can enable others (firefox, webkit) but chrome is sufficient for this scope
+  ],
+
+  /* Run local dev servers before starting the tests */
+  webServer: [
+    {
+      command: 'cd ../pulse-query-backend && uv run uvicorn app.main:app --port 8000',
+      url: 'http://localhost:8000/api/v1/openapi.json',
+      reuseExistingServer: !process.env["CI"],
+      timeout: 120000,
+      env: { USE_SQLITE_ALEMBIC: "1" }
+    },
+    {
+      command: 'cd ../pulse-query-ng-web && npm start',
+      url: 'http://localhost:4200',
+      reuseExistingServer: !process.env["CI"],
+      timeout: 120000,
+      env: { NG_CLI_ANALYTICS: "false" }
+    }
   ],
 });

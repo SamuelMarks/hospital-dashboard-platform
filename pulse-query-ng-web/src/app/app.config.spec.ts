@@ -13,11 +13,6 @@ import { GlobalErrorHandler } from './core/error/global-error.handler';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { vi } from 'vitest';
 
-// Avoid hydration errors in unit tests (no server-side render context).
-vi.mock('@angular/platform-browser', () => ({
-  provideClientHydration: () => [],
-}));
-
 describe('AppConfig', () => {
   /**
    * Mock AuthService to verify APP_INITIALIZER integration.

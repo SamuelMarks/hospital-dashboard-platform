@@ -84,7 +84,7 @@ flowchart TD
 
 ---
 
-## 2. Backend Architecture (`/backend`)
+## 2. Backend Architecture (`/pulse-query-backend`)
 
 The backend is built on **FastAPI** using Python 3.12+. It is designed around the **Service Repository Pattern** but specifically adapted for Analytics use cases.
 
@@ -171,13 +171,13 @@ To prevent layout shift (CLS), the dashboard renders a skeleton structure (`app-
 
 ### B. Analytical Security via AST
 
-The SQL Runner (`backend/app/services/runners/sql.py`) does not rely on Regex for security. It parses user queries into an **Abstract Syntax Tree (AST)** using `sqlglot`. It recursively walks the tree to ensure **only** `SELECT` and `CTE` statements are present, rejecting `DROP`, `DELETE`, or hidden modification commands before they touch the database.
+The SQL Runner (`pulse-query-backend/app/services/runners/sql.py`) does not rely on Regex for security. It parses user queries into an **Abstract Syntax Tree (AST)** using `sqlglot`. It recursively walks the tree to ensure **only** `SELECT` and `CTE` statements are present, rejecting `DROP`, `DELETE`, or hidden modification commands before they touch the database.
 
 ### C. The "Marketplace" Seeder
 
 Standard analytical questions are stored as Templates.
 
-1.  **JSON Definition:** `backend/data/initial_templates.json`.
+1.  **JSON Definition:** `pulse-query-backend/data/initial_templates.json`.
 2.  **Seeding:** On startup, `template_seeder.py` upserts these definitions into Postgres.
 3.  **Usage:** Users select templates in the frontend wizard; the backend instantiates a Widget copy with specific parameters injected into the SQL via Handlebars syntax (e.g., `{{unit_name}}`).
 

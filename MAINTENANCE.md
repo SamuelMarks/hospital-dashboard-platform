@@ -13,9 +13,9 @@ The project strictly adheres to **Contract-First Development**. The Frontend API
 ### 1. Adding a New Feature
 
 1.  **Backend Implementation:**
-    - Define Pydantic schema in `backend/src/app/schemas`.
-    - Implement logic in `backend/src/app/api/routers`.
-    - Register the router in `backend/src/app/main.py`.
+    - Define Pydantic schema in `pulse-query-backend/src/app/schemas`.
+    - Implement logic in `pulse-query-backend/src/app/api/routers`.
+    - Register the router in `pulse-query-backend/src/app/main.py`.
 2.  **Synchronize Contract:**
     - From the root directory, run the generation script: (Requires Backend to be running or importable)
       ```bash
@@ -33,11 +33,11 @@ We employ a pyramid testing strategy covering Unit, Integration, and End-to-End 
 
 ### 1. Backend Tests (Pytest)
 
-Located in `backend/tests`. Focuses on API logic, SQL Security AST validation, and MPAX solver integration.
+Located in `pulse-query-backend/tests`. Focuses on API logic, SQL Security AST validation, and MPAX solver integration.
 
 - **Command:**
   ```bash
-  cd backend
+  cd pulse-query-backend
   uv run pytest
   ```
 - **Coverage:**
@@ -79,11 +79,11 @@ Located in `e2e/`. Simulates critical user journeys against a running full-stack
 
 The OLAP store is a file-based database (`hospital_analytics.duckdb`).
 
-- **Ingestion:** The system automatically ingests CSV files from `backend/data/` on startup.
+- **Ingestion:** The system automatically ingests CSV files from `pulse-query-backend/data/` on startup.
 - **Manual Reset:**
   To force a complete data rebuild:
   ```bash
-  cd backend
+  cd pulse-query-backend
   rm hospital_analytics.duckdb
   uv run python scripts/ingest.py
   ```
@@ -93,10 +93,10 @@ The OLAP store is a file-based database (`hospital_analytics.duckdb`).
 
 Application state (Users, Dashboards) is managed via Alembic.
 
-1.  **Modify Models:** Edit `backend/src/app/models/`.
+1.  **Modify Models:** Edit `pulse-query-backend/src/app/models/`.
 2.  **Generate Migration:**
     ```bash
-    cd backend
+    cd pulse-query-backend
     uv run alembic revision --autogenerate -m "Describe change"
     ```
 3.  **Apply Migration:**
@@ -106,7 +106,7 @@ Application state (Users, Dashboards) is managed via Alembic.
 
 ### Template Registry
 
-Standard analytical templates are defined in `backend/data/initial_templates.json`.
+Standard analytical templates are defined in `pulse-query-backend/data/initial_templates.json`.
 
 - **Updates:** Edit the JSON file directly. The `TemplateSeeder` service runs on startup and performs an **Idempotent Upsert** based on the Template Title. Changes to SQL or Descriptions in JSON will propagate to the DB on the next restart.
 

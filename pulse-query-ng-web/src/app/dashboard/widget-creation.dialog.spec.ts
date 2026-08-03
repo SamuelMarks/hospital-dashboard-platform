@@ -163,7 +163,9 @@ describe('WidgetCreationDialog', () => {
 
   it('should handle error on delete draft on destroy', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(throwError(() => new Error('err')));
+    mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(
+      throwError(() => new Error('err')),
+    );
     component.draftWidget.set(MOCK_WIDGET);
     component.ngOnDestroy();
     expect(consoleSpy).toHaveBeenCalledWith('Draft cleanup failed', expect.any(Error));
@@ -180,9 +182,9 @@ describe('WidgetCreationDialog', () => {
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_WIDGET));
     component.setType('SQL');
     component.selectedViz.set('table');
-    
+
     component.createDraftWidget();
-    
+
     expect(component.draftWidget()).toEqual(MOCK_WIDGET);
     expect(component.configForm.value.title).toBe('New Table');
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
@@ -192,13 +194,13 @@ describe('WidgetCreationDialog', () => {
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(MOCK_WIDGET));
     component.setType('HTTP');
     component.selectedViz.set('bar_chart');
-    
+
     component.createDraftWidget();
-    
+
     expect(component.draftWidget()).toEqual(MOCK_WIDGET);
     expect(component.configForm.value.title).toBe('New Bar Chart');
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
-    
+
     component.createDraftWidget();
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledTimes(1);
   });
@@ -219,7 +221,7 @@ describe('WidgetCreationDialog', () => {
       id: MOCK_DASH_ID,
       name: 'Dash',
       widgets: [MOCK_WIDGET],
-      owner_id: 'user1'
+      owner_id: 'user1',
     };
 
     beforeEach(() => {
@@ -232,7 +234,7 @@ describe('WidgetCreationDialog', () => {
     it('should finalize widget with mapping support', () => {
       component.selectedViz.set('bar_chart');
       component.finalizeWidget();
-      
+
       expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
         'w1',
         expect.objectContaining({
@@ -240,9 +242,9 @@ describe('WidgetCreationDialog', () => {
           config: expect.objectContaining({
             query: 'FOO',
             xKey: 'x',
-            yKey: 'y'
-          })
-        })
+            yKey: 'y',
+          }),
+        }),
       );
       expect(component.draftWidget()).toBeNull();
       expect(mockDialogRef.close).toHaveBeenCalledWith(true);
@@ -251,13 +253,13 @@ describe('WidgetCreationDialog', () => {
     it('should finalize widget without mapping support', () => {
       component.selectedViz.set('table');
       component.finalizeWidget();
-      
+
       expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
         'w1',
         expect.objectContaining({
           title: 'Updated Title',
-          config: { query: 'FOO' }
-        })
+          config: { query: 'FOO' },
+        }),
       );
       expect(component.draftWidget()).toBeNull();
       expect(mockDialogRef.close).toHaveBeenCalledWith(true);
@@ -276,15 +278,17 @@ describe('WidgetCreationDialog', () => {
     });
 
     it('should return early if widget not found in dashboard', () => {
-      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of({
-        id: MOCK_DASH_ID,
-        title: 'Dash',
-        widgets: [],
-        owner_id: 'user1',
-        version: 1,
-        created_at: '',
-        updated_at: ''
-      }));
+      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
+        of({
+          id: MOCK_DASH_ID,
+          title: 'Dash',
+          widgets: [],
+          owner_id: 'user1',
+          version: 1,
+          created_at: '',
+          updated_at: '',
+        }),
+      );
       component.finalizeWidget();
       expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
     });

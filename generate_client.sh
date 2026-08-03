@@ -11,7 +11,7 @@
 set -e # Exit immediately if a command exits with a non-zero status.
 
 # Paths
-BACKEND_DIR="./backend"
+BACKEND_DIR="./pulse-query-backend"
 # Updated path to match your new Angular project name
 FRONTEND_DEST="./pulse-query-ng-web/src/app/api-client"
 SCHEMA_FILE="./openapi.json"

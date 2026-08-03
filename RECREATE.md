@@ -8,17 +8,18 @@ This document outlines the architecture, feature mapping, technology stack, and 
 
 To seamlessly transition from the current Angular web frontend to a native KMP ecosystem, the following stack is recommended:
 
-| Domain | Angular (Current) | Kotlin Multiplatform (Target) |
-| :--- | :--- | :--- |
-| **UI Framework** | Angular & Material | Compose Multiplatform (Mobile), Compose for TV, Compose for Wear OS, SwiftUI (Apple platforms) |
-| **State Management** | RxJS / Angular Signals | Kotlin Coroutines & `StateFlow` (MVI/MVVM pattern) |
-| **Networking** | `@angular/common/http` | Ktor Client + `kotlinx.serialization` |
-| **Navigation** | `@angular/router` | Voyager or Decompose |
-| **Dependency Injection**| Angular DI | Koin |
-| **Code Editor (SQL)** | CodeMirror | `BasicTextField` with custom `AnnotatedString` syntax highlighting, or webview fallback |
-| **Local Storage** | Browser `localStorage` | Multiplatform Settings / SQLDelight (Cache) |
+| Domain                   | Angular (Current)      | Kotlin Multiplatform (Target)                                                                  |
+| :----------------------- | :--------------------- | :--------------------------------------------------------------------------------------------- |
+| **UI Framework**         | Angular & Material     | Compose Multiplatform (Mobile), Compose for TV, Compose for Wear OS, SwiftUI (Apple platforms) |
+| **State Management**     | RxJS / Angular Signals | Kotlin Coroutines & `StateFlow` (MVI/MVVM pattern)                                             |
+| **Networking**           | `@angular/common/http` | Ktor Client + `kotlinx.serialization`                                                          |
+| **Navigation**           | `@angular/router`      | Voyager or Decompose                                                                           |
+| **Dependency Injection** | Angular DI             | Koin                                                                                           |
+| **Code Editor (SQL)**    | CodeMirror             | `BasicTextField` with custom `AnnotatedString` syntax highlighting, or webview fallback        |
+| **Local Storage**        | Browser `localStorage` | Multiplatform Settings / SQLDelight (Cache)                                                    |
 
 ### Form Factor Considerations
+
 - **Mobile (Phones/Tablets):** The primary environment. Capable of handling complex interactive UI like the `editors`, `mpax-arena`, and `simulation` views.
 - **TV (Android TV, Apple TV):** Focuses heavily on passive data consumption. Prioritize `dashboard`, `analytics`, and `benchmarks` views. Requires D-pad (directional) navigation focus management (`Modifier.focusable()`).
 - **Watch (Wear OS, watchOS):** Focuses on micro-interactions. Features include quick viewing of `dashboard` KPIs, checking the status of ongoing `simulations`, and quick voice-to-text inputs for the `chat` feature.
@@ -30,26 +31,31 @@ To seamlessly transition from the current Angular web frontend to a native KMP e
 The `pulse-query-ng-web/src/app` directory exposes several core features. Here is how they translate to the KMP application:
 
 ### Authentication (`login`, `register`)
+
 - **Mobile:** Standard Form fields. Support for biometric login (Touch ID / Face ID) via KMP expected/actual declarations.
 - **TV:** PIN-based login or "Sign in with Phone" QR code flow.
 - **Watch:** Inherit authentication from paired mobile device via Wearable Data Layer / WatchConnectivity.
 
 ### Home / Dashboard (`home`, `dashboard`, `widget`)
+
 - **Mobile:** Lazy vertical grids for modular, card-based widgets.
 - **TV:** Carousels (`TvLazyRow`) showcasing key performance indicators and high-level charts.
 - **Watch:** Simple, paginated screens or scrolling lists displaying crucial metrics only.
 
 ### Chat Interface (`chat`)
+
 - **Mobile:** Standard chat bubbles with a sticky bottom text input field.
 - **TV:** Less emphasized, perhaps quick canned queries or voice search integration.
 - **Watch:** Voice dictation via native APIs to send queries, returning concise textual or graphical responses.
 
 ### Analytics & Benchmarks (`analytics`, `benchmarks`, `mpax-arena`)
-- **Mobile:** Interactive charts using a multiplatform charting library (e.g., Koomi/Vico). 
+
+- **Mobile:** Interactive charts using a multiplatform charting library (e.g., Koomi/Vico).
 - **TV:** Large, high-contrast, non-interactive charts optimized for 10ft viewing distance.
 - **Watch:** Minimized sparklines or basic progress indicators.
 
 ### Development & Tools (`editors`, `simulation`, `admin`)
+
 - **Mobile (Tablet preferred):** Split-screen views for code editing and result previews.
 - **TV:** Read-only mode for reviewing active simulation configurations.
 - **Watch:** Notifications for simulation completion; limited to starting/stopping predefined tasks.
@@ -59,10 +65,12 @@ The `pulse-query-ng-web/src/app` directory exposes several core features. Here i
 ## 3. UI Flow & Navigation State
 
 Using **Voyager** or **Decompose**, navigation should be state-driven.
+
 - Root Component determines Authentication State.
 - Main Component handles bottom navigation (Mobile), side navigation rail (TV), or swipe-based paging (Watch).
 
 **Example Navigation Tree:**
+
 ```kotlin
 sealed class Screen {
     object Login : Screen()
@@ -92,7 +100,7 @@ Your Kotlin Multiplatform project structure should look like this:
 └── wearApp/               # Native wrapper for Wear OS (using Compose for Wear OS)
 ```
 
-*(Note: Apple TV and Apple Watch apps will be native Swift/SwiftUI projects interacting with the exported `shared` framework)*
+_(Note: Apple TV and Apple Watch apps will be native Swift/SwiftUI projects interacting with the exported `shared` framework)_
 
 ---
 
@@ -3530,4 +3538,5 @@ Below is the OpenAPI specification extracted from the current backend. You can u
   }
 }
 ```
+
 </details>

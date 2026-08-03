@@ -5,8 +5,8 @@
   }
 
   <mat-card-header>
-    <mat-card-title>Sign in</mat-card-title>
-    <mat-card-subtitle>Hospital Analytics Platform</mat-card-subtitle>
+    <mat-card-title i18n>Sign in</mat-card-title>
+    <mat-card-subtitle i18n>Hospital Analytics Platform</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
@@ -21,7 +21,7 @@
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <!-- Email Field -->
       <mat-form-field appearance="outline">
-        <mat-label>Email address</mat-label>
+        <mat-label i18n>Email address</mat-label>
         <input
           matInput
           formControlName="email"
@@ -31,16 +31,16 @@
           data-testid="input-email"
         />
         @if (loginForm.get('email')?.hasError('required')) {
-          <mat-error>Email is required</mat-error>
+          <mat-error i18n>Email is required</mat-error>
         }
         @if (loginForm.get('email')?.hasError('email')) {
-          <mat-error>Please enter a valid email address</mat-error>
+          <mat-error i18n>Please enter a valid email address</mat-error>
         }
       </mat-form-field>
 
       <!-- Password Field -->
       <mat-form-field appearance="outline">
-        <mat-label>Password</mat-label>
+        <mat-label i18n>Password</mat-label>
         <input
           matInput
           formControlName="password"
@@ -50,20 +50,19 @@
         />
         <button
           mat-icon-button
-          aria-label="action"
           matSuffix
           type="button"
           (click)="togglePasswordVisibility($event)"
-          [attr.aria-label]="'Hide password'"
-          [attr.aria-pressed]="hidePassword()"
+          [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+          [attr.aria-pressed]="!hidePassword()"
         >
           <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
         </button>
         @if (loginForm.get('password')?.hasError('required')) {
-          <mat-error>Password is required</mat-error>
+          <mat-error i18n>Password is required</mat-error>
         }
         @if (loginForm.get('password')?.hasError('minlength')) {
-          <mat-error>Password must be at least 4 characters</mat-error>
+          <mat-error i18n>Password must be at least 4 characters</mat-error>
         }
       </mat-form-field>
 
@@ -77,9 +76,9 @@
         data-testid="submit-btn"
       >
         @if (isLoading()) {
-          Signing in...
+          <span i18n>Signing in...</span>
         } @else {
-          Sign in
+          <span i18n>Sign in</span>
         }
       </button>
     </form>
@@ -87,8 +86,8 @@
     <!-- Dynamic Registration Link -->
     @if (registrationEnabled) {
       <div class="footer-link">
-        Don't have an account?
-        <a routerLink="/register" data-testid="link-register">Create one</a>
+        <span i18n>Don't have an account?</span>
+        <a routerLink="/register" data-testid="link-register" i18n>Create one</a>
       </div>
     }
   </mat-card-content>

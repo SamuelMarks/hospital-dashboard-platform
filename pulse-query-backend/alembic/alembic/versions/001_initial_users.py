@@ -1,0 +1,40 @@
+"""initial_users
+
+Revision ID: 001
+Revises:
+Create Date: 2024-01-01 00:00:00.000000
+
+"""
+
+from collections.abc import Sequence
+from typing import Union
+
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+from alembic import op
+
+# revision identifiers, used by Alembic.
+revision: str = "001"
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+
+def upgrade() -> None:
+  # Create Users Table
+  op.create_table(
+    "users",
+    sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
+    sa.Column("email", sa.String(), nullable=False),
+    sa.Column("hashed_password", sa.String(), nullable=False),
+    sa.Column("is_active", sa.Boolean(), nullable=False),
+    sa.PrimaryKeyConstraint("id"),
+  )
+  # Create Index on Email
+  op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
+
+
+def downgrade() -> None:
+  op.drop_index(op.f("ix_users_email"), table_name="users")
+  op.drop_table("users")

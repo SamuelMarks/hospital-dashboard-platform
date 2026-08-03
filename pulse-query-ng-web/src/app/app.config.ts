@@ -18,9 +18,10 @@ import {
   withComponentInputBinding,
   withViewTransitions,
   withRouterConfig,
+  TitleStrategy,
 } from '@angular/router';
 import { provideHttpClient, withInterceptors, withFetch } from '@angular/common/http';
-import { provideClientHydration } from '@angular/platform-browser';
+import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 import { routes } from './app.routes';
@@ -30,6 +31,7 @@ import { AuthService } from './core/auth/auth.service';
 import { ApiModule, Configuration, BASE_PATH } from './api-client';
 import { GlobalErrorHandler } from './core/error/global-error.handler';
 import { environment } from '../environments/environment';
+import { A11yTitleStrategy } from './core/accessibility/a11y-title-strategy';
 
 /**
  * Factory function to initialize Authentication State on startup.
@@ -88,7 +90,9 @@ export const appConfig: ApplicationConfig = {
       withRouterConfig({ paramsInheritanceStrategy: 'always' }),
     ),
 
-    provideClientHydration(),
+    { provide: TitleStrategy, useClass: A11yTitleStrategy },
+
+    provideClientHydration(withNoIncrementalHydration()),
     provideAnimationsAsync(),
 
     // HTTP Stack with Functional Interceptors

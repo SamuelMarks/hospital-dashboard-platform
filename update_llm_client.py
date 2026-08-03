@@ -1,6 +1,6 @@
 import re
 
-with open('backend/src/app/services/llm_client.py', 'r') as f:
+with open('pulse-query-backend/src/app/services/llm_client.py', 'r') as f:
     content = f.read()
 
 # Import AdminSettingsResponse
@@ -99,7 +99,7 @@ new_task_creation = """    # Filter by visible_models if no specific targets are
     tasks = [self._generate_single(combatant, messages, temperature, max_tokens, stop, admin_settings) for combatant in active_combatants]"""
 content = content.replace(old_task_creation, new_task_creation)
 
-with open('backend/src/app/services/llm_client.py', 'w') as f:
+with open('pulse-query-backend/src/app/services/llm_client.py', 'w') as f:
     f.write(content)
 
 print("Updated llm_client.py")

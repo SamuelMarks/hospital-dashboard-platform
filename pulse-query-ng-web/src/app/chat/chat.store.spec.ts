@@ -226,7 +226,7 @@ describe('ChatStore', () => {
 
       expect(mockApi.sendMessageApiV1ConversationsConversationIdMessagesPost).toHaveBeenCalledWith(
         'c1',
-        { content: 'hello', target_models: ['M1'] }
+        { content: 'hello', target_models: ['M1'] },
       );
       expect(store.messages()[1].id).toBe('m1');
     });
@@ -287,43 +287,45 @@ describe('ChatStore', () => {
     });
 
     it('updates optimistic selection with fallback content and null sql_snippet', () => {
-      const msgNoCandContent: MessageResponse = { 
-        ...MOCK_MSG, 
+      const msgNoCandContent: MessageResponse = {
+        ...MOCK_MSG,
         candidates: [
           { id: 'cand2', model_name: 'M2', is_selected: false } as any,
-          { id: 'cand3', model_name: 'M3', is_selected: false } as any
-        ] 
+          { id: 'cand3', model_name: 'M3', is_selected: false } as any,
+        ],
       };
       store['patch']({ activeConversationId: 'c1', messages: [msgNoCandContent] });
 
       mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
-        of(MOCK_MSG)
+        of(MOCK_MSG),
       );
 
       store.voteCandidate('m1', 'cand2');
       // Should handle content fallback to '' and sql_snippet to null before server reply
       // Because we mock API with `of(MOCK_MSG)` it replies instantly and overwrites with MOCK_MSG
       expect(
-        mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost
+        mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost,
       ).toHaveBeenCalled();
     });
 
     it('handles sql_hash logic during optimistic update', () => {
-      const msgWithHash: MessageResponse = { 
-        ...MOCK_MSG, 
+      const msgWithHash: MessageResponse = {
+        ...MOCK_MSG,
         candidates: [
           { id: 'c1', model_name: 'M1', sql_hash: 'hashA', is_selected: false },
           { id: 'c2', model_name: 'M2', sql_hash: 'hashA', is_selected: false },
-          { id: 'c3', model_name: 'M3', sql_hash: 'hashB', is_selected: false }
-        ] as any
+          { id: 'c3', model_name: 'M3', sql_hash: 'hashB', is_selected: false },
+        ] as any,
       };
       store['patch']({ activeConversationId: 'c1', messages: [msgWithHash] });
-      
+
       const subject = new Subject<MessageResponse>();
-      mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(subject.asObservable());
+      mockApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost.mockReturnValue(
+        subject.asObservable(),
+      );
 
       store.voteCandidate('m1', 'c1');
-      
+
       // Before server response, check optimistic update
       const optMsg = store.messages()[0];
       expect(optMsg.candidates?.[0].is_selected).toBe(true);
@@ -439,7 +441,7 @@ describe('ChatStore', () => {
       store['handleError'](err);
       expect(store.error()).toContain('Http failure');
     });
-    
+
     it('uses raw string if error is neither HttpErrorResponse nor Error', () => {
       store['handleError']('Just a string');
       expect(store.error()).toBe('Error');

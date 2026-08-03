@@ -172,7 +172,7 @@ export class KeyboardShortcutsDialogComponent {
   );
   /** Injected KeyboardService. */ private readonly keyboardService =
     inject(KeyboardShortcutsService);
-/* v8 ignore stop */
+  /* v8 ignore stop */
 
   /**
    * Computed signal containing shortcuts grouped by category.

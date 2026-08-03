@@ -343,7 +343,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     const values = this.paramsValue();
 
     Object.keys(values).forEach((key) => {
-      let val = values[key];
+      const val = values[key];
       sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
     });
 

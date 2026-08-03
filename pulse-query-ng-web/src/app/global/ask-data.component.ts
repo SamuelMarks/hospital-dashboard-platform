@@ -1,4 +1,3 @@
-
 /** @docs */
 import {
   Component,

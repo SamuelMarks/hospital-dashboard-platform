@@ -15,16 +15,19 @@ Ensure libscript is installed and you are authenticated to your chosen cloud pro
 To provision the infrastructure and deploy the stack:
 
 **AWS:**
+
 ```sh
 ./libscript.sh cloud aws node-group create healthplatform-node 1 ami-ubuntu-lts healthplatform-vpc --tags Key=Project,Value=StanfordResearch
 ```
 
 **Azure:**
+
 ```sh
 ./libscript.sh cloud azure node create healthplatform-node Ubuntu2204 healthplatform-rg --vnet-name healthplatform-vnet --tags Project=StanfordResearch
 ```
 
 **GCP:**
+
 ```sh
 ./libscript.sh cloud gcp node create healthplatform-node ubuntu-2204-lts healthplatform-project --network healthplatform-vpc --labels project=stanfordresearch
 ```
@@ -34,16 +37,19 @@ To provision the infrastructure and deploy the stack:
 Before performing backups, ensure you have an object storage bucket available:
 
 **AWS S3:**
+
 ```sh
 ./libscript.sh cloud aws storage create stanford-healthplatform-backups
 ```
 
 **Azure Blob Storage:**
+
 ```sh
 ./libscript.sh cloud azure storage create stanfordhealthbackups
 ```
 
 **GCP Cloud Storage:**
+
 ```sh
 ./libscript.sh cloud gcp storage create stanford-healthplatform-backups
 ```
@@ -53,6 +59,7 @@ Before performing backups, ensure you have an object storage bucket available:
 We need to selectively backup the shared Postgres database directories and Let's Encrypt certificates before tearing down the instance.
 
 Using the explicit path retention feature:
+
 ```sh
 ./libscript.sh cloud backup healthplatform-node --target azure --paths "/var/lib/postgresql/data /etc/letsencrypt" --keep-last 5
 ```
@@ -62,16 +69,19 @@ Using the explicit path retention feature:
 When the active research phase is paused, we can tear down the compute instances to save costs while retaining the Static IPs (so DNS mapping remains intact) and the underlying data disks (for rapid resumption).
 
 **AWS:**
+
 ```sh
 ./libscript.sh cloud deprovision aws healthplatform-node healthplatform-vpc us-east-1 --retain-ip --retain-data
 ```
 
 **Azure:**
+
 ```sh
 ./libscript.sh cloud deprovision azure healthplatform-node healthplatform-rg eastus --retain-ip --retain-data
 ```
 
 **GCP:**
+
 ```sh
 ./libscript.sh cloud deprovision gcp healthplatform-node healthplatform-project us-central1-a --retain-ip --retain-data
 ```

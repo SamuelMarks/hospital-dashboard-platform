@@ -60,7 +60,7 @@ export class AuthService {
       .pipe(switchMap(() => this.login(credentials)));
   }
 
-  logout(redirect: boolean = true): void {
+  logout(redirect = true): void {
     if (isPlatformBrowser(this.platformId)) {
       safeStorage.removeItem(this.TOKEN_KEY);
     }

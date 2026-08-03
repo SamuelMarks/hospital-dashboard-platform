@@ -256,7 +256,7 @@ export class AdminComponent implements OnInit {
 
     const formValue = this.adminForm.value;
     const apiKeysRaw = formValue.apiKeys || {};
-    const finalKeys: { [key: string]: string } = {};
+    const finalKeys: Record<string, string> = {};
 
     if (apiKeysRaw.openai && typeof apiKeysRaw.openai === 'string' && apiKeysRaw.openai.trim()) {
       finalKeys['openai'] = apiKeysRaw.openai.trim();
