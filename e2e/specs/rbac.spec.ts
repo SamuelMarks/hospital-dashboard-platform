@@ -4,7 +4,7 @@ const BACKEND_URL = "http://localhost:8000/api/v1";
 
 test.describe("Role-Based Access Control (RBAC)", () => {
   test.describe.configure({ mode: "serial" });
-  
+
   const timestamp = Date.now();
   const userEmail = `e2e_rbac_${timestamp}@test.com`;
   const userPassword = "password123";
@@ -29,7 +29,9 @@ test.describe("Role-Based Access Control (RBAC)", () => {
     authToken = loginData.access_token;
   });
 
-  test("Admin Access: Admin user can access /admin and modify settings", async ({ page }) => {
+  test("Admin Access: Admin user can access /admin and modify settings", async ({
+    page,
+  }) => {
     // Intercept the /me endpoint to mock an admin user
     await page.route("**/api/v1/auth/me", async (route) => {
       await route.fulfill({
@@ -71,7 +73,7 @@ test.describe("Role-Based Access Control (RBAC)", () => {
     await page.goto("/");
 
     // Verify Admin button is visible
-    const adminBtn = page.locator('button', { hasText: 'Admin' });
+    const adminBtn = page.locator("button", { hasText: "Admin" });
     await expect(adminBtn).toBeVisible();
 
     // Navigate to admin
@@ -79,28 +81,30 @@ test.describe("Role-Based Access Control (RBAC)", () => {
     await expect(page).toHaveURL(/\/admin/);
 
     // Verify Admin page title
-    const adminTitle = page.locator('h2', { hasText: 'Admin Configuration' });
+    const adminTitle = page.locator("h2", { hasText: "Admin Configuration" });
     await expect(adminTitle).toBeVisible();
 
     // Toggle a setting (e.g. OpenAI API Key)
-    const apiKeyInput = page.locator('input#openai-key');
+    const apiKeyInput = page.locator("input#openai-key");
     await apiKeyInput.fill("sk-mock-key");
 
-    const saveBtn = page.locator('button', { hasText: 'Save Configuration' });
+    const saveBtn = page.locator("button", { hasText: "Save Configuration" });
     await saveBtn.click();
 
     // Expect to stay on page, maybe a success toast (or just button re-enables)
     await expect(saveBtn).not.toBeDisabled();
   });
 
-  test("Non-Admin Restriction: Standard user cannot access /admin", async ({ page }) => {
+  test("Non-Admin Restriction: Standard user cannot access /admin", async ({
+    page,
+  }) => {
     // Do NOT mock /me, so the user remains non-admin
 
     await page.goto("/login");
     await page.addInitScript((token) => {
       localStorage.setItem("pulse_auth_token", token);
     }, authToken);
-    
+
     // Direct navigation attempt
     await page.goto("/admin");
 
@@ -108,15 +112,17 @@ test.describe("Role-Based Access Control (RBAC)", () => {
     await expect(page).toHaveURL(/\/?$/);
 
     // Ensure Admin button is not present
-    const adminBtn = page.locator('button', { hasText: 'Admin' });
+    const adminBtn = page.locator("button", { hasText: "Admin" });
     await expect(adminBtn).not.toBeVisible();
   });
 
-  test("Unauthenticated Access: User without token redirects to login", async ({ page }) => {
+  test("Unauthenticated Access: User without token redirects to login", async ({
+    page,
+  }) => {
     // Go to login to establish app context and clear storage
     await page.goto("/login");
     await page.evaluate(() => localStorage.clear());
-    
+
     // Attempt to navigate to a protected route directly
     await page.goto("/dashboard");
 

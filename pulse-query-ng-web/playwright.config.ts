@@ -13,13 +13,13 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env['CI'],
   /* Retry on CI only */
   retries: process.env['CI'] ? 2 : 0,
   /* Opt out of parallel tests on CI to ensure resource stability */
-  workers: process.env['CI'] ? 1 : undefined,
+  workers: 1,
 
   /* Reporter to use. */
   reporter: 'html',
@@ -42,7 +42,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: 'chrome',
+      },
     },
   ],
 
@@ -64,6 +67,7 @@ export default defineConfig({
         'cd ../pulse-query-backend && uv run --active uvicorn --app-dir src app.main:app --port 8000',
       url: 'http://127.0.0.1:8000/api/v1/openapi.json', // Healthcheck endpoint to wait for
       reuseExistingServer: !process.env['CI'],
+      env: { USE_SQLITE_ALEMBIC: '1' },
       stdout: 'pipe',
       stderr: 'pipe',
       timeout: 120 * 1000,

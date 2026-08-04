@@ -48,7 +48,9 @@ test.describe("Dashboard Builder Workflow", () => {
   /**
    * Tests the UI flow of creating a dashboard and adding a static text widget.
    */
-  test("should create a dashboard and add a text widget via UI", async ({ page }) => {
+  test("should create a dashboard and add a text widget via UI", async ({
+    page,
+  }) => {
     // --- Step 1: Login UI via LocalStorage ---
     await page.goto("/login");
     await page.addInitScript((token) => {
@@ -61,7 +63,7 @@ test.describe("Dashboard Builder Workflow", () => {
     // Skip onboarding if present
     const skipBtn = page.locator('[data-testid="skip-button"]');
     try {
-      await skipBtn.waitFor({ state: 'visible', timeout: 2000 });
+      await skipBtn.waitFor({ state: "visible", timeout: 2000 });
       await skipBtn.click();
     } catch (e) {
       // Ignored if skip button not found
@@ -73,13 +75,15 @@ test.describe("Dashboard Builder Workflow", () => {
 
     const nameInput = page.locator('[data-testid="input-name"]');
     await nameInput.fill(`UI Dashboard ${timestamp}`);
-    
+
     const btnSubmit = page.locator('[data-testid="btn-submit"]');
     await btnSubmit.click();
 
     // Verify: Redirected to Dashboard Page
     await expect(page).toHaveURL(/\/dashboard\/.+/);
-    await expect(page.locator("span.title-main")).toContainText(`UI Dashboard ${timestamp}`);
+    await expect(page.locator("span.title-main")).toContainText(
+      `UI Dashboard ${timestamp}`,
+    );
 
     // --- Step 3: Enable Edit Mode ---
     await page.locator('[data-testid="toggle-edit-mode"]').click();
@@ -89,34 +93,43 @@ test.describe("Dashboard Builder Workflow", () => {
     await btnAddWidget.click();
 
     // --- Step 5: Select Custom Query -> Static Markdown ---
-    await page.getByRole('tab', { name: 'Custom Query' }).click();
-    
+    await page.getByRole("tab", { name: "Custom Query" }).click();
+
     // Select TEXT option (Static Markdown)
-    await page.locator('.source-option').filter({ hasText: 'Static Markdown' }).click();
+    await page
+      .locator(".source-option")
+      .filter({ hasText: "Static Markdown" })
+      .click();
 
     // Click Next: Configure
-    await page.getByRole('button', { name: 'Next: Configure' }).click();
+    await page.getByRole("button", { name: "Next: Configure" }).click();
 
     // Fill in Markdown Content
-    const textArea = page.getByRole('textbox', { name: 'Markdown Content' });
+    const textArea = page.getByRole("textbox", { name: "Markdown Content" });
     await expect(textArea).toBeVisible();
-    await textArea.fill("# End to End Test\n\nThis is a static markdown widget.");
+    await textArea.fill(
+      "# End to End Test\n\nThis is a static markdown widget.",
+    );
 
     // Click "Save Content" inside the text editor first
-    await page.getByRole('button', { name: 'Save Content' }).click();
+    await page.getByRole("button", { name: "Save Content" }).click();
 
     // Click Save & Finish (Specific to TEXT widgets)
-    await page.getByRole('button', { name: 'Save & Finish' }).click();
+    await page.getByRole("button", { name: "Save & Finish" }).click();
 
     // Wait for the dialog to disappear by ensuring the stepper is gone
-    await expect(page.locator('mat-stepper')).not.toBeVisible();
+    await expect(page.locator("mat-stepper")).not.toBeVisible();
 
     // --- Step 6: Verify Widget on Dashboard ---
     // Look for the rendered markdown content in the widget
-    const markdownTitle = page.locator('.md-content', { hasText: 'End to End Test' });
+    const markdownTitle = page.locator(".md-content", {
+      hasText: "End to End Test",
+    });
     await expect(markdownTitle).toBeVisible();
-    
-    const markdownText = page.locator('.md-content', { hasText: 'This is a static markdown widget.' });
+
+    const markdownText = page.locator(".md-content", {
+      hasText: "This is a static markdown widget.",
+    });
     await expect(markdownText).toBeVisible();
   });
 });

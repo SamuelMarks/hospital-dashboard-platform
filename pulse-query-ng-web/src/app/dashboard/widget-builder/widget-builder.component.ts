@@ -477,7 +477,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       if (type === 'SQL') {
         config = { query: 'SELECT * FROM hospital_data LIMIT 5' };
       } else if (type === 'HTTP') {
-        config = { url: '', method: 'GET' };
+        config = { url: 'https://example.com', method: 'GET' };
         visualization = 'metric';
       } else {
         config = { content: '### New Text Widget\nEdit this content.' };

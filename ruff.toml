@@ -1,0 +1,14 @@
+extend = "pulse-query-backend/pyproject.toml"
+
+exclude = [
+    "node_modules",
+    "pulse-query-ng-web/node_modules",
+    "e2e/node_modules",
+    ".angular",
+    "pulse-query-ng-web/.angular",
+    ".venv",
+    "pulse-query-backend/.venv",
+    "dist",
+    "coverage",
+    ".git"
+]

@@ -16,7 +16,7 @@ export class SimulationStore {
   private readonly api = inject(ApiSimulationService);
 
   readonly demandSql = signal<string>(
-    'SELECT Service, CurrentUnit as Unit, COUNT(*) as Count FROM hospital_data GROUP BY Service, CurrentUnit;',
+    'SELECT department as Service, department as Unit, COUNT(*) as Count FROM hospital_data GROUP BY department;',
   );
   readonly capacityParams = signal<UnitCapacity[]>([
     { unit: 'ICU', capacity: 10 },

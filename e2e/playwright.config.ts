@@ -35,25 +35,29 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+      },
     },
   ],
 
   /* Run local dev servers before starting the tests */
   webServer: [
     {
-      command: 'cd ../pulse-query-backend && uv run uvicorn app.main:app --port 8000',
-      url: 'http://localhost:8000/api/v1/openapi.json',
+      command:
+        "cd ../pulse-query-backend && uv run uvicorn app.main:app --port 8000",
+      url: "http://localhost:8000/api/v1/openapi.json",
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
-      env: { USE_SQLITE_ALEMBIC: "1" }
+      env: { USE_SQLITE_ALEMBIC: "1" },
     },
     {
-      command: 'cd ../pulse-query-ng-web && npm start',
-      url: 'http://localhost:4200',
+      command: "cd ../pulse-query-ng-web && npm start",
+      url: "http://localhost:4200",
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
-      env: { NG_CLI_ANALYTICS: "false" }
-    }
+      env: { NG_CLI_ANALYTICS: "false" },
+    },
   ],
 });

@@ -66,13 +66,6 @@ test.describe('Dashboard Lifecycle', () => {
       // Identify the card again
       const card = loggedInPage.locator('mat-card').filter({ hasText: dashboardName });
 
-      // Prepare to handle the native window.confirm() dialog
-      // This must be set up BEFORE the action that triggers the dialog
-      loggedInPage.once('dialog', (dialog) => {
-        expect(dialog.message()).toContain(`delete "${dashboardName}"`);
-        dialog.accept();
-      });
-
       // Click the Menu Trigger on the card
       await card.getByTestId('btn-card-menu').click();
 
@@ -81,6 +74,15 @@ test.describe('Dashboard Lifecycle', () => {
       const deleteItem = loggedInPage.getByRole('menuitem', { name: 'Delete' });
       await expect(deleteItem).toBeVisible();
       await deleteItem.click();
+
+      // Intercept MatDialog
+      const confirmDialog = loggedInPage.locator('mat-dialog-container');
+      await expect(confirmDialog).toBeVisible();
+      await expect(confirmDialog).toContainText(`delete "${dashboardName}"`);
+      await confirmDialog.getByRole('button', { name: 'Confirm' }).click();
+
+      // Wait for it to close
+      await expect(confirmDialog).not.toBeVisible();
 
       // Verify the card is removed from DOM/view
       await expect(card).not.toBeVisible({ timeout: 15000 });

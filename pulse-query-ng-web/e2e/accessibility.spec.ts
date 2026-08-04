@@ -59,7 +59,7 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
     await test.step('Simulation Page', async () => {
       await loggedInPage.goto('/simulation');
       // Ensure the interactive element is ready
-      await expect(loggedInPage.getByRole('button', { name: 'Start Simulation' })).toBeVisible({
+      await expect(loggedInPage.getByRole('button', { name: 'Run Optimization' })).toBeVisible({
         timeout: 15000,
       });
       await checkA11y(loggedInPage, 'Simulation Page');

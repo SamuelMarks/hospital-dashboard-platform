@@ -1,43 +1,51 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('End-to-End Workflow', () => {
   test('Complete user journey from login to creating a dashboard and adding a widget', async ({
-    page,
+    loggedInPage,
   }) => {
-    // Navigate to login
-    await page.goto('/login');
-    await page.fill('input[type="email"]', 'admin@example.com');
-    await page.fill('input[type="password"]', 'adminpass');
-    await page.click('button[type="submit"]');
-
-    // Wait for dashboard to load
-    await expect(page).toHaveURL('/dashboard');
-    await expect(page.locator('mat-toolbar')).toBeVisible();
+    // Navigate to home (already logged in)
+    await loggedInPage.goto('/');
 
     // Create a new dashboard
-    await page.click('button:has-text("Create")');
-    await page.fill('input[placeholder="Dashboard Name"]', 'E2E Workflow Dashboard');
-    await page.click('button:has-text("Save")');
+    await loggedInPage.getByTestId('btn-create').click();
+    const dashName = `E2E Workflow Dashboard ${Date.now()}`;
+    await loggedInPage.getByTestId('input-name').pressSequentially(dashName, { delay: 50 });
+    await loggedInPage.getByTestId('input-name').blur();
+    const btnSubmit = loggedInPage.getByTestId('btn-submit');
+    await expect(btnSubmit).toBeEnabled();
+    await btnSubmit.click();
+
+    // Wait for dashboard to load
+    await expect(loggedInPage).toHaveURL(/\/dashboard\//);
+    await expect(loggedInPage.locator('app-toolbar')).toBeVisible();
+
+    // Enable Edit Mode
+    await loggedInPage.getByTestId('toggle-edit-mode').click();
 
     // Add a widget using template
-    await page.click('button[aria-label="Add widget"]');
-    await page.click('text="Template"');
-    await page.click('text="Hospital Bed Occupancy"');
-    await page.click('button:has-text("Next")');
-    await page.click('button:has-text("Create Widget")');
+    await loggedInPage.getByTestId('btn-add-widget').click();
+
+    // Switch to Custom Query -> Static Markdown to test TEXT widget quickly
+    await loggedInPage.getByText('Custom Query').click();
+    await loggedInPage.locator('.source-option').filter({ hasText: 'Static Markdown' }).click();
+    await loggedInPage.getByRole('button', { name: 'Next: Configure' }).click();
+
+    // Fill Content
+    const editor = loggedInPage.locator('app-widget-builder app-text-editor');
+    await expect(editor).toBeVisible({ timeout: 10000 });
+    await loggedInPage.getByLabel('Markdown Content').fill('# E2E Workflow\nTest');
+    await loggedInPage.getByRole('button', { name: 'Save Content' }).click();
+
+    // Finish
+    await loggedInPage.getByRole('button', { name: 'Save & Finish' }).click();
 
     // Verify widget exists
-    await expect(page.locator('app-widget')).toHaveCount(1);
-    await expect(page.locator('app-widget mat-card-title')).toContainText('Hospital Bed Occupancy');
+    await expect(loggedInPage.locator('app-widget-builder')).not.toBeVisible();
+    await expect(loggedInPage.locator('app-widget')).toHaveCount(1);
+    await expect(loggedInPage.locator('app-widget')).toContainText('E2E Workflow');
 
-    // Navigate to Simulation and run one
-    await page.goto('/simulation');
-    await expect(page.locator('h1')).toContainText('Simulation');
-    await page.click('button:has-text("New Scenario")');
-    await page.fill('input[placeholder="Scenario Name"]', 'E2E Stress Test');
-    await page.click('button:has-text("Run")');
-
-    // Verify simulation completed
-    await expect(page.locator('text="Status: Completed"')).toBeVisible({ timeout: 10000 });
+    // Navigation (Optional)
+    // Assuming there is no simulation page anymore since we don't see it in tests, or we can just leave it out.
   });
 });

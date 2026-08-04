@@ -94,10 +94,14 @@ async def create_dashboard(
   db: Annotated[AsyncSession, Depends(get_db)],
 ):
   """Create a new empty dashboard."""
-  dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
-  db.add(dashboard)
+  new_dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
+  db.add(new_dashboard)
   await db.commit()
-  return dashboard
+
+  result = await db.execute(
+    select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
+  )
+  return result.scalars().first()
 
 
 @router.post("/{dashboard_id}/clone", response_model=DashboardResponse)
@@ -169,7 +173,11 @@ async def restore_default_dashboard(
   """
   dashboard = await provisioning_service.restore_defaults(db, current_user)
   await db.commit()
-  return dashboard
+
+  result = await db.execute(
+    select(Dashboard).where(Dashboard.id == dashboard.id).options(selectinload(Dashboard.widgets))
+  )
+  return result.scalars().first()
 
 
 @router.get("/{dashboard_id}", response_model=DashboardResponse)
@@ -251,7 +259,7 @@ async def create_widget(
     title=widget_in.title,
     type=widget_in.type,
     visualization=widget_in.visualization,
-    config=widget_in.config.model_dump(),
+    config=widget_in.config.model_dump(mode="json"),
   )
   db.add(widget)
   await db.commit()

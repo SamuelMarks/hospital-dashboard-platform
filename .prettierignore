@@ -1,0 +1,9 @@
+node_modules/
+.angular/
+.venv/
+pulse-query-backend/.venv/
+coverage/
+dist/
+e2e/node_modules/
+pulse-query-ng-web/node_modules/
+pulse-query-ng-web/.angular/

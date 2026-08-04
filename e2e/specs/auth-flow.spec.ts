@@ -23,7 +23,9 @@ test.describe("Authentication and Authorization Flows", () => {
    * Tests that invalid credentials result in an error message.
    * This is an uncommon workflow where the user enters the wrong password.
    */
-  test("should display an error for invalid login credentials", async ({ page }) => {
+  test("should display an error for invalid login credentials", async ({
+    page,
+  }) => {
     await page.goto("/login");
 
     // Attempt login with non-existent user
@@ -41,20 +43,24 @@ test.describe("Authentication and Authorization Flows", () => {
    * Tests the registration flow for a new user.
    * This is a common workflow for new users.
    */
-  test("should successfully register a new user and login", async ({ page }) => {
+  test("should successfully register a new user and login", async ({
+    page,
+  }) => {
     await page.goto("/register");
 
     // Fill in registration form
     await page.locator('[data-testid="input-email"]').fill(userEmail);
     await page.locator('[data-testid="input-password"]').fill(userPassword);
-    await page.locator('[data-testid="input-confirm-password"]').fill(userPassword);
+    await page
+      .locator('[data-testid="input-confirm-password"]')
+      .fill(userPassword);
     await page.locator('[data-testid="submit-btn"]').click();
 
     // After successful registration, it redirects to /dashboard (which redirects to / if no ID is provided, so it goes to home)
     await expect(page).toHaveURL(/\/?$/);
 
     // Verify we are on the Dashboards page
-    const dashboardTitle = page.locator('h1', { hasText: 'My Dashboards' });
+    const dashboardTitle = page.locator("h1", { hasText: "My Dashboards" });
     await expect(dashboardTitle).toBeVisible();
   });
 });

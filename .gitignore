@@ -34,3 +34,8 @@ docs/_build
 
 node_modules
 e2e_test.db
+
+e2e/playwright-report/
+e2e/test-results/
+
+.coverage

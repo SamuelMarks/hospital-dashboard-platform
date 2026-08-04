@@ -59,27 +59,9 @@ test.describe('Widget Wizard - Template Flow', () => {
     await expect(nextBtn).toBeEnabled({ timeout: 5000 });
     await nextBtn.click({ force: true });
 
-    // 5. Verify Dynamic Form
-    const dynamicForm = loggedInPage.locator('app-dynamic-form');
-    await expect(dynamicForm).toBeVisible();
-
-    // 6. Fill Inputs
-    // We target any input inside the dynamic form.
-    const inputs = dynamicForm.locator('input');
-    const count = await inputs.count();
-
-    for (let i = 0; i < count; i++) {
-      const input = inputs.nth(i);
-      // Only fill if empty and visible
-      if ((await input.isVisible()) && (await input.inputValue()) === '') {
-        const type = await input.getAttribute('type');
-        if (type === 'number') {
-          await input.fill('10');
-        } else {
-          await input.fill('Test Value');
-        }
-      }
-    }
+    // 5. Verify SQL Editor is shown for templates
+    const editor = loggedInPage.locator('app-widget-builder app-sql-builder');
+    await expect(editor).toBeVisible({ timeout: 10000 });
 
     // 7. Run & Preview
     const runBtn = loggedInPage.getByRole('button', { name: 'Run & Preview' });

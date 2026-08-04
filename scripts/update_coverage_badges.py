@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Update README coverage badges and enforce 100% coverage."""
+
 from __future__ import annotations
 
 import argparse

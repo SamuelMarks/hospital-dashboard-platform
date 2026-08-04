@@ -296,7 +296,7 @@ describe('WidgetBuilderComponent', () => {
       expect.objectContaining({
         type: 'HTTP',
         visualization: 'metric',
-        config: { url: '', method: 'GET' },
+        config: { url: 'https://example.com', method: 'GET' },
       }),
     );
   });

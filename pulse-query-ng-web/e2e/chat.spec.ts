@@ -7,6 +7,40 @@ test.describe('AI Chat Assistant', () => {
   });
 
   test('should open sidebar, send message, and receive response', async ({ loggedInPage }) => {
+    // 0. Mock the chat API to return a fake AI response
+    await loggedInPage.route('**/api/v1/conversations/**', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            id: 'mock-conv',
+            title: 'New Conversation',
+            messages: [
+              {
+                id: 'mock-user-msg',
+                conversation_id: 'mock-conv',
+                role: 'user',
+                content: 'Show me current census',
+                created_at: new Date().toISOString(),
+                candidates: [],
+              },
+              {
+                id: 'mock-ai-msg',
+                conversation_id: 'mock-conv',
+                role: 'assistant',
+                content: 'This is a mock response.',
+                created_at: new Date().toISOString(),
+                candidates: [],
+              },
+            ],
+          }),
+        });
+      } else {
+        route.continue();
+      }
+    });
+
     // 1. Click "Ask AI" in toolbar
     // Uses text matching as the button has text "Ask AI"
     // FIX: Scope to app-toolbar to distinguish from Home Page Hero button, resolving strict mode violation
@@ -22,21 +56,16 @@ test.describe('AI Chat Assistant', () => {
     const input = sidebar.locator('textarea');
     await expect(input).toBeVisible();
     await input.fill('Show me current census');
-
-    // 4. Click Send
-    // Mat-icon-button with aria-label="Send Message"
-    const sendBtn = sidebar.locator('button[aria-label="Send Message"]');
-    await expect(sendBtn).toBeEnabled(); // Ensure text entry enabled the button
-    await sendBtn.click();
+    await input.press('Enter');
 
     // 5. Verify new bubble in stream (Optimistic Update)
-    // The user's message bubble has class 'user'
-    const userMessage = sidebar.locator('.bubble-row.user').last();
+    // The user's message bubble has class 'user-bubble'
+    const userMessage = sidebar.locator('.user-bubble').last();
     await expect(userMessage).toContainText('Show me current census');
 
     // 6. Verify "Generating..." indicator (Typing animation)
-    // The loader is a bubble with class 'assistant' containing dot animations
-    const typingIndicator = sidebar.locator('.animate-bounce').first();
+    // The loader is a bubble with class 'loading-bubble'
+    const typingIndicator = sidebar.locator('.loading-bubble').first();
 
     // It should appear briefly. NOTE: If API is too fast, this might flake.
     // Usually valid for LLM latency.
@@ -50,8 +79,10 @@ test.describe('AI Chat Assistant', () => {
     // Wait for response to arrive (Indicator disappears)
     await expect(typingIndicator).not.toBeVisible();
 
-    // Verify AI response bubble exists
-    const aiMessage = sidebar.locator('.bubble-row.assistant').last();
+    // Verify AI response bubble exists (it does not have user-bubble or loading-bubble)
+    const aiMessage = sidebar
+      .locator('.message-bubble:not(.user-bubble):not(.loading-bubble)')
+      .last();
     await expect(aiMessage).toBeVisible();
 
     // Check it's not empty or error state
