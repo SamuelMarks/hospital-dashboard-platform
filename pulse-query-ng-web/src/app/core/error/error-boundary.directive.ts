@@ -15,7 +15,7 @@ import {
   ErrorHandler,
   OnDestroy,
   OnInit,
-  Input,
+  input,
 } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 import { Subscription } from 'rxjs';
@@ -70,8 +70,9 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /**
    * The Fallback Template to render when an error state is active.
    */
-  @Input('appErrorBoundary')
-  fallbackTemplate?: TemplateRef<ErrorBoundaryContext>;
+  readonly fallbackTemplate = input<TemplateRef<ErrorBoundaryContext> | undefined>(undefined, {
+    alias: 'appErrorBoundary',
+  });
 
   /**
    * Initializes the view.
@@ -111,7 +112,7 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
    */
   public renderFallback(error: unknown): void {
     this.vcr.clear();
-    const fallbackTemplate = this.fallbackTemplate;
+    const fallbackTemplate = this.fallbackTemplate();
     if (fallbackTemplate) {
       this.vcr.createEmbeddedView(fallbackTemplate, {
         $implicit: error,
