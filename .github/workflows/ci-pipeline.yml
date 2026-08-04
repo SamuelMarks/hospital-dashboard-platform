@@ -75,8 +75,7 @@ jobs:
 
       - name: Angular dependencies install
         run: |
-          npm ci
-          npm install -D @vitest/browser-preview @vitest/browser-playwright
+          npm install
         working-directory: pulse-query-ng-web
 
       - name: Angular tests
