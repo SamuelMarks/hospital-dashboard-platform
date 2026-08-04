@@ -92,7 +92,10 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
         { timeout: 20000 },
       );
 
-      await loggedInPage.getByTestId('input-name').fill(`A11y Test ${Date.now()}`);
+      const inputName = loggedInPage.getByTestId('input-name');
+      await inputName.click();
+      await inputName.clear();
+      await inputName.pressSequentially(`A11y Test ${Date.now()}`, { delay: 10 });
       await loggedInPage.getByTestId('btn-submit').click();
 
       // Wait for navigation

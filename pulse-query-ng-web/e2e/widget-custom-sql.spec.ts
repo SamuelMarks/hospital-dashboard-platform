@@ -10,8 +10,9 @@ test.describe('Widget Wizard - Custom SQL Flow', () => {
     // This ensures Angular form validators fire reliably on every keystroke.
     const input = loggedInPage.getByTestId('input-name');
     const dashName = `Auto Test ${Date.now()}`;
-    await input.pressSequentially(dashName, { delay: 50 });
-    await input.blur();
+    await input.click();
+    await input.clear();
+    await input.pressSequentially(dashName, { delay: 10 });
 
     // Assert value is accepted before checking button
     await expect(input).toHaveValue(dashName);

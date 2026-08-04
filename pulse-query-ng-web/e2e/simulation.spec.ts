@@ -34,6 +34,7 @@ test.describe('Simulation Engine', () => {
 
     // Check that table has rows
     const rows = table.locator('tr');
-    await expect(rows.count()).then((c) => expect(c).toBeGreaterThan(0));
+    const count = await rows.count();
+    expect(count).toBeGreaterThan(0);
   });
 });

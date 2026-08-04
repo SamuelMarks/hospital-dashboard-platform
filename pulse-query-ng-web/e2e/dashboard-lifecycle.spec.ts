@@ -29,7 +29,10 @@ test.describe('Dashboard Lifecycle', () => {
 
       // Fill Form
       // Use pressSequentially ensures proper Angular form validation state updates
-      await loggedInPage.getByTestId('input-name').pressSequentially(dashboardName, { delay: 50 });
+      const nameInput = loggedInPage.getByTestId('input-name');
+      await nameInput.click();
+      await nameInput.clear();
+      await nameInput.pressSequentially(dashboardName, { delay: 10 });
 
       // Submit
       const submitBtn = loggedInPage.getByTestId('btn-submit');
@@ -40,9 +43,8 @@ test.describe('Dashboard Lifecycle', () => {
       await expect(loggedInPage).toHaveURL(/\/dashboard\//, { timeout: 15000 });
 
       // Verify toolbar displays the new name (confirming navigation to detailed view)
-      await expect(loggedInPage.locator('app-toolbar').getByText(dashboardName)).toBeVisible({
-        timeout: 15000,
-      });
+      const toolbarTitle = loggedInPage.locator('app-toolbar .title-main');
+      await expect(toolbarTitle).toContainText(dashboardName, { timeout: 15000 });
     });
 
     // --- 2. LIST ---
