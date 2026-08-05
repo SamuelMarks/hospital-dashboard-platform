@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -54,6 +55,11 @@ kotlin {
             implementation(libs.sqldelight.android)
             implementation(libs.sqlcipher)
         }
+        val androidUnitTest by getting {
+            dependencies {
+                implementation("org.robolectric:robolectric:4.12")
+            }
+        }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
@@ -86,6 +92,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
             @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
             implementation(compose.uiTest)
             implementation(libs.ktor.client.mock)
@@ -135,6 +142,11 @@ android {
             isMinifyEnabled = false
         }
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -161,6 +173,31 @@ sqldelight {
     databases {
         create("PulseQueryDatabase") {
             packageName.set("io.healthplatform.pulsequery.database")
+        }
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "io.healthplatform.pulsequery.MainKt",
+                    "io.healthplatform.pulsequery.ui.theme.*"
+                )
+            }
+        }
+        verify {
+            rule {
+                bound {
+                    minValue = 100
+                    coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE
+                }
+                bound {
+                    minValue = 100
+                    coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH
+                }
+            }
         }
     }
 }

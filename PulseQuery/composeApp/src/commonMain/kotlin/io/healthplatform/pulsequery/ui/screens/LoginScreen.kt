@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.UserCreate
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
 
 /**
  * Authentication Screen.
@@ -30,23 +32,28 @@ fun LoginScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    
+    val errEmptyFields = stringResource(Res.string.email_and_password_cannot_be_empty)
+    val errFetchProfile = stringResource(Res.string.failed_to_fetch_user_profile)
+    val errAuthFailed = stringResource(Res.string.authentication_failed)
+    val errLoginRegFailed = stringResource(Res.string.login_failed, "")
 
     if (showSettingsDialog) {
         var tempUrl by remember { mutableStateOf(AppContainer.currentBaseUrl) }
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
-            title = { Text("Settings") },
+            title = { Text(stringResource(Res.string.settings)) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = tempUrl,
                         onValueChange = { tempUrl = it },
-                        label = { Text("Server URL") },
+                        label = { Text(stringResource(Res.string.server_url)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = "Hint: Use http://10.0.2.2:8000 for Android Emulator, or your machine's local IP (e.g., 192.168.x.x) for physical devices.",
+                        text = stringResource(Res.string.server_url_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 8.dp)
@@ -58,12 +65,12 @@ fun LoginScreen(
                     AppContainer.currentBaseUrl = tempUrl
                     showSettingsDialog = false
                 }) {
-                    Text("Save")
+                    Text(stringResource(Res.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showSettingsDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(Res.string.cancel))
                 }
             }
         )
@@ -74,7 +81,7 @@ fun LoginScreen(
             onClick = { showSettingsDialog = true },
             modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
         ) {
-            Text("⚙️", style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(Res.string.settings_icon), style = MaterialTheme.typography.headlineMedium)
         }
 
         Column(
@@ -85,7 +92,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Welcome to PulseQuery",
+                text = stringResource(Res.string.welcome_to_pulsequery),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(bottom = 32.dp)
@@ -94,7 +101,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text(stringResource(Res.string.email)) },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 singleLine = true
             )
@@ -102,7 +109,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                label = { Text(stringResource(Res.string.password)) },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                 singleLine = true
@@ -120,7 +127,7 @@ fun LoginScreen(
             Button(
                 onClick = {
                     if (email.isBlank() || password.isBlank()) {
-                        errorMessage = "Email and Password cannot be empty."
+                        errorMessage = errEmptyFields
                         return@Button
                     }
 
@@ -157,7 +164,7 @@ fun LoginScreen(
                                     )
                                     AppContainer.currentToken = tokenResponse.body().accessToken
                                 } catch (registerException: Exception) {
-                                    throw Exception("Login failed, and auto-registration also failed: ${registerException.message}")
+                                    throw Exception(errLoginRegFailed + registerException.message)
                                 }
                             }
 
@@ -167,16 +174,18 @@ fun LoginScreen(
                                 AppContainer.currentUser = meResponse.body()
                                 onLoginSuccess()
                             } else {
-                                errorMessage = "Failed to fetch user profile."
+                                errorMessage = errFetchProfile
                             }
                         } catch (e: Exception) {
-                            errorMessage = e.message ?: "Authentication failed"
+                            println("LoginScreen ERROR: ${e.message}")
+                            e.printStackTrace()
+                            errorMessage = e.message ?: errAuthFailed
                         } finally {
                             isLoading = false
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 enabled = !isLoading
             ) {
                 if (isLoading) {
@@ -185,7 +194,7 @@ fun LoginScreen(
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Text("Login / Register")
+                    Text(stringResource(Res.string.login_register))
                 }
             }
         }

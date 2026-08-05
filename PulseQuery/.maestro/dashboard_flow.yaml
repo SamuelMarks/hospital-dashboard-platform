@@ -1,0 +1,24 @@
+appId: io.healthplatform.pulsequery
+---
+- launchApp
+- tapOn: "Dashboard"
+# Assuming state might be empty initially
+- tapOn:
+    text: "Create Dashboard"
+    optional: true
+- tapOn:
+    text: "Select Dashboard"
+    optional: true
+- tapOn:
+    text: "Create New Dashboard..."
+    optional: true
+- assertVisible: "Dashboard Name"
+- tapOn: "Dashboard Name"
+- inputText: "Operations Metrics"
+- hideKeyboard
+- tapOn: "Create"
+- assertVisible: "Operations Metrics"
+- assertVisible: "Dashboard is empty. Add a widget."
+- tapOn: "Add Widget"
+- assertVisible: "Adding widgets requires detailed configuration"
+- tapOn: "OK"

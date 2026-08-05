@@ -1,0 +1,17 @@
+appId: io.healthplatform.pulsequery
+---
+- launchApp
+- tapOn: "Simulation"
+- assertVisible: "Capacity Simulation"
+- tapOn: "ICU Capacity"
+- eraseText
+- inputText: "15"
+- hideKeyboard
+- tapOn: "WARD Capacity"
+- eraseText
+- inputText: "80"
+- hideKeyboard
+- tapOn: "Run Simulation"
+- extendedWaitUntil:
+    visible: "Status: SUCCESS"
+    timeout: 10000

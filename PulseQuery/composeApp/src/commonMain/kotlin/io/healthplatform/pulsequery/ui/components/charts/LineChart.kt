@@ -19,6 +19,9 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+
 /**
  * A natively drawn Material 3 Line Chart component.
  *
@@ -39,9 +42,12 @@ fun LineChart(
 
     val textMeasurer: TextMeasurer = rememberTextMeasurer()
     val maxValue = max(data.maxOf { it.second }, 1f)
+    val chartDescription = data.joinToString(separator = ", ") { "${it.first}: ${it.second}" }
 
     Canvas(
-        modifier = modifier.fillMaxSize().padding(16.dp)
+        modifier = modifier.fillMaxSize().padding(16.dp).semantics {
+            contentDescription = "Line chart with ${data.size} items: $chartDescription"
+        }
     ) {
         val canvasWidth = size.width
         val canvasHeight = size.height

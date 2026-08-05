@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AdminScreen -->
+    <string name="admin_settings">Admin Settings</string>
+    <string name="save_settings">Save Settings</string>
+    <string name="api_keys">API Keys</string>
+    <string name="provider">Provider</string>
+    <string name="key">Key</string>
+    <string name="add_key">Add Key</string>
+    <string name="delete_key">Delete Key</string>
+    <string name="visible_models">Visible Models</string>
+    <string name="model_name">Model Name</string>
+    <string name="add_model">Add Model</string>
+    <string name="delete_model">Delete Model</string>
+    <string name="retry">Retry</string>
+    <string name="settings_saved_successfully">Settings saved successfully</string>
+    <string name="failed_to_load_admin_settings">Failed to load admin settings: %1$s</string>
+    <string name="failed_to_save_admin_settings">Failed to save admin settings: %1$s</string>
+
+    <!-- ChatScreen -->
+    <string name="new_chat">New Chat</string>
+    <string name="new_conversation">New Conversation</string>
+    <string name="history">History</string>
+    <string name="start_a_new_conversation">Start a new conversation</string>
+    <string name="ask_a_query">Ask a query...</string>
+    <string name="send">Send</string>
+    <string name="conversations_history">Conversations History</string>
+    <string name="untitled">Untitled</string>
+    <string name="close">Close</string>
+    <string name="delete">Delete</string>
+    <string name="candidate_variations_available">Candidate variations available.</string>
+
+    <!-- DashboardScreen -->
+    <string name="dashboards">Dashboards</string>
+    <string name="select_dashboard">Select Dashboard</string>
+    <string name="create_new_dashboard">Create New Dashboard...</string>
+    <string name="delete_dashboard">Delete Dashboard</string>
+    <string name="add_widget">Add Widget</string>
+    <string name="no_dashboards_found">No dashboards found.</string>
+    <string name="create_dashboard">Create Dashboard</string>
+    <string name="dashboard_is_empty">Dashboard is empty. Add a widget.</string>
+    <string name="dashboard_name">Dashboard Name</string>
+    <string name="create">Create</string>
+    <string name="cancel">Cancel</string>
+    <string name="adding_widgets_requires">Adding widgets requires detailed configuration which is typically done via the API or a dedicated wizard.</string>
+    <string name="ok">OK</string>
+    <string name="delete_widget">Delete Widget</string>
+    <string name="failed_to_load_dashboards">Failed to load dashboards: %1$s</string>
+    <string name="failed_to_create_dashboard">Failed to create dashboard: %1$s</string>
+    <string name="failed_to_delete_dashboard">Failed to delete dashboard: %1$s</string>
+    <string name="failed_to_delete_widget">Failed to delete widget: %1$s</string>
+    <string name="error">Error: %1$s</string>
+    <string name="failed_to_load_data">Failed to load data</string>
+
+    <!-- SimulationScreen -->
+    <string name="capacity_simulation">Capacity Simulation</string>
+    <string name="run">Run</string>
+    <string name="run_simulation">Run Simulation</string>
+    <string name="demand_sql">Demand SQL</string>
+    <string name="icu_capacity">ICU Capacity</string>
+    <string name="ward_capacity">WARD Capacity</string>
+    <string name="status_msg">Status: %1$s</string>
+    <string name="service_msg">Service: %1$s</string>
+    <string name="target_unit_msg">Target Unit: %1$s</string>
+    <string name="admitted_patients_msg">Admitted Patients: %1$s</string>
+    <string name="delta_msg">Delta: %1$s%2$s</string>
+    <string name="simulation_failed">Simulation failed</string>
+
+    <!-- AnalyticsScreen -->
+    <string name="llm_analytics">LLM Analytics</string>
+    <string name="refresh">Refresh</string>
+    <string name="no_analytics_data">No analytics data available.</string>
+    <string name="model_msg">Model: %1$s</string>
+    <string name="selected">Selected</string>
+    <string name="query_msg">Query: %1$s</string>
+    <string name="user_msg">User: %1$s</string>
+    <string name="unknown_error">Unknown error occurred</string>
+
+    <!-- LoginScreen -->
+    <string name="settings">Settings</string>
+    <string name="server_url">Server URL</string>
+    <string name="server_url_hint">Hint: Use http://10.0.2.2:8000 for Android Emulator, or your machine\'s local IP (e.g., 192.168.x.x) for physical devices.</string>
+    <string name="save">Save</string>
+    <string name="welcome_to_pulsequery">Welcome to PulseQuery</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="email_and_password_cannot_be_empty">Email and Password cannot be empty.</string>
+    <string name="login_register">Login / Register</string>
+    <string name="login_failed">Login failed, and auto-registration also failed: %1$s</string>
+    <string name="failed_to_fetch_user_profile">Failed to fetch user profile.</string>
+    <string name="authentication_failed">Authentication failed</string>
+    <string name="settings_icon">⚙️</string>
+
+    <!-- EditorScreen -->
+    <string name="sql_editor">SQL Editor</string>
+    <string name="execute">Execute</string>
+    <string name="enter_sql_query_here">Enter SQL query here...</string>
+    <string name="query">Query</string>
+    <string name="sql_error_msg">SQL Error: %1$s</string>
+    <string name="execution_failed_msg">Execution failed: %1$s</string>
+    <plurals name="results_rows">
+        <item quantity="one">Result (1 row)</item>
+        <item quantity="other">Results (%1$d rows)</item>
+    </plurals>
+
+    <!-- WizardScreen -->
+    <string name="optimization_assistant">Optimization Assistant</string>
+    <string name="back">Back</string>
+    <string name="what_would_you_like_to_optimize_today">What would you like to optimize today?</string>
+    <string name="simulation_workspace">Simulation Workspace</string>
+    <string name="detected_constraints">Detected Constraints:</string>
+    <string name="base_scenario_output">Base Scenario Output:</string>
+    <string name="branch_scenario_output_optimized">Branch Scenario Output (Optimized):</string>
+    <string name="describe_changes">Describe changes...</string>
+</resources>

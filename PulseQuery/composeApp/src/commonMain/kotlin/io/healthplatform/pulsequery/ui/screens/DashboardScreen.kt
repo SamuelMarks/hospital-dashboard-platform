@@ -37,6 +37,8 @@ import io.healthplatform.pulsequery.ui.components.charts.LineChart
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.floatOrNull
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
 
 /**
  * Main application dashboard managing dashboards and displaying widgets.
@@ -54,6 +56,11 @@ fun DashboardScreen() {
     var showAddWidgetDialog by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
+    
+    val errLoadDb = stringResource(Res.string.failed_to_load_dashboards, "")
+    val errCreateDb = stringResource(Res.string.failed_to_create_dashboard, "")
+    val errDeleteDb = stringResource(Res.string.failed_to_delete_dashboard, "")
+    val errDeleteWidget = stringResource(Res.string.failed_to_delete_widget, "")
 
     fun loadDashboards() {
         coroutineScope.launch {
@@ -68,7 +75,7 @@ fun DashboardScreen() {
                     activeDashboard = dashboards.find { it.id == activeDashboard?.id }
                 }
             } catch (e: Exception) {
-                errorMessage = "Failed to load dashboards: ${e.message}"
+                errorMessage = errLoadDb + e.message
             } finally {
                 isLoading = false
             }
@@ -85,7 +92,7 @@ fun DashboardScreen() {
                 AppContainer.dashboardsApi.createDashboardApiV1DashboardsPost(DashboardCreate(name = name))
                 loadDashboards()
             } catch (e: Exception) {
-                errorMessage = "Failed to create dashboard: ${e.message}"
+                errorMessage = errCreateDb + e.message
             }
         }
     }
@@ -97,7 +104,7 @@ fun DashboardScreen() {
                 activeDashboard = null
                 loadDashboards()
             } catch (e: Exception) {
-                errorMessage = "Failed to delete dashboard: ${e.message}"
+                errorMessage = errDeleteDb + e.message
             }
         }
     }
@@ -108,7 +115,7 @@ fun DashboardScreen() {
                 AppContainer.dashboardsApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widgetId)
                 loadDashboards()
             } catch (e: Exception) {
-                errorMessage = "Failed to delete widget: ${e.message}"
+                errorMessage = errDeleteWidget + e.message
             }
         }
     }
@@ -118,10 +125,10 @@ fun DashboardScreen() {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(activeDashboard?.name ?: "Dashboards")
+                        Text(activeDashboard?.name ?: stringResource(Res.string.dashboards))
                         if (dashboards.isNotEmpty()) {
                             IconButton(onClick = { showDashboardMenu = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Dashboard")
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(Res.string.select_dashboard))
                             }
                             DropdownMenu(expanded = showDashboardMenu, onDismissRequest = { showDashboardMenu = false }) {
                                 dashboards.forEach { db ->
@@ -135,7 +142,7 @@ fun DashboardScreen() {
                                 }
                                 HorizontalDivider()
                                 DropdownMenuItem(
-                                    text = { Text("Create New Dashboard...") },
+                                    text = { Text(stringResource(Res.string.create_new_dashboard)) },
                                     onClick = {
                                         showCreateDashboardDialog = true
                                         showDashboardMenu = false
@@ -148,7 +155,7 @@ fun DashboardScreen() {
                 actions = {
                     if (activeDashboard != null) {
                         IconButton(onClick = { deleteDashboard(activeDashboard!!.id) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete Dashboard")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.delete_dashboard))
                         }
                     }
                 }
@@ -157,7 +164,7 @@ fun DashboardScreen() {
         floatingActionButton = {
             if (activeDashboard != null) {
                 FloatingActionButton(onClick = { showAddWidgetDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Widget")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.add_widget))
                 }
             }
         }
@@ -168,22 +175,22 @@ fun DashboardScreen() {
                 errorMessage != null -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-                        Button(onClick = { loadDashboards() }) { Text("Retry") }
+                        Button(onClick = { loadDashboards() }) { Text(stringResource(Res.string.retry)) }
                     }
                 }
                 dashboards.isEmpty() -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No dashboards found.", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(Res.string.no_dashboards_found), style = MaterialTheme.typography.bodyLarge)
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { showCreateDashboardDialog = true }) {
-                            Text("Create Dashboard")
+                            Text(stringResource(Res.string.create_dashboard))
                         }
                     }
                 }
                 activeDashboard != null -> {
                     val widgets = activeDashboard?.widgets ?: emptyList()
                     if (widgets.isEmpty()) {
-                        Text("Dashboard is empty. Add a widget.")
+                        Text(stringResource(Res.string.dashboard_is_empty))
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(minSize = 300.dp),
@@ -205,22 +212,22 @@ fun DashboardScreen() {
             var newName by remember { mutableStateOf("") }
             AlertDialog(
                 onDismissRequest = { showCreateDashboardDialog = false },
-                title = { Text("Create Dashboard") },
+                title = { Text(stringResource(Res.string.create_dashboard)) },
                 text = {
                     OutlinedTextField(
                         value = newName,
                         onValueChange = { newName = it },
-                        label = { Text("Dashboard Name") }
+                        label = { Text(stringResource(Res.string.dashboard_name)) }
                     )
                 },
                 confirmButton = {
                     TextButton(onClick = {
                         if (newName.isNotBlank()) createDashboard(newName)
                         showCreateDashboardDialog = false
-                    }) { Text("Create") }
+                    }) { Text(stringResource(Res.string.create)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showCreateDashboardDialog = false }) { Text("Cancel") }
+                    TextButton(onClick = { showCreateDashboardDialog = false }) { Text(stringResource(Res.string.cancel)) }
                 }
             )
         }
@@ -228,10 +235,10 @@ fun DashboardScreen() {
         if (showAddWidgetDialog && activeDashboard != null) {
             AlertDialog(
                 onDismissRequest = { showAddWidgetDialog = false },
-                title = { Text("Add Widget") },
-                text = { Text("Adding widgets requires detailed configuration which is typically done via the API or a dedicated wizard.") },
+                title = { Text(stringResource(Res.string.add_widget)) },
+                text = { Text(stringResource(Res.string.adding_widgets_requires)) },
                 confirmButton = {
-                    TextButton(onClick = { showAddWidgetDialog = false }) { Text("OK") }
+                    TextButton(onClick = { showAddWidgetDialog = false }) { Text(stringResource(Res.string.ok)) }
                 }
             )
         }
@@ -241,7 +248,7 @@ fun DashboardScreen() {
 @Composable
 fun WidgetElevatedCard(widget: WidgetResponse, onDelete: () -> Unit) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().height(300.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -255,7 +262,7 @@ fun WidgetElevatedCard(widget: WidgetResponse, onDelete: () -> Unit) {
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete Widget")
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.delete_widget))
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -272,6 +279,7 @@ fun WidgetContent(widget: WidgetResponse) {
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val errLoadDataMsg = stringResource(Res.string.failed_to_load_data)
 
     LaunchedEffect(widget.id) {
         isLoading = true
@@ -296,7 +304,7 @@ fun WidgetContent(widget: WidgetResponse) {
             }
             data = parsedData.takeIf { it.isNotEmpty() } ?: listOf("A" to 10f, "B" to 25f, "C" to 15f)
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load data"
+            errorMessage = e.message ?: errLoadDataMsg
         } finally {
             isLoading = false
         }
@@ -305,7 +313,10 @@ fun WidgetContent(widget: WidgetResponse) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when {
             isLoading -> CircularProgressIndicator()
-            errorMessage != null -> Text(text = "Error: $errorMessage", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            errorMessage != null -> {
+                val errorTxt = stringResource(Res.string.error, errorMessage!!)
+                Text(text = errorTxt, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
             data != null -> {
                 when (widget.visualization.lowercase()) {
                     "bar", "barchart" -> BarChart(data = data!!)

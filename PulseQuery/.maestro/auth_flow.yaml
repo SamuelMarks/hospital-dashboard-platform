@@ -1,0 +1,13 @@
+appId: io.healthplatform.pulsequery
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Welcome to PulseQuery"
+- tapOn: "Email"
+- inputText: "test@test.com"
+- hideKeyboard
+- tapOn: "Password"
+- inputText: "password"
+- hideKeyboard
+- tapOn: "Login / Register"
+- assertVisible: "Dashboards"

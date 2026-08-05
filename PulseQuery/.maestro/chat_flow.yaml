@@ -1,0 +1,13 @@
+appId: io.healthplatform.pulsequery
+---
+- launchApp
+- tapOn: "Chat"
+- assertVisible: "Start a new conversation"
+- tapOn: "Ask a query..."
+- inputText: "What is the average admission time?"
+- hideKeyboard
+- tapOn: "Send"
+# Wait for the AI to respond, which could take a moment. Maestro waits automatically but we can increase timeout if needed.
+- extendedWaitUntil:
+    visible: "Candidate variations available."
+    timeout: 10000

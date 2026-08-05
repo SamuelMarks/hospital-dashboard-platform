@@ -23,6 +23,9 @@ import io.healthplatform.pulsequery.api.models.AdminSettingsUpdateRequest
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
 
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
+
 /**
  * Admin Screen for managing platform configurations like API keys and visible LLM models.
  */
@@ -36,6 +39,9 @@ fun AdminScreen() {
     val visibleModels = remember { mutableStateListOf<String>() }
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val errorLoadBase = stringResource(Res.string.failed_to_load_admin_settings, "")
+    val errorSaveBase = stringResource(Res.string.failed_to_save_admin_settings, "")
 
     fun loadSettings() {
         coroutineScope.launch {
@@ -51,7 +57,7 @@ fun AdminScreen() {
                 visibleModels.clear()
                 visibleModels.addAll(settings.visibleModels)
             } catch (e: Exception) {
-                errorMessage = "Failed to load admin settings: ${e.message}"
+                errorMessage = errorLoadBase + e.message
             } finally {
                 isLoading = false
             }
@@ -61,6 +67,8 @@ fun AdminScreen() {
     LaunchedEffect(Unit) {
         loadSettings()
     }
+
+    val saveSuccessMsg = stringResource(Res.string.settings_saved_successfully)
 
     fun saveSettings() {
         coroutineScope.launch {
@@ -72,9 +80,9 @@ fun AdminScreen() {
                     visibleModels = visibleModels.toList()
                 )
                 AppContainer.adminApi.writeAdminSettingsApiV1AdminSettingsPut(updateReq)
-                snackbarHostState.showSnackbar("Settings saved successfully")
+                snackbarHostState.showSnackbar(saveSuccessMsg)
             } catch (e: Exception) {
-                errorMessage = "Failed to save admin settings: ${e.message}"
+                errorMessage = errorSaveBase + e.message
             } finally {
                 isLoading = false
             }
@@ -85,7 +93,7 @@ fun AdminScreen() {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Admin Settings") },
+                title = { Text(stringResource(Res.string.admin_settings)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -95,8 +103,8 @@ fun AdminScreen() {
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { saveSettings() },
-                icon = { Icon(Icons.Filled.Save, contentDescription = "Save Settings") },
-                text = { Text("Save Settings") }
+                icon = { Icon(Icons.Filled.Save, contentDescription = null) },
+                text = { Text(stringResource(Res.string.save_settings)) }
             )
         }
     ) { paddingValues ->
@@ -109,7 +117,7 @@ fun AdminScreen() {
             } else if (errorMessage != null && apiKeys.isEmpty()) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
-                    Button(onClick = { loadSettings() }) { Text("Retry") }
+                    Button(onClick = { loadSettings() }) { Text(stringResource(Res.string.retry)) }
                 }
             } else {
                 LazyColumn(
@@ -119,7 +127,7 @@ fun AdminScreen() {
                 ) {
                     item {
                         Text(
-                            text = "API Keys",
+                            text = stringResource(Res.string.api_keys),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -136,13 +144,13 @@ fun AdminScreen() {
                             OutlinedTextField(
                                 value = newKey,
                                 onValueChange = { newKey = it },
-                                label = { Text("Provider") },
+                                label = { Text(stringResource(Res.string.provider)) },
                                 modifier = Modifier.weight(1f)
                             )
                             OutlinedTextField(
                                 value = newValue,
                                 onValueChange = { newValue = it },
-                                label = { Text("Key") },
+                                label = { Text(stringResource(Res.string.key)) },
                                 modifier = Modifier.weight(2f)
                             )
                             IconButton(onClick = {
@@ -152,7 +160,7 @@ fun AdminScreen() {
                                     newValue = ""
                                 }
                             }) {
-                                Icon(Icons.Filled.Add, contentDescription = "Add Key")
+                                Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.add_key))
                             }
                         }
                     }
@@ -166,7 +174,7 @@ fun AdminScreen() {
                             ) {
                                 Text(text = "$key: ${value.take(4)}...", style = MaterialTheme.typography.bodyMedium)
                                 IconButton(onClick = { apiKeys.remove(key) }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "Delete Key", tint = MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Filled.Delete, contentDescription = stringResource(Res.string.delete_key), tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -176,7 +184,7 @@ fun AdminScreen() {
 
                     item {
                         Text(
-                            text = "Visible Models",
+                            text = stringResource(Res.string.visible_models),
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -192,7 +200,7 @@ fun AdminScreen() {
                             OutlinedTextField(
                                 value = newModel,
                                 onValueChange = { newModel = it },
-                                label = { Text("Model Name") },
+                                label = { Text(stringResource(Res.string.model_name)) },
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = {
@@ -201,7 +209,7 @@ fun AdminScreen() {
                                     newModel = ""
                                 }
                             }) {
-                                Icon(Icons.Filled.Add, contentDescription = "Add Model")
+                                Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.add_model))
                             }
                         }
                     }
@@ -215,7 +223,7 @@ fun AdminScreen() {
                             ) {
                                 Text(text = model, style = MaterialTheme.typography.bodyMedium)
                                 IconButton(onClick = { visibleModels.remove(model) }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "Delete Model", tint = MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Filled.Delete, contentDescription = stringResource(Res.string.delete_model), tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }

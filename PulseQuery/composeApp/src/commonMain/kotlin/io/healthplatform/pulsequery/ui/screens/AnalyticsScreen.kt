@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
 
 /**
  * Screen displaying high-level analytics about LLM output and usage.
@@ -33,6 +35,7 @@ fun AnalyticsScreen() {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
     val scope = rememberCoroutineScope()
+    val unknownErrorMsg = stringResource(Res.string.unknown_error)
 
     fun loadAnalytics() {
         scope.launch {
@@ -42,7 +45,7 @@ fun AnalyticsScreen() {
                 val response = AppContainer.analyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100)
                 records = response.body()
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Unknown error occurred"
+                errorMessage = e.message ?: unknownErrorMsg
             } finally {
                 isLoading = false
             }
@@ -56,10 +59,10 @@ fun AnalyticsScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("LLM Analytics") },
+                title = { Text(stringResource(Res.string.llm_analytics)) },
                 actions = {
                     IconButton(onClick = { loadAnalytics() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.refresh))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -76,10 +79,10 @@ fun AnalyticsScreen() {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { loadAnalytics() }) { Text("Retry") }
+                        Button(onClick = { loadAnalytics() }) { Text(stringResource(Res.string.retry)) }
                     }
                 }
-                records.isEmpty() -> Text("No analytics data available.", style = MaterialTheme.typography.bodyLarge)
+                records.isEmpty() -> Text(stringResource(Res.string.no_analytics_data), style = MaterialTheme.typography.bodyLarge)
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -108,7 +111,7 @@ fun AnalyticsRowElevatedCard(record: LlmOutputAnalyticsRow) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Model: ${record.llm}",
+                    text = stringResource(Res.string.model_msg, record.llm),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -118,7 +121,7 @@ fun AnalyticsRowElevatedCard(record: LlmOutputAnalyticsRow) {
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
-                            text = "Selected",
+                            text = stringResource(Res.string.selected),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -128,14 +131,14 @@ fun AnalyticsRowElevatedCard(record: LlmOutputAnalyticsRow) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Query: ${record.queryText ?: "N/A"}",
+                text = stringResource(Res.string.query_msg, record.queryText ?: "N/A"),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "User: ${record.userEmail}",
+                text = stringResource(Res.string.user_msg, record.userEmail),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

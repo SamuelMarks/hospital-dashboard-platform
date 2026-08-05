@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.ScenarioResult
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
 
 /**
  * The main entry point for the guided optimization wizard.
@@ -34,11 +36,11 @@ fun WizardScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Optimization Assistant") },
+                title = { Text(stringResource(Res.string.optimization_assistant)) },
                 navigationIcon = {
                     if (state !is WizardState.Landing) {
                         IconButton(onClick = { viewModel.reset() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
                         }
                     }
                 },
@@ -91,7 +93,7 @@ fun LandingContent(onUseCaseSelected: (WizardUseCase) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("What would you like to optimize today?", style = MaterialTheme.typography.headlineMedium)
+        Text(stringResource(Res.string.what_would_you_like_to_optimize_today), style = MaterialTheme.typography.headlineMedium)
         WizardUseCase.values().forEach { useCase ->
             ElevatedCard(
                 modifier = Modifier.fillMaxWidth(0.8f),
@@ -150,11 +152,11 @@ fun SplitScreenContent(
 
         // Right Panel: Visuals/Branching
         Column(modifier = Modifier.weight(1f).fillMaxHeight().padding(16.dp)) {
-            Text("Simulation Workspace", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+            Text(stringResource(Res.string.simulation_workspace), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
             Spacer(modifier = Modifier.height(16.dp))
             
             if (constraints.isNotEmpty()) {
-                Text("Detected Constraints:", fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.detected_constraints), fontWeight = FontWeight.Bold)
                 constraints.forEach { c ->
                     Text("- $c", style = MaterialTheme.typography.bodyMedium)
                 }
@@ -162,7 +164,7 @@ fun SplitScreenContent(
             }
             
             if (baseResult != null) {
-                Text("Base Scenario Output:", fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.base_scenario_output), fontWeight = FontWeight.Bold)
                 Text(baseResult.status)
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -170,7 +172,7 @@ fun SplitScreenContent(
             if (branchResult != null) {
                 ElevatedCard(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Branch Scenario Output (Optimized):", fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.branch_scenario_output_optimized), fontWeight = FontWeight.Bold)
                         Text(branchResult.status)
                     }
                 }
@@ -224,7 +226,7 @@ fun MessageInputRow(onMessageSent: (String) -> Unit) {
             value = inputText,
             onValueChange = { inputText = it },
             modifier = Modifier.weight(1f),
-            placeholder = { Text("Describe changes...") },
+            placeholder = { Text(stringResource(Res.string.describe_changes)) },
             shape = RoundedCornerShape(24.dp),
             trailingIcon = {
                 IconButton(onClick = {
@@ -233,7 +235,7 @@ fun MessageInputRow(onMessageSent: (String) -> Unit) {
                         inputText = ""
                     }
                 }) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send")
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send))
                 }
             }
         )

@@ -26,6 +26,8 @@ import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
 
 /**
  * Main chat interface for querying the system using natural language.
@@ -141,16 +143,16 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(activeConversation?.title ?: "New Chat") },
+                title = { Text(activeConversation?.title ?: stringResource(Res.string.new_chat)) },
                 actions = {
                     IconButton(onClick = { 
                         activeConversation = null
                         messages = emptyList()
                     }) {
-                        Icon(Icons.Filled.Add, contentDescription = "New Conversation")
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.new_conversation))
                     }
                     IconButton(onClick = { showConversationsDialog = true }) {
-                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "History")
+                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(Res.string.history))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -176,7 +178,7 @@ fun ChatScreen(
                 if (messages.isEmpty() && !isLoading) {
                     item {
                         Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Start a new conversation", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(Res.string.start_a_new_conversation), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -199,12 +201,12 @@ fun ChatScreen(
                     value = inputText,
                     onValueChange = { inputText = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Ask a query...") },
+                    placeholder = { Text(stringResource(Res.string.ask_a_query)) },
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 4,
                     trailingIcon = {
                         IconButton(onClick = { sendMessage() }, enabled = inputText.isNotBlank() && !isLoading) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send), tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 )
@@ -214,7 +216,7 @@ fun ChatScreen(
         if (showConversationsDialog) {
             AlertDialog(
                 onDismissRequest = { showConversationsDialog = false },
-                title = { Text("Conversations History") },
+                title = { Text(stringResource(Res.string.conversations_history)) },
                 text = {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                         items(conversations) { conv ->
@@ -230,17 +232,17 @@ fun ChatScreen(
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text(conv.title ?: "Untitled", maxLines = 1)
+                                    Text(conv.title ?: stringResource(Res.string.untitled), maxLines = 1)
                                 }
                                 IconButton(onClick = { deleteConversation(conv.id) }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Filled.Delete, contentDescription = stringResource(Res.string.delete), tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { showConversationsDialog = false }) { Text("Close") }
+                    TextButton(onClick = { showConversationsDialog = false }) { Text(stringResource(Res.string.close)) }
                 }
             )
         }
@@ -285,7 +287,7 @@ fun ChatBubble(message: MessageResponse) {
                 if (!message.candidates.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Candidate variations available.",
+                        text = stringResource(Res.string.candidate_variations_available),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )

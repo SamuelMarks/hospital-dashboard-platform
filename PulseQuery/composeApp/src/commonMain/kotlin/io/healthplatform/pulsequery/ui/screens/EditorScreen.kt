@@ -22,6 +22,9 @@ import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
 import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.*
 
 /**
  * Editor Screen for writing, previewing, and saving custom SQL queries.
@@ -35,6 +38,8 @@ fun EditorScreen() {
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
+    
+    val errExecFailed = stringResource(Res.string.execution_failed_msg, "")
 
     fun executeSql() {
         if (sqlQuery.isBlank()) return
@@ -48,7 +53,7 @@ fun EditorScreen() {
                 val response = AppContainer.aiApi.executeSqlPreviewApiV1AiExecutePost(req)
                 result = response.body()
             } catch (e: Exception) {
-                errorMessage = "Execution failed: ${e.message}"
+                errorMessage = errExecFailed + e.message
             } finally {
                 isLoading = false
             }
@@ -58,7 +63,7 @@ fun EditorScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("SQL Editor") },
+                title = { Text(stringResource(Res.string.sql_editor)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
@@ -68,8 +73,8 @@ fun EditorScreen() {
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { executeSql() },
-                icon = { if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp)) else Icon(Icons.Filled.PlayArrow, contentDescription = "Execute") },
-                text = { Text("Execute") },
+                icon = { if (isLoading) CircularProgressIndicator(modifier = Modifier.size(24.dp)) else Icon(Icons.Filled.PlayArrow, contentDescription = null) },
+                text = { Text(stringResource(Res.string.execute)) },
                 expanded = !isLoading
             )
         }
@@ -81,10 +86,10 @@ fun EditorScreen() {
             OutlinedTextField(
                 value = sqlQuery,
                 onValueChange = { sqlQuery = it },
-                modifier = Modifier.fillMaxWidth().height(250.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp),
                 textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-                placeholder = { Text("Enter SQL query here...") },
-                label = { Text("Query") },
+                placeholder = { Text(stringResource(Res.string.enter_sql_query_here)) },
+                label = { Text(stringResource(Res.string.query)) },
                 shape = MaterialTheme.shapes.medium
             )
 
@@ -110,14 +115,14 @@ fun EditorScreen() {
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "SQL Error: ${res.error}",
+                            text = stringResource(Res.string.sql_error_msg, res.error),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(16.dp)
                         )
                     }
                 } else {
                     Text(
-                        text = "Results (${res.data.size} rows)",
+                        text = pluralStringResource(Res.plurals.results_rows, res.data.size, res.data.size),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                     )

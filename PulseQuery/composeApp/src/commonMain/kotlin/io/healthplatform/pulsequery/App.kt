@@ -56,7 +56,7 @@ fun App() {
                     NavigationBar {
                         items.forEach { (route, icon) ->
                             NavigationBarItem(
-                                icon = { Icon(icon, contentDescription = route) },
+                                icon = { Icon(icon, contentDescription = null) },
                                 label = { Text(route.replaceFirstChar { it.uppercase() }) },
                                 selected = currentDestination?.hierarchy?.any { it.route == route } == true,
                                 onClick = {
