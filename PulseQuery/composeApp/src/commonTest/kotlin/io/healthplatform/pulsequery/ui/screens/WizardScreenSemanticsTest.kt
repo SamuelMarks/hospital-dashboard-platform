@@ -27,7 +27,7 @@ import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
-class WizardScreenSemanticsTest {
+class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
     @BeforeTest
     fun setUp() {

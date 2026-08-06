@@ -12,6 +12,9 @@
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity
+            android:name="androidx.activity.ComponentActivity"
+            android:exported="false" />
+        <activity
             android:exported="true"
             android:name=".MainActivity">
             <intent-filter>

@@ -10,7 +10,7 @@ import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.runComposeUiTest
 import kotlin.test.Test
 
-class ChartSemanticsTest {
+class ChartSemanticsTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
     @OptIn(ExperimentalTestApi::class)
     @Test

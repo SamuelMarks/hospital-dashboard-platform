@@ -26,7 +26,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-class LoginScreenTest {
+class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
     @BeforeTest
     fun setUp() {
@@ -104,7 +104,9 @@ class LoginScreenTest {
         onNodeWithText("Password").performTextInput("password")
         onNodeWithText("Login / Register").performClick()
         
-        // Wait until idle is implied by runComposeUiTest
+        waitUntil(timeoutMillis = 5000) {
+            onAllNodes(androidx.compose.ui.test.hasText("auto-registration also failed", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
         onNodeWithText("auto-registration also failed", substring = true).assertIsDisplayed()
     }
 
