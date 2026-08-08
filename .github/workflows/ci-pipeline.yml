@@ -135,7 +135,7 @@ jobs:
 
   maestro_ios:
     name: Maestro E2E iOS
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v7
 
@@ -150,16 +150,16 @@ jobs:
         working-directory: ./PulseQuery
         run: |
           ./gradlew :composeApp:iosSimulatorArm64Test
-          xcodebuild build -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' -configuration Debug -derivedDataPath build/ios_simulator
+          xcodebuild build -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' -configuration Debug -derivedDataPath build/ios_simulator
 
       - name: Install Maestro
         run: curl -Ls "https://get.maestro.mobile.dev" | bash
 
       - name: Start iOS Simulator and Run Maestro
         run: |
-          xcrun simctl boot "iPhone 16"
-          xcrun simctl bootstatus "iPhone 16" -b
+          xcrun simctl boot "iPhone 15"
+          xcrun simctl bootstatus "iPhone 15" -b
           APP_PATH=$(find ./PulseQuery/build/ios_simulator/Build/Products/Debug-iphonesimulator -name "*.app" | head -n 1)
-          xcrun simctl install "iPhone 16" "$APP_PATH"
+          xcrun simctl install "iPhone 15" "$APP_PATH"
           export PATH="$PATH":"$HOME/.maestro/bin"
           maestro test ./PulseQuery/.maestro/
