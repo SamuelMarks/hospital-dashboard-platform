@@ -42,6 +42,7 @@ class Translator:
   """Translator class to manage loading and retrieving localized messages."""
 
   def __init__(self, locales_dir: Optional[str] = None):
+    """Initialize translator with optional directory."""
     self.messages: Dict[str, Dict[str, str]] = _FALLBACK_MESSAGES.copy()
     if locales_dir:
       self.load_locales(locales_dir)
