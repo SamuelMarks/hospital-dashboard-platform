@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import { Injectable, signal, inject } from '@angular/core';
 import { SimulationService as ApiSimulationService, ScenarioResult } from '../api-client';

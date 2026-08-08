@@ -1,6 +1,6 @@
 <div class="hero-text">
-  <h2 class="hero-title">Start your Analysis</h2>
-  <p class="hero-subtitle">
+  <h2 i18n class="hero-title">Start your Analysis</h2>
+  <p i18n class="hero-subtitle">
     This dashboard is currently empty. Choose how you would like to begin.
   </p>
 </div>
@@ -15,15 +15,16 @@
     tabindex="0"
     (keydown.enter)="openWizard()"
     role="button"
+    i18n-aria-label
     aria-label="Start with a Template"
   >
     <div class="card-content-wrapper">
-      <div class="card-icon-bg icon-wizard"><mat-icon>library_add</mat-icon></div>
-      <h3 class="card-title">Start with a Template</h3>
-      <p class="card-desc">
+      <div class="card-icon-bg icon-wizard"><mat-icon i18n>library_add</mat-icon></div>
+      <h3 i18n class="card-title">Start with a Template</h3>
+      <p i18n class="card-desc">
         Browse pre-built metrics like "Admission Lag" or "Utilization Spikes".
       </p>
-      <div class="card-action"><span class="fake-button">Open Wizard &rarr;</span></div>
+      <div class="card-action"><span i18n class="fake-button">Open Wizard &rarr;</span></div>
     </div>
   </mat-card>
 
@@ -36,15 +37,16 @@
     tabindex="0"
     (keydown.enter)="openAi()"
     role="button"
+    i18n-aria-label
     aria-label="Ask AI a Question"
   >
     <div class="card-content-wrapper">
-      <div class="card-icon-bg icon-ai"><mat-icon>smart_toy</mat-icon></div>
-      <h3 class="card-title">Ask AI a Question</h3>
-      <p class="card-desc">
+      <div class="card-icon-bg icon-ai"><mat-icon i18n>smart_toy</mat-icon></div>
+      <h3 i18n class="card-title">Ask AI a Question</h3>
+      <p i18n class="card-desc">
         Describe what you want to see. AI will generate the SQL and visualization.
       </p>
-      <div class="card-action"><span class="fake-button">Open Assistant &rarr;</span></div>
+      <div class="card-action"><span i18n class="fake-button">Open Assistant &rarr;</span></div>
     </div>
   </mat-card>
 
@@ -58,16 +60,17 @@
     tabindex="0"
     (keydown.enter)="loadSamples()"
     role="button"
+    i18n-aria-label
     aria-label="Load Sample Data"
   >
     <div class="card-content-wrapper">
-      <div class="card-icon-bg icon-seed"><mat-icon>restore</mat-icon></div>
-      <h3 class="card-title">Load Sample Data</h3>
-      <p class="card-desc">
+      <div class="card-icon-bg icon-seed"><mat-icon i18n>restore</mat-icon></div>
+      <h3 i18n class="card-title">Load Sample Data</h3>
+      <p i18n class="card-desc">
         Instantly populate this dashboard with standard "Hospital Command Center" content.
       </p>
       <div class="card-action">
-        <span class="fake-button">{{ store.isLoading() ? 'Loading...' : 'Auto-Fill' }}</span>
+        <span i18n class="fake-button">{{ store.isLoading() ? 'Loading...' : 'Auto-Fill' }}</span>
       </div>
     </div>
   </mat-card>

@@ -96,7 +96,7 @@ interface JsonSchema {
     MatIconModule,
     MatTooltipModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './dynamic-form.component.html',
   styles: [
     `

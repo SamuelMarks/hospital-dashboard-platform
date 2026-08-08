@@ -13,7 +13,9 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
  */
 @Injectable({ providedIn: 'root' })
 export class A11yTitleStrategy extends TitleStrategy {
+  /** Angular Title Service */
   private readonly title = inject(Title);
+  /** CDK LiveAnnouncer for screen reader announcements */
   private readonly announcer = inject(LiveAnnouncer);
 
   /**

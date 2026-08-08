@@ -3,6 +3,7 @@
     class="heatmap-container"
     [style.grid-template-columns]="'auto repeat(' + m.xHeaders.length + ', 1fr)'"
     role="grid"
+    i18n-aria-label
     aria-label="Heatmap Data Grid"
   >
     <!-- Top Left Corner (Empty) -->
@@ -32,10 +33,10 @@
   </div>
 
   <div class="legend" aria-hidden="true">
-    <span>Low Load</span>
+    <span i18n>Low Load</span>
     <div class="legend-bar"></div>
-    <span>High Load</span>
+    <span i18n>High Load</span>
   </div>
 } @else {
-  <div class="flex items-center justify-center h-full text-gray-500">No Data</div>
+  <div i18n class="flex items-center justify-center h-full text-gray-500">No Data</div>
 }

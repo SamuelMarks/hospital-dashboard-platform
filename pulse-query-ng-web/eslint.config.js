@@ -46,6 +46,20 @@ module.exports = defineConfig([
       '@angular-eslint/template/interactive-supports-focus': 'off',
       '@angular-eslint/template/no-negated-async': 'off',
       '@angular-eslint/template/label-has-associated-control': 'off',
+      '@angular-eslint/template/i18n': [
+        'error',
+        {
+          checkId: false,
+          checkText: true,
+          checkAttributes: false,
+        },
+      ],
+    },
+  },
+  {
+    files: ['**/login.component.html'],
+    rules: {
+      '@angular-eslint/template/i18n': 'off',
     },
   },
 ]);

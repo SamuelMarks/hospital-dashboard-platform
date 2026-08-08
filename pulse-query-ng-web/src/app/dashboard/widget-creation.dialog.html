@@ -1,9 +1,9 @@
-<h2 mat-dialog-title>Add New Widget</h2>
+<h2 i18n mat-dialog-title>Add New Widget</h2>
 
 <mat-dialog-content>
   <mat-stepper [linear]="true" #stepper class="w-full">
     <!-- STEP 1: Data Source -->
-    <mat-step [completed]="!!selectedType()">
+    <mat-step i18n [completed]="!!selectedType()">
       <ng-template matStepLabel>Source</ng-template>
 
       <div class="compact-step-wrapper">
@@ -60,7 +60,7 @@
     </mat-step>
 
     <!-- STEP 2: Visualization -->
-    <mat-step [completed]="!!selectedViz()">
+    <mat-step i18n [completed]="!!selectedViz()">
       <ng-template matStepLabel>Visualization</ng-template>
 
       <div class="compact-step-wrapper">
@@ -122,7 +122,7 @@
     </mat-step>
 
     <!-- STEP 3: Configure -->
-    <mat-step>
+    <mat-step i18n>
       <ng-template matStepLabel>Configure</ng-template>
 
       <div class="config-layout">
@@ -136,13 +136,13 @@
           <div class="config-header" [formGroup]="configForm">
             <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Widget Title</mat-label>
-              <input matInput formControlName="title" placeholder="My Analysis" />
+              <input matInput formControlName="title" i18n-placeholder placeholder="My Analysis" />
             </mat-form-field>
 
             @if (supportsMapping()) {
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ isPie() ? 'Label Column' : 'X-Axis / Category' }}</mat-label>
-                <mat-select formControlName="xKey">
+                <mat-select formControlName="xKey" i18n-aria-label aria-label="Select xKey">
                   <mat-option [value]="null">-- Auto --</mat-option>
                   @for (col of availableColumns(); track col) {
                     <mat-option [value]="col">{{ col }}</mat-option>
@@ -152,7 +152,7 @@
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ isPie() ? 'Size Column' : 'Y-Axis / Value' }}</mat-label>
-                <mat-select formControlName="yKey">
+                <mat-select formControlName="yKey" i18n-aria-label aria-label="Select yKey">
                   <mat-option [value]="null">-- Auto --</mat-option>
                   @for (col of availableColumns(); track col) {
                     <mat-option [value]="col">{{ col }}</mat-option>

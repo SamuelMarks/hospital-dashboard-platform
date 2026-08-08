@@ -1,13 +1,14 @@
 <div class="mb-6 flex justify-between items-center">
   <div>
-    <h1 class="text-2xl font-light mb-1">What-If Simulation</h1>
-    <p class="text-gray-500">
+    <h1 i18n class="text-2xl font-light mb-1">What-If Simulation</h1>
+    <p i18n class="text-gray-500">
       Simulate patient flow and capacity constraints using the MPAX solver.
     </p>
   </div>
 
   <div class="flex gap-2">
     <button
+      i18n
       mat-flat-button
       color="primary"
       (click)="store.runSimulation()"
@@ -29,26 +30,26 @@
 
 @if (store.error(); as err) {
   <div class="error-box">
-    <mat-icon class="mr-2 align-middle">error</mat-icon>
-    <span>{{ err }}</span>
+    <mat-icon i18n class="mr-2 align-middle">error</mat-icon>
+    <span i18n>{{ err }}</span>
   </div>
 }
 
 <div class="grid-layout">
   <!-- Left: Demand SQL -->
   <mat-card class="panel">
-    <h3 class="font-medium text-lg mb-4">Patient Demand (SQL)</h3>
-    <p class="text-xs text-gray-500 mb-4">
+    <h3 i18n class="font-medium text-lg mb-4">Patient Demand (SQL)</h3>
+    <p i18n class="text-xs text-gray-500 mb-4">
       Query must return: <code>Service</code>, <code>Unit</code> (optional), and <code>Count</code>.
     </p>
 
     <mat-form-field appearance="outline" class="w-full h-full">
-      <mat-label>Demand SQL</mat-label>
+      <mat-label i18n>Demand SQL</mat-label>
       <textarea
         matInput
         class="sql-input"
-        [ngModel]="store.demandSql()"
-        (ngModelChange)="updateDemandSql($event)"
+        [value]="store.demandSql()"
+        (input)="updateDemandSql($any($event.target).value)"
       ></textarea>
     </mat-form-field>
   </mat-card>
@@ -56,8 +57,8 @@
   <!-- Right: Capacity Parameters -->
   <mat-card class="panel">
     <div class="flex justify-between items-center mb-4">
-      <h3 class="font-medium text-lg">Unit Capacities</h3>
-      <button mat-button color="primary" (click)="addCapacity()">
+      <h3 i18n class="font-medium text-lg">Unit Capacities</h3>
+      <button i18n mat-button color="primary" (click)="addCapacity()">
         <mat-icon>add</mat-icon> Add Unit
       </button>
     </div>
@@ -66,29 +67,32 @@
       @for (param of store.capacityParams(); track $index) {
         <div class="capacity-row">
           <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Unit Name</mat-label>
+            <mat-label i18n>Unit Name</mat-label>
             <input
               matInput
-              [ngModel]="param.unit"
-              (ngModelChange)="updateCapacity($index, 'unit', $event)"
+              [value]="param.unit"
+              (input)="updateCapacity($index, 'unit', $any($event.target).value)"
             />
           </mat-form-field>
 
-          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="max-w-[120px]">
-            <mat-label>Capacity</mat-label>
+          <mat-form-field appearance="outline" class="w-1/2">
+            <mat-label i18n>Capacity</mat-label>
             <input
               matInput
               type="number"
-              [ngModel]="param.capacity"
-              (ngModelChange)="updateCapacity($index, 'capacity', $event)"
+              [value]="param.capacity"
+              (input)="updateCapacity($index, 'capacity', +$any($event.target).value)"
             />
           </mat-form-field>
 
           <button
+            i18n
             mat-icon-button
+            i18n-aria-label
             aria-label="Remove"
             color="warn"
             (click)="removeCapacity($index)"
+            i18n-matTooltip
             matTooltip="Remove"
           >
             <mat-icon>delete</mat-icon>
@@ -97,7 +101,7 @@
       }
 
       @if (store.capacityParams().length === 0) {
-        <div class="text-center text-gray-400 p-4">No capacity constraints defined.</div>
+        <div i18n class="text-center text-gray-400 p-4">No capacity constraints defined.</div>
       }
     </div>
   </mat-card>
@@ -106,7 +110,7 @@
 <!-- Results -->
 @if (store.results(); as results) {
   <mat-card class="panel results-panel mt-6">
-    <h3 class="font-medium text-lg mb-4">Optimization Results</h3>
+    <h3 i18n class="font-medium text-lg mb-4">Optimization Results</h3>
     <viz-table [dataSet]="results" [config]="{}"></viz-table>
   </mat-card>
 }

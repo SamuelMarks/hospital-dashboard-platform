@@ -10,7 +10,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 @Component({
   selector: 'viz-scalar',
   imports: [CommonModule, MatTooltipModule, MatProgressBarModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

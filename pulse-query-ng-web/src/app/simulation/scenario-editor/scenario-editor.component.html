@@ -3,6 +3,7 @@
   <div class="config-pane mat-elevation-z2">
     <div class="pane-header">
       <h2
+        i18n
         class="text-lg font-bold flex items-center gap-2 m-0"
         style="color: var(--sys-text-primary)"
       >
@@ -17,16 +18,16 @@
         <!-- SECTION 1: CAPACITIES -->
         <mat-expansion-panel expanded>
           <mat-expansion-panel-header>
-            <mat-panel-title>Unit Capacities</mat-panel-title>
-            <mat-panel-description>Bed Counts</mat-panel-description>
+            <mat-panel-title i18n>Unit Capacities</mat-panel-title>
+            <mat-panel-description i18n>Bed Counts</mat-panel-description>
           </mat-expansion-panel-header>
 
           <div class="capacity-list">
             @for (unit of units(); track unit) {
               <div class="capacity-row">
                 <div class="row-label">
-                  <span class="unit-name">{{ unit }}</span>
-                  <mat-chip class="compact-chip" highlighted>{{ getCapacity(unit) }}</mat-chip>
+                  <span i18n class="unit-name">{{ unit }}</span>
+                  <mat-chip i18n class="compact-chip" highlighted>{{ getCapacity(unit) }}</mat-chip>
                 </div>
                 <mat-slider min="0" max="50" step="1" discrete showTickMarks>
                   <input
@@ -44,12 +45,18 @@
         <!-- SECTION 2: CONSTRAINTS -->
         <mat-expansion-panel>
           <mat-expansion-panel-header>
-            <mat-panel-title>Constraints</mat-panel-title>
-            <mat-panel-description>{{ constraints().length }} Rules</mat-panel-description>
+            <mat-panel-title i18n>Constraints</mat-panel-title>
+            <mat-panel-description i18n>{{ constraints().length }} Rules</mat-panel-description>
           </mat-expansion-panel-header>
 
           <div class="actions-bar mb-2 flex justify-end">
-            <button mat-stroked-button color="primary" (click)="addConstraint()" class="text-xs">
+            <button
+              i18n
+              mat-stroked-button
+              color="primary"
+              (click)="addConstraint()"
+              class="text-xs"
+            >
               <mat-icon>add</mat-icon> Add Rule
             </button>
           </div>
@@ -57,37 +64,65 @@
           <mat-list class="constraints-list">
             @for (c of constraints(); track $index) {
               <mat-list-item class="constraint-item">
-                <div matListItemTitle class="font-bold text-xs uppercase text-gray-500 mb-1">
+                <div i18n matListItemTitle class="font-bold text-xs uppercase text-gray-500 mb-1">
                   Force Flow
                 </div>
 
                 <div matListItemLine class="grid grid-cols-2 gap-2 mb-2">
                   <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                    <mat-label>Service</mat-label>
-                    <input matInput [(ngModel)]="c.service" placeholder="Svc" />
+                    <mat-label i18n>Service</mat-label>
+                    <input
+                      matInput
+                      [value]="c.service"
+                      (input)="c.service = $any($event.target).value"
+                      i18n-placeholder
+                      placeholder="Svc"
+                    />
                   </mat-form-field>
                   <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                    <mat-label>Unit</mat-label>
-                    <input matInput [(ngModel)]="c.unit" placeholder="Unit" />
+                    <mat-label i18n>Unit</mat-label>
+                    <input
+                      matInput
+                      [value]="c.unit"
+                      (input)="c.unit = $any($event.target).value"
+                      i18n-placeholder
+                      placeholder="Unit"
+                    />
                   </mat-form-field>
                 </div>
 
                 <div matListItemLine class="grid grid-cols-2 gap-2">
                   <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                    <mat-label>Min</mat-label>
-                    <input matInput type="number" [(ngModel)]="c.min" />
+                    <mat-label i18n>Min</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      [value]="c.min || ''"
+                      (input)="
+                        c.min = $any($event.target).value ? +$any($event.target).value : undefined
+                      "
+                    />
                   </mat-form-field>
                   <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                    <mat-label>Max</mat-label>
-                    <input matInput type="number" [(ngModel)]="c.max" />
+                    <mat-label i18n>Max</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      [value]="c.max || ''"
+                      (input)="
+                        c.max = $any($event.target).value ? +$any($event.target).value : undefined
+                      "
+                    />
                   </mat-form-field>
                 </div>
 
                 <div matListItemMeta>
                   <button
+                    i18n
                     mat-icon-button
                     color="warn"
                     (click)="removeConstraint($index)"
+                    i18n-aria-label
                     aria-label="Remove Constraint"
                   >
                     <mat-icon>delete</mat-icon>
@@ -97,7 +132,7 @@
               <mat-divider></mat-divider>
             }
             @if (constraints().length === 0) {
-              <div class="empty-list-msg">No active constraints defined.</div>
+              <div i18n class="empty-list-msg">No active constraints defined.</div>
             }
           </mat-list>
         </mat-expansion-panel>
@@ -107,6 +142,7 @@
     <!-- Sticky Footer Action -->
     <div class="action-footer">
       <button
+        i18n
         mat-flat-button
         color="accent"
         class="w-full h-12 text-lg"
@@ -131,12 +167,14 @@
     <!-- Header -->
     <div class="results-header">
       <div>
-        <h1 class="text-2xl font-light m-0">Scenario Results</h1>
-        <p class="text-gray-500 text-sm m-0">Optimization outcomes based on current parameters.</p>
+        <h1 i18n class="text-2xl font-light m-0">Scenario Results</h1>
+        <p i18n class="text-gray-500 text-sm m-0">
+          Optimization outcomes based on current parameters.
+        </p>
       </div>
       @if (store.results()) {
         <mat-chip-set>
-          <mat-chip color="accent" highlighted>
+          <mat-chip i18n color="accent" highlighted>
             <mat-icon matChipAvatar>check_circle</mat-icon>
             Allocated: {{ totalAllocated() }}
           </mat-chip>
@@ -149,8 +187,8 @@
       <div
         class="p-4 mx-6 mt-4 bg-red-50 text-red-700 border-l-4 border-red-500 rounded flex gap-3 items-center"
       >
-        <mat-icon>error</mat-icon>
-        <div><strong>Simulation Error:</strong> {{ err }}</div>
+        <mat-icon i18n>error</mat-icon>
+        <div><strong i18n>Simulation Error:</strong> {{ err }}</div>
       </div>
     }
 
@@ -158,21 +196,23 @@
     <div class="results-content">
       @if (!store.results() && !store.isRunning()) {
         <div class="empty-state">
-          <mat-icon class="text-6xl text-gray-300 mb-4 scale-150">analytics</mat-icon>
-          <p class="text-lg font-medium text-gray-400">Ready to Simulate</p>
-          <p class="text-sm text-gray-400">Adjust capacities and constraints, then click Run.</p>
+          <mat-icon i18n class="text-6xl text-gray-300 mb-4 scale-150">analytics</mat-icon>
+          <p i18n class="text-lg font-medium text-gray-400">Ready to Simulate</p>
+          <p i18n class="text-sm text-gray-400">
+            Adjust capacities and constraints, then click Run.
+          </p>
         </div>
       } @else if (store.isRunning()) {
         <div class="empty-state">
           <mat-spinner diameter="60"></mat-spinner>
-          <p class="mt-6 text-gray-500 font-medium">Processing Optimization Model...</p>
+          <p i18n class="mt-6 text-gray-500 font-medium">Processing Optimization Model...</p>
         </div>
       } @else {
         <!-- Dashboard Grid -->
         <div class="dashboard-grid-layout">
           <!-- Chart 1: Allocation -->
           <div class="viz-card mat-elevation-z1">
-            <div class="viz-header">Recommended Allocation</div>
+            <div i18n class="viz-header">Recommended Allocation</div>
             <div class="viz-body">
               <viz-chart
                 [dataSet]="allocationData()"
@@ -183,7 +223,7 @@
 
           <!-- Chart 2: Deviations -->
           <div class="viz-card mat-elevation-z1">
-            <div class="viz-header">Net Deviation</div>
+            <div i18n class="viz-header">Net Deviation</div>
             <div class="viz-body">
               <viz-chart
                 [dataSet]="deviationData()"
@@ -194,7 +234,7 @@
 
           <!-- Table: Detailed Assignments -->
           <div class="viz-card mat-elevation-z1 full-width">
-            <div class="viz-header">Detailed Assignments</div>
+            <div i18n class="viz-header">Detailed Assignments</div>
             <div class="viz-body table-wrapper">
               <viz-table [dataSet]="tableData()" class="h-full block w-full"></viz-table>
             </div>

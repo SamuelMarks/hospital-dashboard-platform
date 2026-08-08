@@ -6,8 +6,8 @@
 <!-- Header -->
 <div class="header">
   <div class="header-text">
-    <h1>My Dashboards</h1>
-    <p>Manage and view your analytics workspaces</p>
+    <h1 i18n>My Dashboards</h1>
+    <p i18n>Manage and view your analytics workspaces</p>
   </div>
 
   <div class="btn-group">
@@ -15,37 +15,58 @@
     <app-theme-toggle />
 
     @if (authService.currentUser()?.is_admin) {
-      <button mat-stroked-button color="primary" routerLink="/admin" matTooltip="Admin Settings">
+      <button
+        i18n
+        mat-stroked-button
+        color="primary"
+        routerLink="/admin"
+        i18n-matTooltip
+        matTooltip="Admin Settings"
+      >
         <mat-icon>settings</mat-icon> Admin
       </button>
     }
 
     <!-- New: Ask AI Button for Global Accessibility -->
     <button
+      i18n
       mat-stroked-button
       color="primary"
       (click)="askDataService.open()"
+      i18n-matTooltip
       matTooltip="Open chat assistant"
+      i18n-aria-label
+      aria-label="Open chat assistant"
     >
       <mat-icon>smart_toy</mat-icon> Ask AI
     </button>
 
     <button
+      i18n
       mat-stroked-button
       color="primary"
       (click)="restoreDefaults()"
       [disabled]="isRestoring()"
+      i18n-matTooltip
       matTooltip="Recreate the standard Hospial Command Center dashboard"
+      i18n-aria-label
+      aria-label="Recreate the standard Hospial Command Center dashboard"
     >
       @if (isRestoring()) {
-        <mat-spinner diameter="18" aria-label="Restoring..."></mat-spinner>
+        <mat-spinner diameter="18" i18n-aria-label aria-label="Restoring..."></mat-spinner>
       } @else {
         <mat-icon>restore</mat-icon>
       }
       <span class="ml-2">Restore Defaults</span>
     </button>
 
-    <button mat-flat-button color="primary" (click)="openCreateDialog()" data-testid="btn-create">
+    <button
+      i18n
+      mat-flat-button
+      color="primary"
+      (click)="openCreateDialog()"
+      data-testid="btn-create"
+    >
       <mat-icon>add</mat-icon>
       New Dashboard
     </button>
@@ -55,7 +76,7 @@
 <!-- Loading State -->
 @if (isLoading()) {
   <div class="loading-container" data-testid="loading-state">
-    <mat-spinner diameter="40" aria-label="Loading dashboards..."></mat-spinner>
+    <mat-spinner diameter="40" i18n-aria-label aria-label="Loading dashboards..."></mat-spinner>
   </div>
 }
 
@@ -70,18 +91,20 @@
       >
         <mat-card-header>
           <div mat-card-avatar class="avatar-placeholder">
-            <mat-icon>analytics</mat-icon>
+            <mat-icon i18n>analytics</mat-icon>
           </div>
 
-          <mat-card-title>{{ dash.name }}</mat-card-title>
-          <mat-card-subtitle> ID: {{ dash.id.substring(0, 8) }}... </mat-card-subtitle>
+          <mat-card-title i18n>{{ dash.name }}</mat-card-title>
+          <mat-card-subtitle i18n> ID: {{ dash.id.substring(0, 8) }}... </mat-card-subtitle>
 
           <!-- Card Actions Menu -->
           <button
+            i18n
             mat-icon-button
             class="card-actions-btn"
             [matMenuTriggerFor]="cardMenu"
             (click)="$event.stopPropagation()"
+            i18n-aria-label
             aria-label="Dashboard Options"
             data-testid="btn-card-menu"
           >
@@ -89,15 +112,15 @@
           </button>
 
           <mat-menu #cardMenu="matMenu">
-            <button mat-menu-item (click)="renameDashboard(dash)">
+            <button i18n mat-menu-item (click)="renameDashboard(dash)">
               <mat-icon>edit</mat-icon>
               <span>Rename</span>
             </button>
-            <button mat-menu-item (click)="cloneDashboard(dash)">
+            <button i18n mat-menu-item (click)="cloneDashboard(dash)">
               <mat-icon>content_copy</mat-icon>
               <span>Duplicate</span>
             </button>
-            <button mat-menu-item (click)="deleteDashboard(dash)" class="text-red-600">
+            <button i18n mat-menu-item (click)="deleteDashboard(dash)" class="text-red-600">
               <mat-icon color="warn">delete</mat-icon>
               <span>Delete</span>
             </button>
@@ -105,7 +128,7 @@
         </mat-card-header>
 
         <mat-card-content>
-          <p class="text-sm text-gray-500 mt-2">
+          <p i18n class="text-sm text-gray-500 mt-2">
             {{ (dash.widgets || []).length }} Widgets Configured
           </p>
         </mat-card-content>
@@ -115,11 +138,12 @@
     <!-- Empty State -->
     @if (dashboards().length === 0) {
       <div class="empty-state" data-testid="empty-state">
-        <mat-icon class="text-4xl text-gray-300 mb-2">dashboard</mat-icon>
-        <p>You haven't created any analytics dashboards yet.</p>
+        <mat-icon i18n class="text-4xl text-gray-300 mb-2">dashboard</mat-icon>
+        <p i18n>You haven't created any analytics dashboards yet.</p>
 
         <div class="flex gap-4">
           <button
+            i18n
             mat-stroked-button
             color="primary"
             (click)="restoreDefaults()"
@@ -127,7 +151,7 @@
           >
             Create Default Dashboard
           </button>
-          <button mat-button color="accent" (click)="openCreateDialog()">
+          <button i18n mat-button color="accent" (click)="openCreateDialog()">
             Create Empty Custom
           </button>
         </div>

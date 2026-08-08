@@ -25,7 +25,7 @@ import { WidgetBuilderComponent } from '../widget-builder/widget-builder.compone
 @Component({
   selector: 'app-empty-state',
   imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

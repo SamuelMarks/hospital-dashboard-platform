@@ -50,7 +50,7 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
     VizScalarComponent,
     VizMarkdownComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   host: {
     tabindex: '0',
     class: 'widget-host',

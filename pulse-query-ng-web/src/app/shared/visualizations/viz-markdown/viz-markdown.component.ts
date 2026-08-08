@@ -16,7 +16,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 @Component({
   selector: 'viz-markdown',
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

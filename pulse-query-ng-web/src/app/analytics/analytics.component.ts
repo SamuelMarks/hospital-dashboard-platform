@@ -10,7 +10,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -32,7 +32,7 @@ import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
   selector: 'app-analytics',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -44,7 +44,7 @@ import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
     MatProgressSpinnerModule,
     MatTooltipModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

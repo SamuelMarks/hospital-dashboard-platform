@@ -23,19 +23,19 @@ import { Router } from '@angular/router';
     MatIconModule,
     SqlSnippetComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <div class="benchmarks-container">
       <div class="header">
-        <h1 class="text-2xl font-light mb-1">Benchmark Datasets</h1>
-        <p class="text-gray-500">
+        <h1 i18n class="text-2xl font-light mb-1">Benchmark Datasets</h1>
+        <p i18n class="text-gray-500">
           Explore the gold standard scenarios used to evaluate Arena performance.
         </p>
       </div>
 
       @if (error()) {
         <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
-          <mat-icon class="align-middle mr-2">error</mat-icon>
+          <mat-icon i18n class="align-middle mr-2">error</mat-icon>
           {{ error() }}
         </div>
       }
@@ -62,7 +62,7 @@ import { Router } from '@angular/router';
                       <p class="mb-4 text-gray-800">{{ item.question }}</p>
 
                       <div class="mb-2">
-                        <strong class="text-xs text-gray-500 uppercase tracking-wider"
+                        <strong i18n class="text-xs text-gray-500 uppercase tracking-wider"
                           >Gold SQL</strong
                         >
                       </div>
@@ -100,16 +100,16 @@ import { Router } from '@angular/router';
                     <div
                       class="grid grid-cols-2 gap-2 text-xs text-gray-600 mt-auto bg-gray-50 p-2 rounded"
                     >
-                      <div>
+                      <div i18n>
                         <strong>Demand:</strong>
                         {{ item.expected_metrics?.['total_demand'] || 0 }} pts
                       </div>
-                      <div>
+                      <div i18n>
                         <strong>Capacity:</strong>
                         {{ item.expected_metrics?.['total_capacity'] || 0 }} beds
                       </div>
                       <div class="col-span-2">
-                        <strong>Expected Overflow:</strong>
+                        <strong i18n>Expected Overflow:</strong>
                         <span
                           [class.text-red-500]="
                             (item.expected_metrics?.['expected_overflow'] || 0) > 0

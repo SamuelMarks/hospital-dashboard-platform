@@ -27,7 +27,7 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
     MatTooltipModule,
     MatSnackBarModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './query-cart.component.html',
   styles: [
     `

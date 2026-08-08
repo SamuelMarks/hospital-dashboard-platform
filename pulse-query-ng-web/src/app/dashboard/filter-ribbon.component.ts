@@ -43,7 +43,7 @@ import { DashboardStore } from './dashboard.store';
     MatButtonModule,
   ],
   providers: [provideNativeDateAdapter()],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './filter-ribbon.component.html',
   styles: [
     `

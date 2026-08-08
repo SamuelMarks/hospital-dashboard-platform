@@ -98,7 +98,7 @@ async def test_update_widget_invalid_sql_returns_400() -> None:
 
     assert res.status_code == 400
     data = res.json()
-    assert "Invalid SQL Query" in data["detail"]
+    assert "Invalid SQL" in data["detail"]
     assert "Parser Error" in data["detail"]
 
   app.dependency_overrides = {}

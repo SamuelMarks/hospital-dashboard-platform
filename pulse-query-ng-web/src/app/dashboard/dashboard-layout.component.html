@@ -7,7 +7,7 @@
     <div class="tv-dashboard-title">{{ store.dashboard()?.name }}</div>
     <div class="tv-meta">
       @if (store.lastUpdated(); as date) {
-        <span class="tv-last-updated">Updated: {{ date | date: 'shortTime' }}</span>
+        <span i18n class="tv-last-updated">Updated: {{ date | date: 'shortTime' }}</span>
       }
     </div>
   </div>
@@ -53,6 +53,13 @@
             [class.item-draggable]="store.isEditMode() && !isTvMode()"
             [attr.data-testid]="'widget-wrapper-' + widget.id"
           >
+            <!-- Drag Handle Overlay -->
+            @if (store.isEditMode() && !isTvMode()) {
+              <div class="drag-handle-overlay" cdkDragHandle data-testid="drag-handle">
+                <mat-icon fontIcon="drag_indicator" aria-hidden="true"></mat-icon>
+              </div>
+            }
+
             <!-- Elevation Wrapper handled by MatCard internally in widget -->
             <div class="widget-content">
               <app-widget

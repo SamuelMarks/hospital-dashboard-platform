@@ -7,7 +7,6 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-markdown',
   template: '',
 })
@@ -16,7 +15,6 @@ class MockVizMarkdownComponent {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-snippet',
   template: '',
 })
@@ -55,7 +53,7 @@ describe('MpaxArenaComponent', () => {
 
   it('should create and have default values', () => {
     expect(component).toBeTruthy();
-    expect(component.mode).toBe('judge');
+    expect(component.mode()).toBe('judge');
     expect(component.isLoading()).toBe(false);
   });
 
@@ -83,8 +81,8 @@ describe('MpaxArenaComponent', () => {
     expect(component.error()).toBeNull();
     expect(component.result()).toEqual(mockRes);
     expect(mockApi.runMpaxArenaApiV1MpaxArenaRunPost).toHaveBeenCalledWith({
-      prompt: component.prompt,
-      mode: component.mode,
+      prompt: component.prompt(),
+      mode: component.mode(),
     });
   });
 

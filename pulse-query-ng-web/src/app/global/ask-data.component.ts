@@ -46,7 +46,7 @@ import { QueryCartService } from './query-cart.service';
     MatToolbarModule,
     MatTooltipModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

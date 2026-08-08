@@ -1,13 +1,16 @@
 <div class="card">
   <div class="header">
-    <span>Suggested Query</span>
+    <span i18n>Suggested Query</span>
     <div class="flex gap-2">
       <!-- Copy -->
       <button
+        i18n
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="copy()"
+        i18n-aria-label
         aria-label="Copy SQL"
+        i18n-matTooltip
         matTooltip="Copy to Clipboard"
       >
         <mat-icon style="font-size: 16px">content_copy</mat-icon>
@@ -15,10 +18,13 @@
 
       <!-- Cart Action -->
       <button
+        i18n
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="emitAddToCart()"
+        i18n-aria-label
         aria-label="Save to Cart"
+        i18n-matTooltip
         matTooltip="Save to Query Cart"
         data-testid="btn-cart"
       >
@@ -26,16 +32,20 @@
       </button>
 
       <button
+        i18n
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="emitSimulate()"
+        i18n-aria-label
         aria-label="Simulate Scenario"
+        i18n-matTooltip
         matTooltip="Simulate Scenario"
       >
         <mat-icon style="font-size: 16px">science</mat-icon>
       </button>
 
       <button
+        i18n
         mat-stroked-button
         color="accent"
         class="text-xs h-6 px-2 leading-none"

@@ -5,7 +5,6 @@ import { By } from '@angular/platform-browser';
 import { ErrorBoundaryDirective } from './error-boundary.directive';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, ErrorBoundaryDirective],
   template: `
     <ng-template #fallback let-error let-retry="retry">

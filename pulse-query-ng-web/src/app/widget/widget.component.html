@@ -3,19 +3,21 @@
   <!-- Header -->
   <div class="widget-header-row">
     <div class="title-area">
-      <span class="title-text" [title]="widgetInput().title">
+      <span i18n class="title-text" [title]="widgetInput().title">
         {{ widgetInput().title }}
       </span>
       <!-- Use Standard Chip with minimal styling -->
       <mat-chip-set>
-        <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
+        <mat-chip i18n class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
       </mat-chip-set>
     </div>
 
     <div class="action-group">
       <!-- Focus / Fullscreen -->
       <button
+        i18n
         mat-icon-button
+        i18n-aria-label
         aria-label="action"
         class="icon-btn-compact"
         (click)="toggleFocus()"
@@ -28,10 +30,13 @@
       <!-- Simulate Action -->
       @if (widgetInput().type === 'SQL') {
         <button
+          i18n
           mat-icon-button
+          i18n-aria-label
           aria-label="Simulate Scenario"
           class="icon-btn-compact"
           (click)="simulateWidget()"
+          i18n-matTooltip
           matTooltip="Simulate Scenario"
           style="color: var(--sys-secondary)"
         >
@@ -42,10 +47,13 @@
       <!-- Edit Mode Actions -->
       @if (isEditMode()) {
         <button
+          i18n
           mat-icon-button
+          i18n-aria-label
           aria-label="Duplicate"
           class="icon-btn-compact"
           (click)="duplicate.emit()"
+          i18n-matTooltip
           matTooltip="Duplicate"
           data-testid="btn-duplicate"
           style="color: var(--sys-secondary)"
@@ -53,10 +61,13 @@
           <mat-icon>content_copy</mat-icon>
         </button>
         <button
+          i18n
           mat-icon-button
+          i18n-aria-label
           aria-label="Edit"
           class="icon-btn-compact"
           (click)="edit.emit()"
+          i18n-matTooltip
           matTooltip="Edit"
           data-testid="btn-edit"
           style="color: var(--sys-secondary)"
@@ -64,10 +75,13 @@
           <mat-icon>edit</mat-icon>
         </button>
         <button
+          i18n
           mat-icon-button
+          i18n-aria-label
           aria-label="Delete"
           class="icon-btn-compact"
           (click)="delete.emit()"
+          i18n-matTooltip
           matTooltip="Delete"
           data-testid="btn-delete"
           style="color: var(--sys-error)"
@@ -79,11 +93,14 @@
       <!-- Refresh Button -->
       @if (widgetInput().type !== 'TEXT') {
         <button
+          i18n
           mat-icon-button
+          i18n-aria-label
           aria-label="Refresh"
           class="icon-btn-compact"
           (click)="manualRefresh()"
           [disabled]="isLoadingLocal()"
+          i18n-matTooltip
           matTooltip="Refresh"
           style="color: var(--sys-primary)"
         >
@@ -98,10 +115,11 @@
     <!-- Error State -->
     @if (errorMessage(); as error) {
       <div class="center-overlay p-4" data-testid="error-state" style="color: var(--sys-error)">
-        <mat-icon class="text-4xl mb-2">warning</mat-icon>
-        <span class="text-sm font-medium text-center">{{ error }}</span>
+        <mat-icon i18n class="text-4xl mb-2">warning</mat-icon>
+        <span i18n class="text-sm font-medium text-center">{{ error }}</span>
         @if (isEditMode()) {
           <button
+            i18n
             mat-stroked-button
             color="warn"
             class="mt-4"
@@ -149,7 +167,9 @@
             <viz-markdown [content]="widgetInput().config['content']"></viz-markdown>
           }
           @default {
-            <div class="center-overlay" style="color: var(--sys-text-secondary)">Unknown Viz</div>
+            <div i18n class="center-overlay" style="color: var(--sys-text-secondary)">
+              Unknown Viz
+            </div>
           }
         }
       </div>
@@ -160,15 +180,19 @@
 <!-- Error Boundary Fallback Template -->
 <ng-template #safeModeTpl let-error let-retry="retry">
   <div class="safe-mode-container">
-    <div class="safe-mode-title"><mat-icon>bug_report</mat-icon> Widget Crashed</div>
+    <div class="safe-mode-title">
+      <mat-icon i18n>bug_report</mat-icon> <span i18n>Widget Crashed</span>
+    </div>
     <div class="safe-mode-desc">
-      Error rendering visualization.<br />
-      <span class="font-mono text-xs">{{ error?.message || error }}</span>
+      <span i18n>Error rendering visualization.</span><br />
+      <span i18n class="font-mono text-xs">{{ error?.message || error }}</span>
     </div>
     <div class="flex gap-2">
-      <button mat-stroked-button (click)="retry()" class="border-white text-white">Retry</button>
+      <button i18n mat-stroked-button (click)="retry()" class="border-white text-white">
+        Retry
+      </button>
       @if (isEditMode()) {
-        <button mat-stroked-button (click)="resetWidget()" class="bg-white text-error">
+        <button i18n mat-stroked-button (click)="resetWidget()" class="bg-white text-error">
           Reset Defaults
         </button>
       }

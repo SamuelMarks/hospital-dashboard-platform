@@ -111,7 +111,7 @@ export function jsonValidator(): ValidatorFn {
     MatDividerModule,
     MatProgressSpinnerModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

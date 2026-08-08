@@ -87,6 +87,33 @@
   cursor: grabbing;
 }
 
+.drag-handle-overlay {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  cursor: grab;
+  background-color: var(--sys-surface);
+  border: 1px solid var(--sys-surface-border);
+  border-radius: 4px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.grid-item:hover .drag-handle-overlay {
+  opacity: 1;
+}
+
+.drag-handle-overlay:active {
+  cursor: grabbing;
+}
+
 .cdk-drag-preview {
   box-sizing: border-box;
   border-radius: 8px;
@@ -94,6 +121,7 @@
   background-color: var(--sys-surface);
   opacity: 0.95;
   z-index: 10000;
+  pointer-events: none !important;
 }
 
 .drag-placeholder {

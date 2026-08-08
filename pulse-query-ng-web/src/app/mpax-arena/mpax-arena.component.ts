@@ -2,7 +2,7 @@
 /** @docs */
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,7 +20,7 @@ import { ActivatedRoute } from '@angular/router';
   selector: 'app-mpax-arena',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -30,43 +30,49 @@ import { ActivatedRoute } from '@angular/router';
     VizMarkdownComponent,
     SqlSnippetComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <div class="mpax-container">
       <div class="header">
-        <h1 class="text-2xl font-light mb-1">MPAX vs LLM Arena</h1>
-        <p class="text-gray-500">Compare Mathematical Optimization vs Generative AI</p>
+        <h1 i18n class="text-2xl font-light mb-1">MPAX vs LLM Arena</h1>
+        <p i18n class="text-gray-500">Compare Mathematical Optimization vs Generative AI</p>
       </div>
 
       <mat-card class="form-panel p-4 mb-6">
         <div class="flex gap-4">
           <mat-form-field appearance="outline" class="flex-grow">
-            <mat-label>Scenario Prompt</mat-label>
+            <mat-label i18n>Scenario Prompt</mat-label>
             <textarea
               matInput
-              [(ngModel)]="prompt"
+              [value]="prompt()"
+              (input)="prompt.set($any($event.target).value)"
               rows="3"
               placeholder="Describe the scenario..."
             ></textarea>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="w-64">
-            <mat-label>Evaluation Mode</mat-label>
-            <mat-select [(ngModel)]="mode">
-              <mat-option value="judge">1. Ground Truth Judge</mat-option>
-              <mat-option value="translator">2. Translators</mat-option>
-              <mat-option value="constraints">3. Constraint Generation</mat-option>
-              <mat-option value="sql_vs_mpax">4. SQL vs MPAX</mat-option>
-              <mat-option value="critic">5. Feedback Critic</mat-option>
+            <mat-label i18n>Evaluation Mode</mat-label>
+            <mat-select
+              [value]="mode()"
+              (selectionChange)="mode.set($event.value)"
+              aria-label="Select option"
+            >
+              <mat-option i18n value="judge">1. Ground Truth Judge</mat-option>
+              <mat-option i18n value="translator">2. Translators</mat-option>
+              <mat-option i18n value="constraints">3. Constraint Generation</mat-option>
+              <mat-option i18n value="sql_vs_mpax">4. SQL vs MPAX</mat-option>
+              <mat-option i18n value="critic">5. Feedback Critic</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
 
         <button
+          i18n
           mat-flat-button
           color="primary"
           (click)="run()"
-          [disabled]="isLoading() || !prompt.trim()"
+          [disabled]="isLoading() || !prompt().trim()"
         >
           @if (isLoading()) {
             <mat-progress-spinner
@@ -89,7 +95,7 @@ import { ActivatedRoute } from '@angular/router';
         <div class="results-grid">
           @if (res.ground_truth_mpax) {
             <mat-card class="mpax-panel p-4 bg-blue-50 border-blue-200 border">
-              <h3 class="font-bold text-blue-900 mb-2">MPAX Ground Truth</h3>
+              <h3 i18n class="font-bold text-blue-900 mb-2">MPAX Ground Truth</h3>
               <pre class="text-xs overflow-auto">{{ res.ground_truth_mpax | json }}</pre>
             </mat-card>
           }
@@ -101,7 +107,7 @@ import { ActivatedRoute } from '@angular/router';
 
                 @if (cand.mpax_score !== null && cand.mpax_score !== undefined) {
                   <div class="mb-4 p-2 bg-gray-100 rounded">
-                    <strong>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
+                    <strong i18n>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
                   </div>
                 }
 
@@ -113,7 +119,7 @@ import { ActivatedRoute } from '@angular/router';
 
                 @if (cand.mpax_result) {
                   <div class="mt-4 p-2 bg-gray-50 border rounded">
-                    <h4 class="font-bold text-xs text-gray-500 mb-1">Generated MPAX Result</h4>
+                    <h4 i18n class="font-bold text-xs text-gray-500 mb-1">Generated MPAX Result</h4>
                     <pre class="text-xs overflow-auto">{{ cand.mpax_result | json }}</pre>
                   </div>
                 }
@@ -141,9 +147,10 @@ import { ActivatedRoute } from '@angular/router';
 export class MpaxArenaComponent {
   private readonly api = inject(MpaxArenaService);
 
-  prompt =
-    'We have 15 incoming Cardiac patients and 10 MedSurg beds, 2 ICU beds. Where should they go to minimize overflow?';
-  mode = 'judge';
+  readonly prompt = signal(
+    'We have 15 incoming Cardiac patients and 10 MedSurg beds, 2 ICU beds. Where should they go to minimize overflow?',
+  );
+  readonly mode = signal('judge');
 
   isLoading = signal(false);
   error = signal<string | null>(null);
@@ -156,8 +163,8 @@ export class MpaxArenaComponent {
 
     this.api
       .runMpaxArenaApiV1MpaxArenaRunPost({
-        prompt: this.prompt,
-        mode: this.mode,
+        prompt: this.prompt(),
+        mode: this.mode(),
       })
       .pipe(finalize(() => this.isLoading.set(false)))
       .subscribe({

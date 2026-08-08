@@ -1,0 +1,37 @@
+appId: io.healthplatform.pulsequery
+---
+- launchApp
+- tapOn: "Settings"
+- assertVisible: "Profile Management"
+
+# Profile Management
+- tapOn: "Edit Profile"
+- tapOn: "Name"
+- eraseText: 50
+- inputText: "Test User Updated"
+- hideKeyboard
+- tapOn: "Save"
+- assertVisible: "Test User Updated"
+
+# RBAC Verification
+- scrollUntilVisible:
+    element: "Role and Permissions"
+    direction: DOWN
+- tapOn: "Role and Permissions"
+- assertVisible: "Assigned Role"
+- tapOn: "Close"
+
+# Preferences
+- scrollUntilVisible:
+    element: "App Preferences"
+    direction: DOWN
+- tapOn: "App Preferences"
+- tapOn: "Dark Mode" # Toggle dark mode
+- tapOn: "Language"
+- tapOn: "Spanish"
+- tapOn: "Apply"
+- assertVisible: "Idioma" # Verify language change loosely
+- tapOn: "Idioma"
+- tapOn: "English"
+- tapOn: "Apply"
+- tapOn: "Close"

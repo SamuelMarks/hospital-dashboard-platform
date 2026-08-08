@@ -33,7 +33,6 @@ import { ToolbarComponent } from './dashboard/toolbar.component';
  * @class
  */
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   imports: [RouterOutlet, MatSidenavModule, AskDataComponent, ToolbarComponent],
   templateUrl: './app.html',
@@ -92,7 +91,9 @@ export class App implements OnInit {
   /** route property. */
   private readonly route = inject(ActivatedRoute);
 
+  /** Document reference for lang manipulation */
   private readonly document = inject(DOCUMENT);
+  /** Locale ID for accessibility lang attribute */
   private readonly localeId = inject(LOCALE_ID);
 
   /** Ng On Init. */

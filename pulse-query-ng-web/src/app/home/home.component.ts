@@ -42,7 +42,7 @@ import { OnboardingService } from '../shared/components/onboarding/onboarding.se
     ThemeToggleComponent,
     OnboardingWizardComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './home.component.html',
   styles: [
     `

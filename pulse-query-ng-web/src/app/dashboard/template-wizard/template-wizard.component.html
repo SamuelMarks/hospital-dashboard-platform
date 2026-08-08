@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>Add Widget from Marketplace</h2>
+<h2 i18n mat-dialog-title>Add Widget from Marketplace</h2>
 
 <!-- WRAPPER: Flex -->
 <!-- Fix: Use inline styles or vars for backgrounds to support dark mode -->
@@ -7,7 +7,7 @@
     <!-- Disable animation for E2E speed/stability -->
     <mat-stepper [linear]="true" #stepper class="h-full" animationDuration="0ms">
       <!-- STEP 1: Selection -->
-      <mat-step [stepControl]="selectionForm">
+      <mat-step i18n [stepControl]="selectionForm">
         <ng-template matStepLabel>Select Template</ng-template>
 
         <div class="step-content pt-4" style="background-color: var(--sys-background)">
@@ -24,7 +24,12 @@
               <!-- Filters -->
               <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
                 <mat-icon matPrefix>search</mat-icon>
-                <input matInput placeholder="Search..." (input)="updateSearch($event)" />
+                <input
+                  matInput
+                  i18n-placeholder
+                  placeholder="Search..."
+                  (input)="updateSearch($event)"
+                />
               </mat-form-field>
 
               <mat-chip-set class="mb-2">
@@ -96,6 +101,7 @@
                   color: var(--sys-text-primary);
                 "
                 [placeholder]="placeholderText"
+                i18n-aria-label
                 aria-label="SQL Code Editor"
               ></textarea>
             </div>
@@ -104,7 +110,7 @@
       </mat-step>
 
       <!-- STEP 2: Parameters -->
-      <mat-step [completed]="paramsValid()">
+      <mat-step i18n [completed]="paramsValid()">
         <ng-template matStepLabel>Configure Parameters</ng-template>
         <div
           class="step-content pt-4 h-96 overflow-y-auto"
@@ -129,7 +135,7 @@
       </mat-step>
 
       <!-- STEP 3: Preview -->
-      <mat-step>
+      <mat-step i18n>
         <ng-template matStepLabel>Preview & Save</ng-template>
         <div
           class="step-content pt-4 h-full flex flex-col"
@@ -197,14 +203,15 @@
     class="p-4 border-t flex justify-end items-center gap-3 flex-none z-10"
     style="background-color: var(--sys-surface); border-color: var(--sys-surface-border)"
   >
-    <button mat-button (click)="cancel()">Cancel</button>
+    <button i18n mat-button (click)="cancel()">Cancel</button>
     @if (stepper.selectedIndex > 0) {
-      <button mat-button (click)="stepper.previous()">Back</button>
+      <button i18n mat-button (click)="stepper.previous()">Back</button>
     }
 
     @switch (stepper.selectedIndex) {
       @case (0) {
         <button
+          i18n
           mat-flat-button
           color="primary"
           (click)="parseParams(); stepper.next()"
@@ -215,6 +222,7 @@
       }
       @case (1) {
         <button
+          i18n
           mat-flat-button
           color="primary"
           (click)="renderPreview(); stepper.next()"
@@ -224,7 +232,7 @@
         </button>
       }
       @case (2) {
-        <button mat-flat-button color="accent" (click)="saveWidget()" [disabled]="isRunning()">
+        <button i18n mat-flat-button color="accent" (click)="saveWidget()" [disabled]="isRunning()">
           Add Widget
         </button>
       }

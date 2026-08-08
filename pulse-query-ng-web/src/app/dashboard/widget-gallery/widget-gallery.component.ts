@@ -10,7 +10,7 @@ import {
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,7 +28,7 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
   selector: 'app-widget-gallery',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     DragDropModule,
     MatCardModule,
     MatIconModule,
@@ -39,7 +39,7 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
     MatProgressSpinnerModule,
     MatExpansionModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

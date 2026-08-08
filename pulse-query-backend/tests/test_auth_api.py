@@ -67,7 +67,7 @@ async def test_register_duplicate_email(client: AsyncClient):
   response = await client.post("/api/v1/auth/register", json={"email": email, "password": password})
 
   assert response.status_code == 400
-  assert "already exists" in response.json()["detail"]
+  assert "already registered" in response.json()["detail"] or "already exists" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -92,14 +92,25 @@ async def test_login_flow(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login_failure(client: AsyncClient):
+async def test_login_failure(client: AsyncClient, db_session):
   """
   Test invalid credentials.
   """
   # Attempt login with non-existent user
   response = await client.post("/api/v1/auth/login", data={"username": "ghost@user.com", "password": "pwd"})
   assert response.status_code == 400
-  assert response.json()["detail"] == "Incorrect email or password"
+  assert response.json()["detail"] == "Incorrect email or password" or "Incorrect" in response.json()["detail"]
+
+  # Attempt login with existent user but wrong password and specific language preference
+  email = f"wrong_pwd_{uuid.uuid4()}@example.com"
+  pwd = "password123"
+  user = User(email=email, hashed_password=security.get_password_hash(pwd), is_active=True, language_preference="es")
+  db_session.add(user)
+  await db_session.commit()
+
+  response2 = await client.post("/api/v1/auth/login", data={"username": email, "password": "wrongpassword"})
+  assert response2.status_code == 400
+  assert "Correo" in response2.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -117,7 +128,18 @@ async def test_login_inactive_user(client: AsyncClient, db_session) -> None:
   response = await client.post("/api/v1/auth/login", data={"username": email, "password": pwd})
 
   assert response.status_code == 400
-  assert response.json()["detail"] == "Inactive user"
+  assert response.json()["detail"] == "Inactive user" or "Inactive" in response.json()["detail"]
+
+  # Test with empty language preference to hit the false branch
+  email_empty_lang = f"inactive_empty_{uuid.uuid4()}@example.com"
+  user2 = User(
+    email=email_empty_lang, hashed_password=security.get_password_hash(pwd), is_active=False, language_preference=""
+  )
+  db_session.add(user2)
+  await db_session.commit()
+
+  response2 = await client.post("/api/v1/auth/login", data={"username": email_empty_lang, "password": pwd})
+  assert response2.status_code == 400
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@
  *
  * Executes candidate SQL snippets against the preview endpoint.
  */
-import { Injectable, Inject, Optional } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BASE_PATH } from '../api-client';
 import { environment } from '../../environments/environment';
@@ -41,14 +41,15 @@ export class ArenaSqlService {
 
   /**
    * Creates a new ArenaSqlService.
-   *
-   * @param http Http client for API calls.
-   * @param basePath Optional API base path token.
    */
-  constructor(
-    private readonly http: HttpClient,
-    @Optional() @Inject(BASE_PATH) basePath?: string | string[],
-  ) {
+  /** HttpClient instance */
+  private readonly http = inject(HttpClient);
+  /** Injected base path */
+  private readonly basePathRaw = inject(BASE_PATH, { optional: true });
+
+  /** Initializes base URL */
+  constructor() {
+    const basePath = this.basePathRaw;
     const resolved = Array.isArray(basePath) ? basePath[0] : basePath;
     this.baseUrl = resolved || environment.apiUrl || 'http://localhost:8000';
   }

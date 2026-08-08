@@ -23,7 +23,6 @@ import { vi } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-builder',
   template: '<div data-testid="mock-sql-builder"></div>',
 })

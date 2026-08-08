@@ -9,7 +9,6 @@ import { Router } from '@angular/router';
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-snippet',
   template: '',
 })

@@ -47,7 +47,7 @@ export default defineConfig({
     {
       command:
         "cd ../pulse-query-backend && uv run uvicorn app.main:app --port 8000",
-      url: "http://localhost:8000/api/v1/openapi.json",
+      url: "http://127.0.0.1:8000/api/v1/openapi.json",
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
       env: { USE_SQLITE_ALEMBIC: "1" },

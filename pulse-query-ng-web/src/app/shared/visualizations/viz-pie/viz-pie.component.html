@@ -21,7 +21,7 @@
   </svg>
 
   <!-- Keyboard Accessible Legend -->
-  <div class="legend" role="list" aria-label="Chart Legend">
+  <div class="legend" role="list" i18n-aria-label aria-label="Chart Legend">
     @for (slice of slices(); track slice.label) {
       <div
         class="legend-item"
@@ -35,7 +35,7 @@
         [attr.aria-label]="slice.label + ': ' + slice.percentage + ' percent'"
       >
         <div class="dot" [style.background-color]="slice.color" aria-hidden="true"></div>
-        <span>{{ slice.label }}</span>
+        <span i18n>{{ slice.label }}</span>
       </div>
     }
   </div>

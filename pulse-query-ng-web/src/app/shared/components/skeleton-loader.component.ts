@@ -11,7 +11,7 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 @Component({
   selector: 'app-skeleton-loader',
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

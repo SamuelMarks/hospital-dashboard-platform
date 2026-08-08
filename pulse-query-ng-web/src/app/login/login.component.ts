@@ -31,7 +31,7 @@ import { environment } from '../../environments/environment';
     MatIconModule,
     MatProgressBarModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     // Same styles
     `

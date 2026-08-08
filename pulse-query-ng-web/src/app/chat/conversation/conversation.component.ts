@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize, retry } from 'rxjs/operators';
@@ -46,7 +46,7 @@ import { ArenaSqlService } from '../arena-sql.service';
   selector: 'app-conversation',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
     MatInputModule,
@@ -60,7 +60,7 @@ import { ArenaSqlService } from '../arena-sql.service';
     VizTableComponent,
     SqlSnippetComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './conversation.component.html',
   styles: [
     `
@@ -260,7 +260,7 @@ export class ConversationComponent implements AfterViewChecked {
   /** Reference to the scroll container. */
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   /** Input text model. */
-  inputText = '';
+  readonly inputText = signal('');
 
   /** Signal map for candidate results. */
   readonly candidateResults = signal<Record<string, TableDataSet | null>>({});
@@ -290,9 +290,10 @@ export class ConversationComponent implements AfterViewChecked {
 
   /** Sends the current message. */
   send(): void {
-    if (!this.inputText.trim()) return;
-    this.store.sendMessage(this.inputText);
-    this.inputText = '';
+    const text = this.inputText().trim();
+    if (!text) return;
+    this.store.sendMessage(text);
+    this.inputText.set('');
   }
 
   /** Cleans message content removing SQL blocks. */

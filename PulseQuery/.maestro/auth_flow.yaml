@@ -3,10 +3,36 @@ appId: io.healthplatform.pulsequery
 - launchApp:
     clearState: true
 - assertVisible: "Welcome to PulseQuery"
+
+# Test Edge Case: Invalid Credentials
 - tapOn: "Email"
+- inputText: "invalid@test.com"
+- hideKeyboard
+- tapOn: "Password"
+- inputText: "wrongpassword"
+- hideKeyboard
+- tapOn: "Login / Register"
+- assertVisible: "Invalid credentials" # Ensure error message is shown
+- tapOn: "OK" # Dismiss dialog if applicable
+
+# Test Edge Case: Password Reset Flow
+- tapOn: "Forgot Password?"
+- assertVisible: "Reset Password"
+- tapOn: "Email Address"
+- inputText: "test@test.com"
+- hideKeyboard
+- tapOn: "Send Reset Link"
+- assertVisible: "Reset link sent" # Verify confirmation
+- tapOn: "Back to Login"
+- assertVisible: "Welcome to PulseQuery"
+
+# Test Happy Path: Successful Login
+- tapOn: "Email"
+- eraseText: 50
 - inputText: "test@test.com"
 - hideKeyboard
 - tapOn: "Password"
+- eraseText: 50
 - inputText: "password"
 - hideKeyboard
 - tapOn: "Login / Register"

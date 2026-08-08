@@ -19,7 +19,6 @@ import { of } from 'rxjs';
 import { readTemplate } from '../../test-utils/component-resources';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-builder',
   template: '<div data-testid="mock-sql-builder"></div>',
 })
@@ -31,7 +30,6 @@ class MockSqlBuilderComponent {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-http-config',
   template: '<div data-testid="mock-http-config"></div>',
 })

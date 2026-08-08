@@ -51,7 +51,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
   ],
   /* v8 ignore next */
   providers: [ChatStore],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './chat-layout.component.html',
   styles: [
     `

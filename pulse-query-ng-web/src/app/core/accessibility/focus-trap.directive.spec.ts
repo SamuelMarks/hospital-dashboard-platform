@@ -12,7 +12,7 @@ import { FocusTrapDirective } from './focus-trap.directive';
 @Component({
   selector: 'app-test-focus-trap',
   imports: [FocusTrapDirective],
-  changeDetection: ChangeDetectionStrategy.Eager,
+
   template: `
     <div appFocusTrap [autoFocus]="autoFocus()" (escape)="onEscape()">
       <button id="first">First</button>

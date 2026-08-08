@@ -9,10 +9,9 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 import { readTemplate } from '../../test-utils/component-resources';
 import { ActivatedRoute } from '@angular/router';
 import { of, BehaviorSubject } from 'rxjs';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-table',
   template: '',
 })
@@ -58,7 +57,7 @@ describe('SimulationComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      imports: [SimulationComponent, NoopAnimationsModule, FormsModule],
+      imports: [SimulationComponent, NoopAnimationsModule, ReactiveFormsModule],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         {

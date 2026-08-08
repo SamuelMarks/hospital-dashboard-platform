@@ -11,9 +11,6 @@ async function checkA11y(page: any, contextName: string) {
 
   const accessibilityScanResults = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    // Exclude CodeMirror which has known contrast issues in some themes that are out of our control
-    // and mat-select-panel which might be hidden/floating
-    .exclude('.cm-editor')
     .analyze();
 
   if (accessibilityScanResults.violations.length > 0) {
@@ -102,8 +99,37 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
       await expect(loggedInPage).toHaveURL(/\/dashboard\//, { timeout: 15000 });
       // Wait for layout to settle (Toolbar, Grid, or Empty State)
       await expect(loggedInPage.locator('app-toolbar')).toBeVisible({ timeout: 15000 });
+    });
 
-      await checkA11y(loggedInPage, 'Dashboard Detail');
+    // D. Editor View
+    await test.step('Editor View', async () => {
+      // 1. Turn on Edit Mode
+      await loggedInPage.getByTestId('toggle-edit-mode').click();
+
+      // 2. Click "Add Widget"
+      await loggedInPage.getByTestId('btn-add-widget').click();
+
+      // 3. Switch to "Custom Query" Tab
+      await loggedInPage.getByText('Custom Query').click();
+
+      // 4. Select "SQL Database" Source Card
+      const sqlOption = loggedInPage.locator('.source-option').filter({ hasText: 'SQL Database' });
+      await expect(sqlOption).toBeVisible();
+      await sqlOption.click();
+
+      // 5. Click "Next: Configure"
+      const nextBtn = loggedInPage.getByRole('button', { name: 'Next: Configure' });
+      await nextBtn.click();
+
+      // 6. Verify transition to Step 2 (Editor View)
+      const editor = loggedInPage.locator('app-widget-builder app-sql-builder');
+      await expect(editor).toBeVisible({ timeout: 10000 });
+
+      // Wait for CodeMirror to be visible
+      await expect(loggedInPage.locator('.cm-editor')).toBeVisible({ timeout: 15000 });
+
+      // Check accessibility
+      await checkA11y(loggedInPage, 'Editor View');
     });
   });
 });

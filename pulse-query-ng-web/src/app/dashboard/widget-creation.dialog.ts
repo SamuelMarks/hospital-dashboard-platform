@@ -10,13 +10,7 @@ import {
   Signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  ReactiveFormsModule,
-  FormsModule,
-  FormBuilder,
-  Validators,
-  FormGroup,
-} from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 
 // Material Imports
 import { MatDialogRef, MatDialogModule, MAT_DIALOG_DATA } from '@angular/material/dialog';
@@ -52,7 +46,6 @@ export interface WidgetCreationData {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    FormsModule,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
@@ -65,7 +58,7 @@ export interface WidgetCreationData {
     SqlBuilderComponent,
     HttpConfigComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './widget-creation.dialog.html',
   styleUrls: ['./widget-creation.dialog.css'],
 })

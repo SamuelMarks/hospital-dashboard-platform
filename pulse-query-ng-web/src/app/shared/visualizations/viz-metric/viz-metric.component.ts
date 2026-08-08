@@ -23,7 +23,7 @@ export interface MetricConfig {
 @Component({
   selector: 'viz-metric',
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

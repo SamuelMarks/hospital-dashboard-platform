@@ -32,7 +32,7 @@ export interface TableConfig {
 @Component({
   selector: 'viz-table',
   imports: [CommonModule, MatTableModule, MatPaginatorModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

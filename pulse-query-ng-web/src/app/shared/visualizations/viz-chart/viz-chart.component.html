@@ -1,7 +1,7 @@
 <div class="wrapper">
   <div class="header">
-    <span>{{ axisKeys().y }}</span>
-    <span>{{ axisKeys().x }}</span>
+    <span i18n>{{ axisKeys().y }}</span>
+    <span i18n>{{ axisKeys().x }}</span>
   </div>
 
   <div class="plot-area">
@@ -38,7 +38,9 @@
           }
         </div>
       } @empty {
-        <div class="flex items-center justify-center h-full w-full opacity-50 text-xs">No Data</div>
+        <div i18n class="flex items-center justify-center h-full w-full opacity-50 text-xs">
+          No Data
+        </div>
       }
     </div>
   </div>

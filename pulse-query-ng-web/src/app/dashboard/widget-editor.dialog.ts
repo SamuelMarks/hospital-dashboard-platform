@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 
 // Material Imports
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -47,7 +47,7 @@ export interface WidgetEditorData {
   selector: 'app-widget-editor-dialog',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
@@ -57,7 +57,7 @@ export interface WidgetEditorData {
     SqlBuilderComponent,
     HttpConfigComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

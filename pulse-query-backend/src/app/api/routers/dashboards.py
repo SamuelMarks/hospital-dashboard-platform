@@ -10,12 +10,13 @@ import copy
 from typing import Annotated, List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api import deps
+from app.core.i18n import get_translated_message
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
 from app.models.dashboard import Dashboard, Widget
@@ -37,7 +38,7 @@ router = APIRouter()
 # --- Validation Helper ---
 
 
-def _validate_sql_query(query: str) -> None:
+def _validate_sql_query(query: str, accept_language: str | None = None) -> None:
   """
   Performs a 'Dry Run' of the SQL query using DuckDB's PREPARE statement.
   This checks for syntax errors and schema validity (table existence) without
@@ -63,9 +64,10 @@ def _validate_sql_query(query: str) -> None:
   except Exception as e:
     # Extract the specific DuckDB error message
     error_msg = str(e).split("\n")[0]  # First line usually contains the core reason
+    msg = get_translated_message(accept_language, "error.invalid_sql", "Invalid SQL Query")
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail=f"Invalid SQL Query: {error_msg}",
+      detail=f"{msg}: {error_msg}",
     )
   finally:
     if conn:  # pragma: no cover
@@ -109,6 +111,7 @@ async def clone_dashboard(
   dashboard_id: UUID,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """
   Creates a deep copy of an existing dashboard and all its widgets.
@@ -131,7 +134,10 @@ async def clone_dashboard(
   source_dashboard = result.scalars().first()
 
   if not source_dashboard:
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   # 2. Create Destination Dashboard
   new_dashboard = Dashboard(name=f"Copy of {source_dashboard.name}", owner_id=current_user.id)
@@ -185,6 +191,7 @@ async def get_dashboard(
   dashboard_id: UUID,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """Get a specific dashboard details."""
   result = await db.execute(
@@ -194,7 +201,10 @@ async def get_dashboard(
   )
   dashboard = result.scalars().first()
   if not dashboard:
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
   return dashboard
 
 
@@ -204,12 +214,16 @@ async def update_dashboard(
   dashboard_update: DashboardCreate,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """Rename a dashboard."""
   result = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id))
   dashboard = result.scalars().first()
   if not dashboard:
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   dashboard.name = dashboard_update.name
   await db.commit()
@@ -221,12 +235,16 @@ async def delete_dashboard(
   dashboard_id: UUID,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """Delete dashboard (and cascades to widgets)."""
   result = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id))
   dashboard = result.scalars().first()
   if not dashboard:
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   await db.delete(dashboard)
   await db.commit()
@@ -241,17 +259,21 @@ async def create_widget(
   widget_in: WidgetCreate,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """Add a widget to the dashboard with Dry-Run Validation."""
   # 1. Ownership Check
   result = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id))
   if not result.scalars().first():
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   # 2. SQL Validation
   if widget_in.type == "SQL":  # pragma: no cover
     query = widget_in.config.query
-    _validate_sql_query(query)
+    _validate_sql_query(query, accept_language or current_user.language_preference)
 
   # 3. Creation
   widget = Widget(
@@ -272,6 +294,7 @@ async def update_widget(
   widget_in: WidgetUpdate,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """Update widget configuration (e.g., resize, change query) with Dry-Run."""
   result = await db.execute(
@@ -279,7 +302,10 @@ async def update_widget(
   )
   widget = result.scalars().first()
   if not widget:
-    raise HTTPException(status_code=404, detail="Widget not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.widget_not_found", "Widget not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   updating_sql = False
   if widget.type == "SQL" and widget_in.config and "query" in widget_in.config:  # pragma: no cover
@@ -287,7 +313,7 @@ async def update_widget(
 
   if updating_sql:  # pragma: no cover
     current_query = widget_in.config["query"]  # New Query
-    _validate_sql_query(current_query)
+    _validate_sql_query(current_query, accept_language or current_user.language_preference)
 
   # Update fields
   update_data = widget_in.model_dump(exclude_unset=True)
@@ -303,6 +329,7 @@ async def delete_widget(
   widget_id: UUID,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ):
   """Delete a widget owned by the current user."""
   result = await db.execute(
@@ -310,7 +337,10 @@ async def delete_widget(
   )
   widget = result.scalars().first()
   if not widget:
-    raise HTTPException(status_code=404, detail="Widget not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.widget_not_found", "Widget not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   await db.delete(widget)
   await db.commit()
@@ -322,6 +352,7 @@ async def reorder_widgets(
   request: WidgetReorderRequest,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> dict:
   """
   Bulk update widget positions and groups.
@@ -330,7 +361,10 @@ async def reorder_widgets(
   # 1. Verify Dashboard Ownership
   result = await db.execute(select(Dashboard).where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id))
   if not result.scalars().first():
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+    msg = get_translated_message(
+      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
+    )
+    raise HTTPException(status_code=404, detail=msg)
 
   # 2. Fetch all widgets in this dashboard
   result = await db.execute(select(Widget).where(Widget.dashboard_id == dashboard_id))

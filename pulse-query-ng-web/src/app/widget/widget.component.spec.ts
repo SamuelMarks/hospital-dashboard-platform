@@ -45,7 +45,6 @@ vi.mock('@material/material-color-utilities', () => ({
 }));
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-table',
   template: '',
 })
@@ -54,7 +53,6 @@ class MockVizTableComponent {
   readonly config = input<unknown>();
 }
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-metric',
   template: '',
 })
@@ -63,7 +61,6 @@ class MockVizMetricComponent {
   readonly config = input<unknown>();
 }
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-chart',
   template: '',
 })
@@ -72,7 +69,6 @@ class MockVizChartComponent {
   readonly config = input<unknown>();
 }
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-pie',
   template: '',
 })
@@ -80,7 +76,6 @@ class MockVizPieComponent {
   readonly dataSet = input<unknown>();
 }
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-heatmap',
   template: '',
 })
@@ -88,7 +83,6 @@ class MockVizHeatmapComponent {
   readonly dataSet = input<unknown>();
 }
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-scalar',
   template: '',
 })
@@ -96,7 +90,6 @@ class MockVizScalarComponent {
   readonly data = input<unknown>();
 }
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-markdown',
   template: '',
 })

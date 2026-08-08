@@ -22,3 +22,29 @@ appId: io.healthplatform.pulsequery
 - tapOn: "Add Widget"
 - assertVisible: "Adding widgets requires detailed configuration"
 - tapOn: "OK"
+
+# Interaction with specific widgets and drill-downs
+- tapOn:
+    text: "Hospital Command Center" # Switch to an existing dashboard with widgets
+    optional: true
+- assertVisible: "Hospital Command Center"
+
+# Verify global filtering
+- tapOn: "Filter"
+- assertVisible: "Data Filters"
+- tapOn: "Department"
+- tapOn: "Emergency"
+- tapOn: "Apply"
+- assertVisible: "Emergency" # Filter chip is visible
+
+# Drill-down interaction
+- tapOn: "Bed Occupancy" # Tap on a specific metric/chart widget
+- assertVisible: "Widget Details" # Expected drill-down view or expanded state
+- tapOn: "Close"
+
+# Try another widget interaction
+- tapOn: "Admissions Trend"
+- swipe:
+    direction: RIGHT
+    duration: 1000
+- assertVisible: "Dashboard" # Swiped back to main view

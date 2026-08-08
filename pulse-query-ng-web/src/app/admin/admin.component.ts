@@ -24,17 +24,17 @@ import { forkJoin } from 'rxjs';
 @Component({
   selector: 'app-admin',
   imports: [CommonModule, ReactiveFormsModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     @if (settingsLoaded()) {
       <div class="admin-container">
-        <h2>Admin Configuration</h2>
+        <h2 i18n>Admin Configuration</h2>
 
         <form [formGroup]="adminForm" (ngSubmit)="saveSettings()">
           <div class="section" formGroupName="apiKeys">
-            <h3>API Keys</h3>
+            <h3 i18n>API Keys</h3>
             <div class="key-item">
-              <label for="openai-key">OpenAI API Key</label>
+              <label i18n for="openai-key">OpenAI API Key</label>
               <input
                 id="openai-key"
                 type="password"
@@ -44,7 +44,7 @@ import { forkJoin } from 'rxjs';
               />
             </div>
             <div class="key-item">
-              <label for="anthropic-key">Anthropic API Key</label>
+              <label i18n for="anthropic-key">Anthropic API Key</label>
               <input
                 id="anthropic-key"
                 type="password"
@@ -56,12 +56,12 @@ import { forkJoin } from 'rxjs';
           </div>
 
           <div class="section">
-            <h3 id="visible-models-title">Visible Models</h3>
-            <p id="visible-models-desc">
+            <h3 i18n id="visible-models-title">Visible Models</h3>
+            <p i18n id="visible-models-desc">
               Select which models are shown to users in the Ad-hoc query interface.
             </p>
             <fieldset aria-labelledby="visible-models-title" aria-describedby="visible-models-desc">
-              <legend class="sr-only">Available Models</legend>
+              <legend i18n class="sr-only">Available Models</legend>
               <div formArrayName="models">
                 @for (modelCtrl of modelsFormArray.controls; track trackByFn($index)) {
                   <div class="model-item">
@@ -75,7 +75,7 @@ import { forkJoin } from 'rxjs';
             </fieldset>
           </div>
 
-          <button type="submit" [disabled]="isSaving()">Save Configuration</button>
+          <button i18n type="submit" [disabled]="isSaving()">Save Configuration</button>
 
           @if (message()) {
             <div class="message" role="alert" aria-live="polite">{{ message() }}</div>
@@ -83,7 +83,7 @@ import { forkJoin } from 'rxjs';
         </form>
       </div>
     } @else {
-      <div class="loading" aria-live="polite">Loading settings...</div>
+      <div i18n class="loading" aria-live="polite">Loading settings...</div>
     }
   `,
   styles: [

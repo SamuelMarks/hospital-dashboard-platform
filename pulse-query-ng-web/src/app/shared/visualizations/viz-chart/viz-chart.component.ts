@@ -78,7 +78,7 @@ interface ChartItem {
 @Component({
   selector: 'viz-chart',
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

@@ -28,7 +28,7 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
@@ -62,7 +62,7 @@ import { ChatStore } from '../chat/chat.store';
   selector: 'app-sql-builder',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
@@ -76,7 +76,7 @@ import { ChatStore } from '../chat/chat.store';
   /* v8 ignore start */
   providers: [ChatStore],
   /* v8 ignore stop */
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {
@@ -248,17 +248,75 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
         // Use Compartment to wrap SQL extension for future updates
         this.languageConf.of(sql({ dialect: PostgreSQL })),
 
-        oneDark, // Dark Theme
+        // oneDark has contrast issues. We use our own styling or a high-contrast theme.
+        EditorView.theme(
+          {
+            '&': { height: '100%', backgroundColor: '#1e1e1e', color: '#f8f8f2' },
+            '.cm-content': { caretColor: '#f8f8f2' },
+            '.cm-scroller': { overflow: 'auto' },
+            '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#f8f8f2' },
+            '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
+              { backgroundColor: '#3a3d41' },
+            '.cm-panels': { backgroundColor: '#2d2d30', color: '#f8f8f2' },
+            '.cm-panels.cm-panels-top': { borderBottom: '2px solid black' },
+            '.cm-panels.cm-panels-bottom': { borderTop: '2px solid black' },
+            '.cm-searchMatch': {
+              backgroundColor: '#72a1ff59',
+              outline: '1px solid #457dff',
+            },
+            '.cm-searchMatch.cm-searchMatch-selected': {
+              backgroundColor: '#6199ff2f',
+            },
+            '.cm-activeLine': { backgroundColor: '#6699ff0b' },
+            '.cm-selectionMatch': { backgroundColor: '#aafe661a' },
+            '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
+              backgroundColor: '#bad0f847',
+            },
+            '.cm-gutters': {
+              backgroundColor: '#1e1e1e',
+              color: '#858585',
+              border: 'none',
+            },
+            '.cm-activeLineGutter': {
+              backgroundColor: '#2c313a',
+            },
+            '.cm-foldPlaceholder': {
+              backgroundColor: 'transparent',
+              border: 'none',
+              color: '#ddd',
+            },
+            '.cm-tooltip': {
+              border: 'none',
+              backgroundColor: '#252526',
+            },
+            '.cm-tooltip .cm-tooltip-arrow:before': {
+              borderTopColor: 'transparent',
+              borderBottomColor: 'transparent',
+            },
+            '.cm-tooltip .cm-tooltip-arrow:after': {
+              borderTopColor: '#252526',
+              borderBottomColor: '#252526',
+            },
+            '.cm-tooltip-autocomplete': {
+              '& > ul > li[aria-selected]': {
+                backgroundColor: '#094771',
+                color: 'white',
+              },
+            },
+          },
+          { dark: true },
+        ),
+
+        // Accessibility Fix: Add aria-label to the contenteditable area
+        EditorView.contentAttributes.of({
+          'aria-label': 'SQL Editor',
+        }),
+
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             const newCode = update.state.doc.toString();
             this.currentSql.set(newCode);
           }
-        }),
-        // Custom styling for host to ensure full height fill
-        EditorView.theme({
-          '&': { height: '100%' },
-          '.cm-scroller': { overflow: 'auto' },
         }),
       ],
     });

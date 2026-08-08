@@ -1,7 +1,7 @@
 <div class="h-full flex flex-col overflow-hidden" style="background-color: var(--sys-background)">
   <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0 dialog-header">
-    <h2 class="text-xl font-light m-0">Add Widget</h2>
-    <button mat-icon-button (click)="cancel()" aria-label="Close dialog">
+    <h2 i18n class="text-xl font-light m-0">Add Widget</h2>
+    <button i18n mat-icon-button (click)="cancel()" i18n-aria-label aria-label="Close dialog">
       <mat-icon>close</mat-icon>
     </button>
   </div>
@@ -14,14 +14,19 @@
       style="background: transparent"
     >
       <!-- STEP 1: SOURCE SELECTION -->
-      <mat-step [stepControl]="sourceForm" [completed]="!!draftWidgetId()">
+      <mat-step i18n [stepControl]="sourceForm" [completed]="!!draftWidgetId()">
         <ng-template matStepLabel>Select Source</ng-template>
 
         <div
           class="flex flex-col h-full overflow-hidden"
           style="background-color: var(--sys-background)"
         >
-          <mat-tab-group class="flex-grow" animationDuration="0ms" [(selectedIndex)]="selectedTab">
+          <mat-tab-group
+            class="flex-grow"
+            animationDuration="0ms"
+            [selectedIndex]="selectedTab()"
+            (selectedIndexChange)="selectedTab.set($event)"
+          >
             <!-- TAB 1: MARKETPLACE -->
             <mat-tab label="Templates">
               <div class="p-6 h-full overflow-y-auto">
@@ -35,6 +40,7 @@
                     <mat-icon matPrefix>search</mat-icon>
                     <input
                       matInput
+                      i18n-placeholder
                       placeholder="Search templates..."
                       (input)="updateSearch($event)"
                     />
@@ -174,7 +180,7 @@
       </mat-step>
 
       <!-- STEP 2 & 3: Configure & Visualize (Use consistent transparent background to let host control it) -->
-      <mat-step [completed]="dataConfigured()">
+      <mat-step i18n [completed]="dataConfigured()">
         <ng-template matStepLabel>Configure Data</ng-template>
         @if (draftWidget(); as widget) {
           <div class="h-full flex flex-col overflow-hidden">
@@ -239,7 +245,7 @@
         }
       </mat-step>
 
-      <mat-step>
+      <mat-step i18n>
         <ng-template matStepLabel>Visualize</ng-template>
         <!-- Visualize Step layout adjustments for themes -->
         <div class="h-full flex flex-col lg:flex-row overflow-hidden">
@@ -271,7 +277,7 @@
               <mat-divider class="mb-4"></mat-divider>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-2">
                 <mat-label>{{ isPie() ? 'Label Column' : 'X-Axis / Category' }}</mat-label>
-                <mat-select [formControl]="xKeyControl">
+                <mat-select [formControl]="xKeyControl" i18n-aria-label aria-label="Select option">
                   <mat-option [value]="null">Auto</mat-option>
                   @for (col of availableColumns(); track col) {
                     <mat-option [value]="col">{{ col }}</mat-option>
@@ -281,7 +287,7 @@
 
               <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>{{ isPie() ? 'Size Column' : 'Y-Axis / Value' }}</mat-label>
-                <mat-select [formControl]="yKeyControl">
+                <mat-select [formControl]="yKeyControl" i18n-aria-label aria-label="Select option">
                   <mat-option [value]="null">Auto</mat-option>
                   @for (col of availableColumns(); track col) {
                     <mat-option [value]="col">{{ col }}</mat-option>

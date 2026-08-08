@@ -168,16 +168,16 @@ describe('ConversationComponent', () => {
     });
 
     it('should send and clear inputText if valid', () => {
-      component.inputText = 'Hello';
+      component.inputText.set('Hello');
       const e = { shiftKey: false, preventDefault: vi.fn() } as unknown as KeyboardEvent;
       component.handleEnter(e);
       expect(e.preventDefault).toHaveBeenCalled();
       expect(mockStore.sendMessage).toHaveBeenCalledWith('Hello');
-      expect(component.inputText).toBe('');
+      expect(component.inputText()).toBe('');
     });
 
     it('should not send if inputText is empty', () => {
-      component.inputText = '   ';
+      component.inputText.set('   ');
       component.send();
       expect(mockStore.sendMessage).not.toHaveBeenCalled();
     });

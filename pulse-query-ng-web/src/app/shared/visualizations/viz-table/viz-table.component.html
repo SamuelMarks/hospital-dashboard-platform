@@ -3,12 +3,13 @@
     mat-table
     [dataSource]="dataSource"
     class="mat-elevation-z0"
+    i18n-aria-label
     aria-label="Data Results Table"
   >
     @for (col of finalColumns(); track col) {
       <ng-container [matColumnDef]="col">
-        <th mat-header-cell *matHeaderCellDef scope="col">{{ col }}</th>
-        <td mat-cell *matCellDef="let row">
+        <th i18n mat-header-cell *matHeaderCellDef scope="col">{{ col }}</th>
+        <td i18n mat-cell *matCellDef="let row">
           <!-- Applied heuristic styling and threshold class binding -->
           <span [class]="getCellClass(row, col)">
             {{ getCellValue(row, col) }}
@@ -21,7 +22,7 @@
     <tr mat-row *matRowDef="let row; columns: finalColumns()"></tr>
 
     <tr *matNoDataRow>
-      <td [attr.colspan]="finalColumns().length" class="p-8 text-center text-gray-500 italic">
+      <td i18n [attr.colspan]="finalColumns().length" class="p-8 text-center text-gray-500 italic">
         No data available
       </td>
     </tr>
@@ -33,5 +34,6 @@
   [pageSizeOptions]="[5, 10, 20]"
   showFirstLastButtons
   class="border-t"
+  i18n-aria-label
   aria-label="Table Paginator"
 ></mat-paginator>

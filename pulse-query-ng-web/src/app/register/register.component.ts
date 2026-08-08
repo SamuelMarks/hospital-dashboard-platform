@@ -54,7 +54,7 @@ export const passwordMatchValidator: ValidatorFn = (
     MatIconModule,
     MatProgressBarModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

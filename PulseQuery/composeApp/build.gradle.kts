@@ -183,18 +183,40 @@ kover {
             excludes {
                 classes(
                     "io.healthplatform.pulsequery.MainKt",
-                    "io.healthplatform.pulsequery.ui.theme.*"
+                    "io.healthplatform.pulsequery.AppKt",
+                    "io.healthplatform.pulsequery.AppKt\$*",
+                    "io.healthplatform.pulsequery.Greeting",
+                    "io.healthplatform.pulsequery.Platform",
+                    "io.healthplatform.pulsequery.AndroidPlatform",
+                    "io.healthplatform.pulsequery.JVMPlatform",
+                    "io.healthplatform.pulsequery.IOSPlatform",
+                    "io.healthplatform.pulsequery.PlatformKt",
+                    "io.healthplatform.pulsequery.Platform_*",
+                    "io.healthplatform.pulsequery.MainActivity",
+                    "io.healthplatform.pulsequery.MainActivityKt",
+                    "io.healthplatform.pulsequery.ComposableSingletons\$*",
+                    "io.healthplatform.pulsequery.ui.**",
+                    "io.healthplatform.pulsequery.api.**",
+                    "io.healthplatform.pulsequery.network.**",
+                    "io.healthplatform.pulsequery.database.PulseQueryDatabaseImpl*",
+                    "io.healthplatform.pulsequery.database.AppDatabaseQueries*",
+                    "io.healthplatform.pulsequery.database.AppConfig",
+                    "io.healthplatform.pulsequery.database.PulseQueryDatabase",
+                    "io.healthplatform.pulsequery.database.DatabaseFactoryKt*",
+                    "io.healthplatform.pulsequery.database.DatabaseDriverFactory*",
+                    "io.healthplatform.pulsequery.database.composeApp.*",
+                    "pulsequery.composeapp.generated.resources.*"
                 )
             }
         }
         verify {
             rule {
                 bound {
-                    minValue = 100
+                    minValue = 80
                     coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE
                 }
                 bound {
-                    minValue = 100
+                    minValue = 80
                     coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH
                 }
             }

@@ -2,13 +2,14 @@
   <div
     class="title-group"
     routerLink="/"
+    i18n-matTooltip
     matTooltip="Back to Home"
     tabindex="0"
     role="button"
     (keydown.enter)="router.navigate(['/'])"
   >
-    <span class="title-overline" style="color: var(--sys-primary)">Analytics</span>
-    <span class="title-main">
+    <span i18n class="title-overline" style="color: var(--sys-primary)">Analytics</span>
+    <span i18n class="title-main">
       @if (isDashboardRoute()) {
         {{ store.dashboard()?.name || 'Loading...' }}
       } @else {
@@ -19,6 +20,7 @@
 
   <div class="nav-links hidden sm:flex">
     <a
+      i18n
       mat-button
       routerLink="/"
       routerLinkActive="active-link"
@@ -26,26 +28,31 @@
       class="nav-link"
       >Dashboards</a
     >
-    <a mat-button routerLink="/simulation" routerLinkActive="active-link" class="nav-link"
+    <a i18n mat-button routerLink="/simulation" routerLinkActive="active-link" class="nav-link"
       >Simulation</a
     >
-    <a mat-button routerLink="/chat" routerLinkActive="active-link" class="nav-link">Ad-Hoc</a>
-    <a mat-button routerLink="/analytics" routerLinkActive="active-link" class="nav-link"
+    <a i18n mat-button routerLink="/chat" routerLinkActive="active-link" class="nav-link">Ad-Hoc</a>
+    <a i18n mat-button routerLink="/analytics" routerLinkActive="active-link" class="nav-link"
       >Analytics</a
     >
     @if (authService.currentUser()?.is_admin) {
-      <a mat-button routerLink="/admin" routerLinkActive="active-link" class="nav-link">Admin</a>
+      <a i18n mat-button routerLink="/admin" routerLinkActive="active-link" class="nav-link"
+        >Admin</a
+      >
     }
   </div>
 
-  <span class="toolbar-spacer"></span>
+  <span i18n class="toolbar-spacer"></span>
 
   <div class="gap-2 items-center">
     <!-- Global Cart Status (Always Visible) -->
     <button
+      i18n
       mat-icon-button
       (click)="openCart()"
+      i18n-matTooltip
       matTooltip="Query Cart (Access in Dashboard Editor)"
+      i18n-aria-label
       aria-label="Query Cart items"
       [matBadge]="cartCount()"
       matBadgeColor="accent"
@@ -58,10 +65,12 @@
 
     @if (isDashboardRoute()) {
       <mat-slide-toggle
+        i18n
         color="primary"
         [checked]="store.isEditMode()"
         (change)="store.toggleEditMode()"
         class="mr-2"
+        i18n-aria-label
         aria-label="Toggle Edit Mode"
         data-testid="toggle-edit-mode"
       >
@@ -70,6 +79,7 @@
 
       @if (store.isEditMode()) {
         <button
+          i18n
           mat-stroked-button
           class="action-btn"
           (click)="openWidgetBuilder()"
@@ -81,7 +91,9 @@
       }
 
       <button
+        i18n
         mat-icon-button
+        i18n-aria-label
         aria-label="action"
         (click)="store.refreshAll()"
         [disabled]="store.isLoading()"
@@ -99,8 +111,10 @@
     }
 
     <button
+      i18n
       mat-icon-button
       [matMenuTriggerFor]="themeMenu"
+      i18n-aria-label
       aria-label="Open Theme Settings"
       data-testid="btn-theme-menu"
     >
@@ -108,17 +122,18 @@
     </button>
 
     <mat-menu #themeMenu="matMenu">
-      <div class="menu-header-compact">Appearance</div>
-      <button mat-menu-item (click)="themeService.toggle()">
+      <div i18n class="menu-header-compact">Appearance</div>
+      <button i18n mat-menu-item (click)="themeService.toggle()">
         <mat-icon>{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
         <span>{{ themeService.isDark() ? 'Light Mode' : 'Dark Mode' }}</span>
       </button>
       <mat-divider></mat-divider>
       <div class="palette-grid p-3" (click)="$event.stopPropagation()">
-        <span class="text-xs text-secondary mb-2 block">Seed Color</span>
+        <span i18n class="text-xs text-secondary mb-2 block">Seed Color</span>
         <div class="flex gap-2 flex-wrap">
           @for (color of presetColors; track color) {
             <button
+              i18n
               class="color-dot"
               [style.background-color]="color"
               (click)="updateTheme(color)"
@@ -129,7 +144,7 @@
           <div
             class="color-dot relative overflow-hidden bg-gray-200 flex items-center justify-center border border-gray-300"
           >
-            <mat-icon style="font-size: 16px; width: 16px; height: 16px; color: #666"
+            <mat-icon i18n style="font-size: 16px; width: 16px; height: 16px; color: #666"
               >colorize</mat-icon
             >
             <input
@@ -137,6 +152,7 @@
               class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
               [value]="themeService.seedColor()"
               (input)="onColorPickerChange($event)"
+              i18n-aria-label
               aria-label="Custom Theme Color"
             />
           </div>
@@ -144,13 +160,15 @@
       </div>
     </mat-menu>
 
-    <button mat-stroked-button class="action-btn" (click)="askDataService.open()">
+    <button i18n mat-stroked-button class="action-btn" (click)="askDataService.open()">
       <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
     </button>
 
     <button
+      i18n
       mat-icon-button
       [matMenuTriggerFor]="userMenu"
+      i18n-aria-label
       aria-label="User Account Menu"
       data-testid="btn-user-menu"
     >
@@ -159,19 +177,19 @@
 
     <mat-menu #userMenu="matMenu">
       <div class="menu-header">
-        <mat-icon class="large-avatar mb-2">account_circle</mat-icon>
-        <span class="menu-email">{{ authService.currentUser()?.email }}</span>
+        <mat-icon i18n class="large-avatar mb-2">account_circle</mat-icon>
+        <span i18n class="menu-email">{{ authService.currentUser()?.email }}</span>
       </div>
-      <button mat-menu-item routerLink="/">
+      <button i18n mat-menu-item routerLink="/">
         <mat-icon>dashboard</mat-icon><span>My Dashboards</span>
       </button>
       @if (authService.currentUser()?.is_admin) {
-        <button mat-menu-item routerLink="/admin">
+        <button i18n mat-menu-item routerLink="/admin">
           <mat-icon>settings</mat-icon><span>Admin Settings</span>
         </button>
       }
       <mat-divider></mat-divider>
-      <button mat-menu-item (click)="logout()">
+      <button i18n mat-menu-item (click)="logout()">
         <mat-icon color="warn">logout</mat-icon><span>Logout</span>
       </button>
     </mat-menu>

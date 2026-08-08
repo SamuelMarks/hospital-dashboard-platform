@@ -2,11 +2,24 @@ import { AnalyticsService } from './analytics.service';
 import { environment } from '../../environments/environment';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { HttpClient } from '@angular/common/http';
+import { BASE_PATH } from '../api-client';
 
 describe('AnalyticsService', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
   it('uses BASE_PATH when provided', () => {
     const http = { get: vi.fn().mockReturnValue(of([])) } as any;
-    const service = new AnalyticsService(http, 'http://api.test');
+    TestBed.configureTestingModule({
+      providers: [
+        AnalyticsService,
+        { provide: HttpClient, useValue: http },
+        { provide: BASE_PATH, useValue: 'http://api.test' },
+      ],
+    });
+    const service = TestBed.inject(AnalyticsService);
 
     service.listLlmOutputs(10, 5).subscribe();
 
@@ -17,7 +30,14 @@ describe('AnalyticsService', () => {
 
   it('uses BASE_PATH arrays by taking the first entry', () => {
     const http = { get: vi.fn().mockReturnValue(of([])) } as any;
-    const service = new AnalyticsService(http, ['http://array.test', 'http://fallback.test']);
+    TestBed.configureTestingModule({
+      providers: [
+        AnalyticsService,
+        { provide: HttpClient, useValue: http },
+        { provide: BASE_PATH, useValue: ['http://array.test', 'http://fallback.test'] },
+      ],
+    });
+    const service = TestBed.inject(AnalyticsService);
 
     service.listLlmOutputs(1, 0).subscribe();
 
@@ -30,12 +50,16 @@ describe('AnalyticsService', () => {
     const http = { get: vi.fn().mockReturnValue(of([])) } as any;
     const original = environment.apiUrl;
     (environment as any).apiUrl = 'http://env.api';
-    const service = new AnalyticsService(http);
+
+    TestBed.configureTestingModule({
+      providers: [AnalyticsService, { provide: HttpClient, useValue: http }],
+    });
+    const service = TestBed.inject(AnalyticsService);
 
     service.listLlmOutputs().subscribe();
 
     const [url, options] = http.get.mock.calls[0];
-    expect(url).toBe(`http://env.api/api/v1/analytics/llm`);
+    expect(url).toBe('http://env.api/api/v1/analytics/llm');
     expect(options.params.toString()).toBe('limit=500&offset=0');
     (environment as any).apiUrl = original;
   });
@@ -45,7 +69,10 @@ describe('AnalyticsService', () => {
     const original = environment.apiUrl;
     (environment as any).apiUrl = '';
 
-    const service = new AnalyticsService(http);
+    TestBed.configureTestingModule({
+      providers: [AnalyticsService, { provide: HttpClient, useValue: http }],
+    });
+    const service = TestBed.inject(AnalyticsService);
     service.listLlmOutputs().subscribe();
 
     const [url] = http.get.mock.calls[0];

@@ -4,39 +4,40 @@
   }
 
   <mat-card-header>
-    <mat-card-title>Create Account</mat-card-title>
-    <mat-card-subtitle>Join the Hospital Analytics Platform</mat-card-subtitle>
+    <mat-card-title i18n>Create Account</mat-card-title>
+    <mat-card-subtitle i18n>Join the Hospital Analytics Platform</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
     @if (errorMessage()) {
       <div class="error-box" role="alert" data-testid="error-alert">
-        <mat-icon color="warn">error</mat-icon>
-        <span>{{ errorMessage() }}</span>
+        <mat-icon i18n color="warn">error</mat-icon>
+        <span i18n>{{ errorMessage() }}</span>
       </div>
     }
 
     <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
       <mat-form-field appearance="outline">
-        <mat-label>Email address</mat-label>
+        <mat-label i18n>Email address</mat-label>
         <input
           matInput
           formControlName="email"
           type="email"
+          i18n-placeholder
           placeholder="user@example.com"
           required
           data-testid="input-email"
         />
         @if (registerForm.get('email')?.hasError('required')) {
-          <mat-error>Email is required</mat-error>
+          <mat-error i18n>Email is required</mat-error>
         }
         @if (registerForm.get('email')?.hasError('email')) {
-          <mat-error>Please enter a valid email</mat-error>
+          <mat-error i18n>Please enter a valid email</mat-error>
         }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Password</mat-label>
+        <mat-label i18n>Password</mat-label>
         <input
           matInput
           formControlName="password"
@@ -45,7 +46,9 @@
           data-testid="input-password"
         />
         <button
+          i18n
           mat-icon-button
+          i18n-aria-label
           aria-label="action"
           matSuffix
           type="button"
@@ -55,15 +58,15 @@
           <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
         </button>
         @if (registerForm.get('password')?.hasError('required')) {
-          <mat-error>Password is required</mat-error>
+          <mat-error i18n>Password is required</mat-error>
         }
         @if (registerForm.get('password')?.hasError('minlength')) {
-          <mat-error>Password must be at least 4 characters</mat-error>
+          <mat-error i18n>Password must be at least 4 characters</mat-error>
         }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Confirm Password</mat-label>
+        <mat-label i18n>Confirm Password</mat-label>
         <input
           matInput
           formControlName="confirmPassword"
@@ -72,14 +75,15 @@
           data-testid="input-confirm-password"
         />
         @if (registerForm.get('confirmPassword')?.hasError('required')) {
-          <mat-error>Confirmation is required</mat-error>
+          <mat-error i18n>Confirmation is required</mat-error>
         }
         @if (registerForm.get('confirmPassword')?.hasError('mismatch')) {
-          <mat-error>Passwords do not match</mat-error>
+          <mat-error i18n>Passwords do not match</mat-error>
         }
       </mat-form-field>
 
       <button
+        i18n
         mat-flat-button
         color="primary"
         type="submit"
@@ -96,8 +100,8 @@
     </form>
 
     <div class="footer-link">
-      Already have an account?
-      <a routerLink="/login" data-testid="link-login">Sign in here</a>
+      <span i18n>Already have an account?</span>
+      <a i18n routerLink="/login" data-testid="link-login">Sign in here</a>
     </div>
   </mat-card-content>
 </mat-card>

@@ -8,7 +8,7 @@ Updated to include automatic provisioning of default dashboards upon registratio
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.core import security
 from app.core.config import settings
+from app.core.i18n import get_translated_message
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.token import Token
@@ -26,7 +27,11 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=UserResponse)
-async def register_user(user_in: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]) -> User:
+async def register_user(
+  user_in: UserCreate,
+  db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
+) -> User:
   """
   Register a new user in the system.
 
@@ -51,9 +56,14 @@ async def register_user(user_in: UserCreate, db: Annotated[AsyncSession, Depends
   result = await db.execute(select(User).where(User.email == user_in.email))
   existing_user = result.scalars().first()
   if existing_user:
+    msg = get_translated_message(
+      accept_language or user_in.language_preference,
+      "error.user_exists",
+      "The user with this email already exists in the system.",
+    )
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
-      detail="The user with this email already exists in the system.",
+      detail=msg,
     )
 
   # 2. Create User
@@ -61,6 +71,7 @@ async def register_user(user_in: UserCreate, db: Annotated[AsyncSession, Depends
     email=user_in.email,
     hashed_password=security.get_password_hash(user_in.password),
     is_active=True,
+    language_preference=user_in.language_preference,
   )
   db.add(user)
 
@@ -79,6 +90,7 @@ async def register_user(user_in: UserCreate, db: Annotated[AsyncSession, Depends
 async def login_access_token(
   form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
   db: Annotated[AsyncSession, Depends(get_db)],
+  accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> Token:
   """
   OAuth2 compatible token login, get an access token for future requests.
@@ -95,10 +107,16 @@ async def login_access_token(
   user = result.scalars().first()
 
   if not user or not security.verify_password(form_data.password, user.hashed_password):
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect email or password")
+    msg = get_translated_message(accept_language, "error.invalid_credentials", "Incorrect email or password")
+    if user and user.language_preference:
+      msg = get_translated_message(user.language_preference, "error.invalid_credentials", "Incorrect email or password")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
   if not user.is_active:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+    msg = get_translated_message(accept_language, "error.inactive_user", "Inactive user")
+    if user and user.language_preference:
+      msg = get_translated_message(user.language_preference, "error.inactive_user", "Inactive user")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
   # 2. Generate Token
   access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)

@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
 
   email: EmailStr
   password: str
+  language_preference: str = "en"
 
 
 class UserResponse(BaseModel):
@@ -19,6 +20,7 @@ class UserResponse(BaseModel):
   email: EmailStr
   is_active: bool
   is_admin: bool
+  language_preference: str
 
   # Pydantic V2 config to read from SQLAlchemy models
   model_config = ConfigDict(from_attributes=True)

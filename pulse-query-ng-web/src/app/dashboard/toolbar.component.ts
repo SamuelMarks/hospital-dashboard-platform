@@ -42,7 +42,7 @@ import { QueryCartService } from '../global/query-cart.service';
     MatBadgeModule,
     MatSnackBarModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './toolbar.component.html',
   styles: ['/* See existing styles */'],
 })

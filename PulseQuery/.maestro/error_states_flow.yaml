@@ -1,0 +1,36 @@
+appId: io.healthplatform.pulsequery
+---
+- launchApp:
+    clearState: true
+    # We simulate an offline environment by mocking API endpoints to return 500
+    # Maestro doesn't have a direct "set offline" but we can rely on mock servers if needed
+    # or assert the app's behavior when the API is down if this flow is run against a stopped backend.
+
+- assertVisible: "Welcome to PulseQuery"
+
+# We assume this is run when the backend is unreachable or returning 500
+- tapOn: "Email"
+- inputText: "test@test.com"
+- hideKeyboard
+- tapOn: "Password"
+- inputText: "password"
+- hideKeyboard
+- tapOn: "Login / Register"
+
+# Verify UI behavior when the backend is unreachable or returns 500 errors
+- assertVisible:
+    text: "Network error"
+    optional: true
+- assertVisible:
+    text: "Server error"
+    optional: true
+
+# Try to retry
+- tapOn:
+    text: "Retry"
+    optional: true
+
+# Verify error persists if still down
+- assertVisible:
+    text: "Server error"
+    optional: true

@@ -3,27 +3,32 @@
   class="ask-data-toolbar border-b px-6 mat-elevation-z1 relative z-10 w-full"
   style="background: var(--sys-surface); color: var(--sys-text-primary)"
 >
-  <mat-icon class="mr-3 text-primary icon-medium scale-110" style="color: var(--sys-primary)"
+  <mat-icon i18n class="mr-3 text-primary icon-medium scale-110" style="color: var(--sys-primary)"
     >smart_toy</mat-icon
   >
   <div class="flex flex-col leading-tight">
-    <span class="font-medium text-base">Ask Data</span>
+    <span i18n class="font-medium text-base">Ask Data</span>
     <span
+      i18n
       class="text-[10px] text-secondary uppercase tracking-widest font-bold"
       style="color: var(--sys-text-secondary)"
       >Ad-Hoc Analysis</span
     >
   </div>
 
-  <span class="flex-grow"></span>
+  <span i18n class="flex-grow"></span>
 
   <!-- Controls -->
   <div class="flex items-center gap-3">
     <button
+      i18n
       mat-stroked-button
       class="cart-btn"
       [class.active]="cartCount() > 0"
+      i18n-matTooltip
       matTooltip="Dragging saved queries to dashboards"
+      i18n-aria-label
+      aria-label="Cart Button"
     >
       <mat-icon class="icon-small text-lg mr-1">{{
         cartCount() > 0 ? 'shopping_cart_checkout' : 'shopping_cart'
@@ -32,7 +37,9 @@
     </button>
 
     <button
+      i18n
       mat-icon-button
+      i18n-aria-label
       aria-label="action"
       (click)="vis.close()"
       data-testid="close-btn"
@@ -52,7 +59,7 @@
   @if (loadingContext()) {
     <div class="center-overlay" data-testid="loading-state">
       <mat-spinner diameter="32"></mat-spinner>
-      <p class="mt-4 text-xs text-secondary" style="color: var(--sys-text-secondary)">
+      <p i18n class="mt-4 text-xs text-secondary" style="color: var(--sys-text-secondary)">
         Initializing Analytics Engine...
       </p>
     </div>
@@ -61,9 +68,11 @@
   <!-- Error State -->
   @if (contextError(); as err) {
     <div class="center-overlay" data-testid="error-state">
-      <mat-icon class="text-4xl mb-2" style="color: var(--sys-error)">error_outline</mat-icon>
-      <p class="text-sm px-8 text-center" style="color: var(--sys-text-primary)">{{ err }}</p>
-      <button mat-stroked-button color="primary" class="mt-4" (click)="vis.close()">Close</button>
+      <mat-icon i18n class="text-4xl mb-2" style="color: var(--sys-error)">error_outline</mat-icon>
+      <p i18n class="text-sm px-8 text-center" style="color: var(--sys-text-primary)">{{ err }}</p>
+      <button i18n mat-stroked-button color="primary" class="mt-4" (click)="vis.close()">
+        Close
+      </button>
     </div>
   }
 

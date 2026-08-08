@@ -114,10 +114,14 @@ describe('SimulationStore', () => {
 
   it('should handle simulation error with generic fallback', () => {
     mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(throwError(() => ({})));
-
     store.runSimulation();
-
     expect(store.isSimulating()).toBe(false);
+    expect(store.error()).toBe('Simulation failed');
+  });
+
+  it('should handle simulation error with defined error object but missing detail', () => {
+    mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(throwError(() => ({ error: {} })));
+    store.runSimulation();
     expect(store.error()).toBe('Simulation failed');
   });
 });

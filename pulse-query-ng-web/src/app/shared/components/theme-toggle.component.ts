@@ -25,7 +25,7 @@ import { ThemeService } from '../../core/theme/theme.service';
 @Component({
   selector: 'app-theme-toggle',
   imports: [MatButtonModule, MatIconModule, MatTooltipModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <button
       mat-icon-button

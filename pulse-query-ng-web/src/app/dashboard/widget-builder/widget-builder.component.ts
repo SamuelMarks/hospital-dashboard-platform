@@ -10,13 +10,7 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  FormsModule,
-  ReactiveFormsModule,
-  FormBuilder,
-  FormControl,
-  Validators,
-} from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
@@ -78,7 +72,6 @@ export interface WidgetBuilderData {
   selector: 'app-widget-builder',
   imports: [
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatStepperModule,
@@ -100,7 +93,7 @@ export interface WidgetBuilderData {
     TextEditorComponent,
   ],
   providers: [provideNativeDateAdapter()],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './widget-builder.component.html',
   styles: [
     `
@@ -334,7 +327,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** RXJS Subscription container. */
   private sub?: Subscription;
   /** Active Tab Index. */
-  selectedTab = 0;
+  readonly selectedTab = signal(0);
 
   /** Initialize component. */
   ngOnInit(): void {

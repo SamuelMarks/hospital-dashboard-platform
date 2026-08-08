@@ -40,7 +40,7 @@ interface PieSlice {
 @Component({
   selector: 'viz-pie',
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

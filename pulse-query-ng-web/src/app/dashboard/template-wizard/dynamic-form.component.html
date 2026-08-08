@@ -4,7 +4,7 @@
       <!-- Case 1: Boolean (Checkbox) -->
       @if (prop.type === 'boolean') {
         <div class="checkbox-row">
-          <mat-checkbox [formControlName]="key" color="primary">
+          <mat-checkbox i18n [formControlName]="key" color="primary">
             {{ prop.title || formatLabel(key) }}
           </mat-checkbox>
           @if (prop.description) {
@@ -13,6 +13,7 @@
               [matTooltip]="prop.description"
               fontIcon="help_outline"
               tabindex="0"
+              i18n-aria-label
               aria-label="Help info"
             ></mat-icon>
           }
@@ -20,37 +21,37 @@
       } @else if (prop.enum) {
         <!-- Case 2: Enumeration (Select Dropdown) -->
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
-          <mat-select [formControlName]="key">
+          <mat-label i18n>{{ prop.title || formatLabel(key) }}</mat-label>
+          <mat-select [formControlName]="key" i18n-aria-label aria-label="Select key">
             @for (opt of prop.enum; track opt) {
-              <mat-option [value]="opt">{{ opt }}</mat-option>
+              <mat-option i18n [value]="opt">{{ opt }}</mat-option>
             }
           </mat-select>
           @if (prop.description) {
-            <mat-hint>{{ prop.description }}</mat-hint>
+            <mat-hint i18n>{{ prop.description }}</mat-hint>
           }
           @if (hasError(key, 'required')) {
-            <mat-error>Required</mat-error>
+            <mat-error i18n>Required</mat-error>
           }
         </mat-form-field>
       } @else if (prop.format === 'date') {
         <!-- Case 3: Date Picker -->
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
+          <mat-label i18n>{{ prop.title || formatLabel(key) }}</mat-label>
           <input matInput [matDatepicker]="picker" [formControlName]="key" />
           <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
           <mat-datepicker #picker></mat-datepicker>
           @if (prop.description) {
-            <mat-hint>{{ prop.description }}</mat-hint>
+            <mat-hint i18n>{{ prop.description }}</mat-hint>
           }
           @if (hasError(key, 'required')) {
-            <mat-error>Required</mat-error>
+            <mat-error i18n>Required</mat-error>
           }
         </mat-form-field>
       } @else {
         <!-- Case 4: Standard Input (Text/Number) -->
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
+          <mat-label i18n>{{ prop.title || formatLabel(key) }}</mat-label>
           <input
             matInput
             [type]="prop.type === 'number' || prop.type === 'integer' ? 'number' : 'text'"
@@ -59,16 +60,16 @@
             [max]="prop.maximum"
           />
           @if (prop.description) {
-            <mat-hint>{{ prop.description }}</mat-hint>
+            <mat-hint i18n>{{ prop.description }}</mat-hint>
           }
           @if (hasError(key, 'required')) {
-            <mat-error>Required</mat-error>
+            <mat-error i18n>Required</mat-error>
           }
           @if (hasError(key, 'min')) {
-            <mat-error>Min value: {{ prop.minimum }}</mat-error>
+            <mat-error i18n>Min value: {{ prop.minimum }}</mat-error>
           }
           @if (hasError(key, 'max')) {
-            <mat-error>Max value: {{ prop.maximum }}</mat-error>
+            <mat-error i18n>Max value: {{ prop.maximum }}</mat-error>
           }
         </mat-form-field>
       }
@@ -76,6 +77,6 @@
   }
 
   @if (fieldKeys().length === 0) {
-    <div class="empty-state">No parameters required for this template.</div>
+    <div i18n class="empty-state">No parameters required for this template.</div>
   }
 </form>

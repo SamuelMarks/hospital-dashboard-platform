@@ -70,9 +70,7 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /**
    * The Fallback Template to render when an error state is active.
    */
-  readonly fallbackTemplate = input<TemplateRef<ErrorBoundaryContext> | undefined>(undefined, {
-    alias: 'appErrorBoundary',
-  });
+  readonly appErrorBoundary = input<TemplateRef<ErrorBoundaryContext> | undefined>(undefined);
 
   /**
    * Initializes the view.
@@ -112,7 +110,7 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
    */
   public renderFallback(error: unknown): void {
     this.vcr.clear();
-    const fallbackTemplate = this.fallbackTemplate();
+    const fallbackTemplate = this.appErrorBoundary();
     if (fallbackTemplate) {
       this.vcr.createEmbeddedView(fallbackTemplate, {
         $implicit: error,

@@ -14,7 +14,6 @@ import { CommonModule } from '@angular/common';
  * Host component to test structural directive usage.
  */
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: false,
   template: `
     <div *appErrorBoundary="fallbackTpl">
@@ -41,7 +40,6 @@ class TestHostComponent {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: false,
   template: `
     <div *appErrorBoundary="missingTemplate">

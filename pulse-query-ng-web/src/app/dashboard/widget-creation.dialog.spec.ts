@@ -20,7 +20,6 @@ import { readTemplate } from '../../test-utils/component-resources';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-sql-builder',
   template: '',
 })
@@ -31,7 +30,6 @@ class MockSqlBuilder {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-http-config',
   template: '',
 })

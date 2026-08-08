@@ -82,7 +82,7 @@ export const appConfig: ApplicationConfig = {
 
     provideRouter(
       routes,
-      // Binds route parameters (e.g., :id) directly to component @Input() signals
+      // Binds route parameters (e.g., :id) directly to component inputs
       withComponentInputBinding(),
       // Provides smooth transitions between routes (Angular 17+)
       withViewTransitions(),

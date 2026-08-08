@@ -9,7 +9,7 @@
     <!-- Use Tabs to switch between History and Cart -->
     <mat-tab-group class="sidebar-tabs" animationDuration="0ms">
       <!-- TAB 1: HISTORY -->
-      <mat-tab>
+      <mat-tab i18n>
         <ng-template mat-tab-label>
           <mat-icon class="mr-2 icon-sm">history</mat-icon> History
         </ng-template>
@@ -41,6 +41,7 @@
                   <!-- Context Menu Button -->
                   <button
                     mat-icon-button
+                    i18n-aria-label
                     aria-label="action"
                     class="action-btn scale-75"
                     [matMenuTriggerFor]="menu"
@@ -65,7 +66,7 @@
       </mat-tab>
 
       <!-- TAB 2: QUERY CART -->
-      <mat-tab>
+      <mat-tab i18n>
         <ng-template mat-tab-label>
           <mat-icon class="mr-2 icon-sm">shopping_cart</mat-icon>
           Cart
@@ -85,20 +86,23 @@
   <mat-sidenav-content role="main" class="relative flex flex-col h-full overflow-hidden">
     @if (isHandset$ | async) {
       <mat-toolbar color="primary" class="flex-none">
-        <button mat-icon-button aria-label="action" (click)="drawer.toggle()">
+        <button i18n mat-icon-button i18n-aria-label aria-label="action" (click)="drawer.toggle()">
           <mat-icon>menu</mat-icon>
         </button>
-        <span>Assistant</span>
+        <span i18n>Assistant</span>
       </mat-toolbar>
     }
 
     <!-- Desktop Toggle Button -->
     @if (!(isHandset$ | async)) {
       <button
+        i18n
         mat-icon-button
+        i18n-aria-label
         aria-label="Toggle Sidebar"
         class="absolute left-2 top-2 z-10 bg-surface shadow-sm border border-border opacity-50 hover:opacity-100 transition-opacity"
         (click)="toggleSidebar()"
+        i18n-matTooltip
         matTooltip="Toggle Sidebar"
         style="background: var(--sys-surface); border-color: var(--sys-surface-border)"
       >

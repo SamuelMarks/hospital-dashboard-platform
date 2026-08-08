@@ -274,7 +274,6 @@ describe('SqlBuilderComponent', () => {
 });
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'viz-table',
   template: '<div data-testid="mock-table"></div>',
 })
@@ -283,7 +282,6 @@ class MockVizTableComponent {
 }
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-conversation',
   template: '<div data-testid="mock-conversation"></div>',
 })

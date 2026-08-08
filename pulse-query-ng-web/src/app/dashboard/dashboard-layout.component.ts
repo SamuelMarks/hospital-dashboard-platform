@@ -39,7 +39,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
   selector: 'app-dashboard-layout',
   templateUrl: './dashboard-layout.component.html',
   styleUrls: ['./dashboard-layout.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   imports: [
     CommonModule,
     DragDropModule,
@@ -106,10 +106,12 @@ export class DashboardLayoutComponent implements OnInit {
    * @param {CdkDragDrop<any[]>} event - The drop event.
    */
   onDrop(event: CdkDragDrop<any[]>): void {
+    console.log('onDrop triggered', event.previousIndex, event.currentIndex);
     if (this.isTvMode()) return;
 
     if (event.previousContainer === event.container) {
       // Internal Sort
+      console.log('Internal sort calling updateWidgetOrder');
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex);
     } else {
       // External Drop (Widget Gallery or Query Cart)

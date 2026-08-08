@@ -33,7 +33,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 @Component({
   selector: 'app-onboarding-wizard',
   imports: [MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <div
       class="overlay"
@@ -46,7 +46,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
       <div class="wizard-card" data-testid="onboarding-wizard">
         <!-- Header -->
         <div class="wizard-header">
-          <span class="step-counter" aria-live="polite">
+          <span i18n class="step-counter" aria-live="polite">
             Step {{ onboarding.currentStepIndex() + 1 }} of {{ onboarding.totalSteps() }}
           </span>
           <button
@@ -56,7 +56,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
             aria-label="Skip onboarding"
             data-testid="skip-button"
           >
-            <mat-icon>close</mat-icon>
+            <mat-icon i18n>close</mat-icon>
           </button>
         </div>
 
@@ -101,8 +101,8 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
             aria-label="Previous step"
             data-testid="prev-button"
           >
-            <mat-icon>arrow_back</mat-icon>
-            Back
+            <mat-icon i18n>arrow_back</mat-icon>
+            <span i18n>Back</span>
           </button>
 
           <div class="action-right">

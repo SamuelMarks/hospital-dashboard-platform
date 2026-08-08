@@ -1,0 +1,2879 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en-US" datatype="plaintext" original="ng2.template">
+    <body>
+      <trans-unit id="3090116509685226490" datatype="html">
+        <source>Admin Configuration</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">31,33</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8314475175186116953" datatype="html">
+        <source>API Keys</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">35,36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7749513712242668701" datatype="html">
+        <source>OpenAI API Key</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">37,38</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7669241488937983055" datatype="html">
+        <source>Anthropic API Key</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">47,48</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8946258843630188501" datatype="html">
+        <source>Visible Models</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">59,60</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4731038674882815401" datatype="html">
+        <source> Select which models are shown to users in the Ad-hoc query interface. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">61</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4588340967266014634" datatype="html">
+        <source>Available Models</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">64,65</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4981488130193828695" datatype="html">
+        <source>Save Configuration</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">78,80</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5063842922150713988" datatype="html">
+        <source>Loading settings...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
+          <context context-type="linenumber">86,87</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6981782762247454246" datatype="html">
+        <source>LLM Arena Analytics</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">4,5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7582635731454237636" datatype="html">
+        <source> Track user prompts, generated SQL, and which LLM outputs were selected (score = winner). </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">6,7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4613058238813325411" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>refresh<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Refresh </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">11,13</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5337013199281537076" datatype="html">
+        <source>Candidates</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">20,21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6922994998696471598" datatype="html">
+        <source>Queries</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">24,25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4555457172864212828" datatype="html">
+        <source>Users</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">28,29</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6388512731122559427" datatype="html">
+        <source>Models</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">32,33</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7899085892585657581" datatype="html">
+        <source>Selection Rate</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">36,37</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5917847928984558102" datatype="html">
+        <source>SQL Coverage</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">40,41</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4580988005648117665" datatype="html">
+        <source>Search</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">47</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2084507205665485262" datatype="html">
+        <source>Query, SQL, model, or user</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">50,51</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3643866539136239218" datatype="html">
+        <source>Clear search</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">55,56</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6923398455202409832" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>close<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">56,58</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">5,7</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">13,17</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">42,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1141886420788473147" datatype="html">
+        <source>Model</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">62</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7516880397170165583" datatype="html">
+        <source>Select option</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">63,64</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">73,74</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">83,84</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">92,93</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">101,102</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">279,280</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">289,290</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">57,58</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">72,73</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7003239350588994334" datatype="html">
+        <source>All models</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">64</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="187187500641108332" datatype="html">
+        <source><x id="INTERPOLATION" equiv-text="{{ model }}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">66,67</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">76,77</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">30,31</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">42,43</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">115,116</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">70,71</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">5,7</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">163,164</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">52,53</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">60,61</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">67,68</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">75,76</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">66,67</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">76</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">15,16</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.html</context>
+          <context context-type="linenumber">3,4</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.html</context>
+          <context context-type="linenumber">4,6</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-metric/viz-metric.component.html</context>
+          <context context-type="linenumber">32,33</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-pie/viz-pie.component.html</context>
+          <context context-type="linenumber">38,39</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.html</context>
+          <context context-type="linenumber">10,11</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">33,35</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">11,12</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">102,103</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">166,167</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2392488717875840729" datatype="html">
+        <source>User</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">72</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">179,180</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">247,248</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8156602685712437139" datatype="html">
+        <source>All users</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">74</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7123653594948067002" datatype="html">
+        <source>Score</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">82</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">186,187</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">269,270</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="322742219232152212" datatype="html">
+        <source>All outcomes</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">84</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9041444200911417888" datatype="html">
+        <source>Selected</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">85</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6839138864615473489" datatype="html">
+        <source>Not selected</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">86</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7398625036392087443" datatype="html">
+        <source>SQL</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">91</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">151</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">281,282</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1616102757855967475" datatype="html">
+        <source>All</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">93</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2502222434007400169" datatype="html">
+        <source>With SQL</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">94</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="514158735248663321" datatype="html">
+        <source>No SQL</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">95</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9155608366859514313" datatype="html">
+        <source>Source</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">100</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">167,168</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">257,258</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="131016739441837046" datatype="html">
+        <source>All sources</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">102</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4020107570802672389" datatype="html">
+        <source>Chat Arena</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">103</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1848311852188413998" datatype="html">
+        <source>AI Arena</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">104</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8700121026680200191" datatype="html">
+        <source>Clear</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">109,110</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8204219104671157927" datatype="html">
+        <source>Loading analytics...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">119,120</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7934833136974560675" datatype="html">
+        <source>Retry</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">124,125</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">169,170</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1030988461647366606" datatype="html">
+        <source>No results match the current filters.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">127,128</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5833182171992732192" datatype="html">
+        <source>LLM Analytics Table</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">134,135</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4109205891084963566" datatype="html">
+        <source>Query</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">137,138</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">232,233</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5930469402997068118" datatype="html">
+        <source><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;cell-primary&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{ row.query_text || &apos;Unknown query&apos; }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;cell-secondary&quot;&gt;"/> <x id="INTERPOLATION_1" equiv-text="{{
+                    row.conversation_title ||
+                      (row.source === &apos;ai&apos; ? &apos;AI Arena Experiment&apos; : &apos;Unknown conversation&apos;)
+                  }}"/> <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">139,146</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="372461311882753312" datatype="html">
+        <source><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;sql-preview&quot; [matTooltip]=&quot;row.sql_snippet || &apos;No SQL snippet&apos;&quot;&gt;"/> <x id="INTERPOLATION" equiv-text="{{ row.sql_snippet || &apos;No SQL snippet&apos; }}"/> <x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">152,155</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.html</context>
+          <context context-type="linenumber">13,17</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3038058645701707717" datatype="html">
+        <source>LLM</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">160</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">252,253</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4467879123865357533" datatype="html">
+        <source><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;cell-primary&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{ row.llm }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;cell-secondary&quot;&gt;"/>Model tag<x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">161,163</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="867591871740306640" datatype="html">
+        <source><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;cell-primary&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{ sourceLabel(row) }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_BLOCK_IF" equiv-text="@if (row.prompt_strategy) {"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;cell-secondary&quot;&gt;"/><x id="INTERPOLATION_1" equiv-text="{{ row.prompt_strategy }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE_IF" equiv-text="@else if (row.source === &apos;ai&apos;) {"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;cell-secondary&quot;&gt;"/>default<x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_ELSE_IF" equiv-text="}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">169,176</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1974404991603146044" datatype="html">
+        <source><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;cell-primary&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{ row.user_email }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">181,182</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">203,204</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4179369481412487486" datatype="html">
+        <source><x id="START_TAG_MAT_CHIP_SET" ctype="x-mat_chip_set" equiv-text="&lt;mat-chip-set&gt;"/><x id="START_TAG_MAT_CHIP" ctype="x-mat_chip" equiv-text="&lt;mat-chip
+                    class=&quot;score-chip&quot;
+                    [class.selected]=&quot;row.is_selected&quot;
+                    [class.unselected]=&quot;!row.is_selected&quot;
+                  &gt;"/> <x id="INTERPOLATION" equiv-text="{{ scoreLabel(row) }}"/> <x id="CLOSE_TAG_MAT_CHIP" ctype="x-mat_chip" equiv-text="&lt;/mat-chip&gt;"/><x id="CLOSE_TAG_MAT_CHIP_SET" ctype="x-mat_chip_set" equiv-text="&lt;/mat-chip-set&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">188,198</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8497528947328199741" datatype="html">
+        <source>Time</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">201,202</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="270722029860633445" datatype="html">
+        <source><x id="INTERPOLATION" equiv-text="{{ filteredRows().length }}"/> records</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">217,219</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8834491317660514874" datatype="html">
+        <source>Candidate Detail</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">224,225</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4717491147966397069" datatype="html">
+        <source>Conversation</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">237,238</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3142023250512221453" datatype="html">
+        <source>Prompt Strategy</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">263,264</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5667900632592970266" datatype="html">
+        <source>Timestamp</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">276,277</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5994185153424548971" datatype="html">
+        <source>Select a row to inspect the full SQL and metadata.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/analytics/analytics.component.html</context>
+          <context context-type="linenumber">285,286</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2118952964762210176" datatype="html">
+        <source>Ask Data Assistant</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/app.html</context>
+          <context context-type="linenumber">9,10</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5188269834110422194" datatype="html">
+        <source><x id="START_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;ng-template mat-tab-label&gt;"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon class=&quot;mr-2 icon-sm&quot;&gt;"/>history<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> History <x id="CLOSE_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;/ng-template&gt;"/><x id="START_TAG_DIV_6" ctype="x-div_6" equiv-text="&lt;div class=&quot;tab-column&quot;&gt;"/><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;history-header&quot;&gt;"/><x id="START_TAG_BUTTON" ctype="x-button" equiv-text="&lt;button mat-stroked-button color=&quot;primary&quot; class=&quot;w-full&quot; (click)=&quot;newChat()&quot;&gt;"/><x id="START_TAG_MAT_ICON_1" ctype="x-mat_icon_1" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> New Chat <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_BLOCK_IF" equiv-text="@if (store.isDataLoading()) {"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;flex justify-center p-8&quot;&gt;"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;32&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_TAG_DIV_5" ctype="x-div_5" equiv-text="&lt;div class=&quot;history-list&quot; role=&quot;list&quot;&gt;"/><x id="START_BLOCK_FOR_1" equiv-text="@for (group of groupedHistory(); track group.label) {"/><x id="START_TAG_DIV_2" ctype="x-div_2" equiv-text="&lt;div class=&quot;group-label&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{ group.label }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_BLOCK_FOR" equiv-text="@for (chat of group.items; track chat.id) {"/><x id="START_TAG_DIV_4" ctype="x-div_4" equiv-text="&lt;div
+                  class=&quot;nav-item-container&quot;
+                  [class.active]=&quot;store.activeConversationId() === chat.id&quot;
+                &gt;"/><x id="START_TAG_DIV_3" ctype="x-div_3" equiv-text="&lt;div class=&quot;nav-content&quot; (click)=&quot;selectChat(chat.id)&quot;&gt;"/><x id="START_TAG_MAT_ICON_2" ctype="x-mat_icon_2" equiv-text="&lt;mat-icon class=&quot;mr-2 text-sm&quot;&gt;"/>chat_bubble_outline<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;truncate text-sm&quot;&gt;"/><x id="INTERPOLATION_1" equiv-text="{{ chat.title }}"/><x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_BUTTON_1" ctype="x-button_1" equiv-text="&lt;button
+                    mat-icon-button
+                    i18n-aria-label aria-label=&quot;action&quot;
+                    class=&quot;action-btn scale-75&quot;
+                    [matMenuTriggerFor]=&quot;menu&quot;
+                    (click)=&quot;$event.stopPropagation()&quot;
+                  &gt;"/><x id="START_TAG_MAT_ICON_1" ctype="x-mat_icon_1" equiv-text="&lt;mat-icon&gt;"/>more_vert<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="START_TAG_MAT_MENU" ctype="x-mat_menu" equiv-text="&lt;mat-menu #menu=&quot;matMenu&quot;&gt;"/><x id="START_TAG_BUTTON_2" ctype="x-button_2" equiv-text="&lt;button mat-menu-item (click)=&quot;renameChat(chat)&quot;&gt;"/><x id="START_TAG_MAT_ICON_1" ctype="x-mat_icon_1" equiv-text="&lt;mat-icon&gt;"/>edit<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Rename <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="START_TAG_BUTTON_3" ctype="x-button_3" equiv-text="&lt;button mat-menu-item (click)=&quot;deleteChat(chat)&quot; class=&quot;text-red-600&quot;&gt;"/><x id="START_TAG_MAT_ICON_3" ctype="x-mat_icon_3" equiv-text="&lt;mat-icon color=&quot;warn&quot;&gt;"/>delete<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Delete <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_TAG_MAT_MENU" ctype="x-mat_menu" equiv-text="&lt;/mat-menu&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">13,65</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5151914324276081075" datatype="html">
+        <source>action</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">45</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">88</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">86</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">12</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">38</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">50</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">20</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1024227758595991254" datatype="html">
+        <source><x id="START_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;ng-template mat-tab-label&gt;"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon class=&quot;mr-2 icon-sm&quot;&gt;"/>shopping_cart<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Cart <x id="START_BLOCK_IF" equiv-text="@if (cart.count() &gt; 0) {"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;badgex&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{ cart.count() }}"/><x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="CLOSE_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;/ng-template&gt;"/><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;tab-column overflow-y-auto&quot;&gt;"/><x id="START_TAG_APP_QUERY_CART" ctype="x-app_query_cart" equiv-text="&lt;app-query-cart&gt;"/><x id="CLOSE_TAG_APP_QUERY_CART" ctype="x-app_query_cart" equiv-text="&lt;/app-query-cart&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">69,81</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="656338013241827803" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>menu<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">89,91</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4361487192183535591" datatype="html">
+        <source>Assistant</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">91,92</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4485009347444704878" datatype="html">
+        <source>Toggle Sidebar</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">99,100</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">102,103</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6028184851866201680" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/><x id="INTERPOLATION" equiv-text="{{ sidebarOpen() ? &apos;chevron_left&apos; : &apos;chevron_right&apos; }}"/><x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/chat-layout.component.html</context>
+          <context context-type="linenumber">105,107</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">55,57</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">25,28</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8208675890777914624" datatype="html">
+        <source>assistant</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7803847741542793540" datatype="html">
+        <source>Data Assistant</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">6,7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="415092219908078245" datatype="html">
+        <source>Ask questions about hospital census, throughput, or capacity.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">7,8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7183397213701130921" datatype="html">
+        <source> Compare <x id="INTERPOLATION" equiv-text="{{ msg.candidates?.length }}"/> Models </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">18,19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5389278965044118770" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>play_arrow<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Run All </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">21,22</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6467488691902002989" datatype="html">
+        <source> Matches <x id="INTERPOLATION" equiv-text="{{ sqlGroupCount(msg, cand) - 1 }}"/> others </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">33,34</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3379167598974960777" datatype="html">
+        <source>warning</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">41</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">101</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3656063361711737888" datatype="html">
+        <source> Select Model </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">77</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8772116786769251214" datatype="html">
+        <source>error</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">114</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">14</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">32</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7432105011194098619" datatype="html">
+        <source>Select Models to Query</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">124,125</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2694947752787357796" datatype="html">
+        <source>Ask about hospital data...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">141,142</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8730666920545442370" datatype="html">
+        <source>Send Message</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">156,158</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1800141475732132483" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>send<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/conversation.component.html</context>
+          <context context-type="linenumber">158,160</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="677665370483484242" datatype="html">
+        <source>Suggested Query</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">3,4</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9042879818603180690" datatype="html">
+        <source>Copy SQL</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">10,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1436915381769138805" datatype="html">
+        <source>Copy to Clipboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">11,13</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4542684186080088942" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon style=&quot;font-size: 16px&quot;&gt;"/>content_copy<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">13,16</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">53,55</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="618039138345313592" datatype="html">
+        <source>Save to Cart</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">21,22</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="757682916484492232" datatype="html">
+        <source>Save to Query Cart</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">22,23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1556424730141969884" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon style=&quot;font-size: 16px&quot;&gt;"/>shopping_cart<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">25,28</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">56,59</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6371720970960630975" datatype="html">
+        <source>Simulate Scenario</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">32,33</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">33,35</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">32,33</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">35,36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4181818355420379565" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon style=&quot;font-size: 16px&quot;&gt;"/>science<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">35,38</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">38,40</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5941018972469156606" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon class=&quot;mr-1 text-xs&quot; style=&quot;font-size: 14px; width: 14px; height: 14px&quot;
+          &gt;"/>play_arrow<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon
+        &gt;"/> Run </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/chat/conversation/sql-snippet.component.html</context>
+          <context context-type="linenumber">45,49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3864495817645882232" datatype="html">
+        <source>Updated: <x id="INTERPOLATION" equiv-text="{{ date | date: &apos;shortTime&apos; }}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
+          <context context-type="linenumber">10,12</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5074584967441838450" datatype="html">
+        <source>Start your Analysis</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">2,3</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6487894391712838524" datatype="html">
+        <source> This dashboard is currently empty. Choose how you would like to begin. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">4,6</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1250007984252483600" datatype="html">
+        <source>Start with a Template</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">18,20</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">22,23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7311975487444642677" datatype="html">
+        <source>library_add</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4130228330246296426" datatype="html">
+        <source> Browse pre-built metrics like &quot;Admission Lag&quot; or &quot;Utilization Spikes&quot;. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">24,25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="297203671769601767" datatype="html">
+        <source>Open Wizard →</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">26</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8814615356070410703" datatype="html">
+        <source>Ask AI a Question</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">39,41</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">43,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="211527717623893372" datatype="html">
+        <source>smart_toy</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">42</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">7,8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7947285607861444728" datatype="html">
+        <source> Describe what you want to see. AI will generate the SQL and visualization. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">45,46</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9192818694096257018" datatype="html">
+        <source>Open Assistant →</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">47</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9140095541478646165" datatype="html">
+        <source>Load Sample Data</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">61,63</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">65,66</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3347932678307141902" datatype="html">
+        <source>restore</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">64</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2856768101329411004" datatype="html">
+        <source> Instantly populate this dashboard with standard &quot;Hospital Command Center&quot; content. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/empty-state/empty-state.component.html</context>
+          <context context-type="linenumber">67,68</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3762263043992346886" datatype="html">
+        <source>filter_list</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3048700934123673341" datatype="html">
+        <source>Data Filters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">6,7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3955967824702499842" datatype="html">
+        <source>Department</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">17</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2098830826300486269" datatype="html">
+        <source>All Departments</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">18</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">18,19</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1808384884994058726" datatype="html">
+        <source>Cardiology</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">20</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4594119038349616037" datatype="html">
+        <source>Neurology</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8055293417701634173" datatype="html">
+        <source>Orthopedics</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">22</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="687517544810939897" datatype="html">
+        <source>Emergency</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3232520755989314679" datatype="html">
+        <source>Reporting Period</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">34</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5162686434580248853" datatype="html">
+        <source>Start</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">39</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3604386807230411192" datatype="html">
+        <source>Start Date</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">41,42</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1241348629231510663" datatype="html">
+        <source>End</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">46</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7379726829888309084" datatype="html">
+        <source>End Date</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">48,49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4176168554520872982" datatype="html">
+        <source>Clear all filters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">57,58</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2311065005960014540" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>highlight_off<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Clear </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/filter-ribbon.component.html</context>
+          <context context-type="linenumber">58,61</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4913852525793624577" datatype="html">
+        <source>shopping_cart</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">3</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8238959623445658867" datatype="html">
+        <source>Query Cart</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">4,5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1238583382012712938" datatype="html">
+        <source> Clear </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">8,9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7653789886941253090" datatype="html">
+        <source>Save ad-hoc queries to stage them here.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">21,23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8779309803627080071" datatype="html">
+        <source>Drag onto dashboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">26,27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3290915801180270972" datatype="html">
+        <source>drag_indicator</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4310383750639486996" datatype="html">
+        <source>Add to current dashboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">42,43</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7630324639865673319" datatype="html">
+        <source>Add to dashboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">43,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5108291808218367313" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">46,48</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6041115344061899387" datatype="html">
+        <source>Rename</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">48</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6320826642679765525" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>edit<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">49,51</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">64,66</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4814285799071780083" datatype="html">
+        <source>Remove</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">56</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">57</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">90</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">93</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="697516526173606785" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>delete<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">59,61</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">82,83</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">123,124</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">94,96</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">75,77</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4204200491433745066" datatype="html">
+        <source>Drop to add</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">66,67</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
+          <context context-type="linenumber">39,40</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5017023821359967169" datatype="html">
+        <source>Open a dashboard to enable one-click add.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/query-cart/query-cart.component.html</context>
+          <context context-type="linenumber">73,75</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4319786573708387572" datatype="html">
+        <source>Back to Home</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">5,6</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7861389751355579174" datatype="html">
+        <source>Analytics</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">10,11</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">34,36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2871286350558206259" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isDashboardRoute()) {"/> <x id="INTERPOLATION" equiv-text="{{ store.dashboard()?.name || &apos;Loading...&apos; }}"/> <x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/> Pulse Query <x id="CLOSE_BLOCK_ELSE" equiv-text="}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">12,18</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1665022761375605467" datatype="html">
+        <source>Dashboards</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">27,29</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4635453384629622126" datatype="html">
+        <source>Simulation</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">30,32</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8806641092072813439" datatype="html">
+        <source>Ad-Hoc</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">32,33</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5041354590769758251" datatype="html">
+        <source>Admin</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">37,39</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3786780810188767768" datatype="html">
+        <source>Query Cart (Access in Dashboard Editor)</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">48,49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8518774497418273843" datatype="html">
+        <source>Query Cart items</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">49,50</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1177808125198274016" datatype="html">
+        <source>Toggle Edit Mode</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">65,66</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2181863923173055191" datatype="html">
+        <source><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;text-sm&quot;&gt;"/>Edit<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">68,69</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="346792465688930714" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Widget<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">79,80</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7896992667466546030" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (store.isLoading()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;18&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>refresh<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="CLOSE_BLOCK_ELSE" equiv-text="}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">91,98</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2048481582280537098" datatype="html">
+        <source>Open Theme Settings</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">104,105</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5298636079950229374" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>palette<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">107,110</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8671234314555525900" datatype="html">
+        <source>Appearance</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">111,112</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6389241371715634561" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/><x id="INTERPOLATION" equiv-text="{{ themeService.isDark() ? &apos;light_mode&apos; : &apos;dark_mode&apos; }}"/><x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/><x id="INTERPOLATION_1" equiv-text="{{ themeService.isDark() ? &apos;Light Mode&apos; : &apos;Dark Mode&apos; }}"/><x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">113,116</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3676838007574820884" datatype="html">
+        <source>Seed Color</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">118,119</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="575008298541399799" datatype="html">
+        <source>colorize</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">133,134</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="54334629841803842" datatype="html">
+        <source>Custom Theme Color</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">140,141</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2301262831405117784" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>smart_toy<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;hidden sm:inline&quot;&gt;"/>Ask AI<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">148,151</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6400509563404610063" datatype="html">
+        <source>User Account Menu</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">154,155</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8883178932677943225" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon class=&quot;text-secondary&quot;&gt;"/>account_circle<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">157,160</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1076910432153037829" datatype="html">
+        <source>account_circle</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">162</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7425766914410430563" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>dashboard<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>My Dashboards<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">166,168</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1943694510241048840" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>settings<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Admin Settings<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">170,171</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2430127355752167484" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon color=&quot;warn&quot;&gt;"/>logout<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Logout<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
+          <context context-type="linenumber">175,177</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2638094623199007957" datatype="html">
+        <source>Add Widget</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">3,4</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6398969587818603892" datatype="html">
+        <source>Close dialog</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">4,5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8418855139936312876" datatype="html">
+        <source><x id="START_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;ng-template matStepLabel&gt;"/>Select Source<x id="CLOSE_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;/ng-template&gt;"/><x id="START_TAG_DIV_16" ctype="x-div_16" equiv-text="&lt;div
+          class=&quot;flex flex-col h-full overflow-hidden&quot;
+          style=&quot;background-color: var(--sys-background)&quot;
+        &gt;"/><x id="START_TAG_MAT_TAB_GROUP" ctype="x-mat_tab_group" equiv-text="&lt;mat-tab-group
+            class=&quot;flex-grow&quot;
+            animationDuration=&quot;0ms&quot;
+            [selectedIndex]=&quot;selectedTab()&quot;
+            (selectedIndexChange)=&quot;selectedTab.set($event)&quot;
+          &gt;"/><x id="START_TAG_MAT_TAB" ctype="x-mat_tab" equiv-text="&lt;mat-tab label=&quot;Templates&quot;&gt;"/><x id="START_TAG_DIV_7" ctype="x-div_7" equiv-text="&lt;div class=&quot;p-6 h-full overflow-y-auto&quot;&gt;"/><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;flex gap-4 mb-4 items-center flex-wrap&quot;&gt;"/><x id="START_TAG_MAT_FORM_FIELD" ctype="x-mat_form_field" equiv-text="&lt;mat-form-field
+                    appearance=&quot;outline&quot;
+                    density=&quot;compact&quot;
+                    subscriptSizing=&quot;dynamic&quot;
+                    class=&quot;w-64&quot;
+                  &gt;"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon matPrefix&gt;"/>search<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon
+                    &gt;"/><x id="TAG_INPUT" ctype="x-input" equiv-text="&lt;input
+                      matInput
+                      i18n-placeholder placeholder=&quot;Search templates...&quot;
+                      (input)=&quot;updateSearch($event)&quot;
+                    /&gt;"/><x id="CLOSE_TAG_MAT_FORM_FIELD" ctype="x-mat_form_field" equiv-text="&lt;/mat-form-field&gt;"/><x id="START_TAG_MAT_CHIP_SET" ctype="x-mat_chip_set" equiv-text="&lt;mat-chip-set&gt;"/><x id="START_BLOCK_FOR" equiv-text="@for (cat of categories(); track cat) {"/><x id="START_TAG_MAT_CHIP_OPTION" ctype="x-mat_chip_option" equiv-text="&lt;mat-chip-option
+                        [selected]=&quot;selectedCategory() === cat&quot;
+                        (selectionChange)=&quot;toggleCategory(cat)&quot;
+                        &gt;"/><x id="INTERPOLATION" equiv-text="{{ cat }}"/><x id="CLOSE_TAG_MAT_CHIP_OPTION" ctype="x-mat_chip_option" equiv-text="&lt;/mat-chip-option
+                      &gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_TAG_MAT_CHIP_SET" ctype="x-mat_chip_set" equiv-text="&lt;/mat-chip-set&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_BLOCK_IF" equiv-text="@if (loadingTemplates()) {"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;flex justify-center p-12&quot;&gt;"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;40&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_TAG_DIV_6" ctype="x-div_6" equiv-text="&lt;div class=&quot;grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4&quot; role=&quot;list&quot;&gt;"/><x id="START_BLOCK_FOR_1" equiv-text="@for (t of templates(); track t.id) {"/><x id="START_TAG_DIV_5" ctype="x-div_5" equiv-text="&lt;div
+                      class=&quot;template-card&quot;
+                      [class.selected]=&quot;selectedTemplateId() === t.id&quot;
+                      (click)=&quot;selectTemplate(t)&quot;
+                      (keydown.enter)=&quot;selectTemplate(t)&quot;
+                      tabindex=&quot;0&quot;
+                      role=&quot;button&quot;
+                      [attr.aria-label]=&quot;&apos;Select template: &apos; + t.title&quot;
+                    &gt;"/><x id="START_TAG_DIV_2" ctype="x-div_2" equiv-text="&lt;div class=&quot;font-medium text-primary mb-1&quot; style=&quot;color: var(--sys-primary)&quot;&gt;"/> <x id="INTERPOLATION_1" equiv-text="{{ t.title }}"/> <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_3" ctype="x-div_3" equiv-text="&lt;div
+                        class=&quot;text-xs uppercase tracking-wider mb-2&quot;
+                        style=&quot;color: var(--sys-text-secondary)&quot;
+                      &gt;"/> <x id="INTERPOLATION_2" equiv-text="{{ t.category }}"/> <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_4" ctype="x-div_4" equiv-text="&lt;div
+                        class=&quot;text-sm line-clamp-3&quot;
+                        style=&quot;color: var(--sys-on-surface-variant)&quot;
+                      &gt;"/> <x id="INTERPOLATION_3" equiv-text="{{ t.description }}"/> <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_MAT_TAB" ctype="x-mat_tab" equiv-text="&lt;/mat-tab&gt;"/><x id="START_TAG_MAT_TAB_1" ctype="x-mat_tab_1" equiv-text="&lt;mat-tab label=&quot;Custom Query&quot;&gt;"/><x id="START_TAG_DIV_14" ctype="x-div_14" equiv-text="&lt;div class=&quot;p-8 max-w-4xl mx-auto h-full flex flex-col justify-center&quot;&gt;"/><x id="START_HEADING_LEVEL3" ctype="x-h3" equiv-text="&lt;h3
+                  class=&quot;text-lg font-medium mb-6 text-center&quot;
+                  style=&quot;color: var(--sys-text-primary)&quot;
+                &gt;"/> Choose Data Source <x id="CLOSE_HEADING_LEVEL3" ctype="x-h3" equiv-text="&lt;/h3&gt;"/><x id="START_TAG_DIV_13" ctype="x-div_13" equiv-text="&lt;div class=&quot;grid grid-cols-3 gap-6&quot;&gt;"/><x id="START_TAG_DIV_10" ctype="x-div_10" equiv-text="&lt;div
+                    class=&quot;source-option&quot;
+                    [class.selected]=&quot;selectedCustomType() === &apos;SQL&apos;&quot;
+                    (click)=&quot;selectCustomType(&apos;SQL&apos;)&quot;
+                    tabindex=&quot;0&quot;
+                    (keydown.enter)=&quot;selectCustomType(&apos;SQL&apos;)&quot;
+                  &gt;"/><x id="START_TAG_MAT_ICON_1" ctype="x-mat_icon_1" equiv-text="&lt;mat-icon class=&quot;text-4xl mb-4&quot; style=&quot;color: var(--sys-primary)&quot;
+                      &gt;"/>storage<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon
+                    &gt;"/><x id="START_TAG_DIV_8" ctype="x-div_8" equiv-text="&lt;div class=&quot;font-bold&quot;&gt;"/>SQL Database<x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_9" ctype="x-div_9" equiv-text="&lt;div class=&quot;text-sm mt-2 text-center&quot; style=&quot;color: var(--sys-text-secondary)&quot;&gt;"/> Query the internal DuckDB analytics engine using SQL <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_11" ctype="x-div_11" equiv-text="&lt;div
+                    class=&quot;source-option&quot;
+                    [class.selected]=&quot;selectedCustomType() === &apos;HTTP&apos;&quot;
+                    (click)=&quot;selectCustomType(&apos;HTTP&apos;)&quot;
+                    tabindex=&quot;0&quot;
+                    (keydown.enter)=&quot;selectCustomType(&apos;HTTP&apos;)&quot;
+                  &gt;"/><x id="START_TAG_MAT_ICON_2" ctype="x-mat_icon_2" equiv-text="&lt;mat-icon class=&quot;text-4xl mb-4&quot; style=&quot;color: var(--sys-tertiary)&quot;
+                      &gt;"/>cloud_download<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon
+                    &gt;"/><x id="START_TAG_DIV_8" ctype="x-div_8" equiv-text="&lt;div class=&quot;font-bold&quot;&gt;"/>HTTP API<x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_9" ctype="x-div_9" equiv-text="&lt;div class=&quot;text-sm mt-2 text-center&quot; style=&quot;color: var(--sys-text-secondary)&quot;&gt;"/> Fetch JSON data from an external REST endpoint <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_12" ctype="x-div_12" equiv-text="&lt;div
+                    class=&quot;source-option&quot;
+                    [class.selected]=&quot;selectedCustomType() === &apos;TEXT&apos;&quot;
+                    (click)=&quot;selectCustomType(&apos;TEXT&apos;)&quot;
+                    tabindex=&quot;0&quot;
+                    (keydown.enter)=&quot;selectCustomType(&apos;TEXT&apos;)&quot;
+                  &gt;"/><x id="START_TAG_MAT_ICON_3" ctype="x-mat_icon_3" equiv-text="&lt;mat-icon class=&quot;text-4xl mb-4&quot; style=&quot;color: var(--sys-secondary)&quot;
+                      &gt;"/>description<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon
+                    &gt;"/><x id="START_TAG_DIV_8" ctype="x-div_8" equiv-text="&lt;div class=&quot;font-bold&quot;&gt;"/>Static Markdown<x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_9" ctype="x-div_9" equiv-text="&lt;div class=&quot;text-sm mt-2 text-center&quot; style=&quot;color: var(--sys-text-secondary)&quot;&gt;"/> Add text descriptions, instructions, or notes. <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_MAT_TAB" ctype="x-mat_tab" equiv-text="&lt;/mat-tab&gt;"/><x id="CLOSE_TAG_MAT_TAB_GROUP" ctype="x-mat_tab_group" equiv-text="&lt;/mat-tab-group&gt;"/><x id="START_TAG_DIV_15" ctype="x-div_15" equiv-text="&lt;div
+            class=&quot;p-4 border-t flex justify-end gap-2&quot;
+            style=&quot;background-color: var(--sys-surface); border-color: var(--sys-surface-border)&quot;
+          &gt;"/><x id="START_TAG_BUTTON" ctype="x-button" equiv-text="&lt;button mat-button (click)=&quot;cancel()&quot;&gt;"/>Cancel<x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="START_TAG_BUTTON_1" ctype="x-button_1" equiv-text="&lt;button
+              mat-flat-button
+              color=&quot;primary&quot;
+              (click)=&quot;initializeDraft(stepper)&quot;
+              [disabled]=&quot;isBusy() || (!selectedTemplateId() &amp;&amp; !selectedCustomType())&quot;
+            &gt;"/><x id="START_BLOCK_IF_1" equiv-text="@if (isBusy()) {"/><x id="START_TAG_MAT_SPINNER_1" ctype="x-mat_spinner_1" equiv-text="&lt;mat-spinner diameter=&quot;18&quot; class=&quot;mr-2&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Next: Configure <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">18,179</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2942084642660184598" datatype="html">
+        <source>Search templates...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">43,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="290676962840695050" datatype="html">
+        <source><x id="START_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;ng-template matStepLabel&gt;"/>Configure Data<x id="CLOSE_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;/ng-template&gt;"/><x id="START_BLOCK_IF_3" equiv-text="@if (draftWidget(); as widget) {"/><x id="START_TAG_DIV_2" ctype="x-div_2" equiv-text="&lt;div class=&quot;h-full flex flex-col overflow-hidden&quot;&gt;"/><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;flex-grow overflow-hidden relative&quot;&gt;"/><x id="START_BLOCK_IF" equiv-text="@if (selectedType() === &apos;SQL&apos;) {"/><x id="START_TAG_APP_SQL_BUILDER" ctype="x-app_sql_builder" equiv-text="&lt;app-sql-builder
+                  [dashboardId]=&quot;data.dashboardId&quot;
+                  [widgetId]=&quot;widget.id&quot;
+                  [initialSql]=&quot;widget.config[&apos;query&apos;]&quot;
+                  (sqlChange)=&quot;onSqlChange($event)&quot;
+                  class=&quot;h-full block&quot;
+                &gt;"/><x id="CLOSE_TAG_APP_SQL_BUILDER" ctype="x-app_sql_builder" equiv-text="&lt;/app-sql-builder&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE_IF" equiv-text="@else if (selectedType() === &apos;HTTP&apos;) {"/><x id="START_TAG_APP_HTTP_CONFIG" ctype="x-app_http_config" equiv-text="&lt;app-http-config
+                  [dashboardId]=&quot;data.dashboardId&quot;
+                  [widgetId]=&quot;widget.id&quot;
+                  [initialConfig]=&quot;widget.config&quot;
+                  (configChange)=&quot;onConfigChange($event)&quot;
+                  class=&quot;h-full block&quot;
+                &gt;"/><x id="CLOSE_TAG_APP_HTTP_CONFIG" ctype="x-app_http_config" equiv-text="&lt;/app-http-config&gt;"/><x id="CLOSE_BLOCK_ELSE_IF" equiv-text="}"/><x id="START_BLOCK_ELSE_IF_1" equiv-text="@else if (selectedType() === &apos;TEXT&apos;) {"/><x id="START_TAG_APP_TEXT_EDITOR" ctype="x-app_text_editor" equiv-text="&lt;app-text-editor
+                  [dashboardId]=&quot;data.dashboardId&quot;
+                  [widgetId]=&quot;widget.id&quot;
+                  [initialContent]=&quot;widget.config[&apos;content&apos;]&quot;
+                  (contentChange)=&quot;onContentChange($event)&quot;
+                  class=&quot;h-full block&quot;
+                &gt;"/><x id="CLOSE_TAG_APP_TEXT_EDITOR" ctype="x-app_text_editor" equiv-text="&lt;/app-text-editor&gt;"/><x id="CLOSE_BLOCK_ELSE_IF" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div
+              class=&quot;p-4 border-t flex justify-end gap-2 z-10 relative&quot;
+              style=&quot;background: var(--sys-surface); border-color: var(--sys-surface-border)&quot;
+            &gt;"/><x id="START_TAG_BUTTON" ctype="x-button" equiv-text="&lt;button mat-button matStepperPrevious&gt;"/>Back<x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="START_BLOCK_IF_2" equiv-text="@if (activeMode() === &apos;template&apos;) {"/><x id="START_TAG_BUTTON_1" ctype="x-button_1" equiv-text="&lt;button
+                  mat-flat-button
+                  color=&quot;primary&quot;
+                  (click)=&quot;runTemplateQuery(stepper)&quot;
+                  [disabled]=&quot;!templateFormValid() || isBusy()&quot;
+                &gt;"/><x id="START_BLOCK_IF_1" equiv-text="@if (isBusy()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;18&quot; class=&quot;mr-2&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Run &amp; Preview <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE_IF_2" equiv-text="@else if (widget.type === &apos;TEXT&apos;) {"/><x id="START_TAG_BUTTON_2" ctype="x-button_2" equiv-text="&lt;button mat-flat-button color=&quot;primary&quot; (click)=&quot;saveAndClose()&quot;&gt;"/> Save &amp; Finish <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_BLOCK_ELSE_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/><x id="START_TAG_BUTTON_3" ctype="x-button_3" equiv-text="&lt;button mat-flat-button color=&quot;primary&quot; (click)=&quot;validateDataPresence(stepper)&quot;&gt;"/> Next: Visualize <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_BLOCK_ELSE" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">183,245</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1374620297226183371" datatype="html">
+        <source><x id="START_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;ng-template matStepLabel&gt;"/>Visualize<x id="CLOSE_TAG_NG_TEMPLATE" ctype="x-ng_template" equiv-text="&lt;/ng-template&gt;"/><x id="START_TAG_DIV_4" ctype="x-div_4" equiv-text="&lt;div class=&quot;h-full flex flex-col lg:flex-row overflow-hidden&quot;&gt;"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div
+            class=&quot;w-full lg:w-80 border-r flex flex-col overflow-y-auto p-4 flex-shrink-0&quot;
+            style=&quot;background: var(--sys-surface-variant); border-color: var(--sys-surface-border)&quot;
+          &gt;"/><x id="START_HEADING_LEVEL4" ctype="x-h4" equiv-text="&lt;h4 class=&quot;text-xs font-bold uppercase text-gray-500 mb-4&quot;&gt;"/>Settings<x id="CLOSE_HEADING_LEVEL4" ctype="x-h4" equiv-text="&lt;/h4&gt;"/><x id="START_TAG_MAT_FORM_FIELD" ctype="x-mat_form_field" equiv-text="&lt;mat-form-field appearance=&quot;outline&quot; subscriptSizing=&quot;dynamic&quot; class=&quot;mb-4&quot;&gt;"/><x id="START_TAG_MAT_LABEL" ctype="x-mat_label" equiv-text="&lt;mat-label&gt;"/>Widget Title<x id="CLOSE_TAG_MAT_LABEL" ctype="x-mat_label" equiv-text="&lt;/mat-label&gt;"/><x id="TAG_INPUT" ctype="x-input" equiv-text="&lt;input matInput [formControl]=&quot;titleControl&quot; /&gt;"/><x id="CLOSE_TAG_MAT_FORM_FIELD" ctype="x-mat_form_field" equiv-text="&lt;/mat-form-field&gt;"/><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;text-xs font-bold uppercase text-gray-500 mb-2&quot;&gt;"/>Visualization Type<x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_MAT_CHIP_LISTBOX" ctype="x-mat_chip_listbox" equiv-text="&lt;mat-chip-listbox class=&quot;mb-4 flex-col&quot; [selectable]=&quot;true&quot;&gt;"/><x id="START_BLOCK_FOR" equiv-text="@for (viz of visualizations; track viz.id) {"/><x id="START_TAG_MAT_CHIP_OPTION" ctype="x-mat_chip_option" equiv-text="&lt;mat-chip-option
+                  [selected]=&quot;draftWidget()?.visualization === viz.id&quot;
+                  (click)=&quot;updateVizType(viz.id)&quot;
+                  class=&quot;w-full viz-option&quot;
+                &gt;"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/><x id="INTERPOLATION" equiv-text="{{ viz.icon }}"/><x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> <x id="INTERPOLATION_1" equiv-text="{{ viz.label }}"/> <x id="CLOSE_TAG_MAT_CHIP_OPTION" ctype="x-mat_chip_option" equiv-text="&lt;/mat-chip-option&gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_TAG_MAT_CHIP_LISTBOX" ctype="x-mat_chip_listbox" equiv-text="&lt;/mat-chip-listbox&gt;"/><x id="START_BLOCK_IF" equiv-text="@if (showAxesConfig()) {"/><x id="START_TAG_MAT_DIVIDER" ctype="x-mat_divider" equiv-text="&lt;mat-divider class=&quot;mb-4&quot;&gt;"/><x id="CLOSE_TAG_MAT_DIVIDER" ctype="x-mat_divider" equiv-text="&lt;/mat-divider&gt;"/><x id="START_TAG_MAT_FORM_FIELD_1" ctype="x-mat_form_field_1" equiv-text="&lt;mat-form-field appearance=&quot;outline&quot; subscriptSizing=&quot;dynamic&quot; class=&quot;mb-2&quot;&gt;"/><x id="START_TAG_MAT_LABEL" ctype="x-mat_label" equiv-text="&lt;mat-label&gt;"/><x id="INTERPOLATION_2" equiv-text="{{ isPie() ? &apos;Label Column&apos; : &apos;X-Axis / Category&apos; }}"/><x id="CLOSE_TAG_MAT_LABEL" ctype="x-mat_label" equiv-text="&lt;/mat-label&gt;"/><x id="START_TAG_MAT_SELECT" ctype="x-mat_select" equiv-text="&lt;mat-select  [formControl]=&quot;xKeyControl&quot; i18n-aria-label aria-label=&quot;Select option&quot;&gt;"/><x id="START_TAG_MAT_OPTION" ctype="x-mat_option" equiv-text="&lt;mat-option [value]=&quot;null&quot;&gt;"/>Auto<x id="CLOSE_TAG_MAT_OPTION" ctype="x-mat_option" equiv-text="&lt;/mat-option&gt;"/><x id="START_BLOCK_FOR_1" equiv-text="@for (col of availableColumns(); track col) {"/><x id="START_TAG_MAT_OPTION_1" ctype="x-mat_option_1" equiv-text="&lt;mat-option [value]=&quot;col&quot;&gt;"/><x id="INTERPOLATION_3" equiv-text="{{ col }}"/><x id="CLOSE_TAG_MAT_OPTION" ctype="x-mat_option" equiv-text="&lt;/mat-option&gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_TAG_MAT_SELECT" ctype="x-mat_select" equiv-text="&lt;/mat-select&gt;"/><x id="CLOSE_TAG_MAT_FORM_FIELD" ctype="x-mat_form_field" equiv-text="&lt;/mat-form-field&gt;"/><x id="START_TAG_MAT_FORM_FIELD_2" ctype="x-mat_form_field_2" equiv-text="&lt;mat-form-field appearance=&quot;outline&quot; subscriptSizing=&quot;dynamic&quot;&gt;"/><x id="START_TAG_MAT_LABEL" ctype="x-mat_label" equiv-text="&lt;mat-label&gt;"/><x id="INTERPOLATION_4" equiv-text="{{ isPie() ? &apos;Size Column&apos; : &apos;Y-Axis / Value&apos; }}"/><x id="CLOSE_TAG_MAT_LABEL" ctype="x-mat_label" equiv-text="&lt;/mat-label&gt;"/><x id="START_TAG_MAT_SELECT_1" ctype="x-mat_select_1" equiv-text="&lt;mat-select  [formControl]=&quot;yKeyControl&quot; i18n-aria-label aria-label=&quot;Select option&quot;&gt;"/><x id="START_TAG_MAT_OPTION" ctype="x-mat_option" equiv-text="&lt;mat-option [value]=&quot;null&quot;&gt;"/>Auto<x id="CLOSE_TAG_MAT_OPTION" ctype="x-mat_option" equiv-text="&lt;/mat-option&gt;"/><x id="START_BLOCK_FOR_1" equiv-text="@for (col of availableColumns(); track col) {"/><x id="START_TAG_MAT_OPTION_1" ctype="x-mat_option_1" equiv-text="&lt;mat-option [value]=&quot;col&quot;&gt;"/><x id="INTERPOLATION_3" equiv-text="{{ col }}"/><x id="CLOSE_TAG_MAT_OPTION" ctype="x-mat_option" equiv-text="&lt;/mat-option&gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="CLOSE_TAG_MAT_SELECT" ctype="x-mat_select" equiv-text="&lt;/mat-select&gt;"/><x id="CLOSE_TAG_MAT_FORM_FIELD" ctype="x-mat_form_field" equiv-text="&lt;/mat-form-field&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_3" ctype="x-div_3" equiv-text="&lt;div
+            class=&quot;flex-grow flex flex-col p-8 overflow-hidden relative&quot;
+            style=&quot;background: var(--sys-background)&quot;
+          &gt;"/><x id="START_TAG_DIV_2" ctype="x-div_2" equiv-text="&lt;div
+              class=&quot;bg-white rounded-lg shadow-sm border h-full w-full overflow-hidden flex flex-col p-4&quot;
+              style=&quot;background-color: var(--sys-surface); border-color: var(--sys-surface-border)&quot;
+            &gt;"/><x id="START_BLOCK_IF_1" equiv-text="@if (draftWidget(); as w) {"/><x id="START_TAG_APP_WIDGET" ctype="x-app_widget" equiv-text="&lt;app-widget [widget]=&quot;w&quot; class=&quot;flex-grow h-full w-full&quot;&gt;"/><x id="CLOSE_TAG_APP_WIDGET" ctype="x-app_widget" equiv-text="&lt;/app-widget&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_5" ctype="x-div_5" equiv-text="&lt;div
+          class=&quot;p-4 border-t flex justify-end gap-2 fixed-bottom&quot;
+          style=&quot;background: var(--sys-surface); border-color: var(--sys-surface-border)&quot;
+        &gt;"/><x id="START_TAG_BUTTON" ctype="x-button" equiv-text="&lt;button mat-button matStepperPrevious&gt;"/>Back<x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="START_TAG_BUTTON_1" ctype="x-button_1" equiv-text="&lt;button
+            mat-flat-button
+            color=&quot;primary&quot;
+            (click)=&quot;saveAndClose()&quot;
+            [disabled]=&quot;titleControl.invalid || isBusy()&quot;
+          &gt;"/><x id="START_BLOCK_IF_2" equiv-text="@if (isBusy()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;18&quot; class=&quot;mr-2&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Save Widget <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-builder/widget-builder.component.html</context>
+          <context context-type="linenumber">248,329</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3248367693051997686" datatype="html">
+        <source>Edit Widget</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">4,5</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5688517685336897546" datatype="html">
+        <source> <x id="INTERPOLATION" equiv-text="{{ widget.title }}"/> <x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;bg-blue-50 text-blue-700 px-1 rounded border border-blue-100&quot;&gt;"/><x id="INTERPOLATION_1" equiv-text="{{
+        widget.type
+      }}"/><x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">6,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4924798722383402409" datatype="html">
+        <source> Visualization Settings (<x id="INTERPOLATION" equiv-text="{{ widget.visualization }}"/>) </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">46,49</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3760803714078906218" datatype="html">
+        <source>-- Auto --</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">58</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">73</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1670954825157115470" datatype="html">
+        <source>Update Viz</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">80,81</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1495949826435252441" datatype="html">
+        <source> Run the query in the editor above to populate available columns. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-editor.dialog.html</context>
+          <context context-type="linenumber">85,86</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="157345821024497184" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>library_add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Widget Gallery </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
+          <context context-type="linenumber">3,6</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7158592746571420879" datatype="html">
+        <source>search</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
+          <context context-type="linenumber">7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="924720347595448143" datatype="html">
+        <source>Search metrics...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
+          <context context-type="linenumber">10,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4190253942352976766" datatype="html">
+        <source>No templates found</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
+          <context context-type="linenumber">46,47</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7959573753932689525" datatype="html">
+        <source>HTTP Configuration</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">3,4</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1584521964289060333" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isRunning()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;18&quot; class=&quot;mr-2&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Save &amp; Test </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">10,15</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8864288285279476751" datatype="html">
+        <source>Method</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4098550587988605545" datatype="html">
+        <source>Select method</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">24,25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6246613144919152263" datatype="html">
+        <source>GET</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="446249755436689187" datatype="html">
+        <source>POST</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">26</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7101449456128091948" datatype="html">
+        <source>PUT</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="841311519047609428" datatype="html">
+        <source>DELETE</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">28</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5797583031582738727" datatype="html">
+        <source>URL Endpoint</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">33</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3441210011789897206" datatype="html">
+        <source>https://api.example.com</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">34,35</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8044832971137530414" datatype="html">
+        <source>Valid URL is required</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3650506277078625339" datatype="html">
+        <source> Forward Authentication Token </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">43,44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4590241870987487473" datatype="html">
+        <source> Passes the current user&apos;s JWT to the external service. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">46,47</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4357113987057296873" datatype="html">
+        <source>Query Parameters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">54</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2176659033176029418" datatype="html">
+        <source>Key</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">65</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3384531078007131455" datatype="html">
+        <source>Parameter Key</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">65,66</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6555318547274416232" datatype="html">
+        <source>Value</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">73</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">114</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4304465124910788940" datatype="html">
+        <source>Parameter Value</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">73,74</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7560848897850891421" datatype="html">
+        <source>Remove Parameter</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">80,81</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5507048316342489975" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Add Parameter </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">88,90</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6215186523080321" datatype="html">
+        <source>Headers</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">95</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8465184029269506762" datatype="html">
+        <source>Header Key</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">105,106</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">106,107</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2481121308855767650" datatype="html">
+        <source>Header Value</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">114,115</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1420433446356145978" datatype="html">
+        <source>Remove Header</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">121,122</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8744640706726380054" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Add Header </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">129,131</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2353039742418695095" datatype="html">
+        <source>Request Body (JSON)</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">136</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3412348161072253397" datatype="html">
+        <source>JSON Payload</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">140</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="524243853426666119" datatype="html">
+        <source>Invalid JSON format</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">149</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7323463579947386047" datatype="html">
+        <source>Response Preview</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">159,160</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2000427004791358587" datatype="html">
+        <source>Save and Test to see response...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/http-config.component.html</context>
+          <context context-type="linenumber">164,165</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6119720507694287491" datatype="html">
+        <source><x id="START_TAG_DIV_10" ctype="x-div_10" equiv-text="&lt;div class=&quot;flex flex-col h-full p-4 gap-4 overflow-hidden&quot;&gt;"/><x id="START_BLOCK_IF" equiv-text="@if (validationError()) {"/><x id="START_TAG_DIV_1" ctype="x-div_1" equiv-text="&lt;div class=&quot;error-banner&quot; data-testid=&quot;error-banner&quot; role=&quot;alert&quot;&gt;"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon class=&quot;icon-sm&quot; style=&quot;font-size: 18px; width: 18px; height: 18px&quot;
+              &gt;"/>cancel<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;flex-1&quot;&gt;"/><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/>Syntax Error:<x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> <x id="INTERPOLATION" equiv-text="{{ validationError() }}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_BUTTON" ctype="x-button" equiv-text="&lt;button
+              mat-icon-button
+              class=&quot;icon-btn-micro&quot;
+              (click)=&quot;validationError.set(null)&quot;
+              i18n-aria-label aria-label=&quot;Dismiss Error&quot;
+            &gt;"/><x id="START_TAG_MAT_ICON_1" ctype="x-mat_icon_1" equiv-text="&lt;mat-icon style=&quot;font-size: 16px&quot;&gt;"/>close<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_TAG_DIV_3" ctype="x-div_3" equiv-text="&lt;div class=&quot;cm-wrapper shadow-inner&quot;&gt;"/><x id="START_TAG_DIV_2" ctype="x-div_2" equiv-text="&lt;div #editorHost class=&quot;cm-host&quot;&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_6" ctype="x-div_6" equiv-text="&lt;div class=&quot;flex justify-between items-center flex-shrink-0&quot;&gt;"/><x id="START_TAG_BUTTON_1" ctype="x-button_1" equiv-text="&lt;button
+            mat-stroked-button
+            [matMenuTriggerFor]=&quot;paramsMenu&quot;
+            i18n-matTooltip matTooltip=&quot;Inject Global Filters&quot;
+           i18n-aria-label aria-label=&quot;Inject Global Filters&quot;&gt;"/><x id="START_TAG_MAT_ICON_2" ctype="x-mat_icon_2" equiv-text="&lt;mat-icon class=&quot;mr-1&quot;&gt;"/>data_object<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Insert Param <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="START_TAG_MAT_MENU" ctype="x-mat_menu" equiv-text="&lt;mat-menu #paramsMenu=&quot;matMenu&quot;&gt;"/><x id="START_BLOCK_FOR" equiv-text="@for (key of availableParams(); track key) {"/><x id="START_TAG_BUTTON_2" ctype="x-button_2" equiv-text="&lt;button mat-menu-item (click)=&quot;insertParam(key)&quot;&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/><x id="INTERPOLATION_1" equiv-text="{{ &apos;{&apos; + &apos;{&apos; + key + &apos;}&apos; + &apos;}&apos; }}"/><x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span
+                &gt;"/><x id="START_TAG_SPAN_1" ctype="x-span_1" equiv-text="&lt;span class=&quot;text-xs ml-2&quot; style=&quot;color: var(--sys-text-secondary)&quot;
+                  &gt;"/>(<x id="INTERPOLATION_2" equiv-text="{{ globalParams()[key] }}"/>)<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span
+                &gt;"/><x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_BLOCK_FOR" equiv-text="}"/><x id="START_BLOCK_IF_1" equiv-text="@if (availableParams().length === 0) {"/><x id="START_TAG_DIV_4" ctype="x-div_4" equiv-text="&lt;div class=&quot;px-4 py-2 text-xs&quot; style=&quot;color: var(--sys-text-secondary)&quot;&gt;"/> No global params set <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="CLOSE_TAG_MAT_MENU" ctype="x-mat_menu" equiv-text="&lt;/mat-menu&gt;"/><x id="START_TAG_DIV_5" ctype="x-div_5" equiv-text="&lt;div class=&quot;flex gap-2&quot;&gt;"/><x id="START_BLOCK_IF_2" equiv-text="@if (enableCart()) {"/><x id="START_TAG_BUTTON_3" ctype="x-button_3" equiv-text="&lt;button
+                mat-stroked-button
+                (click)=&quot;saveQueryToCart()&quot;
+                [disabled]=&quot;!canSaveToCart()&quot;
+                i18n-matTooltip matTooltip=&quot;Save query to cart&quot;
+               &gt;"/><x id="START_TAG_MAT_ICON_2" ctype="x-mat_icon_2" equiv-text="&lt;mat-icon class=&quot;mr-1&quot;&gt;"/>shopping_cart<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Save to Cart <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_TAG_BUTTON_4" ctype="x-button_4" equiv-text="&lt;button mat-flat-button color=&quot;accent&quot; (click)=&quot;runQuery()&quot; [disabled]=&quot;isRunning()&quot;&gt;"/><x id="START_BLOCK_IF_3" equiv-text="@if (isRunning()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;20&quot; class=&quot;mr-2&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Run Query <x id="CLOSE_TAG_BUTTON" ctype="x-button" equiv-text="&lt;/button&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="START_TAG_DIV_9" ctype="x-div_9" equiv-text="&lt;div class=&quot;result-container&quot;&gt;"/><x id="START_TAG_DIV_8" ctype="x-div_8" equiv-text="&lt;div class=&quot;viz-scroll-wrapper&quot;&gt;"/><x id="START_BLOCK_IF_4" equiv-text="@if (latestResult(); as res) {"/><x id="START_TAG_VIZ_TABLE" ctype="x-viz_table" equiv-text="&lt;viz-table [dataSet]=&quot;res&quot; class=&quot;h-full block w-full&quot;&gt;"/><x id="CLOSE_TAG_VIZ_TABLE" ctype="x-viz_table" equiv-text="&lt;/viz-table&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE_IF" equiv-text="@else if (isRunning()) {"/><x id="START_TAG_DIV_7" ctype="x-div_7" equiv-text="&lt;div
+                class=&quot;flex items-center justify-center h-full&quot;
+                style=&quot;color: var(--sys-text-secondary)&quot;
+              &gt;"/> Executing... <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_ELSE_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/><x id="START_TAG_DIV_7" ctype="x-div_7" equiv-text="&lt;div
+                class=&quot;flex items-center justify-center h-full&quot;
+                style=&quot;color: var(--sys-text-secondary)&quot;
+              &gt;"/> Run query to see results <x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_BLOCK_ELSE" equiv-text="}"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/sql-builder.component.html</context>
+          <context context-type="linenumber">10,106</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1800521882849429681" datatype="html">
+        <source>Dismiss Error</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/sql-builder.component.html</context>
+          <context context-type="linenumber">22,23</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4703116733731161897" datatype="html">
+        <source>Inject Global Filters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/sql-builder.component.html</context>
+          <context context-type="linenumber">40,41</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/sql-builder.component.html</context>
+          <context context-type="linenumber">41,42</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3425460929803430940" datatype="html">
+        <source>Save query to cart</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/sql-builder.component.html</context>
+          <context context-type="linenumber">66,67</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4130588790744749039" datatype="html">
+        <source><x id="START_TAG_DIV" ctype="x-div" equiv-text="&lt;div class=&quot;ai-wrapper&quot;&gt;"/><x id="START_TAG_APP_CONVERSATION" ctype="x-app_conversation" equiv-text="&lt;app-conversation class=&quot;h-full&quot;&gt;"/><x id="CLOSE_TAG_APP_CONVERSATION" ctype="x-app_conversation" equiv-text="&lt;/app-conversation&gt;"/><x id="CLOSE_TAG_DIV" ctype="x-div" equiv-text="&lt;/div&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/sql-builder.component.html</context>
+          <context context-type="linenumber">108,112</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="168893331593544840" datatype="html">
+        <source>Markdown Content</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/text-editor.component.html</context>
+          <context context-type="linenumber">3</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8511464406321526744" datatype="html">
+        <source># Header\n\n**Bold Text**\n\n- List Item</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/text-editor.component.html</context>
+          <context context-type="linenumber">7,8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5748308808982275407" datatype="html">
+        <source>Supports basic Markdown syntax.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/text-editor.component.html</context>
+          <context context-type="linenumber">9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="652549842455839294" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isRunning()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;18&quot; class=&quot;mr-2&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Save Content </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/editors/text-editor.component.html</context>
+          <context context-type="linenumber">15,20</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7493060901265373618" datatype="html">
+        <source>Ask Data</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">10,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3794448179013413285" datatype="html">
+        <source>Ad-Hoc Analysis</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">14,15</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8420852790688977958" datatype="html">
+        <source>Dragging saved queries to dashboards</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">26,27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="237548439834799540" datatype="html">
+        <source>Cart Button</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">27,29</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9194226542291083475" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon class=&quot;icon-small text-lg mr-1&quot;&gt;"/><x id="INTERPOLATION" equiv-text="{{
+        cartCount() &gt; 0 ? &apos;shopping_cart_checkout&apos; : &apos;shopping_cart&apos;
+      }}"/><x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;font-medium&quot;&gt;"/><x id="INTERPOLATION_1" equiv-text="{{ cartCount() }}"/> Saved<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">29,35</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5907281452342202934" datatype="html">
+        <source> Initializing Analytics Engine... </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">57,58</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="468452418183350958" datatype="html">
+        <source>error_outline</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">65</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7819314041543176992" datatype="html">
+        <source>Close</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/global/ask-data.component.html</context>
+          <context context-type="linenumber">67,68</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8078043760667425926" datatype="html">
+        <source>Create New Dashboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">1,3</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7067929237455055535" datatype="html">
+        <source>Enter a name for your new analytics workspace.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">5,7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5164104433167970649" datatype="html">
+        <source>Dashboard Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8030130699304761189" datatype="html">
+        <source>e.g. Q3 Overview</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">12,13</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3833692663709091545" datatype="html">
+        <source>Name is required</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">16</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="65374267545800610" datatype="html">
+        <source>Name must be at least 3 characters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2159130950882492111" datatype="html">
+        <source>Cancel</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">32,33</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/dialogs/confirm-dialog.component.ts</context>
+          <context context-type="linenumber">27,28</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/dialogs/prompt-dialog.component.ts</context>
+          <context context-type="linenumber">50,51</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4542074558709411899" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isSubmitting()) {"/> Creating... <x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/> Create <x id="CLOSE_BLOCK_ELSE" equiv-text="}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/dashboard-create.dialog.html</context>
+          <context context-type="linenumber">40,46</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7595228224056125811" datatype="html">
+        <source>My Dashboards</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">9,10</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4955696878978299584" datatype="html">
+        <source>Manage and view your analytics workspaces</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">10,11</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8116289374261643531" datatype="html">
+        <source>Admin Settings</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">18,19</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1189036194847421331" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>settings<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Admin </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">19,22</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7894739198558880156" datatype="html">
+        <source>Open chat assistant</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">28,29</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">29,30</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4592858360129712582" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>smart_toy<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Ask AI </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">30,33</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3499872946782144059" datatype="html">
+        <source>Recreate the standard Hospial Command Center dashboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">38,39</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">39,40</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5528406077154593359" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isRestoring()) {"/><x id="START_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;mat-spinner diameter=&quot;18&quot; i18n-aria-label aria-label=&quot;Restoring...&quot;&gt;"/><x id="CLOSE_TAG_MAT_SPINNER" ctype="x-mat_spinner" equiv-text="&lt;/mat-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>restore<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="CLOSE_BLOCK_ELSE" equiv-text="}"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;ml-2&quot;&gt;"/>Restore Defaults<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">40,48</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8961730123954831932" datatype="html">
+        <source>Restoring...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">41</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4948367291294331548" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> New Dashboard </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">49,52</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2987533644113027142" datatype="html">
+        <source>Loading dashboards...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">58</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6967180540702448691" datatype="html">
+        <source>analytics</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">73</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6921312130726826810" datatype="html">
+        <source> ID: <x id="INTERPOLATION" equiv-text="{{ dash.id.substring(0, 8) }}"/>... </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">77</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6716589441816990930" datatype="html">
+        <source>Dashboard Options</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">85,86</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1907350163180884051" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>more_vert<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">88,91</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5689566610076241833" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>edit<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Rename<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">93,95</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6548402802193872090" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>content_copy<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Duplicate<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">97,99</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5910325088759396964" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon color=&quot;warn&quot;&gt;"/>delete<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Delete<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">101,103</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8789294789916452447" datatype="html">
+        <source> <x id="INTERPOLATION" equiv-text="{{ (dash.widgets || []).length }}"/> Widgets Configured </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">109,111</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8613741909398167343" datatype="html">
+        <source>dashboard</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">118</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="928104309854223762" datatype="html">
+        <source>You haven&apos;t created any analytics dashboards yet.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">119,121</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9062846215298553304" datatype="html">
+        <source> Create Default Dashboard </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">128</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3037412513565597732" datatype="html">
+        <source> Create Empty Custom </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/home/home.component.html</context>
+          <context context-type="linenumber">131</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5207635742003539443" datatype="html">
+        <source>Sign in</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">8</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">81,82</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="509806491961863572" datatype="html">
+        <source>Hospital Analytics Platform</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3967269098753656610" datatype="html">
+        <source>Email address</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">24</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">21</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8552587679160911578" datatype="html">
+        <source>Email is required</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">34</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">31</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8876822653942344131" datatype="html">
+        <source>Please enter a valid email address</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">37</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1431416938026210429" datatype="html">
+        <source>Password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">43</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">39</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="205044832662301680" datatype="html">
+        <source>Password is required</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">62</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">58</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3613320815821858218" datatype="html">
+        <source>Password must be at least 4 characters</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">65</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">61</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1858953469563036586" datatype="html">
+        <source>Signing in...</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">79,80</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8164791295086777340" datatype="html">
+        <source>Don&apos;t have an account?</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">89,90</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5467277762952566541" datatype="html">
+        <source>Create one</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.html</context>
+          <context context-type="linenumber">90,91</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6024273055384648719" datatype="html">
+        <source>Invalid email or password. Please try again.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/login/login.component.ts</context>
+          <context context-type="linenumber">145</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5648051422512611282" datatype="html">
+        <source>MPAX vs LLM Arena</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">37,38</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8868427990947431212" datatype="html">
+        <source>Compare Mathematical Optimization vs Generative AI</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">38,39</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5314177854753533257" datatype="html">
+        <source>Scenario Prompt</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">44</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7293378651302570247" datatype="html">
+        <source>Evaluation Mode</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">55</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6812639070593945" datatype="html">
+        <source>1. Ground Truth Judge</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">57</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2968392431945673701" datatype="html">
+        <source>2. Translators</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">58</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="890100887499060673" datatype="html">
+        <source>3. Constraint Generation</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">59</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2368782712444656992" datatype="html">
+        <source>4. SQL vs MPAX</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">60</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1902824942065972293" datatype="html">
+        <source>5. Feedback Critic</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">61</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4591309356935620875" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isLoading()) {"/><x id="START_TAG_MAT_PROGRESS_SPINNER" ctype="x-mat_progress_spinner" equiv-text="&lt;mat-progress-spinner
+              mode=&quot;indeterminate&quot;
+              diameter=&quot;20&quot;
+              class=&quot;mr-2&quot;
+            &gt;"/><x id="CLOSE_TAG_MAT_PROGRESS_SPINNER" ctype="x-mat_progress_spinner" equiv-text="&lt;/mat-progress-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Run Arena </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">72,80</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7350975187760541224" datatype="html">
+        <source>MPAX Ground Truth</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">93,94</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9089690523121639996" datatype="html">
+        <source>MPAX Feasibility Score:</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">105</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1056905833622823153" datatype="html">
+        <source>Generated MPAX Result</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/mpax-arena/mpax-arena.component.ts</context>
+          <context context-type="linenumber">117,118</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1267967133679326155" datatype="html">
+        <source>Create Account</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">7</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5176085556660872087" datatype="html">
+        <source>Join the Hospital Analytics Platform</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2926694923786236079" datatype="html">
+        <source>user@example.com</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">26,27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8134695558272106554" datatype="html">
+        <source>Please enter a valid email</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">34</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3241357959735682038" datatype="html">
+        <source>Confirm Password</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">66</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8320510466592318149" datatype="html">
+        <source>Confirmation is required</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">75</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6451269955734195952" datatype="html">
+        <source>Passwords do not match</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">78</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7033194585713839328" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (isLoading()) {"/> Creating Account... <x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/> Register <x id="CLOSE_BLOCK_ELSE" equiv-text="}"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">90,96</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5277739594710154939" datatype="html">
+        <source>Already have an account?</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">99,100</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3424529719764903095" datatype="html">
+        <source>Sign in here</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/register/register.component.html</context>
+          <context context-type="linenumber">100,101</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3620188369327429839" datatype="html">
+        <source> Save </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/dialogs/prompt-dialog.component.ts</context>
+          <context context-type="linenumber">52,53</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="471631794971290340" datatype="html">
+        <source> Step <x id="INTERPOLATION" equiv-text="{{ onboarding.currentStepIndex() + 1 }}"/> of <x id="INTERPOLATION_1" equiv-text="{{ onboarding.totalSteps() }}"/> </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/onboarding/onboarding-wizard.component.ts</context>
+          <context context-type="linenumber">50,52</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="202442244688100878" datatype="html">
+        <source>close</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/onboarding/onboarding-wizard.component.ts</context>
+          <context context-type="linenumber">59</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3600752762175245191" datatype="html">
+        <source>arrow_back</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/onboarding/onboarding-wizard.component.ts</context>
+          <context context-type="linenumber">104</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8890553633144307762" datatype="html">
+        <source>Back</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/components/onboarding/onboarding-wizard.component.ts</context>
+          <context context-type="linenumber">105,106</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4627725927234237190" datatype="html">
+        <source>No Data</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.html</context>
+          <context context-type="linenumber">41,42</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-heatmap/viz-heatmap.component.html</context>
+          <context context-type="linenumber">40,42</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1040432800425306479" datatype="html">
+        <source>Heatmap Data Grid</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-heatmap/viz-heatmap.component.html</context>
+          <context context-type="linenumber">6,8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4671236986279503103" datatype="html">
+        <source>Low Load</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-heatmap/viz-heatmap.component.html</context>
+          <context context-type="linenumber">35,36</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4273514410775305086" datatype="html">
+        <source>High Load</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-heatmap/viz-heatmap.component.html</context>
+          <context context-type="linenumber">37,38</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7085767138465810901" datatype="html">
+        <source>Chart Legend</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-pie/viz-pie.component.html</context>
+          <context context-type="linenumber">24,25</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3238932971131156747" datatype="html">
+        <source>Data Results Table</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.html</context>
+          <context context-type="linenumber">6,8</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5254659089051357287" datatype="html">
+        <source> No data available </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.html</context>
+          <context context-type="linenumber">25,26</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1261561639619679250" datatype="html">
+        <source>Table Paginator</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.html</context>
+          <context context-type="linenumber">36,37</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="141387980353432564" datatype="html">
+        <source>What-If Simulation</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">3,4</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5784081297291260956" datatype="html">
+        <source> Simulate patient flow and capacity constraints using the MPAX solver. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">5,6</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8282401261061053705" datatype="html">
+        <source><x id="START_BLOCK_IF" equiv-text="@if (store.isSimulating()) {"/><x id="START_TAG_MAT_PROGRESS_SPINNER" ctype="x-mat_progress_spinner" equiv-text="&lt;mat-progress-spinner
+          mode=&quot;indeterminate&quot;
+          diameter=&quot;20&quot;
+          class=&quot;mr-2&quot;
+        &gt;"/><x id="CLOSE_TAG_MAT_PROGRESS_SPINNER" ctype="x-mat_progress_spinner" equiv-text="&lt;/mat-progress-spinner&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/><x id="START_BLOCK_ELSE" equiv-text="@else {"/><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>play_arrow<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="CLOSE_BLOCK_ELSE" equiv-text="}"/> Run Optimization </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">16,27</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2124652907601463443" datatype="html">
+        <source>Patient Demand (SQL)</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">40,41</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="8370059404863680759" datatype="html">
+        <source> Query must return: <x id="START_TAG_CODE" ctype="x-code" equiv-text="&lt;code&gt;"/>Service<x id="CLOSE_TAG_CODE" ctype="x-code" equiv-text="&lt;/code&gt;"/>, <x id="START_TAG_CODE" ctype="x-code" equiv-text="&lt;code&gt;"/>Unit<x id="CLOSE_TAG_CODE" ctype="x-code" equiv-text="&lt;/code&gt;"/> (optional), and <x id="START_TAG_CODE" ctype="x-code" equiv-text="&lt;code&gt;"/>Count<x id="CLOSE_TAG_CODE" ctype="x-code" equiv-text="&lt;/code&gt;"/>. </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">42,45</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2185421942774729898" datatype="html">
+        <source>Demand SQL</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">46</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3215384851732177073" datatype="html">
+        <source>Unit Capacities</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">59,60</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4190238276245646319" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Add Unit </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">61,63</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3476285207374951390" datatype="html">
+        <source>Unit Name</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">69</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7825570888384392250" datatype="html">
+        <source>Capacity</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">78</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1830803801047809326" datatype="html">
+        <source>No capacity constraints defined.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">100,101</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2368608033388445376" datatype="html">
+        <source>Optimization Results</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/simulation/simulation.component.html</context>
+          <context context-type="linenumber">109,110</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7708270344948043036" datatype="html">
+        <source> <x id="INTERPOLATION" equiv-text="{{ widgetInput().title }}"/> </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">7,9</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="6621329748219109148" datatype="html">
+        <source>Duplicate</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">46,47</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">49,50</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7585826646011739428" datatype="html">
+        <source>Edit</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">58</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">61</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="7022070615528435141" datatype="html">
+        <source>Delete</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">69</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">72</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1102717806459547726" datatype="html">
+        <source>Refresh</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">84</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">88</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="9146345439860428418" datatype="html">
+        <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon [class.animate-spin]=&quot;isLoadingLocal()&quot;&gt;"/>refresh<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">90,92</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="4084763089965120979" datatype="html">
+        <source> Fix Query </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">111</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="3651783528340785741" datatype="html">
+        <source>Unknown Viz</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">152,153</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1977478534441214758" datatype="html">
+        <source>bug_report</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">163</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="973765868756752549" datatype="html">
+        <source>Widget Crashed</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">163</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="533372519623536898" datatype="html">
+        <source>Error rendering visualization.</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">165</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2512759967965182429" datatype="html">
+        <source> Reset Defaults </source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.html</context>
+          <context context-type="linenumber">172,173</context>
+        </context-group>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

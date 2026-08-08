@@ -2,10 +2,11 @@
   <mat-tab-group
     class="flex-grow flex flex-col"
     style="height: 100%"
-    [(selectedIndex)]="selectedTabIndex"
+    [selectedIndex]="selectedTabIndex()"
+    (selectedIndexChange)="selectedTabIndex.set($event)"
     animationDuration="0ms"
   >
-    <mat-tab label="Code Editor">
+    <mat-tab i18n label="Code Editor">
       <div class="flex flex-col h-full p-4 gap-4 overflow-hidden">
         <!-- Error Banner -->
         @if (validationError()) {
@@ -18,6 +19,7 @@
               mat-icon-button
               class="icon-btn-micro"
               (click)="validationError.set(null)"
+              i18n-aria-label
               aria-label="Dismiss Error"
             >
               <mat-icon style="font-size: 16px">close</mat-icon>
@@ -36,7 +38,10 @@
           <button
             mat-stroked-button
             [matMenuTriggerFor]="paramsMenu"
+            i18n-matTooltip
             matTooltip="Inject Global Filters"
+            i18n-aria-label
+            aria-label="Inject Global Filters"
           >
             <mat-icon class="mr-1">data_object</mat-icon> Insert Param
           </button>
@@ -62,6 +67,7 @@
                 mat-stroked-button
                 (click)="saveQueryToCart()"
                 [disabled]="!canSaveToCart()"
+                i18n-matTooltip
                 matTooltip="Save query to cart"
               >
                 <mat-icon class="mr-1">shopping_cart</mat-icon>
@@ -103,7 +109,7 @@
     </mat-tab>
 
     <!-- AI Tab: Implements the Conversation UI requirements -->
-    <mat-tab label="AI Assistant">
+    <mat-tab i18n label="AI Assistant">
       <div class="ai-wrapper">
         <app-conversation class="h-full"></app-conversation>
       </div>

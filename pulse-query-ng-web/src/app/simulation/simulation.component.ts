@@ -2,7 +2,7 @@
 /** @docs */
 import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
 // Material
@@ -22,7 +22,7 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
   selector: 'app-simulation',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -32,7 +32,7 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
     MatProgressSpinnerModule,
     VizTableComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   providers: [SimulationStore],
   styles: [
     `

@@ -24,7 +24,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
 @Component({
   selector: 'app-undo-redo-buttons',
   imports: [MatButtonModule, MatIconModule, MatTooltipModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <div class="undo-redo-group">
       <button
@@ -35,7 +35,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
         aria-label="Undo"
         data-testid="undo-button"
       >
-        <mat-icon>undo</mat-icon>
+        <mat-icon i18n>undo</mat-icon>
       </button>
 
       <button
@@ -46,7 +46,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
         aria-label="Redo"
         data-testid="redo-button"
       >
-        <mat-icon>redo</mat-icon>
+        <mat-icon i18n>redo</mat-icon>
       </button>
     </div>
   `,

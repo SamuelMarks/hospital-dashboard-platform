@@ -26,7 +26,7 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
     MatFormFieldModule,
     MatInputModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './dashboard-create.dialog.html',
 })
 /** @docs */

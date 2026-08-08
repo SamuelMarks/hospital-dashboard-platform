@@ -29,18 +29,18 @@ import {
 @Component({
   selector: 'app-keyboard-shortcuts-dialog',
   imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <div class="dialog-container">
       <div class="dialog-header">
-        <h2 mat-dialog-title>Keyboard Shortcuts</h2>
+        <h2 i18n mat-dialog-title>Keyboard Shortcuts</h2>
         <button
           mat-icon-button
           mat-dialog-close
           aria-label="Close dialog"
           data-testid="close-button"
         >
-          <mat-icon>close</mat-icon>
+          <mat-icon i18n>close</mat-icon>
         </button>
       </div>
 
@@ -64,7 +64,7 @@ import {
       </mat-dialog-content>
 
       <mat-dialog-actions align="end">
-        <button mat-button mat-dialog-close data-testid="got-it-button">Got it</button>
+        <button i18n mat-button mat-dialog-close data-testid="got-it-button">Got it</button>
       </mat-dialog-actions>
     </div>
   `,

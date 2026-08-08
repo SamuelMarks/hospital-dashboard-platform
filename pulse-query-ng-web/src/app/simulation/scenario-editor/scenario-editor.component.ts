@@ -2,7 +2,7 @@
 /** @docs */
 import { Component, inject, computed, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 
 // Material Imports
 import { MatSliderModule } from '@angular/material/slider';
@@ -35,7 +35,7 @@ import { ScenarioConstraint } from '../../api-client';
   selector: 'app-scenario-editor',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatSliderModule,
     MatButtonModule,
     MatIconModule,
@@ -50,7 +50,7 @@ import { ScenarioConstraint } from '../../api-client';
     VizTableComponent,
     VizChartComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './scenario-editor.component.html',
   styles: [
     `

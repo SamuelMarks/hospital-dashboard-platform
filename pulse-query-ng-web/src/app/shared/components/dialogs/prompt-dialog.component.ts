@@ -2,7 +2,7 @@
 /** @docs */
 import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,13 +21,13 @@ export interface PromptDialogData {
   selector: 'app-prompt-dialog',
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
@@ -37,12 +37,18 @@ export interface PromptDialogData {
       }
       <mat-form-field appearance="outline" class="w-full">
         <mat-label>{{ data.label || 'Value' }}</mat-label>
-        <input matInput [(ngModel)]="value" cdkFocusInitial (keydown.enter)="save()" />
+        <input
+          matInput
+          [value]="value()"
+          (input)="value.set($any($event.target).value)"
+          cdkFocusInitial
+          (keydown.enter)="save()"
+        />
       </mat-form-field>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-flat-button color="primary" (click)="save()" [disabled]="!value().trim()">
+      <button i18n mat-button mat-dialog-close>Cancel</button>
+      <button i18n mat-flat-button color="primary" (click)="save()" [disabled]="!value().trim()">
         Save
       </button>
     </mat-dialog-actions>

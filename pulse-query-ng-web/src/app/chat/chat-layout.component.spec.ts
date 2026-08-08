@@ -18,14 +18,12 @@ import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialo
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-conversation',
   template: '',
 })
 class MockConv {}
 
 @Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-query-cart',
   template: '',
 })

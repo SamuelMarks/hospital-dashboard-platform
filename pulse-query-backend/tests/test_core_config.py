@@ -7,6 +7,12 @@ from app.core.config import Settings
 
 def test_sqlalchemy_database_uri_builds_expected_url() -> None:
   """Ensure the computed SQLAlchemy URI matches expected formatting."""
+  import os
+
+  old_val = os.environ.get("USE_SQLITE_ALEMBIC")
+  if old_val is not None:
+    del os.environ["USE_SQLITE_ALEMBIC"]
+
   # Note: Pydantic settings are immutable after init usually, so we pass via constructor
   settings = Settings(
     POSTGRES_SERVER="db.local",
@@ -20,6 +26,9 @@ def test_sqlalchemy_database_uri_builds_expected_url() -> None:
   )
 
   assert settings.SQLALCHEMY_DATABASE_URI == "postgresql+asyncpg://alice:secret@db.local:5433/analytics"
+
+  if old_val is not None:
+    os.environ["USE_SQLITE_ALEMBIC"] = old_val
 
 
 def test_llm_swarm_defaults_to_empty(monkeypatch) -> None:

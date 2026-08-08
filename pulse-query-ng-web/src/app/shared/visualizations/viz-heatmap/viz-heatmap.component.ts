@@ -19,7 +19,7 @@ import { ThemeService } from '../../../core/theme/theme.service';
 @Component({
   selector: 'viz-heatmap',
   imports: [CommonModule, MatTooltipModule],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   styles: [
     `
       :host {

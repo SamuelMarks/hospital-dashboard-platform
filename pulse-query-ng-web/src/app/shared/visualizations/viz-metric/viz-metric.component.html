@@ -29,7 +29,7 @@
 <!-- Trend Indicator -->
 @if (parsedTrend() !== null) {
   <div class="mat-caption trend" [class]="parsedTrend()! > 0 ? 'trend-pos' : 'trend-neg'">
-    <span aria-hidden="true">{{ parsedTrend()! > 0 ? '▲' : '▼' }}</span>
+    <span i18n aria-hidden="true">{{ parsedTrend()! > 0 ? '▲' : '▼' }}</span>
     {{ parsedTrend() }}%
   </div>
 }

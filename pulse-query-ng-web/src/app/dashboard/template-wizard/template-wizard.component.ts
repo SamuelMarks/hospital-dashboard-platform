@@ -82,7 +82,7 @@ export interface WizardData {
     /* v8 ignore stop */
     DynamicFormComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+
   templateUrl: './template-wizard.component.html',
   styles: [
     `
