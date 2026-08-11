@@ -1,10 +1,10 @@
-/** @docs */
 /**
  * @fileoverview Undo/Redo Service.
  * Implements command pattern for undoable actions in the dashboard editor.
  */
 
-import { Injectable, signal, computed, Signal } from '@angular/core';
+import { DATE_NOW } from '../../core/time.token';
+import { Injectable, signal, computed, Signal, inject } from '@angular/core';
 
 /**
  * Command interface for undoable actions.
@@ -57,7 +57,7 @@ const MAX_HISTORY_SIZE = 50;
  *   description: 'Move widget',
  *   execute: () => moveWidget(widget, newPosition),
  *   undo: () => moveWidget(widget, oldPosition),
- *   timestamp: new Date(),
+ *   timestamp: this.dateNow(),
  * });
  *
  * // Undo the last command
@@ -71,6 +71,7 @@ const MAX_HISTORY_SIZE = 50;
   providedIn: 'root',
 })
 export class UndoRedoService {
+  private readonly dateNow = inject(DATE_NOW);
   /* v8 ignore start */
   /** Undo stack. */ private readonly _undoStack = signal<Command[]>([]);
   /** Redo stack. */ private readonly _redoStack = signal<Command[]>([]);

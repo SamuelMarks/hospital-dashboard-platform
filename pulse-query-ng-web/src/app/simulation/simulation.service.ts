@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { signal, computed, inject, Service } from '@angular/core';
 import { finalize } from 'rxjs';
 import { SimulationService as ApiService } from '../api-client/api/simulation.service';
 import { ScenarioRunRequest, ScenarioConstraint } from '../api-client/model/models';
@@ -9,7 +9,7 @@ import { SimulationAssignment } from '../api-client/model/models'; // Fix import
 /**
  * Frontend State Management for Simulation.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 /** @docs */
 export class SimulationStore {
   /** api property. */

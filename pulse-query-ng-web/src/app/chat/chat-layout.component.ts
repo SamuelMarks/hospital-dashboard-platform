@@ -1,3 +1,4 @@
+import { DATE_NOW } from '../core/time.token';
 /* v8 ignore start */
 /** @docs */
 import {
@@ -10,6 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { map, shareReplay } from 'rxjs/operators';
@@ -159,6 +161,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
 })
 /** @docs */
 export class ChatLayoutComponent implements OnInit {
+  private readonly dateNow = inject(DATE_NOW);
   public readonly store = inject(ChatStore);
   public readonly cart = inject(QueryCartService);
   private readonly dialog = inject(MatDialog);
@@ -166,9 +169,9 @@ export class ChatLayoutComponent implements OnInit {
 
   @ViewChild('drawer') drawer!: MatSidenav;
 
-  isHandset$ = this.breakpointObserver.observe(Breakpoints.Handset).pipe(
-    map((r) => r.matches),
-    shareReplay(),
+  isHandset = toSignal(
+    this.breakpointObserver.observe(Breakpoints.Handset).pipe(map((r) => r.matches)),
+    { initialValue: false },
   );
 
   readonly sidebarOpen = signal(true);
@@ -176,7 +179,7 @@ export class ChatLayoutComponent implements OnInit {
   readonly groupedHistory = computed(() => {
     const list = this.store.conversations();
     if (!list) return [];
-    const now = new Date();
+    const now = this.dateNow();
     const today: ConversationResponse[] = [],
       older: ConversationResponse[] = [];
     list.forEach((c) => {

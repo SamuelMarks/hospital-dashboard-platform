@@ -40,7 +40,9 @@ describe('ChatLayoutComponent', () => {
 
   beforeEach(async () => {
     mockStore = {
-      conversations: signal([{ id: 'c1', title: 'C1', updated_at: new Date().toISOString() }]),
+      conversations: signal([
+        { id: 'c1', title: 'C1', updated_at: new Date('2024-01-01T00:00:00Z').toISOString() },
+      ]),
       activeConversationId: signal(null),
       isDataLoading: signal(false),
       loadHistory: vi.fn(),
@@ -123,7 +125,7 @@ describe('ChatLayoutComponent', () => {
   });
 
   it('should group older chats in Previous', () => {
-    const oldDate = new Date();
+    const oldDate = new Date('2024-01-01T00:00:00Z');
     oldDate.setDate(oldDate.getDate() - 5);
     mockStore.conversations.set([{ id: 'c1', title: 'C1', updated_at: oldDate.toISOString() }]);
     const groups = component.groupedHistory();

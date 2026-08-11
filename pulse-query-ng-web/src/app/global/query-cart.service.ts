@@ -1,3 +1,4 @@
+import { DATE_NOW } from '../core/time.token';
 import { safeStorage } from '../core/storage.utils';
 /* v8 ignore start */
 /** @docs */
@@ -15,6 +16,7 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 })
 /** @docs */
 export class QueryCartService {
+  private readonly dateNow = inject(DATE_NOW);
   /** platformId property. */
   private readonly platformId = inject(PLATFORM_ID);
   /** storageKey property. */
@@ -54,7 +56,7 @@ export class QueryCartService {
       id: this.createId(),
       title: title?.trim() || this.deriveTitle(trimmed),
       sql: trimmed,
-      createdAt: new Date().toISOString(),
+      createdAt: this.dateNow().toISOString(),
       kind: QUERY_CART_ITEM_KIND,
     };
 

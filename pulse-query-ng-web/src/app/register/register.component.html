@@ -16,23 +16,19 @@
       </div>
     }
 
-    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+    <form [formRoot]="registerForm" (submit)="onSubmit()">
       <mat-form-field appearance="outline">
         <mat-label i18n>Email address</mat-label>
         <input
           matInput
-          formControlName="email"
+          [formField]="registerForm.email"
           type="email"
           i18n-placeholder
           placeholder="user@example.com"
-          required
           data-testid="input-email"
         />
-        @if (registerForm.get('email')?.hasError('required')) {
-          <mat-error i18n>Email is required</mat-error>
-        }
-        @if (registerForm.get('email')?.hasError('email')) {
-          <mat-error i18n>Please enter a valid email</mat-error>
+        @for (err of registerForm.email().errors(); track err.kind) {
+          <mat-error i18n>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
@@ -40,9 +36,8 @@
         <mat-label i18n>Password</mat-label>
         <input
           matInput
-          formControlName="password"
+          [formField]="registerForm.password"
           [type]="hidePassword() ? 'password' : 'text'"
-          required
           data-testid="input-password"
         />
         <button
@@ -57,11 +52,8 @@
         >
           <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
         </button>
-        @if (registerForm.get('password')?.hasError('required')) {
-          <mat-error i18n>Password is required</mat-error>
-        }
-        @if (registerForm.get('password')?.hasError('minlength')) {
-          <mat-error i18n>Password must be at least 4 characters</mat-error>
+        @for (err of registerForm.password().errors(); track err.kind) {
+          <mat-error i18n>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
@@ -69,16 +61,12 @@
         <mat-label i18n>Confirm Password</mat-label>
         <input
           matInput
-          formControlName="confirmPassword"
+          [formField]="registerForm.confirmPassword"
           [type]="hidePassword() ? 'password' : 'text'"
-          required
           data-testid="input-confirm-password"
         />
-        @if (registerForm.get('confirmPassword')?.hasError('required')) {
-          <mat-error i18n>Confirmation is required</mat-error>
-        }
-        @if (registerForm.get('confirmPassword')?.hasError('mismatch')) {
-          <mat-error i18n>Passwords do not match</mat-error>
+        @for (err of registerForm.confirmPassword().errors(); track err.kind) {
+          <mat-error i18n>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
@@ -88,7 +76,7 @@
         color="primary"
         type="submit"
         class="full-width-btn"
-        [disabled]="registerForm.invalid || isLoading()"
+        [disabled]="registerForm().invalid() || isLoading()"
         data-testid="submit-btn"
       >
         @if (isLoading()) {

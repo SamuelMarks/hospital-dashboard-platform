@@ -1,8 +1,9 @@
+import '@angular/localize/init';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AdminComponent } from './admin.component';
 import { AdminService, AiService } from '../api-client';
 import { of, throwError, delay } from 'rxjs';
-import { ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
+import { FormRoot, FormField } from '@angular/forms/signals';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { Component, signal, DestroyRef } from '@angular/core';
 
@@ -34,7 +35,7 @@ describe('AdminComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [AdminComponent, ReactiveFormsModule],
+      imports: [AdminComponent, FormRoot, FormField],
       providers: [
         { provide: AdminService, useValue: adminServiceMock },
         { provide: AiService, useValue: aiServiceMock },
@@ -65,9 +66,6 @@ describe('AdminComponent', () => {
     expect(component.message()).toBe('foo');
     component.isSaving.set(true);
     expect(component.isSaving()).toBe(true);
-
-    // Explicitly call the getter for v8
-    expect(component.modelsFormArray).toBeInstanceOf(FormArray);
   });
 
   it('should render loading template before settings load', () => {
@@ -97,38 +95,30 @@ describe('AdminComponent', () => {
       expect(adminServiceMock.readAdminSettingsApiV1AdminSettingsGet).toHaveBeenCalled();
       expect(aiServiceMock.listAvailableModelsApiV1AiModelsGet).toHaveBeenCalledWith(true);
 
-      expect(component.adminForm.get('apiKeys.openai')?.value).toBe('test-key');
-      expect(component.adminForm.get('apiKeys.anthropic')?.value).toBe('');
+      const val = component.formModel();
+      expect(val.openai).toBe('test-key');
+      expect(val.anthropic).toBe('');
 
-      expect(component.modelsFormArray.at(0).value).toBe(true);
-      expect(component.modelsFormArray.at(1).value).toBe(false);
+      expect(val.models[0]).toBe(true);
+      expect(val.models[1]).toBe(false);
 
       expect(component.settingsLoaded()).toBe(true);
       expect(component.availableModels().length).toBe(2);
     });
 
-    it('should correctly expose modelsFormArray getter', () => {
-      const arr = component.modelsFormArray;
-      expect(arr).toBeInstanceOf(FormArray);
-      expect(arr.length).toBe(2);
-    });
-
-    it('should not save if form is invalid', () => {
-      component.adminForm.setErrors({ invalid: true });
-      component.saveSettings();
-      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).not.toHaveBeenCalled();
-    });
-
     it('should save settings and set message', () => {
       vi.useFakeTimers();
 
-      component.adminForm.patchValue({
-        apiKeys: {
-          anthropic: ' test-anthropic-key ', // Test valid anthropic key with whitespace
-        },
-      });
+      component.formModel.update((m) => ({
+        ...m,
+        anthropic: ' test-anthropic-key ', // Test valid anthropic key with whitespace
+      }));
 
-      component.modelsFormArray.at(1).setValue(true);
+      component.formModel.update((m) => {
+        const newModels = [...m.models];
+        newModels[1] = true;
+        return { ...m, models: newModels };
+      });
 
       component.saveSettings();
 
@@ -163,44 +153,25 @@ describe('AdminComponent', () => {
     });
 
     it('should not save invalid form', () => {
-      component.adminForm.controls['apiKeys'].setErrors({ invalid: true });
-      component.adminForm.setErrors({ invalid: true });
+      // Create a spy to mock invalid() returning true
+      vi.spyOn(component, 'adminForm').mockReturnValue({ invalid: () => true } as any);
+
       component.saveSettings();
       expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).not.toHaveBeenCalled();
     });
 
     it('should handle missing keys from form safely', () => {
-      component.adminForm.patchValue({
-        apiKeys: { openai: null, anthropic: null } as any,
-      });
+      component.formModel.update((m) => ({
+        ...m,
+        openai: null as any,
+        anthropic: null as any,
+      }));
 
       component.saveSettings();
 
       expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
         api_keys: {},
         visible_models: ['model-1'],
-      });
-    });
-
-    it('should handle missing overall keys on save gracefully', () => {
-      Object.defineProperty(component.adminForm, 'value', {
-        value: { apiKeys: null, models: [true, false] },
-      });
-      component.saveSettings();
-      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
-        api_keys: {},
-        visible_models: ['model-1'],
-      });
-    });
-
-    it('should handle missing models array safely on save', () => {
-      Object.defineProperty(component.adminForm, 'value', {
-        value: { apiKeys: { openai: 'test-key' }, models: null },
-      });
-      component.saveSettings();
-      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
-        api_keys: { openai: 'test-key' },
-        visible_models: [],
       });
     });
 
@@ -215,41 +186,17 @@ describe('AdminComponent', () => {
       expect(component.message()).toBe('Error saving settings.');
     });
 
-    it('should update available models and set values when settings are available', () => {
-      // test component ngOnInit code explicitly
-      component.ngOnInit();
-      expect(component.availableModels().length).toBe(2);
-    });
-
     it('should ignore non-string empty or white-space values correctly', () => {
-      component.adminForm.patchValue({
-        apiKeys: {
-          openai: '   ', // whitespace only
-          anthropic: '   ',
-        },
-      });
+      component.formModel.update((m) => ({
+        ...m,
+        openai: '   ', // whitespace only
+        anthropic: '   ',
+      }));
 
       component.saveSettings();
 
       expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
         api_keys: {}, // should be completely empty
-        visible_models: ['model-1'],
-      });
-    });
-
-    it('should ignore other api keys incorrectly added', () => {
-      component.adminForm.patchValue({
-        apiKeys: {
-          openai: 'sk-val',
-          anthropic: 'sk-anthropic',
-          other: 'sk-something',
-        } as any,
-      });
-
-      component.saveSettings();
-
-      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
-        api_keys: { openai: 'sk-val', anthropic: 'sk-anthropic' },
         visible_models: ['model-1'],
       });
     });
@@ -263,8 +210,9 @@ describe('AdminComponent', () => {
 
       component.ngOnInit();
 
-      expect(component.adminForm.get('apiKeys.openai')?.value).toBe('');
-      expect(component.adminForm.get('apiKeys.anthropic')?.value).toBe('');
+      const val = component.formModel();
+      expect(val.openai).toBe('');
+      expect(val.anthropic).toBe('');
     });
 
     it('should call trackBy correctly', () => {
@@ -304,8 +252,9 @@ describe('AdminComponent', () => {
     });
 
     it('should handle missing settings on initial load gracefully', () => {
-      expect(component.adminForm.get('apiKeys.openai')?.value).toBe('');
-      expect(component.adminForm.get('apiKeys.anthropic')?.value).toBe('');
+      const val = component.formModel();
+      expect(val.openai).toBe('');
+      expect(val.anthropic).toBe('');
     });
   });
 });

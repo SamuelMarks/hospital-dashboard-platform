@@ -3,14 +3,14 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  Validators,
-  AbstractControl,
-  ValidationErrors,
-  ValidatorFn,
-} from '@angular/forms';
+  FormRoot,
+  FormField,
+  form,
+  required,
+  email,
+  minLength,
+  validate,
+} from '@angular/forms/signals';
 import { Router, RouterModule } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
@@ -24,28 +24,12 @@ import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 
 /** @docs */
-export const passwordMatchValidator: ValidatorFn = (
-  control: AbstractControl,
-): ValidationErrors | null => {
-  const password = control.get('password');
-  const confirmPassword = control.get('confirmPassword');
-  if (password && confirmPassword && password.value !== confirmPassword.value) {
-    confirmPassword.setErrors({ mismatch: true });
-    return { mismatch: true };
-  } else {
-    if (confirmPassword?.hasError('mismatch')) {
-      confirmPassword.setErrors(null);
-    }
-    return null;
-  }
-};
-
-/** @docs */
 @Component({
   selector: 'app-register',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     RouterModule,
     MatCardModule,
     MatFormFieldModule,
@@ -117,20 +101,34 @@ export const passwordMatchValidator: ValidatorFn = (
 export class RegisterComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
 
   readonly isLoading = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly hidePassword = signal(true);
 
-  readonly registerForm: FormGroup = this.fb.group(
-    {
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(4)]],
-      confirmPassword: ['', [Validators.required]],
-    },
-    { validators: passwordMatchValidator },
-  );
+  readonly formModel = signal({
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+
+  readonly registerForm = form(this.formModel, (f) => {
+    required(f.email, { message: 'Email is required' });
+    email(f.email, { message: 'Please enter a valid email' });
+
+    required(f.password, { message: 'Password is required' });
+    minLength(f.password, 4, { message: 'Password must be at least 4 characters' });
+
+    required(f.confirmPassword, { message: 'Confirmation is required' });
+
+    validate(f.confirmPassword, (ctx) => {
+      if (!ctx.value() || !this.formModel().password) return null;
+      if (ctx.value() !== this.formModel().password) {
+        return { kind: 'mismatch', message: 'Passwords do not match' };
+      }
+      return null;
+    });
+  });
 
   togglePasswordVisibility(event: Event): void {
     event.preventDefault();
@@ -138,16 +136,16 @@ export class RegisterComponent {
   }
 
   onSubmit(): void {
-    if (this.registerForm.invalid) {
-      this.registerForm.markAllAsTouched();
+    if (this.registerForm().invalid()) {
+      this.registerForm().markAsTouched();
       return;
     }
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
     const payload: UserCreate = {
-      email: this.registerForm.get('email')?.value,
-      password: this.registerForm.get('password')?.value,
+      email: this.formModel().email,
+      password: this.formModel().password,
     };
 
     this.authService.register(payload).subscribe({

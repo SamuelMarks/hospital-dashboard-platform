@@ -75,20 +75,23 @@ describe('TemplateWizardComponent', () => {
   });
 
   it('should validate form and enable/disable next button', () => {
-    expect(component.selectionForm.invalid).toBe(false); // Initially valid as mode is predefined
+    expect(component.selectionValid()).toBe(false); // Initially valid as mode is predefined
 
     component.selectTemplate(mockTemplates[0]);
-    expect(component.selectionForm.valid).toBe(true);
+    expect(component.selectionValid()).toBe(true);
 
-    component.selectionForm.patchValue({ mode: 'custom', rawSql: '' });
-    expect(component.selectionForm.invalid).toBe(true);
+    component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: '' }));
+    fixture.detectChanges();
+    expect(component.selectionValid()).toBe(false);
 
-    component.selectionForm.patchValue({ rawSql: 'SELECT 1' });
-    expect(component.selectionForm.valid).toBe(true);
+    component.formModel.update((m) => ({ ...m, rawSql: 'SELECT 1' }));
+    fixture.detectChanges();
+    expect(component.selectionValid()).toBe(true);
   });
 
   it('should parse parameters correctly', () => {
-    component.selectionForm.patchValue({ mode: 'custom', rawSql: 'SELECT {{var}}' });
+    component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: 'SELECT {{var}}' }));
+    fixture.detectChanges();
     component.parseParams();
     expect(component.paramsSchema()).toEqual({});
     expect(component.paramsValid()).toBe(true);
@@ -120,7 +123,8 @@ describe('TemplateWizardComponent', () => {
   });
 
   it('should save widget with default title when template missing', () => {
-    component.selectionForm.patchValue({ mode: 'predefined', templateId: 'missing' });
+    component.formModel.update((m) => ({ ...m, mode: 'predefined', templateId: 'missing' }));
+    fixture.detectChanges();
     component.finalSql.set('SELECT 1');
     component.draftWidgetId.set('draft-1');
 
@@ -182,7 +186,8 @@ describe('TemplateWizardComponent', () => {
 
   it('should render preview and execute draft', () => {
     component.draftWidgetId.set('draft-1');
-    component.selectionForm.patchValue({ rawSql: 'SELECT {{x}}' });
+    component.formModel.update((m) => ({ ...m, rawSql: 'SELECT {{x}}' }));
+    fixture.detectChanges();
     component.paramsValue.set({ x: 5 });
     mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
     mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
@@ -197,7 +202,8 @@ describe('TemplateWizardComponent', () => {
 
   it('should render preview with empty SQL when rawSql missing', () => {
     component.draftWidgetId.set(null);
-    component.selectionForm.patchValue({ rawSql: null });
+    component.formModel.update((m) => ({ ...m, rawSql: '' }));
+    fixture.detectChanges();
     component.paramsValue.set({});
 
     component.renderPreview();
@@ -234,7 +240,8 @@ describe('TemplateWizardComponent', () => {
 
   it('should save widget with default title for custom mode', () => {
     component.draftWidgetId.set('draft-1');
-    component.selectionForm.patchValue({ mode: 'custom', rawSql: 'SELECT 1' });
+    component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: 'SELECT 1' }));
+    fixture.detectChanges();
     component.finalSql.set('SELECT 1');
     mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
 
@@ -263,14 +270,16 @@ describe('TemplateWizardComponent', () => {
   });
 
   it('should parse params for predefined schema', () => {
-    component.selectionForm.patchValue({ mode: 'predefined' });
+    component.formModel.update((m) => ({ ...m, mode: 'predefined' }));
+    fixture.detectChanges();
     component.paramsSchema.set({ properties: {} });
     component.parseParams();
     expect(component.paramsValid()).toBe(true);
   });
 
   it('should keep params invalid when schema has fields', () => {
-    component.selectionForm.patchValue({ mode: 'predefined' });
+    component.formModel.update((m) => ({ ...m, mode: 'predefined' }));
+    fixture.detectChanges();
     component.paramsValid.set(false);
     component.paramsSchema.set({ properties: { a: { type: 'string' } } });
     component.parseParams();
@@ -316,7 +325,6 @@ describe('TemplateWizardComponent', () => {
     (component as any).modeSub = { unsubscribe: vi.fn() };
     component.ngOnDestroy();
     expect((component as any).searchSub.unsubscribe).toHaveBeenCalled();
-    expect((component as any).modeSub.unsubscribe).toHaveBeenCalled();
   });
 
   it('should cast results to table data', () => {

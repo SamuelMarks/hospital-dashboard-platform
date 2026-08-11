@@ -1,14 +1,11 @@
-/**
- * @fileoverview Unit tests for HttpConfigComponent.
- */
-
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { HttpConfigComponent, jsonValidator } from './http-config.component';
+import { HttpConfigComponent } from './http-config.component';
 import { DashboardsService, ExecutionService } from '../api-client';
 import { of, throwError } from 'rxjs';
-import { FormControl } from '@angular/forms';
 import { By } from '@angular/platform-browser';
+import { vi } from 'vitest';
+import '@angular/localize/init';
 
 describe('HttpConfigComponent', () => {
   let component: HttpConfigComponent;
@@ -55,80 +52,82 @@ describe('HttpConfigComponent', () => {
 
   it('should create and hydrate form', () => {
     expect(component).toBeTruthy();
-    const val = component.form.getRawValue();
+    const val = component.formModel();
     expect(val.method).toBe('POST');
     expect(val.url).toBe('https://api.test.com');
     expect(val.forward_auth).toBe(true);
 
     expect(val.body).toContain('"someProperty": 123');
 
-    expect(component.paramsArray.length).toBe(1);
-    expect(component.paramsArray.at(0).value).toEqual({ key: 'q', value: 'search' });
+    expect(val.params.length).toBe(1);
+    expect(val.params[0].key).toBe('q');
+    expect(val.params[0].value).toBe('search');
 
-    expect(component.headersArray.length).toBe(1);
-    expect(component.headersArray.at(0).value).toEqual({ key: 'X-Custom', value: '123' });
+    expect(val.headers.length).toBe(1);
+    expect(val.headers[0].key).toBe('X-Custom');
+    expect(val.headers[0].value).toBe('123');
   });
 
   it('should validate URL format', () => {
-    const urlControl = component.form.controls.url;
+    const urlControl = component.form.url;
 
-    urlControl.setValue('invalid-url');
-    expect(urlControl.valid).toBe(false);
+    component.formModel.update((m) => ({ ...m, url: 'invalid-url' }));
+    fixture.detectChanges();
+    expect(urlControl().valid()).toBe(false);
 
-    urlControl.setValue('http://valid.com');
-    expect(urlControl.valid).toBe(true);
+    component.formModel.update((m) => ({ ...m, url: 'http://valid.com' }));
+    fixture.detectChanges();
+    expect(urlControl().valid()).toBe(true);
   });
 
   it('should validate JSON body', () => {
-    const bodyControl = component.form.controls.body;
+    const bodyControl = component.form.body;
 
-    bodyControl.setValue('{ invalid: json }');
-    expect(bodyControl.valid).toBe(false);
-    expect(bodyControl.hasError('invalidJson')).toBe(true);
+    component.formModel.update((m) => ({ ...m, body: '{ invalid: json }' }));
+    fixture.detectChanges();
+    expect(bodyControl().valid()).toBe(false);
+    expect(
+      bodyControl()
+        .errors()
+        .some((e) => e.kind === 'invalidJson'),
+    ).toBe(true);
 
-    bodyControl.setValue('{ "valid": "json" }');
-    expect(bodyControl.valid).toBe(true);
+    component.formModel.update((m) => ({ ...m, body: '{ "valid": "json" }' }));
+    fixture.detectChanges();
+    expect(bodyControl().valid()).toBe(true);
 
-    bodyControl.setValue('');
-    expect(bodyControl.valid).toBe(true);
-  });
-
-  describe('jsonValidator', () => {
-    const validator = jsonValidator();
-
-    it('should return null for valid json', () => {
-      const control = new FormControl('{"a": 1}');
-      expect(validator(control)).toBeNull();
-    });
-
-    it('should return error for invalid json', () => {
-      const control = new FormControl('{ a: 1 }');
-      expect(validator(control)).toEqual({ invalidJson: true });
-    });
+    component.formModel.update((m) => ({ ...m, body: '' }));
+    fixture.detectChanges();
+    expect(bodyControl().valid()).toBe(true);
   });
 
   it('should add and remove parameters dynamically', () => {
     component.addItem('params');
     fixture.detectChanges();
-    expect(component.paramsArray.length).toBe(2);
+    expect(component.formModel().params.length).toBe(2);
 
-    const newGroup = component.paramsArray.at(1);
-    newGroup.setValue({ key: 'page', value: '2' });
+    component.formModel.update((m) => {
+      const newParams = [...m.params];
+      newParams[1] = { key: 'page', value: '2' };
+      return { ...m, params: newParams };
+    });
+    fixture.detectChanges();
 
     component.removeItem('params', 0);
     fixture.detectChanges();
-    expect(component.paramsArray.length).toBe(1);
-    expect(component.paramsArray.at(0).value).toEqual({ key: 'page', value: '2' });
+    expect(component.formModel().params.length).toBe(1);
+    expect(component.formModel().params[0].key).toBe('page');
+    expect(component.formModel().params[0].value).toBe('2');
   });
 
   it('should add and remove headers dynamically', () => {
     component.addItem('headers');
     fixture.detectChanges();
-    expect(component.headersArray.length).toBe(2);
+    expect(component.formModel().headers.length).toBe(2);
 
     component.removeItem('headers', 0);
     fixture.detectChanges();
-    expect(component.headersArray.length).toBe(1);
+    expect(component.formModel().headers.length).toBe(1);
   });
 
   describe('saveAndTest', () => {
@@ -143,7 +142,8 @@ describe('HttpConfigComponent', () => {
       vi.spyOn(component.configChange, 'emit');
 
       const validBody = '{ "test": true }';
-      component.form.patchValue({ body: validBody });
+      component.formModel.update((m) => ({ ...m, body: validBody }));
+      fixture.detectChanges();
 
       component.saveAndTest();
 
@@ -171,7 +171,8 @@ describe('HttpConfigComponent', () => {
     });
 
     it('should block execution if form is invalid', () => {
-      component.form.controls.url.setValue('');
+      component.formModel.update((m) => ({ ...m, url: '' }));
+      fixture.detectChanges();
       component.saveAndTest();
 
       expect(
@@ -211,7 +212,7 @@ describe('HttpConfigComponent', () => {
       mockExecutionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
         of({}),
       );
-      component.form.patchValue({ body: '' });
+      component.formModel.update((m) => ({ ...m, body: '' }));
       component.saveAndTest();
       expect(mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
         'w1',
@@ -221,10 +222,11 @@ describe('HttpConfigComponent', () => {
   });
 
   it('should mark field invalid after touch', () => {
-    const urlControl = component.form.controls.url;
-    urlControl.markAsTouched();
-    urlControl.setValue('bad');
-    expect(component.isFieldInvalid('url')).toBe(true);
+    const urlControl = component.form.url;
+    urlControl().markAsTouched();
+    component.formModel.update((m) => ({ ...m, url: 'bad' }));
+    fixture.detectChanges();
+    expect(component.isFieldInvalid(urlControl)).toBe(true);
   });
 
   it('should handle hydrate when config body is non-serializable', () => {
@@ -236,18 +238,18 @@ describe('HttpConfigComponent', () => {
       },
     });
     fixture.detectChanges();
-    expect(component.form.controls.body.value).toContain('[object Object]');
+    expect(component.formModel().body).toContain('[object Object]');
   });
 
   it('should no-op hydrate when config is null', () => {
-    (component as any).hydrateForm(null);
-    expect(component.form.controls.method.value).toBe('POST');
+    (component as any).parseConfig(null);
+    expect(component.formModel().method).toBe('POST');
   });
 
   it('should leave body empty when config has no body', () => {
     initialConfigSig.set({ method: 'GET', url: 'https://example.com', params: {}, headers: {} });
     fixture.detectChanges();
-    expect(component.form.controls.body.value).toBe('');
+    expect(component.formModel().body).toBe('');
   });
 
   it('should omit empty keys when building object', () => {
@@ -256,13 +258,6 @@ describe('HttpConfigComponent', () => {
       { key: 'a', value: '1' },
     ]);
     expect(obj).toEqual({ a: '1' });
-  });
-
-  it('should clear arrays when source is undefined', () => {
-    (component as any).populateArray(component.paramsArray, undefined);
-    expect(component.paramsArray.length).toBe(0);
-    (component as any).populateArray(component.headersArray, undefined);
-    expect(component.headersArray.length).toBe(0);
   });
 
   it('should render preview fallback when no result', () => {
@@ -279,7 +274,7 @@ describe('HttpConfigComponent', () => {
 
   it('should trigger save via template button', () => {
     const saveSpy = vi.spyOn(component, 'saveAndTest').mockImplementation(() => {});
-    component.form.controls.url.setValue('https://api.test.com');
+    component.formModel.update((m) => ({ ...m, url: 'https://api.test.com' }));
     fixture.detectChanges();
     const saveBtn = fixture.debugElement
       .queryAll(By.css('button'))
@@ -295,7 +290,7 @@ describe('HttpConfigComponent', () => {
       .find((btn) => btn.nativeElement.textContent.includes('Add Parameter'))!;
     addParamBtn.triggerEventHandler('click', null);
     fixture.detectChanges();
-    expect(component.paramsArray.length).toBeGreaterThan(1);
+    expect(component.formModel().params.length).toBeGreaterThan(1);
 
     const removeParamBtn = fixture.debugElement.queryAll(By.css('button[mat-icon-button]'))[0];
     removeParamBtn.triggerEventHandler('click', null);
@@ -306,7 +301,7 @@ describe('HttpConfigComponent', () => {
       .find((btn) => btn.nativeElement.textContent.includes('Add Header'))!;
     addHeaderBtn.triggerEventHandler('click', null);
     fixture.detectChanges();
-    expect(component.headersArray.length).toBeGreaterThan(1);
+    expect(component.formModel().headers.length).toBeGreaterThan(1);
 
     const removeHeaderBtn = fixture.debugElement
       .queryAll(By.css('button[mat-icon-button]'))

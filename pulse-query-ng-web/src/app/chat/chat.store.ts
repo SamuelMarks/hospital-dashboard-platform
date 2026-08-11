@@ -1,3 +1,4 @@
+import { DATE_NOW } from '../core/time.token';
 /** @docs */
 /**
  * @fileoverview Centralized State Management for the Chat Feature.
@@ -10,7 +11,7 @@
  * - **Target Model Selection**.
  */
 
-import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
+import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, retry } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -60,9 +61,10 @@ const initialState: ChatState = {
 };
 
 /** Chat store. */
-@Injectable({ providedIn: 'root' })
+@Service()
 /* v8 ignore start */
 export class ChatStore implements OnDestroy {
+  private readonly dateNow = inject(DATE_NOW);
   /** chatApi property. */
   private readonly chatApi = inject(ChatService);
   /** aiApi property. */
@@ -183,7 +185,7 @@ export class ChatStore implements OnDestroy {
       conversation_id: currentId || 'temp',
       role: 'user',
       content: content,
-      created_at: new Date().toISOString() as any,
+      created_at: this.dateNow().toISOString() as any,
       candidates: [],
     };
     this.patch({ messages: [...this.messages(), tempUserMsg] });

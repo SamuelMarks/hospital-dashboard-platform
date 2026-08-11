@@ -7,19 +7,19 @@
     <!-- Disable animation for E2E speed/stability -->
     <mat-stepper [linear]="true" #stepper class="h-full" animationDuration="0ms">
       <!-- STEP 1: Selection -->
-      <mat-step i18n [stepControl]="selectionForm">
+      <mat-step i18n>
         <ng-template matStepLabel>Select Template</ng-template>
 
         <div class="step-content pt-4" style="background-color: var(--sys-background)">
-          <form [formGroup]="selectionForm">
-            <mat-radio-group formControlName="mode" class="flex gap-6 mb-4">
+          <form [formRoot]="selectionForm">
+            <mat-radio-group [formField]="selectionForm.mode" class="flex gap-6 mb-4">
               <mat-radio-button value="predefined">Marketplace</mat-radio-button>
               <mat-radio-button value="custom">Custom SQL</mat-radio-button>
             </mat-radio-group>
           </form>
 
           <!-- Predefined -->
-          @if (selectionForm.get('mode')?.value === 'predefined') {
+          @if (formModel().mode === 'predefined') {
             <div class="marketplace-container flex flex-col gap-4">
               <!-- Filters -->
               <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
@@ -86,14 +86,14 @@
           }
 
           <!-- Custom -->
-          @if (selectionForm.get('mode')?.value === 'custom') {
-            <div class="flex flex-col gap-2 mt-4" [formGroup]="selectionForm">
+          @if (formModel().mode === 'custom') {
+            <div class="flex flex-col gap-2 mt-4">
               <label class="text-sm font-medium" style="color: var(--sys-text-primary)"
                 >Custom Logic (SQL)</label
               >
               <textarea
                 matInput
-                formControlName="rawSql"
+                [formField]="selectionForm.rawSql"
                 class="sql-preview h-64 border p-2 font-mono text-sm rounded"
                 style="
                   background-color: var(--sys-surface-variant);
@@ -215,7 +215,7 @@
           mat-flat-button
           color="primary"
           (click)="parseParams(); stepper.next()"
-          [disabled]="selectionForm.invalid"
+          [disabled]="!selectionValid()"
         >
           Next: Configure
         </button>

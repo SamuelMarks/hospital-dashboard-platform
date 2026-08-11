@@ -19,7 +19,7 @@ import {
   OnDestroy,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { finalize, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { Subject, Subscription } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -66,7 +66,8 @@ export interface WizardData {
   /* v8 ignore stop */
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     MatDialogModule,
     MatStepperModule,
     MatButtonModule,
@@ -161,8 +162,6 @@ export interface WizardData {
 /* v8 ignore start */
 export class TemplateWizardComponent implements OnInit, OnDestroy {
   /* v8 ignore stop */
-  /** fb property. */
-  private readonly fb = inject(FormBuilder);
   /** dialogRef property. */
   private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
   /** dashboardsApi property. */
@@ -204,8 +203,6 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   private readonly searchSubject = new Subject<string>();
   /** searchSub property. */
   private searchSub?: Subscription;
-  /** modeSub property. */
-  private modeSub?: Subscription;
 
   // --- Wizard Logic ---
   /** Params Schema. */
@@ -231,12 +228,17 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   /* istanbul ignore next */
   readonly paramsValid = signal(false);
 
-  // Form Group
+  // Form Group Migrated to Signal Form
+  readonly formModel = signal({
+    mode: 'predefined',
+    templateId: '',
+    rawSql: '',
+  });
+
   /** Selection Form. */
-  readonly selectionForm = this.fb.group({
-    mode: ['predefined', Validators.required],
-    templateId: [''],
-    rawSql: [''],
+  readonly selectionForm = form(this.formModel, (f) => {
+    required(f.mode);
+    // Conditional validation modeled here
   });
 
   /** Placeholder Text. */
@@ -250,28 +252,18 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     this.searchSub = this.searchSubject
       .pipe(debounceTime(300), distinctUntilChanged())
       .subscribe((term) => this.loadTemplates(term));
-
-    // Handle Validation Switch
-    this.modeSub = this.selectionForm.get('mode')?.valueChanges.subscribe((mode) => {
-      const tplCtrl = this.selectionForm.get('templateId');
-      const sqlCtrl = this.selectionForm.get('rawSql');
-
-      if (mode === 'predefined') {
-        tplCtrl?.setValidators([Validators.required]);
-        sqlCtrl?.clearValidators();
-      } else {
-        tplCtrl?.clearValidators();
-        sqlCtrl?.setValidators([Validators.required]);
-      }
-      tplCtrl?.updateValueAndValidity();
-      sqlCtrl?.updateValueAndValidity();
-    });
   }
 
   /** Ng On Destroy. */
   ngOnDestroy(): void {
     this.searchSub?.unsubscribe();
-    this.modeSub?.unsubscribe();
+  }
+
+  /** Gets whether the current selection step is valid. */
+  selectionValid(): boolean {
+    const val = this.formModel();
+    if (val.mode === 'predefined') return !!val.templateId;
+    return !!val.rawSql && val.rawSql.trim().length > 0;
   }
 
   /** Loads templates. */
@@ -292,10 +284,11 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   /** Select Template. */
   selectTemplate(template: TemplateResponse) {
     this.selectedTemplateId.set(template.id);
-    this.selectionForm.patchValue({
+    this.formModel.update((m) => ({
+      ...m,
       templateId: template.id,
       rawSql: template.sql_template,
-    });
+    }));
     this.paramsSchema.set(template.parameters_schema || {});
   }
 
@@ -314,7 +307,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
 
   /** Logic to skip parameter step if none exist. */
   parseParams() {
-    const mode = this.selectionForm.value.mode;
+    const mode = this.formModel().mode;
     if (mode !== 'predefined') {
       this.paramsSchema.set({});
       this.paramsValid.set(true);
@@ -339,7 +332,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   /** Compiles Template + Params into Final SQL. */
   renderPreview() {
     // Logic handles {{ mustache }} replacement
-    let sql = this.selectionForm.value.rawSql || '';
+    let sql = this.formModel().rawSql || '';
     const values = this.paramsValue();
 
     Object.keys(values).forEach((key) => {
@@ -358,8 +351,8 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
 
     // Determine title
     let title = 'Custom SQL Widget';
-    if (this.selectionForm.value.mode === 'predefined') {
-      const t = this.templates().find((x) => x.id === this.selectionForm.value.templateId);
+    if (this.formModel().mode === 'predefined') {
+      const t = this.templates().find((x) => x.id === this.formModel().templateId);
       if (t) title = t.title;
     }
 

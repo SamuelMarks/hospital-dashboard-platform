@@ -1,39 +1,29 @@
 /* v8 ignore start */
 /** @docs */
-/**
- * @fileoverview HTTP Request Builder Component.
- *
- * Allows configuration of:
- * - Method (GET/POST/etc).
- * - URL.
- * - Headers & Query Parameters (Key-Value Pairs).
- * - JSON Body Payload.
- */
-
 import {
   Component,
   input,
   output,
   inject,
   signal,
+  linkedSignal,
   ChangeDetectionStrategy,
   effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  FormControl,
-  FormArray,
-  Validators,
-  AbstractControl,
-  ValidationErrors,
-  ValidatorFn,
-} from '@angular/forms';
+  FormRoot,
+  FormField,
+  form,
+  required,
+  pattern,
+  applyEach,
+  schema,
+  validate,
+} from '@angular/forms/signals';
 import { finalize } from 'rxjs/operators';
 
-// Material
+import { DashboardsService, ExecutionService, WidgetUpdate } from '../api-client';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -44,63 +34,32 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { DashboardsService, ExecutionService, WidgetUpdate } from '../api-client';
-
-/** Key Value Pair interface. */
 interface KeyValuePair {
-  /** Key. */
   key: string;
-  /** Value. */
   value: string;
 }
 
-/**
- * Strict Typed Form Interface for HTTP Config.
- */
 interface HttpConfigForm {
-  /** Method. */
-  method: FormControl<string>;
-  /** Url. */
-  url: FormControl<string>;
-  /** Forward Auth. */
-  forward_auth: FormControl<boolean>;
-  /** Body. */
-  body: FormControl<string | null>;
-  /** Params. */
-  params: FormArray<FormGroup<{ key: FormControl<string>; value: FormControl<string> }>>;
-  /** Headers. */
-  headers: FormArray<FormGroup<{ key: FormControl<string>; value: FormControl<string> }>>;
+  method: string;
+  url: string;
+  forward_auth: boolean;
+  body: string;
+  params: KeyValuePair[];
+  headers: KeyValuePair[];
 }
 
-/**
- * Validator to ensure valid JSON syntax in text fields.
- */
-export function jsonValidator(): ValidatorFn {
-  return (control: AbstractControl): ValidationErrors | null => {
-    const value = control.value;
-    if (!value || value.trim() === '') return null;
-    try {
-      JSON.parse(value);
-      return null;
-    } catch (e) {
-      return { invalidJson: true };
-    }
-  };
-}
+const pairSchema = schema<KeyValuePair>((f) => {
+  required(f.key);
+  required(f.value);
+});
 
-/**
- * Editor for HTTP-based Widgets.
- *
- * **Updates:**
- * - Fully typed `FormGroup<HttpConfigForm>`.
- * - Accessibility improvements via semantic grouping and labels.
- */
+/** @docs */
 @Component({
   selector: 'app-http-config',
-  // '' removed (default).
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -111,7 +70,6 @@ export function jsonValidator(): ValidatorFn {
     MatDividerModule,
     MatProgressSpinnerModule,
   ],
-
   styles: [
     `
       :host {
@@ -182,75 +140,47 @@ export function jsonValidator(): ValidatorFn {
   ],
   templateUrl: './http-config.component.html',
 })
-/** @docs */
 export class HttpConfigComponent {
-  /** fb property. */
-  private readonly fb = inject(FormBuilder);
-  /** dashboardsApi property. */
   private readonly dashboardsApi = inject(DashboardsService);
-  /** executionApi property. */
   private readonly executionApi = inject(ExecutionService);
 
-  /** Dashboard Id. */
-  /* istanbul ignore next */
   readonly dashboardId = input.required<string>();
-  /** Widget Id. */
-  /* istanbul ignore next */
   readonly widgetId = input.required<string>();
-  /** Initial Config. */
-  /* istanbul ignore next */
   readonly initialConfig = input<Record<string, any>>({});
-  /** Config Change. */
   readonly configChange = output<Record<string, any>>();
 
-  /** Whether running. */
-  /* istanbul ignore next */
   readonly isRunning = signal(false);
-  /** Result. */
-  /* istanbul ignore next */
   readonly result = signal<any | null>(null);
 
-  // Strictly Typed Form Group
-  /** Form. */
-  readonly form: FormGroup<HttpConfigForm> = this.fb.group({
-    method: new FormControl('GET', { validators: [Validators.required], nonNullable: true }),
-    url: new FormControl('', {
-      validators: [Validators.required, Validators.pattern(/^https?:\/\/.+/)],
-      nonNullable: true,
-    }),
-    forward_auth: new FormControl(false, { nonNullable: true }),
-    body: new FormControl('', { validators: [jsonValidator()] }),
-    params: this.fb.array(
-      new Array<FormGroup<{ key: FormControl<string>; value: FormControl<string> }>>(),
-    ),
-    headers: this.fb.array(
-      new Array<FormGroup<{ key: FormControl<string>; value: FormControl<string> }>>(),
-    ),
+  readonly formModel = linkedSignal<HttpConfigForm>(() => this.parseConfig(this.initialConfig()));
+
+  readonly form = form(this.formModel, (f) => {
+    required(f.method);
+    required(f.url);
+    pattern(f.url, /^https?:\/\/.+/);
+    applyEach(f.params, pairSchema);
+    applyEach(f.headers, pairSchema);
+    validate(f.body, (ctx) => {
+      const value = ctx.value();
+      if (!value || value.trim() === '') return null;
+      try {
+        JSON.parse(value);
+        return null;
+      } catch (e) {
+        return { kind: 'invalidJson', message: 'Invalid JSON format' };
+      }
+    });
   });
 
-  /** Params Array. */
-  get paramsArray() {
-    return this.form.get('params') as FormArray;
-  }
-  /** Headers Array. */
-  get headersArray() {
-    return this.form.get('headers') as FormArray;
+  constructor() {}
+
+  isFieldInvalid(fieldTree: any): boolean {
+    return !!(fieldTree().invalid() && (fieldTree().dirty() || fieldTree().touched()));
   }
 
-  /** Creates a new HttpConfigComponent. */
-  constructor() {
-    effect(() => this.hydrateForm(this.initialConfig()));
-  }
-
-  /** Whether field Invalid. */
-  isFieldInvalid(fieldName: string): boolean {
-    const field = this.form.get(fieldName as keyof HttpConfigForm);
-    return !!(field && field.invalid && (field.dirty || field.touched));
-  }
-
-  /** hydrateForm method. */
-  private hydrateForm(config: Record<string, any>): void {
-    if (!config) return;
+  private parseConfig(config: Record<string, any>): HttpConfigForm {
+    if (!config)
+      return { method: 'GET', url: '', forward_auth: false, body: '', params: [], headers: [] };
     let bodyText = '';
     if (config['body']) {
       try {
@@ -259,54 +189,59 @@ export class HttpConfigComponent {
         bodyText = String(config['body']);
       }
     }
-    this.form.patchValue({
+
+    const params: KeyValuePair[] = [];
+    if (config['params']) {
+      Object.entries(config['params']).forEach(([k, v]) => {
+        params.push({ key: k, value: String(v) });
+      });
+    }
+
+    const headers: KeyValuePair[] = [];
+    if (config['headers']) {
+      Object.entries(config['headers']).forEach(([k, v]) => {
+        headers.push({ key: k, value: String(v) });
+      });
+    }
+
+    return {
       method: config['method'] || 'GET',
       url: config['url'] || '',
       forward_auth: !!config['meta_forward_auth'],
       body: bodyText,
-    });
-    this.populateArray(this.paramsArray, config['params']);
-    this.populateArray(this.headersArray, config['headers']);
+      params,
+      headers,
+    };
   }
 
-  /** populateArray method. */
-  private populateArray(array: FormArray, source: Record<string, string> | undefined): void {
-    array.clear();
-    if (source) {
-      Object.entries(source).forEach(([k, v]) => array.push(this.createPair(k, v)));
-    }
-  }
-
-  /** Creates pair. */
-  createPair(key = '', value = ''): FormGroup {
-    return this.fb.group({
-      key: new FormControl(key, { validators: [Validators.required], nonNullable: true }),
-      value: new FormControl(value, { validators: [Validators.required], nonNullable: true }),
-    });
-  }
-
-  /** Adds item. */
   addItem(type: 'params' | 'headers') {
-    const target = type === 'params' ? this.paramsArray : this.headersArray;
-    target.push(this.createPair());
+    this.formModel.update((m) => {
+      const target = type === 'params' ? m.params : m.headers;
+      return {
+        ...m,
+        [type]: [...target, { key: '', value: '' }],
+      };
+    });
   }
 
-  /** Removes item. */
   removeItem(type: 'params' | 'headers', index: number) {
-    const target = type === 'params' ? this.paramsArray : this.headersArray;
-    target.removeAt(index);
+    this.formModel.update((m) => {
+      const target = type === 'params' ? m.params : m.headers;
+      return {
+        ...m,
+        [type]: target.filter((_, i) => i !== index),
+      };
+    });
   }
 
-  /** Save And Test. */
   saveAndTest() {
-    if (this.form.invalid) return;
+    if (this.form().invalid()) return;
     this.isRunning.set(true);
     this.result.set(null);
 
-    const f = this.form.getRawValue();
+    const f = this.formModel();
     const bodyObj = f.body ? JSON.parse(f.body) : null;
 
-    // Explicit Partial Update Payload logic
     const newConfig = {
       method: f.method,
       url: f.url,
@@ -331,7 +266,6 @@ export class HttpConfigComponent {
       });
   }
 
-  /** executeTestRun method. */
   private executeTestRun() {
     this.executionApi
       .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId())
@@ -343,7 +277,6 @@ export class HttpConfigComponent {
       });
   }
 
-  /** arrToObj method. */
   private arrToObj(arr: { key: string; value: string }[]): Record<string, string> {
     const obj: Record<string, string> = {};
     arr.forEach((i) => {

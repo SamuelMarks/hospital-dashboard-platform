@@ -5,7 +5,7 @@
  *
  * Executes candidate SQL snippets against the preview endpoint.
  */
-import { Injectable, inject } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BASE_PATH } from '../api-client';
 import { environment } from '../../environments/environment';
@@ -32,7 +32,7 @@ export interface SqlExecutionResponse {
 }
 
 /** Service wrapper for the AI execute endpoint. */
-@Injectable({ providedIn: 'root' })
+@Service()
 /* v8 ignore start */
 export class ArenaSqlService {
   /* v8 ignore stop */

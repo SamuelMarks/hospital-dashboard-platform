@@ -1,8 +1,8 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormRoot, FormField, form, required, minLength } from '@angular/forms/signals';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,13 +20,13 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
   selector: 'app-dashboard-create-dialog',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
   ],
-
   templateUrl: './dashboard-create.dialog.html',
 })
 /** @docs */
@@ -37,9 +37,6 @@ export class DashboardCreateDialog {
   /** Reference to the dialog instance to control closing. */
   private readonly dialogRef = inject(MatDialogRef<DashboardCreateDialog>);
 
-  /** FormBuilder for the input form. */
-  private readonly fb = inject(FormBuilder);
-
   /** Loading state signal during API submission. */
   /* istanbul ignore next */
   readonly isSubmitting = signal(false);
@@ -48,9 +45,13 @@ export class DashboardCreateDialog {
   /* istanbul ignore next */
   readonly error = signal<string | null>(null);
 
-  /** Reactive Form Group. */
-  readonly form: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(3)]],
+  /** Signal form model. */
+  readonly formModel = signal({ name: '' });
+
+  /** Signal Form Tree. */
+  readonly form = form(this.formModel, (f) => {
+    required(f.name, { message: 'Name is required' });
+    minLength(f.name, 3, { message: 'Name must be at least 3 characters' });
   });
 
   /**
@@ -59,13 +60,13 @@ export class DashboardCreateDialog {
    * passing the new object back to the caller.
    */
   submit(): void {
-    if (this.form.invalid) return;
+    if (this.form().invalid()) return;
 
     this.isSubmitting.set(true);
     this.error.set(null);
 
     const payload: DashboardCreate = {
-      name: this.form.value.name,
+      name: this.formModel().name,
     };
 
     this.dashboardsApi

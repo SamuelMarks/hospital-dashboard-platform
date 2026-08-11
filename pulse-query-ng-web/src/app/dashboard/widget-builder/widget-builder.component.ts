@@ -2,15 +2,16 @@
 /** @docs */
 import {
   Component,
+  ChangeDetectorRef,
   inject,
   signal,
   computed,
   OnInit,
   OnDestroy,
-  ChangeDetectionStrategy,
+  effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormControl, Validators } from '@angular/forms';
+import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
@@ -72,7 +73,8 @@ export interface WidgetBuilderData {
   selector: 'app-widget-builder',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     MatDialogModule,
     MatStepperModule,
     MatButtonModule,
@@ -178,12 +180,11 @@ export interface WidgetBuilderData {
 })
 /** @docs */
 export class WidgetBuilderComponent implements OnInit, OnDestroy {
-  /** FormBuilder for reactive forms. */
-  private readonly fb = inject(FormBuilder);
   /** Injected data containing dashboard context. */
   readonly data = inject<WidgetBuilderData>(MAT_DIALOG_DATA);
   /** Reference to the hosting dialog. */
   private readonly dialogRef = inject(MatDialogRef<WidgetBuilderComponent>);
+  private readonly cdr = inject(ChangeDetectorRef);
   /** Dashboard API Client. */
   private readonly dashboardApi = inject(DashboardsService);
   /** Template API Client. */
@@ -252,16 +253,6 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    */
   readonly selectedType = this.currentType;
 
-  /** Unused source form group (Step 1). */
-  readonly sourceForm = this.fb.group({});
-
-  /** Selection form group. */
-  readonly selectionForm = this.fb.group({
-    mode: ['predefined', Validators.required],
-    templateId: [''],
-    rawSql: [''],
-  });
-
   /** Parameter values for template injection. */
   /* istanbul ignore next */
   readonly templateParams = signal<Record<string, any>>({});
@@ -269,16 +260,18 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /* istanbul ignore next */
   readonly templateFormValid = signal(true);
 
-  // Visuals Config
-  /** Widget Title Control. */
-  readonly titleControl = new FormControl('', {
-    nonNullable: true,
-    validators: [Validators.required],
+  // Visuals Config Form (Replaces ReactiveFormsModule)
+  /** Signal model for visual configurations. */
+  readonly vizFormModel = signal({
+    title: '',
+    xKey: null as string | null,
+    yKey: null as string | null,
   });
-  /** X-Axis Key Control. */
-  readonly xKeyControl = new FormControl<string | null>(null);
-  /** Y-Axis Key Control. */
-  readonly yKeyControl = new FormControl<string | null>(null);
+
+  /** Signal form root for visualize step. */
+  readonly vizForm = form(this.vizFormModel, (f) => {
+    required(f.title);
+  });
 
   /** List of supported visualizations. */
   readonly visualizations = [
@@ -329,23 +322,38 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** Active Tab Index. */
   readonly selectedTab = signal(0);
 
+  /** Creates component with internal effects. */
+  constructor() {
+    // Title Sync Effect
+    effect(
+      () => {
+        const val = this.vizFormModel().title;
+        const w = this.draftWidget();
+        if (w && w.title !== val) {
+          // use local update avoiding infinite loops since object ref changes
+          this.draftWidget.update((prev) => (prev ? { ...prev, title: val } : null));
+        }
+      },
+      { allowSignalWrites: true },
+    );
+
+    // Axis Sync Effect
+    effect(
+      () => {
+        const xKey = this.vizFormModel().xKey;
+        const yKey = this.vizFormModel().yKey;
+        this.syncVizConfig(xKey, yKey);
+      },
+      { allowSignalWrites: true },
+    );
+  }
+
   /** Initialize component. */
   ngOnInit(): void {
     this.loadTemplates();
     this.sub = this.search$
       .pipe(debounceTime(300), distinctUntilChanged())
       .subscribe((v) => this.loadTemplates(v));
-
-    // Sync local controls with draft state
-    this.titleControl.valueChanges.subscribe((val) => {
-      const w = this.draftWidget();
-      if (w) {
-        this.draftWidget.set({ ...w, title: val });
-      }
-    });
-
-    this.xKeyControl.valueChanges.subscribe(() => this.syncVizConfig());
-    this.yKeyControl.valueChanges.subscribe(() => this.syncVizConfig());
   }
 
   /** Cleanup on destroy. */
@@ -384,7 +392,6 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.selectedTemplate.set(t);
     this.activeMode.set('template');
     this.selectedCustomType.set(null);
-    this.selectionForm.patchValue({ mode: 'predefined', templateId: t.id });
   }
 
   /** Selects custom type. */
@@ -392,13 +399,11 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.selectedCustomType.set(type);
     this.activeMode.set('custom');
     this.selectedTemplate.set(null);
-    this.selectionForm.patchValue({ mode: 'custom' });
   }
 
   /** Validates parameters based on mode. */
   parseParams() {
-    const mode = this.selectionForm.value.mode;
-    if (mode !== 'predefined') {
+    if (this.activeMode() !== 'template') {
       this.templateParams.set({});
       this.templateFormValid.set(true);
     }
@@ -494,8 +499,13 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (w) => {
           this.draftWidget.set(w);
-          this.titleControl.setValue(w.title);
-          stepper?.next();
+          this.vizFormModel.update((m) => ({ ...m, title: w.title }));
+          setTimeout(() => {
+            if (stepper) {
+              stepper.next();
+              this.cdr.detectChanges();
+            }
+          }, 100);
         },
         error: (e) => console.error('Draft creation failed', e),
       });
@@ -558,15 +568,18 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   }
 
   /** Synchronizes visualization config (axes mapping) to draft widget. */
-  syncVizConfig() {
+  syncVizConfig(xKey: string | null, yKey: string | null) {
     const w = this.draftWidget();
     if (!w) return;
 
-    const currentConfig = { ...w.config };
-    currentConfig['xKey'] = this.xKeyControl.value;
-    currentConfig['yKey'] = this.yKeyControl.value;
+    if (w.config?.['xKey'] === xKey && w.config?.['yKey'] === yKey) return;
 
-    this.draftWidget.set({ ...w, config: currentConfig });
+    const currentConfig = { ...w.config };
+    currentConfig['xKey'] = xKey;
+    currentConfig['yKey'] = yKey;
+
+    // using update to avoid effect loops
+    this.draftWidget.update((prev) => (prev ? { ...prev, config: currentConfig } : null));
   }
 
   /** Saves and closes dialog. */
@@ -582,7 +595,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.isBusy.set(true);
 
     const update: WidgetUpdate = {
-      title: this.titleControl.value,
+      title: this.vizFormModel().title,
       visualization: w.visualization,
       config: w.config,
     };

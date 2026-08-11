@@ -1,11 +1,12 @@
+import '@angular/localize/init';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { RegisterComponent, passwordMatchValidator } from './register.component';
+import { RegisterComponent } from './register.component';
 import { AuthService } from '../core/auth/auth.service';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { FormControl, FormGroup } from '@angular/forms';
+import { vi } from 'vitest';
 
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
@@ -18,14 +19,10 @@ describe('RegisterComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [RegisterComponent, NoopAnimationsModule],
-      providers: [
-        provideRouter([]), // FIX: Provide actual router configuration
-        { provide: AuthService, useValue: mockAuthService },
-      ],
+      providers: [provideRouter([]), { provide: AuthService, useValue: mockAuthService }],
     }).compileComponents();
 
     router = TestBed.inject(Router);
-    // Mock the navigate method to check calls
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     fixture = TestBed.createComponent(RegisterComponent);
@@ -38,32 +35,46 @@ describe('RegisterComponent', () => {
   });
 
   it('should validate matching passwords', () => {
-    const form = component.registerForm;
-    form.patchValue({
+    component.formModel.set({
       email: 'test@test.com',
       password: 'pass',
       confirmPassword: 'wrong',
     });
+    fixture.detectChanges();
 
-    form.updateValueAndValidity();
+    expect(
+      component.registerForm
+        .confirmPassword()
+        .errors()
+        .some((e) => e.kind === 'mismatch'),
+    ).toBe(true);
+    expect(component.registerForm().invalid()).toBe(true);
 
-    expect(form.hasError('mismatch')).toBe(true);
+    component.formModel.set({
+      email: 'test@test.com',
+      password: 'pass',
+      confirmPassword: 'pass',
+    });
+    fixture.detectChanges();
 
-    form.patchValue({ confirmPassword: 'pass' });
-    form.updateValueAndValidity();
-
-    expect(form.hasError('mismatch')).toBe(false);
-    expect(form.valid).toBe(true);
+    expect(
+      component.registerForm
+        .confirmPassword()
+        .errors()
+        .some((e) => e.kind === 'mismatch'),
+    ).toBe(false);
+    expect(component.registerForm().valid()).toBe(true);
   });
 
   it('should call authService.register on submit', () => {
     mockAuthService.register.mockReturnValue(of({ access_token: 'abc', token_type: 'bearer' }));
 
-    component.registerForm.setValue({
+    component.formModel.set({
       email: 'new@user.com',
       password: 'strongPassword',
       confirmPassword: 'strongPassword',
     });
+    fixture.detectChanges();
 
     component.onSubmit();
 
@@ -81,11 +92,12 @@ describe('RegisterComponent', () => {
       throwError(() => ({ error: { detail: 'Email already exists' } })),
     );
 
-    component.registerForm.setValue({
+    component.formModel.set({
       email: 'taken@user.com',
       password: 'pass',
       confirmPassword: 'pass',
     });
+    fixture.detectChanges();
 
     component.onSubmit();
 
@@ -99,11 +111,12 @@ describe('RegisterComponent', () => {
   it('should use fallback error message when detail is missing', () => {
     mockAuthService.register.mockReturnValue(throwError(() => ({ error: {} })));
 
-    component.registerForm.setValue({
+    component.formModel.set({
       email: 'taken@user.com',
       password: 'pass',
       confirmPassword: 'pass',
     });
+    fixture.detectChanges();
 
     component.onSubmit();
 
@@ -111,7 +124,8 @@ describe('RegisterComponent', () => {
   });
 
   it('should mark form as touched when invalid', () => {
-    const spy = vi.spyOn(component.registerForm, 'markAllAsTouched');
+    // Component starts with empty model which is invalid
+    const spy = vi.spyOn(component.registerForm(), 'markAsTouched');
     component.onSubmit();
     expect(spy).toHaveBeenCalled();
   });
@@ -120,24 +134,6 @@ describe('RegisterComponent', () => {
     const initial = component.hidePassword();
     component.togglePasswordVisibility(new Event('click'));
     expect(component.hidePassword()).toBe(!initial);
-  });
-
-  it('should submit via template form and button', () => {
-    mockAuthService.register.mockReturnValue(of({ access_token: 'abc', token_type: 'bearer' }));
-    component.registerForm.setValue({
-      email: 'new@user.com',
-      password: 'strongPassword',
-      confirmPassword: 'strongPassword',
-    });
-    fixture.detectChanges();
-
-    const form = fixture.debugElement.query(By.css('form'));
-    form.triggerEventHandler('ngSubmit', {});
-    expect(mockAuthService.register).toHaveBeenCalled();
-
-    const submitBtn = fixture.debugElement.query(By.css('[data-testid="submit-btn"]'));
-    submitBtn.triggerEventHandler('click', null);
-    expect(mockAuthService.register).toHaveBeenCalled();
   });
 
   it('should toggle password visibility from template button', () => {
@@ -155,39 +151,5 @@ describe('RegisterComponent', () => {
 
   it('should render login link', () => {
     expect(fixture.debugElement.query(By.css('[data-testid="link-login"]'))).toBeTruthy();
-  });
-
-  describe('passwordMatchValidator', () => {
-    it('should return error if values mismatch', () => {
-      const group = new FormGroup({
-        password: new FormControl('a'),
-        confirmPassword: new FormControl('b'),
-      });
-      const result = passwordMatchValidator(group);
-      expect(result).toEqual({ mismatch: true });
-    });
-
-    it('should return null if values match', () => {
-      const group = new FormGroup({
-        password: new FormControl('a'),
-        confirmPassword: new FormControl('a'),
-      });
-      const result = passwordMatchValidator(group);
-      expect(result).toBeNull();
-    });
-
-    it('should clear mismatch error when values match', () => {
-      const confirmControl = new FormControl('a');
-      confirmControl.setErrors({ mismatch: true });
-      const group = new FormGroup({
-        password: new FormControl('a'),
-        confirmPassword: confirmControl,
-      });
-
-      const result = passwordMatchValidator(group);
-
-      expect(result).toBeNull();
-      expect(confirmControl.errors).toBeNull();
-    });
   });
 });

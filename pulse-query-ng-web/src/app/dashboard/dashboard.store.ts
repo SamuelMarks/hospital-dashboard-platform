@@ -1,6 +1,7 @@
+import { DATE_NOW } from '../core/time.token';
 /** @docs */
 // pulse-query-ng-web/src/app/dashboard/dashboard.store.ts
-import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
+import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, of, timer, Subscription } from 'rxjs';
@@ -48,9 +49,10 @@ const initialState: DashboardState = {
 const DEFAULT_REFRESH_RATE = 300_000;
 
 /** @docs */
-@Injectable({ providedIn: 'root' })
+@Service()
 /* v8 ignore start */
 export class DashboardStore implements OnDestroy {
+  private readonly dateNow = inject(DATE_NOW);
   private readonly dashboardApi = inject(DashboardsService);
   private readonly executionApi = inject(ExecutionService);
   private readonly router = inject(Router);
@@ -140,7 +142,7 @@ export class DashboardStore implements OnDestroy {
           this.patch({
             isLoading: false,
             dataMap: result as Record<string, any>,
-            lastUpdated: new Date(),
+            lastUpdated: this.dateNow(),
           });
         } else {
           this.patch({ isLoading: false });

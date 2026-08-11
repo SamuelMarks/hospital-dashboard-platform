@@ -127,21 +127,24 @@ describe('WidgetBuilderComponent', () => {
 
   it('should sync local controls with draft state on value changes', () => {
     component.draftWidget.set(MOCK_DRAFT);
-    component.titleControl.setValue('Updated Title');
+    component.vizFormModel.update((m) => ({ ...m, title: 'Updated Title' }));
+    fixture.detectChanges();
     expect(component.draftWidget()?.title).toBe('Updated Title');
   });
 
   it('should sync local controls with draft state xKey/yKey', () => {
     component.draftWidget.set(MOCK_DRAFT);
-    component.xKeyControl.setValue('x_col');
+    component.vizFormModel.update((m) => ({ ...m, xKey: 'x_col' }));
+    fixture.detectChanges();
     expect(component.draftWidget()?.config['xKey']).toBe('x_col');
-    component.yKeyControl.setValue('y_col');
+    component.vizFormModel.update((m) => ({ ...m, yKey: 'y_col' }));
+    fixture.detectChanges();
     expect(component.draftWidget()?.config['yKey']).toBe('y_col');
   });
 
   it('syncVizConfig should do nothing if no draft widget', () => {
     component.draftWidget.set(null);
-    component.syncVizConfig();
+    component.syncVizConfig(null, null);
     expect(component.draftWidget()).toBeNull();
   });
 
@@ -186,7 +189,6 @@ describe('WidgetBuilderComponent', () => {
     expect(component.selectedTemplate()).toEqual(MOCK_TEMPLATE);
     expect(component.activeMode()).toBe('template');
     expect(component.selectedCustomType()).toBeNull();
-    expect(component.selectionForm.value.mode).toBe('predefined');
   });
 
   it('selectCustomType should set custom mode and select type', () => {
@@ -194,11 +196,11 @@ describe('WidgetBuilderComponent', () => {
     expect(component.selectedCustomType()).toBe('HTTP');
     expect(component.activeMode()).toBe('custom');
     expect(component.selectedTemplate()).toBeNull();
-    expect(component.selectionForm.value.mode).toBe('custom');
+    expect(component.activeMode()).toBe('custom');
   });
 
   it('parseParams should reset params and set valid to true if mode is not predefined', () => {
-    component.selectionForm.patchValue({ mode: 'custom' });
+    component.activeMode.set('custom');
     component.templateParams.set({ a: 1 });
     component.templateFormValid.set(false);
     component.parseParams();
@@ -207,7 +209,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('parseParams should do nothing if mode is predefined', () => {
-    component.selectionForm.patchValue({ mode: 'predefined' });
+    component.activeMode.set('template');
     component.templateParams.set({ a: 1 });
     component.templateFormValid.set(false);
     component.parseParams();
@@ -261,7 +263,10 @@ describe('WidgetBuilderComponent', () => {
     const mockStepper = { next: vi.fn() } as any;
     component.activeMode.set('template');
     component.selectedTemplate.set(MOCK_TEMPLATE);
+    vi.useFakeTimers();
     component.initializeDraft(mockStepper);
+    vi.advanceTimersByTime(150);
+    vi.useRealTimers();
 
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
@@ -431,11 +436,16 @@ describe('WidgetBuilderComponent', () => {
 
   it('saveWidget should update widget and close dialog', () => {
     component.draftWidget.set(MOCK_DRAFT);
-    component.titleControl.setValue('New Title');
+    component.vizFormModel.update((m) => ({ ...m, title: 'New Title' }));
+    fixture.detectChanges();
     component.saveWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'draft-1',
-      { title: 'New Title', visualization: 'table', config: { query: 'SELECT 1' } },
+      {
+        title: 'New Title',
+        visualization: 'table',
+        config: { query: 'SELECT 1', xKey: null, yKey: null },
+      },
     );
     expect(component.draftWidget()).toBeNull();
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
@@ -489,7 +499,8 @@ describe('WidgetBuilderComponent', () => {
 
   it('should do nothing on title changes if no draft', () => {
     component.draftWidget.set(null);
-    component.titleControl.setValue('Another Title');
+    component.vizFormModel.update((m) => ({ ...m, title: 'Another Title' }));
+    fixture.detectChanges();
     expect(component.draftWidget()).toBeNull();
   });
 });

@@ -6,7 +6,7 @@
     <span i18n class="label-text">Data Filters</span>
   </div>
 
-  <div class="filter-group">
+  <form [formRoot]="ribbonForm" class="filter-group">
     <!-- 1. Department -->
     <mat-form-field
       appearance="outline"
@@ -16,7 +16,8 @@
     >
       <mat-label i18n>Department</mat-label>
       <mat-select
-        [formControl]="deptControl"
+        [formField]="ribbonForm.dept"
+        (selectionChange)="onDeptChange($event.value)"
         i18n-placeholder
         placeholder="All Departments"
         i18n-aria-label
@@ -43,7 +44,7 @@
           matStartDate
           i18n-placeholder
           placeholder="Start"
-          [formControl]="startDate"
+          [formField]="ribbonForm.startDate"
           (dateChange)="onDateChange()"
           i18n-aria-label
           aria-label="Start Date"
@@ -52,7 +53,7 @@
           matEndDate
           i18n-placeholder
           placeholder="End"
-          [formControl]="endDate"
+          [formField]="ribbonForm.endDate"
           (dateChange)="onDateChange()"
           i18n-aria-label
           aria-label="End Date"
@@ -68,6 +69,7 @@
         i18n
         mat-button
         color="warn"
+        type="button"
         (click)="clearFilters()"
         i18n-aria-label
         aria-label="Clear all filters"
@@ -75,5 +77,5 @@
         <mat-icon>highlight_off</mat-icon> Clear
       </button>
     }
-  </div>
+  </form>
 </mat-toolbar>

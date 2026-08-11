@@ -9,6 +9,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { BehaviorSubject } from 'rxjs';
+import { vi } from 'vitest';
 
 describe('FilterRibbonComponent', () => {
   let component: FilterRibbonComponent;
@@ -68,13 +69,13 @@ describe('FilterRibbonComponent', () => {
     });
 
     // Check if form control updated
-    expect(component.deptControl.value).toBe('Cardiology');
-    expect(component.startDate.value?.toISOString().startsWith('2023-01-01')).toBe(true);
-    expect(component.endDate.value?.toISOString().startsWith('2023-01-31')).toBe(true);
+    expect(component.formModel().dept).toBe('Cardiology');
+    expect(component.formModel().startDate?.toISOString().startsWith('2023-01-01')).toBe(true);
+    expect(component.formModel().endDate?.toISOString().startsWith('2023-01-31')).toBe(true);
   });
 
   it('should navigate when Department changes', () => {
-    component.deptControl.setValue('Neurology');
+    component.onDeptChange('Neurology');
 
     // Check Router Navigation
     expect(mockRouter.navigate).toHaveBeenCalledWith(
@@ -90,8 +91,7 @@ describe('FilterRibbonComponent', () => {
     const d1 = new Date('2023-01-01');
     const d2 = new Date('2023-01-31');
 
-    component.startDate.setValue(d1);
-    component.endDate.setValue(d2);
+    component.formModel.update((m) => ({ ...m, startDate: d1, endDate: d2 }));
 
     // Trigger the change handler manually (as UI picker would)
     component.onDateChange();
@@ -108,7 +108,7 @@ describe('FilterRibbonComponent', () => {
   });
 
   it('should NOT navigate if only Start Date is set', () => {
-    component.startDate.setValue(new Date('2023-01-01'));
+    component.formModel.update((m) => ({ ...m, startDate: new Date('2023-01-01') }));
     component.onDateChange();
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
@@ -122,19 +122,22 @@ describe('FilterRibbonComponent', () => {
         queryParams: { start_date: null, end_date: null, dept: null },
       }),
     );
-    expect(component.deptControl.value).toBeNull();
-    expect(component.startDate.value).toBeNull();
-    expect(component.endDate.value).toBeNull();
   });
 
   it('should update filter with null value', () => {
-    component.deptControl.setValue(null);
+    component.onDeptChange(null);
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [],
       expect.objectContaining({
         queryParams: { dept: null },
       }),
     );
+  });
+
+  it('should not emit navigate during initial load (syncing from route)', () => {
+    (component as any).isSyncingFromRoute = true;
+    component.onDeptChange('Neurology');
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should cleanup subscriptions on destroy', () => {

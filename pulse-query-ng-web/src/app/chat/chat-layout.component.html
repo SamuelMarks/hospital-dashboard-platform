@@ -2,8 +2,8 @@
   <!-- Side Drawer (Collapsible) -->
   <mat-sidenav
     #drawer
-    [mode]="(isHandset$ | async) ? 'over' : 'side'"
-    [opened]="(isHandset$ | async) ? false : sidebarOpen()"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="isHandset() ? false : sidebarOpen()"
     class="history-drawer"
   >
     <!-- Use Tabs to switch between History and Cart -->
@@ -84,7 +84,7 @@
   </mat-sidenav>
 
   <mat-sidenav-content role="main" class="relative flex flex-col h-full overflow-hidden">
-    @if (isHandset$ | async) {
+    @if (isHandset()) {
       <mat-toolbar color="primary" class="flex-none">
         <button i18n mat-icon-button i18n-aria-label aria-label="action" (click)="drawer.toggle()">
           <mat-icon>menu</mat-icon>
@@ -94,7 +94,7 @@
     }
 
     <!-- Desktop Toggle Button -->
-    @if (!(isHandset$ | async)) {
+    @if (!isHandset()) {
       <button
         i18n
         mat-icon-button

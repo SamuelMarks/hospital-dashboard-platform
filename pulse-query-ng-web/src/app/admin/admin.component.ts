@@ -1,44 +1,31 @@
 /* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  OnInit,
-  inject,
-  signal,
-  ChangeDetectionStrategy,
-  DestroyRef,
-} from '@angular/core';
+import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  FormArray,
-  FormControl,
-} from '@angular/forms';
-import { AdminService, AiService, ModelInfo, AdminSettingsResponse } from '../api-client';
+import { form, FormRoot, FormField } from '@angular/forms/signals';
+import { AdminService, AiService, ModelInfo } from '../api-client';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
 /** @docs */
 @Component({
   selector: 'app-admin',
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, FormRoot, FormField],
 
   template: `
     @if (settingsLoaded()) {
       <div class="admin-container">
         <h2 i18n>Admin Configuration</h2>
 
-        <form [formGroup]="adminForm" (ngSubmit)="saveSettings()">
-          <div class="section" formGroupName="apiKeys">
+        <form [formRoot]="adminForm" (submit)="saveSettings()">
+          <div class="section">
             <h3 i18n>API Keys</h3>
             <div class="key-item">
               <label i18n for="openai-key">OpenAI API Key</label>
               <input
                 id="openai-key"
                 type="password"
-                formControlName="openai"
+                [formField]="adminForm.openai"
                 placeholder="sk-..."
                 autocomplete="off"
               />
@@ -48,7 +35,7 @@ import { forkJoin } from 'rxjs';
               <input
                 id="anthropic-key"
                 type="password"
-                formControlName="anthropic"
+                [formField]="adminForm.anthropic"
                 placeholder="sk-..."
                 autocomplete="off"
               />
@@ -62,11 +49,11 @@ import { forkJoin } from 'rxjs';
             </p>
             <fieldset aria-labelledby="visible-models-title" aria-describedby="visible-models-desc">
               <legend i18n class="sr-only">Available Models</legend>
-              <div formArrayName="models">
-                @for (modelCtrl of modelsFormArray.controls; track trackByFn($index)) {
+              <div>
+                @for (modelVal of adminForm.models; track trackByFn($index)) {
                   <div class="model-item">
                     <label [for]="'model-' + $index">
-                      <input [id]="'model-' + $index" type="checkbox" [formControlName]="$index" />
+                      <input [id]="'model-' + $index" type="checkbox" [formField]="modelVal" />
                       {{ availableModels()[$index].name }} ({{ availableModels()[$index].id }})
                     </label>
                   </div>
@@ -75,7 +62,9 @@ import { forkJoin } from 'rxjs';
             </fieldset>
           </div>
 
-          <button i18n type="submit" [disabled]="isSaving()">Save Configuration</button>
+          <button i18n type="submit" [disabled]="adminForm().invalid() || isSaving()">
+            Save Configuration
+          </button>
 
           @if (message()) {
             <div class="message" role="alert" aria-live="polite">{{ message() }}</div>
@@ -196,7 +185,6 @@ import { forkJoin } from 'rxjs';
 export class AdminComponent implements OnInit {
   private adminService = inject(AdminService);
   private aiService = inject(AiService);
-  private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
 
   // v8 ignore start
@@ -206,17 +194,13 @@ export class AdminComponent implements OnInit {
   isSaving = signal<boolean>(false);
   // v8 ignore stop
 
-  adminForm = this.fb.group({
-    apiKeys: this.fb.group({
-      openai: [''],
-      anthropic: [''],
-    }),
-    models: this.fb.array<boolean>([]),
+  formModel = signal({
+    openai: '',
+    anthropic: '',
+    models: [] as boolean[],
   });
 
-  get modelsFormArray() {
-    return this.adminForm.get('models') as FormArray<FormControl<boolean | null>>;
-  }
+  adminForm = form(this.formModel, (f) => {});
 
   // v8 ignore start
   trackByFn(index: number): number {
@@ -232,17 +216,10 @@ export class AdminComponent implements OnInit {
       .subscribe(({ settings, models }) => {
         this.availableModels.set(models);
 
-        this.adminForm.patchValue({
-          apiKeys: {
-            openai: settings.api_keys?.['openai'] || '',
-            anthropic: settings.api_keys?.['anthropic'] || '',
-          },
-        });
-
-        this.modelsFormArray.clear();
-        models.forEach((model) => {
-          const isVisible = settings.visible_models.includes(model.id);
-          this.modelsFormArray.push(this.fb.control(isVisible));
+        this.formModel.set({
+          openai: settings.api_keys?.['openai'] || '',
+          anthropic: settings.api_keys?.['anthropic'] || '',
+          models: models.map((model) => settings.visible_models.includes(model.id)),
         });
 
         this.settingsLoaded.set(true);
@@ -250,30 +227,24 @@ export class AdminComponent implements OnInit {
   }
 
   saveSettings() {
-    if (this.adminForm.invalid) return;
+    if (this.adminForm().invalid()) return;
 
     this.isSaving.set(true);
 
-    const formValue = this.adminForm.value;
-    const apiKeysRaw = formValue.apiKeys || {};
+    const formValue = this.formModel();
     const finalKeys: Record<string, string> = {};
 
-    if (apiKeysRaw.openai && typeof apiKeysRaw.openai === 'string' && apiKeysRaw.openai.trim()) {
-      finalKeys['openai'] = apiKeysRaw.openai.trim();
+    if (formValue.openai && formValue.openai.trim()) {
+      finalKeys['openai'] = formValue.openai.trim();
     }
-    if (
-      apiKeysRaw.anthropic &&
-      typeof apiKeysRaw.anthropic === 'string' &&
-      apiKeysRaw.anthropic.trim()
-    ) {
-      finalKeys['anthropic'] = apiKeysRaw.anthropic.trim();
+    if (formValue.anthropic && formValue.anthropic.trim()) {
+      finalKeys['anthropic'] = formValue.anthropic.trim();
     }
 
     const selectedModels: string[] = [];
-    const modelsValue = formValue.models || [];
     const models = this.availableModels();
 
-    modelsValue.forEach((isSelected, index) => {
+    formValue.models.forEach((isSelected, index) => {
       if (isSelected) {
         selectedModels.push(models[index].id);
       }

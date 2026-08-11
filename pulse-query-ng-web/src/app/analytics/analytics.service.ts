@@ -5,7 +5,7 @@
  *
  * Provides typed access to the backend analytics endpoints.
  */
-import { Injectable, inject } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { BASE_PATH } from '../api-client';
 import { environment } from '../../environments/environment';
@@ -44,7 +44,7 @@ export interface LlmAnalyticsRow {
 }
 
 /** Client for analytics endpoints. */
-@Injectable({ providedIn: 'root' })
+@Service()
 /* v8 ignore start */
 export class AnalyticsService {
   /* v8 ignore stop */

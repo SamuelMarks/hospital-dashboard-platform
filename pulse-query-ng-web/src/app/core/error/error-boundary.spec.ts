@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
  * Host component to test structural directive usage.
  */
 @Component({
-  standalone: false,
+  imports: [ErrorBoundaryDirective],
   template: `
     <div *appErrorBoundary="fallbackTpl">
       @if (shouldCrash) {
@@ -40,7 +40,7 @@ class TestHostComponent {
 }
 
 @Component({
-  standalone: false,
+  imports: [ErrorBoundaryDirective],
   template: `
     <div *appErrorBoundary="missingTemplate">
       <div id="content">Safe Content</div>
@@ -59,8 +59,12 @@ describe('ErrorBoundaryDirective', () => {
     handlerMock = { clearError: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [CommonModule, ErrorBoundaryDirective],
-      declarations: [TestHostComponent, MissingTemplateHostComponent],
+      imports: [
+        CommonModule,
+        ErrorBoundaryDirective,
+        TestHostComponent,
+        MissingTemplateHostComponent,
+      ],
       providers: [
         { provide: ErrorHandler, useValue: handlerMock },
         { provide: GlobalErrorHandler, useValue: handlerMock },

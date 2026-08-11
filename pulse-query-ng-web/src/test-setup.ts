@@ -1,3 +1,4 @@
+import '@angular/localize/init';
 /**
  * @fileoverview Test configuration setup for the Angular application.
  * This file is the entry point for the test runner (Vitest).

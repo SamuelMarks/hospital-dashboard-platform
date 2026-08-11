@@ -1,9 +1,9 @@
-<form [formGroup]="form">
+<form [formRoot]="form" (submit)="save()">
   <mat-form-field appearance="outline" class="flex-grow">
     <mat-label i18n>Markdown Content</mat-label>
     <textarea
       matInput
-      formControlName="content"
+      [formField]="form.content"
       i18n-placeholder
       placeholder="# Header\n\n**Bold Text**\n\n- List Item"
     ></textarea>
@@ -17,7 +17,7 @@
     mat-flat-button
     color="primary"
     (click)="save()"
-    [disabled]="form.invalid || isRunning()"
+    [disabled]="form().invalid() || isRunning()"
   >
     @if (isRunning()) {
       <mat-spinner diameter="18" class="mr-2"></mat-spinner>

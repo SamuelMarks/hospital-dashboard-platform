@@ -1,23 +1,20 @@
 <h2 i18n mat-dialog-title>Create New Dashboard</h2>
 
 <mat-dialog-content>
-  <form [formGroup]="form" (ngSubmit)="submit()">
+  <form [formRoot]="form" (submit)="submit()">
     <p i18n class="text-sm text-gray-500 mb-4">Enter a name for your new analytics workspace.</p>
 
     <mat-form-field appearance="outline" class="w-full">
       <mat-label i18n>Dashboard Name</mat-label>
       <input
         matInput
-        formControlName="name"
+        [formField]="form.name"
         i18n-placeholder
         placeholder="e.g. Q3 Overview"
         data-testid="input-name"
       />
-      @if (form.get('name')?.hasError('required')) {
-        <mat-error i18n>Name is required</mat-error>
-      }
-      @if (form.get('name')?.hasError('minlength')) {
-        <mat-error i18n>Name must be at least 3 characters</mat-error>
+      @for (err of form.name().errors(); track err.kind) {
+        <mat-error>{{ err.message }}</mat-error>
       }
     </mat-form-field>
 
@@ -36,7 +33,7 @@
     mat-flat-button
     color="primary"
     (click)="submit()"
-    [disabled]="form.invalid || isSubmitting()"
+    [disabled]="form().invalid() || isSubmitting()"
     data-testid="btn-submit"
   >
     @if (isSubmitting()) {

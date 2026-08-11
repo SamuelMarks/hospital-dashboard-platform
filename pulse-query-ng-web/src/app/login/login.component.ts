@@ -1,8 +1,9 @@
+/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/login/login.component.ts
-import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormRoot, FormField, form, required, email, minLength } from '@angular/forms/signals';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
@@ -16,13 +17,13 @@ import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 import { environment } from '../../environments/environment';
 
-/* v8 ignore start */
 /** @docs */
 @Component({
   selector: 'app-login',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     RouterModule,
     MatCardModule,
     MatFormFieldModule,
@@ -31,9 +32,7 @@ import { environment } from '../../environments/environment';
     MatIconModule,
     MatProgressBarModule,
   ],
-
   styles: [
-    // Same styles
     `
       :host {
         display: flex;
@@ -96,7 +95,6 @@ export class LoginComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly fb = inject(FormBuilder);
 
   readonly registrationEnabled = environment.registrationEnabled;
 
@@ -104,9 +102,17 @@ export class LoginComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly hidePassword = signal(true);
 
-  readonly loginForm: FormGroup = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(4)]],
+  readonly formModel = signal({
+    email: '',
+    password: '',
+  });
+
+  readonly loginForm = form(this.formModel, (f) => {
+    required(f.email, { message: 'Email is required' });
+    email(f.email, { message: 'Please enter a valid email address' });
+
+    required(f.password, { message: 'Password is required' });
+    minLength(f.password, 4, { message: 'Password must be at least 4 characters' });
   });
 
   ngOnInit(): void {
@@ -121,8 +127,8 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.loginForm.invalid) {
-      this.loginForm.markAllAsTouched();
+    if (this.loginForm().invalid()) {
+      this.loginForm().markAsTouched();
       return;
     }
 
@@ -130,8 +136,8 @@ export class LoginComponent implements OnInit {
     this.errorMessage.set(null);
 
     const credentials: UserCreate = {
-      email: this.loginForm.get('email')?.value,
-      password: this.loginForm.get('password')?.value,
+      email: this.formModel().email,
+      password: this.formModel().password,
     };
 
     this.authService.login(credentials).subscribe({

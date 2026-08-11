@@ -40,3 +40,7 @@ e2e/test-results/
 
 .coverage
 e2e/test-results/
+
+# Local scripts
+fix_*.py
+run_*.sh

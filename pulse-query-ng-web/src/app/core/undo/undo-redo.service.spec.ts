@@ -49,7 +49,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: executeFn,
       undo: undoFn,
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -71,7 +71,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: executeFn,
       undo: undoFn,
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -95,7 +95,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: executeFn,
       undo: undoFn,
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -116,7 +116,7 @@ describe('UndoRedoService', () => {
       description: 'Command 1',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     const command2: Command = {
@@ -124,7 +124,7 @@ describe('UndoRedoService', () => {
       description: 'Command 2',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command1);
@@ -147,7 +147,7 @@ describe('UndoRedoService', () => {
         description: `Command ${i}`,
         execute: vi.fn(),
         undo: vi.fn(),
-        timestamp: new Date(),
+        timestamp: new Date('2024-01-01T00:00:00Z'),
       });
     }
 
@@ -175,7 +175,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -196,7 +196,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -217,7 +217,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -246,7 +246,7 @@ describe('UndoRedoService', () => {
         description: `Command ${i}`,
         execute: vi.fn(),
         undo: vi.fn(),
-        timestamp: new Date(),
+        timestamp: new Date('2024-01-01T00:00:00Z'),
       });
     }
 
@@ -266,7 +266,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -285,7 +285,7 @@ describe('UndoRedoService', () => {
       description: 'Test command',
       execute: vi.fn(),
       undo: vi.fn(),
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);
@@ -313,7 +313,7 @@ describe('UndoRedoService', () => {
       description: 'Async command',
       execute: executeFn,
       undo: undoFn,
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00Z'),
     };
 
     await service.execute(command);

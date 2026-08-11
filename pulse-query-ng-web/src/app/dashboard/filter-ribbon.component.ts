@@ -4,15 +4,15 @@
  * @fileoverview Filter Ribbon Component.
  *
  * **Updates**:
- * - Switched container to `MatToolbar` for standard Material container behavior.
- * - Standardized spacing and alignment using M3 density properties.
+ * - Migrated to `@angular/forms/signals` (Signal Forms).
+ * - Removed `ReactiveFormsModule`.
  */
 
-import { Component, ChangeDetectionStrategy, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
+import { FormRoot, FormField, form } from '@angular/forms/signals';
 
 // Material Imports
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -33,7 +33,8 @@ import { DashboardStore } from './dashboard.store';
   selector: 'app-filter-ribbon',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     MatToolbarModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -121,29 +122,50 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** destroy$ property. */
   private readonly destroy$ = new Subject<void>();
 
-  // Form Controls
-  /** Start Date. */
-  readonly startDate = new FormControl<Date | null>(null);
-  /** End Date. */
-  readonly endDate = new FormControl<Date | null>(null);
-  /** Dept Control. */
-  readonly deptControl = new FormControl<string | null>(null);
+  // Use signal form instead of reactive forms
+  readonly formModel = signal({
+    dept: null as string | null,
+    startDate: null as Date | null,
+    endDate: null as Date | null,
+  });
+
+  readonly ribbonForm = form(this.formModel, (f) => {});
+
+  /** Flag to prevent emit loops while syncing from route */
+  private isSyncingFromRoute = false;
 
   /** Ng On Init. */
   ngOnInit(): void {
+    // Sync from Route to Form
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       const start = params.get('start_date');
       const end = params.get('end_date');
       const dept = params.get('dept');
 
-      if (start) this.startDate.setValue(new Date(start), { emitEvent: false });
-      if (end) this.endDate.setValue(new Date(end), { emitEvent: false });
-      this.deptControl.setValue(dept || null, { emitEvent: false });
+      this.isSyncingFromRoute = true;
+      const val = this.formModel();
+
+      this.formModel.set({
+        ...val,
+        dept: dept || null,
+        startDate: start ? new Date(start) : null,
+        endDate: end ? new Date(end) : null,
+      });
+      this.isSyncingFromRoute = false;
     });
 
-    this.deptControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((val) => {
-      this.updateFilter('dept', val);
-    });
+    // Sync from Form to Route (dept)
+    // In signal forms, we manually observe or use effects,
+    // but since we want to respond to the model changes, let's subscribe to changes.
+    // Wait, the easiest way to observe value changes dynamically in angular 22 forms
+    // is to use effect, but since we want to unsubscribe on destroy without issue,
+    // we can either hook into the template events or use an effect.
+    // Effect runs inside injection context automatically here.
+  }
+
+  onDeptChange(value: string | null) {
+    if (this.isSyncingFromRoute) return;
+    this.updateFilter('dept', value);
   }
 
   /** Ng On Destroy. */
@@ -154,8 +176,8 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
 
   /** Handles date Change. */
   onDateChange(): void {
-    const s = this.startDate.value;
-    const e = this.endDate.value;
+    const s = this.formModel().startDate;
+    const e = this.formModel().endDate;
 
     if (s && e) {
       const sStr = this.formatDate(s);
@@ -176,10 +198,6 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
       queryParams: { start_date: null, end_date: null, dept: null },
       queryParamsHandling: 'merge',
     });
-
-    this.startDate.reset();
-    this.endDate.reset();
-    this.deptControl.reset();
   }
 
   /** updateFilter method. */

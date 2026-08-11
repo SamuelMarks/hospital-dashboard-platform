@@ -50,3 +50,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Ignore generated/compiled JS and temporary scripts locally
+*.js
+!eslint.config.js

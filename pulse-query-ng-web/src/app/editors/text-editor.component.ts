@@ -1,17 +1,9 @@
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/editors/text-editor.component.ts
-import {
-  Component,
-  input,
-  output,
-  signal,
-  inject,
-  ChangeDetectionStrategy,
-  OnInit,
-} from '@angular/core';
+import { Component, input, output, signal, linkedSignal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { DashboardsService, WidgetUpdate } from '../api-client';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -24,7 +16,8 @@ import { finalize } from 'rxjs';
   selector: 'app-text-editor',
   imports: [
     CommonModule,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -68,8 +61,7 @@ import { finalize } from 'rxjs';
   templateUrl: './text-editor.component.html',
 })
 /** @docs */
-export class TextEditorComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
+export class TextEditorComponent {
   private readonly dashboardsApi = inject(DashboardsService);
 
   /* v8 ignore next */
@@ -83,19 +75,17 @@ export class TextEditorComponent implements OnInit {
   /* v8 ignore next */
   readonly isRunning = signal(false);
 
-  readonly form = this.fb.group({
-    content: ['', Validators.required],
+  readonly formModel = linkedSignal(() => ({ content: this.initialContent() }));
+
+  readonly form = form(this.formModel, (f) => {
+    required(f.content);
   });
 
-  ngOnInit() {
-    this.form.patchValue({ content: this.initialContent() });
-  }
-
   save() {
-    if (this.form.invalid) return;
+    if (this.form().invalid()) return;
 
     this.isRunning.set(true);
-    const val = this.form.value.content || '';
+    const val = this.formModel().content || '';
 
     const update: WidgetUpdate = {
       config: { content: val },

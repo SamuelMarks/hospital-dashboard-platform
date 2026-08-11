@@ -3,7 +3,7 @@
  * @fileoverview Custom accessibility title strategy.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { TitleStrategy, RouterStateSnapshot } from '@angular/router';
 import { Title } from '@angular/platform-browser';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
@@ -11,7 +11,7 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 /**
  * Strategy to update the document title and announce it to screen readers.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class A11yTitleStrategy extends TitleStrategy {
   /** Angular Title Service */
   private readonly title = inject(Title);

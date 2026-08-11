@@ -1,3 +1,4 @@
+import '@angular/localize/init';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardCreateDialog } from './dashboard-create.dialog';
 import { DashboardsService, DashboardResponse } from '../api-client';
@@ -35,14 +36,21 @@ describe('DashboardCreateDialog', () => {
   });
 
   it('should validate form input', () => {
-    const input = component.form.controls['name'];
-    expect(input.valid).toBe(false);
+    expect(component.form().valid()).toBe(false);
 
-    input.setValue('ab');
-    expect(input.hasError('minlength')).toBe(true);
+    component.formModel.set({ name: 'ab' });
+    fixture.detectChanges();
 
-    input.setValue('Valid Name');
-    expect(input.valid).toBe(true);
+    // In Angular v22 signal forms, errors are collected in an array.
+    const hasMinLengthError = component.form
+      .name()
+      .errors()
+      .some((e) => e.kind === 'minLength');
+    expect(hasMinLengthError).toBe(true);
+
+    component.formModel.set({ name: 'Valid Name' });
+    fixture.detectChanges();
+    expect(component.form().valid()).toBe(true);
   });
 
   it('should call API and close dialog on success', () => {
@@ -56,7 +64,7 @@ describe('DashboardCreateDialog', () => {
     mockApi.createDashboardApiV1DashboardsPost.mockReturnValue(of(response));
 
     // Act
-    component.form.controls['name'].setValue('Valid Name');
+    component.formModel.set({ name: 'Valid Name' });
     component.submit();
 
     // Assert
@@ -70,7 +78,7 @@ describe('DashboardCreateDialog', () => {
 
     mockApi.createDashboardApiV1DashboardsPost.mockReturnValue(throwError(() => new Error('Fail')));
 
-    component.form.controls['name'].setValue('Fail Name');
+    component.formModel.set({ name: 'Fail Name' });
     component.submit();
 
     expect(component.isSubmitting()).toBe(false);
@@ -85,7 +93,7 @@ describe('DashboardCreateDialog', () => {
   });
 
   it('should not submit when form is invalid', () => {
-    component.form.controls['name'].setValue('');
+    component.formModel.set({ name: '' });
     component.submit();
 
     expect(mockApi.createDashboardApiV1DashboardsPost).not.toHaveBeenCalled();

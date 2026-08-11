@@ -6,7 +6,7 @@
     mat-flat-button
     color="primary"
     (click)="saveAndTest()"
-    [disabled]="form.invalid || isRunning()"
+    [disabled]="form().invalid() || isRunning()"
   >
     @if (isRunning()) {
       <mat-spinner diameter="18" class="mr-2"></mat-spinner>
@@ -18,11 +18,11 @@
 <div class="main-layout">
   <!-- Form Area -->
   <div class="config-panel">
-    <form [formGroup]="form">
+    <form [formRoot]="form">
       <div class="flex gap-4">
         <mat-form-field appearance="outline" class="w-32">
           <mat-label i18n>Method</mat-label>
-          <mat-select formControlName="method" i18n-aria-label aria-label="Select method">
+          <mat-select [formField]="form.method" i18n-aria-label aria-label="Select method">
             <mat-option i18n value="GET">GET</mat-option>
             <mat-option i18n value="POST">POST</mat-option>
             <mat-option i18n value="PUT">PUT</mat-option>
@@ -34,18 +34,18 @@
           <mat-label i18n>URL Endpoint</mat-label>
           <input
             matInput
-            formControlName="url"
+            [formField]="form.url"
             i18n-placeholder
             placeholder="https://api.example.com"
           />
-          @if (form.get('url')?.invalid) {
+          @if (form.url().invalid()) {
             <mat-error i18n>Valid URL is required</mat-error>
           }
         </mat-form-field>
       </div>
 
       <div class="mb-4">
-        <mat-slide-toggle i18n formControlName="forward_auth" color="primary">
+        <mat-slide-toggle i18n [formField]="form.forward_auth" color="primary">
           Forward Authentication Token
         </mat-slide-toggle>
         <p i18n class="text-xs mt-1 ml-10" style="color: var(--sys-text-secondary)">
@@ -60,13 +60,13 @@
             <mat-panel-title i18n>Query Parameters</mat-panel-title>
           </mat-expansion-panel-header>
 
-          <div formArrayName="params">
-            @for (item of paramsArray.controls; track item; let i = $index) {
-              <div [formGroupName]="i" class="array-row">
+          <div>
+            @for (item of form.params; track $index) {
+              <div class="array-row">
                 <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
                   <input
                     matInput
-                    formControlName="key"
+                    [formField]="item.key"
                     i18n-placeholder
                     placeholder="Key"
                     i18n-aria-label
@@ -76,7 +76,7 @@
                 <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
                   <input
                     matInput
-                    formControlName="value"
+                    [formField]="item.value"
                     i18n-placeholder
                     placeholder="Value"
                     i18n-aria-label
@@ -87,7 +87,7 @@
                   i18n
                   mat-icon-button
                   color="warn"
-                  (click)="removeItem('params', i)"
+                  (click)="removeItem('params', $index)"
                   i18n-aria-label
                   aria-label="Remove Parameter"
                 >
@@ -107,13 +107,13 @@
             <mat-panel-title i18n>Headers</mat-panel-title>
           </mat-expansion-panel-header>
 
-          <div formArrayName="headers">
-            @for (item of headersArray.controls; track item; let i = $index) {
-              <div [formGroupName]="i" class="array-row">
+          <div>
+            @for (item of form.headers; track $index) {
+              <div class="array-row">
                 <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
                   <input
                     matInput
-                    formControlName="key"
+                    [formField]="item.key"
                     i18n-placeholder
                     placeholder="Header Key"
                     i18n-aria-label
@@ -123,7 +123,7 @@
                 <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
                   <input
                     matInput
-                    formControlName="value"
+                    [formField]="item.value"
                     i18n-placeholder
                     placeholder="Value"
                     i18n-aria-label
@@ -134,7 +134,7 @@
                   i18n
                   mat-icon-button
                   color="warn"
-                  (click)="removeItem('headers', i)"
+                  (click)="removeItem('headers', $index)"
                   i18n-aria-label
                   aria-label="Remove Header"
                 >
@@ -158,13 +158,15 @@
             <mat-label i18n>JSON Payload</mat-label>
             <textarea
               matInput
-              formControlName="body"
+              [formField]="form.body"
               rows="8"
               class="font-mono"
               placeholder='{ "key": "value" }'
             ></textarea>
-            @if (form.hasError('invalidJson', 'body')) {
-              <mat-error i18n>Invalid JSON format</mat-error>
+            @for (err of form.body().errors(); track err.kind) {
+              @if (err.kind === 'invalidJson') {
+                <mat-error i18n>Invalid JSON format</mat-error>
+              }
             }
           </mat-form-field>
         </mat-expansion-panel>
