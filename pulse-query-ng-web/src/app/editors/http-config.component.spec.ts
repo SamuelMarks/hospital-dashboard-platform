@@ -5,7 +5,6 @@ import { DashboardsService, ExecutionService } from '../api-client';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
-import '@angular/localize/init';
 
 describe('HttpConfigComponent', () => {
   let component: HttpConfigComponent;
@@ -186,7 +185,7 @@ describe('HttpConfigComponent', () => {
       );
       component.saveAndTest();
       expect(component.isRunning()).toBe(false);
-      expect(component.result()?.error).toBe('Save failed');
+      expect((component.result() as Record<string, unknown>)?.['error']).toBe('Save failed');
     });
 
     it('should handle execution errors', () => {
@@ -195,7 +194,7 @@ describe('HttpConfigComponent', () => {
         throwError(() => new Error('exec fail')),
       );
       component.saveAndTest();
-      expect(component.result()?.error).toBe('Run failed');
+      expect((component.result() as Record<string, unknown>)?.['error']).toBe('Run failed');
     });
 
     it('should return fallback when no data for widget', () => {
@@ -204,7 +203,7 @@ describe('HttpConfigComponent', () => {
         of({}),
       );
       component.saveAndTest();
-      expect(component.result()?.info).toContain('No Data');
+      expect((component.result() as Record<string, unknown>)?.['info']).toContain('No Data');
     });
 
     it('should send null body when body field is empty', () => {

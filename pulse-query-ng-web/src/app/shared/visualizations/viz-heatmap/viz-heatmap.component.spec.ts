@@ -109,7 +109,7 @@ describe('VizHeatmapComponent', () => {
     const m = component.matrix();
     expect(m?.min).toBe(-5);
     expect(m?.max).toBe(0);
-    expect(component.getCellTooltip(m, '1', 'A')).toContain('-5');
+    expect(component.getCellTooltip(m!, '1', 'A')).toContain('-5');
   });
 
   it('should use fallback range (color-mix) when all values equal', () => {
@@ -121,7 +121,7 @@ describe('VizHeatmapComponent', () => {
     fixture.detectChanges();
 
     const m = component.matrix();
-    const color = component.getCellColor(m, '1', 'A');
+    const color = component.getCellColor(m!, '1', 'A');
     // Expect modern color-mix syntax instead of legacy rgba
     expect(color).toContain('color-mix(in srgb');
     expect(color).toContain('var(--sys-error)');

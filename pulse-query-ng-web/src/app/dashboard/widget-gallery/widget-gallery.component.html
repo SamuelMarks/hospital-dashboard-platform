@@ -10,7 +10,7 @@
       i18n-placeholder
       placeholder="Search metrics..."
       [value]="searchQuery()"
-      (input)="searchQuery.set($any($event.target).value)"
+      (input)="searchQuery.set(getEventValue($event))"
     />
   </mat-form-field>
 </div>

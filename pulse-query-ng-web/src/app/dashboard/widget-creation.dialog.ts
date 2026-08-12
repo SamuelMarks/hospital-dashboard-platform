@@ -92,7 +92,8 @@ export class WidgetCreationDialog implements OnDestroy {
     const widget = this.draftWidget();
     if (!widget) return [];
     const result = this.store.dataMap()[widget.id];
-    if (result && Array.isArray(result.columns)) return result.columns as string[];
+    if (result && Array.isArray((result as Record<string, unknown>)['columns']))
+      return (result as Record<string, unknown>)['columns'] as string[];
     return [];
   });
 
@@ -124,7 +125,7 @@ export class WidgetCreationDialog implements OnDestroy {
         title: 'New Widget (Draft)',
         type: 'SQL',
         visualization: viz,
-        config: config as any,
+        config: config as never,
       };
     } else {
       const config = { url: 'https://jsonplaceholder.typicode.com/todos/1', method: 'GET' };
@@ -132,7 +133,7 @@ export class WidgetCreationDialog implements OnDestroy {
         title: 'New Widget (Draft)',
         type: 'HTTP',
         visualization: viz,
-        config: config as any,
+        config: config as never,
       };
     }
 

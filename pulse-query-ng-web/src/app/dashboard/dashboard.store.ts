@@ -21,11 +21,11 @@ import {
 export interface DashboardState {
   dashboard: DashboardResponse | null;
   widgets: WidgetResponse[];
-  dataMap: Record<string, any>;
+  dataMap: Record<string, unknown>;
   isLoading: boolean;
   loadingWidgetIds: ReadonlySet<string>;
   error: string | null;
-  globalParams: Record<string, any>;
+  globalParams: Record<string, unknown>;
   isEditMode: boolean;
   focusedWidgetId: string | null;
   lastUpdated: Date | null;
@@ -141,7 +141,7 @@ export class DashboardStore implements OnDestroy {
         if (result) {
           this.patch({
             isLoading: false,
-            dataMap: result as Record<string, any>,
+            dataMap: result as Record<string, unknown>,
             lastUpdated: this.dateNow(),
           });
         } else {
@@ -218,7 +218,7 @@ export class DashboardStore implements OnDestroy {
       title: `Copy of ${source.title}`,
       type: 'SQL',
       visualization: source.visualization,
-      config: newConfig as any,
+      config: newConfig as WidgetCreateSql['config'],
     };
 
     const tempId = `temp-${Date.now()}`;
@@ -275,7 +275,7 @@ export class DashboardStore implements OnDestroy {
     this.patch({ focusedWidgetId: id });
   }
 
-  setGlobalParams(params: Record<string, any>): void {
+  setGlobalParams(params: Record<string, unknown>): void {
     const current = this._state().globalParams;
     const keysA = Object.keys(current);
     const keysB = Object.keys(params);
@@ -313,7 +313,7 @@ export class DashboardStore implements OnDestroy {
 
     const updates: WidgetReorderItem[] = [];
     const updatedWidgets = sorted.map((w, index) => {
-      const newConfig: Record<string, any> = { ...w.config, order: index };
+      const newConfig: Record<string, unknown> = { ...w.config, order: index };
       delete newConfig['group'];
 
       updates.push({ id: w.id, order: index, group: 'General' });

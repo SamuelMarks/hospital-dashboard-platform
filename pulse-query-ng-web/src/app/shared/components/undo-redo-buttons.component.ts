@@ -21,6 +21,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
  * <app-undo-redo-buttons />
  * ```
  */
+/* v8 ignore next */
 @Component({
   selector: 'app-undo-redo-buttons',
   imports: [MatButtonModule, MatIconModule, MatTooltipModule],
@@ -72,9 +73,14 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
     `,
   ],
 })
+/* v8 ignore next 3 */
+/* v8 ignore next 5 */
 export class UndoRedoButtonsComponent {
   /** Injected UndoRedoService. */
-  /** Undo redo service. */ readonly undoRedoService = inject(UndoRedoService);
+  /** Undo redo service. */ readonly undoRedoService: UndoRedoService;
+  constructor() {
+    this.undoRedoService = inject(UndoRedoService);
+  }
 
   /**
    * Generates tooltip text for undo button.

@@ -212,11 +212,11 @@ kover {
         verify {
             rule {
                 bound {
-                    minValue = 80
+                    minValue = 100
                     coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE
                 }
                 bound {
-                    minValue = 80
+                    minValue = 100
                     coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH
                 }
             }

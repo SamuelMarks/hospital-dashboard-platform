@@ -16,6 +16,7 @@ import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
@@ -112,23 +113,17 @@ class WizardViewModelTest {
     }
 
     @Test
-    fun `test submitMessage from ConstraintIdentification executes simulation`() = kotlinx.coroutines.runBlocking {
+    fun `test submitMessage from ConstraintIdentification executes simulation`() = runTest(testDispatcher) {
         val baseResult = ScenarioResult(emptyList(), "base", null)
         val branchResult = ScenarioResult(emptyList(), "branch", null)
         setupMockApi(baseResult, branchResult)
 
-        val viewModel = WizardViewModel(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val viewModel = WizardViewModel(testScope)
         viewModel.startScenario(WizardUseCase.STAFFING)
         viewModel.submitMessage("focus on overtime") // -> ConstraintIdentification
         viewModel.submitMessage("lock ICU nurses") // -> triggers execution
 
-        var attempts = 0
-        while (viewModel.state.value is WizardState.ConstraintIdentification && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
-        }
-
-        val stateValue = viewModel.state.value
+        val stateValue = viewModel.state.first { it is WizardState.Execution }
         val state = stateValue as WizardState.Execution
         assertEquals(WizardUseCase.STAFFING, state.useCase)
         assertEquals(baseResult, state.baseResult)
@@ -136,101 +131,74 @@ class WizardViewModelTest {
     }
 
     @Test
-    fun `test submitMessage from ConstraintIdentification failure`() = kotlinx.coroutines.runBlocking {
+    fun `test submitMessage from ConstraintIdentification failure`() = runTest(testDispatcher) {
         setupMockApi(shouldFail = true)
 
-        val viewModel = WizardViewModel(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val viewModel = WizardViewModel(testScope)
         viewModel.startScenario(WizardUseCase.STAFFING)
         viewModel.submitMessage("focus on overtime") // -> ConstraintIdentification
         viewModel.submitMessage("lock ICU nurses") // -> triggers execution
 
-        var attempts = 0
-        while (viewModel.state.value is WizardState.ConstraintIdentification && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
+        val stateValue = viewModel.state.first { 
+            it is WizardState.ContextGathering && it.messages.last().text.contains("Execution failed") 
         }
-
-        val stateValue = viewModel.state.value
         val state = stateValue as WizardState.ContextGathering
         assertEquals(WizardUseCase.STAFFING, state.useCase)
         assertTrue(state.messages.last().text.contains("Execution failed"))
     }
 
     @Test
-    fun `test submitMessage from Execution transitions to Refinement and executes`() = kotlinx.coroutines.runBlocking {
+    fun `test submitMessage from Execution transitions to Refinement and executes`() = runTest(testDispatcher) {
         val baseResult = ScenarioResult(emptyList(), "base", null)
         val branchResult = ScenarioResult(emptyList(), "branch", null)
         setupMockApi(baseResult, branchResult)
 
-        val viewModel = WizardViewModel(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val viewModel = WizardViewModel(testScope)
         viewModel.startScenario(WizardUseCase.STAFFING)
         viewModel.submitMessage("focus on overtime")
         viewModel.submitMessage("lock ICU nurses")
 
-        var attempts = 0
-        while (viewModel.state.value is WizardState.ConstraintIdentification && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
-        } // Wait for first execution
+        viewModel.state.first { it is WizardState.Execution } // Wait for first execution
 
         // Now we are in Execution state
         setupMockApi(baseResult, branchResult) // reset mock for next execution
         viewModel.submitMessage("make it cheaper")
 
-        attempts = 0
-        while (viewModel.state.value is WizardState.Refinement && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
-        } // Wait for second execution
-
-        val stateValue = viewModel.state.value
+        // It transitions to Refinement then Execution
+        val stateValue = viewModel.state.first { it is WizardState.Execution }
         val state = stateValue as WizardState.Execution
         assertEquals(WizardUseCase.STAFFING, state.useCase)
     }
 
     @Test
-    fun `test submitMessage from Refinement executes again`() = kotlinx.coroutines.runBlocking {
+    fun `test submitMessage from Refinement executes again`() = runTest(testDispatcher) {
         val baseResult = ScenarioResult(emptyList(), "base", null)
         val branchResult = ScenarioResult(emptyList(), "branch", null)
         setupMockApi(baseResult, branchResult)
 
-        val viewModel = WizardViewModel(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        val viewModel = WizardViewModel(testScope)
         
-        // Hack state to Refinement directly to test Refinement transition
+        // Progress state normally instead of hacking
         viewModel.startScenario(WizardUseCase.STAFFING)
         viewModel.submitMessage("msg1")
         viewModel.submitMessage("msg2")
         
-        var attempts = 0
-        while (viewModel.state.value is WizardState.ConstraintIdentification && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
-        }
+        viewModel.state.first { it is WizardState.Execution }
         
+        // Now in Execution, submit to get to Refinement/re-execute
         viewModel.submitMessage("refine1")
-        attempts = 0
-        while (viewModel.state.value is WizardState.Refinement && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
-        }
-
-        println("STATE BEFORE ASSERT 1: ${viewModel.state.value}")
-        // Verify we went back to Execution
-        assertTrue(viewModel.state.value is WizardState.Execution)
+        
+        // Verify we went back to Execution (since Refinement automatically triggers execution)
+        viewModel.state.first { it is WizardState.Execution }
         
         AppContainer.currentBaseUrl = "http://localhost" // Reset cached APIs
         setupMockApi(shouldFail = true)
-        // From Execution state:
+        
+        // From Execution state, submit again
         viewModel.submitMessage("another refinement") 
         
-        attempts = 0
-        while (viewModel.state.value is WizardState.Refinement && attempts < 50) {
-            kotlinx.coroutines.delay(10)
-            attempts++
-        }
-        
-        println("STATE BEFORE ASSERT 2: ${viewModel.state.value}")
-        assertTrue(viewModel.state.value is WizardState.ContextGathering)
+        val finalState = viewModel.state.first { it is WizardState.ContextGathering && it.messages.last().text.contains("Execution failed") }
+        assertTrue(finalState is WizardState.ContextGathering)
     }
     
     @Test
@@ -242,3 +210,4 @@ class WizardViewModelTest {
         assertEquals(WizardState.Landing, viewModel.state.value)
     }
 }
+

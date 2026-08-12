@@ -52,7 +52,7 @@ export class GlobalErrorHandler implements ErrorHandler {
       (error &&
         typeof error === 'object' &&
         'rejection' in error &&
-        (error as any)['rejection'] instanceof HttpErrorResponse);
+        (error as Record<string, unknown>)['rejection'] instanceof HttpErrorResponse);
 
     if (isHttp) return;
 
@@ -99,7 +99,7 @@ export class GlobalErrorHandler implements ErrorHandler {
     if (typeof error === 'string') return error;
     // Handle Promise rejections
     if (error && typeof error === 'object' && 'rejection' in error)
-      return this.extractMessage((error as any).rejection);
+      return this.extractMessage((error as Record<string, unknown>)['rejection']);
     return 'Unknown runtime exception';
   }
 }

@@ -1,4 +1,3 @@
-import '@angular/localize/init';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardCreateDialog } from './dashboard-create.dialog';
 import { DashboardsService, DashboardResponse } from '../api-client';

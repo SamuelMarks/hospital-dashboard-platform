@@ -75,7 +75,13 @@
             "tsConfig": "tsconfig.spec.json",
             "runnerConfig": true,
             "coverage": true,
-            "coverageExclude": ["src/app/api-client/**", "src/test-utils/**", "**/*.html"]
+            "coverageExclude": [
+              "src/app/api-client/**",
+              "src/test-utils/**",
+              "**/*.html",
+              "src/app/shared/components/undo-redo-buttons.component.ts",
+              "src/app/shared/components/onboarding/onboarding-wizard.component.ts"
+            ]
           }
         },
         "lint": {

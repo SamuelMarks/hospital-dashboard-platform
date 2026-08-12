@@ -146,11 +146,11 @@ export class HttpConfigComponent {
 
   readonly dashboardId = input.required<string>();
   readonly widgetId = input.required<string>();
-  readonly initialConfig = input<Record<string, any>>({});
-  readonly configChange = output<Record<string, any>>();
+  readonly initialConfig = input<Record<string, unknown>>({});
+  readonly configChange = output<Record<string, unknown>>();
 
   readonly isRunning = signal(false);
-  readonly result = signal<any | null>(null);
+  readonly result = signal<unknown | null>(null);
 
   readonly formModel = linkedSignal<HttpConfigForm>(() => this.parseConfig(this.initialConfig()));
 
@@ -174,11 +174,13 @@ export class HttpConfigComponent {
 
   constructor() {}
 
-  isFieldInvalid(fieldTree: any): boolean {
+  isFieldInvalid(
+    fieldTree: () => { invalid: () => boolean; dirty: () => boolean; touched: () => boolean },
+  ): boolean {
     return !!(fieldTree().invalid() && (fieldTree().dirty() || fieldTree().touched()));
   }
 
-  private parseConfig(config: Record<string, any>): HttpConfigForm {
+  private parseConfig(config: Record<string, unknown>): HttpConfigForm {
     if (!config)
       return { method: 'GET', url: '', forward_auth: false, body: '', params: [], headers: [] };
     let bodyText = '';
@@ -205,8 +207,8 @@ export class HttpConfigComponent {
     }
 
     return {
-      method: config['method'] || 'GET',
-      url: config['url'] || '',
+      method: (config['method'] as string) || 'GET',
+      url: (config['url'] as string) || '',
       forward_auth: !!config['meta_forward_auth'],
       body: bodyText,
       params,

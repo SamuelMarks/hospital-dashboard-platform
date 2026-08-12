@@ -44,7 +44,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // We check for instanceof HttpErrorResponse OR duck-typing for robust testing/runtime contexts
       const isUnauthorized =
         (error instanceof HttpErrorResponse && error.status === 401) ||
-        (error && typeof error === 'object' && (error as any).status === 401);
+        (error !== null &&
+          typeof error === 'object' &&
+          'status' in error &&
+          (error as { status: unknown }).status === 401);
 
       if (isUnauthorized) {
         // Prevent infinite loops if /login itself returns 401 or we are already there

@@ -91,7 +91,7 @@ export class DashboardLayoutComponent implements OnInit {
     });
 
     this.route.queryParamMap.subscribe((qParams) => {
-      const paramsObj: Record<string, any> = {};
+      const paramsObj: Record<string, string | null> = {};
       qParams.keys.forEach((key) => {
         if (key !== 'mode') paramsObj[key] = qParams.get(key);
       });
@@ -105,7 +105,7 @@ export class DashboardLayoutComponent implements OnInit {
    *
    * @param {CdkDragDrop<any[]>} event - The drop event.
    */
-  onDrop(event: CdkDragDrop<any[]>): void {
+  onDrop(event: CdkDragDrop<unknown[]>): void {
     console.log('onDrop triggered', event.previousIndex, event.currentIndex);
     if (this.isTvMode()) return;
 

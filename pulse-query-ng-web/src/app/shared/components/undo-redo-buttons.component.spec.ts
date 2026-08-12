@@ -47,6 +47,12 @@ describe('UndoRedoButtonsComponent', () => {
 
   afterEach(() => vi.clearAllMocks());
 
+  it('should instantiate with new', () => {
+    TestBed.runInInjectionContext(() => {
+      new UndoRedoButtonsComponent();
+    });
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });

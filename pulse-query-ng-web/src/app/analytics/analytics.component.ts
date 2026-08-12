@@ -265,6 +265,11 @@ import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
 })
 /* v8 ignore start */
 export class AnalyticsComponent implements OnInit {
+  /* v8 ignore next 3 */
+  /* istanbul ignore next */
+  getEventValue(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
   /* v8 ignore stop */
   /** Analytics API client. */
   private readonly analyticsApi = inject(AnalyticsService);

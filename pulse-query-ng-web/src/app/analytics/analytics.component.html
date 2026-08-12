@@ -50,7 +50,7 @@
           i18n-placeholder
           placeholder="Query, SQL, model, or user"
           [value]="searchText()"
-          (input)="searchText.set($any($event.target).value)"
+          (input)="searchText.set(getEventValue($event))"
         />
         @if (searchText()) {
           <button

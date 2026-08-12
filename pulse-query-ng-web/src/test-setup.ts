@@ -200,3 +200,4 @@ try {
   (globalThis as any).localStorage = storageMock;
   (globalThis as any).sessionStorage = storageMock;
 } catch (e) {}
+import '@angular/localize/init';

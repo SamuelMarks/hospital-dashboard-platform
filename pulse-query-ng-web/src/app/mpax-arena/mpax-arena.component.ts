@@ -44,8 +44,9 @@ import { ActivatedRoute } from '@angular/router';
             <mat-label i18n>Scenario Prompt</mat-label>
             <textarea
               matInput
+              #promptInput
               [value]="prompt()"
-              (input)="prompt.set($any($event.target).value)"
+              (input)="prompt.set(promptInput.value)"
               rows="3"
               placeholder="Describe the scenario..."
             ></textarea>

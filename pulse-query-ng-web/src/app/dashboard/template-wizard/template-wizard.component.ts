@@ -207,7 +207,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   // --- Wizard Logic ---
   /** Params Schema. */
   /* istanbul ignore next */
-  readonly paramsSchema = signal<Record<string, any>>({});
+  readonly paramsSchema = signal<Record<string, unknown>>({});
   /** Final Sql. */
   /* istanbul ignore next */
   readonly finalSql = signal<string>('');
@@ -216,14 +216,18 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   readonly isRunning = signal(false);
   /** Execution Result. */
   /* istanbul ignore next */
-  readonly executionResult = signal<any | null>(null);
+  readonly executionResult = signal<{
+    error?: string;
+    columns?: string[];
+    data?: unknown[];
+  } | null>(null);
   /** Draft Widget Id. */
   /* istanbul ignore next */
   readonly draftWidgetId = signal<string | null>(null);
 
   /** Params Value. */
   /* istanbul ignore next */
-  readonly paramsValue = signal<Record<string, any>>({});
+  readonly paramsValue = signal<Record<string, unknown>>({});
   /** Params Valid. */
   /* istanbul ignore next */
   readonly paramsValid = signal(false);
@@ -321,7 +325,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   }
 
   /** Handles form Change. */
-  handleFormChange(values: Record<string, any>) {
+  handleFormChange(values: Record<string, unknown>) {
     this.paramsValue.set(values);
   }
   /** Handles status Change. */
@@ -394,7 +398,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
 
     this.dashboardsApi
       .createWidgetApiV1DashboardsDashboardIdWidgetsPost(this.data.dashboardId, createReq)
-      .subscribe((w: any) => this.draftWidgetId.set(w.id));
+      .subscribe((w: { id: string }) => this.draftWidgetId.set(w.id));
   }
 
   /** executeDraft method. */
@@ -413,8 +417,8 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
           this.executionApi
             .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
             .pipe(finalize(() => this.isRunning.set(false)))
-            .subscribe((resMap: any) => {
-              this.executionResult.set(resMap[draftId]);
+            .subscribe((resMap: Record<string, unknown>) => {
+              this.executionResult.set(resMap[draftId] as Record<string, unknown>);
             });
         },
         error: () => {
@@ -425,7 +429,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   }
 
   /** As Table Data. */
-  asTableData(res: any): TableDataSet {
+  asTableData(res: unknown): TableDataSet {
     return res as TableDataSet;
   }
 

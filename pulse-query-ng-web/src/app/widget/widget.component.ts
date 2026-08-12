@@ -230,13 +230,17 @@ export class WidgetComponent {
   readonly delete = output<void>();
 
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id));
-  readonly rawResult = computed(() => this.store.dataMap()[this.widgetInput().id]);
+  readonly rawResult = computed(
+    () => this.store.dataMap()[this.widgetInput().id] as Record<string, unknown> | null,
+  );
   readonly isEditMode = this.store.isEditMode;
   readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id);
 
   readonly errorMessage = computed(() => {
     const res = this.rawResult();
-    return res && res.error ? res.error : null;
+    return res && (res as Record<string, unknown>)['error']
+      ? ((res as Record<string, unknown>)['error'] as string)
+      : null;
   });
 
   readonly visualizationType = computed(() => {
@@ -253,8 +257,8 @@ export class WidgetComponent {
     return 'card';
   });
 
-  readonly typedDataAsTable = computed(() => this.rawResult() as TableDataSet);
-  readonly chartConfig = computed(() => this.widgetInput().config as any);
+  readonly typedDataAsTable = computed(() => this.rawResult() as unknown as TableDataSet);
+  readonly chartConfig = computed(() => this.widgetInput().config as never);
 
   manualRefresh(): void {
     this.store.refreshWidget(this.widgetInput().id);

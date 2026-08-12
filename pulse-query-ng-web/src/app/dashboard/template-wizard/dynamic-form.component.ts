@@ -135,12 +135,12 @@ interface JsonSchema {
 export class DynamicFormComponent implements OnChanges {
   /** valid JSON Schema Object (subset). */
   /* istanbul ignore next */
-  readonly jsonSchema = input<Record<string, any>>({});
+  readonly jsonSchema = input<Record<string, unknown>>({});
 
   /** Output emitting validity status. */
   readonly statusChange = output<'VALID' | 'INVALID'>();
   /** Output emitting extracted values. */
-  readonly formValueChange = output<Record<string, any>>();
+  readonly formValueChange = output<Record<string, unknown>>();
 
   /** Form. */
   readonly form = new FormGroup({});
@@ -169,7 +169,7 @@ export class DynamicFormComponent implements OnChanges {
       this.fieldKeys.set([]);
       return;
     }
-    const schema = raw as JsonSchema;
+    const schema = raw as unknown as JsonSchema;
 
     const props = schema.properties!;
     const requiredList = schema.required || [];
@@ -208,7 +208,7 @@ export class DynamicFormComponent implements OnChanges {
    * Helper to retrieve property definition for template binding.
    */
   getProperty(key: string): JsonSchemaProperty | null {
-    const schema = this.jsonSchema() as JsonSchema; // Safe cast after rebuild
+    const schema = this.jsonSchema() as unknown as JsonSchema; // Safe cast after rebuild
     return schema?.properties?.[key] || null;
   }
 
@@ -225,9 +225,9 @@ export class DynamicFormComponent implements OnChanges {
   /**
    * Sanitizes values before emission (e.g. Date Objects -> strings).
    */
-  private cleanValues(raw: Record<string, any>): Record<string, any> {
+  private cleanValues(raw: Record<string, unknown>): Record<string, unknown> {
     const result = { ...raw };
-    const schema = this.jsonSchema() as JsonSchema | null;
+    const schema = this.jsonSchema() as unknown as JsonSchema | null;
     const props = schema?.properties || {};
 
     Object.keys(result).forEach((key) => {

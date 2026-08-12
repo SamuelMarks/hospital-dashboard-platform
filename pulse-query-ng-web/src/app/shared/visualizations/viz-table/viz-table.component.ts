@@ -16,7 +16,7 @@ import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 /** @docs */
 export interface TableDataSet {
   columns: string[];
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
 }
 
 /** @docs */
@@ -88,7 +88,7 @@ export class VizTableComponent {
   /* v8 ignore next */
   readonly config = input<TableConfig | null>(null);
 
-  dataSource = new MatTableDataSource<Record<string, any>>([]);
+  dataSource = new MatTableDataSource<Record<string, unknown>>([]);
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
   constructor() {
@@ -108,7 +108,7 @@ export class VizTableComponent {
   /* v8 ignore next */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
-  getCellValue(row: Record<string, any>, col: string): string {
+  getCellValue(row: Record<string, unknown>, col: string): string {
     const val = row[col];
     if (val === null || val === undefined) return '-';
     if (typeof val === 'object') return JSON.stringify(val);
@@ -118,7 +118,7 @@ export class VizTableComponent {
     return String(val);
   }
 
-  getCellClass(row: Record<string, any>, col: string): string {
+  getCellClass(row: Record<string, unknown>, col: string): string {
     let classes = '';
     const val = row[col];
 

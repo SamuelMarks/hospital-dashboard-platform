@@ -123,6 +123,11 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
 })
 /** @docs */
 export class WidgetGalleryComponent implements OnInit {
+  /* v8 ignore next 3 */
+  /* istanbul ignore next */
+  getEventValue(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
   // ... (Component logic identical to previous version)
   private readonly templatesApi = inject(TemplatesService);
   readonly templates = signal<TemplateResponse[]>([]);

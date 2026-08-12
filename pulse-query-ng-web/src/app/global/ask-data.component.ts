@@ -214,7 +214,7 @@ export class AskDataComponent implements OnDestroy {
     this.loadingContext.set(false);
   }
 
-  private handleError(msg: string, error: any): void {
+  private handleError(msg: string, error: unknown): void {
     console.error(error);
     this.contextError.set(msg);
     this.loadingContext.set(false);

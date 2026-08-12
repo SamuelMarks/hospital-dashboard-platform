@@ -146,10 +146,10 @@
           }
           <!-- Fix: Removed titleOverride to allow metric viz to display actual data column name (e.g. 'Value') instead of repeating widget title -->
           @case ('metric') {
-            <viz-metric [data]="rawResult()" [config]="widgetInput().config"></viz-metric>
+            <viz-metric [data]="$any(rawResult())" [config]="widgetInput().config"></viz-metric>
           }
           @case ('scalar') {
-            <viz-scalar [data]="rawResult()"></viz-scalar>
+            <viz-scalar [data]="$any(rawResult())"></viz-scalar>
           }
           @case ('bar_chart') {
             <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart>

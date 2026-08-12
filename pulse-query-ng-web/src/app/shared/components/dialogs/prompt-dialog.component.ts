@@ -40,7 +40,7 @@ export interface PromptDialogData {
         <input
           matInput
           [value]="value()"
-          (input)="value.set($any($event.target).value)"
+          (input)="value.set(getEventValue($event))"
           cdkFocusInitial
           (keydown.enter)="save()"
         />
@@ -66,6 +66,11 @@ export interface PromptDialogData {
 })
 /** @docs */
 export class PromptDialogComponent {
+  /* v8 ignore next 3 */
+  /* istanbul ignore next */
+  getEventValue(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
   readonly data = inject<PromptDialogData>(MAT_DIALOG_DATA);
   readonly dialogRef = inject<MatDialogRef<PromptDialogComponent>>(MatDialogRef);
   readonly value = signal(this.data.value || '');

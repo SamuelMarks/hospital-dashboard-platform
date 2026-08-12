@@ -93,8 +93,6 @@
       <button
         i18n
         mat-icon-button
-        i18n-aria-label
-        aria-label="action"
         (click)="store.refreshAll()"
         [disabled]="store.isLoading()"
         [attr.aria-label]="store.isLoading() ? 'Refreshing Data' : 'Refresh Dashboard'"

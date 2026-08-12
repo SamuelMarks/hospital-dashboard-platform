@@ -5,10 +5,13 @@ import { CommonModule } from '@angular/common';
 
 /** @docs */
 export interface MetricData {
-  value: number | string;
+  value?: number | string;
   label?: string;
   trend?: number;
   trend_data?: number[];
+  data?: Record<string, unknown>[];
+  columns?: string[];
+  [key: string]: unknown;
 }
 
 /** @docs */
@@ -103,7 +106,7 @@ export interface MetricConfig {
 /** @docs */
 /* v8 ignore start */
 export class VizMetricComponent {
-  readonly data = input<any | null>();
+  readonly data = input<MetricData | null>();
   readonly titleOverride = input<string>('');
   readonly config = input<MetricConfig | null>(null);
 
@@ -111,18 +114,18 @@ export class VizMetricComponent {
     const d = this.data();
     if (d === null || d === undefined) return '-';
     if (typeof d !== 'number' && typeof d !== 'object') return String(d);
-    if (typeof d === 'object' && 'value' in d && !Array.isArray(d)) return d.value;
+    if (typeof d === 'object' && 'value' in d && !Array.isArray(d)) return d.value ?? '-';
 
     if (typeof d === 'object' && Array.isArray(d.data) && d.data.length > 0) {
       const firstRow = d.data[0];
       const keys = Object.keys(firstRow);
-      return keys.length > 0 ? firstRow[keys[0]] : '-';
+      return keys.length > 0 ? (firstRow[keys[0]] as string | number) : '-';
     }
 
     if (typeof d === 'object' && !Array.isArray(d)) {
       const keys = Object.keys(d);
       for (const k of keys) {
-        if (typeof d[k] === 'number') return d[k];
+        if (typeof d[k] === 'number') return d[k] as number;
       }
     }
     if (typeof d === 'number') return d;
@@ -135,10 +138,10 @@ export class VizMetricComponent {
     if (override) return override;
     const d = this.data();
     if (!d || typeof d !== 'object') return '';
-    if (Array.isArray(d.data) && d.columns?.length > 0) {
-      return d.columns[0];
+    if (Array.isArray(d.data) && (d.columns?.length ?? 0) > 0) {
+      return d.columns![0];
     }
-    if ('label' in d) return d.label;
+    if ('label' in d) return d.label ?? '';
     return '';
     /* v8 ignore next */
   });
@@ -146,7 +149,7 @@ export class VizMetricComponent {
   readonly parsedTrend: Signal<number | null> = computed(() => {
     const d = this.data();
     if (d && typeof d === 'object' && 'trend' in d) {
-      return d.trend;
+      return d.trend ?? null;
     }
     return null;
     /* v8 ignore next */

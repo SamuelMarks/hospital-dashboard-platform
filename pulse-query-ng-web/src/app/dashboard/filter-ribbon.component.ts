@@ -201,7 +201,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   }
 
   /** updateFilter method. */
-  private updateFilter(key: string, value: any): void {
+  private updateFilter(key: string, value: string | null): void {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { [key]: value || null },

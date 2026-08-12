@@ -185,7 +185,7 @@ export class ChatStore implements OnDestroy {
       conversation_id: currentId || 'temp',
       role: 'user',
       content: content,
-      created_at: this.dateNow().toISOString() as any,
+      created_at: this.dateNow().toISOString(),
       candidates: [],
     };
     this.patch({ messages: [...this.messages(), tempUserMsg] });

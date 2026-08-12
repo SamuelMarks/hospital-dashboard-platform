@@ -60,7 +60,7 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /** vcr property. */
   private readonly vcr = inject(ViewContainerRef);
   /** templateCallback property. */
-  private readonly templateCallback = inject(TemplateRef<any>);
+  private readonly templateCallback = inject(TemplateRef<unknown>);
   /** globalHandler property. */
   private readonly globalHandler = inject(ErrorHandler) as GlobalErrorHandler;
 

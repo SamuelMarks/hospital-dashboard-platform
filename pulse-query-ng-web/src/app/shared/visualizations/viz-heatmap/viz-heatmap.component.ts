@@ -99,7 +99,11 @@ export class VizHeatmapComponent {
     return { xHeaders, yHeaders, dataMap, min, max };
   });
 
-  getCellColor(m: any, x: string, y: string): string {
+  getCellColor(
+    m: { dataMap: Map<string, number>; max: number; min: number },
+    x: string,
+    y: string,
+  ): string {
     const val = m.dataMap.get(`${x}:${y}`) || 0;
     const range = m.max - m.min || 1;
     const pct = (val - m.min) / range;
@@ -127,7 +131,11 @@ export class VizHeatmapComponent {
     return `color-mix(in srgb, var(--sys-error), var(--sys-surface-variant) ${100 - pct * 100}%)`;
   }
 
-  getCellTooltip(m: any, x: string, y: string): string {
+  getCellTooltip(
+    m: { dataMap: Map<string, number>; max: number; min: number },
+    x: string,
+    y: string,
+  ): string {
     const val = m.dataMap.get(`${x}:${y}`) || 0;
     return `${y} @ Hour ${x}: ${val}`;
   }

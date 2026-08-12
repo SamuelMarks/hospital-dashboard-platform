@@ -145,8 +145,8 @@ export class WidgetEditorDialog {
   /* istanbul ignore next */
   readonly columns = computed(() => {
     const result = this.store.dataMap()[this.widget.id];
-    if (result && Array.isArray(result.columns)) {
-      return result.columns as string[];
+    if (result && Array.isArray((result as Record<string, unknown>)['columns'])) {
+      return (result as Record<string, unknown>)['columns'] as string[];
     }
     return [];
   });

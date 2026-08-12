@@ -60,7 +60,7 @@ export class ProvisioningService {
       title: template.title,
       type: 'SQL',
       visualization: vizType,
-      config: { query: config['query'], ...config } as any,
+      config: { query: config['query'], ...config } as WidgetCreateSql['config'],
     };
 
     // 2. Call API & Update Store
@@ -81,7 +81,7 @@ export class ProvisioningService {
   /**
    * Generates the widget configuration object by injecting schema defaults into the SQL.
    */
-  private buildConfig(template: TemplateResponse): Record<string, any> {
+  private buildConfig(template: TemplateResponse): Record<string, unknown> {
     const rawSql = template.sql_template;
     const schema = template.parameters_schema || {};
     // Fix: Access properties safely via bracket notation or explicit typing

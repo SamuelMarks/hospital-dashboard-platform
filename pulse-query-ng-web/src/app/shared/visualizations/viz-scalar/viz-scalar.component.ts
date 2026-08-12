@@ -6,6 +6,13 @@ import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
+export interface ScalarData {
+  value?: number;
+  data?: Record<string, unknown>[];
+  columns?: string[];
+  [key: string]: unknown;
+}
+
 /** @docs */
 @Component({
   selector: 'viz-scalar',
@@ -65,18 +72,18 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 /** @docs */
 export class VizScalarComponent {
   /* v8 ignore next */
-  readonly data = input<any | null>();
+  readonly data = input<ScalarData | null>();
 
   /* v8 ignore next */
   readonly value: Signal<number | null> = computed(() => {
     const d = this.data();
     if (!d) return null;
-    if (!Array.isArray(d.data) && typeof d.value === 'number') return d.value;
+    if (!Array.isArray(d.data) && typeof d.value === 'number') return d.value ?? null;
 
     if (Array.isArray(d.data) && d.data.length > 0) {
-      const row = d.data[0];
+      const row = d.data![0];
       const valKey = Object.keys(row).find((k) => typeof row[k] === 'number');
-      return valKey ? row[valKey] : null;
+      return valKey ? (row[valKey] as number) : null;
     }
     return null;
   });

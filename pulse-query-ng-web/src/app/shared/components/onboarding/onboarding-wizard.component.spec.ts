@@ -64,6 +64,12 @@ describe('OnboardingWizardComponent', () => {
     fixture.detectChanges();
   });
 
+  it('should instantiate with new', () => {
+    TestBed.runInInjectionContext(() => {
+      new OnboardingWizardComponent();
+    });
+  });
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });

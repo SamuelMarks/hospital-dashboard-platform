@@ -1,4 +1,3 @@
-import '@angular/localize/init';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { TextEditorComponent } from './text-editor.component';

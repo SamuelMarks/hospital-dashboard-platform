@@ -18,13 +18,13 @@ export interface SqlExecutionRequest {
   /** Optional row limit for previews. */
   max_rows?: number;
   /** Optional global parameters injected into templates. */
-  global_params?: Record<string, any>;
+  global_params?: Record<string, unknown>;
 }
 
 /** Response shape for SQL preview execution. */
 export interface SqlExecutionResponse {
   /** Result rows. */
-  data: Record<string, any>[];
+  data: Record<string, unknown>[];
   /** Column list. */
   columns: string[];
   /** Optional error message. */

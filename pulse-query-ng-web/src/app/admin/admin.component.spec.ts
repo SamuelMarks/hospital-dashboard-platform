@@ -1,4 +1,3 @@
-import '@angular/localize/init';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AdminComponent } from './admin.component';
 import { AdminService, AiService } from '../api-client';

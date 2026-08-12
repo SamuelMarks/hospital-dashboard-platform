@@ -35,7 +35,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         // Attempt to extract FastAPI standard 'detail' message
         if (error.error && typeof error.error === 'object') {
           // Type safety check for dynamic backend response objects
-          const errObj = error.error as Record<string, any>;
+          const errObj = error.error as Record<string, unknown>;
           if (errObj['detail']) {
             message = Array.isArray(errObj['detail'])
               ? 'Validation Error: Check input fields.'

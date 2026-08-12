@@ -255,7 +255,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   /** Parameter values for template injection. */
   /* istanbul ignore next */
-  readonly templateParams = signal<Record<string, any>>({});
+  readonly templateParams = signal<Record<string, unknown>>({});
   /** Validity of the parameter form. */
   /* istanbul ignore next */
   readonly templateFormValid = signal(true);
@@ -301,7 +301,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     const id = this.draftWidgetId();
     if (!id) return [];
     const res = this.store.dataMap()[id];
-    return (res?.columns || []) as string[];
+    return ((res as Record<string, unknown>)?.['columns'] || []) as string[];
   });
 
   /** Whether data config step is valid. */
@@ -313,7 +313,11 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** Final compiled SQL string. */
   readonly finalSql = signal('');
   /** Latest execution result. */
-  readonly executionResult = signal<any | null>(null);
+  readonly executionResult = signal<{
+    error?: string;
+    columns?: string[];
+    data?: unknown[];
+  } | null>(null);
 
   /** Search stream subject. */
   private search$ = new Subject<string>();
@@ -325,27 +329,21 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** Creates component with internal effects. */
   constructor() {
     // Title Sync Effect
-    effect(
-      () => {
-        const val = this.vizFormModel().title;
-        const w = this.draftWidget();
-        if (w && w.title !== val) {
-          // use local update avoiding infinite loops since object ref changes
-          this.draftWidget.update((prev) => (prev ? { ...prev, title: val } : null));
-        }
-      },
-      { allowSignalWrites: true },
-    );
+    effect(() => {
+      const val = this.vizFormModel().title;
+      const w = this.draftWidget();
+      if (w && w.title !== val) {
+        // use local update avoiding infinite loops since object ref changes
+        this.draftWidget.update((prev) => (prev ? { ...prev, title: val } : null));
+      }
+    });
 
     // Axis Sync Effect
-    effect(
-      () => {
-        const xKey = this.vizFormModel().xKey;
-        const yKey = this.vizFormModel().yKey;
-        this.syncVizConfig(xKey, yKey);
-      },
-      { allowSignalWrites: true },
-    );
+    effect(() => {
+      const xKey = this.vizFormModel().xKey;
+      const yKey = this.vizFormModel().yKey;
+      this.syncVizConfig(xKey, yKey);
+    });
   }
 
   /** Initialize component. */
@@ -439,8 +437,8 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
           this.execApi
             .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
             .pipe(finalize(() => this.isBusy.set(false)))
-            .subscribe((resMap: any) => {
-              this.executionResult.set(resMap[draftId]);
+            .subscribe((resMap: Record<string, unknown>) => {
+              this.executionResult.set(resMap[draftId] as Record<string, unknown>);
             });
         },
         error: () => this.isBusy.set(false),
@@ -448,7 +446,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   }
 
   /** Updates parameter state. */
-  handleFormChange(values: Record<string, any>) {
+  handleFormChange(values: Record<string, unknown>) {
     this.templateParams.set(values);
   }
   /** Updates parameter validation status. */
@@ -463,7 +461,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     // Determine defaults
     let title = 'New Widget';
     let type = this.selectedCustomType() || 'SQL';
-    let config: any = {};
+    let config: Record<string, unknown> = {};
     let visualization = 'table';
 
     if (this.activeMode() === 'template') {
@@ -486,11 +484,11 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
     let payload: WidgetIn;
     if (type === 'SQL') {
-      payload = { title, type: 'SQL', visualization, config: config as any };
+      payload = { title, type: 'SQL', visualization, config: config as never };
     } else if (type === 'HTTP') {
-      payload = { title, type: 'HTTP', visualization, config: config as any };
+      payload = { title, type: 'HTTP', visualization, config: config as never };
     } else {
-      payload = { title, type: 'TEXT', visualization: 'markdown', config: config as any };
+      payload = { title, type: 'TEXT', visualization: 'markdown', config: config as never };
     }
 
     this.dashboardApi
@@ -550,7 +548,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   }
 
   /** Handles Config change in editor. */
-  onConfigChange(newConfig: Record<string, any>) {
+  onConfigChange(newConfig: Record<string, unknown>) {
     const w = this.draftWidget();
     if (w) this.draftWidget.set({ ...w, config: { ...w.config, ...newConfig } });
   }
@@ -628,7 +626,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** Syncs scroll position (Stub). */
   syncScroll(e: Event) {}
   /** Casts result to table data. */
-  asTableData(res: any) {
+  asTableData(res: unknown) {
     return res || { columns: [], data: [] };
   }
 }

@@ -143,8 +143,9 @@
       matInput
       i18n-placeholder
       placeholder="Ask about hospital data..."
+      #chatInput
       [value]="inputText()"
-      (input)="inputText.set($any($event.target).value)"
+      (input)="inputText.set(chatInput.value)"
       (keydown.enter)="handleEnter($event)"
       cdkTextareaAutosize
       cdkAutosizeMinRows="1"

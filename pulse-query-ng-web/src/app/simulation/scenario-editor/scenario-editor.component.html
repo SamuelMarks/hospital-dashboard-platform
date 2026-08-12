@@ -74,7 +74,7 @@
                     <input
                       matInput
                       [value]="c.service"
-                      (input)="c.service = $any($event.target).value"
+                      (input)="c.service = getEventValue($event)"
                       i18n-placeholder
                       placeholder="Svc"
                     />
@@ -84,7 +84,7 @@
                     <input
                       matInput
                       [value]="c.unit"
-                      (input)="c.unit = $any($event.target).value"
+                      (input)="c.unit = getEventValue($event)"
                       i18n-placeholder
                       placeholder="Unit"
                     />
@@ -98,9 +98,7 @@
                       matInput
                       type="number"
                       [value]="c.min || ''"
-                      (input)="
-                        c.min = $any($event.target).value ? +$any($event.target).value : undefined
-                      "
+                      (input)="c.min = getEventValue($event) ? +getEventValue($event) : undefined"
                     />
                   </mat-form-field>
                   <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
@@ -109,9 +107,7 @@
                       matInput
                       type="number"
                       [value]="c.max || ''"
-                      (input)="
-                        c.max = $any($event.target).value ? +$any($event.target).value : undefined
-                      "
+                      (input)="c.max = getEventValue($event) ? +getEventValue($event) : undefined"
                     />
                   </mat-form-field>
                 </div>

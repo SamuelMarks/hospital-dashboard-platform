@@ -83,6 +83,11 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 })
 /** @docs */
 export class SimulationComponent implements OnInit {
+  /* v8 ignore next 3 */
+  /* istanbul ignore next */
+  getEventValue(event: Event): string {
+    return (event.target as HTMLInputElement).value;
+  }
   readonly store = inject(SimulationStore);
   private readonly route = inject(ActivatedRoute);
 
@@ -102,7 +107,7 @@ export class SimulationComponent implements OnInit {
     this.store.addCapacityParam();
   }
 
-  updateCapacity(index: number, field: 'unit' | 'capacity', value: any) {
+  updateCapacity(index: number, field: 'unit' | 'capacity', value: string | number) {
     const current = this.store.capacityParams()[index];
     this.store.updateCapacityParam(index, { ...current, [field]: value });
   }

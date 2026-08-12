@@ -49,7 +49,7 @@
         matInput
         class="sql-input"
         [value]="store.demandSql()"
-        (input)="updateDemandSql($any($event.target).value)"
+        (input)="updateDemandSql(getEventValue($event))"
       ></textarea>
     </mat-form-field>
   </mat-card>
@@ -71,7 +71,7 @@
             <input
               matInput
               [value]="param.unit"
-              (input)="updateCapacity($index, 'unit', $any($event.target).value)"
+              (input)="updateCapacity($index, 'unit', getEventValue($event))"
             />
           </mat-form-field>
 
@@ -81,7 +81,7 @@
               matInput
               type="number"
               [value]="param.capacity"
-              (input)="updateCapacity($index, 'capacity', +$any($event.target).value)"
+              (input)="updateCapacity($index, 'capacity', +getEventValue($event))"
             />
           </mat-form-field>
 

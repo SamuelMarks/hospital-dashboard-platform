@@ -10,7 +10,7 @@ export interface SqlBenchmark {
   /** doc */ question?: string;
   /** doc */ complexity?: string;
   /** doc */ gold_sql?: string;
-  /** doc */ _meta?: any;
+  /** doc */ _meta?: unknown;
 }
 
 /** doc */
@@ -19,7 +19,7 @@ export interface MpaxBenchmark {
   /** doc */ theme?: string;
   /** doc */ complexity?: string;
   /** doc */ prompt?: string;
-  /** doc */ demand_data?: any[];
+  /** doc */ demand_data?: unknown[];
   /** doc */ base_capacity?: Record<string, number>;
   /** doc */ expected_metrics?: Record<string, number>;
 }

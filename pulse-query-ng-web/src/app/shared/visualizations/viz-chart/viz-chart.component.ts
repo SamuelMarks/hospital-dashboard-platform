@@ -312,7 +312,11 @@ export class VizChartComponent {
   /**
    * Processing Strategy for Standard Bar Charts.
    */
-  private processSimpleData(rows: Record<string, any>[], xKey: string, yKey: string): ChartItem[] {
+  private processSimpleData(
+    rows: Record<string, unknown>[],
+    xKey: string,
+    yKey: string,
+  ): ChartItem[] {
     const values = rows.map((r) => Number(r[yKey]) || 0);
     const min = Math.min(...values, 0);
     const max = Math.max(...values, 0, this.getRefMax());
@@ -344,7 +348,7 @@ export class VizChartComponent {
    * Processing Strategy for Stacked Bar Charts.
    */
   private processStackedData(
-    rows: Record<string, any>[],
+    rows: Record<string, unknown>[],
     xKey: string,
     yKey: string,
     stackKey: string,
