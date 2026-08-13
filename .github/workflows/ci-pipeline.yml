@@ -37,7 +37,7 @@ jobs:
           cache-dependency-path: ./pulse-query-ng-web/package-lock.json
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10
         with:
           python-version: "3.12"
           enable-cache: true
@@ -104,7 +104,7 @@ jobs:
 
   maestro_android:
     name: Maestro E2E Android
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -116,20 +116,12 @@ jobs:
           distribution: "zulu"
           cache: "gradle"
 
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
       - name: Build Android APK
         working-directory: ./PulseQuery
         run: ./gradlew :composeApp:assembleDebug
 
       - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
 
       - name: Run Maestro Tests on Emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -137,9 +129,11 @@ jobs:
           api-level: 33
           target: google_apis
           arch: x86_64
-          disable-linux-hw-accel: false
+          force-avx2-checks: false
+          disable-linux-hw-accel: true
           profile: pixel_6
           script: |
+            export PATH="$PATH":"$HOME/.maestro/bin"
             adb install ./PulseQuery/composeApp/build/outputs/apk/debug/composeApp-debug.apk
             maestro test ./PulseQuery/.maestro/
 
@@ -161,17 +155,16 @@ jobs:
         working-directory: ./PulseQuery
         run: |
           ./gradlew :composeApp:iosSimulatorArm64Test
-          xcodebuild build -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' -configuration Debug -derivedDataPath build/ios_simulator
+          xcodebuild build -project iosApp/iosApp.xcodeproj -scheme iosApp -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' -configuration Debug -derivedDataPath build/ios_simulator
 
       - name: Install Maestro
-        run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+        run: curl -Ls "https://get.maestro.mobile.dev" | bash
 
       - name: Start iOS Simulator and Run Maestro
         run: |
-          xcrun simctl boot "iPhone 15"
-          xcrun simctl bootstatus "iPhone 15" -b
+          xcrun simctl boot "iPhone 17"
+          xcrun simctl bootstatus "iPhone 17" -b
           APP_PATH=$(find ./PulseQuery/build/ios_simulator/Build/Products/Debug-iphonesimulator -name "*.app" | head -n 1)
-          xcrun simctl install "iPhone 15" "$APP_PATH"
+          xcrun simctl install "iPhone 17" "$APP_PATH"
+          export PATH="$PATH":"$HOME/.maestro/bin"
           maestro test ./PulseQuery/.maestro/
