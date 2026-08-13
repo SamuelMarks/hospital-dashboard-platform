@@ -184,6 +184,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   readonly data = inject<WidgetBuilderData>(MAT_DIALOG_DATA);
   /** Reference to the hosting dialog. */
   private readonly dialogRef = inject(MatDialogRef<WidgetBuilderComponent>);
+  /** Change detector reference. */
   private readonly cdr = inject(ChangeDetectorRef);
   /** Dashboard API Client. */
   private readonly dashboardApi = inject(DashboardsService);

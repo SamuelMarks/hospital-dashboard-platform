@@ -265,8 +265,11 @@ import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
 })
 /* v8 ignore start */
 export class AnalyticsComponent implements OnInit {
-  /* v8 ignore next 3 */
-  /* istanbul ignore next */
+  /**
+   * Helper to extract the value from a DOM event.
+   * @param event The DOM event.
+   * @returns The extracted string value.
+   */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }

@@ -294,7 +294,10 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 /* v8 ignore next 5 */
 export class OnboardingWizardComponent {
   /** Onboarding service. */ readonly onboarding: OnboardingService;
+  /** Router service. */
   private readonly router: Router;
+
+  /** Initializes the OnboardingWizardComponent. */
   constructor() {
     this.onboarding = inject(OnboardingService);
     this.router = inject(Router);

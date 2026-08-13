@@ -200,8 +200,11 @@ import { ScenarioConstraint } from '../../api-client';
 })
 /* v8 ignore start */
 export class ScenarioEditorComponent {
-  /* v8 ignore next 3 */
-  /* istanbul ignore next */
+  /**
+   * Helper method to extract the value from an input event.
+   * @param event The DOM event.
+   * @returns The string value.
+   */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }

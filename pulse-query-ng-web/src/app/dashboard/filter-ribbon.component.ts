@@ -122,13 +122,14 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** destroy$ property. */
   private readonly destroy$ = new Subject<void>();
 
-  // Use signal form instead of reactive forms
+  /** Form model containing the current filter values. */
   readonly formModel = signal({
     dept: null as string | null,
     startDate: null as Date | null,
     endDate: null as Date | null,
   });
 
+  /** The form control for the ribbon. */
   readonly ribbonForm = form(this.formModel, (f) => {});
 
   /** Flag to prevent emit loops while syncing from route */
@@ -163,6 +164,10 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     // Effect runs inside injection context automatically here.
   }
 
+  /**
+   * Handles changes to the department filter.
+   * @param value The selected department.
+   */
   onDeptChange(value: string | null) {
     if (this.isSyncingFromRoute) return;
     this.updateFilter('dept', value);

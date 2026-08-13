@@ -34,26 +34,39 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
+/** Represents a generic key-value pair for HTTP headers or parameters. */
 interface KeyValuePair {
+  /** The key string. */
   key: string;
+  /** The value string. */
   value: string;
 }
 
+/** Represents the form model for HTTP widget configuration. */
 interface HttpConfigForm {
+  /** HTTP method (e.g., GET, POST). */
   method: string;
+  /** Target URL. */
   url: string;
+  /** Whether to forward auth credentials. */
   forward_auth: boolean;
+  /** Request body as a JSON string. */
   body: string;
+  /** Array of HTTP query parameters. */
   params: KeyValuePair[];
+  /** Array of HTTP headers. */
   headers: KeyValuePair[];
 }
 
+/** Form schema for validating a key-value pair. */
 const pairSchema = schema<KeyValuePair>((f) => {
   required(f.key);
   required(f.value);
 });
 
-/** @docs */
+/**
+ * Component for editing HTTP configuration for widgets.
+ */
 @Component({
   selector: 'app-http-config',
   imports: [
@@ -141,19 +154,29 @@ const pairSchema = schema<KeyValuePair>((f) => {
   templateUrl: './http-config.component.html',
 })
 export class HttpConfigComponent {
+  /** Dashboards API. */
   private readonly dashboardsApi = inject(DashboardsService);
+  /** Execution API. */
   private readonly executionApi = inject(ExecutionService);
 
+  /** ID of the dashboard. */
   readonly dashboardId = input.required<string>();
+  /** ID of the widget. */
   readonly widgetId = input.required<string>();
+  /** Initial configuration. */
   readonly initialConfig = input<Record<string, unknown>>({});
+  /** Emits configuration changes. */
   readonly configChange = output<Record<string, unknown>>();
 
+  /** Whether the test is running. */
   readonly isRunning = signal(false);
+  /** The result of the test run. */
   readonly result = signal<unknown | null>(null);
 
+  /** The form model for HTTP configuration. */
   readonly formModel = linkedSignal<HttpConfigForm>(() => this.parseConfig(this.initialConfig()));
 
+  /** The form control for HTTP configuration. */
   readonly form = form(this.formModel, (f) => {
     required(f.method);
     required(f.url);
@@ -172,14 +195,25 @@ export class HttpConfigComponent {
     });
   });
 
+  /** Initializes the component. */
   constructor() {}
 
+  /**
+   * Checks if a form field is invalid.
+   * @param fieldTree The field tree function to check.
+   * @returns True if invalid and touched/dirty.
+   */
   isFieldInvalid(
     fieldTree: () => { invalid: () => boolean; dirty: () => boolean; touched: () => boolean },
   ): boolean {
     return !!(fieldTree().invalid() && (fieldTree().dirty() || fieldTree().touched()));
   }
 
+  /**
+   * Parses the initial configuration into a form model.
+   * @param config The raw configuration object.
+   * @returns The form model.
+   */
   private parseConfig(config: Record<string, unknown>): HttpConfigForm {
     if (!config)
       return { method: 'GET', url: '', forward_auth: false, body: '', params: [], headers: [] };
@@ -216,6 +250,10 @@ export class HttpConfigComponent {
     };
   }
 
+  /**
+   * Adds a new parameter or header item.
+   * @param type The type of item to add.
+   */
   addItem(type: 'params' | 'headers') {
     this.formModel.update((m) => {
       const target = type === 'params' ? m.params : m.headers;
@@ -226,6 +264,11 @@ export class HttpConfigComponent {
     });
   }
 
+  /**
+   * Removes a parameter or header item.
+   * @param type The type of item to remove.
+   * @param index The index to remove.
+   */
   removeItem(type: 'params' | 'headers', index: number) {
     this.formModel.update((m) => {
       const target = type === 'params' ? m.params : m.headers;
@@ -236,6 +279,9 @@ export class HttpConfigComponent {
     });
   }
 
+  /**
+   * Saves the configuration and runs a test.
+   */
   saveAndTest() {
     if (this.form().invalid()) return;
     this.isRunning.set(true);
@@ -268,6 +314,7 @@ export class HttpConfigComponent {
       });
   }
 
+  /** Executes the test run. */
   private executeTestRun() {
     this.executionApi
       .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId())
@@ -279,6 +326,11 @@ export class HttpConfigComponent {
       });
   }
 
+  /**
+   * Converts an array of KeyValuePairs to a Record object.
+   * @param arr The array of pairs.
+   * @returns The resulting object.
+   */
   private arrToObj(arr: { key: string; value: string }[]): Record<string, string> {
     const obj: Record<string, string> = {};
     arr.forEach((i) => {

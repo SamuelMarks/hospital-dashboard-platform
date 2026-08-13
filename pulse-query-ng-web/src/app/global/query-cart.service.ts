@@ -16,6 +16,7 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 })
 /** @docs */
 export class QueryCartService {
+  /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
   /** platformId property. */
   private readonly platformId = inject(PLATFORM_ID);

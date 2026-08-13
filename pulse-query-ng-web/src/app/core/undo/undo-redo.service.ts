@@ -71,6 +71,7 @@ const MAX_HISTORY_SIZE = 50;
   providedIn: 'root',
 })
 export class UndoRedoService {
+  /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
   /* v8 ignore start */
   /** Undo stack. */ private readonly _undoStack = signal<Command[]>([]);

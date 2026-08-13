@@ -64,6 +64,7 @@ const initialState: ChatState = {
 @Service()
 /* v8 ignore start */
 export class ChatStore implements OnDestroy {
+  /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
   /** chatApi property. */
   private readonly chatApi = inject(ChatService);

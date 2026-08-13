@@ -233,6 +233,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   readonly paramsValid = signal(false);
 
   // Form Group Migrated to Signal Form
+  /** Selection Form Model. */
   readonly formModel = signal({
     mode: 'predefined',
     templateId: '',
@@ -373,7 +374,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Whether cel. */
+  /** Cancels the wizard and removes the draft. */
   cancel() {
     const draftId = this.draftWidgetId();
     if (draftId) {
