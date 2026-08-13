@@ -29,6 +29,7 @@ kotlin {
             isStatic = true
             // Provide SQLDelight driver export for iOS target
             export(libs.sqldelight.native)
+            linkerOpts("-lsqlite3")
         }
     }
     
