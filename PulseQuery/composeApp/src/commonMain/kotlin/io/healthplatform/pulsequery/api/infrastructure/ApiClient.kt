@@ -1,3 +1,4 @@
+@file:Suppress("UNNECESSARY_SAFE_CALL")
 package io.healthplatform.pulsequery.api.infrastructure
 
 import io.ktor.client.HttpClient
