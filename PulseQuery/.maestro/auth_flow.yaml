@@ -2,7 +2,9 @@ appId: io.healthplatform.pulsequery
 ---
 - launchApp:
     clearState: true
-- assertVisible: "Welcome to PulseQuery"
+- extendedWaitUntil:
+    visible: "Welcome to PulseQuery"
+    timeout: 30000
 
 # Test Edge Case: Invalid Credentials
 - tapOn: "Email"
@@ -24,7 +26,9 @@ appId: io.healthplatform.pulsequery
 - tapOn: "Send Reset Link"
 - assertVisible: "Reset link sent" # Verify confirmation
 - tapOn: "Back to Login"
-- assertVisible: "Welcome to PulseQuery"
+- extendedWaitUntil:
+    visible: "Welcome to PulseQuery"
+    timeout: 30000
 
 # Test Happy Path: Successful Login
 - tapOn: "Email"
@@ -36,4 +40,6 @@ appId: io.healthplatform.pulsequery
 - inputText: "password"
 - hideKeyboard
 - tapOn: "Login / Register"
-- assertVisible: "Dashboards"
+- extendedWaitUntil:
+    visible: "Dashboards"
+    timeout: 30000

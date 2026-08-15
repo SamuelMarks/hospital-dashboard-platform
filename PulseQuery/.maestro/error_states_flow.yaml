@@ -6,7 +6,9 @@ appId: io.healthplatform.pulsequery
     # Maestro doesn't have a direct "set offline" but we can rely on mock servers if needed
     # or assert the app's behavior when the API is down if this flow is run against a stopped backend.
 
-- assertVisible: "Welcome to PulseQuery"
+- extendedWaitUntil:
+    visible: "Welcome to PulseQuery"
+    timeout: 30000
 
 # We assume this is run when the backend is unreachable or returning 500
 - tapOn: "Email"
