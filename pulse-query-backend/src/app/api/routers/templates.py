@@ -67,7 +67,7 @@ async def list_templates(
   query = query.order_by(WidgetTemplate.title).limit(limit)
 
   result = await db.execute(query)
-  return result.scalars().all()
+  return list(result.scalars().all())
 
 
 @router.post("/", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)

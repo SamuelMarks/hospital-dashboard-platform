@@ -129,7 +129,7 @@ class ProvisioningService:
     # 2. Fetch Templates
     query = select(WidgetTemplate).order_by(WidgetTemplate.category, WidgetTemplate.title)
     result = await db.execute(query)
-    templates: list[WidgetTemplate] = result.scalars().all()
+    templates = list(result.scalars().all())
 
     if not templates:
       logger.warning("No templates found during provisioning.")

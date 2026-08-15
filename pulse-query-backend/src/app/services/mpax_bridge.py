@@ -171,8 +171,8 @@ class MpaxBridgeService:
         h = jnp.array([-float("inf")])
 
       # 6. Variable Bounds (l <= x <= u) -> Non-negativity
-      l = jnp.zeros(num_vars)
-      u = jnp.full(num_vars, jnp.inf)
+      l_bound = jnp.zeros(num_vars)
+      u_bound = jnp.full(num_vars, jnp.inf)
 
       # 7. Apply Custom "Hard" Constraints Logic
       for rule in constraints:
@@ -186,12 +186,12 @@ class MpaxBridgeService:
             idx = self._get_var_index(s_idx, u_idx, num_units)
 
             if "min" in rule:
-              l = l.at[idx].set(float(rule["min"]))
+              l_bound = l_bound.at[idx].set(float(rule["min"]))
             if "max" in rule:
-              u = u.at[idx].set(float(rule["max"]))
+              u_bound = u_bound.at[idx].set(float(rule["max"]))
 
       # 8. Create and Solve LP
-      lp = create_lp(c, A, b, G, h, l, u, use_sparse_matrix=False)
+      lp = create_lp(c, A, b, G, h, l_bound, u_bound, use_sparse_matrix=False)
 
       # r2HPDHG: Reflected Restarted Halpern Primal-Dual Hybrid Gradient
       solver = r2HPDHG(eps_abs=1e-3, eps_rel=1e-3, verbose=False, jit=True)

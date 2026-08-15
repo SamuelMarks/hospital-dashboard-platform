@@ -1,13 +1,16 @@
 """User model definition for authentication and ownership."""
 
 import uuid
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Boolean, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+
+if TYPE_CHECKING:
+  from app.models.dashboard import Dashboard
 
 
 class User(Base):

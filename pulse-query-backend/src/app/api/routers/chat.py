@@ -245,7 +245,7 @@ async def list_conversations(
     .limit(limit)
   )
   result = await db.execute(stmt)
-  return result.scalars().all()
+  return list(result.scalars().all())
 
 
 @router.post("/", response_model=ConversationDetail)
@@ -344,7 +344,7 @@ async def get_messages(
     .options(selectinload(Message.candidates))
     .order_by(Message.created_at)
   )
-  return msg_result.scalars().all()
+  return list(msg_result.scalars().all())
 
 
 @router.post("/{conversation_id}/messages", response_model=MessageResponse)

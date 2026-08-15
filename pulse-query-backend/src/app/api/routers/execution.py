@@ -56,8 +56,8 @@ async def refresh_dashboard(
   forward_token = _extract_token(authorization)
   results_map: dict[UUID, Any] = {}
 
-  sql_widgets_to_run: list[tuple[Widget, str]] = []
-  http_widgets_to_run: list[tuple[Widget, str]] = []
+  sql_widgets_to_run: list[tuple[Widget, dict[str, Any], str]] = []
+  http_widgets_to_run: list[tuple[Widget, dict[str, Any], str]] = []
 
   for widget in dashboard.widgets:
     # Skip processing for Static Text widgets immediately

@@ -173,7 +173,7 @@ class SQLGeneratorService:
       logger.info(f"Broadcast [{actual_strategy_name}]: '{user_query[:30]}...' to {len(self.llm.swarm)} models.")
       # We set temperature low for SQL generation consistency
       admin_settings = await get_admin_settings(db)
-      results: list[ArenaResponse] = await self.llm.generate_arena_competition(
+      results = await self.llm.generate_arena_competition(
         messages=messages, temperature=0.1, max_tokens=600, admin_settings=admin_settings
       )
 

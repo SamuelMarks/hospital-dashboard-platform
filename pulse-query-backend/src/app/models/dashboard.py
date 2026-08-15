@@ -41,7 +41,7 @@ class Widget(Base):
 
   title: Mapped[str] = mapped_column(String)
 
-  # type: "SQL" or "HTTP"
+  # widget type: "SQL" or "HTTP"
   type: Mapped[str] = mapped_column(String)
 
   # visualization: "table", "metric", "bar_chart"
