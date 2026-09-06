@@ -1,15 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  input,
-  computed,
-  ChangeDetectionStrategy,
-  inject,
-  effect,
-  signal,
-  PLATFORM_ID,
-} from '@angular/core';
+import { Component, input, computed, inject, effect, signal, PLATFORM_ID } from '@angular/core';
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { ThemeService } from '../../../core/theme/theme.service';

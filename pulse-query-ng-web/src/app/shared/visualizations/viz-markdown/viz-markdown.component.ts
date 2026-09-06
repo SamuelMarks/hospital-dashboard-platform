@@ -1,14 +1,7 @@
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-markdown/viz-markdown.component.ts
-import {
-  Component,
-  input,
-  computed,
-  ChangeDetectionStrategy,
-  SecurityContext,
-  inject,
-} from '@angular/core';
+import { Component, input, computed, SecurityContext, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 

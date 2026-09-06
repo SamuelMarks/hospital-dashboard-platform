@@ -28,6 +28,11 @@ async def test_lifespan_invokes_startup_and_shutdown(monkeypatch) -> None:
   dummy_engine.begin.return_value = _DummyBegin()
   dummy_engine.dispose = AsyncMock()
 
+  dummy_validate_pg = AsyncMock(return_value={"status": "connected"})
+  dummy_validate_duckdb = MagicMock(return_value={"status": "ready"})
+
+  monkeypatch.setattr(main_module, "validate_postgres_connection", dummy_validate_pg)
+  monkeypatch.setattr(main_module.duckdb_manager, "validate_duckdb_storage", dummy_validate_duckdb)
   monkeypatch.setattr(main_module, "engine", dummy_engine)
   monkeypatch.setattr(main_module, "data_ingestion_service", MagicMock(ingest_all_csvs=MagicMock()))
   monkeypatch.setattr(main_module, "TemplateSeeder", MagicMock(seed_defaults=AsyncMock()))
@@ -36,6 +41,8 @@ async def test_lifespan_invokes_startup_and_shutdown(monkeypatch) -> None:
   async with main_module.lifespan(main_module.app):
     pass
 
+  dummy_validate_pg.assert_awaited_once_with(raise_on_error=False)
+  assert dummy_validate_duckdb.call_count == 2
   dummy_engine.begin.assert_called_once()
   dummy_engine.dispose.assert_awaited_once()
   main_module.data_ingestion_service.ingest_all_csvs.assert_called_once()

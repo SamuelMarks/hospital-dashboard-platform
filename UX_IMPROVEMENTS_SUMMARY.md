@@ -489,3 +489,32 @@ The platform now provides:
 - WCAG 2.1 AA accessibility compliance
 
 All improvements follow Angular and TypeScript best practices, use signals for reactive state management, and maintain the platform's high code quality standards.
+
+---
+
+## 8. Comprehensive Error UX & Database Diagnostics
+
+### Problem Solved
+
+Previously, backend startup would fail with uninformative tracebacks when the PostgreSQL or DuckDB database was misconfigured or stopped, and end users experienced cryptic "0 Unknown Error" or blank screens when the backend was unreachable or datasets were missing.
+
+### Implemented Solutions
+
+1. **Backend Startup Diagnostics & Remediation Banners:**
+   - Pre-flight validation of PostgreSQL connectivity and DuckDB file permissions during lifespan.
+   - High-visibility formatted terminal banners containing target hosts, database names, and actionable copyable fix commands (`docker compose up -d postgres`).
+   - High-visibility warnings when default initial clinical datasets (`hospital_data.csv`) or template packs (`initial_templates.json`) are absent or fallback data is generated.
+2. **System Health & Diagnostic API (`/api/v1/system/health`, `/api/v1/system/diagnostics`):**
+   - Live health assessment of PostgreSQL latency, DuckDB registered tables and counts, data ingestion status, active warnings, and LLM configuration.
+   - Manual CSV re-ingestion endpoint (`POST /api/v1/system/reingest`).
+3. **Global System Health Banner (`SystemHealthBannerComponent`):**
+   - Real-time alert bar displaying Offline mode, Backend Inaccessibility (with auto-reconnect countdown timer), and Database Misconfiguration.
+   - Immediate "Retry Now" and "Troubleshoot" action buttons.
+4. **Interactive System Diagnostics Dialog (`SystemDiagnosticsDialogComponent`):**
+   - Subsystem cards for PostgreSQL, DuckDB, Clinical Data, and AI.
+   - One-click copyable shell commands for quick terminal fixes.
+   - Live "Test Now" connection test button.
+5. **Categorized Widget Safe-Mode Errors:**
+   - Distinguishes missing dataset tables (`TABLE_NOT_FOUND`) from database engine lock errors and SQL syntax errors, with direct links to diagnostics and retry buttons.
+6. **Mobile Error Feedback (PulseQuery KMP / Compose):**
+   - `BackendOfflineBanner` and `DatabaseErrorCard` composables for native mobile error states.

@@ -12,16 +12,7 @@
  * - Validation (required, min, max)
  */
 
-import {
-  Component,
-  input,
-  output,
-  OnChanges,
-  SimpleChanges,
-  inject,
-  ChangeDetectionStrategy,
-  signal,
-} from '@angular/core';
+import { Component, input, output, OnChanges, SimpleChanges, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,

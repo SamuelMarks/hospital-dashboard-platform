@@ -1,6 +1,6 @@
 /** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-metric/viz-metric.component.ts
-import { Component, input, computed, ChangeDetectionStrategy, Signal } from '@angular/core';
+import { Component, input, computed, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /** @docs */

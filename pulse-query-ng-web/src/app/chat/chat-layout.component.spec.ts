@@ -3,7 +3,7 @@ import { ChatLayoutComponent } from './chat-layout.component';
 import { ChatStore } from './chat.store';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { BehaviorSubject, of } from 'rxjs';
-import { signal, Component, ChangeDetectionStrategy } from '@angular/core';
+import { signal, Component } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ConversationComponent } from './conversation/conversation.component';
 import { By } from '@angular/platform-browser';

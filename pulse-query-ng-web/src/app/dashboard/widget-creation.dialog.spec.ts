@@ -7,14 +7,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { of, throwError } from 'rxjs';
-import {
-  signal,
-  Component,
-  input,
-  WritableSignal,
-  NO_ERRORS_SCHEMA,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { signal, Component, input, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { vi } from 'vitest';
 import { readTemplate } from '../../test-utils/component-resources';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -89,6 +82,7 @@ describe('WidgetCreationDialog', () => {
         set: {
           template: readTemplate('./widget-creation.dialog.html'),
           templateUrl: undefined,
+          styleUrl: undefined,
           styleUrls: undefined,
           schemas: [NO_ERRORS_SCHEMA],
         },

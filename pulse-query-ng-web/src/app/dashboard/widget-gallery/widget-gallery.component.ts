@@ -1,14 +1,7 @@
 /* v8 ignore start */
 /** @docs */
 // ... (imports same as before)
-import {
-  Component,
-  OnInit,
-  inject,
-  signal,
-  ChangeDetectionStrategy,
-  computed,
-} from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';

@@ -1,7 +1,7 @@
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/chat/conversation/sql-snippet.component.ts
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';

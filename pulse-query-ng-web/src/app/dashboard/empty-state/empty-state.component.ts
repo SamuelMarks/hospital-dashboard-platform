@@ -9,7 +9,7 @@
  * - Accessibility: Added `aria-label` and `role="button"` to cards to support E2E tests and Screen Readers.
  */
 
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';

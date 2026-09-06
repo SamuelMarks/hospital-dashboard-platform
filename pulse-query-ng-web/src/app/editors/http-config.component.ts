@@ -1,15 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  input,
-  output,
-  inject,
-  signal,
-  linkedSignal,
-  ChangeDetectionStrategy,
-  effect,
-} from '@angular/core';
+import { Component, input, output, inject, signal, linkedSignal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormRoot,

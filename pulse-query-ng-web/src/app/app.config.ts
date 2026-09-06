@@ -8,7 +8,6 @@
 
 import {
   ApplicationConfig,
-  importProvidersFrom,
   APP_INITIALIZER,
   ErrorHandler,
   provideZonelessChangeDetection,
@@ -28,7 +27,7 @@ import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { errorInterceptor } from './core/error/error.interceptor';
 import { AuthService } from './core/auth/auth.service';
-import { ApiModule, Configuration, BASE_PATH } from './api-client';
+import { Configuration, BASE_PATH } from './api-client';
 import { GlobalErrorHandler } from './core/error/global-error.handler';
 import { environment } from '../environments/environment';
 import { A11yTitleStrategy } from './core/accessibility/a11y-title-strategy';
@@ -118,7 +117,10 @@ export const appConfig: ApplicationConfig = {
       provide: BASE_PATH,
       useValue: environment.apiUrl,
     },
-    // 2. Import the ApiModule using our dynamic factory
-    importProvidersFrom(ApiModule.forRoot(apiConfigFactory)),
+    // 2. Provide the Configuration using our dynamic factory
+    {
+      provide: Configuration,
+      useFactory: apiConfigFactory,
+    },
   ],
 };

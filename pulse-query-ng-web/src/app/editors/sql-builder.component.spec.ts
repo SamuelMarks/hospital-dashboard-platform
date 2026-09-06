@@ -12,7 +12,7 @@ import {
   ChatService,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
-import { signal, NO_ERRORS_SCHEMA, ChangeDetectionStrategy } from '@angular/core';
+import { signal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { HttpErrorResponse, withXhr } from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';

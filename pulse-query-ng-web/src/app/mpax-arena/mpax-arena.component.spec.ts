@@ -4,7 +4,7 @@ import { MpaxArenaService, MpaxArenaResponse } from '../api-client';
 import { of, throwError } from 'rxjs';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { Component, input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input } from '@angular/core';
 
 @Component({
   selector: 'viz-markdown',

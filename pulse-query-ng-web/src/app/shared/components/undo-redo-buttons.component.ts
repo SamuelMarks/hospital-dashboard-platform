@@ -4,7 +4,7 @@
  * Provides UI controls for undo and redo operations.
  */
 
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -77,12 +77,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
 /* v8 ignore next 5 */
 export class UndoRedoButtonsComponent {
   /** Undo redo service. */
-  readonly undoRedoService: UndoRedoService;
-
-  /** Initializes a new instance of UndoRedoButtonsComponent. */
-  constructor() {
-    this.undoRedoService = inject(UndoRedoService);
-  }
+  readonly undoRedoService = inject(UndoRedoService);
 
   /**
    * Generates tooltip text for undo button.

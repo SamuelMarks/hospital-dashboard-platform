@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';

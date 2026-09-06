@@ -14,21 +14,35 @@ import {
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { errorInterceptor } from './error.interceptor';
-import { throwError } from 'rxjs';
+import { ConnectionStatusService } from '../health/connection-status.service';
+import { of, throwError } from 'rxjs';
 
 describe('errorInterceptor', () => {
   let httpClient: HttpClient;
   let httpMock: HttpTestingController;
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
+  let mockConnectionService: {
+    markBackendUnreachable: ReturnType<typeof vi.fn>;
+    openDiagnosticsDialog: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
-    mockSnackBar = { open: vi.fn() };
+    mockSnackBar = {
+      open: vi.fn().mockReturnValue({
+        onAction: () => of(undefined),
+      }),
+    };
+    mockConnectionService = {
+      markBackendUnreachable: vi.fn(),
+      openDiagnosticsDialog: vi.fn(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withXhr(), withInterceptors([errorInterceptor])),
         provideHttpClientTesting(),
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: ConnectionStatusService, useValue: mockConnectionService },
       ],
     });
 
@@ -49,6 +63,64 @@ describe('errorInterceptor', () => {
     req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
 
     expect(mockSnackBar.open).not.toHaveBeenCalled();
+  });
+
+  it('should handle status 0 network errors and mark backend unreachable', () => {
+    httpClient.get('/api/test').subscribe({
+      error: (err) => {
+        expect(err.status).toBe(0);
+      },
+    });
+
+    const req = httpMock.expectOne('/api/test');
+    req.error(new ProgressEvent('error'));
+
+    expect(mockConnectionService.markBackendUnreachable).toHaveBeenCalled();
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      expect.stringContaining('Cannot reach Pulse Query Backend server'),
+      'Troubleshoot',
+      expect.any(Object),
+    );
+    expect(mockConnectionService.openDiagnosticsDialog).toHaveBeenCalled();
+  });
+
+  it('should handle status 503 service unavailable with troubleshoot action', () => {
+    httpClient.get('/api/test').subscribe({
+      error: (err) => {
+        expect(err.status).toBe(503);
+      },
+    });
+
+    const req = httpMock.expectOne('/api/test');
+    req.flush('Service Unavailable', { status: 503, statusText: 'Service Unavailable' });
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Database service unavailable. Backend database may be misconfigured.',
+      'Troubleshoot',
+      expect.any(Object),
+    );
+  });
+
+  it('should format structured backend database errors with remediation hints', () => {
+    httpClient.get('/api/test').subscribe({
+      error: () => {},
+    });
+
+    const req = httpMock.expectOne('/api/test');
+    req.flush(
+      {
+        code: 'TABLE_NOT_FOUND',
+        message: 'Table missing.',
+        remediation_hint: 'Run reingest.',
+      },
+      { status: 404, statusText: 'Not Found' },
+    );
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Table missing. (Run reingest.)',
+      'Close',
+      expect.any(Object),
+    );
   });
 
   it('should display snackbar for 500 Server Error', () => {

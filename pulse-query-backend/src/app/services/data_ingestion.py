@@ -19,6 +19,10 @@ import re
 from builtins import open as open
 from datetime import datetime, timedelta
 
+from app.core.diagnostics import (
+  diagnostics_registry,
+  format_missing_data_warning_banner,
+)
 from app.database.duckdb import duckdb_manager
 
 logger = logging.getLogger("data_ingestion")
@@ -65,7 +69,16 @@ class DataIngestionService:
         filepath (str): Target path to write the CSV.
         rows (int): Number of rows to generate.
     """
-    logger.warning(f"⚠️ {DEFAULT_CSV_FILENAME} not found. Generating sample data...")
+    banner = format_missing_data_warning_banner(DEFAULT_CSV_FILENAME, filepath, rows)
+    logger.warning("\n" + banner)
+    diagnostics_registry.data_status["fallback_generated"] = True
+    diagnostics_registry.data_status["has_default_data"] = False
+    diagnostics_registry.add_warning(
+      code="MISSING_DEFAULT_DATA",
+      message=f"Default clinical data '{DEFAULT_CSV_FILENAME}' was missing; generated fallback dataset with {rows} rows.",
+      severity="warning",
+      remediation=f"Place real '{DEFAULT_CSV_FILENAME}' in pulse-query-backend/data/ and re-run ingestion.",
+    )
 
     diagnoses = ["Hypertension", "Type 2 Diabetes", "Fracture", "Viral Infection", "Cardiomyopathy"]
     departments = ["Cardiology", "Orthopedics", "General Practice", "Emergency", "Neurology"]
@@ -130,6 +143,15 @@ class DataIngestionService:
     if not csv_files:
       cls.generate_sample_data(DEFAULT_CSV_PATH)
       csv_files = [DEFAULT_CSV_FILENAME]
+    elif DEFAULT_CSV_FILENAME in csv_files:
+      diagnostics_registry.data_status["has_default_data"] = True
+    else:
+      diagnostics_registry.add_warning(
+        code="DEFAULT_HOSPITAL_DATA_MISSING",
+        message=f"'{DEFAULT_CSV_FILENAME}' not found in data directory. Queries targeting hospital_data may fail.",
+        severity="warning",
+        remediation="Place hospital_data.csv in pulse-query-backend/data/.",
+      )
 
     conn = duckdb_manager.get_connection()
     files_processed = 0
@@ -166,15 +188,29 @@ class DataIngestionService:
             logger.info("       Using Index: Entry_Point")
 
           count = conn.execute(f"SELECT count(*) FROM {table_name}").fetchone()
-          logger.info(f"       ✅ Loaded {count[0] if count else 0} rows.")
+          row_count = count[0] if count else 0
+          logger.info(f"       ✅ Loaded {row_count} rows.")
+          diagnostics_registry.data_status["row_counts"][table_name] = row_count
           files_processed += 1
         except Exception as e:
           logger.error(f"       ❌ Failed to load {filename}: {e}")
+          diagnostics_registry.add_warning(
+            code="CSV_INGESTION_FAILED",
+            message=f"Failed to ingest CSV '{filename}': {e}",
+            severity="error",
+            remediation=f"Verify CSV syntax and encoding for {filename}.",
+          )
 
       logger.info(f"✅ Ingestion Complete. {files_processed} files processed.")
 
     except Exception as e:
       logger.critical(f"❌ Fatal error during ingestion: {e}")
+      diagnostics_registry.add_warning(
+        code="FATAL_INGESTION_ERROR",
+        message=f"Fatal error during data ingestion: {e}",
+        severity="critical",
+        remediation="Check filesystem permissions and database engine state.",
+      )
     finally:
       conn.close()
 

@@ -1,13 +1,5 @@
 /** @docs */
-import {
-  Component,
-  inject,
-  ChangeDetectionStrategy,
-  signal,
-  OnDestroy,
-  PLATFORM_ID,
-  effect,
-} from '@angular/core';
+import { Component, inject, signal, OnDestroy, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 
 // Material Imports

@@ -93,3 +93,22 @@ To bring the environment back online, we use the restore command. This will map 
 ```sh
 ./libscript.sh cloud restore healthplatform-node --from-backup latest
 ```
+
+## 6. System Diagnostics & Health Verification
+
+The platform provides automated startup validation and live diagnostic endpoints to verify database and analytics engine health.
+
+### Startup Diagnostics
+
+During startup, the backend automatically validates:
+
+- **PostgreSQL Connectivity:** Tests connection parameters (`POSTGRES_SERVER`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_DB`). If connection fails, an ANSI terminal error banner is printed with remediation steps (`docker compose up -d postgres`).
+- **DuckDB Engine:** Validates filesystem paths, directory permissions, and file locks.
+- **Default Clinical Data:** Checks for `pulse-query-backend/data/hospital_data.csv`. Emits high-visibility startup warning if missing and generates synthetic fallback data.
+- **Content Pack:** Verifies `data/initial_templates.json` and seeds widget templates.
+
+### Health Endpoints
+
+- `GET /api/v1/system/health`: Aggregated health assessment (`healthy`, `degraded`, `critical`) for PostgreSQL, DuckDB, clinical datasets, and LLM configuration. Supports `?strict=true` which returns HTTP 503 if critical.
+- `GET /api/v1/system/diagnostics`: Full system diagnostics with copyable remediation commands and environment checks.
+- `POST /api/v1/system/reingest`: Triggers immediate re-indexing of clinical CSV files into DuckDB tables.

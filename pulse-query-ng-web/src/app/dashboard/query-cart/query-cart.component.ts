@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, ChangeDetectionStrategy, input, inject, computed } from '@angular/core';
+import { Component, input, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';

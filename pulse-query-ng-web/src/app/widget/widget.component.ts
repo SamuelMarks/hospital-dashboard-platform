@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, input, output, inject, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +12,7 @@ import { MatDialog } from '@angular/material/dialog';
 
 import { DashboardStore } from '../dashboard/dashboard.store';
 import { WidgetResponse, DashboardsService, WidgetUpdate } from '../api-client';
+import { ConnectionStatusService } from '../core/health/connection-status.service';
 import {
   SkeletonLoaderComponent,
   SkeletonVariant,
@@ -223,6 +224,7 @@ export class WidgetComponent {
   private readonly dashApi = inject(DashboardsService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
+  readonly connectionService = inject(ConnectionStatusService);
 
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' });
   readonly edit = output<void>();
@@ -241,6 +243,18 @@ export class WidgetComponent {
     return res && (res as Record<string, unknown>)['error']
       ? ((res as Record<string, unknown>)['error'] as string)
       : null;
+  });
+
+  readonly isMissingTableError = computed(() => {
+    const err = this.errorMessage();
+    return err ? err.includes('does not exist') || err.includes('TABLE_NOT_FOUND') : false;
+  });
+
+  readonly isDbUnavailableError = computed(() => {
+    const err = this.errorMessage();
+    return err
+      ? err.includes('DATABASE_ERROR') || err.includes('database engine') || err.includes('locked')
+      : false;
   });
 
   readonly visualizationType = computed(() => {
@@ -262,6 +276,10 @@ export class WidgetComponent {
 
   manualRefresh(): void {
     this.store.refreshWidget(this.widgetInput().id);
+  }
+
+  openDiagnostics(): void {
+    this.connectionService.openDiagnosticsDialog();
   }
 
   simulateWidget(): void {

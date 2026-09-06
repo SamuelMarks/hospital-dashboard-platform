@@ -3,7 +3,6 @@
 import {
   Component,
   inject,
-  ChangeDetectionStrategy,
   ViewChild,
   ElementRef,
   AfterViewChecked,

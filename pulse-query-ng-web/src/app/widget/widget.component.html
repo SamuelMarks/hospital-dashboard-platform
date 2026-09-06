@@ -115,20 +115,52 @@
     <!-- Error State -->
     @if (errorMessage(); as error) {
       <div class="center-overlay p-4" data-testid="error-state" style="color: var(--sys-error)">
-        <mat-icon i18n class="text-4xl mb-2">warning</mat-icon>
-        <span i18n class="text-sm font-medium text-center">{{ error }}</span>
-        @if (isEditMode()) {
+        @if (isMissingTableError()) {
+          <mat-icon i18n class="text-4xl mb-2">table_rows</mat-icon>
+          <strong i18n class="text-sm font-semibold mb-1">Dataset Not Found</strong>
+          <span i18n class="text-xs text-center mb-3"
+            >The analytics table referenced in this query is missing or not yet ingested.</span
+          >
+        } @else if (isDbUnavailableError()) {
+          <mat-icon i18n class="text-4xl mb-2">storage</mat-icon>
+          <strong i18n class="text-sm font-semibold mb-1">Database Storage Error</strong>
+          <span i18n class="text-xs text-center mb-3">{{ error }}</span>
+        } @else {
+          <mat-icon i18n class="text-4xl mb-2">warning</mat-icon>
+          <span i18n class="text-sm font-medium text-center mb-3">{{ error }}</span>
+        }
+
+        <div class="flex gap-2 items-center flex-wrap justify-center">
           <button
             i18n
             mat-stroked-button
-            color="warn"
-            class="mt-4"
-            (click)="edit.emit()"
-            data-testid="btn-fix-query"
+            color="primary"
+            (click)="manualRefresh()"
+            data-testid="btn-retry-widget"
           >
-            Fix Query
+            <mat-icon>refresh</mat-icon> Retry
           </button>
-        }
+          <button
+            i18n
+            mat-stroked-button
+            color="accent"
+            (click)="openDiagnostics()"
+            data-testid="btn-diagnostics-widget"
+          >
+            <mat-icon>build</mat-icon> Diagnostics
+          </button>
+          @if (isEditMode()) {
+            <button
+              i18n
+              mat-stroked-button
+              color="warn"
+              (click)="edit.emit()"
+              data-testid="btn-fix-query"
+            >
+              Fix Query
+            </button>
+          }
+        </div>
       </div>
     }
     <!-- Loading State -->

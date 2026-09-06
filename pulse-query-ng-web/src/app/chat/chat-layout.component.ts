@@ -1,15 +1,7 @@
 import { DATE_NOW } from '../core/time.token';
 /* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  OnInit,
-  inject,
-  ChangeDetectionStrategy,
-  ViewChild,
-  computed,
-  signal,
-} from '@angular/core';
+import { Component, OnInit, inject, ViewChild, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';

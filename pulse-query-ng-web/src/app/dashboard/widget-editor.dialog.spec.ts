@@ -1,12 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import {
-  Component,
-  input,
-  output,
-  signal,
-  NO_ERRORS_SCHEMA,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, input, output, signal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog';
 import { WidgetResponse, DashboardsService, DashboardResponse } from '../api-client';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';

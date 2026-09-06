@@ -1,4 +1,4 @@
-import { Component, ErrorHandler, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ErrorHandler } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -31,7 +31,11 @@ describe('ErrorBoundaryDirective', () => {
     await TestBed.configureTestingModule({
       imports: [HostComponent],
       providers: [{ provide: ErrorHandler, useValue: mockHandler }],
-    }).compileComponents();
+    })
+      .overrideDirective(ErrorBoundaryDirective, {
+        set: { inputs: ['appErrorBoundary'] },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(HostComponent);
   });

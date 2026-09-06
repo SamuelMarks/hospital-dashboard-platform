@@ -1,6 +1,11 @@
 repos:
   - repo: local
     hooks:
+      - id: auto-format
+        name: Auto Format
+        entry: bash -c "uv run ruff format . && npx --prefix pulse-query-ng-web prettier --write ."
+        language: system
+        pass_filenames: false
       - id: backend-sqlite-setup
         name: Backend SQLite Setup
         entry: bash -c "cd pulse-query-backend && uv sync --all-extras && USE_SQLITE_ALEMBIC=1 uv run alembic upgrade head"

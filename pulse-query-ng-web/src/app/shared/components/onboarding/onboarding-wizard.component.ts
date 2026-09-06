@@ -5,7 +5,7 @@
  * Displayed as an overlay dialog on first visit.
  */
 
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -293,15 +293,10 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 /* v8 ignore next 3 */
 /* v8 ignore next 5 */
 export class OnboardingWizardComponent {
-  /** Onboarding service. */ readonly onboarding: OnboardingService;
+  /** Onboarding service. */
+  readonly onboarding = inject(OnboardingService);
   /** Router service. */
-  private readonly router: Router;
-
-  /** Initializes the OnboardingWizardComponent. */
-  constructor() {
-    this.onboarding = inject(OnboardingService);
-    this.router = inject(Router);
-  }
+  private readonly router = inject(Router);
 
   /**
    * All onboarding steps (for dot navigation).

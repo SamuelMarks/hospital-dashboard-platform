@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, ChangeDetectionStrategy, signal, inject } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';

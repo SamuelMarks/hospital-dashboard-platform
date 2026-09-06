@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter, map } from 'rxjs/operators';

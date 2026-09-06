@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
@@ -38,7 +38,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
 @Component({
   selector: 'app-dashboard-layout',
   templateUrl: './dashboard-layout.component.html',
-  styleUrls: ['./dashboard-layout.component.scss'],
+  styleUrl: './dashboard-layout.component.scss',
 
   imports: [
     CommonModule,

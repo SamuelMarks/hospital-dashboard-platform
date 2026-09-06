@@ -4,6 +4,7 @@ import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { form, FormRoot, FormField } from '@angular/forms/signals';
 import { AdminService, AiService, ModelInfo } from '../api-client';
+import { ConnectionStatusService } from '../core/health/connection-status.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
@@ -60,6 +61,24 @@ import { forkJoin } from 'rxjs';
                 }
               </div>
             </fieldset>
+          </div>
+
+          <div class="section">
+            <h3 i18n>Database &amp; Analytics Diagnostics</h3>
+            <p i18n>
+              Live operational status of PostgreSQL, DuckDB, and ingested hospital datasets.
+            </p>
+            <div class="diag-summary">
+              <div class="diag-item" i18n><strong>PostgreSQL:</strong> {{ pgStatus() }}</div>
+              <div class="diag-item" i18n><strong>DuckDB OLAP:</strong> {{ duckStatus() }}</div>
+              <div class="diag-item" i18n>
+                <strong>Hospital Data:</strong> {{ dataStatusText() }}
+              </div>
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button i18n type="button" (click)="openDiagnostics()">Open Diagnostics</button>
+              <button i18n type="button" (click)="reingestData()">Re-ingest CSVs</button>
+            </div>
           </div>
 
           <button i18n type="submit" [disabled]="adminForm().invalid() || isSaving()">
@@ -186,6 +205,7 @@ export class AdminComponent implements OnInit {
   private adminService = inject(AdminService);
   private aiService = inject(AiService);
   private destroyRef = inject(DestroyRef);
+  private connectionService = inject(ConnectionStatusService);
 
   // v8 ignore start
   settingsLoaded = signal<boolean>(false);
@@ -201,6 +221,39 @@ export class AdminComponent implements OnInit {
   });
 
   adminForm = form(this.formModel, (f) => {});
+
+  pgStatus(): string {
+    return this.connectionService.healthData()?.postgres?.status || 'Unknown';
+  }
+
+  duckStatus(): string {
+    return this.connectionService.healthData()?.duckdb?.status || 'Unknown';
+  }
+
+  dataStatusText(): string {
+    const data = this.connectionService.healthData()?.data;
+    if (!data) return 'Checking...';
+    return data.has_default_data ? 'Default CSV Present' : 'Synthetic Fallback Active';
+  }
+
+  openDiagnostics(): void {
+    this.connectionService.openDiagnosticsDialog();
+  }
+
+  reingestData(): void {
+    this.connectionService.triggerReingest().subscribe({
+      next: (res) => {
+        this.message.set(res.message || 'Data re-ingested successfully!');
+        const timer = setTimeout(() => this.message.set(''), 3000);
+        this.destroyRef.onDestroy(() => clearTimeout(timer));
+      },
+      error: () => {
+        this.message.set('Failed to re-ingest CSV data.');
+        const timer = setTimeout(() => this.message.set(''), 3000);
+        this.destroyRef.onDestroy(() => clearTimeout(timer));
+      },
+    });
+  }
 
   // v8 ignore start
   trackByFn(index: number): number {

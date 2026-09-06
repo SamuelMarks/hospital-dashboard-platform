@@ -1,14 +1,7 @@
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-table/viz-table.component.ts
-import {
-  Component,
-  input,
-  computed,
-  ChangeDetectionStrategy,
-  ViewChild,
-  effect,
-} from '@angular/core';
+import { Component, input, computed, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';

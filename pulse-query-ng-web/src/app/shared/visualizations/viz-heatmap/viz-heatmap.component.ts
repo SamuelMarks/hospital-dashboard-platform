@@ -1,15 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  input,
-  computed,
-  ChangeDetectionStrategy,
-  inject,
-  PLATFORM_ID,
-  effect,
-  signal,
-} from '@angular/core';
+import { Component, input, computed, inject, PLATFORM_ID, effect, signal } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { MatTooltipModule } from '@angular/material/tooltip';

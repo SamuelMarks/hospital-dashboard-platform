@@ -226,3 +226,28 @@ flowchart LR
 
     linkStyle default font-family:'Roboto Mono Normal',stroke:#20344b,stroke-width:1px;
 ```
+
+---
+
+## 6. System Diagnostics & Error Feedback Architecture
+
+The platform incorporates comprehensive diagnostics across both backend and client tiers:
+
+### A. Backend Startup Validation
+
+- **PostgreSQL Connectivity Check:** Executed during the FastAPI lifespan hook before initializing database tables. Verifies server reachability and credentials. Prints an actionable ANSI error banner with troubleshooting commands if PostgreSQL is unreachable.
+- **DuckDB Storage Validation:** Verifies database file paths, directory permissions, and locks.
+- **Data Ingestion & Content Pack Audits:** Automatically verifies `hospital_data.csv` and `initial_templates.json`. Warns prominently if default datasets are missing and creates synthetic fallback data.
+- **Configuration Hygiene:** Detects default insecure `SECRET_KEY` values and evaluates LLM swarm availability.
+
+### B. Health & Diagnostic API Endpoints
+
+- `GET /api/v1/system/health`: Reports consolidated subsystem health (`overall_status`: healthy, degraded, or critical), PostgreSQL latency, DuckDB registered tables and counts, clinical dataset status, and active warnings.
+- `GET /api/v1/system/diagnostics`: Returns detailed environment parameters and actionable remediation commands.
+- `POST /api/v1/system/reingest`: Triggers manual CSV re-ingestion into DuckDB.
+
+### C. Frontend User Experience Layer
+
+- **System Health Banner (`SystemHealthBannerComponent`):** Global top-level alert bar displaying connection status (Offline, Backend Inaccessible with auto-reconnect countdown, or Database Misconfiguration) with one-click "Retry" and "Troubleshoot" actions.
+- **System Diagnostics Dialog (`SystemDiagnosticsDialogComponent`):** Modal window displaying live subsystem status cards, connection testing, and copyable shell commands for rapid troubleshooting.
+- **Categorized Widget Error States:** Distinguishes missing dataset tables (`TABLE_NOT_FOUND`) from database storage errors and user SQL syntax errors, providing direct remediation links.

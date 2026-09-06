@@ -1,7 +1,7 @@
 /* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/shared/components/skeleton-loader.component.ts
-import { Component, input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /** @docs */

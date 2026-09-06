@@ -14,7 +14,6 @@ import {
   WritableSignal,
   NO_ERRORS_SCHEMA,
   ErrorHandler,
-  ChangeDetectionStrategy,
 } from '@angular/core';
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { By } from '@angular/platform-browser';

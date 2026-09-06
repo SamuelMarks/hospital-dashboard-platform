@@ -14,6 +14,10 @@ from typing import Any, Dict, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.diagnostics import (
+  diagnostics_registry,
+  format_missing_template_warning_banner,
+)
 from app.database.postgres import AsyncSessionLocal
 from app.models.template import WidgetTemplate
 
@@ -36,7 +40,19 @@ class TemplateSeeder:
     Designed to be called during ASGI startup.
     """
     if not os.path.exists(DATA_FILE):
-      logger.warning(f"⚠️ Content Pack missing at {DATA_FILE}. Skipping seeding.")
+      banner = format_missing_template_warning_banner(DATA_FILE)
+      logger.warning("\n" + banner)
+      diagnostics_registry.template_status = {
+        "templates_loaded": 0,
+        "has_templates": False,
+        "missing_file": True,
+      }
+      diagnostics_registry.add_warning(
+        code="MISSING_TEMPLATE_PACK",
+        message=f"Template pack missing at {DATA_FILE}.",
+        severity="warning",
+        remediation="Verify repository data/ directory contains initial_templates.json.",
+      )
       return
 
     try:
@@ -47,12 +63,42 @@ class TemplateSeeder:
         await TemplateSeeder._process_batch(db, templates_data)
         await db.commit()
 
+      diagnostics_registry.template_status = {
+        "templates_loaded": len(templates_data),
+        "has_templates": len(templates_data) > 0,
+        "missing_file": False,
+      }
+      if not templates_data:
+        diagnostics_registry.add_warning(
+          code="EMPTY_TEMPLATE_PACK",
+          message=f"Template pack at {DATA_FILE} contains 0 templates.",
+          severity="warning",
+          remediation="Populate data/initial_templates.json with template objects.",
+        )
+
       logger.info(f"✅ Template Seeding Complete: {len(templates_data)} items processed.")
 
     except json.JSONDecodeError as e:
       logger.error(f"❌ Invalid JSON in Content Pack: {e}")
+      diagnostics_registry.template_status = {
+        "templates_loaded": 0,
+        "has_templates": False,
+        "missing_file": False,
+      }
+      diagnostics_registry.add_warning(
+        code="CORRUPTED_TEMPLATE_PACK",
+        message=f"Invalid JSON syntax in template pack: {e}",
+        severity="error",
+        remediation=f"Validate JSON formatting in {DATA_FILE}.",
+      )
     except Exception as e:
       logger.exception(f"❌ Unexpected seeding error: {e}")
+      diagnostics_registry.add_warning(
+        code="TEMPLATE_SEEDING_ERROR",
+        message=f"Unexpected error while seeding templates: {e}",
+        severity="error",
+        remediation="Check PostgreSQL connection and template schema compatibility.",
+      )
 
   @staticmethod
   async def _process_batch(db: AsyncSession, data_list: list[dict[str, Any]]) -> None:

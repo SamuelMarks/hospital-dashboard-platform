@@ -10,14 +10,16 @@
  * - **TV Mode**: Listens for `?mode=tv` to enable Kiosk state.
  */
 
-import { Component, inject, OnInit, ChangeDetectionStrategy, LOCALE_ID } from '@angular/core';
+import { Component, inject, OnInit, LOCALE_ID } from '@angular/core';
 import { RouterOutlet, ActivatedRoute } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { DOCUMENT } from '@angular/common';
 import { AskDataComponent } from './global/ask-data.component';
 import { AskDataService } from './global/ask-data.service';
+import { ConnectionStatusService } from './core/health/connection-status.service';
 import { ThemeService } from './core/theme/theme.service';
 import { ToolbarComponent } from './dashboard/toolbar.component';
+import { SystemHealthBannerComponent } from './shared/components/system-health-banner.component';
 
 /**
  * The Root Component class.
@@ -34,7 +36,13 @@ import { ToolbarComponent } from './dashboard/toolbar.component';
  */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, MatSidenavModule, AskDataComponent, ToolbarComponent],
+  imports: [
+    RouterOutlet,
+    MatSidenavModule,
+    AskDataComponent,
+    ToolbarComponent,
+    SystemHealthBannerComponent,
+  ],
   templateUrl: './app.html',
   styles: [
     `
@@ -88,6 +96,8 @@ export class App implements OnInit {
   readonly askData = inject(AskDataService);
   /** Theme Service. */
   readonly themeService = inject(ThemeService);
+  /** Connection Status Service. */
+  readonly connectionService = inject(ConnectionStatusService);
   /** route property. */
   private readonly route = inject(ActivatedRoute);
 
@@ -99,6 +109,9 @@ export class App implements OnInit {
   /** Ng On Init. */
   ngOnInit(): void {
     this.document.documentElement.lang = this.localeId;
+
+    // Check system and backend health on load
+    this.connectionService.checkHealth().subscribe();
 
     // Global listener for Kiosk Mode parameter
     this.route.queryParams.subscribe((params) => {

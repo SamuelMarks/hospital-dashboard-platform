@@ -1,14 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  ChangeDetectionStrategy,
-  inject,
-  signal,
-  OnDestroy,
-  computed,
-  Signal,
-} from '@angular/core';
+import { Component, inject, signal, OnDestroy, computed, Signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormGroup } from '@angular/forms';
 
@@ -60,7 +52,7 @@ export interface WidgetCreationData {
   ],
 
   templateUrl: './widget-creation.dialog.html',
-  styleUrls: ['./widget-creation.dialog.css'],
+  styleUrl: './widget-creation.dialog.css',
 })
 /** @docs */
 export class WidgetCreationDialog implements OnDestroy {

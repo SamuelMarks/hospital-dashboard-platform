@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, inject, computed, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 

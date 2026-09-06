@@ -4,7 +4,7 @@
  * Displays all available keyboard shortcuts grouped by category.
  */
 
-import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';

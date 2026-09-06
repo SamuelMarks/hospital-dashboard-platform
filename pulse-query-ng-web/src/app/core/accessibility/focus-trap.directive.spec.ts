@@ -4,7 +4,7 @@ import { By } from '@angular/platform-browser';
  * @fileoverview Unit tests for FocusTrapDirective.
  */
 
-import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { FocusTrapDirective } from './focus-trap.directive';

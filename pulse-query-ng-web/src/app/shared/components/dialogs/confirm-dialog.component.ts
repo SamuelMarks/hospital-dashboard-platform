@@ -1,6 +1,6 @@
 /* v8 ignore start */
 /** @docs */
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';

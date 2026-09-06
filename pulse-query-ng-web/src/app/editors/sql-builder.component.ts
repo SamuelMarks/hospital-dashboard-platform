@@ -18,7 +18,6 @@ import {
   output,
   inject,
   signal,
-  ChangeDetectionStrategy,
   model,
   OnInit,
   computed,

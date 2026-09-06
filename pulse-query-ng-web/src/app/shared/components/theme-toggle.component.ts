@@ -5,7 +5,7 @@
  * Uses the ThemeService to manage theme state and persistence.
  */
 
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
