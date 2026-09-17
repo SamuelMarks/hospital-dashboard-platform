@@ -21,7 +21,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
+ * Response schema containing the currently configured admin settings.
  *
  * @param apiKeys 
  * @param visibleModels 

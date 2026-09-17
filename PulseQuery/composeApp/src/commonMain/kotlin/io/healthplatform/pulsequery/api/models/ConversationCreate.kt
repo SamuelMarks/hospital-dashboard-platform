@@ -25,6 +25,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param title 
  * @param message 
+ * @param targetModels 
  */
 @Serializable
 
@@ -32,7 +33,9 @@ data class ConversationCreate (
 
     @SerialName(value = "title") val title: kotlin.String? = null,
 
-    @SerialName(value = "message") val message: kotlin.String? = null
+    @SerialName(value = "message") val message: kotlin.String? = null,
+
+    @SerialName(value = "target_models") val targetModels: kotlin.collections.List<kotlin.String>? = null
 
 ) {
 

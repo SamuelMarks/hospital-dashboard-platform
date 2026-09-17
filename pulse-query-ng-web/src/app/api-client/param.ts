@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Standard parameter styles defined by OpenAPI spec
  */
@@ -32,7 +30,6 @@ export type DataType = StandardDataType | string;
 export type StandardDataFormat =
   'int32' | 'int64' | 'float' | 'double' | 'byte' | 'binary' | 'date' | 'date-time' | 'password';
 
-/** @docs */
 export type DataFormat = StandardDataFormat | string;
 
 /**

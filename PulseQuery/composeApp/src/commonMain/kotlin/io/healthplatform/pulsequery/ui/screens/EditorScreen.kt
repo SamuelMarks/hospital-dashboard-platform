@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
 import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDialog
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -36,6 +38,8 @@ fun EditorScreen() {
     var result by remember { mutableStateOf<SQLExecutionResponse?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val coroutineScope = rememberCoroutineScope()
     
@@ -48,26 +52,48 @@ fun EditorScreen() {
             isLoading = true
             errorMessage = null
             result = null
-            try {
+            runCatching {
                 val req = SQLExecutionRequest(sql = sqlQuery, maxRows = 50)
                 val response = AppContainer.aiApi.executeSqlPreviewApiV1AiExecutePost(req)
-                result = response.body()
-            } catch (e: Exception) {
-                errorMessage = errExecFailed + e.message
-            } finally {
-                isLoading = false
-            }
+                response.body()
+            }.fold(
+                onSuccess = { res ->
+                    result = res
+                },
+                onFailure = { e ->
+                    errorMessage = errExecFailed + e.message
+                }
+            )
+            isLoading = false
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.sql_editor)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
-                )
+                ),
+                actions = {
+                    IconButton(
+                        onClick = { showSaveDialog = true },
+                        enabled = sqlQuery.isNotBlank()
+                    ) {
+                        Icon(Icons.Filled.Save, contentDescription = "Save Query")
+                    }
+                    TextButton(
+                        onClick = {
+                            if (sqlQuery.isNotBlank()) {
+                                AppContainer.queryCartRepository.addQuery("Editor Query", sqlQuery)
+                            }
+                        }
+                    ) {
+                        Text("Add to Cart")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -160,5 +186,18 @@ fun EditorScreen() {
                 }
             }
         }
+    }
+
+    if (showSaveDialog) {
+        SaveQueryDialog(
+            sql = sqlQuery,
+            onDismiss = { showSaveDialog = false },
+            onSaved = { msg ->
+                showSaveDialog = false
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar(msg)
+                }
+            }
+        )
     }
 }

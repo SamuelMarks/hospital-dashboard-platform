@@ -48,6 +48,13 @@ export const routes: Routes = [
     title: 'Admin - Pulse Query',
   },
   {
+    path: 'admin/users',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./admin/users/user-management.component').then((m) => m.UserManagementComponent),
+    title: 'User Management - Pulse Query',
+  },
+  {
     path: 'dashboard/:id',
     canActivate: [authGuard],
     loadComponent: () =>
@@ -71,6 +78,13 @@ export const routes: Routes = [
       import('./analytics/analytics.component').then((m) => m.AnalyticsComponent),
     title: 'Analytics - Pulse Query',
   },
+  {
+    path: 'analytics/alert-rules',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./analytics/alert-rules/alert-rules.component').then((m) => m.AlertRulesComponent),
+    title: 'Alert Rules - Pulse Query',
+  },
 
   {
     path: 'mpax-arena',
@@ -78,6 +92,15 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./mpax-arena/mpax-arena.component').then((m) => m.MpaxArenaComponent),
     title: 'MPAX Arena - Pulse Query',
+  },
+
+  // --- Benchmarks ---
+  {
+    path: 'benchmarks',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./benchmarks/benchmarks.component').then((m) => m.BenchmarksComponent),
+    title: 'Benchmarks - Pulse Query',
   },
 
   // --- Feature Modules (Lazy Loaded) ---

@@ -1,7 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, input, computed, inject, PLATFORM_ID, effect, signal } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ThemeService } from '../../../core/theme/theme.service';
@@ -9,7 +8,7 @@ import { ThemeService } from '../../../core/theme/theme.service';
 /** @docs */
 @Component({
   selector: 'viz-heatmap',
-  imports: [CommonModule, MatTooltipModule],
+  imports: [MatTooltipModule],
 
   styles: [
     `

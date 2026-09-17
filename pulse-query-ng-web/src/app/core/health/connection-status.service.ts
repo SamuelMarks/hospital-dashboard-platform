@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Service for tracking global backend reachability, database connectivity,

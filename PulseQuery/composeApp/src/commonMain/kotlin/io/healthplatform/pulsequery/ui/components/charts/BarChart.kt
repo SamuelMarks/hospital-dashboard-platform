@@ -26,6 +26,8 @@ import androidx.compose.ui.semantics.contentDescription
  * @param data List of Pair<Label, Value> representing the chart bars.
  * @param modifier Compose modifier for layout.
  * @param barColor Color of the bars, defaults to primary theme color.
+ * @param labelColor Color for axis text labels.
+ * @param textStyle Typography style for axis text labels.
  */
 @Composable
 fun BarChart(

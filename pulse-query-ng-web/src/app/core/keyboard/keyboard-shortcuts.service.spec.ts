@@ -119,10 +119,11 @@ describe('KeyboardShortcutsService', () => {
     expect(shortcuts.has('view')).toBe(true);
   });
 
-  it('should show help (set isHelpVisible to true)', () => {
+  it('should show help (set isHelpVisible to true)', async () => {
     expect(service.isHelpVisible()).toBe(false);
     service.showHelp();
     expect(service.isHelpVisible()).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
   });
 
   it('should hide help', () => {

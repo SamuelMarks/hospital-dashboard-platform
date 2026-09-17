@@ -25,6 +25,7 @@ import kotlinx.serialization.encoding.*
  *
  * @param email 
  * @param password 
+ * @param languagePreference 
  */
 @Serializable
 
@@ -32,7 +33,9 @@ data class UserCreate (
 
     @SerialName(value = "email") @Required val email: kotlin.String,
 
-    @SerialName(value = "password") @Required val password: kotlin.String
+    @SerialName(value = "password") @Required val password: kotlin.String,
+
+    @SerialName(value = "language_preference") val languagePreference: kotlin.String? = "en"
 
 ) {
 

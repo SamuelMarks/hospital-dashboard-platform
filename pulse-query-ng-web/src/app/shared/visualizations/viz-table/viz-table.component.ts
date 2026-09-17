@@ -1,8 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-table/viz-table.component.ts
 import { Component, input, computed, ViewChild, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 
@@ -24,7 +22,7 @@ export interface TableConfig {
 /** @docs */
 @Component({
   selector: 'viz-table',
-  imports: [CommonModule, MatTableModule, MatPaginatorModule],
+  imports: [MatTableModule, MatPaginatorModule],
 
   styles: [
     `
@@ -76,9 +74,8 @@ export interface TableConfig {
 })
 /** @docs */
 export class VizTableComponent {
-  /* v8 ignore next */
   readonly dataSet = input<TableDataSet | null | undefined>();
-  /* v8 ignore next */
+
   readonly config = input<TableConfig | null>(null);
 
   dataSource = new MatTableDataSource<Record<string, unknown>>([]);
@@ -98,7 +95,6 @@ export class VizTableComponent {
     });
   }
 
-  /* v8 ignore next */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
   getCellValue(row: Record<string, unknown>, col: string): string {

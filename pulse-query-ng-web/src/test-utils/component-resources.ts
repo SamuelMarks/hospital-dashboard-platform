@@ -14,12 +14,11 @@ function isAppRoot(dir: string): boolean {
 function findAppRoot(startDir: string): string | undefined {
   let current = startDir;
   while (true) {
-    /* v8 ignore next */
     if (isAppRoot(current)) {
       return current;
     }
     const parent = dirname(current);
-    /* v8 ignore next */
+
     if (parent === current) {
       return undefined;
     }
@@ -31,9 +30,7 @@ const cwd = process.cwd();
 const nestedCwd = resolve(cwd, 'pulse-query-ng-web');
 const appRoot =
   findAppRoot(testUtilsDir) ??
-  /* v8 ignore next */
   (isAppRoot(cwd) ? cwd : undefined) ??
-  /* v8 ignore next */
   (isAppRoot(nestedCwd) ? nestedCwd : cwd);
 const srcRoot = resolve(appRoot, 'src');
 
@@ -59,7 +56,6 @@ class FsResourceLoader extends ResourceLoader {
 
     let filePath = directCandidates.find(existsSync);
 
-    /* v8 ignore next */
     if (!filePath) {
       const targetName = basename(url);
       if (this.nameCache.has(targetName)) {
@@ -81,7 +77,6 @@ class FsResourceLoader extends ResourceLoader {
 }
 
 function findFirstFile(rootDir: string, fileName: string): string | undefined {
-  /* v8 ignore next */
   if (!existsSync(rootDir)) {
     return undefined;
   }

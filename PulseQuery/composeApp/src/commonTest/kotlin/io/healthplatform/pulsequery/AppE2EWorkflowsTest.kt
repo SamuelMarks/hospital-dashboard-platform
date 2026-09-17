@@ -53,21 +53,21 @@ class AppE2EWorkflowsTest {
         assertTrue(analyticsResponse.success, "Analytics failed")
 
         // 4. Chat/AI
-        try {
+        runCatching {
             println("TEST: Create Conversation")
             val convResponse = AppContainer.chatApi.createConversationApiV1ConversationsPost(
                 ConversationCreate(title = "Test E2E")
             )
             assertTrue(convResponse.success, "Conversation create failed")
             val convId = convResponse.body().id
-            
+
             println("TEST: Send Message")
             val msgResponse = AppContainer.chatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
                 conversationId = convId,
                 messageCreate = MessageCreate(content = "Hello AI")
             )
             assertTrue(msgResponse.success, "Send Message failed")
-        } catch (e: Throwable) {
+        }.onFailure { e ->
             println("Chat workflow failed (expected if AI unavailable locally): ${e.message}")
         }
 

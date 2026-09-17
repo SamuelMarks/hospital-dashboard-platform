@@ -71,12 +71,19 @@ test.describe("Dashboard Builder Workflow", () => {
 
     // --- Step 2: Create Dashboard ---
     const btnCreate = page.locator('[data-testid="btn-create"]');
+    await expect(btnCreate).toBeVisible({ timeout: 15000 });
     await btnCreate.click();
 
     const nameInput = page.locator('[data-testid="input-name"]');
-    await nameInput.fill(`UI Dashboard ${timestamp}`);
+    await expect(nameInput).toBeVisible({ timeout: 10000 });
+    await nameInput.click();
+    await nameInput.clear();
+    await nameInput.pressSequentially(`UI Dashboard ${timestamp}`, {
+      delay: 20,
+    });
 
     const btnSubmit = page.locator('[data-testid="btn-submit"]');
+    await expect(btnSubmit).toBeEnabled({ timeout: 10000 });
     await btnSubmit.click();
 
     // Verify: Redirected to Dashboard Page

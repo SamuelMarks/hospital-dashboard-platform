@@ -5,14 +5,17 @@ Handles stateful conversations between the User and the Analytics Assistant.
 Integrates with `LLMArenaClient` to provide multiple response candidates for voting.
 """
 
+import json
 import logging
 import re
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timezone
 from typing import Annotated, List, Optional
 from uuid import UUID
 
 import sqlglot
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -43,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 def _extract_and_validate_sql(text: str) -> str | None:
   """
-  Scans text for Markdown SQL blocks, extracts the first one,
+  Scans text for Markdown SQL blocks, extracts the first valid one,
   and performs a syntax check using sqlglot.
 
   Args:
@@ -55,25 +58,35 @@ def _extract_and_validate_sql(text: str) -> str | None:
   if not text:
     return None
 
-  # Regex to find ```sql ... ``` or just ``` ... ``` containing select
-  pattern = r"```(?:sql)?(.*?)```"
-  match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+  # 1. First priority: look for explicitly tagged ```sql ... ``` blocks
+  sql_pattern = r"```sql\s+(.*?)\s*```"
+  sql_matches = re.findall(sql_pattern, text, re.DOTALL | re.IGNORECASE)
 
-  if not match:
-    return None
+  for candidate in sql_matches:
+    candidate_sql = candidate.strip()
+    if candidate_sql:
+      try:
+        parsed = sqlglot.parse(candidate_sql, read="duckdb")
+        if parsed and any(stmt for stmt in parsed if stmt and not isinstance(stmt, sqlglot.exp.Column)):
+          return candidate_sql
+      except Exception as e:
+        logger.warning(f"Explicit SQL block failed validation: {e}")
 
-  candidate_sql = match.group(1).strip()
+  # 2. Second priority: look for generic ``` ... ``` blocks that parse as valid SQL statements
+  generic_pattern = r"```(?:[a-zA-Z0-9_-]+)?\s+(.*?)\s*```"
+  generic_matches = re.findall(generic_pattern, text, re.DOTALL)
 
-  if not candidate_sql:
-    return None
+  for candidate in generic_matches:
+    candidate_sql = candidate.strip()
+    if candidate_sql:
+      try:
+        parsed = sqlglot.parse(candidate_sql, read="duckdb")
+        if parsed and any(stmt for stmt in parsed if stmt and not isinstance(stmt, sqlglot.exp.Column)):
+          return candidate_sql
+      except Exception:
+        continue
 
-  try:
-    # Validate syntax for DuckDB dialect
-    sqlglot.transpile(candidate_sql, read="duckdb")
-    return candidate_sql
-  except Exception as e:
-    logger.warning(f"Generated SQL failed validation: {e}")
-    return None
+  return None
 
 
 async def _generate_assistant_reply(
@@ -115,10 +128,9 @@ async def _generate_assistant_reply(
   messages_payload.append({"role": "system", "content": system_prompt})
 
   for msg in history_objs:
-    if msg.role in ["user", "assistant"]:  # pragma: no cover
-      # Use main content. For voting scenarios, history might need to respect selected candidate content.
-      # Assuming msg.content is updated to the winner content after vote.
-      messages_payload.append({"role": msg.role, "content": msg.content})
+    # Use main content. For voting scenarios, history might need to respect selected candidate content.
+    # Assuming msg.content is updated to the winner content after vote.
+    messages_payload.append({"role": msg.role, "content": msg.content})
 
   # 3. Call LLM Arena to get Responsens
   responses: list[ArenaResponse] = []
@@ -160,7 +172,7 @@ async def _generate_assistant_reply(
         target_model_ids=target_models,
         admin_settings=admin_settings,
       )
-      if more:  # pragma: no cover
+      if more:
         responses.extend(more)
 
     if len(responses) == 0:
@@ -258,7 +270,7 @@ async def create_conversation(
   now = datetime.now(UTC)
   title = payload.title
   if not title:
-    if payload.message:  # pragma: no cover
+    if payload.message:
       title = payload.message[:40].strip() + "..." if len(payload.message) > 40 else payload.message
     else:
       title = "New Chat"
@@ -267,12 +279,11 @@ async def create_conversation(
   db.add(conv)
   await db.flush()
 
-  if payload.message:  # pragma: no cover
+  if payload.message:
     user_msg = Message(conversation_id=conv.id, role="user", content=payload.message, created_at=now)
     db.add(user_msg)
     await db.commit()
-    # Conversation Creation doesn't support model selection yet in this schema revision, defaults apply.
-    await _generate_assistant_reply(db, conv.id)
+    await _generate_assistant_reply(db, conv.id, target_models=payload.target_models)
   else:
     await db.commit()
 
@@ -417,3 +428,103 @@ async def vote_candidate(
   final_stmt = select(Message).where(Message.id == message_id).options(selectinload(Message.candidates))
   final_result = await db.execute(final_stmt)
   return final_result.scalars().first()
+
+
+@router.get("/stream/{conversation_id}")
+async def stream_conversation_tokens(
+  conversation_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  model_id: str | None = None,
+) -> StreamingResponse:
+  """
+  Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.
+
+  Args:
+      conversation_id (UUID): The conversation ID context.
+      db (AsyncSession): Database session.
+      current_user (User): Authenticated user owning the conversation.
+      model_id (Optional[str]): Targeted model ID.
+
+  Returns:
+      StreamingResponse: Text/event-stream containing incremental tokens.
+  """
+  stmt = select(Conversation).where(and_(Conversation.id == conversation_id, Conversation.user_id == current_user.id))
+  res = await db.execute(stmt)
+  conv = res.scalars().first()
+  if not conv:
+    raise HTTPException(status_code=404, detail="Conversation not found")
+
+  # Fetch history
+  hist_stmt = (
+    select(Message).where(Message.conversation_id == conversation_id).order_by(desc(Message.created_at)).limit(10)
+  )
+  hist_res = await db.execute(hist_stmt)
+  history = hist_res.scalars().all()[::-1]
+
+  schema_context = schema_service.get_schema_context_string()
+  system_prompt = (
+    "You are an expert Hospital Analytics Assistant. "
+    "Answer questions using DuckDB SQL based on the schema below. "
+    "If the user asks for data, output the SQL Query inside a markdown block ```sql ... ```. "
+    "Do not execute DML (INSERT/UPDATE). "
+    f"\n\nSchema:\n{schema_context}"
+  )
+  messages_payload = [{"role": "system", "content": system_prompt}]
+  for msg in history:
+    if msg.role in ["user", "assistant"]:
+      messages_payload.append({"role": msg.role, "content": msg.content})
+
+  admin_settings = await get_admin_settings(db)
+
+  async def event_generator() -> AsyncGenerator[str, None]:
+    """
+    Asynchronous generator yielding Server-Sent Events for real-time LLM token streaming.
+    """
+    start_payload = json.dumps({"event": "start", "conversation_id": str(conversation_id)})
+    yield f"data: {start_payload}\n\n"
+
+    accumulated: list[str] = []
+    async for token in llm_client.stream_tokens(
+      messages=messages_payload,
+      model_id=model_id,
+      admin_settings=admin_settings,
+    ):
+      accumulated.append(token)
+      payload = json.dumps({"event": "token", "token": token})
+      yield f"data: {payload}\n\n"
+
+    full_text = "".join(accumulated)
+    sql = _extract_and_validate_sql(full_text)
+
+    now = datetime.now(UTC)
+    assistant_msg = Message(
+      conversation_id=conversation_id,
+      role="assistant",
+      content=full_text,
+      sql_snippet=sql,
+      created_at=now,
+    )
+    db.add(assistant_msg)
+    await db.commit()
+    await db.refresh(assistant_msg)
+
+    done_payload = json.dumps(
+      {
+        "event": "done",
+        "message_id": str(assistant_msg.id),
+        "content": full_text,
+        "sql_snippet": sql,
+      }
+    )
+    yield f"data: {done_payload}\n\n"
+
+  return StreamingResponse(
+    event_generator(),
+    media_type="text/event-stream",
+    headers={
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  )

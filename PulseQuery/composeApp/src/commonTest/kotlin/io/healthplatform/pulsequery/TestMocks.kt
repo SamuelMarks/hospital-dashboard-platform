@@ -56,11 +56,21 @@ val mockEngine = MockEngine { request ->
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )
-        "/api/v1/conversations" -> respond(
-            content = """{"id": "1", "title": "Test E2E", "user_id": "1", "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z"}""",
-            status = HttpStatusCode.OK,
-            headers = headersOf(HttpHeaders.ContentType, "application/json")
-        )
+        "/api/v1/conversations" -> {
+            if (request.method == io.ktor.http.HttpMethod.Post) {
+                respond(
+                    content = """{"id": "1", "title": "Test E2E", "user_id": "1", "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """[{"id": "1", "title": "Test E2E", "user_id": "1", "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z"}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
         "/api/v1/conversations/1/messages" -> respond(
             content = """{"id": "1", "conversation_id": "1", "content": "Hello", "role": "user", "created_at": "2023-01-01T00:00:00Z"}""",
             status = HttpStatusCode.OK,
@@ -73,6 +83,55 @@ val mockEngine = MockEngine { request ->
         )
         "/api/v1/schema" -> respond(
             content = """[]""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/admin/settings" -> respond(
+            content = """{"api_keys": {}, "visible_models": []}""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/simulation/run" -> respond(
+            content = """{"assignments": [], "status": "optimal", "message": "Simulation executed successfully"}""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/dashboards/1/refresh" -> respond(
+            content = """{"status": "ok"}""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/dashboards/1/widgets/1/refresh" -> respond(
+            content = """{"status": "ok"}""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/system/health" -> respond(
+            content = """{
+                "overall_status": "healthy",
+                "timestamp": "2026-09-14T00:00:00Z",
+                "postgres": {"status": "healthy"},
+                "duckdb": {"status": "ready"},
+                "data": {"has_default_data": true, "fallback_generated": false},
+                "llm": {"providers_count": 1, "mock_mode": false},
+                "templates": {"templates_loaded": 5, "has_templates": true, "missing_file": false},
+                "warnings": []
+            }""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/benchmarks/sql" -> respond(
+            content = """[{"id": "b1", "theme": "Bed Occupancy", "sql": "SELECT 1"}]""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/benchmarks/mpax" -> respond(
+            content = """[{"id": "m1", "title": "Surge Scenario", "difficulty": "Medium"}]""",
+            status = HttpStatusCode.OK,
+            headers = headersOf(HttpHeaders.ContentType, "application/json")
+        )
+        "/api/v1/mpax_arena/run" -> respond(
+            content = """{"experiment_id": "exp-1", "mode": "critic", "candidates": [], "ground_truth_mpax": null}""",
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )

@@ -139,7 +139,7 @@
     "title": "Holiday Decompression",
     "description": "Days required for census to return to seasonal average following a major holiday.",
     "category": "Volatility",
-    "sql_template": "WITH baseline AS (\n  SELECT AVG(cnt) as avg_census \n  FROM (SELECT CAST(Midnight_Census_DateTime AS DATE) as d, COUNT(*) as cnt FROM synthetic_hospital_data GROUP BY 1) a\n),\ndaily AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as census \n  FROM synthetic_hospital_data \n  GROUP BY 1\n)\nSELECT \n  MIN(dt) as recovery_date,\n  HOLIDAY_DIFF(MIN(dt), 01, 15) as days_to_recover\nFROM daily, baseline\nWHERE dt > make_date(year(dt), 01, 15)\n  AND census <= baseline.avg_census\nGROUP BY year(dt);",
+    "sql_template": "WITH baseline AS (\n  SELECT AVG(cnt) as avg_census \n  FROM (SELECT CAST(Midnight_Census_DateTime AS DATE) as d, COUNT(*) as cnt FROM synthetic_hospital_data GROUP BY 1) a\n),\ndaily AS (\n  SELECT CAST(Midnight_Census_DateTime AS DATE) as dt, COUNT(*) as census \n  FROM synthetic_hospital_data \n  GROUP BY 1\n)\nSELECT \n  MIN(dt) as recovery_date,\n  HOLIDAY_DIFF(MIN(dt), {{month}}, {{day}}) as days_to_recover\nFROM daily, baseline\nWHERE dt > make_date(year(dt), {{month}}, {{day}})\n  AND census <= baseline.avg_census\nGROUP BY year(dt);",
     "parameters_schema": {
       "type": "object",
       "properties": {

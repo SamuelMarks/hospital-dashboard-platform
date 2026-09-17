@@ -4,16 +4,20 @@ Main Application Entry Point.
 (Updated to include Chat Router registration)
 """
 
+import asyncio
 from contextlib import asynccontextmanager
 
 import duckdb
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import pydantic.root_model  # noqa: F401
 
 from app.api.routers import (
   admin,
+  admin_users,
   ai,
+  alert_rules,
   analytics,
   auth,
   benchmarks,
@@ -25,6 +29,7 @@ from app.api.routers import (
   simulation,
   system,
   templates,
+  ws,
 )
 from app.core.config import settings
 from app.core.diagnostics import check_configuration_hygiene
@@ -33,6 +38,23 @@ from app.database.duckdb_init import init_duckdb_on_startup
 from app.database.postgres import Base, engine, validate_postgres_connection
 from app.services.data_ingestion import data_ingestion_service
 from app.services.template_seeder import TemplateSeeder
+
+
+async def _background_ingest_loop(interval_minutes: int) -> None:
+  """
+  Periodically triggers DuckDB CSV re-ingestion in the background.
+
+  Args:
+      interval_minutes (int): Ingestion loop frequency in minutes.
+  """
+  while True:
+    try:
+      await asyncio.sleep(interval_minutes * 60)
+      data_ingestion_service.ingest_all_csvs()
+    except asyncio.CancelledError:
+      break
+    except Exception:
+      pass
 
 
 @asynccontextmanager
@@ -59,7 +81,15 @@ async def lifespan(app: FastAPI):
   init_duckdb_on_startup()
   duckdb_manager.validate_duckdb_storage()
 
+  # 5. Optional Background Re-ingestion Scheduler
+  ingest_task = None
+  if settings.AUTO_INGEST_INTERVAL_MINUTES > 0:
+    ingest_task = asyncio.create_task(_background_ingest_loop(settings.AUTO_INGEST_INTERVAL_MINUTES))
+
   yield
+
+  if ingest_task is not None:
+    ingest_task.cancel()
 
   await engine.dispose()
 
@@ -73,7 +103,7 @@ app = FastAPI(
 
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=["*"],
+  allow_origins=settings.parsed_cors_origins,
   allow_credentials=True,
   allow_methods=["*"],
   allow_headers=["*"],
@@ -135,10 +165,14 @@ app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation"
 app.include_router(schema.router, prefix=f"{settings.API_V1_STR}/schema", tags=["schema"])
 # Register Chat Router
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/conversations", tags=["chat"])
+app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["chat"])
 # Register Analytics Router
 app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}/analytics", tags=["analytics"])
+app.include_router(alert_rules.router, prefix=f"{settings.API_V1_STR}/analytics/alert-rules", tags=["alert-rules"])
+app.include_router(ws.router, prefix=f"{settings.API_V1_STR}/ws", tags=["collaboration"])
 # Register Admin Router
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
+app.include_router(admin_users.router, prefix=f"{settings.API_V1_STR}/admin/users", tags=["admin-users"])
 app.include_router(mpax_arena.router, prefix=f"{settings.API_V1_STR}/mpax_arena", tags=["mpax_arena"])
 app.include_router(benchmarks.router, prefix=f"{settings.API_V1_STR}/benchmarks", tags=["benchmarks"])
 app.include_router(system.router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])

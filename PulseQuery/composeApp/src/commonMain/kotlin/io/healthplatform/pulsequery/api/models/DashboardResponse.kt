@@ -22,11 +22,12 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * API Response model for a Dashboard. Includes the nested list of Widgets.
+ * API Response model for a Dashboard. Includes the nested list of Widgets and permission level.
  *
  * @param name 
  * @param id 
  * @param ownerId 
+ * @param permissionLevel 
  * @param widgets 
  */
 @Serializable
@@ -38,6 +39,8 @@ data class DashboardResponse (
     @SerialName(value = "id") @Required val id: kotlin.String,
 
     @SerialName(value = "owner_id") @Required val ownerId: kotlin.String,
+
+    @SerialName(value = "permission_level") val permissionLevel: kotlin.String? = "OWNER",
 
     @SerialName(value = "widgets") val widgets: kotlin.collections.List<WidgetResponse>? = null
 

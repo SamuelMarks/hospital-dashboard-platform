@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Functional Directive providing "Safe Mode" UI swapping.

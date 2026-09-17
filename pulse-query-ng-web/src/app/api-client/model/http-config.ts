@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -49,7 +47,7 @@ export interface HttpConfig {
   /**
    * JSON Body payload
    */
-  body?: null;
+  body?: Record<string, any> | null;
   /**
    * If true, forwards the user\'s JWT to the target.
    */
@@ -58,7 +56,6 @@ export interface HttpConfig {
   yKey?: string | null;
 }
 export namespace HttpConfig {
-  /** @docs */
   export const MethodEnum = {
     Get: 'GET',
     Post: 'POST',
@@ -66,6 +63,5 @@ export namespace HttpConfig {
     Delete: 'DELETE',
     Patch: 'PATCH',
   } as const;
-  /** @docs */
   export type MethodEnum = (typeof MethodEnum)[keyof typeof MethodEnum];
 }

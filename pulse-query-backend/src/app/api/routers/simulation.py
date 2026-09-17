@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.api import deps
 from app.models.user import User
 from app.schemas.simulation import ScenarioResult, ScenarioRunRequest
-from app.services.simulation_service import simulation_service
+from app.services.simulation_service import SimulationInfeasibleError, simulation_service
 
 router = APIRouter()
 
@@ -39,6 +39,8 @@ async def run_simulation(
   try:
     result = simulation_service.run_scenario(request)
     return result
+  except SimulationInfeasibleError as e:
+    raise HTTPException(status_code=422, detail=str(e))
   except ValueError as e:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
   except Exception as e:

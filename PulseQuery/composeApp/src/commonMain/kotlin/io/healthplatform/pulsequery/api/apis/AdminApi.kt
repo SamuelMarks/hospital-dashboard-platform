@@ -47,10 +47,12 @@ open class AdminApi : ApiClient {
     /**
      * Read Admin Settings
      * Get system-wide admin settings like API keys and visible models.
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return AdminSettingsResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun readAdminSettingsApiV1AdminSettingsGet(): HttpResponse<AdminSettingsResponse> {
+    open suspend fun readAdminSettingsApiV1AdminSettingsGet(token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<AdminSettingsResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -58,9 +60,11 @@ open class AdminApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/admin/settings",
             query = localVariableQuery,
@@ -80,19 +84,23 @@ open class AdminApi : ApiClient {
      * Write Admin Settings
      * Update system-wide admin settings like API keys and visible models.
      * @param adminSettingsUpdateRequest 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return AdminSettingsResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun writeAdminSettingsApiV1AdminSettingsPut(adminSettingsUpdateRequest: AdminSettingsUpdateRequest): HttpResponse<AdminSettingsResponse> {
+    open suspend fun writeAdminSettingsApiV1AdminSettingsPut(adminSettingsUpdateRequest: AdminSettingsUpdateRequest, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<AdminSettingsResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = adminSettingsUpdateRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PUT,
             "/api/v1/admin/settings",
             query = localVariableQuery,

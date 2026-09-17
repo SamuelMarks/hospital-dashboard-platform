@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClient } from '@angular/common/http';
 import { ToolbarComponent } from './toolbar.component';
 import { DashboardStore } from './dashboard.store';
 import { AskDataService } from '../global/ask-data.service';
@@ -36,8 +37,13 @@ describe('ToolbarComponent', () => {
   let routerEvents$: Subject<any>;
   let mockStore: any;
   let mockRouter: any;
+  let mockHttp: { get: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
+    mockHttp = {
+      get: vi.fn(),
+    };
+
     // Reset signals and spies
     mockStore = {
       dashboard: signal(null),
@@ -84,6 +90,7 @@ describe('ToolbarComponent', () => {
         },
         { provide: QueryCartService, useValue: { count: signal(0) } },
         { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: HttpClient, useValue: mockHttp },
         { provide: Router, useValue: mockRouter },
         { provide: ActivatedRoute, useValue: { snapshot: {}, params: of({}) } },
       ],
@@ -226,5 +233,106 @@ describe('ToolbarComponent', () => {
 
     component.openWidgetBuilder();
     expect(dialogSpy).not.toHaveBeenCalled();
+  });
+
+  it('should download authorized blob stream for csv, json, and pdf exports', () => {
+    const createUrlSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test-url');
+    const revokeUrlSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+    const mockBlob = new Blob(['test data'], { type: 'text/csv' });
+    mockHttp.get.mockReturnValue(of(mockBlob));
+
+    mockStore.dashboard.set({ id: 'd123', name: 'Clinical Overview' });
+
+    component.exportDashboard('csv');
+    expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/dashboards/d123/export?format=csv', {
+      responseType: 'blob',
+    });
+    expect(createUrlSpy).toHaveBeenCalledWith(mockBlob);
+    expect(revokeUrlSpy).toHaveBeenCalledWith('blob:test-url');
+
+    component.exportDashboard('json');
+    expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/dashboards/d123/export?format=json', {
+      responseType: 'blob',
+    });
+
+    component.exportDashboard('pdf');
+    expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/dashboards/d123/export/pdf', {
+      responseType: 'blob',
+    });
+
+    // Test default fallback filename when name is empty
+    mockStore.dashboard.set({ id: 'd123', name: '' });
+    component.exportDashboard('csv');
+    expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/dashboards/d123/export?format=csv', {
+      responseType: 'blob',
+    });
+
+    // Early return if no dashboard
+    mockStore.dashboard.set(null);
+    component.exportDashboard('csv');
+    expect(mockHttp.get).toHaveBeenCalledTimes(4);
+
+    createUrlSpy.mockRestore();
+    revokeUrlSpy.mockRestore();
+  });
+
+  it('should display snackbar error on export HTTP failure', () => {
+    const { throwError } = require('rxjs');
+    mockHttp.get.mockReturnValue(throwError(() => new Error('Export failed')));
+    mockStore.dashboard.set({ id: 'd123', name: 'Clinical Overview' });
+
+    component.exportDashboard('pdf');
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Failed to export dashboard. Please try again.',
+      'Dismiss',
+      { duration: 4000 },
+    );
+  });
+
+  it('should open share dialog when openShareDialog is called', () => {
+    const dash = { id: 'd1', name: 'Clinical Ops' };
+    mockStore.dashboard.set(dash);
+    const dialogSpy = TestBed.inject(MatDialog).open as any;
+
+    component.openShareDialog();
+
+    expect(dialogSpy).toHaveBeenCalled();
+
+    // Early return if no dashboard
+    mockStore.dashboard.set(null);
+    component.openShareDialog();
+    expect(dialogSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should open theme dialog when openThemeDialog is called', () => {
+    const dash = { id: 'd1', name: 'Clinical Ops' };
+    mockStore.dashboard.set(dash);
+    const dialogSpy = TestBed.inject(MatDialog).open as any;
+
+    component.openThemeDialog();
+
+    expect(dialogSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dashboardId: 'd1',
+          dashboardName: 'Clinical Ops',
+        }),
+      }),
+    );
+
+    // When dashboard is null, should use fallback values
+    mockStore.dashboard.set(null);
+    component.openThemeDialog();
+    expect(dialogSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          dashboardId: '',
+          dashboardName: 'Dashboard',
+        }),
+      }),
+    );
   });
 });

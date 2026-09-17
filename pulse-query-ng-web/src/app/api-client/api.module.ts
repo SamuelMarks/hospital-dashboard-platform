@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 import { NgModule, ModuleWithProviders, SkipSelf, Optional } from '@angular/core';
 import { Configuration } from './configuration';
 import { HttpClient } from '@angular/common/http';
@@ -10,7 +8,6 @@ import { HttpClient } from '@angular/common/http';
   exports: [],
   providers: [],
 })
-/** @docs */
 export class ApiModule {
   public static forRoot(configurationFactory: () => Configuration): ModuleWithProviders<ApiModule> {
     return {

@@ -85,3 +85,55 @@ async def test_run_mpax_arena_internal_error(mock_user, mock_mpax_service):
   assert response.status_code == 500
   assert "Boom" in response.json()["detail"]
   app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_vote_mpax_arena_candidate_success(mock_user):
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  with patch("app.api.routers.mpax_arena.mpax_arena_service.vote_candidate", new_callable=AsyncMock) as mock_vote:
+    mock_vote.return_value = {
+      "experiment_id": "exp-1",
+      "mode": "judge",
+      "candidates": [{"id": "cand-1", "model_name": "m1", "content": "sql", "is_selected": True}],
+    }
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.post("/runs/exp-1/candidates/cand-1/vote")
+
+    assert response.status_code == 200
+    assert response.json()["candidates"][0]["is_selected"] is True
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_vote_mpax_arena_candidate_not_found(mock_user):
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  with patch("app.api.routers.mpax_arena.mpax_arena_service.vote_candidate", new_callable=AsyncMock) as mock_vote:
+    mock_vote.side_effect = ValueError("Candidate not found")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.post("/runs/exp-1/candidates/cand-1/vote")
+
+    assert response.status_code == 404
+    assert "Candidate not found" in response.json()["detail"]
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_vote_mpax_arena_candidate_internal_error(mock_user):
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  with patch("app.api.routers.mpax_arena.mpax_arena_service.vote_candidate", new_callable=AsyncMock) as mock_vote:
+    mock_vote.side_effect = RuntimeError("DB down")
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.post("/runs/exp-1/candidates/cand-1/vote")
+
+    assert response.status_code == 500
+    assert "DB down" in response.json()["detail"]
+
+  app.dependency_overrides = {}

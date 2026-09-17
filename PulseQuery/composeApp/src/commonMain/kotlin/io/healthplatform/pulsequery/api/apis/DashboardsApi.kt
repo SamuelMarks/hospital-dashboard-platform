@@ -17,6 +17,8 @@ package io.healthplatform.pulsequery.api.apis
 
 import io.healthplatform.pulsequery.api.models.DashboardCreate
 import io.healthplatform.pulsequery.api.models.DashboardResponse
+import io.healthplatform.pulsequery.api.models.DashboardShareCreate
+import io.healthplatform.pulsequery.api.models.DashboardShareResponse
 import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetReorderRequest
@@ -50,12 +52,14 @@ open class DashboardsApi : ApiClient {
 
     /**
      * Clone Dashboard
-     * Creates a deep copy of an existing dashboard and all its widgets. The new dashboard will have the name \&quot;Copy of {original_name}\&quot;.  Args:     dashboard_id (UUID): The ID of the dashboard to clone.     current_user (User): Authenticated user (must own the dashboard).     db (AsyncSession): Database session.  Returns:     DashboardResponse: The newly created dashboard populated with cloned widgets.
+     * Creates a deep copy of an existing dashboard and all its widgets. The new dashboard will have the name \&quot;Copy of {original_name}\&quot;.  Args:     dashboard_id (UUID): The ID of the dashboard to clone.     current_user (User): Authenticated user (must have access to the dashboard).     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     DashboardResponse: The newly created dashboard populated with cloned widgets.
      * @param dashboardId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return DashboardResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun cloneDashboardApiV1DashboardsDashboardIdClonePost(dashboardId: kotlin.String): HttpResponse<DashboardResponse> {
+    open suspend fun cloneDashboardApiV1DashboardsDashboardIdClonePost(dashboardId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<DashboardResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -63,9 +67,11 @@ open class DashboardsApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/clone".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -85,19 +91,21 @@ open class DashboardsApi : ApiClient {
      * Create Dashboard
      * Create a new empty dashboard.
      * @param dashboardCreate 
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return DashboardResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createDashboardApiV1DashboardsPost(dashboardCreate: DashboardCreate): HttpResponse<DashboardResponse> {
+    open suspend fun createDashboardApiV1DashboardsPost(dashboardCreate: DashboardCreate, token: kotlin.String? = null): HttpResponse<DashboardResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = dashboardCreate
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/",
             query = localVariableQuery,
@@ -119,19 +127,23 @@ open class DashboardsApi : ApiClient {
      * Add a widget to the dashboard with Dry-Run Validation.
      * @param dashboardId 
      * @param widgetIn 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return WidgetResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId: kotlin.String, widgetIn: WidgetIn): HttpResponse<WidgetResponse> {
+    open suspend fun createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId: kotlin.String, widgetIn: WidgetIn, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<WidgetResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = widgetIn
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/widgets".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -150,11 +162,13 @@ open class DashboardsApi : ApiClient {
 
     /**
      * Delete Dashboard
-     * Delete dashboard (and cascades to widgets).
+     * Delete dashboard (and cascades to widgets and shares). Only owner can delete.
      * @param dashboardId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return void
      */
-    open suspend fun deleteDashboardApiV1DashboardsDashboardIdDelete(dashboardId: kotlin.String): HttpResponse<Unit> {
+    open suspend fun deleteDashboardApiV1DashboardsDashboardIdDelete(dashboardId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -162,9 +176,11 @@ open class DashboardsApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.DELETE,
             "/api/v1/dashboards/{dashboard_id}".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -181,12 +197,15 @@ open class DashboardsApi : ApiClient {
 
 
     /**
-     * Delete Widget
-     * Delete a widget owned by the current user.
-     * @param widgetId 
+     * Delete Dashboard Share
+     * Revokes a dashboard share. Only the dashboard owner can revoke shares.  Args:     dashboard_id (UUID): Target dashboard ID.     share_id (UUID): Specific share record ID to delete.     current_user (User): Authenticated owner.     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.
+     * @param dashboardId 
+     * @param shareId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return void
      */
-    open suspend fun deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widgetId: kotlin.String): HttpResponse<Unit> {
+    open suspend fun deleteDashboardShareApiV1DashboardsDashboardIdSharesShareIdDelete(dashboardId: kotlin.String, shareId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<Unit> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -194,11 +213,165 @@ open class DashboardsApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.DELETE,
+            "/api/v1/dashboards/{dashboard_id}/shares/{share_id}".replace("{" + "dashboard_id" + "}", "$dashboardId").replace("{" + "share_id" + "}", "$shareId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Delete Widget
+     * Delete a widget from a dashboard.
+     * @param widgetId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return void
+     */
+    open suspend fun deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widgetId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<Unit> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.DELETE,
             "/api/v1/dashboards/widgets/{widget_id}".replace("{" + "widget_id" + "}", "$widgetId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Export Dashboard
+     * Exports dashboard layout, configuration, and data snapshot in JSON or CSV format.  Args:     dashboard_id (UUID): Target dashboard ID.     current_user (User): Authenticated user requesting export.     db (AsyncSession): Database session.     format (str): Export format (&#39;json&#39; or &#39;csv&#39;).     accept_language (Optional[str]): Language preference header.  Returns:     Response: File download stream with appropriate media type.
+     * @param dashboardId 
+     * @param format  (optional, default to "json")
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun exportDashboardApiV1DashboardsDashboardIdExportGet(dashboardId: kotlin.String, format: kotlin.String? = "json", token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        format?.apply { localVariableQuery["format"] = listOf("$format") }
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/dashboards/{dashboard_id}/export".replace("{" + "dashboard_id" + "}", "$dashboardId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Export Dashboard Pdf
+     * Exports dashboard layout, clinical metadata, and data snapshot formatted as a PDF report.  Args:     dashboard_id (UUID): Target dashboard ID.     current_user (User): Authenticated user requesting export.     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     Response: Binary stream formatted as an application/pdf document.
+     * @param dashboardId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun exportDashboardPdfApiV1DashboardsDashboardIdExportPdfGet(dashboardId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/dashboards/{dashboard_id}/export/pdf".replace("{" + "dashboard_id" + "}", "$dashboardId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+    /**
+     * Export Widget
+     * Exports an individual widget configuration and its analytical data snapshot.  Args:     dashboard_id (UUID): Target dashboard ID.     widget_id (UUID): Target widget ID within the dashboard.     current_user (User): Authenticated user requesting export.     db (AsyncSession): PostgreSQL async database session.     format (str): Export format (&#39;json&#39; or &#39;csv&#39;). Defaults to &#39;json&#39;.     accept_language (Optional[str]): Language preference header.  Returns:     Response: Streaming file download with appropriate MIME type and Content-Disposition.  Raises:     HTTPException: 404 if dashboard or widget not found or access denied.
+     * @param dashboardId 
+     * @param widgetId 
+     * @param format  (optional, default to "json")
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return kotlin.Any
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun exportWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdExportGet(dashboardId: kotlin.String, widgetId: kotlin.String, format: kotlin.String? = "json", token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.Any> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        format?.apply { localVariableQuery["format"] = listOf("$format") }
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/export".replace("{" + "dashboard_id" + "}", "$dashboardId").replace("{" + "widget_id" + "}", "$widgetId"),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -216,10 +389,12 @@ open class DashboardsApi : ApiClient {
      * Get Dashboard
      * Get a specific dashboard details.
      * @param dashboardId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return DashboardResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getDashboardApiV1DashboardsDashboardIdGet(dashboardId: kotlin.String): HttpResponse<DashboardResponse> {
+    open suspend fun getDashboardApiV1DashboardsDashboardIdGet(dashboardId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<DashboardResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -227,9 +402,11 @@ open class DashboardsApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/dashboards/{dashboard_id}".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -246,12 +423,15 @@ open class DashboardsApi : ApiClient {
 
 
     /**
-     * List Dashboards
-     * List all dashboards owned by the current user.
-     * @return kotlin.collections.List<DashboardResponse>
+     * List Dashboard Shares
+     * Lists all active shares on a dashboard. Accessible to owners and collaborators.  Args:     dashboard_id (UUID): Target dashboard ID.     current_user (User): Authenticated user with access.     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     List[DashboardShareResponse]: List of active shares.
+     * @param dashboardId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return kotlin.collections.List<DashboardShareResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listDashboardsApiV1DashboardsGet(): HttpResponse<kotlin.collections.List<DashboardResponse>> {
+    open suspend fun listDashboardSharesApiV1DashboardsDashboardIdSharesGet(dashboardId: kotlin.String, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.collections.List<DashboardShareResponse>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -259,11 +439,56 @@ open class DashboardsApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/dashboards/{dashboard_id}/shares".replace("{" + "dashboard_id" + "}", "$dashboardId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse>().map { value }
+    }
+
+    @Serializable(ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse.Companion::class)
+    private class ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse(val value: List<DashboardShareResponse>) {
+        companion object : KSerializer<ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse> {
+            private val serializer: KSerializer<List<DashboardShareResponse>> = serializer<List<DashboardShareResponse>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse(serializer.deserialize(decoder))
+        }
+    }
+
+    /**
+     * List Dashboards
+     * List all dashboards owned by or shared with the current user.
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @return kotlin.collections.List<DashboardResponse>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listDashboardsApiV1DashboardsGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<DashboardResponse>> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
-            "/api/v1/dashboards/",
+            "/api/v1/dashboards",
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -287,23 +512,70 @@ open class DashboardsApi : ApiClient {
     }
 
     /**
+     * List Dashboards
+     * List all dashboards owned by or shared with the current user.
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @return kotlin.collections.List<DashboardResponse>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun listDashboardsApiV1DashboardsGet_0(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<DashboardResponse>> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/dashboards/",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<ListDashboardsApiV1DashboardsGet0Response>().map { value }
+    }
+
+    @Serializable(ListDashboardsApiV1DashboardsGet0Response.Companion::class)
+    private class ListDashboardsApiV1DashboardsGet0Response(val value: List<DashboardResponse>) {
+        companion object : KSerializer<ListDashboardsApiV1DashboardsGet0Response> {
+            private val serializer: KSerializer<List<DashboardResponse>> = serializer<List<DashboardResponse>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: ListDashboardsApiV1DashboardsGet0Response) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = ListDashboardsApiV1DashboardsGet0Response(serializer.deserialize(decoder))
+        }
+    }
+
+    /**
      * Reorder Widgets
      * Bulk update widget positions and groups. Used for Drag-and-Drop persistence.
      * @param dashboardId 
      * @param widgetReorderRequest 
-     * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return kotlin.collections.Map<kotlin.String, kotlin.Any>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun reorderWidgetsApiV1DashboardsDashboardIdReorderPost(dashboardId: kotlin.String, widgetReorderRequest: WidgetReorderRequest): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
+    open suspend fun reorderWidgetsApiV1DashboardsDashboardIdReorderPost(dashboardId: kotlin.String, widgetReorderRequest: WidgetReorderRequest, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlin.Any>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = widgetReorderRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/reorder".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -320,9 +592,9 @@ open class DashboardsApi : ApiClient {
 
 
     @Serializable(ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse.Companion::class)
-    private class ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse(val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>) {
+    private class ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse(val value: Map<kotlin.String, kotlin.Any>) {
         companion object : KSerializer<ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
+            private val serializer: KSerializer<Map<kotlin.String, kotlin.Any>> = serializer<Map<String, kotlin.Any>>()
             override val descriptor = serializer.descriptor
             override fun serialize(encoder: Encoder, value: ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse(serializer.deserialize(decoder))
@@ -332,10 +604,11 @@ open class DashboardsApi : ApiClient {
     /**
      * Restore Default Dashboard
      * Re-creates the standard &#39;Hospital Command Center&#39; dashboard. If the dashboard already exists, creates a copy with a suffix to prevent data loss. Populates the dashboard with all currently active templates in the registry.
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return DashboardResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost(): HttpResponse<DashboardResponse> {
+    open suspend fun restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost(token: kotlin.String? = null): HttpResponse<DashboardResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -343,9 +616,10 @@ open class DashboardsApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/restore-defaults",
             query = localVariableQuery,
@@ -362,23 +636,65 @@ open class DashboardsApi : ApiClient {
 
 
     /**
+     * Share Dashboard
+     * Shares a dashboard with another user by email. Only the dashboard owner can share.  Args:     dashboard_id (UUID): Target dashboard ID.     share_in (DashboardShareCreate): Email and permission level (&#39;VIEW&#39; or &#39;EDIT&#39;).     current_user (User): Authenticated user (must be owner).     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     DashboardShareResponse: Details of created or updated share.
+     * @param dashboardId 
+     * @param dashboardShareCreate 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
+     * @return DashboardShareResponse
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun shareDashboardApiV1DashboardsDashboardIdSharesPost(dashboardId: kotlin.String, dashboardShareCreate: DashboardShareCreate, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<DashboardShareResponse> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = dashboardShareCreate
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.POST,
+            "/api/v1/dashboards/{dashboard_id}/shares".replace("{" + "dashboard_id" + "}", "$dashboardId"),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return jsonRequest(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap()
+    }
+
+
+
+    /**
      * Update Dashboard
      * Rename a dashboard.
      * @param dashboardId 
      * @param dashboardCreate 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return DashboardResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateDashboardApiV1DashboardsDashboardIdPut(dashboardId: kotlin.String, dashboardCreate: DashboardCreate): HttpResponse<DashboardResponse> {
+    open suspend fun updateDashboardApiV1DashboardsDashboardIdPut(dashboardId: kotlin.String, dashboardCreate: DashboardCreate, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<DashboardResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = dashboardCreate
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PUT,
             "/api/v1/dashboards/{dashboard_id}".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -400,19 +716,23 @@ open class DashboardsApi : ApiClient {
      * Update widget configuration (e.g., resize, change query) with Dry-Run.
      * @param widgetId 
      * @param widgetUpdate 
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param acceptLanguage  (optional)
      * @return WidgetResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateWidgetApiV1DashboardsWidgetsWidgetIdPut(widgetId: kotlin.String, widgetUpdate: WidgetUpdate): HttpResponse<WidgetResponse> {
+    open suspend fun updateWidgetApiV1DashboardsWidgetsWidgetIdPut(widgetId: kotlin.String, widgetUpdate: WidgetUpdate, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<WidgetResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = widgetUpdate
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.PUT,
             "/api/v1/dashboards/widgets/{widget_id}".replace("{" + "widget_id" + "}", "$widgetId"),
             query = localVariableQuery,

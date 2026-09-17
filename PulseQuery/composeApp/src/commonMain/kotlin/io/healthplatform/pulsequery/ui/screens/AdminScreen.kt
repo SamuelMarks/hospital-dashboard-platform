@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,11 +28,16 @@ import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.*
 
 /**
- * Admin Screen for managing platform configurations like API keys and visible LLM models.
+ * Admin Screen for managing platform configurations like API keys, visible LLM models,
+ * and navigating to hospital user role management.
+ *
+ * @param onNavigateToUserManagement Callback navigating to user management screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AdminScreen() {
+fun AdminScreen(
+    onNavigateToUserManagement: () -> Unit = {}
+) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
@@ -47,20 +53,22 @@ fun AdminScreen() {
         coroutineScope.launch {
             isLoading = true
             errorMessage = null
-            try {
+            runCatching {
                 val response = AppContainer.adminApi.readAdminSettingsApiV1AdminSettingsGet()
-                val settings = response.body()
-                
-                apiKeys.clear()
-                settings.apiKeys.forEach { (k, v) -> apiKeys[k] = v }
-                
-                visibleModels.clear()
-                visibleModels.addAll(settings.visibleModels)
-            } catch (e: Exception) {
-                errorMessage = errorLoadBase + e.message
-            } finally {
-                isLoading = false
-            }
+                response.body()
+            }.fold(
+                onSuccess = { settings ->
+                    apiKeys.clear()
+                    settings.apiKeys.forEach { (k, v) -> apiKeys[k] = v }
+
+                    visibleModels.clear()
+                    visibleModels.addAll(settings.visibleModels)
+                },
+                onFailure = { e ->
+                    errorMessage = errorLoadBase + e.message
+                }
+            )
+            isLoading = false
         }
     }
 
@@ -74,18 +82,21 @@ fun AdminScreen() {
         coroutineScope.launch {
             isLoading = true
             errorMessage = null
-            try {
+            runCatching {
                 val updateReq = AdminSettingsUpdateRequest(
                     apiKeys = apiKeys.toMap(),
                     visibleModels = visibleModels.toList()
                 )
                 AppContainer.adminApi.writeAdminSettingsApiV1AdminSettingsPut(updateReq)
-                snackbarHostState.showSnackbar(saveSuccessMsg)
-            } catch (e: Exception) {
-                errorMessage = errorSaveBase + e.message
-            } finally {
-                isLoading = false
-            }
+            }.fold(
+                onSuccess = {
+                    snackbarHostState.showSnackbar(saveSuccessMsg)
+                },
+                onFailure = { e ->
+                    errorMessage = errorSaveBase + e.message
+                }
+            )
+            isLoading = false
         }
     }
 
@@ -97,7 +108,14 @@ fun AdminScreen() {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
-                )
+                ),
+                actions = {
+                    TextButton(onClick = onNavigateToUserManagement) {
+                        Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Users")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -125,6 +143,33 @@ fun AdminScreen() {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     contentPadding = PaddingValues(bottom = 80.dp) // space for FAB
                 ) {
+                    item {
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            onClick = onNavigateToUserManagement
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Staff User Management",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Assign roles (Physician, Charge Nurse, Analyst) and toggle account status.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(Icons.Filled.PersonAdd, contentDescription = null)
+                            }
+                        }
+                    }
+
                     item {
                         Text(
                             text = stringResource(Res.string.api_keys),

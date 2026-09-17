@@ -1,0 +1,139 @@
+<div class="page">
+  <div class="header">
+    <div class="title">
+      <h1 i18n>User & Access Management</h1>
+      <p i18n>
+        Configure hospital roles, permissions, and account statuses across medical and analytics
+        staff.
+      </p>
+    </div>
+    <a i18n mat-button routerLink="/admin" data-testid="back-to-admin-btn">
+      <mat-icon>arrow_back</mat-icon>
+      Back to System Settings
+    </a>
+  </div>
+
+  <!-- Loading Bar -->
+  @if (isLoading()) {
+    <mat-progress-bar mode="indeterminate" data-testid="loading-bar"></mat-progress-bar>
+  }
+
+  <!-- Error Banner -->
+  @if (errorMessage()) {
+    <div class="error-banner" data-testid="error-message">
+      <mat-icon i18n>error_outline</mat-icon>
+      <span i18n>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- Filters Card -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" style="flex: 2; min-width: 250px">
+        <mat-label i18n>Search Users by Email</mat-label>
+        <input
+          matInput
+          [formControl]="searchControl"
+          i18n-placeholder
+          placeholder="e.g. physician@hospital.org"
+          (keyup.enter)="fetchUsers()"
+          data-testid="search-input"
+        />
+        <button i18n mat-icon-button matSuffix (click)="fetchUsers()" data-testid="search-btn">
+          <mat-icon>search</mat-icon>
+        </button>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="flex: 1; min-width: 200px">
+        <mat-label i18n>Filter by Role</mat-label>
+        <mat-select
+          [formControl]="roleFilterControl"
+          (selectionChange)="fetchUsers()"
+          data-testid="role-filter-select"
+        >
+          <mat-option i18n value="">All Clinical Roles</mat-option>
+          @for (role of availableRoles; track role) {
+            <mat-option i18n [value]="role">{{ role }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        i18n
+        mat-flat-button
+        color="primary"
+        (click)="fetchUsers()"
+        data-testid="apply-filters-btn"
+      >
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </mat-card>
+
+  <!-- Users Table Card -->
+  <mat-card class="table-card">
+    <table mat-table [dataSource]="users()" class="mat-elevation-z0" data-testid="users-table">
+      <!-- Email Column -->
+      <ng-container matColumnDef="email">
+        <th i18n mat-header-cell *matHeaderCellDef>User Email</th>
+        <td i18n mat-cell *matCellDef="let user" data-testid="email-cell">
+          <strong>{{ user.email }}</strong>
+        </td>
+      </ng-container>
+
+      <!-- Role Assignment Column -->
+      <ng-container matColumnDef="role">
+        <th i18n mat-header-cell *matHeaderCellDef>Clinical Role</th>
+        <td i18n mat-cell *matCellDef="let user" data-testid="role-cell">
+          <mat-form-field appearance="outline" style="margin-top: 8px; width: 220px">
+            <mat-select
+              [value]="user.role"
+              (selectionChange)="changeUserRole(user, $event.value)"
+              data-testid="user-role-select"
+            >
+              @for (role of availableRoles; track role) {
+                <mat-option [value]="role">{{ role }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </td>
+      </ng-container>
+
+      <!-- Administrator Privileges Column -->
+      <ng-container matColumnDef="is_admin">
+        <th i18n mat-header-cell *matHeaderCellDef>Super Admin</th>
+        <td i18n mat-cell *matCellDef="let user" data-testid="is-admin-cell">
+          <span class="role-chip" [ngClass]="getRoleBadgeClass(user.role)">
+            {{ user.is_admin ? 'SUPER_ADMIN' : 'STANDARD' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Active Status Column -->
+      <ng-container matColumnDef="is_active">
+        <th i18n mat-header-cell *matHeaderCellDef>Account Active</th>
+        <td i18n mat-cell *matCellDef="let user" data-testid="is-active-cell">
+          <mat-slide-toggle
+            [checked]="user.is_active"
+            (change)="toggleUserStatus(user)"
+            data-testid="status-toggle"
+          >
+            {{ user.is_active ? 'Active' : 'Suspended' }}
+          </mat-slide-toggle>
+        </td>
+      </ng-container>
+
+      <!-- Language Preference Column -->
+      <ng-container matColumnDef="language_preference">
+        <th i18n mat-header-cell *matHeaderCellDef>Locale</th>
+        <td i18n mat-cell *matCellDef="let user" data-testid="language-cell">
+          {{ user.language_preference?.toUpperCase() || 'EN' }}
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns" data-testid="user-row"></tr>
+    </table>
+  </mat-card>
+</div>

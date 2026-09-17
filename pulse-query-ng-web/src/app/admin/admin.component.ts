@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { form, FormRoot, FormField } from '@angular/forms/signals';
 import { AdminService, AiService, ModelInfo } from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
@@ -11,7 +9,7 @@ import { forkJoin } from 'rxjs';
 /** @docs */
 @Component({
   selector: 'app-admin',
-  imports: [CommonModule, FormRoot, FormField],
+  imports: [FormRoot, FormField],
 
   template: `
     @if (settingsLoaded()) {
@@ -207,12 +205,10 @@ export class AdminComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private connectionService = inject(ConnectionStatusService);
 
-  // v8 ignore start
   settingsLoaded = signal<boolean>(false);
   availableModels = signal<ModelInfo[]>([]);
   message = signal<string>('');
   isSaving = signal<boolean>(false);
-  // v8 ignore stop
 
   formModel = signal({
     openai: '',
@@ -255,7 +251,6 @@ export class AdminComponent implements OnInit {
     });
   }
 
-  // v8 ignore start
   trackByFn(index: number): number {
     return index;
   }

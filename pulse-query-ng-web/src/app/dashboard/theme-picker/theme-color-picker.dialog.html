@@ -1,0 +1,99 @@
+<h2 mat-dialog-title class="flex items-center gap-2">
+  <mat-icon i18n style="color: var(--sys-primary)">palette</mat-icon>
+  <span i18n>Dashboard Theme Palette</span>
+</h2>
+
+<mat-dialog-content class="theme-dialog-content py-3">
+  <p i18n class="text-sm text-secondary mb-4">
+    Select a clinical color seed to customize dynamic Material 3 tonal palettes across widgets,
+    charts, and navigation.
+  </p>
+
+  <!-- Curated Palettes -->
+  <div class="mb-4">
+    <span i18n class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2 block">
+      Curated Clinical Palettes
+    </span>
+    <div class="grid grid-cols-1 gap-2">
+      @for (pal of palettes; track pal.hex) {
+        <div
+          class="palette-card flex items-center gap-3 p-2 rounded-lg bg-surface-variant/40"
+          [class.selected]="selectedColor() === pal.hex"
+          (click)="selectPalette(pal)"
+          role="button"
+          tabindex="0"
+          (keydown.enter)="selectPalette(pal)"
+          [attr.aria-label]="'Select ' + pal.name"
+        >
+          <div class="color-swatch shadow-sm" [style.background-color]="pal.hex"></div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-sm text-on-surface">{{ pal.name }}</div>
+            <div class="text-xs text-secondary truncate">{{ pal.description }}</div>
+          </div>
+          <span class="text-xs font-mono text-secondary px-2 py-0.5 rounded bg-surface/80">
+            {{ pal.hex }}
+          </span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Custom Hex Input -->
+  <div class="mb-4">
+    <span i18n class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2 block">
+      Custom Color Seed
+    </span>
+    <div class="flex items-center gap-3">
+      <input
+        type="color"
+        [value]="selectedColor()"
+        (input)="onColorPickerInput($event)"
+        class="w-10 h-10 rounded border border-gray-300 cursor-pointer p-0"
+        aria-label="Color Picker Palette"
+      />
+      <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
+        <mat-label i18n>Hex Color Code</mat-label>
+        <input
+          matInput
+          [(ngModel)]="customHex"
+          (input)="onHexInputChange()"
+          placeholder="#1565C0"
+          maxlength="7"
+        />
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Live Palette Preview -->
+  <div
+    class="preview-box border border-outline/30 flex items-center justify-between"
+    [style.background-color]="selectedColor()"
+  >
+    <span i18n class="text-white font-medium text-sm shadow-sm">Theme Preview Card</span>
+    <span class="text-white/80 font-mono text-xs">{{ selectedColor() }}</span>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="gap-2">
+  <button i18n mat-button (click)="close()" [disabled]="isSaving()">Cancel</button>
+  <button
+    i18n
+    mat-stroked-button
+    color="primary"
+    (click)="applyTheme()"
+    [disabled]="isSaving()"
+    data-testid="btn-apply-theme"
+  >
+    Apply to Session
+  </button>
+  <button
+    i18n
+    mat-flat-button
+    color="primary"
+    (click)="saveToDashboard()"
+    [disabled]="isSaving()"
+    data-testid="btn-save-theme"
+  >
+    Save to Dashboard
+  </button>
+</mat-dialog-actions>

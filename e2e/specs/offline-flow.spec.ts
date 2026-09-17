@@ -7,6 +7,7 @@ test.describe("Offline & Reconnection Edge Cases", () => {
   const userEmail = `e2e_offline_${timestamp}@test.com`;
   const userPassword = "password123";
   let authToken: string;
+  let dashboardId: string;
 
   test.beforeAll(async ({ request }) => {
     const regRes = await request.post(`${BACKEND_URL}/auth/register`, {
@@ -20,6 +21,14 @@ test.describe("Offline & Reconnection Edge Cases", () => {
     expect(loginRes.ok()).toBeTruthy();
     const loginData = await loginRes.json();
     authToken = loginData.access_token;
+
+    const dashRes = await request.post(`${BACKEND_URL}/dashboards/`, {
+      data: { name: `Offline Dashboard ${timestamp}` },
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    expect(dashRes.ok()).toBeTruthy();
+    const dashData = await dashRes.json();
+    dashboardId = dashData.id;
   });
 
   test.beforeEach(async ({ page }) => {
@@ -33,23 +42,8 @@ test.describe("Offline & Reconnection Edge Cases", () => {
     context,
     page,
   }) => {
-    // Go to dashboard to perform an action
-    await page.goto("/");
-
-    // Skip onboarding if present
-    const skipBtn = page.locator('[data-testid="skip-button"]');
-    try {
-      await skipBtn.waitFor({ state: "visible", timeout: 2000 });
-      await skipBtn.click();
-    } catch (e) {
-      // Ignored if skip button not found
-    }
-
-    const dashCard = page.locator("mat-card.dash-card").first();
-    if (await dashCard.isVisible()) {
-      await dashCard.click();
-    }
-
+    // Navigate directly to known dashboard
+    await page.goto(`/dashboard/${dashboardId}`);
     await page.waitForSelector("app-dashboard-layout", { timeout: 10000 });
 
     // Make sure we are fully loaded
@@ -60,14 +54,10 @@ test.describe("Offline & Reconnection Edge Cases", () => {
       route.abort("internetdisconnected"),
     );
 
-    // Attempt to navigate to Admin which triggers API requests
-    // Or just click Refresh dashboard if available
+    // Refresh dashboard triggers API requests under offline conditions
     const refreshBtn = page.locator('button[data-testid="btn-refresh"]');
-    if (await refreshBtn.isVisible()) {
-      await refreshBtn.click();
-    } else {
-      await page.locator("a.nav-link", { hasText: "Admin" }).click();
-    }
+    await expect(refreshBtn).toBeVisible({ timeout: 10000 });
+    await refreshBtn.click();
 
     // Wait for the snackbar to show the error
     const snackbar = page.locator(".mat-mdc-snack-bar-container");

@@ -28,6 +28,9 @@ import androidx.compose.ui.semantics.contentDescription
  * @param data List of Pair<Label, Value> representing the data points.
  * @param modifier Compose modifier for layout.
  * @param lineColor Color of the line, defaults to primary theme color.
+ * @param dotColor Color of point markers along the line.
+ * @param labelColor Color for axis text labels.
+ * @param textStyle Typography style for axis text labels.
  */
 @Composable
 fun LineChart(

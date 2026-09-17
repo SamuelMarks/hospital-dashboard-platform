@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, computed, Signal, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 
 // Material Imports
@@ -39,7 +37,6 @@ export interface WidgetEditorData {
 @Component({
   selector: 'app-widget-editor-dialog',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -83,9 +80,7 @@ export interface WidgetEditorData {
   ],
   templateUrl: './widget-editor.dialog.html',
 })
-/* v8 ignore start */
 export class WidgetEditorDialog {
-  /* v8 ignore stop */
   /** Data. */
   readonly data = inject<WidgetEditorData>(MAT_DIALOG_DATA);
   /** dialogRef property. */

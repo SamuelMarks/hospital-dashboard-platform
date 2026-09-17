@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Accessible Pie Chart Component.
@@ -18,7 +17,7 @@ import {
   PLATFORM_ID,
   effect,
 } from '@angular/core';
-import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { ChartConfig } from '../viz-chart/viz-chart.component';
 import { ThemeService } from '../../../core/theme/theme.service';
@@ -38,7 +37,7 @@ interface PieSlice {
 /** Viz Pie component. */
 @Component({
   selector: 'viz-pie',
-  imports: [CommonModule],
+  imports: [],
 
   styles: [
     `

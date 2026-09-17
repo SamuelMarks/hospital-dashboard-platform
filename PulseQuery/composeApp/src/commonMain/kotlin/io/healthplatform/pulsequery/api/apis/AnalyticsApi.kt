@@ -15,6 +15,7 @@
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.models.BedCapacityAlert
 import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
 
@@ -44,14 +45,58 @@ open class AnalyticsApi : ApiClient {
     ): super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
+     * Get Capacity Alerts
+     * Evaluates real-time DuckDB hospital census against configured AlertRules.  Args:     current_user (User): Authenticated user requesting alerts.     db (AsyncSession): PostgreSQL async database session.  Returns:     list[BedCapacityAlert]: List of active capacity alerts exceeding configured thresholds.
+     * @param token JWT token query parameter for direct browser downloads (optional)
+     * @return kotlin.collections.List<BedCapacityAlert>
+     */
+    @Suppress("UNCHECKED_CAST")
+    open suspend fun getCapacityAlertsApiV1AnalyticsAlertsGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<BedCapacityAlert>> {
+
+        val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
+
+        val localVariableBody = 
+            io.ktor.client.utils.EmptyContent
+
+        val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
+        val localVariableHeaders = mutableMapOf<String, String>()
+
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
+            RequestMethod.GET,
+            "/api/v1/analytics/alerts",
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+        )
+
+        return request(
+            localVariableConfig,
+            localVariableBody,
+            localVariableAuthNames
+        ).wrap<GetCapacityAlertsApiV1AnalyticsAlertsGetResponse>().map { value }
+    }
+
+    @Serializable(GetCapacityAlertsApiV1AnalyticsAlertsGetResponse.Companion::class)
+    private class GetCapacityAlertsApiV1AnalyticsAlertsGetResponse(val value: List<BedCapacityAlert>) {
+        companion object : KSerializer<GetCapacityAlertsApiV1AnalyticsAlertsGetResponse> {
+            private val serializer: KSerializer<List<BedCapacityAlert>> = serializer<List<BedCapacityAlert>>()
+            override val descriptor = serializer.descriptor
+            override fun serialize(encoder: Encoder, value: GetCapacityAlertsApiV1AnalyticsAlertsGetResponse) = serializer.serialize(encoder, value.value)
+            override fun deserialize(decoder: Decoder) = GetCapacityAlertsApiV1AnalyticsAlertsGetResponse(serializer.deserialize(decoder))
+        }
+    }
+
+    /**
      * List Llm Outputs
      * Returns a flattened view of chat arena candidates, including: - user query (nearest prior user message) - LLM candidate output and SQL snippet - user selection (is_selected)
      * @param limit  (optional, default to 500)
      * @param offset  (optional, default to 0)
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<LlmOutputAnalyticsRow>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listLlmOutputsApiV1AnalyticsLlmGet(limit: kotlin.Int? = 500, offset: kotlin.Int? = 0): HttpResponse<kotlin.collections.List<LlmOutputAnalyticsRow>> {
+    open suspend fun listLlmOutputsApiV1AnalyticsLlmGet(limit: kotlin.Int? = 500, offset: kotlin.Int? = 0, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<LlmOutputAnalyticsRow>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -61,9 +106,10 @@ open class AnalyticsApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         limit?.apply { localVariableQuery["limit"] = listOf("$limit") }
         offset?.apply { localVariableQuery["offset"] = listOf("$offset") }
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/analytics/llm",
             query = localVariableQuery,

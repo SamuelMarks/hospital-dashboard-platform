@@ -1,8 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 // ... (imports same as before)
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatCardModule } from '@angular/material/card';
@@ -20,7 +18,6 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
 @Component({
   selector: 'app-widget-gallery',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     DragDropModule,
     MatCardModule,
@@ -116,7 +113,6 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
 })
 /** @docs */
 export class WidgetGalleryComponent implements OnInit {
-  /* v8 ignore next 3 */
   /* istanbul ignore next */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;

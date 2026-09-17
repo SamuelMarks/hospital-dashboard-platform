@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * Analytics API service and DTOs.
@@ -45,9 +44,7 @@ export interface LlmAnalyticsRow {
 
 /** Client for analytics endpoints. */
 @Service()
-/* v8 ignore start */
 export class AnalyticsService {
-  /* v8 ignore stop */
   /** Resolved API base URL. */
   private readonly baseUrl: string;
 

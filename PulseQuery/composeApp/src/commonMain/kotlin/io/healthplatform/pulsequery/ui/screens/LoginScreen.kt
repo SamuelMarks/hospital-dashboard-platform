@@ -20,16 +20,21 @@ import pulsequery.composeapp.generated.resources.*
 /**
  * Authentication Screen.
  * Provides user login and registration utilizing Ktor API models and Compose MD3 layout.
+ *
+ * @param onLoginSuccess Callback invoked upon successful user authentication.
+ * @param onNavigateToRegister Optional callback to navigate to dedicated registration screen.
  */
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onNavigateToRegister: (() -> Unit)? = null
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var isRegisterMode by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     
@@ -135,38 +140,21 @@ fun LoginScreen(
                     errorMessage = null
 
                     coroutineScope.launch {
-                        try {
-                            // First attempt to login
-                            try {
-                                val tokenResponse = AppContainer.authApi.loginAccessTokenApiV1AuthLoginPost(
-                                    grantType = "password",
-                                    username = email,
-                                    password = password,
-                                    scope = "",
-                                    clientId = null,
-                                    clientSecret = null
-                                )
-                                AppContainer.currentToken = tokenResponse.body().accessToken
-                            } catch (loginException: Exception) {
-                                // If login fails, try to register
-                                try {
-                                    val userCreate = UserCreate(email = email, password = password)
-                                    AppContainer.authApi.registerUserApiV1AuthRegisterPost(userCreate)
-                                    
-                                    // Then login again
-                                    val tokenResponse = AppContainer.authApi.loginAccessTokenApiV1AuthLoginPost(
-                                        grantType = "password",
-                                        username = email,
-                                        password = password,
-                                        scope = "",
-                                        clientId = null,
-                                        clientSecret = null
-                                    )
-                                    AppContainer.currentToken = tokenResponse.body().accessToken
-                                } catch (registerException: Exception) {
-                                    throw Exception(errLoginRegFailed + registerException.message)
-                                }
+                        runCatching {
+                            if (isRegisterMode) {
+                                val userCreate = UserCreate(email = email, password = password)
+                                AppContainer.authApi.registerUserApiV1AuthRegisterPost(userCreate)
                             }
+
+                            val tokenResponse = AppContainer.authApi.loginAccessTokenApiV1AuthLoginPost(
+                                grantType = "password",
+                                username = email,
+                                password = password,
+                                scope = "",
+                                clientId = null,
+                                clientSecret = null
+                            )
+                            AppContainer.currentToken = tokenResponse.body().accessToken
 
                             // Fetch current user details
                             val meResponse = AppContainer.authApi.readUsersMeApiV1AuthMeGet()
@@ -176,13 +164,17 @@ fun LoginScreen(
                             } else {
                                 errorMessage = errFetchProfile
                             }
-                        } catch (e: Exception) {
+                        }.onFailure { e ->
                             println("LoginScreen ERROR: ${e.message}")
-                            e.printStackTrace()
-                            errorMessage = e.message ?: errAuthFailed
-                        } finally {
-                            isLoading = false
+                            val msg = e.message ?: ""
+                            errorMessage = when {
+                                isRegisterMode -> "Registration failed: ${if (msg.contains("already registered", ignoreCase = true)) "Email already registered" else msg.ifBlank { errAuthFailed }}"
+                                msg.contains("401", ignoreCase = true) || msg.contains("Unauthorized", ignoreCase = true) -> "Invalid username or password."
+                                msg.contains("timeout", ignoreCase = true) -> "Network timeout. Please check your connection."
+                                else -> errAuthFailed
+                            }
                         }
+                        isLoading = false
                     }
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
@@ -194,8 +186,23 @@ fun LoginScreen(
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Text(stringResource(Res.string.login_register))
+                    Text(if (isRegisterMode) "Register" else stringResource(Res.string.login_register))
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            TextButton(
+                onClick = {
+                    if (onNavigateToRegister != null) {
+                        onNavigateToRegister()
+                    } else {
+                        isRegisterMode = !isRegisterMode
+                        errorMessage = null
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (isRegisterMode) "Already have an account? Log In" else "Need an account? Register")
             }
         }
     }

@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
   FormRoot,
   FormField,
@@ -27,7 +25,6 @@ import { UserCreate } from '../api-client';
 @Component({
   selector: 'app-register',
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     RouterModule,

@@ -199,3 +199,123 @@ def test_hard_constraint_max_enforced(monkeypatch) -> None:
 
   allocation = {item["Unit"]: item["Patient_Count"] for item in data}
   assert allocation.get("Unit1", 0.0) <= 2.01
+
+
+def test_infeasible_min_exceeds_max_constraint() -> None:
+  """Test that constraint with min > max returns an infeasible constraint error."""
+  demand = json.dumps({"ServiceA": 10.0})
+  capacity = json.dumps({"Unit1": 20.0})
+  affinity = json.dumps({"ServiceA": {"Unit1": 1.0}})
+  constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "min": 15.0, "max": 5.0}])
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
+  data = json.loads(result)
+  assert "error" in data
+  assert "infeasible constraint" in data["error"].lower()
+  assert "exceeds maximum flow" in data["error"].lower()
+
+
+def test_infeasible_min_exceeds_demand_constraint() -> None:
+  """Test that constraint with min > total service demand returns an infeasible constraint error."""
+  demand = json.dumps({"ServiceA": 10.0})
+  capacity = json.dumps({"Unit1": 20.0})
+  affinity = json.dumps({"ServiceA": {"Unit1": 1.0}})
+  constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "min": 25.0}])
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
+  data = json.loads(result)
+  assert "error" in data
+  assert "infeasible constraint" in data["error"].lower()
+  assert "exceeds total service demand" in data["error"].lower()
+
+
+def test_solver_none_primal_solution(monkeypatch) -> None:
+  """Test handling when solver returns None primal solution."""
+  demand = json.dumps({"ServiceA": 5.0})
+  capacity = json.dumps({"Unit1": 10.0})
+  affinity = json.dumps({})
+
+  class _DummyNoneResult:
+    primal_solution = None
+
+  class _DummyNoneSolver:
+    def optimize(self, _lp):
+      return _DummyNoneResult()
+
+  monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummyNoneSolver())
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
+  data = json.loads(result)
+  assert "error" in data
+  assert "mathematically infeasible or failed to converge" in data["error"].lower()
+
+
+def test_solver_nan_primal_solution(monkeypatch) -> None:
+  """Test handling when solver returns NaN primal solution."""
+  import numpy as np
+
+  demand = json.dumps({"ServiceA": 5.0})
+  capacity = json.dumps({"Unit1": 10.0})
+  affinity = json.dumps({})
+
+  class _DummyNaNResult:
+    primal_solution = [np.nan, 2.0]
+
+  class _DummyNaNSolver:
+    def optimize(self, _lp):
+      return _DummyNaNResult()
+
+  monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummyNaNSolver())
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
+  data = json.loads(result)
+  assert "error" in data
+  assert "non-finite" in data["error"].lower()
+
+
+def test_cumulative_constraints_exceeding_service_demand() -> None:
+  """Test that multiple valid individual rules whose sum exceeds demand are rejected."""
+  demand = json.dumps({"ServiceA": 10.0})
+  capacity = json.dumps({"Unit1": 20.0, "Unit2": 20.0})
+  affinity = json.dumps({})
+  constraints = json.dumps(
+    [
+      {"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "min": 6.0},
+      {"type": "force_flow", "service": "ServiceA", "unit": "Unit2", "min": 6.0},
+    ]
+  )
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
+  data = json.loads(result)
+  assert "error" in data
+  assert "cumulative minimum allocation" in data["error"].lower()
+  assert "exceeds total service demand" in data["error"].lower()
+
+
+def test_cumulative_constraints_exceeding_unit_capacity() -> None:
+  """Test that multiple rules whose sum exceeds a specific unit capacity are rejected."""
+  demand = json.dumps({"ServiceA": 10.0, "ServiceB": 10.0})
+  capacity = json.dumps({"Unit1": 8.0})
+  affinity = json.dumps({})
+  constraints = json.dumps(
+    [
+      {"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "min": 5.0},
+      {"type": "force_flow", "service": "ServiceB", "unit": "Unit1", "min": 5.0},
+    ]
+  )
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
+  data = json.loads(result)
+  assert "error" in data
+  assert "cumulative minimum allocation" in data["error"].lower()
+  assert "exceeds unit capacity" in data["error"].lower()
+
+
+def test_force_flow_to_overflow_unit() -> None:
+  """Test force_flow targeting the special 'Overflow' unit."""
+  demand = json.dumps({"ServiceA": 5.0})
+  capacity = json.dumps({"Unit1": 10.0})
+  affinity = json.dumps({})
+  constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Overflow", "min": 2.0}])
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
+  data = json.loads(result)
+  assert isinstance(data, list)

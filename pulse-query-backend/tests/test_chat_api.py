@@ -68,6 +68,29 @@ async def test_create_conversation_candidates_flow(client: AsyncClient, mock_use
 
 
 @pytest.mark.asyncio
+async def test_create_conversation_with_target_models(client: AsyncClient, mock_user_auth) -> None:
+  """
+  Verify that target_models provided on conversation creation are passed to generate_arena_competition.
+  """
+  with patch("app.api.routers.chat.llm_client.generate_arena_competition") as mock_arena:
+    mock_arena.return_value = [
+      ArenaResponse("Custom Model", "custom-1", "SELECT 1", 50),
+    ]
+
+    response = await client.post(
+      f"{CONVERSATIONS_URL}/",
+      json={"message": "Show census", "target_models": ["custom-1"]},
+      follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+    assert mock_arena.call_count >= 1
+    # Check that target_models argument was forwarded as target_model_ids
+    _, kwargs = mock_arena.call_args
+    assert kwargs.get("target_model_ids") == ["custom-1"]
+
+
+@pytest.mark.asyncio
 async def test_generation_stops_on_total_failure(client: AsyncClient, mock_user_auth) -> None:
   """
   Test the Circuit Breaker logic:

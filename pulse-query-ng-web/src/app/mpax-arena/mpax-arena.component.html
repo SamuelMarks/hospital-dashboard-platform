@@ -1,0 +1,119 @@
+<div class="mpax-container">
+  <div class="header">
+    <h1 i18n class="text-2xl font-light mb-1">MPAX vs LLM Arena</h1>
+    <p i18n class="text-gray-500">Compare Mathematical Optimization vs Generative AI</p>
+  </div>
+
+  <mat-card class="form-panel p-4 mb-6">
+    <div class="flex gap-4">
+      <mat-form-field appearance="outline" class="flex-grow">
+        <mat-label i18n>Scenario Prompt</mat-label>
+        <textarea
+          matInput
+          #promptInput
+          [value]="prompt()"
+          (input)="prompt.set(promptInput.value)"
+          rows="3"
+          placeholder="Describe the scenario..."
+        ></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w-64">
+        <mat-label i18n>Evaluation Mode</mat-label>
+        <mat-select
+          [value]="mode()"
+          (selectionChange)="mode.set($event.value)"
+          aria-label="Select option"
+        >
+          <mat-option i18n value="judge">1. Ground Truth Judge</mat-option>
+          <mat-option i18n value="translator">2. Translators</mat-option>
+          <mat-option i18n value="constraints">3. Constraint Generation</mat-option>
+          <mat-option i18n value="sql_vs_mpax">4. SQL vs MPAX</mat-option>
+          <mat-option i18n value="critic">5. Feedback Critic</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <button
+      i18n
+      mat-flat-button
+      color="primary"
+      (click)="run()"
+      [disabled]="isLoading() || !prompt().trim()"
+    >
+      @if (isLoading()) {
+        <mat-progress-spinner
+          mode="indeterminate"
+          diameter="20"
+          class="mr-2"
+        ></mat-progress-spinner>
+      }
+      Run Arena
+    </button>
+  </mat-card>
+
+  @if (error()) {
+    <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
+      {{ error() }}
+    </div>
+  }
+
+  @if (result(); as res) {
+    <div class="results-grid">
+      @if (res.ground_truth_mpax) {
+        <mat-card class="mpax-panel p-4 bg-blue-50 border-blue-200 border">
+          <h3 i18n class="font-bold text-blue-900 mb-2">MPAX Ground Truth</h3>
+          <pre class="text-xs overflow-auto">{{ res.ground_truth_mpax | json }}</pre>
+        </mat-card>
+      }
+
+      <div class="candidates-grid mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        @for (cand of res.candidates; track cand.id) {
+          <mat-card class="candidate-panel p-4" [class.winner]="cand.is_selected">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-bold">{{ cand.model_name }}</h3>
+              @if (cand.is_selected) {
+                <span
+                  class="winner-badge px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded"
+                  i18n
+                >
+                  Winner
+                </span>
+              } @else {
+                <button
+                  mat-stroked-button
+                  color="primary"
+                  class="vote-btn"
+                  [disabled]="votingCandidateId() !== null"
+                  (click)="vote(cand.id)"
+                  i18n
+                >
+                  Vote for Candidate
+                </button>
+              }
+            </div>
+
+            @if (cand.mpax_score !== null && cand.mpax_score !== undefined) {
+              <div class="mb-4 p-2 bg-gray-100 rounded">
+                <strong i18n>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
+              </div>
+            }
+
+            @if (cand.sql_snippet) {
+              <app-sql-snippet class="mb-4 block" [sql]="cand.sql_snippet"></app-sql-snippet>
+            }
+
+            <viz-markdown [content]="cand.content"></viz-markdown>
+
+            @if (cand.mpax_result) {
+              <div class="mt-4 p-2 bg-gray-50 border rounded">
+                <h4 i18n class="font-bold text-xs text-gray-500 mb-1">Generated MPAX Result</h4>
+                <pre class="text-xs overflow-auto">{{ cand.mpax_result | json }}</pre>
+              </div>
+            }
+          </mat-card>
+        }
+      </div>
+    </div>
+  }
+</div>

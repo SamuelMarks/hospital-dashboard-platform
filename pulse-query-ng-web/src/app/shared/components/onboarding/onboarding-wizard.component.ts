@@ -30,7 +30,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
  * }
  * ```
  */
-/* v8 ignore next */
+
 @Component({
   selector: 'app-onboarding-wizard',
   imports: [MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
@@ -108,7 +108,6 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 
           <div class="action-right">
             @if (onboarding.currentStep().actionLabel && onboarding.currentStep().actionRoute) {
-              <!-- v8 ignore start -->
               <button
                 mat-stroked-button
                 color="primary"
@@ -117,7 +116,6 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
               >
                 {{ onboarding.currentStep().actionLabel }}
               </button>
-              <!-- v8 ignore stop -->
             }
 
             <button
@@ -290,8 +288,6 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
     `,
   ],
 })
-/* v8 ignore next 3 */
-/* v8 ignore next 5 */
 export class OnboardingWizardComponent {
   /** Onboarding service. */
   readonly onboarding = inject(OnboardingService);

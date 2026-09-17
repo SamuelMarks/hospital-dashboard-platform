@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,7 +18,6 @@ export interface PromptDialogData {
 @Component({
   selector: 'app-prompt-dialog',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
@@ -32,7 +29,6 @@ export interface PromptDialogData {
     <h2 mat-dialog-title>{{ data.title }}</h2>
     <mat-dialog-content>
       @if (data.message) {
-        <!-- v8 ignore next -->
         <p class="mb-4 text-sm text-secondary">{{ data.message }}</p>
       }
       <mat-form-field appearance="outline" class="w-full">
@@ -66,7 +62,6 @@ export interface PromptDialogData {
 })
 /** @docs */
 export class PromptDialogComponent {
-  /* v8 ignore next 3 */
   /* istanbul ignore next */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;

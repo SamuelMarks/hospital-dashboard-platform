@@ -10,6 +10,7 @@ import duckdb
 from fastapi.testclient import TestClient
 import pytest
 
+import app.api.deps as deps
 from app.core.diagnostics import diagnostics_registry
 import app.main as main_module
 from app.services.data_ingestion import DataIngestionService
@@ -46,30 +47,72 @@ def test_get_system_health_strict_mode_when_critical(monkeypatch) -> None:
   assert data["detail"]["overall_status"] == "critical"
 
 
-def test_get_system_diagnostics_endpoint() -> None:
-  """GET /api/v1/system/diagnostics should return in-depth diagnostic environment checks."""
+def test_get_system_diagnostics_endpoint_unauthorized() -> None:
+  """GET /api/v1/system/diagnostics without authentication should return 401."""
   response = client.get("/api/v1/system/diagnostics")
-  assert response.status_code == 200
-  data = response.json()
-  assert "health" in data
-  assert "environment_checks" in data
-  assert "troubleshooting_guides" in data
-  assert len(data["troubleshooting_guides"]) >= 3
+  assert response.status_code == 401
 
 
-def test_trigger_reingest_endpoint(monkeypatch) -> None:
-  """POST /api/v1/system/reingest should invoke CSV auto-ingestion and return table counts."""
+def test_get_system_diagnostics_endpoint_authenticated() -> None:
+  """GET /api/v1/system/diagnostics should return in-depth diagnostic environment checks for authenticated users."""
+  mock_user = MagicMock()
+  mock_user.is_admin = False
+  main_module.app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+
+  try:
+    response = client.get("/api/v1/system/diagnostics")
+    assert response.status_code == 200
+    data = response.json()
+    assert "health" in data
+    assert "environment_checks" in data
+    assert "troubleshooting_guides" in data
+    assert len(data["troubleshooting_guides"]) >= 3
+  finally:
+    main_module.app.dependency_overrides = {}
+
+
+def test_trigger_reingest_endpoint_unauthorized() -> None:
+  """POST /api/v1/system/reingest without authentication should return 401."""
+  response = client.post("/api/v1/system/reingest")
+  assert response.status_code == 401
+
+
+def test_trigger_reingest_endpoint_forbidden_for_non_admin() -> None:
+  """POST /api/v1/system/reingest should return 403 for non-admin users."""
+  mock_user = MagicMock()
+  mock_user.is_admin = False
+  mock_user.language_preference = "en"
+  main_module.app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+
+  try:
+    response = client.post("/api/v1/system/reingest")
+    assert response.status_code == 403
+    assert "Admin privileges required" in response.json()["detail"]
+  finally:
+    main_module.app.dependency_overrides = {}
+
+
+def test_trigger_reingest_endpoint_admin(monkeypatch) -> None:
+  """POST /api/v1/system/reingest should invoke CSV auto-ingestion for admin users."""
+  mock_admin = MagicMock()
+  mock_admin.is_admin = True
+  mock_admin.language_preference = "en"
+  main_module.app.dependency_overrides[deps.get_current_user] = lambda: mock_admin
+
   monkeypatch.setattr("app.api.routers.system.data_ingestion_service.ingest_all_csvs", MagicMock())
   monkeypatch.setattr(
     "app.api.routers.system.duckdb_manager.validate_duckdb_storage",
     MagicMock(return_value={"status": "ready", "tables": {"hospital_data": 1200}}),
   )
 
-  response = client.post("/api/v1/system/reingest")
-  assert response.status_code == 200
-  data = response.json()
-  assert data["success"] is True
-  assert "hospital_data" in data["tables"]
+  try:
+    response = client.post("/api/v1/system/reingest")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert "hospital_data" in data["tables"]
+  finally:
+    main_module.app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio

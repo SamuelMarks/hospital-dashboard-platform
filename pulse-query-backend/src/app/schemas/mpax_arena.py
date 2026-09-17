@@ -15,7 +15,7 @@ class MpaxArenaRequest(BaseModel):
   prompt: str
   mode: str  # judge, translator, constraints, sql_vs_mpax, critic
   demand_sql: str | None = (
-    "SELECT Service, CurrentUnit as Unit, COUNT(*) as Count FROM hospital_data GROUP BY Service, CurrentUnit;"
+    "SELECT department as Service, department as Unit, COUNT(*) as Count FROM hospital_data GROUP BY department;"
   )
   base_capacity: dict[str, int] | None = None
 

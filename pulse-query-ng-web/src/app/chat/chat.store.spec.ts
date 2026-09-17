@@ -12,6 +12,7 @@ import {
 } from '../api-client';
 import { of, throwError, Subject } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
+import { safeStorage } from '../core/storage.utils';
 
 describe('ChatStore', () => {
   let store: ChatStore;
@@ -445,6 +446,54 @@ describe('ChatStore', () => {
     it('uses raw string if error is neither HttpErrorResponse nor Error', () => {
       store['handleError']('Just a string');
       expect(store.error()).toBe('Error');
+    });
+  });
+
+  describe('streamResponse', () => {
+    it('handles streamResponse success', async () => {
+      const mockStream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode('data: {"event":"token","token":"Hello "}\n\n'));
+          controller.enqueue(encoder.encode('data: {"event":"token","token":"World"}\n\n'));
+          controller.enqueue(
+            encoder.encode(
+              'data: {"event":"done","message_id":"msg-1","content":"Hello World","sql_snippet":"SELECT 1"}\n\n',
+            ),
+          );
+          controller.close();
+        },
+      });
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(mockStream, { status: 200 }));
+
+      safeStorage.setItem('token', 'mock_token');
+      await store.streamResponse('c1', 'model-xyz');
+      safeStorage.removeItem('token');
+
+      expect(store.isStreaming()).toBe(false);
+      expect(store.messages().length).toBe(1);
+      expect(store.messages()[0].content).toBe('Hello World');
+      expect(store.messages()[0].sql_snippet).toBe('SELECT 1');
+    });
+
+    it('handles streamResponse network error', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Connection Failed'));
+
+      await store.streamResponse('c1');
+
+      expect(store.isStreaming()).toBe(false);
+      expect(store.streamingMessageContent()).toBeNull();
+      expect(store.error()).toBe('Connection Failed');
+    });
+
+    it('handles non-200 stream response', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Error', { status: 500 }));
+
+      await store.streamResponse('c1');
+
+      expect(store.isStreaming()).toBe(false);
+      expect(store.error()).toContain('Streaming failed with status: 500');
     });
   });
 });

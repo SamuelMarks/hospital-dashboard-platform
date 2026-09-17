@@ -61,6 +61,21 @@ describe('adminGuard', () => {
     });
   });
 
+  it('should allow super admin user by role', () => {
+    return new Promise<void>((resolve) => {
+      authServiceMock.currentUser.set({ is_admin: false, role: 'SUPER_ADMIN' });
+      authServiceMock.hasStoredToken.mockReturnValue(true);
+
+      TestBed.runInInjectionContext(() => {
+        const result = adminGuard(null as any, null as any) as Observable<any>;
+        result.subscribe((val) => {
+          expect(val).toBe(true);
+          resolve();
+        });
+      });
+    });
+  });
+
   it('should redirect if no token and no user', () => {
     return new Promise<void>((resolve) => {
       authServiceMock.currentUser.set(null);

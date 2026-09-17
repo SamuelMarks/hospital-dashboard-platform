@@ -27,6 +27,8 @@ import kotlinx.serialization.encoding.*
  * @param email 
  * @param isActive 
  * @param isAdmin 
+ * @param languagePreference 
+ * @param role 
  */
 @Serializable
 
@@ -38,7 +40,11 @@ data class UserResponse (
 
     @SerialName(value = "is_active") @Required val isActive: kotlin.Boolean,
 
-    @SerialName(value = "is_admin") @Required val isAdmin: kotlin.Boolean
+    @SerialName(value = "is_admin") @Required val isAdmin: kotlin.Boolean,
+
+    @SerialName(value = "language_preference") val languagePreference: kotlin.String = "en",
+
+    @SerialName(value = "role") val role: kotlin.String? = "DATA_ANALYST"
 
 ) {
 

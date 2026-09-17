@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Main Application Configuration.

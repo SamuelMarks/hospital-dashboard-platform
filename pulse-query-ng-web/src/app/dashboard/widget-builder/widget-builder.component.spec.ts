@@ -476,14 +476,6 @@ describe('WidgetBuilderComponent', () => {
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
   });
 
-  it('highlightedSql should return string', () => {
-    expect(component.highlightedSql()).toBe('');
-  });
-
-  it('syncScroll should execute', () => {
-    expect(() => component.syncScroll(new Event('scroll'))).not.toThrow();
-  });
-
   it('asTableData should return table data object or default', () => {
     expect(component.asTableData(null)).toEqual({ columns: [], data: [] });
     expect(component.asTableData({ data: 1 })).toEqual({ data: 1 });

@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 
@@ -29,7 +27,6 @@ import { OnboardingService } from '../shared/components/onboarding/onboarding.se
 @Component({
   selector: 'app-home',
   imports: [
-    CommonModule,
     RouterModule,
     MatCardModule,
     MatButtonModule,

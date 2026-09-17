@@ -235,4 +235,40 @@ describe('VizMetricComponent', () => {
     fixture.detectChanges();
     expect(component.alertClass()).toBe('val-critical');
   });
+
+  it('should cover empty array and missing columns branches', () => {
+    dataSig.set([]);
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    dataSig.set({ data: [{ val: 10 }], columns: [] });
+    fixture.detectChanges();
+    expect(component.displayLabel()).toBe('');
+
+    dataSig.set({ value: 20 });
+    fixture.detectChanges();
+    expect(component.parsedTrend()).toBeNull();
+
+    dataSig.set({ non_num: 'str', num: 42, label: null, trend: null });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe(42);
+    expect(component.displayLabel()).toBe('');
+    expect(component.parsedTrend()).toBeNull();
+
+    dataSig.set({ only_str: 'abc' });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    dataSig.set({ value: null });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    dataSig.set({ data: [] });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    dataSig.set({ data: [{}] });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+  });
 });

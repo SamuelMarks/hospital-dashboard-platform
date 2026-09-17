@@ -1,6 +1,6 @@
 /** @docs */
 import { Component, inject, signal, OnDestroy, PLATFORM_ID, effect } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 
 // Material Imports
 import { MatButtonModule } from '@angular/material/button';
@@ -30,7 +30,6 @@ import { QueryCartService } from './query-cart.service';
 @Component({
   selector: 'app-ask-data',
   imports: [
-    CommonModule,
     SqlBuilderComponent,
     MatButtonModule,
     MatIconModule,
@@ -104,7 +103,6 @@ import { QueryCartService } from './query-cart.service';
   templateUrl: './ask-data.component.html',
 })
 /** @docs */
-/* v8 ignore start */
 export class AskDataComponent implements OnDestroy {
   public readonly vis = inject(AskDataService);
   private readonly cart = inject(QueryCartService);
@@ -120,7 +118,6 @@ export class AskDataComponent implements OnDestroy {
   readonly contextError = signal<string | null>(null);
   readonly scratchpadIds = signal<{ dashboardId: string; widgetId: string } | null>(null);
   readonly cartCount = this.cart.count;
-  /* v8 ignore stop */
 
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
@@ -219,4 +216,3 @@ export class AskDataComponent implements OnDestroy {
     });
   }
 }
-/* v8 ignore stop */

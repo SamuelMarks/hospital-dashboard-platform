@@ -82,6 +82,15 @@ flowchart TD
     linkStyle 0,1,2,3,4,5,6,7,8,9 stroke:#20344b,stroke-width:1px,fill:none,font-family:'Roboto Mono Normal',font-size:11px;
 ```
 
+### Client Ecosystem & Target Matrix
+
+Pulse Query supports multiple target client form factors with clear separation of concerns:
+
+| Subsystem            | Tech Stack                                      | Supported Targets                             | Primary Focus                                                                                |
+| -------------------- | ----------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `pulse-query-ng-web` | Angular 19, Material 3, RxJS, Signals           | Desktop & Mobile Web Browsers                 | Primary web enterprise SPA; live collaboration, SSE streaming, full admin & builder suites   |
+| `PulseQuery`         | Kotlin Multiplatform, Compose, Ktor, SQLDelight | Android, iOS, Desktop (JVM), Kotlin/Wasm & JS | Native mobile & desktop clinical dashboards; offline SQLite caching, MVI/MVVM reactive flows |
+
 ---
 
 ## 2. Backend Architecture (`/pulse-query-backend`)

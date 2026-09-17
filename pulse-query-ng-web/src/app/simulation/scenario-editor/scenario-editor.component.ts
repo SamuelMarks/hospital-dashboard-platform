@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, inject, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 
 // Material Imports
@@ -34,7 +32,6 @@ import { ScenarioConstraint } from '../../api-client';
 @Component({
   selector: 'app-scenario-editor',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatSliderModule,
     MatButtonModule,
@@ -198,7 +195,6 @@ import { ScenarioConstraint } from '../../api-client';
     `,
   ],
 })
-/* v8 ignore start */
 export class ScenarioEditorComponent {
   /**
    * Helper method to extract the value from an input event.
@@ -208,7 +204,7 @@ export class ScenarioEditorComponent {
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
-  /* v8 ignore stop */
+
   // Inject the singleton store service
   /** Store. */
   readonly store = inject(SimServiceInstance);

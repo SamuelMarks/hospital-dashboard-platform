@@ -1,5 +1,5 @@
 import { safeStorage } from '../storage.utils';
-/* v8 ignore start */
+
 /** @docs */
 // pulse-query-ng-web/src/app/core/theme/theme.service.ts
 import { Injectable, signal, computed, inject, PLATFORM_ID, Signal, effect } from '@angular/core';
@@ -22,17 +22,15 @@ export class ThemeService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);
 
-  /* v8 ignore next */
   private readonly _mode = signal<ThemeMode>('light');
-  /* v8 ignore next */
+
   private readonly _tvMode = signal<boolean>(false);
-  /* v8 ignore next */
+
   private readonly _seedColor = signal<string>(DEFAULT_SEED);
 
   readonly seedColor: Signal<string> = this._seedColor.asReadonly();
   readonly mode: Signal<ThemeMode> = this._mode.asReadonly();
 
-  /* v8 ignore next */
   readonly isDark: Signal<boolean> = computed(() => this._mode() === 'dark');
   readonly isTvMode: Signal<boolean> = this._tvMode.asReadonly();
 

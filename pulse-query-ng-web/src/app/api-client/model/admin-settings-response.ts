@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -10,7 +8,9 @@
  * Do not edit the class manually.
  */
 
-/** @docs */
+/**
+ * Response schema containing the currently configured admin settings.
+ */
 export interface AdminSettingsResponse {
   api_keys: { [key: string]: string };
   visible_models: Array<string>;

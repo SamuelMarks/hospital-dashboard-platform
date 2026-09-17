@@ -1,7 +1,11 @@
-/* v8 ignore start */
-/** @docs */
-import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+/**
+ * @fileoverview MPAX Arena Component.
+ * Enables interactive model evaluation comparing LLM solutions against MPAX solver outputs.
+ */
+
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { JsonPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,11 +19,16 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 import { ActivatedRoute } from '@angular/router';
 
-/** @docs */
+/**
+ * Component orchestrating the MPAX Model Competition Arena.
+ *
+ * Facilitates submitting clinical optimization prompts across different evaluation modes
+ * (judge, translator, constraints, sql_vs_mpax, critic) and reviewing candidate solutions.
+ */
 @Component({
   selector: 'app-mpax-arena',
   imports: [
-    CommonModule,
+    JsonPipe,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -30,107 +39,7 @@ import { ActivatedRoute } from '@angular/router';
     VizMarkdownComponent,
     SqlSnippetComponent,
   ],
-
-  template: `
-    <div class="mpax-container">
-      <div class="header">
-        <h1 i18n class="text-2xl font-light mb-1">MPAX vs LLM Arena</h1>
-        <p i18n class="text-gray-500">Compare Mathematical Optimization vs Generative AI</p>
-      </div>
-
-      <mat-card class="form-panel p-4 mb-6">
-        <div class="flex gap-4">
-          <mat-form-field appearance="outline" class="flex-grow">
-            <mat-label i18n>Scenario Prompt</mat-label>
-            <textarea
-              matInput
-              #promptInput
-              [value]="prompt()"
-              (input)="prompt.set(promptInput.value)"
-              rows="3"
-              placeholder="Describe the scenario..."
-            ></textarea>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="w-64">
-            <mat-label i18n>Evaluation Mode</mat-label>
-            <mat-select
-              [value]="mode()"
-              (selectionChange)="mode.set($event.value)"
-              aria-label="Select option"
-            >
-              <mat-option i18n value="judge">1. Ground Truth Judge</mat-option>
-              <mat-option i18n value="translator">2. Translators</mat-option>
-              <mat-option i18n value="constraints">3. Constraint Generation</mat-option>
-              <mat-option i18n value="sql_vs_mpax">4. SQL vs MPAX</mat-option>
-              <mat-option i18n value="critic">5. Feedback Critic</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <button
-          i18n
-          mat-flat-button
-          color="primary"
-          (click)="run()"
-          [disabled]="isLoading() || !prompt().trim()"
-        >
-          @if (isLoading()) {
-            <mat-progress-spinner
-              mode="indeterminate"
-              diameter="20"
-              class="mr-2"
-            ></mat-progress-spinner>
-          }
-          Run Arena
-        </button>
-      </mat-card>
-
-      @if (error()) {
-        <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
-          {{ error() }}
-        </div>
-      }
-
-      @if (result(); as res) {
-        <div class="results-grid">
-          @if (res.ground_truth_mpax) {
-            <mat-card class="mpax-panel p-4 bg-blue-50 border-blue-200 border">
-              <h3 i18n class="font-bold text-blue-900 mb-2">MPAX Ground Truth</h3>
-              <pre class="text-xs overflow-auto">{{ res.ground_truth_mpax | json }}</pre>
-            </mat-card>
-          }
-
-          <div class="candidates-grid mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            @for (cand of res.candidates; track cand.id) {
-              <mat-card class="candidate-panel p-4">
-                <h3 class="font-bold mb-2">{{ cand.model_name }}</h3>
-
-                @if (cand.mpax_score !== null && cand.mpax_score !== undefined) {
-                  <div class="mb-4 p-2 bg-gray-100 rounded">
-                    <strong i18n>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
-                  </div>
-                }
-
-                @if (cand.sql_snippet) {
-                  <app-sql-snippet class="mb-4 block" [sql]="cand.sql_snippet"></app-sql-snippet>
-                }
-
-                <viz-markdown [content]="cand.content"></viz-markdown>
-
-                @if (cand.mpax_result) {
-                  <div class="mt-4 p-2 bg-gray-50 border rounded">
-                    <h4 i18n class="font-bold text-xs text-gray-500 mb-1">Generated MPAX Result</h4>
-                    <pre class="text-xs overflow-auto">{{ cand.mpax_result | json }}</pre>
-                  </div>
-                }
-              </mat-card>
-            }
-          </div>
-        </div>
-      }
-    </div>
-  `,
+  templateUrl: './mpax-arena.component.html',
   styles: [
     `
       .mpax-container {
@@ -144,33 +53,113 @@ import { ActivatedRoute } from '@angular/router';
     `,
   ],
 })
-/** @docs */
-export class MpaxArenaComponent {
+export class MpaxArenaComponent implements OnInit {
+  /** API client service for dispatching arena runs. */
   private readonly api = inject(MpaxArenaService);
 
-  readonly prompt = signal(
+  /** Active activated route for inspecting scenario query parameters. */
+  private readonly route = inject(ActivatedRoute);
+
+  /** Active clinical scenario prompt submitted to the competition. */
+  readonly prompt = signal<string>(
     'We have 15 incoming Cardiac patients and 10 MedSurg beds, 2 ICU beds. Where should they go to minimize overflow?',
   );
-  readonly mode = signal('judge');
 
-  isLoading = signal(false);
-  error = signal<string | null>(null);
-  result = signal<MpaxArenaResponse | null>(null);
+  /** Selected evaluation mode for the arena execution. */
+  readonly mode = signal<string>('judge');
 
-  run() {
+  /** Flag indicating whether an arena evaluation is currently running. */
+  readonly isLoading = signal<boolean>(false);
+
+  /** Error message string if the execution encountered a failure. */
+  readonly error = signal<string | null>(null);
+
+  /** Parsed evaluation response from the backend service. */
+  readonly result = signal<MpaxArenaResponse | null>(null);
+
+  /** Signal tracking ID of candidate currently being voted on. */
+  readonly votingCandidateId = signal<string | null>(null);
+
+  /**
+   * Initializes component and inspects route query parameters for pre-filled prompts or modes.
+   */
+  ngOnInit(): void {
+    const queryPrompt = this.route.snapshot.queryParamMap.get('prompt');
+    if (queryPrompt) {
+      this.prompt.set(queryPrompt);
+    }
+    const queryMode = this.route.snapshot.queryParamMap.get('mode');
+    if (queryMode) {
+      this.mode.set(queryMode);
+    }
+  }
+
+  /**
+   * Casts a winning vote for a candidate in the active experiment.
+   *
+   * @param candidateId Unique ID of the candidate to vote for.
+   */
+  vote(candidateId: string): void {
+    const currentResult = this.result();
+    if (!currentResult) return;
+
+    this.votingCandidateId.set(candidateId);
+    this.api
+      .voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(
+        currentResult.experiment_id,
+        candidateId,
+      )
+      .pipe(finalize(() => this.votingCandidateId.set(null)))
+      .subscribe({
+        next: (updated: MpaxArenaResponse) => this.result.set(updated),
+        error: (err: unknown) => {
+          this.error.set(this.extractError(err, 'Voting failed'));
+        },
+      });
+  }
+
+  /**
+   * Executes the MPAX arena competition with the current prompt and mode configuration.
+   */
+  run(): void {
     this.isLoading.set(true);
     this.error.set(null);
     this.result.set(null);
 
     this.api
-      .runMpaxArenaApiV1MpaxArenaRunPost({
+      .runMpaxArenaModeApiV1MpaxArenaRunPost({
         prompt: this.prompt(),
         mode: this.mode(),
       })
       .pipe(finalize(() => this.isLoading.set(false)))
       .subscribe({
-        next: (res) => this.result.set(res),
-        error: (err) => this.error.set(err.error?.detail || err.message || 'Arena failed'),
+        next: (res: MpaxArenaResponse) => this.result.set(res),
+        error: (err: unknown) => {
+          this.error.set(this.extractError(err, 'Arena failed'));
+        },
       });
+  }
+
+  /**
+   * Extracts clean error diagnostics from an HTTP or runtime exception.
+   *
+   * @param err Unknown caught exception object.
+   * @param fallback Default text message to present if error details cannot be parsed.
+   * @returns Formatted error string for display.
+   */
+  private extractError(err: unknown, fallback: string): string {
+    if (err && typeof err === 'object') {
+      const httpErr = err as HttpErrorResponse;
+      if (httpErr.error && typeof httpErr.error === 'object' && 'detail' in httpErr.error) {
+        return String(httpErr.error.detail);
+      }
+      if ('message' in err && typeof (err as { message: unknown }).message === 'string') {
+        const msg = (err as { message: string }).message;
+        if (msg.trim().length > 0) {
+          return msg;
+        }
+      }
+    }
+    return fallback;
   }
 }

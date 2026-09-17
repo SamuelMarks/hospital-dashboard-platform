@@ -5,5 +5,5 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33]) // sometimes helpful to specify SDK to avoid missing API issues
+@Config(sdk = [33])
 actual abstract class BaseComposeTest

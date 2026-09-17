@@ -21,7 +21,7 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * 
+ * Request schema for updating admin settings.
  *
  * @param apiKeys 
  * @param visibleModels 

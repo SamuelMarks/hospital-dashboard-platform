@@ -84,6 +84,7 @@ class ConversationCreate(ConversationBase):
   """
 
   message: str | None = Field(None, description="Initial message to kickstart the chat.")
+  target_models: list[str] | None = Field(None, description="Optional list of model IDs to query.")
 
 
 class ConversationUpdate(BaseModel):

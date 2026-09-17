@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -11,9 +9,11 @@
  */
 
 /**
- * OAuth2 access token response payload.
+ * OAuth2 access and refresh token response payload.
  */
 export interface Token {
   access_token: string;
-  token_type: string;
+  token_type?: string;
+  refresh_token?: string | null;
+  expires_in?: number;
 }

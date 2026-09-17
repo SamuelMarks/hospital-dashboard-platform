@@ -26,7 +26,6 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 if os.environ.get("USE_SQLITE_ALEMBIC") == "1":
-  config.set_main_option("sqlalchemy.url", "sqlite+aiosqlite:///:memory:")
 
   @compiles(JSONB, "sqlite")
   def _compile_jsonb_sqlite(type_, compiler, **kw):
@@ -35,9 +34,10 @@ if os.environ.get("USE_SQLITE_ALEMBIC") == "1":
   @compiles(UUID, "sqlite")
   def _compile_uuid_sqlite(type_, compiler, **kw):
     return "TEXT"
-else:
-  # Overwrite URL from settings
-  config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
+
+
+# Overwrite URL from settings
+config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
 
 
 def run_migrations_offline() -> None:

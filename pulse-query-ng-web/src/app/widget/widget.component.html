@@ -44,6 +44,22 @@
         </button>
       }
 
+      <!-- Export Widget Data Action -->
+      <button
+        i18n
+        mat-icon-button
+        i18n-aria-label
+        aria-label="Export Data"
+        class="icon-btn-compact"
+        (click)="exportWidgetData()"
+        i18n-matTooltip
+        matTooltip="Export Data"
+        data-testid="btn-export-widget"
+        style="color: var(--sys-secondary)"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+
       <!-- Edit Mode Actions -->
       @if (isEditMode()) {
         <button

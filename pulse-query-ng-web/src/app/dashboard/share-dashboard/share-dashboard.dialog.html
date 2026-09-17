@@ -1,0 +1,89 @@
+<h2 mat-dialog-title i18n>Share "{{ data.dashboardName }}"</h2>
+
+<mat-dialog-content class="share-dialog-content">
+  <!-- Add Collaborator Form -->
+  <div class="share-form flex gap-2 items-center mb-4">
+    <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
+      <mat-label i18n>Collaborator Email</mat-label>
+      <input
+        matInput
+        [(ngModel)]="emailInput"
+        placeholder="doctor@hospital.org"
+        type="email"
+        i18n-placeholder
+        data-testid="input-share-email"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 120px" subscriptSizing="dynamic">
+      <mat-label i18n>Permission</mat-label>
+      <mat-select [(ngModel)]="roleInput" data-testid="select-share-role">
+        <mat-option value="VIEW" i18n>View</mat-option>
+        <mat-option value="EDIT" i18n>Edit</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <button
+      mat-flat-button
+      color="primary"
+      (click)="addShare()"
+      [disabled]="!emailInput.trim() || isSubmitting()"
+      data-testid="btn-add-share"
+      i18n
+    >
+      Share
+    </button>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="error-banner mb-3 p-2 text-sm text-red-600 bg-red-50 rounded">
+      {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Active Shares List -->
+  <h3 class="text-sm font-semibold text-secondary mb-2" i18n>Active Collaborators</h3>
+
+  @if (isLoading()) {
+    <div class="flex justify-center p-4">
+      <mat-spinner diameter="28"></mat-spinner>
+    </div>
+  } @else if (shares().length === 0) {
+    <p class="text-sm text-secondary py-2" i18n>
+      This dashboard is private to you. Share it to collaborate with team members.
+    </p>
+  } @else {
+    <mat-list class="shares-list">
+      @for (share of shares(); track share.id) {
+        <mat-list-item [attr.data-testid]="'share-item-' + share.id">
+          <mat-icon matListItemIcon i18n>person</mat-icon>
+          <div matListItemTitle>{{ share.user_email }}</div>
+          <div matListItemLine class="text-xs text-secondary">
+            <span
+              i18n
+              class="inline-block px-2 py-0.5 rounded text-xs"
+              [class.bg-blue-100]="share.permission_level === 'EDIT'"
+              [class.bg-gray-100]="share.permission_level === 'VIEW'"
+            >
+              {{ share.permission_level }}
+            </span>
+          </div>
+          <button
+            mat-icon-button
+            matListItemMeta
+            color="warn"
+            (click)="revokeShare(share.id)"
+            matTooltip="Revoke access"
+            [attr.data-testid]="'btn-revoke-' + share.id"
+          >
+            <mat-icon i18n>delete</mat-icon>
+          </button>
+        </mat-list-item>
+      }
+    </mat-list>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close data-testid="btn-close-share" i18n>Close</button>
+</mat-dialog-actions>

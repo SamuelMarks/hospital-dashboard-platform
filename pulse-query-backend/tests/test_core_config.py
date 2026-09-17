@@ -136,3 +136,26 @@ def test_llm_swarm_auto_ollama_fallback() -> None:
   assert len(swarm) == 1
   assert swarm[0]["model_name"] == "qwen2:0.5b"
   assert "Qwen Tiny" in swarm[0]["name"]
+
+
+def test_cors_origins_parsing() -> None:
+  """Test parsing of CORS origins from both list and comma-separated string formats."""
+  # List format
+  settings_list = Settings(
+    BACKEND_CORS_ORIGINS=["http://localhost:4200", "https://dashboard.hospital.org"],
+    OLLAMA_MODELS="",
+    LLM_LOCAL_MODELS="",
+  )
+  assert settings_list.parsed_cors_origins == ["http://localhost:4200", "https://dashboard.hospital.org"]
+
+  # String format with whitespace and empty elements
+  settings_str = Settings(
+    BACKEND_CORS_ORIGINS="http://localhost:3000, https://hospital.org , , http://localhost:4200",
+    OLLAMA_MODELS="",
+    LLM_LOCAL_MODELS="",
+  )
+  assert settings_str.parsed_cors_origins == [
+    "http://localhost:3000",
+    "https://hospital.org",
+    "http://localhost:4200",
+  ]

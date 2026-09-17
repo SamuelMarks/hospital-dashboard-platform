@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -16,4 +14,5 @@
 export interface UserCreate {
   email: string;
   password: string;
+  language_preference?: string;
 }

@@ -7,9 +7,11 @@ import json
 import uuid
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.duckdb import duckdb_manager
+from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
 from app.models.user import User
 from app.schemas.mpax_arena import (
   MpaxArenaCandidate,
@@ -29,17 +31,105 @@ class MpaxArenaService:
     mode = request.mode
 
     if mode == "judge":
-      return await self._run_judge_mode(request, db, user)
+      response = await self._run_judge_mode(request, db, user)
     elif mode == "translator":
-      return await self._run_translator_mode(request, db, user)
+      response = await self._run_translator_mode(request, db, user)
     elif mode == "constraints":
-      return await self._run_constraints_mode(request, db, user)
+      response = await self._run_constraints_mode(request, db, user)
     elif mode == "sql_vs_mpax":
-      return await self._run_sql_vs_mpax_mode(request, db, user)
+      response = await self._run_sql_vs_mpax_mode(request, db, user)
     elif mode == "critic":
-      return await self._run_critic_mode(request, db, user)
+      response = await self._run_critic_mode(request, db, user)
     else:
       raise ValueError(f"Unknown mode: {mode}")
+
+    try:
+      run_record = MpaxArenaRun(
+        id=uuid.UUID(response.experiment_id),
+        user_id=user.id,
+        prompt=request.prompt,
+        mode=request.mode,
+        ground_truth_mpax=response.ground_truth_mpax if isinstance(response.ground_truth_mpax, dict) else None,
+      )
+      db.add(run_record)
+      for cand in response.candidates:
+        cand_record = MpaxArenaCandidateRecord(
+          id=uuid.UUID(cand.id),
+          run_id=run_record.id,
+          model_name=cand.model_name,
+          content=cand.content,
+          sql_snippet=cand.sql_snippet,
+          mpax_score=cand.mpax_score,
+          mpax_result=cand.mpax_result if isinstance(cand.mpax_result, dict) else None,
+          is_winner=cand.is_selected,
+        )
+        db.add(cand_record)
+      await db.commit()
+    except Exception:
+      await db.rollback()
+
+    return response
+
+  async def vote_candidate(self, run_id: str, candidate_id: str, db: AsyncSession, user: User) -> MpaxArenaResponse:
+    """
+    Records a winning vote for a candidate in an MPAX Arena run.
+
+    Args:
+        run_id (str): UUID string of the arena run.
+        candidate_id (str): UUID string of the candidate to vote for.
+        db (AsyncSession): Active database session.
+        user (User): Authenticated user casting the vote.
+
+    Returns:
+        MpaxArenaResponse: Updated response with is_selected reflecting the winning candidate.
+
+    Raises:
+        ValueError: If the run or candidate does not exist.
+    """
+    try:
+      parsed_run_id = uuid.UUID(run_id)
+      parsed_cand_id = uuid.UUID(candidate_id)
+    except ValueError as err:
+      raise ValueError("Invalid UUID format for run or candidate.") from err
+
+    stmt = select(MpaxArenaRun).where(MpaxArenaRun.id == parsed_run_id)
+    result = await db.execute(stmt)
+    run_record = result.scalars().first()
+    if not run_record:
+      raise ValueError("MPAX Arena run not found.")
+
+    found_candidate = False
+    for candidate in run_record.candidates:
+      if candidate.id == parsed_cand_id:
+        candidate.is_winner = True
+        found_candidate = True
+      else:
+        candidate.is_winner = False
+
+    if not found_candidate:
+      raise ValueError("Candidate not found in this MPAX Arena run.")
+
+    await db.commit()
+
+    candidates = [
+      MpaxArenaCandidate(
+        id=str(c.id),
+        model_name=c.model_name,
+        content=c.content,
+        is_selected=c.is_winner,
+        mpax_score=c.mpax_score,
+        mpax_result=c.mpax_result,
+        sql_snippet=c.sql_snippet,
+      )
+      for c in run_record.candidates
+    ]
+
+    return MpaxArenaResponse(
+      experiment_id=str(run_record.id),
+      mode=run_record.mode,
+      ground_truth_mpax=run_record.ground_truth_mpax,
+      candidates=candidates,
+    )
 
   def _get_demand_data(self, sql: str) -> list[dict[str, Any]]:
     """Utility to fetch demand data directly from DuckDB."""
@@ -55,12 +145,17 @@ class MpaxArenaService:
     finally:
       conn.close()
 
+  def _normalize_capacity(self, cap: dict[str, Any] | None) -> dict[str, float]:
+    """Ensures capacity dictionary values are typed as floats."""
+    base = cap or {"ICU": 10.0, "MedSurg": 50.0}
+    return {str(k): float(v) for k, v in base.items()}
+
   async def _run_judge_mode(self, request: MpaxArenaRequest, db: AsyncSession, user: User) -> MpaxArenaResponse:
     """Mode 1: MPAX solves it, LLMs try to solve it logically."""
     demand_data = self._get_demand_data(request.demand_sql or "")
 
     # 1. Run MPAX Ground Truth
-    cap = request.base_capacity or {"ICU": 10, "MedSurg": 50}
+    cap = self._normalize_capacity(request.base_capacity)
     sim_req = ScenarioRunRequest(demand_source_sql=request.demand_sql or "", capacity_parameters=cap)
     mpax_result = simulation_service.run_scenario(sim_req)
 
@@ -80,7 +175,7 @@ class MpaxArenaService:
 
   async def _run_translator_mode(self, request: MpaxArenaRequest, db: AsyncSession, user: User) -> MpaxArenaResponse:
     """Mode 2: LLMs translate MPAX output into human text."""
-    cap = request.base_capacity or {"ICU": 10, "MedSurg": 50}
+    cap = self._normalize_capacity(request.base_capacity)
     sim_req = ScenarioRunRequest(demand_source_sql=request.demand_sql or "", capacity_parameters=cap)
     mpax_result = simulation_service.run_scenario(sim_req)
 
@@ -137,7 +232,7 @@ class MpaxArenaService:
 
   async def _run_sql_vs_mpax_mode(self, request: MpaxArenaRequest, db: AsyncSession, user: User) -> MpaxArenaResponse:
     """Mode 4: LLMs write SQL routing, compared to MPAX."""
-    cap = request.base_capacity or {"ICU": 10, "MedSurg": 50}
+    cap = self._normalize_capacity(request.base_capacity)
     sim_req = ScenarioRunRequest(demand_source_sql=request.demand_sql or "", capacity_parameters=cap)
     mpax_result = simulation_service.run_scenario(sim_req)
 
@@ -198,7 +293,9 @@ class MpaxArenaService:
         cap_map = request.base_capacity or {"ICU": 10}
 
       try:
-        sim_req = ScenarioRunRequest(demand_source_sql=request.demand_sql or "", capacity_parameters=cap_map)
+        sim_req = ScenarioRunRequest(
+          demand_source_sql=request.demand_sql or "", capacity_parameters=self._normalize_capacity(cap_map)
+        )
         mpax_res = simulation_service.run_scenario(sim_req)
 
         # Calculate simple score: negative overflow

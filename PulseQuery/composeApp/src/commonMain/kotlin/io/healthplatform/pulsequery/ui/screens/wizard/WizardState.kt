@@ -1,83 +1,111 @@
+/**
+ * Wizard state modeling module for multi-step and multi-modal widget creation.
+ */
 package io.healthplatform.pulsequery.ui.screens.wizard
 
-import io.healthplatform.pulsequery.api.models.ScenarioResult
+import io.healthplatform.pulsequery.api.models.TemplateResponse
+import io.healthplatform.pulsequery.api.models.WidgetResponse
 
 /**
- * Defines the structured use cases available in the optimization wizard.
- */
-enum class WizardUseCase(val title: String, val description: String) {
-    UNIT_ASSIGNMENT("Service-Unit Assignments", "Optimize patient placements on hospital units based on medical team specialty."),
-    SURGICAL_SCHEDULING("Surgical Scheduling", "Smooth post-operative bed demand to reduce cancellations."),
-    STAFFING("Nurse Scheduling", "Optimize shift placements considering cost and burnout.")
-}
-
-/**
- * A message representation in the wizard chat flow.
+ * Representation of an individual dynamic parameter field extracted from a template's schema.
  *
- * @property isUser True if the message is from the user, false if from the LLM assistant.
- * @property text The content of the message.
+ * @property key The parameter identifier matching the handlebars placeholder.
+ * @property title The display label for the input field.
+ * @property type The parameter datatype (e.g., string, integer, number).
+ * @property defaultValue The default initial value for the field.
+ * @property isRequired Whether this parameter must be populated before widget creation.
  */
-data class WizardMessage(
-    val isUser: Boolean,
-    val text: String
+data class ParameterField(
+    val key: String,
+    val title: String,
+    val type: String,
+    val defaultValue: String,
+    val isRequired: Boolean
 )
 
 /**
- * Represents the current step in the guided scenario workflow.
+ * Sealed class hierarchy modeling the state transitions of the Widget Creation Wizard.
  */
 sealed class WizardState {
-    /**
-     * Initial screen showing the available use cases.
-     */
-    data object Landing : WizardState()
 
     /**
-     * Chat phase: Gathering context from the user.
-     * @property useCase The selected use case.
-     * @property messages Chat history.
+     * Initial loading state while fetching available templates from the API.
      */
-    data class ContextGathering(
-        val useCase: WizardUseCase,
-        val messages: List<WizardMessage>
+    data object Loading : WizardState()
+
+    /**
+     * State presenting the template marketplace for category filtering and template selection.
+     *
+     * @property templates All available templates fetched from the server.
+     * @property categories Distinct category names derived from the templates.
+     * @property selectedCategory Currently active category filter, or null for all.
+     * @property searchQuery Current search term filtering titles and descriptions.
+     * @property filteredTemplates The templates matching the active category and search term.
+     */
+    data class TemplateSelection(
+        val templates: List<TemplateResponse>,
+        val categories: List<String>,
+        val selectedCategory: String? = null,
+        val searchQuery: String = "",
+        val filteredTemplates: List<TemplateResponse> = templates
     ) : WizardState()
 
     /**
-     * Translating intent into constraints before execution.
-     * @property useCase The selected use case.
-     * @property messages Chat history.
-     * @property constraints Detected operational constraints.
+     * State presenting configuration form fields for the selected template.
+     *
+     * @property template The chosen template being configured.
+     * @property widgetTitle The custom or default title of the widget.
+     * @property visualization The visualization type (e.g., bar_chart, line_chart, table, metric).
+     * @property parameterFields Extracted dynamic fields based on parameters_schema.
+     * @property parameterValues Current user-entered values mapped by parameter key.
+     * @property fieldErrors Map of parameter key or field name to validation error message.
      */
-    data class ConstraintIdentification(
-        val useCase: WizardUseCase,
-        val messages: List<WizardMessage>,
-        val constraints: List<String>
+    data class ParameterConfiguration(
+        val template: TemplateResponse,
+        val widgetTitle: String,
+        val visualization: String,
+        val parameterFields: List<ParameterField>,
+        val parameterValues: Map<String, String>,
+        val fieldErrors: Map<String, String> = emptyMap()
     ) : WizardState()
 
     /**
-     * Executing the model and displaying side-by-side results.
-     * @property useCase The selected use case.
-     * @property baseResult The baseline simulation result.
-     * @property branchResult The alternative scenario result.
-     * @property explanation LLM generated explanation of tradeoffs.
+     * State presenting creation form fields for custom SQL, HTTP, or Markdown Text widgets.
+     *
+     * @property creationType Widget source type ("SQL", "HTTP", or "TEXT").
+     * @property widgetTitle Display title of the widget.
+     * @property visualization Chosen visualization mode.
+     * @property queryOrUrlOrContent Query text, endpoint URL, or Markdown text content.
+     * @property httpMethod HTTP Verb for HTTP widgets (e.g., GET, POST).
+     * @property fieldErrors Map of field validation error messages.
      */
-    data class Execution(
-        val useCase: WizardUseCase,
-        val baseResult: ScenarioResult,
-        val branchResult: ScenarioResult?,
-        val explanation: String
+    data class CustomWidgetConfiguration(
+        val creationType: String,
+        val widgetTitle: String = "",
+        val visualization: String = "table",
+        val queryOrUrlOrContent: String = "",
+        val httpMethod: String = "GET",
+        val fieldErrors: Map<String, String> = emptyMap()
     ) : WizardState()
 
     /**
-     * User can provide feedback on the results to refine constraints.
-     * @property useCase The selected use case.
-     * @property baseResult The baseline simulation result.
-     * @property branchResult The newly generated alternative scenario result.
-     * @property messages Chat history for the refinement process.
+     * State indicating that widget creation is actively in flight.
+     *
+     * @property message Status message displayed during submission.
      */
-    data class Refinement(
-        val useCase: WizardUseCase,
-        val baseResult: ScenarioResult,
-        val branchResult: ScenarioResult?,
-        val messages: List<WizardMessage>
-    ) : WizardState()
+    data class Submitting(val message: String = "Creating widget...") : WizardState()
+
+    /**
+     * Terminal success state indicating the widget was created and persisted.
+     *
+     * @property widget The newly created widget returned from the server.
+     */
+    data class Success(val widget: WidgetResponse) : WizardState()
+
+    /**
+     * Error state displaying a failure message and allowing retry.
+     *
+     * @property message Explanatory failure message.
+     */
+    data class Error(val message: String) : WizardState()
 }

@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -24,6 +22,8 @@ import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { HTTPValidationError } from '../model/http-validation-error';
+// @ts-ignore
 import { TableInfo } from '../model/table-info';
 
 // @ts-ignore
@@ -31,11 +31,9 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
-/** @docs */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class SchemaService extends BaseService {
   constructor(
     protected httpClient: HttpClient,
@@ -49,11 +47,13 @@ export class SchemaService extends BaseService {
    * Get Database Schema
    * Retrieve the current OLAP database schema (Tables and Columns).  This endpoint introspects the active DuckDB connection. It is synchronous to ensure FastAPI executes it in a threadpool, preventing blocking of the main event loop during database I/O.  Args:     current_user: Authenticated user (required for access).  Returns:     List[TableInfo]: A structured list of tables and their column definitions.
    * @endpoint get /api/v1/schema/
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public getDatabaseSchemaApiV1SchemaGet(
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -63,6 +63,7 @@ export class SchemaService extends BaseService {
     },
   ): Observable<Array<TableInfo>>;
   public getDatabaseSchemaApiV1SchemaGet(
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -72,6 +73,7 @@ export class SchemaService extends BaseService {
     },
   ): Observable<HttpResponse<Array<TableInfo>>>;
   public getDatabaseSchemaApiV1SchemaGet(
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -81,6 +83,7 @@ export class SchemaService extends BaseService {
     },
   ): Observable<HttpEvent<Array<TableInfo>>>;
   public getDatabaseSchemaApiV1SchemaGet(
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -89,6 +92,16 @@ export class SchemaService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
 
     // authentication (OAuth2PasswordBearer) required
@@ -124,6 +137,7 @@ export class SchemaService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<Array<TableInfo>>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

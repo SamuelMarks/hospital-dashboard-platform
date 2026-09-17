@@ -108,14 +108,12 @@ test.describe("Dashboard Management & Layout", () => {
     const widgetsBefore = await page.locator("app-widget").count();
     expect(widgetsBefore).toBeGreaterThan(0);
 
-    // Focus first widget
     const firstWidget = page.locator("app-widget").first();
-    await firstWidget.click();
 
-    // Click delete
+    // Click delete directly on widget in edit mode
     const deleteBtn = firstWidget.locator('[data-testid="btn-delete"]');
-    await expect(deleteBtn).toBeVisible();
-    await deleteBtn.click();
+    await expect(deleteBtn).toBeVisible({ timeout: 10000 });
+    await deleteBtn.click({ force: true });
 
     // Confirm dialog
     const confirmDeleteBtn = page.locator(

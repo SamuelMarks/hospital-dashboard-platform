@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
@@ -21,7 +19,6 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 @Component({
   selector: 'app-simulation',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
@@ -83,7 +80,6 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 })
 /** @docs */
 export class SimulationComponent implements OnInit {
-  /* v8 ignore next 3 */
   /* istanbul ignore next */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;

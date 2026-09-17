@@ -51,19 +51,21 @@ open class AiApi : ApiClient {
      * Execute Sql Preview
      * Executes SQL (read-only) and returns a small preview result. Intended for Arena candidate comparison in the UI.
      * @param sqLExecutionRequest 
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return SQLExecutionResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun executeSqlPreviewApiV1AiExecutePost(sqLExecutionRequest: SQLExecutionRequest): HttpResponse<SQLExecutionResponse> {
+    open suspend fun executeSqlPreviewApiV1AiExecutePost(sqLExecutionRequest: SQLExecutionRequest, token: kotlin.String? = null): HttpResponse<SQLExecutionResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = sqLExecutionRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/ai/execute",
             query = localVariableQuery,
@@ -84,19 +86,21 @@ open class AiApi : ApiClient {
      * Generate Sql Comparison
      * Generates SQL usage the Multi-LLM Arena.  This endpoint: 1. Broadcasts the prompt to all configured LLMs. 2. Persists the results as an Experiment. 3. Returns a list of candidates so the frontend can display a comparison view.  Args:     request (SQLGenerationRequest): The prompt payload.     current_user (User): Authenticated user.     db (AsyncSession): Database session for logging.  Returns:     ExperimentResponse: Object containing experiment ID and list of candidate SQLs.
      * @param sqLGenerationRequest 
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ExperimentResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun generateSqlComparisonApiV1AiGeneratePost(sqLGenerationRequest: SQLGenerationRequest): HttpResponse<ExperimentResponse> {
+    open suspend fun generateSqlComparisonApiV1AiGeneratePost(sqLGenerationRequest: SQLGenerationRequest, token: kotlin.String? = null): HttpResponse<ExperimentResponse> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = sqLGenerationRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/ai/generate",
             query = localVariableQuery,
@@ -117,10 +121,11 @@ open class AiApi : ApiClient {
      * List Available Models
      * Returns the list of currently configured LLMs available for the Arena.
      * @param showAll  (optional, default to false)
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<ModelInfo>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listAvailableModelsApiV1AiModelsGet(showAll: kotlin.Boolean? = false): HttpResponse<kotlin.collections.List<ModelInfo>> {
+    open suspend fun listAvailableModelsApiV1AiModelsGet(showAll: kotlin.Boolean? = false, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<ModelInfo>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -129,9 +134,10 @@ open class AiApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         showAll?.apply { localVariableQuery["show_all"] = listOf("$showAll") }
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/ai/models",
             query = localVariableQuery,

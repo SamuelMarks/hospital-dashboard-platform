@@ -1,11 +1,17 @@
+/**
+ * @fileoverview Unit tests for [BenchmarksComponent].
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { BenchmarksComponent } from './benchmarks.component';
-import { BenchmarksService } from './benchmarks.service';
 import { of, throwError } from 'rxjs';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { Component, input } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
+
+import { BenchmarksComponent } from './benchmarks.component';
+import { BenchmarksService } from './benchmarks.service';
+import { BenchmarkProgressService, BenchmarkProgress } from './benchmark-progress.service';
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 
 @Component({
@@ -19,8 +25,16 @@ class MockSqlSnippetComponent {
 describe('BenchmarksComponent', () => {
   let component: BenchmarksComponent;
   let fixture: ComponentFixture<BenchmarksComponent>;
-  let mockService: any;
-  let mockRouter: any;
+  let mockService: {
+    getSqlBenchmarks: ReturnType<typeof vi.fn>;
+    getMpaxBenchmarks: ReturnType<typeof vi.fn>;
+  };
+  let mockProgressService: {
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+    progress: ReturnType<typeof signal<BenchmarkProgress | null>>;
+  };
+  let mockRouter: { navigate: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = {
@@ -43,20 +57,27 @@ describe('BenchmarksComponent', () => {
         ]),
       ),
     };
-    mockRouter = { navigate: vi.fn() };
 
-    TestBed.overrideComponent(BenchmarksComponent, {
-      remove: { imports: [SqlSnippetComponent] },
-      add: { imports: [MockSqlSnippetComponent] },
-    });
+    mockProgressService = {
+      connect: vi.fn().mockReturnValue(of({ active: false })),
+      disconnect: vi.fn(),
+      progress: signal<BenchmarkProgress | null>(null),
+    };
+
+    mockRouter = { navigate: vi.fn() };
 
     await TestBed.configureTestingModule({
       imports: [BenchmarksComponent, NoopAnimationsModule],
       providers: [
         { provide: BenchmarksService, useValue: mockService },
+        { provide: BenchmarkProgressService, useValue: mockProgressService },
         { provide: Router, useValue: mockRouter },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(BenchmarksComponent, {
+        set: { template: '<div class="benchmarks-container"></div>' },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(BenchmarksComponent);
     component = fixture.componentInstance;
@@ -74,6 +95,36 @@ describe('BenchmarksComponent', () => {
     expect(component.sqlCount()).toBe(1); // filtered metadata
     expect(component.mpaxCount()).toBe(1);
     expect(component.sqlBenchmarks().length).toBe(2);
+    expect(mockProgressService.connect).toHaveBeenCalled();
+  });
+
+  it('should compute progressPercent correctly', () => {
+    fixture.detectChanges();
+
+    // When progress is null
+    expect(component.progressPercent()).toBe(0);
+
+    // When progress has total <= 0
+    mockProgressService.progress.set({
+      active: true,
+      completed: 0,
+      total: 0,
+      current_model: 'test',
+      status: 'idle',
+      eta_seconds: 0,
+    });
+    expect(component.progressPercent()).toBe(0);
+
+    // When progress has valid values
+    mockProgressService.progress.set({
+      active: true,
+      completed: 4,
+      total: 10,
+      current_model: 'gemini-1.5',
+      status: 'running',
+      eta_seconds: 20,
+    });
+    expect(component.progressPercent()).toBe(40);
   });
 
   it('should handle error during load', () => {
@@ -86,17 +137,32 @@ describe('BenchmarksComponent', () => {
 
   it('should navigate on mpax click', () => {
     fixture.detectChanges();
-    const item = { prompt: 'Test prompt' };
+    const item = { prompt: 'Test prompt' } as any;
     component.simulateMpax(item);
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/mpax-arena'], {
       queryParams: { prompt: 'Test prompt' },
     });
   });
+
   it('should handle error without message during load', () => {
     mockService.getSqlBenchmarks.mockReturnValue(throwError(() => ({})));
     fixture.detectChanges();
 
     expect(component.loading()).toBe(false);
     expect(component.error()).toBe('Failed to load benchmarks.');
+  });
+
+  it('should clean up progress stream on destroy', () => {
+    fixture.detectChanges();
+    component.ngOnDestroy();
+
+    expect(mockProgressService.disconnect).toHaveBeenCalled();
+  });
+
+  it('should gracefully handle SSE connection failure', () => {
+    mockProgressService.connect.mockReturnValue(throwError(() => new Error('SSE failed')));
+    fixture.detectChanges();
+
+    expect(component.loading()).toBe(false);
   });
 });

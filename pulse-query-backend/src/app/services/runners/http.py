@@ -7,9 +7,11 @@ essential for loading multiple widgets simultaneously on a dashboard.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
+
+from app.core.network_security import SafeAsyncHTTPTransport, validate_safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +21,20 @@ async def run_http_widget(config: dict[str, Any], forward_auth_token: str | None
   Executes an HTTP request based on the provided widget configuration.
 
   Args:
-      config (Dict[str, Any]): The configuration dictionary for the widget.
+      config (dict[str, Any]): The configuration dictionary for the widget.
           Expected keys:
           - url (str): The target endpoint.
           - method (str, optional): HTTP method (GET, POST, etc.). Defaults to 'GET'.
-          - headers (Dict[str, str], optional): Custom headers.
-          - params (Dict[str, str], optional): Query parameters.
-          - body (Dict[str, Any], optional): JSON body for POST/PUT requests.
+          - headers (dict[str, str], optional): Custom headers.
+          - params (dict[str, str], optional): Query parameters.
+          - body (dict[str, Any], optional): JSON body for POST/PUT requests.
           - timeout (float, optional): Request timeout in seconds. Defaults to 10.0.
-      forward_auth_token (Optional[str]): If provided, adds an 'Authorization'
+      forward_auth_token (str | None): If provided, adds an 'Authorization'
           header with this token value to the request. This is useful for
           calling internal protected services acting on behalf of the user.
 
   Returns:
-      Dict[str, Any]: A dictionary containing the result of the operation.
+      dict[str, Any]: A dictionary containing the result of the operation.
           Structure:
           {
               "data": Any,       # The parsed JSON response from the API
@@ -51,6 +53,13 @@ async def run_http_widget(config: dict[str, Any], forward_auth_token: str | None
   if not url:
     return {"data": None, "status": 0, "error": "Missing URL in widget configuration."}
 
+  # SSRF Guard
+  if isinstance(url, str):
+    is_safe, error_detail = validate_safe_url(url)
+    if not is_safe:
+      logger.warning(f"Blocked SSRF attempt to unsafe URL: {url} ({error_detail})")
+      return {"data": None, "status": 403, "error": f"Security restriction: {error_detail}"}
+
   # Inject Authorization header if a token is explicitly passed for forwarding
   if forward_auth_token:
     # Avoid overwriting if explicitly set in config, otherwise add it
@@ -58,7 +67,8 @@ async def run_http_widget(config: dict[str, Any], forward_auth_token: str | None
       headers["Authorization"] = f"Bearer {forward_auth_token}"
 
   try:
-    async with httpx.AsyncClient(timeout=timeout_sec) as client:
+    transport = SafeAsyncHTTPTransport(verify=True)
+    async with httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=timeout_sec) as client:
       logger.debug(f"Executing HTTP Widget: {method} {url}")
 
       response = await client.request(method=method, url=url, headers=headers, params=query_params, json=json_body)

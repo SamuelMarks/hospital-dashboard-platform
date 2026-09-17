@@ -59,3 +59,35 @@ def test_admin_setting_repr():
 
   setting = AdminSetting(setting_key="test_key", setting_value="test_val")
   assert repr(setting) == "<AdminSetting test_key>"
+
+
+def test_llm_client_reload_swarm():
+  from app.schemas.admin import AdminSettingsResponse
+  from app.services.llm_client import llm_client
+
+  settings_dto = AdminSettingsResponse(api_keys={"openai": "test-key"}, visible_models=["mock-model"])
+  llm_client.reload_swarm(settings_dto)
+  assert len(llm_client.swarm) >= 1
+  llm_client.reload_swarm(None)
+  assert len(llm_client.swarm) >= 1
+
+
+@pytest.mark.asyncio
+async def test_admin_settings_unknown_key_and_reload_error(db_session: AsyncSession, monkeypatch):
+  from app.schemas.admin import AdminSettingsUpdateRequest
+  from app.services.admin import get_admin_settings, update_admin_settings
+  import app.services.admin as admin_module
+
+  settings_res = await get_admin_settings(db_session)
+  assert isinstance(settings_res.api_keys, dict)
+
+  # Mock reload_swarm to raise exception
+  monkeypatch.setattr(
+    admin_module.llm_client,
+    "reload_swarm",
+    lambda _: (_ for _ in ()).throw(RuntimeError("reload failed")),
+  )
+  # Update should succeed gracefully despite reload error
+  req = AdminSettingsUpdateRequest(api_keys={"k": "v"}, visible_models=["m"])
+  res = await update_admin_settings(db_session, req)
+  assert res.api_keys == {"k": "v"}

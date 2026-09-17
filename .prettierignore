@@ -7,3 +7,11 @@ dist/
 e2e/node_modules/
 pulse-query-ng-web/node_modules/
 pulse-query-ng-web/.angular/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+pulse-query-backend/.mypy_cache/
+pulse-query-backend/.pytest_cache/
+pulse-query-backend/.ruff_cache/
+PulseQuery/
+

@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview SQL Builder Component with CodeMirror Integration.
@@ -26,7 +25,6 @@ import {
   AfterViewInit,
   OnDestroy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
@@ -60,7 +58,6 @@ import { ChatStore } from '../chat/chat.store';
 @Component({
   selector: 'app-sql-builder',
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatTabsModule,
     MatButtonModule,
@@ -72,9 +69,8 @@ import { ChatStore } from '../chat/chat.store';
     ConversationComponent,
   ],
   // PROVIDE CHAT STORE so that ConversationComponent (which injects it) works.
-  /* v8 ignore start */
+
   providers: [ChatStore],
-  /* v8 ignore stop */
 
   styles: [
     `
@@ -146,9 +142,7 @@ import { ChatStore } from '../chat/chat.store';
   ],
   templateUrl: './sql-builder.component.html',
 })
-/* v8 ignore start */
 export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
-  /* v8 ignore stop */
   /** boardsApi property. */
   private readonly boardsApi = inject(DashboardsService);
   /** executionApi property. */

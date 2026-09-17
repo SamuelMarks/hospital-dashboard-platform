@@ -48,19 +48,21 @@ open class SimulationApi : ApiClient {
      * Run Simulation
      * Executes an optimization scenario.  This endpoint takes a snapshot of demand (defined by SQL) and applies user-defined capacity and constraints to solve the bed allocation problem.  Args:     request: Configuration containing SQL source and capacity map.     current_user: Authenticated user.  Returns:     ScenarioResult: The calculated assignments.
      * @param scenarioRunRequest 
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ScenarioResult
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun runSimulationApiV1SimulationRunPost(scenarioRunRequest: ScenarioRunRequest): HttpResponse<ScenarioResult> {
+    open suspend fun runSimulationApiV1SimulationRunPost(scenarioRunRequest: ScenarioRunRequest, token: kotlin.String? = null): HttpResponse<ScenarioResult> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = scenarioRunRequest
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/simulation/run",
             query = localVariableQuery,

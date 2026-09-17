@@ -134,4 +134,8 @@ describe('ScenarioEditorComponent', () => {
     component.removeConstraint(0);
     expect(mockStore.removeConstraint).toHaveBeenCalledWith(0);
   });
+
+  it('should extract event value', () => {
+    expect(component.getEventValue({ target: { value: 'val123' } } as any)).toBe('val123');
+  });
 });

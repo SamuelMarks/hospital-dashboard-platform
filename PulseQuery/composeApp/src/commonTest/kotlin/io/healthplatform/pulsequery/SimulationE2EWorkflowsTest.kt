@@ -1,24 +1,29 @@
 package io.healthplatform.pulsequery
 
-import io.healthplatform.pulsequery.api.models.UserCreate
 import io.healthplatform.pulsequery.di.AppContainer
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
-import kotlinx.coroutines.test.runTest
 
+/**
+ * End-to-end integration workflows test for hospital capacity simulation APIs.
+ */
 class SimulationE2EWorkflowsTest {
 
+    /**
+     * Executes dashboard query pre-checks for simulation workflows, handling missing
+     * remote backend gracefully via [runCatching].
+     */
     @Test
     fun testSimulationWorkflow() = runTest {
         AppContainer.currentBaseUrl = "http://localhost:8000"
-        
+
         println("TEST: Simulation API")
-        try {
+        runCatching {
             val response = AppContainer.dashboardsApi.listDashboardsApiV1DashboardsGet()
             assertTrue(response.success, "Dashboards API failed")
-        } catch (e: Throwable) {
+        }.onFailure { e ->
             println("Skipping simulation test: ${e.message}")
         }
     }
 }
-

@@ -121,6 +121,29 @@ async def test_run_simulation_legacy_2col_sql() -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_simulation_handles_infeasible_constraint_error() -> None:
+  """SimulationInfeasibleError should map to HTTP 422 with diagnostic detail."""
+  from app.services.simulation_service import SimulationInfeasibleError
+
+  mock_user = MagicMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  payload = {"demand_source_sql": "SELECT 1", "capacity_parameters": {}}
+
+  with patch(
+    "app.api.routers.simulation.simulation_service.run_scenario",
+    side_effect=SimulationInfeasibleError("Infeasible constraint: minimum flow (50.0) exceeds maximum flow (10.0)"),
+  ):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+      res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
+
+  assert res.status_code == 422
+  assert "Infeasible constraint" in res.json()["detail"]
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
 async def test_run_simulation_handles_value_error() -> None:
   """ValueError should map to 400."""
   mock_user = MagicMock()

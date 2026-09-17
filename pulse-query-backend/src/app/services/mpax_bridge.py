@@ -174,21 +174,61 @@ class MpaxBridgeService:
       l_bound = jnp.zeros(num_vars)
       u_bound = jnp.full(num_vars, jnp.inf)
 
-      # 7. Apply Custom "Hard" Constraints Logic
+      # 7. Apply Custom "Hard" Constraints Logic & Pre-solve Validation
+      service_min_totals: dict[str, float] = {}
+      unit_min_totals: dict[str, float] = {}
+
       for rule in constraints:
         if rule.get("type") == "force_flow":
           s_name = rule.get("service")
           u_name = rule.get("unit")
+          min_val = float(rule.get("min", 0.0))
+          max_val = float(rule.get("max", float("inf")))
+
+          if min_val > max_val:
+            return json.dumps(
+              {
+                "error": f"Infeasible constraint: minimum flow ({min_val}) exceeds maximum flow ({max_val}) for service '{s_name}' in unit '{u_name}'."
+              }
+            )
+          if s_name in demands and min_val > demands[s_name]:
+            return json.dumps(
+              {
+                "error": f"Infeasible constraint: minimum allocation ({min_val}) for service '{s_name}' exceeds total service demand ({demands[s_name]})."
+              }
+            )
+
           # Only apply if both entities exist in the current matrix
           if s_name in services and u_name in units:
+            service_min_totals[s_name] = service_min_totals.get(s_name, 0.0) + min_val
+            if u_name != "Overflow":
+              unit_min_totals[u_name] = unit_min_totals.get(u_name, 0.0) + min_val
+
             s_idx = services.index(s_name)
             u_idx = units.index(u_name)
             idx = self._get_var_index(s_idx, u_idx, num_units)
 
             if "min" in rule:
-              l_bound = l_bound.at[idx].set(float(rule["min"]))
+              l_bound = l_bound.at[idx].set(min_val)
             if "max" in rule:
-              u_bound = u_bound.at[idx].set(float(rule["max"]))
+              u_bound = u_bound.at[idx].set(max_val)
+
+      # Validate aggregate minimum flow bounds against service demands and unit capacities
+      for s_name, total_min in service_min_totals.items():
+        if s_name in demands and total_min > demands[s_name]:
+          return json.dumps(
+            {
+              "error": f"Infeasible constraints: cumulative minimum allocation ({total_min}) for service '{s_name}' exceeds total service demand ({demands[s_name]})."
+            }
+          )
+
+      for u_name, total_min in unit_min_totals.items():
+        if u_name in capacities and total_min > capacities[u_name]:
+          return json.dumps(
+            {
+              "error": f"Infeasible constraints: cumulative minimum allocation ({total_min}) for unit '{u_name}' exceeds unit capacity ({capacities[u_name]})."
+            }
+          )
 
       # 8. Create and Solve LP
       lp = create_lp(c, A, b, G, h, l_bound, u_bound, use_sparse_matrix=False)
@@ -198,7 +238,17 @@ class MpaxBridgeService:
       result = solver.optimize(lp)
 
       # 9. Format Output
+      if result.primal_solution is None:
+        return json.dumps(
+          {
+            "error": "Optimization solver determined the scenario constraints are mathematically infeasible or failed to converge."
+          }
+        )
+
       solution_flat = np.array(result.primal_solution)
+      if np.isnan(solution_flat).any() or np.isinf(solution_flat).any():
+        return json.dumps({"error": "Solver produced invalid non-finite values (NaN or Inf)."})
+
       assignments = []
 
       for s_idx, service in enumerate(services):

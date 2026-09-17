@@ -36,11 +36,14 @@ describe('ConversationComponent', () => {
     mockStore = {
       messages: messagesSig,
       isGenerating: signal(false),
+      isStreaming: signal(false),
+      streamingMessageContent: signal(null),
       error: signal(null),
       availableModels: signal([]),
       selectedModelIds: signal([]),
       toggleModelSelection: vi.fn(),
       sendMessage: vi.fn(),
+      streamResponse: vi.fn(),
       voteCandidate: vi.fn(),
     };
     mockScratchpad = { open: vi.fn() };
@@ -385,6 +388,19 @@ describe('ConversationComponent', () => {
       vi.advanceTimersByTime(50);
       // Shouldn't crash
       vi.useRealTimers();
+    });
+  });
+
+  describe('streaming mode', () => {
+    it('renders streaming message bubble when isStreaming is true', () => {
+      mockStore.isStreaming.set(true);
+      mockStore.streamingMessageContent.set('Streaming token content');
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement as HTMLElement;
+      expect(el.querySelector('.streaming-content')).toBeTruthy();
+      expect(el.querySelector('.streaming-content viz-markdown')).toBeTruthy();
+      expect(el.querySelector('mat-progress-bar')).toBeTruthy();
     });
   });
 });

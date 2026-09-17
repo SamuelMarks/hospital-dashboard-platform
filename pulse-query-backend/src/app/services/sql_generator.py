@@ -88,9 +88,41 @@ class SQLGeneratorService:
       cleaned = match.group(1).strip()
     return cleaned
 
+  def _sanitize_string_literal(self, value: Any) -> str:
+    """
+    Sanitizes a string literal for safe SQL query injection by escaping single quotes.
+
+    Args:
+        value (Any): The raw input value.
+
+    Returns:
+        str: Escaped string safe for SQL interpolation.
+    """
+    if value is None:
+      return ""
+    return str(value).replace("'", "''")
+
+  def _sanitize_date_literal(self, value: Any, fallback: str = "") -> str:
+    """
+    Validates and sanitizes a date or timestamp input against ISO formatting.
+
+    Args:
+        value (Any): The raw date input value.
+        fallback (str): The default value to return if validation fails.
+
+    Returns:
+        str: Sanitized date literal string.
+    """
+    if not value:
+      return fallback
+    str_val = str(value).strip()
+    if re.match(r"^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})?$", str_val):
+      return str_val.replace("'", "''")
+    return fallback
+
   def process_global_filters(self, sql: str, global_params: dict[str, Any]) -> str:
     """
-    Injects global dashboard filter values into SQL placeholders.
+    Injects global dashboard filter values into SQL placeholders safely.
     Allows a single query to be reused across different departments/dates.
 
     Args:
@@ -101,28 +133,35 @@ class SQLGeneratorService:
         str: The executable SQL with values injected.
     """
     processed_sql = sql
-    service_val = global_params.get("dept")
+    service_raw = global_params.get("dept")
 
     if "{{global_service}}" in processed_sql:
-      injection = f"AND Clinical_Service = '{service_val}'" if service_val else ""
+      if service_raw:
+        safe_service = self._sanitize_string_literal(service_raw)
+        injection = f"AND Clinical_Service = '{safe_service}'"
+      else:
+        injection = ""
       processed_sql = processed_sql.replace("{{global_service}}", injection)
 
-    start_date = global_params.get("start_date")
-    end_date = global_params.get("end_date")
+    start_date_raw = global_params.get("start_date")
+    end_date_raw = global_params.get("end_date")
+
+    safe_start = self._sanitize_date_literal(start_date_raw, "")
+    safe_end = self._sanitize_date_literal(end_date_raw, "")
 
     if "{{global_date_range}}" in processed_sql:
-      if start_date and end_date:
-        injection = f"AND Midnight_Census_DateTime BETWEEN '{start_date}' AND '{end_date}'"
+      if safe_start and safe_end:
+        injection = f"AND Midnight_Census_DateTime BETWEEN '{safe_start}' AND '{safe_end}'"
       else:
         injection = ""
       processed_sql = processed_sql.replace("{{global_date_range}}", injection)
 
     if "{{global_start_date}}" in processed_sql:
-      val = start_date if start_date else "2023-01-01"
+      val = self._sanitize_date_literal(start_date_raw, "2023-01-01")
       processed_sql = processed_sql.replace("{{global_start_date}}", val)
 
     if "{{global_end_date}}" in processed_sql:
-      val = end_date if end_date else "2023-12-31"
+      val = self._sanitize_date_literal(end_date_raw, "2023-12-31")
       processed_sql = processed_sql.replace("{{global_end_date}}", val)
 
     return processed_sql

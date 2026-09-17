@@ -20,19 +20,27 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.*
 
 /**
  * Screen displaying high-level analytics about LLM output and usage.
+ *
+ * @param onNavigateToAlertRules Callback invoked to navigate to bed capacity alert rules screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AnalyticsScreen() {
+fun AnalyticsScreen(
+    onNavigateToAlertRules: () -> Unit = {}
+) {
     var records by remember { mutableStateOf<List<LlmOutputAnalyticsRow>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val isDatabaseHealthy by AppContainer.networkHealthRepository.isDatabaseHealthy.collectAsState()
+    val healthState by AppContainer.networkHealthRepository.healthState.collectAsState()
     
     val scope = rememberCoroutineScope()
     val unknownErrorMsg = stringResource(Res.string.unknown_error)
@@ -41,14 +49,14 @@ fun AnalyticsScreen() {
         scope.launch {
             isLoading = true
             errorMessage = null
-            try {
+            runCatching {
                 val response = AppContainer.analyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100)
-                records = response.body()
-            } catch (e: Exception) {
-                errorMessage = e.message ?: unknownErrorMsg
-            } finally {
-                isLoading = false
-            }
+                response.body()
+            }.fold(
+                onSuccess = { records = it },
+                onFailure = { errorMessage = it.message ?: unknownErrorMsg }
+            )
+            isLoading = false
         }
     }
 
@@ -61,6 +69,9 @@ fun AnalyticsScreen() {
             TopAppBar(
                 title = { Text(stringResource(Res.string.llm_analytics)) },
                 actions = {
+                    TextButton(onClick = onNavigateToAlertRules) {
+                        Text("Alert Rules")
+                    }
                     IconButton(onClick = { loadAnalytics() }) {
                         Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.refresh))
                     }
@@ -75,6 +86,18 @@ fun AnalyticsScreen() {
         Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
             when {
                 isLoading -> CircularProgressIndicator()
+                !isDatabaseHealthy -> {
+                    val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: "Database service is experiencing storage or configuration errors."
+                    DatabaseErrorCard(
+                        title = "Database Misconfiguration",
+                        message = dbMsg,
+                        onRetry = {
+                            AppContainer.networkHealthRepository.refreshHealth()
+                            loadAnalytics()
+                        },
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
                 errorMessage != null -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
@@ -89,6 +112,35 @@ fun AnalyticsScreen() {
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        item {
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = onNavigateToAlertRules
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Bed Capacity Alert Rules",
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "Configure occupancy thresholds and automated alerting triggers.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    TextButton(onClick = onNavigateToAlertRules) {
+                                        Text("Configure")
+                                    }
+                                }
+                            }
+                        }
+
                         items(records) { record ->
                             AnalyticsRowElevatedCard(record)
                         }

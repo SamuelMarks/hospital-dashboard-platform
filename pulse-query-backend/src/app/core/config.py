@@ -40,11 +40,36 @@ class Settings(BaseSettings):
 
   # Database: DuckDB
   DUCKDB_PATH: str = "hospital_analytics.duckdb"
+  AUTO_INGEST_INTERVAL_MINUTES: int = 0
+
+  # --- CORS Configuration ---
+  BACKEND_CORS_ORIGINS: list[str] | str = [
+    "http://localhost:4200",
+    "http://localhost:8000",
+    "http://127.0.0.1:4200",
+    "http://127.0.0.1:8000",
+  ]
+
+  @property
+  def parsed_cors_origins(self) -> list[str]:
+    """Returns validated list of permitted CORS origin strings."""
+    if isinstance(self.BACKEND_CORS_ORIGINS, str):
+      return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
+    return [str(origin).strip() for origin in self.BACKEND_CORS_ORIGINS if str(origin).strip()]
 
   # --- Caching Settings ---
   CACHE_TTL_SECONDS: int = 300
   CACHE_MAX_ENTRIES: int = 1000
   CACHE_MAX_ITEM_SIZE: int = 5_000_000
+
+  # --- Email / SMTP Settings ---
+  SMTP_HOST: str | None = None
+  SMTP_PORT: int = 587
+  SMTP_USER: str | None = None
+  SMTP_PASSWORD: str | None = None
+  SMTP_TLS: bool = True
+  EMAILS_FROM_EMAIL: str = "noreply@hospital-platform.local"
+  FRONTEND_URL: str = "http://localhost:4200"
 
   # --- LLM Configuration Fields ---
 
@@ -77,7 +102,7 @@ class Settings(BaseSettings):
     """Constructs the async PostgreSQL connection string from environment variables."""
     import os
 
-    if os.environ.get("USE_SQLITE_ALEMBIC") == "1":  # pragma: no cover
+    if os.environ.get("USE_SQLITE_ALEMBIC") == "1":
       from sqlalchemy.ext.compiler import compiles
       from sqlalchemy.dialects.postgresql import JSONB, UUID
 

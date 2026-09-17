@@ -1,9 +1,9 @@
-/* v8 ignore start */
 /** @docs */
-import { Component, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { Subscription } from 'rxjs';
 
 // Material & UI
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -28,6 +28,10 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
+import { DashboardCollaborationService } from '../core/collaboration/dashboard-collaboration.service';
+import { DATE_NOW } from '../core/time.token';
+import { UndoRedoService } from '../core/undo/undo-redo.service';
+import { DeleteWidgetCommand } from '../core/undo/dashboard-commands';
 
 /**
  * Dashboard Layout component.
@@ -41,7 +45,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
   styleUrl: './dashboard-layout.component.scss',
 
   imports: [
-    CommonModule,
+    DatePipe,
     DragDropModule,
     MatSidenavModule,
     FilterRibbonComponent,
@@ -57,9 +61,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
     EmptyStateComponent,
   ],
 })
-/* v8 ignore start */
-export class DashboardLayoutComponent implements OnInit {
-  /* v8 ignore stop */
+export class DashboardLayoutComponent implements OnInit, OnDestroy {
   /** Store. */
   public readonly store = inject(DashboardStore);
   /** themeService property. */
@@ -76,6 +78,14 @@ export class DashboardLayoutComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   /** snackBar property. */
   private readonly snackBar = inject(MatSnackBar);
+  /** collaborationService property. */
+  private readonly collaborationService = inject(DashboardCollaborationService);
+  /** undoRedoService property. */
+  private readonly undoRedoService = inject(UndoRedoService);
+  /** dateNow property. */
+  private readonly dateNow = inject(DATE_NOW);
+  /** widgetUpdateSub property. */
+  private widgetUpdateSub?: Subscription;
 
   /** Whether the app is in TV Mode (Kiosk). */
   readonly isTvMode = this.themeService.isTvMode;
@@ -87,7 +97,12 @@ export class DashboardLayoutComponent implements OnInit {
       if (id) {
         this.store.reset();
         this.store.loadDashboard(id);
+        this.collaborationService.connect(id);
       }
+    });
+
+    this.widgetUpdateSub = this.collaborationService.remoteWidgetUpdates$.subscribe((widgetId) => {
+      this.store.refreshWidget(widgetId);
     });
 
     this.route.queryParamMap.subscribe((qParams) => {
@@ -97,6 +112,12 @@ export class DashboardLayoutComponent implements OnInit {
       });
       this.store.setGlobalParams(paramsObj);
     });
+  }
+
+  /** Ng On Destroy. */
+  ngOnDestroy(): void {
+    this.widgetUpdateSub?.unsubscribe();
+    this.collaborationService.disconnect();
   }
 
   /**
@@ -285,10 +306,9 @@ export class DashboardLayoutComponent implements OnInit {
       .afterClosed()
       .subscribe((confirmed) => {
         if (confirmed) {
-          this.store.optimisticRemoveWidget(widget.id);
-          this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widget.id).subscribe({
-            error: () => this.store.optimisticRestoreWidget(widget),
-          });
+          this.undoRedoService.execute(
+            new DeleteWidgetCommand(widget, this.dashboardApi, this.store, this.dateNow()),
+          );
         }
       });
   }

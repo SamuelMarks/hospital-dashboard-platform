@@ -1,15 +1,6 @@
-/* v8 ignore start */
 /** @docs */
-import {
-  Component,
-  inject,
-  ViewChild,
-  ElementRef,
-  AfterViewChecked,
-  effect,
-  signal,
-} from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, ViewChild, ElementRef, effect, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -44,7 +35,7 @@ import { ArenaSqlService } from '../arena-sql.service';
 @Component({
   selector: 'app-conversation',
   imports: [
-    CommonModule,
+    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
@@ -242,7 +233,7 @@ import { ArenaSqlService } from '../arena-sql.service';
   ],
 })
 /** @docs */
-export class ConversationComponent implements AfterViewChecked {
+export class ConversationComponent {
   /** Access the chat store. */
   public readonly store = inject(ChatStore);
   /** Access the scratchpad service. */
@@ -275,9 +266,6 @@ export class ConversationComponent implements AfterViewChecked {
       if (len > 0) this.scrollToBottom();
     });
   }
-
-  /** Angular lifecycle hook. */
-  ngAfterViewChecked() {}
 
   /** Handles Enter key press. */
   handleEnter(e: Event): void {

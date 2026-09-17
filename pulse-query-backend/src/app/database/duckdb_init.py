@@ -12,6 +12,7 @@ without repeating complex mathematical formulas (e.g., Z-Scores or Window overla
 import logging
 
 import duckdb
+import duckdb.sqltypes as sqltypes
 
 from app.database.duckdb import duckdb_manager
 from app.services.mpax_bridge import mpax_bridge
@@ -135,8 +136,8 @@ def create_hospital_macros(conn: duckdb.DuckDBPyConnection) -> None:
       conn.create_function(
         "OPTIMIZE_ASSIGNMENTS",
         mpax_bridge.solve_unit_assignment,
-        parameters=[str, str, str, str],
-        return_type=str,
+        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR],
+        return_type=sqltypes.VARCHAR,
         side_effects=True,
       )
     except duckdb.InvalidInputException:

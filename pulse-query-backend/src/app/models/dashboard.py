@@ -30,6 +30,26 @@ class Dashboard(Base):
     back_populates="dashboard", cascade="all, delete-orphan", lazy="selectin"
   )
 
+  # Cascade delete: if dashboard is deleted, delete its shares
+  shares: Mapped[list["DashboardShare"]] = relationship(
+    back_populates="dashboard", cascade="all, delete-orphan", lazy="selectin"
+  )
+
+
+class DashboardShare(Base):
+  """SQLAlchemy model representing a multi-user share on a dashboard."""
+
+  __tablename__ = "dashboard_shares"
+
+  id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+  dashboard_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dashboards.id", ondelete="CASCADE"), index=True)
+  user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+  permission_level: Mapped[str] = mapped_column(String, default="VIEW")  # "VIEW" or "EDIT"
+
+  # Relationships
+  dashboard = relationship("Dashboard", back_populates="shares")
+  user = relationship("app.models.user.User", back_populates="dashboard_shares")
+
 
 class Widget(Base):
   """SQLAlchemy model representing a dashboard widget."""

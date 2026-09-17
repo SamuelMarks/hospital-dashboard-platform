@@ -39,3 +39,24 @@ def test_message_candidate_repr() -> None:
   msg_id = uuid.uuid4()
   cand = MessageCandidate(message_id=msg_id, model_name="ModelX", content="candidate")
   assert repr(cand) == f"<Candidate ModelX for Msg {msg_id}>"
+
+
+def test_alert_rule_repr() -> None:
+  """AlertRule __repr__ should include unit category, threshold and severity."""
+  from app.models.alert_rule import AlertRule
+
+  rule = AlertRule(
+    unit_category="ICU",
+    threshold_percentage=92.5,
+    severity="CRITICAL",
+  )
+  assert repr(rule) == "<AlertRule ICU >= 92.5% [CRITICAL]>"
+
+
+def test_refresh_token_repr() -> None:
+  """RefreshToken __repr__ should include user_id and revoked state."""
+  from app.models.token import RefreshToken
+
+  uid = uuid.uuid4()
+  tok = RefreshToken(user_id=uid, token_hash="hash123", is_revoked=False)
+  assert repr(tok) == f"<RefreshToken user_id={uid} revoked=False>"

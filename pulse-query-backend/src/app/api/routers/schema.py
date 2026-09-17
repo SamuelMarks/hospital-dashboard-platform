@@ -32,6 +32,6 @@ def get_database_schema(current_user: Annotated[User, Depends(deps.get_current_u
   Returns:
       List[TableInfo]: A structured list of tables and their column definitions.
   """
-  # schema_service.get_schema_json returns List[Dict], which Pydantic
-  # automatically validates against List[TableInfo] based on the response_model.
-  return schema_service.get_schema_json()
+  # schema_service.get_schema_json returns List[Dict], which is validated
+  # into List[TableInfo] to preserve strict typing guarantees.
+  return [TableInfo.model_validate(t) for t in schema_service.get_schema_json()]

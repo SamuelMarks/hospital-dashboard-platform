@@ -1,7 +1,15 @@
+"""
+MPAX Benchmark Scenario Generator.
+
+Synthesizes parameterized clinical admission scenarios across diverse hospital units,
+capacities, and clinical service demands for offline benchmark evaluations.
+"""
+
 import json
 import random
 import uuid
 from pathlib import Path
+from typing import Any
 
 # Set fixed seed for reproducibility
 random.seed(42)
@@ -38,8 +46,17 @@ THEMES = [
 ]
 
 
-def generate_scenarios(count=150):
-  scenarios = []
+def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
+  """
+  Generates parameterized clinical scenarios for capacity optimization benchmarking.
+
+  Args:
+      count (int): Number of distinct scenarios to generate.
+
+  Returns:
+      list[dict[str, Any]]: List of structured scenario dictionaries.
+  """
+  scenarios: list[dict[str, Any]] = []
 
   for _ in range(count):
     theme = random.choice(THEMES)

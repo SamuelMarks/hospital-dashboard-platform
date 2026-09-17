@@ -1,7 +1,6 @@
 /** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-metric/viz-metric.component.ts
 import { Component, input, computed, Signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 
 /** @docs */
 export interface MetricData {
@@ -25,7 +24,7 @@ export interface MetricConfig {
 /** @docs */
 @Component({
   selector: 'viz-metric',
-  imports: [CommonModule],
+  imports: [],
 
   styles: [
     `
@@ -104,7 +103,6 @@ export interface MetricConfig {
   templateUrl: './viz-metric.component.html',
 })
 /** @docs */
-/* v8 ignore start */
 export class VizMetricComponent {
   readonly data = input<MetricData | null>();
   readonly titleOverride = input<string>('');
@@ -113,24 +111,24 @@ export class VizMetricComponent {
   readonly displayValue: Signal<string | number> = computed(() => {
     const d = this.data();
     if (d === null || d === undefined) return '-';
-    if (typeof d !== 'number' && typeof d !== 'object') return String(d);
-    if (typeof d === 'object' && 'value' in d && !Array.isArray(d)) return d.value ?? '-';
+    if (typeof d === 'number') return d;
+    if (typeof d !== 'object') return String(d);
 
-    if (typeof d === 'object' && Array.isArray(d.data) && d.data.length > 0) {
+    if ('value' in d && !Array.isArray(d)) return d.value ?? '-';
+
+    if (Array.isArray(d.data) && d.data.length > 0) {
       const firstRow = d.data[0];
       const keys = Object.keys(firstRow);
       return keys.length > 0 ? (firstRow[keys[0]] as string | number) : '-';
     }
 
-    if (typeof d === 'object' && !Array.isArray(d)) {
+    if (!Array.isArray(d)) {
       const keys = Object.keys(d);
       for (const k of keys) {
         if (typeof d[k] === 'number') return d[k] as number;
       }
     }
-    if (typeof d === 'number') return d;
     return '-';
-    /* v8 ignore next */
   });
 
   readonly displayLabel: Signal<string> = computed(() => {
@@ -138,12 +136,11 @@ export class VizMetricComponent {
     if (override) return override;
     const d = this.data();
     if (!d || typeof d !== 'object') return '';
-    if (Array.isArray(d.data) && (d.columns?.length ?? 0) > 0) {
-      return d.columns![0];
+    if (Array.isArray(d.data) && Array.isArray(d.columns) && d.columns.length > 0) {
+      return d.columns[0];
     }
     if ('label' in d) return d.label ?? '';
     return '';
-    /* v8 ignore next */
   });
 
   readonly parsedTrend: Signal<number | null> = computed(() => {
@@ -152,7 +149,6 @@ export class VizMetricComponent {
       return d.trend ?? null;
     }
     return null;
-    /* v8 ignore next */
   });
 
   readonly trendSeries: Signal<number[]> = computed(() => {
@@ -161,14 +157,12 @@ export class VizMetricComponent {
       return d.trend_data;
     }
     return [];
-    /* v8 ignore next */
   });
 
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
     if (series.length < 2) return true;
     return series[series.length - 1] >= series[0];
-    /* v8 ignore next */
   });
 
   readonly sparklinePath = computed<string | null>(() => {
@@ -184,18 +178,15 @@ export class VizMetricComponent {
       const normalizedY = (val - min) / range;
       const y = 50 - (normalizedY * 40 + 5);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
-      /* v8 ignore next */
     });
 
     return 'M ' + points.join(' L ');
-    /* v8 ignore next */
   });
 
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;
     return `${path} L 100,50 L 0,50 Z`;
-    /* v8 ignore next */
   });
 
   readonly alertClass: Signal<string> = computed(() => {
@@ -210,7 +201,5 @@ export class VizMetricComponent {
     if (warning !== undefined && val >= warning) return 'val-warn';
 
     return '';
-    /* v8 ignore next */
   });
 }
-/* v8 ignore stop */

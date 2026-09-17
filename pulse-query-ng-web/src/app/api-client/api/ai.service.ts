@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -41,11 +39,9 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
-/** @docs */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class AiService extends BaseService {
   constructor(
     protected httpClient: HttpClient,
@@ -60,12 +56,14 @@ export class AiService extends BaseService {
    * Executes SQL (read-only) and returns a small preview result. Intended for Arena candidate comparison in the UI.
    * @endpoint post /api/v1/ai/execute
    * @param sQLExecutionRequest
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public executeSqlPreviewApiV1AiExecutePost(
     sQLExecutionRequest: SQLExecutionRequest,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -76,6 +74,7 @@ export class AiService extends BaseService {
   ): Observable<SQLExecutionResponse>;
   public executeSqlPreviewApiV1AiExecutePost(
     sQLExecutionRequest: SQLExecutionRequest,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -86,6 +85,7 @@ export class AiService extends BaseService {
   ): Observable<HttpResponse<SQLExecutionResponse>>;
   public executeSqlPreviewApiV1AiExecutePost(
     sQLExecutionRequest: SQLExecutionRequest,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -96,6 +96,7 @@ export class AiService extends BaseService {
   ): Observable<HttpEvent<SQLExecutionResponse>>;
   public executeSqlPreviewApiV1AiExecutePost(
     sQLExecutionRequest: SQLExecutionRequest,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -109,6 +110,16 @@ export class AiService extends BaseService {
         'Required parameter sQLExecutionRequest was null or undefined when calling executeSqlPreviewApiV1AiExecutePost.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -154,6 +165,7 @@ export class AiService extends BaseService {
     return this.httpClient.request<SQLExecutionResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: sQLExecutionRequest,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -168,12 +180,14 @@ export class AiService extends BaseService {
    * Generates SQL usage the Multi-LLM Arena.  This endpoint: 1. Broadcasts the prompt to all configured LLMs. 2. Persists the results as an Experiment. 3. Returns a list of candidates so the frontend can display a comparison view.  Args:     request (SQLGenerationRequest): The prompt payload.     current_user (User): Authenticated user.     db (AsyncSession): Database session for logging.  Returns:     ExperimentResponse: Object containing experiment ID and list of candidate SQLs.
    * @endpoint post /api/v1/ai/generate
    * @param sQLGenerationRequest
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -184,6 +198,7 @@ export class AiService extends BaseService {
   ): Observable<ExperimentResponse>;
   public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -194,6 +209,7 @@ export class AiService extends BaseService {
   ): Observable<HttpResponse<ExperimentResponse>>;
   public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -204,6 +220,7 @@ export class AiService extends BaseService {
   ): Observable<HttpEvent<ExperimentResponse>>;
   public generateSqlComparisonApiV1AiGeneratePost(
     sQLGenerationRequest: SQLGenerationRequest,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -217,6 +234,16 @@ export class AiService extends BaseService {
         'Required parameter sQLGenerationRequest was null or undefined when calling generateSqlComparisonApiV1AiGeneratePost.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -262,6 +289,7 @@ export class AiService extends BaseService {
     return this.httpClient.request<ExperimentResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: sQLGenerationRequest,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -276,12 +304,14 @@ export class AiService extends BaseService {
    * Returns the list of currently configured LLMs available for the Arena.
    * @endpoint get /api/v1/ai/models
    * @param showAll
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public listAvailableModelsApiV1AiModelsGet(
     showAll?: boolean,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -292,6 +322,7 @@ export class AiService extends BaseService {
   ): Observable<Array<ModelInfo>>;
   public listAvailableModelsApiV1AiModelsGet(
     showAll?: boolean,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -302,6 +333,7 @@ export class AiService extends BaseService {
   ): Observable<HttpResponse<Array<ModelInfo>>>;
   public listAvailableModelsApiV1AiModelsGet(
     showAll?: boolean,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -312,6 +344,7 @@ export class AiService extends BaseService {
   ): Observable<HttpEvent<Array<ModelInfo>>>;
   public listAvailableModelsApiV1AiModelsGet(
     showAll?: boolean,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -326,6 +359,14 @@ export class AiService extends BaseService {
       localVarQueryParameters,
       'show_all',
       <any>showAll,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
       QueryParamStyle.Form,
       true,
     );

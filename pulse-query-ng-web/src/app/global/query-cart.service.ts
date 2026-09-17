@@ -1,6 +1,6 @@
 import { DATE_NOW } from '../core/time.token';
 import { safeStorage } from '../core/storage.utils';
-/* v8 ignore start */
+
 /** @docs */
 import { Injectable, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';

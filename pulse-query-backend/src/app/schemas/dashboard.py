@@ -52,12 +52,36 @@ class DashboardCreate(DashboardBase):
 class DashboardResponse(DashboardBase):
   """
   API Response model for a Dashboard.
-  Includes the nested list of Widgets.
+  Includes the nested list of Widgets and permission level.
   """
 
   id: UUID
   owner_id: UUID
+  permission_level: str = "OWNER"
   widgets: list[WidgetResponse] = []
+
+  model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardShareCreate(BaseModel):
+  """
+  Payload for sharing a dashboard with another user by email.
+  """
+
+  user_email: str
+  permission_level: str = "VIEW"
+
+
+class DashboardShareResponse(BaseModel):
+  """
+  API Response model for an active dashboard share.
+  """
+
+  id: UUID
+  dashboard_id: UUID
+  user_id: UUID
+  user_email: str
+  permission_level: str
 
   model_config = ConfigDict(from_attributes=True)
 

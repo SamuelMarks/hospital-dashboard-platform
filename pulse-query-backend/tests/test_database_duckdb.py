@@ -70,3 +70,45 @@ def test_write_operation_on_readonly_connection_fails(db_manager):
   assert "read-only" in error_str or "cannot modify" in error_str
 
   conn.close()
+
+
+def test_readonly_connection_retries_on_lock(monkeypatch) -> None:
+  """Test that transient lock error triggers retry and succeeds on subsequent attempt."""
+  manager = DuckDBManager("dummy.duckdb")
+  attempts = 0
+
+  def _fake_connect(*args, **kwargs):
+    nonlocal attempts
+    attempts += 1
+    if attempts == 1:
+      raise duckdb.IOException("Could not set lock on file")
+    return "fake_conn"
+
+  monkeypatch.setattr(duckdb, "connect", _fake_connect)
+  conn = manager.get_readonly_connection(max_retries=3)
+  assert conn == "fake_conn"
+  assert attempts == 2
+
+
+def test_readonly_connection_exhausts_retries_on_persistent_lock(monkeypatch) -> None:
+  """Test that persistent lock error eventually raises IOException."""
+  manager = DuckDBManager("dummy.duckdb")
+  monkeypatch.setattr(
+    duckdb,
+    "connect",
+    lambda *args, **kwargs: (_ for _ in ()).throw(duckdb.IOException("Could not set lock on file")),
+  )
+
+  with pytest.raises(duckdb.IOException) as exc:
+    manager.get_readonly_connection(max_retries=2)
+
+  assert "lock" in str(exc.value).lower()
+
+
+def test_readonly_connection_zero_retries() -> None:
+  """Test that zero retries immediately raises IOException."""
+  manager = DuckDBManager("dummy.duckdb")
+  with pytest.raises(duckdb.IOException) as exc:
+    manager.get_readonly_connection(max_retries=0)
+
+  assert "retries" in str(exc.value).lower()

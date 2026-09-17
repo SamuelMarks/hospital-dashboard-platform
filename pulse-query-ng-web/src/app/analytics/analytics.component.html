@@ -7,6 +7,16 @@
       </p>
     </div>
     <div class="actions">
+      <a
+        i18n
+        mat-flat-button
+        color="primary"
+        routerLink="/analytics/alert-rules"
+        data-testid="manage-alert-rules-btn"
+      >
+        <mat-icon>notification_important</mat-icon>
+        Alert Rules
+      </a>
       <button i18n mat-stroked-button (click)="load()" [disabled]="isLoading()">
         <mat-icon>refresh</mat-icon>
         Refresh
@@ -48,6 +58,7 @@
         <input
           matInput
           i18n-placeholder
+          i18n-placeholder
           placeholder="Query, SQL, model, or user"
           [value]="searchText()"
           (input)="searchText.set(getEventValue($event))"
@@ -58,6 +69,7 @@
             mat-icon-button
             matSuffix
             (click)="searchText.set('')"
+            i18n-aria-label
             i18n-aria-label
             aria-label="Clear search"
           >
@@ -71,6 +83,7 @@
         <mat-select
           [value]="modelFilter()"
           (selectionChange)="modelFilter.set($event.value)"
+          i18n-aria-label
           i18n-aria-label
           aria-label="Select option"
         >
@@ -87,6 +100,7 @@
           [value]="userFilter()"
           (selectionChange)="userFilter.set($event.value)"
           i18n-aria-label
+          i18n-aria-label
           aria-label="Select option"
         >
           <mat-option i18n value="all">All users</mat-option>
@@ -102,6 +116,7 @@
           [value]="scoreFilter()"
           (selectionChange)="scoreFilter.set($event.value)"
           i18n-aria-label
+          i18n-aria-label
           aria-label="Select option"
         >
           <mat-option i18n value="all">All outcomes</mat-option>
@@ -116,6 +131,7 @@
           [value]="sqlFilter()"
           (selectionChange)="sqlFilter.set($event.value)"
           i18n-aria-label
+          i18n-aria-label
           aria-label="Select option"
         >
           <mat-option i18n value="all">All</mat-option>
@@ -129,6 +145,7 @@
         <mat-select
           [value]="sourceFilter()"
           (selectionChange)="sourceFilter.set($event.value)"
+          i18n-aria-label
           i18n-aria-label
           aria-label="Select option"
         >
@@ -164,6 +181,7 @@
             mat-table
             [dataSource]="filteredRows()"
             class="analytics-table"
+            i18n-aria-label
             i18n-aria-label
             aria-label="LLM Analytics Table"
           >

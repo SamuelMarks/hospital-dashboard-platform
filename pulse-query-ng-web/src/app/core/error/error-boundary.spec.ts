@@ -8,7 +8,6 @@ import { ErrorBoundaryDirective, ErrorBoundaryContext } from './error-boundary.d
 import { ErrorHandler } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 import { By } from '@angular/platform-browser';
-import { CommonModule } from '@angular/common';
 
 /**
  * Host component to test structural directive usage.
@@ -59,12 +58,7 @@ describe('ErrorBoundaryDirective', () => {
     handlerMock = { clearError: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [
-        CommonModule,
-        ErrorBoundaryDirective,
-        TestHostComponent,
-        MissingTemplateHostComponent,
-      ],
+      imports: [ErrorBoundaryDirective, TestHostComponent, MissingTemplateHostComponent],
       providers: [
         { provide: ErrorHandler, useValue: handlerMock },
         { provide: GlobalErrorHandler, useValue: handlerMock },

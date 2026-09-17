@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Empty State & Onboarding Component.
@@ -10,7 +9,6 @@
  */
 
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,7 +22,7 @@ import { WidgetBuilderComponent } from '../widget-builder/widget-builder.compone
 /** Empty State component. */
 @Component({
   selector: 'app-empty-state',
-  imports: [CommonModule, MatCardModule, MatButtonModule, MatIconModule, MatRippleModule],
+  imports: [MatCardModule, MatButtonModule, MatIconModule, MatRippleModule],
 
   styles: [
     `

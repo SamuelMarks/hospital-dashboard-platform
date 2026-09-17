@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -10,7 +8,9 @@
  * Do not edit the class manually.
  */
 
-/** @docs */
+/**
+ * Request schema for updating admin settings.
+ */
 export interface AdminSettingsUpdateRequest {
   api_keys: { [key: string]: string };
   visible_models: Array<string>;

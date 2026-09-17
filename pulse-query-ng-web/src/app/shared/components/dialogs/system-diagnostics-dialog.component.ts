@@ -1,11 +1,10 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Dialog component displaying live backend system diagnostics,
  * database connectivity status, active warnings, and copyable troubleshooting commands.
  */
 
-import { CommonModule } from '@angular/common';
+import { UpperCasePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -28,7 +27,7 @@ import {
 @Component({
   selector: 'app-system-diagnostics-dialog',
   imports: [
-    CommonModule,
+    UpperCasePipe,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,

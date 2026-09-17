@@ -16,6 +16,7 @@ from typing import Dict, List, Tuple
 
 from app.database.duckdb import duckdb_manager
 from app.schemas.simulation import (
+  ScenarioConstraint,
   ScenarioResult,
   ScenarioRunRequest,
   SimulationAssignment,
@@ -23,6 +24,10 @@ from app.schemas.simulation import (
 from app.services.mpax_bridge import mpax_bridge
 
 logger = logging.getLogger("simulation_service")
+
+
+class SimulationInfeasibleError(ValueError):
+  """Raised when an optimization scenario is mathematically infeasible or contains contradictory constraints."""
 
 
 class SimulationService:
@@ -86,14 +91,12 @@ class SimulationService:
         - dict: Baseline Map: `{(Service, Unit): Count}`
     """
     try:
-      conn = None
+      conn = duckdb_manager.get_readonly_connection()
       try:
-        conn = duckdb_manager.get_readonly_connection()
         cursor = conn.execute(query)
         rows = cursor.fetchall()
       finally:
-        if conn:  # pragma: no cover
-          conn.close()
+        conn.close()
 
       demand_totals: dict[str, float] = {}
       current_state: dict[tuple[str, str], float] = {}
@@ -106,7 +109,7 @@ class SimulationService:
           demand_totals[service] = demand_totals.get(service, 0.0) + count
           # We don't know the unit, so current_state remains empty for this row
 
-        elif len(row) >= 3:  # pragma: no cover
+        elif len(row) >= 3:
           # Format: Service, Unit, Count
           service = str(row[0])
           unit = str(row[1])
@@ -146,7 +149,10 @@ class SimulationService:
     try:
       data = json.loads(raw_json)
       if isinstance(data, dict) and "error" in data:
-        raise ValueError(data["error"])
+        err_msg = str(data["error"])
+        if "infeasible" in err_msg.lower() or "exceeds" in err_msg.lower():
+          raise SimulationInfeasibleError(err_msg)
+        raise ValueError(err_msg)
 
       result_list = []
 
@@ -178,7 +184,7 @@ class SimulationService:
       # If a unit/service pair existed in Current State but is NOT in Solver Output,
       # it means the count went to 0 (solver filtered it). We must document this removal.
       for (svc, unit), old_count in current_state.items():
-        if (svc, unit) not in processed_keys and old_count > 0.1:  # pragma: no cover
+        if (svc, unit) not in processed_keys and old_count > 0.1:
           result_list.append(
             SimulationAssignment(
               Service=svc,
@@ -191,6 +197,8 @@ class SimulationService:
 
       return result_list
 
+    except SimulationInfeasibleError:
+      raise
     except Exception as e:
       logger.error(f"Error parsing simulation result: {e}")
       raise ValueError("Solver returned invalid data.")

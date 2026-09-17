@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import { signal, computed, inject, Service } from '@angular/core';
 import { finalize } from 'rxjs';

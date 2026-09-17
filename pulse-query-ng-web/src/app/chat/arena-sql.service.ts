@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * Arena SQL execution client.
@@ -33,9 +32,7 @@ export interface SqlExecutionResponse {
 
 /** Service wrapper for the AI execute endpoint. */
 @Service()
-/* v8 ignore start */
 export class ArenaSqlService {
-  /* v8 ignore stop */
   /** Resolved API base URL. */
   private readonly baseUrl: string;
 

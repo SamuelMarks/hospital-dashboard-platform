@@ -24,7 +24,10 @@ import io.healthplatform.pulsequery.api.models.ConversationCreate
 import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
+import io.healthplatform.pulsequery.api.models.MessageVoteRequest
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.network.ChatStreamEvent
+import androidx.compose.ui.text.font.FontFamily
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.*
@@ -43,20 +46,24 @@ fun ChatScreen(
     var conversations by remember { mutableStateOf<List<ConversationResponse>>(emptyList()) }
     var messages by remember { mutableStateOf<List<MessageResponse>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var streamingCandidateText by remember { mutableStateOf<String?>(null) }
     var inputText by remember { mutableStateOf("") }
     var showConversationsDialog by remember { mutableStateOf(false) }
     
     val coroutineScope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     fun loadConversations() {
         coroutineScope.launch {
-            try {
+            runCatching {
                 val response = AppContainer.chatApi.listConversationsApiV1ConversationsGet()
-                conversations = response.body()
+                response.body()
+            }.onSuccess { list ->
+                conversations = list
                 if (activeConversation == null && conversationId != null) {
                     activeConversation = conversations.find { it.id == conversationId }
                 }
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 println("Failed to load conversations: ${e.message}")
             }
         }
@@ -67,22 +74,23 @@ fun ChatScreen(
     }
 
     fun loadMessages() {
-        if (activeConversation == null) {
+        val active = activeConversation ?: run {
             messages = emptyList()
             return
         }
         coroutineScope.launch {
             isLoading = true
-            try {
+            runCatching {
                 val response = AppContainer.chatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
-                    conversationId = activeConversation!!.id
+                    conversationId = active.id
                 )
-                messages = response.body()
-            } catch (e: Exception) {
+                response.body()
+            }.onSuccess {
+                messages = it
+            }.onFailure { e ->
                 println("Failed to load messages: ${e.message}")
-            } finally {
-                isLoading = false
             }
+            isLoading = false
         }
     }
 
@@ -92,14 +100,15 @@ fun ChatScreen(
 
     fun deleteConversation(id: String) {
         coroutineScope.launch {
-            try {
+            runCatching {
                 AppContainer.chatApi.deleteConversationApiV1ConversationsConversationIdDelete(id)
+            }.onSuccess {
                 if (activeConversation?.id == id) {
                     activeConversation = null
                     messages = emptyList()
                 }
                 loadConversations()
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 println("Failed to delete conversation: ${e.message}")
             }
         }
@@ -113,7 +122,7 @@ fun ChatScreen(
         
         coroutineScope.launch {
             isLoading = true
-            try {
+            runCatching {
                 if (activeConversation == null) {
                     val response = AppContainer.chatApi.createConversationApiV1ConversationsPost(
                         ConversationCreate(
@@ -132,15 +141,15 @@ fun ChatScreen(
                     )
                     loadMessages()
                 }
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 println("Failed to send message: ${e.message}")
-            } finally {
-                isLoading = false
             }
+            isLoading = false
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(activeConversation?.title ?: stringResource(Res.string.new_chat)) },
@@ -183,7 +192,59 @@ fun ChatScreen(
                     }
                 }
                 items(messages) { message ->
-                    ChatBubble(message = message)
+                    ChatBubble(
+                        message = message,
+                        onVoteCandidate = { candidateId ->
+                            val convId = activeConversation?.id ?: return@ChatBubble
+                            coroutineScope.launch {
+                                runCatching {
+                                    AppContainer.chatApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
+                                        conversationId = convId,
+                                        messageId = message.id,
+                                        messageVoteRequest = MessageVoteRequest(candidateId = candidateId)
+                                    )
+                                }.fold(
+                                    onSuccess = {
+                                        snackbarHostState.showSnackbar("Vote recorded successfully")
+                                    },
+                                    onFailure = { e ->
+                                        snackbarHostState.showSnackbar(e.message ?: "Failed to record vote")
+                                    }
+                                )
+                            }
+                        },
+                        onStageToCart = { title, sql ->
+                            AppContainer.queryCartRepository.addQuery(title, sql)
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Query staged to cart")
+                            }
+                        }
+                    )
+                }
+
+                if (streamingCandidateText != null) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "Assistant (Streaming...)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = streamingCandidateText!!,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -250,19 +311,28 @@ fun ChatScreen(
 }
 
 /**
- * A single message bubble displaying the content.
+ * A single message bubble displaying the content and any competing model candidate variations.
+ *
+ * @param message The chat message entity.
+ * @param onVoteCandidate Optional callback when voting for a model candidate.
+ * @param onStageToCart Optional callback when staging generated SQL to the query cart.
  */
 @Composable
-fun ChatBubble(message: MessageResponse) {
+fun ChatBubble(
+    message: MessageResponse,
+    onVoteCandidate: ((candidateId: String) -> Unit)? = null,
+    onStageToCart: ((title: String, sql: String) -> Unit)? = null
+) {
     val isUser = message.role == "user"
-    
+    var showCandidates by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         Box(
             modifier = Modifier
-                .widthIn(max = 300.dp)
+                .widthIn(max = 340.dp)
                 .clip(
                     RoundedCornerShape(
                         topStart = 16.dp,
@@ -272,7 +342,7 @@ fun ChatBubble(message: MessageResponse) {
                     )
                 )
                 .background(
-                    if (isUser) MaterialTheme.colorScheme.primaryContainer 
+                    if (isUser) MaterialTheme.colorScheme.primaryContainer
                     else MaterialTheme.colorScheme.surfaceVariant
                 )
                 .padding(12.dp)
@@ -283,14 +353,100 @@ fun ChatBubble(message: MessageResponse) {
                     color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyLarge
                 )
-                
+
+                if (!message.sqlSnippet.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = message.sqlSnippet!!,
+                            fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (onStageToCart != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        TextButton(
+                            onClick = { onStageToCart("Chat Query", message.sqlSnippet!!) },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Stage to Cart")
+                        }
+                    }
+                }
+
                 if (!message.candidates.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(Res.string.candidate_variations_available),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
+                    TextButton(onClick = { showCandidates = !showCandidates }) {
+                        Text(
+                            text = if (showCandidates) "Hide Variations" else "${message.candidates!!.size} Model Variations",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+
+                    if (showCandidates) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                        ) {
+                            message.candidates!!.forEach { candidate ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(modifier = Modifier.padding(8.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = candidate.modelName,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = if (candidate.isSelected) "Winner" else "",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.tertiary
+                                            )
+                                        }
+                                        if (!candidate.sqlSnippet.isNullOrBlank()) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = candidate.sqlSnippet!!,
+                                                fontFamily = FontFamily.Monospace,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            if (!candidate.sqlSnippet.isNullOrBlank() && onStageToCart != null) {
+                                                TextButton(onClick = { onStageToCart("${candidate.modelName} SQL", candidate.sqlSnippet!!) }) {
+                                                    Text("Stage")
+                                                }
+                                            }
+                                            if (onVoteCandidate != null) {
+                                                Button(onClick = { onVoteCandidate(candidate.id) }) {
+                                                    Text("Vote as Best")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

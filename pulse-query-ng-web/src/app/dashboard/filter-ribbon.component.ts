@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Filter Ribbon Component.
@@ -9,7 +8,6 @@
  */
 
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { FormRoot, FormField, form } from '@angular/forms/signals';
@@ -32,7 +30,6 @@ import { DashboardStore } from './dashboard.store';
 @Component({
   selector: 'app-filter-ribbon',
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     MatToolbarModule,

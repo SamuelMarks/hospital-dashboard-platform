@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import { RenderMode, ServerRoute } from '@angular/ssr';
 

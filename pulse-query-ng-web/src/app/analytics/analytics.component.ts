@@ -1,8 +1,8 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, inject, signal, computed, effect, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -23,8 +23,9 @@ import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
 @Component({
   selector: 'app-analytics',
   imports: [
-    CommonModule,
+    DatePipe,
     ReactiveFormsModule,
+    RouterLink,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -255,7 +256,6 @@ import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
   ],
   templateUrl: './analytics.component.html',
 })
-/* v8 ignore start */
 export class AnalyticsComponent implements OnInit {
   /**
    * Helper to extract the value from a DOM event.
@@ -265,7 +265,7 @@ export class AnalyticsComponent implements OnInit {
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
-  /* v8 ignore stop */
+
   /** Analytics API client. */
   private readonly analyticsApi = inject(AnalyticsService);
 

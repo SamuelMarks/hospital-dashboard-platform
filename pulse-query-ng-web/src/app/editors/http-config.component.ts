@@ -1,7 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, input, output, inject, signal, linkedSignal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { JsonPipe } from '@angular/common';
 import {
   FormRoot,
   FormField,
@@ -61,7 +60,7 @@ const pairSchema = schema<KeyValuePair>((f) => {
 @Component({
   selector: 'app-http-config',
   imports: [
-    CommonModule,
+    JsonPipe,
     FormRoot,
     FormField,
     MatFormFieldModule,

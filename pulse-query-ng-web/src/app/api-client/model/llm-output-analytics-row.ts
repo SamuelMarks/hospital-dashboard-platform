@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -30,11 +28,9 @@ export interface LlmOutputAnalyticsRow {
   created_at: string;
 }
 export namespace LlmOutputAnalyticsRow {
-  /** @docs */
   export const SourceEnum = {
     Chat: 'chat',
     Ai: 'ai',
   } as const;
-  /** @docs */
   export type SourceEnum = (typeof SourceEnum)[keyof typeof SourceEnum];
 }

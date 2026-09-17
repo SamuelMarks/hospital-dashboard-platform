@@ -60,10 +60,8 @@ export type BreakpointSize = keyof typeof BREAKPOINTS;
 export class BreakpointService implements OnDestroy {
   /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
 
-  /* v8 ignore start */
   /** Width signal. */ private readonly _width = signal(0);
   /** Height signal. */ private readonly _height = signal(0);
-  /* v8 ignore stop */
 
   /**
    * Current viewport width in pixels.
@@ -78,7 +76,7 @@ export class BreakpointService implements OnDestroy {
   /**
    * Current breakpoint size (xs, sm, md, lg, xl).
    */
-  /* v8 ignore start */
+
   readonly currentBreakpoint: Signal<BreakpointSize> = computed(() => {
     const w = this._width();
     if (w >= BREAKPOINTS.xl) return 'xl';
@@ -131,7 +129,6 @@ export class BreakpointService implements OnDestroy {
   readonly hasTouch: Signal<boolean>;
 
   /** Touch signal. */ private readonly _hasTouch: WritableSignal<boolean> = signal(false);
-  /* v8 ignore stop */
 
   /** Constructor. */ constructor() {
     this.hasTouch = this._hasTouch.asReadonly();
@@ -146,7 +143,7 @@ export class BreakpointService implements OnDestroy {
    * @param size - The breakpoint size to check.
    * @returns True if the viewport matches the breakpoint.
    */
-  /* v8 ignore next 3 */
+
   matches(size: BreakpointSize): boolean {
     return this.currentBreakpoint() === size;
   }
@@ -157,7 +154,7 @@ export class BreakpointService implements OnDestroy {
    * @param size - The minimum breakpoint size.
    * @returns True if the viewport is at or above the breakpoint.
    */
-  /* v8 ignore next 4 */
+
   isAtLeast(size: BreakpointSize): boolean {
     const current = this._width();
     return current >= BREAKPOINTS[size];
@@ -169,7 +166,7 @@ export class BreakpointService implements OnDestroy {
    * @param size - The maximum breakpoint size.
    * @returns True if the viewport is below the breakpoint.
    */
-  /* v8 ignore next 4 */
+
   isBelow(size: BreakpointSize): boolean {
     const current = this._width();
     return current < BREAKPOINTS[size];

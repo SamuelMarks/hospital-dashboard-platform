@@ -35,6 +35,12 @@
     <a i18n mat-button routerLink="/analytics" routerLinkActive="active-link" class="nav-link"
       >Analytics</a
     >
+    <a i18n mat-button routerLink="/mpax-arena" routerLinkActive="active-link" class="nav-link"
+      >MPAX Arena</a
+    >
+    <a i18n mat-button routerLink="/benchmarks" routerLinkActive="active-link" class="nav-link"
+      >Benchmarks</a
+    >
     @if (authService.currentUser()?.is_admin) {
       <a i18n mat-button routerLink="/admin" routerLinkActive="active-link" class="nav-link"
         >Admin</a
@@ -64,6 +70,8 @@
     </button>
 
     @if (isDashboardRoute()) {
+      <app-collaborator-presence class="mr-2"></app-collaborator-presence>
+
       <mat-slide-toggle
         i18n
         color="primary"
@@ -78,6 +86,8 @@
       </mat-slide-toggle>
 
       @if (store.isEditMode()) {
+        <app-undo-redo-buttons class="mr-2"></app-undo-redo-buttons>
+
         <button
           i18n
           mat-stroked-button
@@ -103,6 +113,50 @@
         } @else {
           <mat-icon>refresh</mat-icon>
         }
+      </button>
+
+      <button
+        i18n
+        mat-icon-button
+        [matMenuTriggerFor]="exportMenu"
+        [disabled]="!store.dashboard()"
+        i18n-matTooltip
+        matTooltip="Export Dashboard"
+        i18n-aria-label
+        aria-label="Export Dashboard"
+        data-testid="btn-export-dashboard"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+
+      <mat-menu #exportMenu="matMenu">
+        <div i18n class="menu-header-compact">Export Format</div>
+        <button i18n mat-menu-item (click)="exportDashboard('csv')" data-testid="btn-export-csv">
+          <mat-icon>table_chart</mat-icon>
+          <span>Export CSV</span>
+        </button>
+        <button i18n mat-menu-item (click)="exportDashboard('json')" data-testid="btn-export-json">
+          <mat-icon>data_object</mat-icon>
+          <span>Export JSON</span>
+        </button>
+        <button i18n mat-menu-item (click)="exportDashboard('pdf')" data-testid="btn-export-pdf">
+          <mat-icon>picture_as_pdf</mat-icon>
+          <span>Export PDF</span>
+        </button>
+      </mat-menu>
+
+      <button
+        i18n
+        mat-icon-button
+        (click)="openShareDialog()"
+        [disabled]="!store.dashboard()"
+        i18n-matTooltip
+        matTooltip="Share Dashboard"
+        i18n-aria-label
+        aria-label="Share Dashboard"
+        data-testid="btn-share-dashboard"
+      >
+        <mat-icon>share</mat-icon>
       </button>
 
       <div class="divider-vertical"></div>
@@ -156,9 +210,20 @@
           </div>
         </div>
       </div>
+      <mat-divider></mat-divider>
+      <button i18n mat-menu-item (click)="openThemeDialog()" data-testid="btn-open-theme-dialog">
+        <mat-icon>palette</mat-icon>
+        <span>Clinical Palettes...</span>
+      </button>
     </mat-menu>
 
-    <button i18n mat-stroked-button class="action-btn" (click)="askDataService.open()">
+    <button
+      i18n
+      mat-stroked-button
+      class="action-btn"
+      (click)="askDataService.open()"
+      data-testid="btn-ask"
+    >
       <mat-icon>smart_toy</mat-icon> <span class="hidden sm:inline">Ask AI</span>
     </button>
 
@@ -180,6 +245,12 @@
       </div>
       <button i18n mat-menu-item routerLink="/">
         <mat-icon>dashboard</mat-icon><span>My Dashboards</span>
+      </button>
+      <button i18n mat-menu-item routerLink="/mpax-arena">
+        <mat-icon>sports_score</mat-icon><span>MPAX Arena</span>
+      </button>
+      <button i18n mat-menu-item routerLink="/benchmarks">
+        <mat-icon>speed</mat-icon><span>Benchmarks</span>
       </button>
       @if (authService.currentUser()?.is_admin) {
         <button i18n mat-menu-item routerLink="/admin">

@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -35,11 +33,9 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
-/** @docs */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class AdminService extends BaseService {
   constructor(
     protected httpClient: HttpClient,
@@ -53,11 +49,15 @@ export class AdminService extends BaseService {
    * Read Admin Settings
    * Get system-wide admin settings like API keys and visible models.
    * @endpoint get /api/v1/admin/settings
+   * @param token JWT token query parameter for direct browser downloads
+   * @param acceptLanguage
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public readAdminSettingsApiV1AdminSettingsGet(
+    token?: string,
+    acceptLanguage?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -67,6 +67,8 @@ export class AdminService extends BaseService {
     },
   ): Observable<AdminSettingsResponse>;
   public readAdminSettingsApiV1AdminSettingsGet(
+    token?: string,
+    acceptLanguage?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -76,6 +78,8 @@ export class AdminService extends BaseService {
     },
   ): Observable<HttpResponse<AdminSettingsResponse>>;
   public readAdminSettingsApiV1AdminSettingsGet(
+    token?: string,
+    acceptLanguage?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -85,6 +89,8 @@ export class AdminService extends BaseService {
     },
   ): Observable<HttpEvent<AdminSettingsResponse>>;
   public readAdminSettingsApiV1AdminSettingsGet(
+    token?: string,
+    acceptLanguage?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -93,7 +99,20 @@ export class AdminService extends BaseService {
       transferCache?: boolean;
     },
   ): Observable<any> {
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
+    if (acceptLanguage !== undefined && acceptLanguage !== null) {
+      localVarHeaders = localVarHeaders.set('Accept-Language', String(acceptLanguage));
+    }
 
     // authentication (OAuth2PasswordBearer) required
     localVarHeaders = this.configuration.addCredentialToHeaders(
@@ -128,6 +147,7 @@ export class AdminService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<AdminSettingsResponse>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -142,12 +162,16 @@ export class AdminService extends BaseService {
    * Update system-wide admin settings like API keys and visible models.
    * @endpoint put /api/v1/admin/settings
    * @param adminSettingsUpdateRequest
+   * @param token JWT token query parameter for direct browser downloads
+   * @param acceptLanguage
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public writeAdminSettingsApiV1AdminSettingsPut(
     adminSettingsUpdateRequest: AdminSettingsUpdateRequest,
+    token?: string,
+    acceptLanguage?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -158,6 +182,8 @@ export class AdminService extends BaseService {
   ): Observable<AdminSettingsResponse>;
   public writeAdminSettingsApiV1AdminSettingsPut(
     adminSettingsUpdateRequest: AdminSettingsUpdateRequest,
+    token?: string,
+    acceptLanguage?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -168,6 +194,8 @@ export class AdminService extends BaseService {
   ): Observable<HttpResponse<AdminSettingsResponse>>;
   public writeAdminSettingsApiV1AdminSettingsPut(
     adminSettingsUpdateRequest: AdminSettingsUpdateRequest,
+    token?: string,
+    acceptLanguage?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -178,6 +206,8 @@ export class AdminService extends BaseService {
   ): Observable<HttpEvent<AdminSettingsResponse>>;
   public writeAdminSettingsApiV1AdminSettingsPut(
     adminSettingsUpdateRequest: AdminSettingsUpdateRequest,
+    token?: string,
+    acceptLanguage?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -192,7 +222,20 @@ export class AdminService extends BaseService {
       );
     }
 
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
+    if (acceptLanguage !== undefined && acceptLanguage !== null) {
+      localVarHeaders = localVarHeaders.set('Accept-Language', String(acceptLanguage));
+    }
 
     // authentication (OAuth2PasswordBearer) required
     localVarHeaders = this.configuration.addCredentialToHeaders(
@@ -236,6 +279,7 @@ export class AdminService extends BaseService {
     return this.httpClient.request<AdminSettingsResponse>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: adminSettingsUpdateRequest,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

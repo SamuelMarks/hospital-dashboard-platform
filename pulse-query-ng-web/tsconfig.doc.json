@@ -13,7 +13,6 @@
     "src/app/core/theme/theme.service.ts",
     "src/app/dashboard/dashboard.store.ts",
     "src/app/dashboard/query-cart/query-cart.component.ts",
-    "src/app/dashboard/widget-creation.dialog.ts",
     "src/app/dashboard/widget-gallery/widget-gallery.component.ts",
     "src/app/editors/text-editor.component.ts",
     "src/app/global/query-cart.models.ts",

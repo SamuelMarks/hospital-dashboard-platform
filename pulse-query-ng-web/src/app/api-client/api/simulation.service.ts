@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -35,11 +33,9 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
-/** @docs */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class SimulationService extends BaseService {
   constructor(
     protected httpClient: HttpClient,
@@ -54,12 +50,14 @@ export class SimulationService extends BaseService {
    * Executes an optimization scenario.  This endpoint takes a snapshot of demand (defined by SQL) and applies user-defined capacity and constraints to solve the bed allocation problem.  Args:     request: Configuration containing SQL source and capacity map.     current_user: Authenticated user.  Returns:     ScenarioResult: The calculated assignments.
    * @endpoint post /api/v1/simulation/run
    * @param scenarioRunRequest
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public runSimulationApiV1SimulationRunPost(
     scenarioRunRequest: ScenarioRunRequest,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -70,6 +68,7 @@ export class SimulationService extends BaseService {
   ): Observable<ScenarioResult>;
   public runSimulationApiV1SimulationRunPost(
     scenarioRunRequest: ScenarioRunRequest,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -80,6 +79,7 @@ export class SimulationService extends BaseService {
   ): Observable<HttpResponse<ScenarioResult>>;
   public runSimulationApiV1SimulationRunPost(
     scenarioRunRequest: ScenarioRunRequest,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -90,6 +90,7 @@ export class SimulationService extends BaseService {
   ): Observable<HttpEvent<ScenarioResult>>;
   public runSimulationApiV1SimulationRunPost(
     scenarioRunRequest: ScenarioRunRequest,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -103,6 +104,16 @@ export class SimulationService extends BaseService {
         'Required parameter scenarioRunRequest was null or undefined when calling runSimulationApiV1SimulationRunPost.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -148,6 +159,7 @@ export class SimulationService extends BaseService {
     return this.httpClient.request<ScenarioResult>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: scenarioRunRequest,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

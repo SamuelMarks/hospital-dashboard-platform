@@ -162,7 +162,7 @@ jobs:
           profile: pixel_6
           script: |
             adb install ./PulseQuery/composeApp/build/outputs/apk/debug/composeApp-debug.apk
-            # ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
+            ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
 
   maestro_ios:
     name: Maestro E2E iOS
@@ -219,4 +219,86 @@ jobs:
           xcrun simctl install "iPhone 17" "$APP_PATH"
           export PATH="${HOME}/.maestro/bin:${PATH}"
           export MAESTRO_DRIVER_STARTUP_TIMEOUT=900000
-          # maestro test ./PulseQuery/.maestro/
+          ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
+
+  playwright_e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pulse_query_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5433:5432
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: "npm"
+          cache-dependency-path: ./pulse-query-ng-web/package-lock.json
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Python venv setup and backend dependencies
+        run: |
+          uv venv --python 3.12 "$GITHUB_WORKSPACE"/venv
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
+          uv pip install -r "requirements.txt" -r "requirements-dev.txt"
+          uv pip install .
+        working-directory: pulse-query-backend
+
+      - name: Database setup and data ingestion
+        run: |
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
+          cp .env.tpl .env
+          export $(grep -v '^#' .env | xargs -d '\n')
+          alembic upgrade head
+          python3 scripts/ingest.py
+        working-directory: pulse-query-backend
+
+      - name: Angular dependencies install
+        run: npm install
+        working-directory: pulse-query-ng-web
+
+      - name: Playwright dependencies install
+        run: |
+          npm install
+          npx playwright install --with-deps
+        working-directory: e2e
+
+      - name: Run Playwright E2E Tests
+        run: |
+          export $(grep -v '^#' ../pulse-query-backend/.env | xargs -d '\n')
+          . "$GITHUB_WORKSPACE"/venv/bin/activate
+          npx playwright test
+        working-directory: e2e
+        env:
+          CI: true
+
+      - name: Upload Playwright Report on Failure
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 14

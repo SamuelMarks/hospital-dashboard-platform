@@ -223,4 +223,37 @@ describe('errorInterceptor', () => {
       expect.any(Object),
     );
   });
+
+  it('should throttle repeated status 0 error toasts within 3000ms', () => {
+    const error = new HttpErrorResponse({ status: 0, statusText: 'Unknown Error' });
+    const req = new HttpRequest('GET', '/api/test');
+
+    const baseTime = Date.now() + 500000;
+    const nowSpy = vi.spyOn(Date, 'now');
+    nowSpy.mockReturnValue(baseTime);
+
+    TestBed.runInInjectionContext(() =>
+      errorInterceptor(req, () => throwError(() => error)),
+    ).subscribe({
+      error: () => {},
+    });
+
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Cannot reach Pulse Query Backend server. Please verify the API is running.',
+      'Troubleshoot',
+      expect.any(Object),
+    );
+
+    // Call 1 second later (still < 3000ms) -> throttled
+    const countBefore = mockSnackBar.open.mock.calls.length;
+    nowSpy.mockReturnValue(baseTime + 1000);
+    TestBed.runInInjectionContext(() =>
+      errorInterceptor(req, () => throwError(() => error)),
+    ).subscribe({
+      error: () => {},
+    });
+
+    expect(mockSnackBar.open.mock.calls.length).toBe(countBefore);
+    nowSpy.mockRestore();
+  });
 });

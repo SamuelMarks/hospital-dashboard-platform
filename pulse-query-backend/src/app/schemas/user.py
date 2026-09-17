@@ -20,7 +20,20 @@ class UserResponse(BaseModel):
   email: EmailStr
   is_active: bool
   is_admin: bool
+  role: str = "DATA_ANALYST"
   language_preference: str
 
   # Pydantic V2 config to read from SQLAlchemy models
   model_config = ConfigDict(from_attributes=True)
+
+
+class UserRoleUpdate(BaseModel):
+  """Payload for updating a user's clinical role."""
+
+  role: str
+
+
+class UserStatusUpdate(BaseModel):
+  """Payload for modifying user active account status."""
+
+  is_active: bool

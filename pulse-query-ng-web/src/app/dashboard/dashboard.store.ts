@@ -5,7 +5,7 @@ import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Subject, of, timer, Subscription } from 'rxjs';
-import { switchMap, catchError, takeUntil, tap, filter } from 'rxjs/operators';
+import { switchMap, catchError, takeUntil, tap, filter, finalize } from 'rxjs/operators';
 import {
   DashboardsService,
   ExecutionService,
@@ -14,8 +14,13 @@ import {
   WidgetReorderRequest,
   WidgetReorderItem,
   WidgetCreateSql,
+  WidgetCreateHttp,
+  WidgetCreateText,
+  WidgetIn,
   WidgetUpdate,
 } from '../api-client';
+import { UndoRedoService } from '../core/undo/undo-redo.service';
+import { ReorderWidgetsCommand, AddWidgetCommand } from '../core/undo/dashboard-commands';
 
 /** @docs */
 export interface DashboardState {
@@ -50,40 +55,38 @@ const DEFAULT_REFRESH_RATE = 300_000;
 
 /** @docs */
 @Service()
-/* v8 ignore start */
 export class DashboardStore implements OnDestroy {
   private readonly dateNow = inject(DATE_NOW);
   private readonly dashboardApi = inject(DashboardsService);
   private readonly executionApi = inject(ExecutionService);
   private readonly router = inject(Router);
+  private readonly undoRedoService = inject(UndoRedoService);
 
-  /* v8 ignore next */
   private readonly _state = signal<DashboardState>(initialState);
   private readonly refreshTrigger$ = new Subject<void>();
   private readonly destroy$ = new Subject<void>();
   private pollingSub?: Subscription;
 
   readonly state = this._state.asReadonly();
-  /* v8 ignore next */
+
   readonly dashboard = computed(() => this._state().dashboard);
-  /* v8 ignore next */
+
   readonly widgets = computed(() => this._state().widgets);
-  /* v8 ignore next */
+
   readonly dataMap = computed(() => this._state().dataMap);
-  /* v8 ignore next */
+
   readonly isLoading = computed(() => this._state().isLoading);
-  /* v8 ignore next */
+
   readonly error = computed(() => this._state().error);
-  /* v8 ignore next */
+
   readonly globalParams = computed(() => this._state().globalParams);
-  /* v8 ignore next */
+
   readonly isEditMode = computed(() => this._state().isEditMode);
-  /* v8 ignore next */
+
   readonly focusedWidgetId = computed(() => this._state().focusedWidgetId);
-  /* v8 ignore next */
+
   readonly lastUpdated = computed(() => this._state().lastUpdated);
 
-  /* v8 ignore next */
   readonly sortedWidgets = computed(() => {
     return [...this._state().widgets].sort((a, b) => {
       const orderA = (a.config['order'] as number) || 0;
@@ -92,10 +95,8 @@ export class DashboardStore implements OnDestroy {
     });
   });
 
-  /* v8 ignore next */
   readonly isWidgetLoading = computed(() => (id: string) => this._state().loadingWidgetIds.has(id));
 
-  /* v8 ignore next */
   readonly focusedWidget = computed(() => {
     const id = this.focusedWidgetId();
     if (!id) return null;
@@ -128,7 +129,13 @@ export class DashboardStore implements OnDestroy {
 
           const params = this._state().globalParams;
           return this.executionApi
-            .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(dash.id, undefined, params)
+            .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
+              dash.id,
+              undefined,
+              undefined,
+              undefined,
+              params,
+            )
             .pipe(
               catchError((err) => {
                 this.handleError(err);
@@ -175,7 +182,6 @@ export class DashboardStore implements OnDestroy {
           dashboard: res,
           widgets: res.widgets || [],
         });
-        this.healBrokenWidgets(res.widgets || []);
         this.refreshTrigger$.next();
       },
       error: (err) => {
@@ -185,24 +191,12 @@ export class DashboardStore implements OnDestroy {
     });
   }
 
-  private healBrokenWidgets(widgets: WidgetResponse[]): void {
-    widgets.forEach((w) => {
-      if (w.title === 'Widget Admission Lag' && w.config?.['query']) {
-        const sql = w.config['query'] as string;
-        if (sql.includes('Visit_ID')) {
-          console.warn(`[Auto-Fix] Repairing Schema for Widget ${w.id}...`);
-          const fixedSql = sql.replace(/Visit_ID/g, 'Visit_Type');
-
-          const update: WidgetUpdate = { config: { query: fixedSql } };
-          this.dashboardApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(w.id, update).subscribe({
-            next: () => console.log(`[Auto-Fix] Widget ${w.id} repaired successfully.`),
-            error: (e) => console.error(`[Auto-Fix] Failed to repair widget ${w.id}`, e),
-          });
-        }
-      }
-    });
-  }
-
+  /**
+   * Duplicates an existing widget within the active dashboard, offsetting position coordinates
+   * and creating a typed payload matching the source widget kind.
+   *
+   * @param source - Widget to duplicate.
+   */
   duplicateWidget(source: WidgetResponse): void {
     const dash = this.dashboard();
     if (!dash) return;
@@ -214,20 +208,38 @@ export class DashboardStore implements OnDestroy {
     newConfig['x'] = Math.min(11, currentX + 1);
     newConfig['y'] = currentY + 1;
 
-    const payload: WidgetCreateSql = {
-      title: `Copy of ${source.title}`,
-      type: 'SQL',
-      visualization: source.visualization,
-      config: newConfig as WidgetCreateSql['config'],
-    };
+    let payload: WidgetIn;
+    if (source.type === 'HTTP') {
+      payload = {
+        title: `Copy of ${source.title}`,
+        type: 'HTTP',
+        visualization: source.visualization,
+        config: newConfig as unknown as WidgetCreateHttp['config'],
+      };
+    } else if (source.type === 'TEXT') {
+      payload = {
+        title: `Copy of ${source.title}`,
+        type: 'TEXT',
+        visualization: 'markdown',
+        config: newConfig as unknown as WidgetCreateText['config'],
+      };
+    } else {
+      payload = {
+        title: `Copy of ${source.title}`,
+        type: 'SQL',
+        visualization: source.visualization,
+        config: newConfig as unknown as WidgetCreateSql['config'],
+      };
+    }
 
     const tempId = `temp-${Date.now()}`;
     const tempWidget: WidgetResponse = {
       id: tempId,
       dashboard_id: dash.id,
-      // @ts-ignore
-      ...payload,
+      title: payload.title,
       type: source.type,
+      visualization: source.type === 'TEXT' ? 'markdown' : source.visualization,
+      config: newConfig,
     };
 
     this.patch({ widgets: [...this.widgets(), tempWidget] });
@@ -239,6 +251,9 @@ export class DashboardStore implements OnDestroy {
           const updatedWidgets = this.widgets().map((w) => (w.id === tempId ? realWidget : w));
           this.patch({ widgets: updatedWidgets });
           this.refreshWidget(realWidget.id);
+          this.undoRedoService.execute(
+            new AddWidgetCommand(realWidget, this.dashboardApi, this, this.dateNow()),
+          );
         },
         error: (err) => {
           this.handleError(err);
@@ -293,8 +308,59 @@ export class DashboardStore implements OnDestroy {
     this.refreshTrigger$.next();
   }
 
-  refreshWidget(widgetId: string): void {
-    this.refreshTrigger$.next();
+  /**
+   * Refreshes query execution data for a single widget.
+   *
+   * @param widgetId - Unique UUID of the widget to refresh.
+   * @param forceRefresh - Whether to bypass cached results.
+   */
+  refreshWidget(widgetId: string, forceRefresh = false): void {
+    const dash = this.dashboard();
+    if (!dash || !widgetId) return;
+
+    const currentLoading = new Set(this._state().loadingWidgetIds);
+    currentLoading.add(widgetId);
+    this.patch({ loadingWidgetIds: currentLoading, error: null });
+
+    this.executionApi
+      .refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
+        dash.id,
+        widgetId,
+        forceRefresh,
+      )
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          const updatedLoading = new Set(this._state().loadingWidgetIds);
+          updatedLoading.delete(widgetId);
+          this.patch({ loadingWidgetIds: updatedLoading });
+        }),
+      )
+      .subscribe({
+        next: (result) => {
+          if (result) {
+            const currentData = { ...this._state().dataMap };
+            const widgetPayload = (result as Record<string, unknown>)[widgetId];
+            currentData[widgetId] = widgetPayload;
+            this.patch({
+              dataMap: currentData,
+              lastUpdated: this.dateNow(),
+            });
+          }
+        },
+        error: (err) => {
+          this.handleError(err);
+        },
+      });
+  }
+
+  /**
+   * Sets the complete widget array in store state.
+   *
+   * @param widgets - New widget array.
+   */
+  setWidgets(widgets: WidgetResponse[]): void {
+    this.patch({ widgets });
   }
 
   reset(): void {
@@ -307,30 +373,21 @@ export class DashboardStore implements OnDestroy {
     const currentDashboard = this.dashboard();
     if (!currentDashboard || previousIndex === currentIndex) return;
 
-    const sorted = [...this.sortedWidgets()];
+    const previousWidgets = [...this.sortedWidgets()];
+    const sorted = [...previousWidgets];
     const [movedWidget] = sorted.splice(previousIndex, 1);
     sorted.splice(currentIndex, 0, movedWidget);
 
-    const updates: WidgetReorderItem[] = [];
-    const updatedWidgets = sorted.map((w, index) => {
-      const newConfig: Record<string, unknown> = { ...w.config, order: index };
-      delete newConfig['group'];
-
-      updates.push({ id: w.id, order: index, group: 'General' });
-      return { ...w, config: newConfig };
-    });
-
-    this.patch({ widgets: updatedWidgets });
-
-    const request: WidgetReorderRequest = { items: updates };
-    this.dashboardApi
-      .reorderWidgetsApiV1DashboardsDashboardIdReorderPost(currentDashboard.id, request)
-      .subscribe({
-        error: (e) => {
-          this.handleError(e);
-          this.loadDashboard(currentDashboard.id);
-        },
-      });
+    this.undoRedoService.execute(
+      new ReorderWidgetsCommand(
+        currentDashboard.id,
+        previousWidgets,
+        sorted,
+        this.dashboardApi,
+        this,
+        this.dateNow(),
+      ),
+    );
   }
 
   optimisticRemoveWidget(id: string): void {

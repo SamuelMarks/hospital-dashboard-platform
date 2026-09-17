@@ -12,6 +12,7 @@ import { ThemeService } from '../core/theme/theme.service';
 import { ActivatedRoute } from '@angular/router';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
+import { DashboardCollaborationService } from '../core/collaboration/dashboard-collaboration.service';
 import { vi } from 'vitest';
 
 const makeCartItem = (): QueryCartItem => ({
@@ -49,6 +50,8 @@ describe('DashboardLayoutComponent', () => {
   let mockDialog: any;
   let mockSnackBar: any;
   let mockTheme: any;
+  let mockCollab: any;
+  let remoteWidgetUpdates$: Subject<string>;
   let paramMap$: Subject<any>;
   let queryParamMap$: Subject<any>;
 
@@ -57,11 +60,13 @@ describe('DashboardLayoutComponent', () => {
   beforeEach(() => {
     paramMap$ = new Subject<any>();
     queryParamMap$ = new Subject<any>();
+    remoteWidgetUpdates$ = new Subject<string>();
 
     mockStore = {
       dashboard: signal({ id: 'd1' }),
       reset: vi.fn(),
       loadDashboard: vi.fn(),
+      refreshWidget: vi.fn(),
       setGlobalParams: vi.fn(),
       updateWidgetOrder: vi.fn(),
       setLoading: vi.fn(),
@@ -77,6 +82,11 @@ describe('DashboardLayoutComponent', () => {
     mockDialog = { open: vi.fn() };
     mockSnackBar = { open: vi.fn() };
     mockTheme = { isTvMode: signal(false) };
+    mockCollab = {
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      remoteWidgetUpdates$: remoteWidgetUpdates$.asObservable(),
+    };
 
     TestBed.configureTestingModule({
       providers: [
@@ -87,6 +97,7 @@ describe('DashboardLayoutComponent', () => {
         { provide: MatDialog, useValue: mockDialog },
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: ThemeService, useValue: mockTheme },
+        { provide: DashboardCollaborationService, useValue: mockCollab },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -110,7 +121,14 @@ describe('DashboardLayoutComponent', () => {
 
     expect(mockStore.reset).toHaveBeenCalled();
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d9');
+    expect(mockCollab.connect).toHaveBeenCalledWith('d9');
     expect(mockStore.setGlobalParams).toHaveBeenCalledWith({ dept: 'Cardiology' });
+
+    remoteWidgetUpdates$.next('widget-42');
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('widget-42');
+
+    component.ngOnDestroy();
+    expect(mockCollab.disconnect).toHaveBeenCalled();
   });
 
   it('should skip loading when route id is missing', () => {

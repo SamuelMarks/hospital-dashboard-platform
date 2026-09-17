@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -31,11 +29,9 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
-/** @docs */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class ExecutionService extends BaseService {
   constructor(
     protected httpClient: HttpClient,
@@ -47,10 +43,12 @@ export class ExecutionService extends BaseService {
 
   /**
    * Refresh Dashboard
-   * Refreshes data for ALL widgets in a specific dashboard. Injects global_params into SQL queries before execution.
+   * Refreshes data for ALL widgets in a specific dashboard. Injects global_params into SQL queries before execution.  Args:     dashboard_id (UUID): ID of the target dashboard to refresh.     current_user (User): Authenticated user requesting the refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Authorization header for token forwarding.     accept_language (Optional[str]): Preferred response language header.     global_params (dict[str, Any]): Global filter parameters for queries.  Returns:     dict[UUID, Any]: Map of widget UUID to execution results.  Raises:     HTTPException: 404 if dashboard not found or user lacks access.
    * @endpoint post /api/v1/dashboards/{dashboard_id}/refresh
    * @param dashboardId
+   * @param token JWT token query parameter for direct browser downloads
    * @param authorization
+   * @param acceptLanguage
    * @param requestBody
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
@@ -58,7 +56,9 @@ export class ExecutionService extends BaseService {
    */
   public refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
     dashboardId: string,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     requestBody?: { [key: string]: any },
     observe?: 'body',
     reportProgress?: boolean,
@@ -70,7 +70,9 @@ export class ExecutionService extends BaseService {
   ): Observable<{ [key: string]: any }>;
   public refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
     dashboardId: string,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     requestBody?: { [key: string]: any },
     observe?: 'response',
     reportProgress?: boolean,
@@ -82,7 +84,9 @@ export class ExecutionService extends BaseService {
   ): Observable<HttpResponse<{ [key: string]: any }>>;
   public refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
     dashboardId: string,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     requestBody?: { [key: string]: any },
     observe?: 'events',
     reportProgress?: boolean,
@@ -94,7 +98,9 @@ export class ExecutionService extends BaseService {
   ): Observable<HttpEvent<{ [key: string]: any }>>;
   public refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
     dashboardId: string,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     requestBody?: { [key: string]: any },
     observe: any = 'body',
     reportProgress: boolean = false,
@@ -110,9 +116,22 @@ export class ExecutionService extends BaseService {
       );
     }
 
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
     if (authorization !== undefined && authorization !== null) {
       localVarHeaders = localVarHeaders.set('authorization', String(authorization));
+    }
+    if (acceptLanguage !== undefined && acceptLanguage !== null) {
+      localVarHeaders = localVarHeaders.set('Accept-Language', String(acceptLanguage));
     }
 
     // authentication (OAuth2PasswordBearer) required
@@ -157,6 +176,7 @@ export class ExecutionService extends BaseService {
     return this.httpClient.request<{ [key: string]: any }>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: requestBody,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -168,12 +188,14 @@ export class ExecutionService extends BaseService {
 
   /**
    * Refresh Widget
-   * Refreshes data for a SINGLE widget. Supports ?force_refresh&#x3D;true to bypass cache.
+   * Refreshes data for a SINGLE widget. Supports ?force_refresh&#x3D;true to bypass cache.  Args:     dashboard_id (UUID): Target dashboard ID.     widget_id (UUID): Target widget ID within the dashboard.     current_user (User): Authenticated user requesting refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Optional authorization header for forwarding.     accept_language (Optional[str]): Preferred response language header.     force_refresh (bool): Whether to bypass query cache.  Returns:     dict[UUID, Any]: Dictionary mapping widget ID to query execution payload.  Raises:     HTTPException: 404 if dashboard or widget not found or access denied.
    * @endpoint post /api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/refresh
    * @param dashboardId
    * @param widgetId
    * @param forceRefresh
+   * @param token JWT token query parameter for direct browser downloads
    * @param authorization
+   * @param acceptLanguage
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
@@ -182,7 +204,9 @@ export class ExecutionService extends BaseService {
     dashboardId: string,
     widgetId: string,
     forceRefresh?: boolean,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -195,7 +219,9 @@ export class ExecutionService extends BaseService {
     dashboardId: string,
     widgetId: string,
     forceRefresh?: boolean,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -208,7 +234,9 @@ export class ExecutionService extends BaseService {
     dashboardId: string,
     widgetId: string,
     forceRefresh?: boolean,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -221,7 +249,9 @@ export class ExecutionService extends BaseService {
     dashboardId: string,
     widgetId: string,
     forceRefresh?: boolean,
+    token?: string,
     authorization?: string,
+    acceptLanguage?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -251,9 +281,20 @@ export class ExecutionService extends BaseService {
       true,
     );
 
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
+
     let localVarHeaders = this.defaultHeaders;
     if (authorization !== undefined && authorization !== null) {
       localVarHeaders = localVarHeaders.set('authorization', String(authorization));
+    }
+    if (acceptLanguage !== undefined && acceptLanguage !== null) {
+      localVarHeaders = localVarHeaders.set('Accept-Language', String(acceptLanguage));
     }
 
     // authentication (OAuth2PasswordBearer) required

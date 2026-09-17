@@ -112,4 +112,40 @@
     <string name="base_scenario_output">Base Scenario Output:</string>
     <string name="branch_scenario_output_optimized">Branch Scenario Output (Optimized):</string>
     <string name="describe_changes">Describe changes...</string>
+
+    <!-- Widget Wizard -->
+    <string name="widget_wizard">Widget Creation Wizard</string>
+    <string name="template_marketplace">Template Marketplace</string>
+    <string name="select_template">Select a Template</string>
+    <string name="configure_widget">Configure Widget</string>
+    <string name="all_categories">All</string>
+    <string name="search_templates">Search templates...</string>
+    <string name="widget_title">Widget Title</string>
+    <string name="visualization_type">Visualization Type</string>
+    <string name="create_widget_button">Create Widget</string>
+    <string name="creating_widget">Creating Widget...</string>
+    <string name="loading_templates">Loading Templates...</string>
+    <string name="no_templates_found">No templates found matching criteria.</string>
+    <string name="parameters">Parameters</string>
+    <string name="widget_created_success">Widget created successfully!</string>
+    <string name="failed_to_load_templates">Failed to load templates: %1$s</string>
+    <string name="failed_to_create_widget">Failed to create widget: %1$s</string>
+
+    <!-- Simulation Constraint Editor -->
+    <string name="custom_constraints">Custom Constraints</string>
+    <string name="add_constraint">Add Constraint</string>
+    <string name="affinity_overrides">Affinity Overrides</string>
+    <string name="add_affinity_override">Add Affinity</string>
+    <string name="before_after_comparison">Before &amp; After Bed Occupancy</string>
+    <string name="original_occupancy">Original</string>
+    <string name="proposed_occupancy">Proposed</string>
+    <string name="delta_change">Delta</string>
+    <string name="clinical_service">Clinical Service</string>
+    <string name="ward_unit">Ward Unit</string>
+    <string name="constraint_type">Constraint Type</string>
+    <string name="min_beds">Min Beds</string>
+    <string name="max_beds">Max Beds</string>
+    <string name="affinity_score">Affinity Score</string>
+    <string name="no_constraints_added">No custom constraints added.</string>
+    <string name="no_affinities_added">No affinity overrides added.</string>
 </resources>

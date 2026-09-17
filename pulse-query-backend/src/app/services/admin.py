@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.admin_setting import AdminSetting
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
+from app.services.llm_client import llm_client
 
 
 async def get_admin_settings(db: AsyncSession) -> AdminSettingsResponse:
@@ -13,14 +14,14 @@ async def get_admin_settings(db: AsyncSession) -> AdminSettingsResponse:
   result = await db.execute(stmt)
   settings = result.scalars().all()
 
-  api_keys = {}
-  visible_models = []
+  api_keys: dict[str, str] = {}
+  visible_models: list[str] = []
 
   for setting in settings:
-    if setting.setting_key == "api_keys" and setting.setting_value:
-      api_keys = setting.setting_value
-    elif setting.setting_key == "visible_models" and setting.setting_value:  # pragma: no cover
-      visible_models = setting.setting_value
+    if setting.setting_key == "api_keys":
+      api_keys = setting.setting_value or {}
+    else:
+      visible_models = setting.setting_value or []
 
   return AdminSettingsResponse(api_keys=api_keys, visible_models=visible_models)
 
@@ -50,4 +51,9 @@ async def update_admin_settings(db: AsyncSession, request: AdminSettingsUpdateRe
     db.add(visible_models_setting)
 
   await db.commit()
-  return await get_admin_settings(db)
+  new_settings = await get_admin_settings(db)
+  try:
+    llm_client.reload_swarm(new_settings)
+  except Exception:
+    pass
+  return new_settings

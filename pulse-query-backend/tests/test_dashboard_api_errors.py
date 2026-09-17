@@ -120,3 +120,85 @@ async def test_delete_widget_success(client: AsyncClient) -> None:
 
   res = await client.delete(f"/api/v1/dashboards/widgets/{widget_id}", headers=headers)
   assert res.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_create_dashboard_scalars_none(client: AsyncClient) -> None:
+  """Test create_dashboard raises 404 if re-selected dashboard returns None."""
+  from unittest.mock import MagicMock, patch
+  import conftest
+
+  headers = await _auth_headers(client)
+  orig_execute = conftest.AsyncSessionShim.execute
+
+  async def mock_execute(self, *args, **kwargs):
+    res = await orig_execute(self, *args, **kwargs)
+    stmt_str = str(args[0]) if args else ""
+    if "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
+      mock_res = MagicMock()
+      mock_res.scalars.return_value.first.return_value = None
+      return mock_res
+    return res
+
+  with patch.object(conftest.AsyncSessionShim, "execute", side_effect=mock_execute, autospec=True):
+    res = await client.post("/api/v1/dashboards/", json={"name": "TestNone"}, headers=headers)
+    assert res.status_code == 404
+    assert res.json()["detail"] == "Dashboard not found"
+
+
+@pytest.mark.asyncio
+async def test_clone_dashboard_scalars_none(client: AsyncClient) -> None:
+  """Test clone_dashboard raises 404 if re-selected dashboard returns None."""
+  from unittest.mock import MagicMock, patch
+  import conftest
+
+  headers = await _auth_headers(client)
+  create_dash = await client.post("/api/v1/dashboards/", json={"name": "SourceDash"}, headers=headers)
+  dash_id = create_dash.json()["id"]
+
+  orig_execute = conftest.AsyncSessionShim.execute
+  clone_call = False
+  dash_queries = 0
+
+  async def mock_execute(self, *args, **kwargs):
+    nonlocal dash_queries
+    res = await orig_execute(self, *args, **kwargs)
+    stmt_str = str(args[0]) if args else ""
+    if clone_call and "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
+      dash_queries += 1
+      # First dashboard query in clone_dashboard is _get_dashboard_with_access, second is reload
+      if dash_queries >= 2:
+        mock_res = MagicMock()
+        mock_res.scalars.return_value.first.return_value = None
+        return mock_res
+    return res
+
+  with patch.object(conftest.AsyncSessionShim, "execute", side_effect=mock_execute, autospec=True):
+    clone_call = True
+    res = await client.post(f"/api/v1/dashboards/{dash_id}/clone", headers=headers)
+    assert res.status_code == 404
+    assert res.json()["detail"] == "Cloned dashboard could not be loaded"
+
+
+@pytest.mark.asyncio
+async def test_restore_default_dashboard_scalars_none(client: AsyncClient) -> None:
+  """Test restore_default_dashboard raises 404 if re-selected dashboard returns None."""
+  from unittest.mock import MagicMock, patch
+  import conftest
+
+  headers = await _auth_headers(client)
+  orig_execute = conftest.AsyncSessionShim.execute
+
+  async def mock_execute(self, *args, **kwargs):
+    res = await orig_execute(self, *args, **kwargs)
+    stmt_str = str(args[0]) if args else ""
+    if "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
+      mock_res = MagicMock()
+      mock_res.scalars.return_value.first.return_value = None
+      return mock_res
+    return res
+
+  with patch.object(conftest.AsyncSessionShim, "execute", side_effect=mock_execute, autospec=True):
+    res = await client.post("/api/v1/dashboards/restore-defaults", headers=headers)
+    assert res.status_code == 404
+    assert res.json()["detail"] == "Default dashboard could not be restored"

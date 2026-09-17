@@ -35,13 +35,13 @@ describe('DashboardCreateDialog', () => {
   });
 
   it('should validate form input', () => {
-    expect(component.form().valid()).toBe(false);
+    expect(component.createForm().valid()).toBe(false);
 
     component.formModel.set({ name: 'ab' });
     fixture.detectChanges();
 
     // In Angular v22 signal forms, errors are collected in an array.
-    const hasMinLengthError = component.form
+    const hasMinLengthError = component.createForm
       .name()
       .errors()
       .some((e) => e.kind === 'minLength');
@@ -49,7 +49,7 @@ describe('DashboardCreateDialog', () => {
 
     component.formModel.set({ name: 'Valid Name' });
     fixture.detectChanges();
-    expect(component.form().valid()).toBe(true);
+    expect(component.createForm().valid()).toBe(true);
   });
 
   it('should call API and close dialog on success', () => {

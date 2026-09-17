@@ -79,6 +79,7 @@ kotlin {
             // Ktor Networking
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.content.negotiation)
+            implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.kotlinx.json)
             implementation(libs.ktor.client.logging)
             
@@ -105,6 +106,9 @@ kotlin {
             implementation(libs.ktor.client.java)
             
             // Desktop Database
+            implementation(libs.sqldelight.sqlite)
+        }
+        jvmTest.dependencies {
             implementation(libs.sqldelight.sqlite)
         }
         jsMain.dependencies {
@@ -199,7 +203,6 @@ kover {
                     "io.healthplatform.pulsequery.ComposableSingletons\$*",
                     "io.healthplatform.pulsequery.ui.**",
                     "io.healthplatform.pulsequery.api.**",
-                    "io.healthplatform.pulsequery.network.**",
                     "io.healthplatform.pulsequery.database.PulseQueryDatabaseImpl*",
                     "io.healthplatform.pulsequery.database.AppDatabaseQueries*",
                     "io.healthplatform.pulsequery.database.AppConfig",
@@ -228,5 +231,5 @@ kover {
 
 tasks.withType<AbstractTestTask>().configureEach {
     reports.html.required.set(false)
-    reports.junitXml.required.set(false)
+    reports.junitXml.required.set(true)
 }

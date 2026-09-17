@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { inject, PLATFORM_ID } from '@angular/core';
@@ -26,7 +25,7 @@ export const adminGuard: CanActivateFn = (
     // Wait until user is either populated OR there is no token (meaning they aren't logging in)
     filter((user) => user !== null || !authService.hasStoredToken()),
     map((user) => {
-      if (user && user.is_admin) {
+      if (user && (user.is_admin || ('role' in user && user.role === 'SUPER_ADMIN'))) {
         return true;
       }
       return router.createUrlTree(['/']);

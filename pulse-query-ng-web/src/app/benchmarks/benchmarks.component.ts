@@ -1,133 +1,36 @@
-/* v8 ignore start */
-/** @docs */
-import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+/**
+ * @fileoverview Component rendering benchmark scenarios and real-time execution progress telemetry.
+ */
+
+import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
-import { BenchmarksService, SqlBenchmark, MpaxBenchmark } from './benchmarks.service';
-import { forkJoin } from 'rxjs';
-import { finalize } from 'rxjs/operators';
-import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 import { Router } from '@angular/router';
+import { forkJoin, Subscription } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
-/** @docs */
+import { BenchmarksService, SqlBenchmark, MpaxBenchmark } from './benchmarks.service';
+import { BenchmarkProgressService } from './benchmark-progress.service';
+import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
+
+/**
+ * Component providing exploration of gold-standard text-to-SQL and MPAX benchmark datasets
+ * along with real-time SSE progress tracking during active evaluation runs.
+ */
 @Component({
   selector: 'app-benchmarks',
   imports: [
-    CommonModule,
     MatCardModule,
     MatTabsModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
     MatIconModule,
     SqlSnippetComponent,
   ],
-
-  template: `
-    <div class="benchmarks-container">
-      <div class="header">
-        <h1 i18n class="text-2xl font-light mb-1">Benchmark Datasets</h1>
-        <p i18n class="text-gray-500">
-          Explore the gold standard scenarios used to evaluate Arena performance.
-        </p>
-      </div>
-
-      @if (error()) {
-        <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
-          <mat-icon i18n class="align-middle mr-2">error</mat-icon>
-          {{ error() }}
-        </div>
-      }
-
-      @if (loading()) {
-        <div class="loading flex justify-center py-12">
-          <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
-        </div>
-      } @else {
-        <mat-tab-group animationDuration="0ms">
-          <mat-tab label="Text-to-SQL ({{ sqlCount() }})">
-            <div class="tab-content pt-4">
-              <div class="grid grid-cols-1 gap-6">
-                @for (item of sqlBenchmarks(); track item.question) {
-                  @if (item.question) {
-                    <mat-card class="p-4 border border-gray-200">
-                      <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-lg text-blue-900">{{ item.theme }}</h3>
-                        <span
-                          class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600"
-                          >{{ item.complexity }}</span
-                        >
-                      </div>
-                      <p class="mb-4 text-gray-800">{{ item.question }}</p>
-
-                      <div class="mb-2">
-                        <strong i18n class="text-xs text-gray-500 uppercase tracking-wider"
-                          >Gold SQL</strong
-                        >
-                      </div>
-                      <app-sql-snippet [sql]="item.gold_sql"></app-sql-snippet>
-                    </mat-card>
-                  }
-                }
-              </div>
-            </div>
-          </mat-tab>
-
-          <mat-tab label="MPAX Optimization ({{ mpaxCount() }})">
-            <div class="tab-content pt-4">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                @for (item of mpaxBenchmarks(); track item.id) {
-                  <mat-card
-                    class="p-4 border border-gray-200 flex flex-col cursor-pointer hover:border-blue-300 transition-colors"
-                    (click)="simulateMpax(item)"
-                  >
-                    <div class="flex justify-between items-start mb-2">
-                      <h3
-                        class="font-bold text-blue-900 text-sm truncate pr-2"
-                        [title]="item.theme"
-                      >
-                        {{ item.theme }}
-                      </h3>
-                      <span
-                        class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 flex-shrink-0"
-                        >{{ item.complexity }}</span
-                      >
-                    </div>
-
-                    <p class="text-sm text-gray-800 mb-4 flex-grow">{{ item.prompt }}</p>
-
-                    <div
-                      class="grid grid-cols-2 gap-2 text-xs text-gray-600 mt-auto bg-gray-50 p-2 rounded"
-                    >
-                      <div i18n>
-                        <strong>Demand:</strong>
-                        {{ item.expected_metrics?.['total_demand'] || 0 }} pts
-                      </div>
-                      <div i18n>
-                        <strong>Capacity:</strong>
-                        {{ item.expected_metrics?.['total_capacity'] || 0 }} beds
-                      </div>
-                      <div class="col-span-2">
-                        <strong i18n>Expected Overflow:</strong>
-                        <span
-                          [class.text-red-500]="
-                            (item.expected_metrics?.['expected_overflow'] || 0) > 0
-                          "
-                        >
-                          {{ item.expected_metrics?.['expected_overflow'] || 0 }}
-                        </span>
-                      </div>
-                    </div>
-                  </mat-card>
-                }
-              </div>
-            </div>
-          </mat-tab>
-        </mat-tab-group>
-      }
-    </div>
-  `,
+  templateUrl: './benchmarks.component.html',
   styles: [
     `
       .benchmarks-container {
@@ -138,26 +41,59 @@ import { Router } from '@angular/router';
       .header {
         margin-bottom: 24px;
       }
+      .progress-card {
+        margin-bottom: 20px;
+        border-left: 4px solid var(--sys-primary);
+      }
     `,
   ],
 })
-/** @docs */
-export class BenchmarksComponent implements OnInit {
-  /** doc */
-  /** doc */ private readonly benchmarksService = inject(BenchmarksService);
-  /** doc */ private readonly router = inject(Router);
+export class BenchmarksComponent implements OnInit, OnDestroy {
+  /** Injected benchmark data service. */
+  private readonly benchmarksService = inject(BenchmarksService);
+  /** Injected SSE benchmark progress tracker service. */
+  private readonly progressService = inject(BenchmarkProgressService);
+  /** Injected Angular router instance. */
+  private readonly router = inject(Router);
 
-  /** doc */ loading = signal<boolean>(true);
-  /** doc */ error = signal<string | null>(null);
+  /** Active SSE stream subscription. */
+  private progressSub?: Subscription;
 
-  /** doc */ sqlBenchmarks = signal<SqlBenchmark[]>([]);
-  /** doc */ mpaxBenchmarks = signal<MpaxBenchmark[]>([]);
+  /** Loading state flag while fetching benchmark scenarios. */
+  readonly loading = signal<boolean>(true);
+  /** Error message banner content. */
+  readonly error = signal<string | null>(null);
 
-  /** doc */ sqlCount = signal<number>(0);
-  /** doc */ mpaxCount = signal<number>(0);
+  /** Parsed SQL benchmark scenario items. */
+  readonly sqlBenchmarks = signal<SqlBenchmark[]>([]);
+  /** Parsed MPAX benchmark scenario items. */
+  readonly mpaxBenchmarks = signal<MpaxBenchmark[]>([]);
 
-  /** doc */
-  ngOnInit() {
+  /** Valid text-to-SQL benchmark count. */
+  readonly sqlCount = signal<number>(0);
+  /** Valid MPAX benchmark count. */
+  readonly mpaxCount = signal<number>(0);
+
+  /** Signal exposing live benchmark progress telemetry. */
+  readonly progress = this.progressService.progress;
+
+  /** Computed percentage of completed benchmarks. */
+  readonly progressPercent = computed<number>(() => {
+    const p = this.progress();
+    if (!p || p.total <= 0) return 0;
+    return Math.min(100, Math.round((p.completed / p.total) * 100));
+  });
+
+  /**
+   * Initializes component by loading datasets and establishing progress SSE listener.
+   */
+  ngOnInit(): void {
+    this.progressSub = this.progressService.connect().subscribe({
+      error: () => {
+        // SSE stream connection errors are handled non-blockingly
+      },
+    });
+
     forkJoin({
       sql: this.benchmarksService.getSqlBenchmarks(),
       mpax: this.benchmarksService.getMpaxBenchmarks(),
@@ -177,9 +113,20 @@ export class BenchmarksComponent implements OnInit {
       });
   }
 
-  /** doc */
-  simulateMpax(item: MpaxBenchmark) {
-    // Send to MPAX Arena pre-filled
+  /**
+   * Cleans up SSE subscription when navigating away from the view.
+   */
+  ngOnDestroy(): void {
+    this.progressSub?.unsubscribe();
+    this.progressService.disconnect();
+  }
+
+  /**
+   * Navigates to the MPAX Arena pre-filled with the selected benchmark prompt.
+   *
+   * @param item Selected MPAX benchmark scenario item.
+   */
+  simulateMpax(item: MpaxBenchmark): void {
     this.router.navigate(['/mpax-arena'], { queryParams: { prompt: item.prompt } });
   }
 }

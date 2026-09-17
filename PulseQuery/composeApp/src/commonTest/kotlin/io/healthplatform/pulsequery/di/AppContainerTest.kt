@@ -35,7 +35,8 @@ class AppContainerTest {
             id = "1",
             email = "test@example.com",
             isActive = true,
-            isAdmin = true
+            isAdmin = true,
+            languagePreference = "en"
         )
         AppContainer.currentUser = testUser
 
@@ -102,6 +103,26 @@ class AppContainerTest {
         val execution = AppContainer.executionApi
         assertNotNull(execution)
         assertEquals(execution, AppContainer.executionApi)
+
+        val system = AppContainer.systemApi
+        assertNotNull(system)
+        assertEquals(system, AppContainer.systemApi)
+
+        val benchmarks = AppContainer.benchmarksApi
+        assertNotNull(benchmarks)
+        assertEquals(benchmarks, AppContainer.benchmarksApi)
+
+        val mpaxArena = AppContainer.mpaxArenaApi
+        assertNotNull(mpaxArena)
+        assertEquals(mpaxArena, AppContainer.mpaxArenaApi)
+
+        val alertRules = AppContainer.alertRulesApi
+        assertNotNull(alertRules)
+        assertEquals(alertRules, AppContainer.alertRulesApi)
+
+        val healthRepo = AppContainer.networkHealthRepository
+        assertNotNull(healthRepo)
+        assertEquals(healthRepo, AppContainer.networkHealthRepository)
     }
     
     @Test

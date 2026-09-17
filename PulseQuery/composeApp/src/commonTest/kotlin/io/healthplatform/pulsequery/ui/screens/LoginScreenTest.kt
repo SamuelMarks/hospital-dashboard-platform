@@ -105,9 +105,24 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithText("Login / Register").performClick()
         
         waitUntil(timeoutMillis = 5000) {
-            onAllNodes(androidx.compose.ui.test.hasText("auto-registration also failed", substring = true)).fetchSemanticsNodes().isNotEmpty()
+            onAllNodes(androidx.compose.ui.test.hasText("Invalid username or password.", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
-        onNodeWithText("auto-registration also failed", substring = true).assertIsDisplayed()
+        onNodeWithText("Invalid username or password.", substring = true).assertIsDisplayed()
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testLoginScreenToggleRegisterMode() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LoginScreen(onLoginSuccess = {})
+            }
+        }
+
+        onNodeWithText("Need an account? Register").performClick()
+        onNodeWithText("Register").assertIsDisplayed()
+        onNodeWithText("Already have an account? Log In").performClick()
+        onNodeWithText("Login / Register").assertIsDisplayed()
     }
 
     @OptIn(ExperimentalTestApi::class)

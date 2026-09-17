@@ -6,14 +6,17 @@ active configuration warnings, and trigger data re-ingestion.
 """
 
 import os
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.api import deps
+from app.api.routers.admin import require_admin
 from app.core.config import settings
 from app.core.diagnostics import check_configuration_hygiene, diagnostics_registry
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import validate_postgres_connection
+from app.models.user import User
 from app.schemas.system import (
   ReingestResponse,
   SystemDiagnosticsResponse,
@@ -71,9 +74,15 @@ async def get_system_health(
   response_model=SystemDiagnosticsResponse,
   summary="Detailed system diagnostics and troubleshooting guides",
 )
-async def get_system_diagnostics() -> dict[str, Any]:
+async def get_system_diagnostics(
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+) -> dict[str, Any]:
   """
   Provides in-depth diagnostics, environment checks, and actionable troubleshooting guides.
+  Requires an authenticated user session.
+
+  Args:
+      current_user (User): The authenticated user making the request.
 
   Returns:
       dict[str, Any]: Detailed diagnostic summary with copyable fix commands.
@@ -137,9 +146,15 @@ async def get_system_diagnostics() -> dict[str, Any]:
   response_model=ReingestResponse,
   summary="Trigger manual CSV re-ingestion into DuckDB",
 )
-def trigger_reingest() -> dict[str, Any]:
+def trigger_reingest(
+  current_user: Annotated[User, Depends(require_admin)],
+) -> dict[str, Any]:
   """
   Forces reload of all CSV datasets from the data folder into DuckDB tables.
+  Requires administrative privileges.
+
+  Args:
+      current_user (User): The authenticated administrative user.
 
   Returns:
       dict[str, Any]: ReingestResponse with updated table row counts.

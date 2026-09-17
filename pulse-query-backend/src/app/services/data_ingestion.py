@@ -128,6 +128,69 @@ class DataIngestionService:
     except OSError as e:
       logger.error(f"❌ Failed to generate sample data: {e}")
 
+  @staticmethod
+  def generate_synthetic_sample_data(filepath: str, rows: int = 1000) -> None:
+    """
+    Generates dummy synthetic hospital data matching the clinical schema if missing.
+
+    Args:
+        filepath (str): Target path to write the CSV.
+        rows (int): Number of rows to generate.
+    """
+    services = ["Cardiology", "Gen_Peds", "Neurology", "Orthopedics", "General Medicine"]
+    locations = ["ICU_A", "ICU_B", "PCU_A", "PCU_B", "Ward_1", "Ward_2"]
+    entry_points = ["Emergency", "Direct Admit", "Transfer In", "Newborn Inside In Hospital"]
+    visit_types = ["Inpatient", "Emergency", "Newborn"]
+    care_levels = ["Intensive Care", "Step Down", "Acute Care", "Well Infant Care"]
+    unit_categories = ["ICU", "PCU", "Med/Surg"]
+    clinical_focuses = ["Critical Care", "General", "Nursery", "Surgical"]
+
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    try:
+      with open(filepath, mode="w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(
+          [
+            "PiCSN",
+            "Location",
+            "Clinical_Service",
+            "Entry_Point",
+            "Visit_Type",
+            "Midnight_Census_DateTime",
+            "Care_Level",
+            "Unit_Category",
+            "Clinical_Focus",
+            "Admit_DT",
+            "Discharge_DT",
+          ]
+        )
+        base_dt = datetime.now() - timedelta(days=60)
+        for i in range(rows):
+          pic_sn = f"3.1415{10000 + i}"
+          admit = base_dt + timedelta(days=random.randint(0, 50), hours=random.randint(0, 23))
+          los = random.randint(1, 10)
+          discharge = admit + timedelta(days=los, hours=random.randint(1, 12))
+          census_dt = (admit + timedelta(days=1)).strftime("%Y-%m-%d 23:59:00")
+
+          writer.writerow(
+            [
+              pic_sn,
+              random.choice(locations),
+              random.choice(services),
+              random.choice(entry_points),
+              random.choice(visit_types),
+              census_dt,
+              random.choice(care_levels),
+              random.choice(unit_categories),
+              random.choice(clinical_focuses),
+              admit.strftime("%Y-%m-%d %H:%M:%S"),
+              discharge.strftime("%Y-%m-%d %H:%M:%S"),
+            ]
+          )
+      logger.info(f"✅ Synthetic clinical sample data created at {filepath}")
+    except OSError as e:
+      logger.error(f"❌ Failed to generate synthetic clinical sample data: {e}")
+
   @classmethod
   def ingest_all_csvs(cls) -> None:
     """
@@ -142,7 +205,9 @@ class DataIngestionService:
     csv_files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".csv")]
     if not csv_files:
       cls.generate_sample_data(DEFAULT_CSV_PATH)
-      csv_files = [DEFAULT_CSV_FILENAME]
+      synthetic_path = os.path.join(DATA_DIR, "Synthetic_hospital_data.csv")
+      cls.generate_synthetic_sample_data(synthetic_path)
+      csv_files = [DEFAULT_CSV_FILENAME, "Synthetic_hospital_data.csv"]
     elif DEFAULT_CSV_FILENAME in csv_files:
       diagnostics_registry.data_status["has_default_data"] = True
     else:
@@ -153,66 +218,76 @@ class DataIngestionService:
         remediation="Place hospital_data.csv in pulse-query-backend/data/.",
       )
 
-    conn = duckdb_manager.get_connection()
-    files_processed = 0
+    with duckdb_manager._write_lock:
+      conn = duckdb_manager.get_connection()
+      files_processed = 0
 
-    try:
-      for filename in csv_files:
-        filepath = os.path.join(DATA_DIR, filename)
-        table_name = cls._sanitize_table_name(filename)
+      try:
+        for filename in csv_files:
+          filepath = os.path.join(DATA_DIR, filename)
+          table_name = cls._sanitize_table_name(filename)
 
-        logger.info(f"   ... Ingesting {filename} -> Table: '{table_name}'")
+          logger.info(f"   ... Ingesting {filename} -> Table: '{table_name}'")
+
+          try:
+            # 1. Create/Replace Table from CSV
+            conn.execute(f"""
+                          CREATE OR REPLACE TABLE {table_name} AS 
+                          SELECT * FROM read_csv_auto('{filepath}', header=True); 
+                      """)
+
+            # 2. Check for relevant columns and create indices
+            # We check metadata first to avoid errors if column doesn't exist
+            columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
+            col_names = [c[0].lower() for c in columns]
+
+            # Standardize index naming
+            # Clinical_Service / department -> Index for Service Mix
+            # Entry_Point -> Index for Cohort Analysis
+
+            if "clinical_service" in col_names:
+              conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_service ON {table_name} (Clinical_Service)")
+              logger.info("       Using Index: Clinical_Service")
+
+            if "entry_point" in col_names:
+              conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_entry ON {table_name} (Entry_Point)")
+              logger.info("       Using Index: Entry_Point")
+
+            count = conn.execute(f"SELECT count(*) FROM {table_name}").fetchone()
+            row_count = count[0] if count else 0
+            logger.info(f"       ✅ Loaded {row_count} rows.")
+            diagnostics_registry.data_status["row_counts"][table_name] = row_count
+            files_processed += 1
+          except Exception as e:
+            logger.error(f"       ❌ Failed to load {filename}: {e}")
+            diagnostics_registry.add_warning(
+              code="CSV_INGESTION_FAILED",
+              message=f"Failed to ingest CSV '{filename}': {e}",
+              severity="error",
+              remediation=f"Verify CSV syntax and encoding for {filename}.",
+            )
 
         try:
-          # 1. Create/Replace Table from CSV
-          conn.execute(f"""
-                        CREATE OR REPLACE TABLE {table_name} AS 
-                        SELECT * FROM read_csv_auto('{filepath}', header=True); 
-                    """)
+          existing_tables = [c[0].lower() for c in conn.execute("SHOW TABLES").fetchall()]
+          if "synthetic_hospital_data" in existing_tables and "hospital_data" not in existing_tables:
+            conn.execute("CREATE VIEW hospital_data AS SELECT * FROM synthetic_hospital_data")
+          elif "hospital_data" in existing_tables and "synthetic_hospital_data" not in existing_tables:
+            conn.execute("CREATE VIEW synthetic_hospital_data AS SELECT * FROM hospital_data")
+        except Exception as view_err:
+          logger.warning(f"Could not create compatibility alias view: {view_err}")
 
-          # 2. Check for relevant columns and create indices
-          # We check metadata first to avoid errors if column doesn't exist
-          columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
-          col_names = [c[0].lower() for c in columns]
+        logger.info(f"✅ Ingestion Complete. {files_processed} files processed.")
 
-          # Standardize index naming
-          # Clinical_Service / department -> Index for Service Mix
-          # Entry_Point -> Index for Cohort Analysis
-
-          if "clinical_service" in col_names:
-            conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_service ON {table_name} (Clinical_Service)")
-            logger.info("       Using Index: Clinical_Service")
-
-          if "entry_point" in col_names:
-            conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_entry ON {table_name} (Entry_Point)")
-            logger.info("       Using Index: Entry_Point")
-
-          count = conn.execute(f"SELECT count(*) FROM {table_name}").fetchone()
-          row_count = count[0] if count else 0
-          logger.info(f"       ✅ Loaded {row_count} rows.")
-          diagnostics_registry.data_status["row_counts"][table_name] = row_count
-          files_processed += 1
-        except Exception as e:
-          logger.error(f"       ❌ Failed to load {filename}: {e}")
-          diagnostics_registry.add_warning(
-            code="CSV_INGESTION_FAILED",
-            message=f"Failed to ingest CSV '{filename}': {e}",
-            severity="error",
-            remediation=f"Verify CSV syntax and encoding for {filename}.",
-          )
-
-      logger.info(f"✅ Ingestion Complete. {files_processed} files processed.")
-
-    except Exception as e:
-      logger.critical(f"❌ Fatal error during ingestion: {e}")
-      diagnostics_registry.add_warning(
-        code="FATAL_INGESTION_ERROR",
-        message=f"Fatal error during data ingestion: {e}",
-        severity="critical",
-        remediation="Check filesystem permissions and database engine state.",
-      )
-    finally:
-      conn.close()
+      except Exception as e:
+        logger.critical(f"❌ Fatal error during ingestion: {e}")
+        diagnostics_registry.add_warning(
+          code="FATAL_INGESTION_ERROR",
+          message=f"Fatal error during data ingestion: {e}",
+          severity="critical",
+          remediation="Check filesystem permissions and database engine state.",
+        )
+      finally:
+        conn.close()
 
 
 # Singleton instance

@@ -3,6 +3,7 @@ import tempfile
 from collections.abc import AsyncGenerator
 from typing import Any, Optional
 
+import pydantic.root_model  # noqa: F401
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

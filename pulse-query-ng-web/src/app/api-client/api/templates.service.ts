@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -37,11 +35,9 @@ import { BASE_PATH, COLLECTION_FORMATS } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
 
-/** @docs */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class TemplatesService extends BaseService {
   constructor(
     protected httpClient: HttpClient,
@@ -56,12 +52,14 @@ export class TemplatesService extends BaseService {
    * Register a new analytics template in the system.  Args:     template_in (TemplateCreate): Validated template payload.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The persisted template object.
    * @endpoint post /api/v1/templates/
    * @param templateCreate
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public createTemplateApiV1TemplatesPost(
     templateCreate: TemplateCreate,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -72,6 +70,7 @@ export class TemplatesService extends BaseService {
   ): Observable<TemplateResponse>;
   public createTemplateApiV1TemplatesPost(
     templateCreate: TemplateCreate,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -82,6 +81,7 @@ export class TemplatesService extends BaseService {
   ): Observable<HttpResponse<TemplateResponse>>;
   public createTemplateApiV1TemplatesPost(
     templateCreate: TemplateCreate,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -92,6 +92,7 @@ export class TemplatesService extends BaseService {
   ): Observable<HttpEvent<TemplateResponse>>;
   public createTemplateApiV1TemplatesPost(
     templateCreate: TemplateCreate,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -105,6 +106,16 @@ export class TemplatesService extends BaseService {
         'Required parameter templateCreate was null or undefined when calling createTemplateApiV1TemplatesPost.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -150,6 +161,7 @@ export class TemplatesService extends BaseService {
     return this.httpClient.request<TemplateResponse>('post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: templateCreate,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -164,12 +176,14 @@ export class TemplatesService extends BaseService {
    * Hard delete a template from the registry.  Args:     template_id (UUID): The unique ID of the template.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Raises:     HTTPException: 404 if not found.
    * @endpoint delete /api/v1/templates/{template_id}
    * @param templateId
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public deleteTemplateApiV1TemplatesTemplateIdDelete(
     templateId: string,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -180,6 +194,7 @@ export class TemplatesService extends BaseService {
   ): Observable<any>;
   public deleteTemplateApiV1TemplatesTemplateIdDelete(
     templateId: string,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -190,6 +205,7 @@ export class TemplatesService extends BaseService {
   ): Observable<HttpResponse<any>>;
   public deleteTemplateApiV1TemplatesTemplateIdDelete(
     templateId: string,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -200,6 +216,7 @@ export class TemplatesService extends BaseService {
   ): Observable<HttpEvent<any>>;
   public deleteTemplateApiV1TemplatesTemplateIdDelete(
     templateId: string,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -213,6 +230,16 @@ export class TemplatesService extends BaseService {
         'Required parameter templateId was null or undefined when calling deleteTemplateApiV1TemplatesTemplateIdDelete.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -249,6 +276,7 @@ export class TemplatesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<any>('delete', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -263,12 +291,14 @@ export class TemplatesService extends BaseService {
    * Retrieve details for a specific template.  Args:     template_id (UUID): The unique ID of the template.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The requested template.  Raises:     HTTPException: 404 if not found.
    * @endpoint get /api/v1/templates/{template_id}
    * @param templateId
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
    */
   public getTemplateApiV1TemplatesTemplateIdGet(
     templateId: string,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -279,6 +309,7 @@ export class TemplatesService extends BaseService {
   ): Observable<TemplateResponse>;
   public getTemplateApiV1TemplatesTemplateIdGet(
     templateId: string,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -289,6 +320,7 @@ export class TemplatesService extends BaseService {
   ): Observable<HttpResponse<TemplateResponse>>;
   public getTemplateApiV1TemplatesTemplateIdGet(
     templateId: string,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -299,6 +331,7 @@ export class TemplatesService extends BaseService {
   ): Observable<HttpEvent<TemplateResponse>>;
   public getTemplateApiV1TemplatesTemplateIdGet(
     templateId: string,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -312,6 +345,16 @@ export class TemplatesService extends BaseService {
         'Required parameter templateId was null or undefined when calling getTemplateApiV1TemplatesTemplateIdGet.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -348,6 +391,7 @@ export class TemplatesService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.httpClient.request<TemplateResponse>('get', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
@@ -364,6 +408,7 @@ export class TemplatesService extends BaseService {
    * @param category Filter templates by category
    * @param search Search title or description
    * @param limit Max records to return
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
@@ -372,6 +417,7 @@ export class TemplatesService extends BaseService {
     category?: string,
     search?: string,
     limit?: number,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -384,6 +430,7 @@ export class TemplatesService extends BaseService {
     category?: string,
     search?: string,
     limit?: number,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -396,6 +443,7 @@ export class TemplatesService extends BaseService {
     category?: string,
     search?: string,
     limit?: number,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -408,6 +456,7 @@ export class TemplatesService extends BaseService {
     category?: string,
     search?: string,
     limit?: number,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -438,6 +487,14 @@ export class TemplatesService extends BaseService {
       localVarQueryParameters,
       'limit',
       <any>limit,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
       QueryParamStyle.Form,
       true,
     );
@@ -493,6 +550,7 @@ export class TemplatesService extends BaseService {
    * @endpoint put /api/v1/templates/{template_id}
    * @param templateId
    * @param templateUpdate
+   * @param token JWT token query parameter for direct browser downloads
    * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
    * @param reportProgress flag to report request and response progress.
    * @param options additional options
@@ -500,6 +558,7 @@ export class TemplatesService extends BaseService {
   public updateTemplateApiV1TemplatesTemplateIdPut(
     templateId: string,
     templateUpdate: TemplateUpdate,
+    token?: string,
     observe?: 'body',
     reportProgress?: boolean,
     options?: {
@@ -511,6 +570,7 @@ export class TemplatesService extends BaseService {
   public updateTemplateApiV1TemplatesTemplateIdPut(
     templateId: string,
     templateUpdate: TemplateUpdate,
+    token?: string,
     observe?: 'response',
     reportProgress?: boolean,
     options?: {
@@ -522,6 +582,7 @@ export class TemplatesService extends BaseService {
   public updateTemplateApiV1TemplatesTemplateIdPut(
     templateId: string,
     templateUpdate: TemplateUpdate,
+    token?: string,
     observe?: 'events',
     reportProgress?: boolean,
     options?: {
@@ -533,6 +594,7 @@ export class TemplatesService extends BaseService {
   public updateTemplateApiV1TemplatesTemplateIdPut(
     templateId: string,
     templateUpdate: TemplateUpdate,
+    token?: string,
     observe: any = 'body',
     reportProgress: boolean = false,
     options?: {
@@ -551,6 +613,16 @@ export class TemplatesService extends BaseService {
         'Required parameter templateUpdate was null or undefined when calling updateTemplateApiV1TemplatesTemplateIdPut.',
       );
     }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      <any>token,
+      QueryParamStyle.Form,
+      true,
+    );
 
     let localVarHeaders = this.defaultHeaders;
 
@@ -596,6 +668,7 @@ export class TemplatesService extends BaseService {
     return this.httpClient.request<TemplateResponse>('put', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
       body: templateUpdate,
+      params: localVarQueryParameters.toHttpParams(),
       responseType: <any>responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,

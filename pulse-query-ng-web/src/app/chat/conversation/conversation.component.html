@@ -104,10 +104,17 @@
     </div>
   }
 
-  @if (store.isGenerating()) {
+  @if (store.isGenerating() || store.isStreaming()) {
     <div class="message-row assistant">
       <mat-card class="message-bubble loading-bubble">
-        <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+        @if (store.streamingMessageContent()) {
+          <div class="streaming-content">
+            <viz-markdown [content]="store.streamingMessageContent()!"></viz-markdown>
+          </div>
+          <mat-progress-bar mode="indeterminate" class="mt-2"></mat-progress-bar>
+        } @else {
+          <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+        }
       </mat-card>
     </div>
   }

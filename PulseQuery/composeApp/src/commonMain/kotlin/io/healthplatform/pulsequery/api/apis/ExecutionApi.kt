@@ -44,24 +44,28 @@ open class ExecutionApi : ApiClient {
 
     /**
      * Refresh Dashboard
-     * Refreshes data for ALL widgets in a specific dashboard. Injects global_params into SQL queries before execution.
+     * Refreshes data for ALL widgets in a specific dashboard. Injects global_params into SQL queries before execution.  Args:     dashboard_id (UUID): ID of the target dashboard to refresh.     current_user (User): Authenticated user requesting the refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Authorization header for token forwarding.     accept_language (Optional[str]): Preferred response language header.     global_params (dict[str, Any]): Global filter parameters for queries.  Returns:     dict[UUID, Any]: Map of widget UUID to execution results.  Raises:     HTTPException: 404 if dashboard not found or user lacks access.
      * @param dashboardId 
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @param authorization  (optional)
+     * @param acceptLanguage  (optional)
      * @param requestBody  (optional)
      * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun refreshDashboardApiV1DashboardsDashboardIdRefreshPost(dashboardId: kotlin.String, authorization: kotlin.String? = null, requestBody: kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
+    open suspend fun refreshDashboardApiV1DashboardsDashboardIdRefreshPost(dashboardId: kotlin.String, token: kotlin.String? = null, authorization: kotlin.String? = null, acceptLanguage: kotlin.String? = null, requestBody: kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = requestBody ?: emptyMap<String, kotlinx.serialization.json.JsonElement>()
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
         authorization?.apply { localVariableHeaders["authorization"] = this.toString() }
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/refresh".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -97,15 +101,17 @@ open class ExecutionApi : ApiClient {
 
     /**
      * Refresh Widget
-     * Refreshes data for a SINGLE widget. Supports ?force_refresh&#x3D;true to bypass cache.
+     * Refreshes data for a SINGLE widget. Supports ?force_refresh&#x3D;true to bypass cache.  Args:     dashboard_id (UUID): Target dashboard ID.     widget_id (UUID): Target widget ID within the dashboard.     current_user (User): Authenticated user requesting refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Optional authorization header for forwarding.     accept_language (Optional[str]): Preferred response language header.     force_refresh (bool): Whether to bypass query cache.  Returns:     dict[UUID, Any]: Dictionary mapping widget ID to query execution payload.  Raises:     HTTPException: 404 if dashboard or widget not found or access denied.
      * @param dashboardId 
      * @param widgetId 
      * @param forceRefresh  (optional, default to false)
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @param authorization  (optional)
+     * @param acceptLanguage  (optional)
      * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(dashboardId: kotlin.String, widgetId: kotlin.String, forceRefresh: kotlin.Boolean? = false, authorization: kotlin.String? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
+    open suspend fun refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(dashboardId: kotlin.String, widgetId: kotlin.String, forceRefresh: kotlin.Boolean? = false, token: kotlin.String? = null, authorization: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -114,10 +120,12 @@ open class ExecutionApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         forceRefresh?.apply { localVariableQuery["force_refresh"] = listOf("$forceRefresh") }
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
         authorization?.apply { localVariableHeaders["authorization"] = this.toString() }
+        acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/refresh".replace("{" + "dashboard_id" + "}", "$dashboardId").replace("{" + "widget_id" + "}", "$widgetId"),
             query = localVariableQuery,

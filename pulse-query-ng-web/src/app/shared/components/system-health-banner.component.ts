@@ -1,11 +1,9 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Global System Health Banner component displaying real-time alert notifications
  * for backend inaccessibility, database misconfigurations, and missing default datasets.
  */
 
-import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,7 +15,7 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
  */
 @Component({
   selector: 'app-system-health-banner',
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   template: `
     <!-- Offline Banner -->
     @if (!isOnline()) {

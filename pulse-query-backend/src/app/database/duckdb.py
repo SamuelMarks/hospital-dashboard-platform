@@ -7,6 +7,8 @@ dependency helper for OLAP access.
 
 import logging
 import os
+import threading
+import time
 from collections.abc import Generator
 from typing import Any
 
@@ -33,6 +35,7 @@ class DuckDBManager:
         db_path (str): Path to the .duckdb file.
     """
     self.db_path = db_path
+    self._write_lock = threading.RLock()
 
   def validate_duckdb_storage(self) -> dict[str, Any]:
     """
@@ -133,25 +136,44 @@ class DuckDBManager:
       logger.error(f"Failed to connect to DuckDB at {self.db_path}: {e}")
       raise e
 
-  def get_readonly_connection(self) -> duckdb.DuckDBPyConnection:
+  def get_readonly_connection(self, max_retries: int = 3) -> duckdb.DuckDBPyConnection:
     """
-    Opens a restricted Read-Only connection.
+    Opens a restricted Read-Only connection with retry logic for transient file locks.
     Used exclusively for Analytics Execution (User SQL Widgets).
 
     Configuration:
     - `read_only=True`: Prevents DML (INSERT/UPDATE/DELETE) and DDL (DROP/ALTER) operations
       at the engine level.
+    - `enable_external_access=false`: Sandboxes filesystem access.
+
+    Args:
+        max_retries (int): Maximum retry attempts for transient file lock contention.
 
     Returns:
         duckdb.DuckDBPyConnection: A secured database connection.
+
+    Raises:
+        Exception: If connection fails after retries.
     """
-    try:
-      # Enforce read-only mode at the connection level
-      conn = duckdb.connect(database=self.db_path, read_only=True)
-      return conn
-    except Exception as e:
-      logger.error(f"Failed to open Read-Only DuckDB connection: {e}")
-      raise e
+    for attempt in range(max_retries):
+      try:
+        # Enforce read-only mode and sandbox filesystem access
+        if self.db_path == ":memory:":
+          conn = duckdb.connect(database=":memory:", read_only=False, config={"enable_external_access": "false"})
+        else:
+          conn = duckdb.connect(database=self.db_path, read_only=True, config={"enable_external_access": "false"})
+        return conn
+      except duckdb.IOException as e:
+        if "lock" in str(e).lower() and attempt < max_retries - 1:
+          logger.warning(f"DuckDB locked, retrying readonly connection ({attempt + 1}/{max_retries})...")
+          time.sleep(0.05 * (attempt + 1))
+          continue
+        logger.error(f"Failed to open Read-Only DuckDB connection: {e}")
+        raise e
+      except Exception as e:
+        logger.error(f"Failed to open Read-Only DuckDB connection: {e}")
+        raise e
+    raise duckdb.IOException(f"Failed to open DuckDB connection after {max_retries} retries.")
 
 
 # Global instance configured with settings parameters

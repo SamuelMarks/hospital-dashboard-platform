@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Utilities for generating Material Design 3 (M3) Color Palettes.
@@ -51,7 +50,7 @@ export function generateThemeVariables(seedHex: string, isDark: boolean): CssVar
  * @param {string} hex - The string to check.
  * @returns {boolean} True if valid 3 or 6 digit hex (with optional alpha).
  */
-function isValidHex(hex: string): boolean {
+export function isValidHex(hex: string): boolean {
   return /^#([0-9A-F]{3}){1,2}$/i.test(hex);
 }
 

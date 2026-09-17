@@ -104,7 +104,7 @@ class ProvisioningService:
 
     for name in existing_names:
       match = regex.fullmatch(name)
-      if match:  # pragma: no cover
+      if match:
         max_suffix = max(max_suffix, int(match.group(1)))
 
     return f"{base_name} (Restored {max_suffix + 1})"

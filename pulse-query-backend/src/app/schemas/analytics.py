@@ -32,3 +32,20 @@ class LlmOutputAnalyticsRow(BaseModel):
   created_at: datetime
 
   model_config = ConfigDict(from_attributes=True)
+
+
+class BedCapacityAlert(BaseModel):
+  """
+  Real-time hospital unit capacity alert payload.
+  """
+
+  unit_category: str
+  current_census: int
+  max_capacity: int
+  occupancy_percentage: float
+  threshold_percentage: float
+  severity: Literal["INFO", "WARNING", "CRITICAL"]
+  message: str
+  timestamp: datetime
+
+  model_config = ConfigDict(from_attributes=True)

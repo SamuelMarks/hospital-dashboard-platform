@@ -130,3 +130,84 @@ def test_ingest_all_csvs_handles_fatal_error(monkeypatch, tmp_path) -> None:
 
   data_ingestion.DataIngestionService.ingest_all_csvs()
   assert fake_conn.closed is True
+
+
+def test_generate_synthetic_sample_data_creates_file(tmp_path) -> None:
+  """Synthetic sample data generation should create a CSV with required columns."""
+  target = tmp_path / "synthetic.csv"
+  data_ingestion.DataIngestionService.generate_synthetic_sample_data(str(target), rows=5)
+
+  assert target.exists()
+  header = target.read_text(encoding="utf-8").splitlines()[0]
+  assert "PiCSN" in header
+  assert "Midnight_Census_DateTime" in header
+  assert "Clinical_Service" in header
+
+
+def test_generate_synthetic_sample_data_handles_io_error(monkeypatch, tmp_path) -> None:
+  """IO errors during synthetic sample generation should be caught safely."""
+  target = tmp_path / "synthetic.csv"
+
+  def _boom(*args, **kwargs):
+    raise OSError("cannot write")
+
+  monkeypatch.setattr(data_ingestion, "open", _boom)
+  data_ingestion.DataIngestionService.generate_synthetic_sample_data(str(target), rows=1)
+  assert not target.exists()
+
+
+def test_ingest_all_csvs_creates_compatibility_alias_views(tmp_path, monkeypatch) -> None:
+  """Compatibility views should be created when one table exists and the other does not."""
+  data_dir = tmp_path / "data"
+  data_dir.mkdir()
+  h_csv = data_dir / "hospital_data.csv"
+  _write_minimal_csv(h_csv)
+
+  db_path = str(tmp_path / "test_views.duckdb")
+  monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
+  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: duckdb.connect(db_path))
+
+  data_ingestion.DataIngestionService.ingest_all_csvs()
+  check_conn = duckdb.connect(db_path)
+  tables = [r[0].lower() for r in check_conn.execute("SHOW TABLES").fetchall()]
+  assert "synthetic_hospital_data" in tables
+  check_conn.close()
+
+
+def test_ingest_all_csvs_creates_reverse_compatibility_alias_views(tmp_path, monkeypatch) -> None:
+  """Compatibility view hospital_data should be created when synthetic_hospital_data exists."""
+  data_dir = tmp_path / "data"
+  data_dir.mkdir()
+  s_csv = data_dir / "Synthetic_hospital_data.csv"
+  _write_minimal_csv(s_csv)
+
+  db_path = str(tmp_path / "test_rev_views.duckdb")
+  monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
+  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: duckdb.connect(db_path))
+
+  data_ingestion.DataIngestionService.ingest_all_csvs()
+  check_conn = duckdb.connect(db_path)
+  tables = [r[0].lower() for r in check_conn.execute("SHOW TABLES").fetchall()]
+  assert "hospital_data" in tables
+  check_conn.close()
+
+
+def test_ingest_all_csvs_handles_alias_view_error(tmp_path, monkeypatch) -> None:
+  """Errors during compatibility view creation should be caught safely."""
+  data_dir = tmp_path / "data"
+  data_dir.mkdir()
+  s_csv = data_dir / "test_table.csv"
+  _write_minimal_csv(s_csv)
+
+  monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
+
+  class _ViewFailingConn(_FakeConn):
+    def execute(self, query: str):
+      if "SHOW TABLES" in query:
+        raise RuntimeError("cannot show tables")
+      return super().execute(query)
+
+  fake_conn = _ViewFailingConn()
+  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: fake_conn)
+  data_ingestion.DataIngestionService.ingest_all_csvs()
+  assert fake_conn.closed is True

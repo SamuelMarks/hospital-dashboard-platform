@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -18,4 +16,6 @@ export interface UserResponse {
   email: string;
   is_active: boolean;
   is_admin: boolean;
+  role?: string;
+  language_preference: string;
 }

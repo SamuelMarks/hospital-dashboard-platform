@@ -51,6 +51,52 @@ def test_extract_and_validate_sql_empty_string() -> None:
   assert chat_router._extract_and_validate_sql(None) is None
 
 
+def test_extract_and_validate_sql_with_json_and_sql_blocks() -> None:
+  """Text with both JSON and SQL blocks should accurately extract the SQL block."""
+  mixed_text = """
+Here is the schema configuration:
+```json
+{
+  "target": "synthetic_hospital_data"
+}
+```
+And here is your analytical SQL query:
+```sql
+SELECT Clinical_Service, count(*) FROM synthetic_hospital_data GROUP BY 1;
+```
+Hope this helps!
+"""
+  sql = chat_router._extract_and_validate_sql(mixed_text)
+  assert sql is not None
+  assert "SELECT Clinical_Service" in sql
+  assert "json" not in sql.lower()
+
+
+def test_extract_and_validate_sql_generic_block() -> None:
+  """Untagged code blocks that parse as valid SQL should be extracted."""
+  text = """
+Here is the query:
+```
+SELECT 1 AS test_val
+```
+"""
+  sql = chat_router._extract_and_validate_sql(text)
+  assert sql is not None
+  assert "SELECT 1" in sql
+
+
+def test_extract_and_validate_sql_whitespace_blocks() -> None:
+  """Whitespace-only code blocks should be skipped safely."""
+  assert chat_router._extract_and_validate_sql("```sql \n \t \n ```") is None
+  assert chat_router._extract_and_validate_sql("``` \n \t \n ```") is None
+
+
+def test_extract_and_validate_sql_column_only_blocks() -> None:
+  """Blocks with only bare column identifiers should not be returned."""
+  assert chat_router._extract_and_validate_sql("```sql\njust_a_col\n```") is None
+  assert chat_router._extract_and_validate_sql("```\njust_a_col\n```") is None
+
+
 @pytest.mark.asyncio
 async def test_generate_assistant_reply_with_target_models(db_session, chat_user) -> None:
   """Tests behavior when specific target models are provided (covers line 140/150)."""

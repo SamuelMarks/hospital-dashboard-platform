@@ -1,8 +1,7 @@
 import { DATE_NOW } from '../core/time.token';
-/* v8 ignore start */
+
 /** @docs */
 import { Component, OnInit, inject, ViewChild, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { ScrollingModule } from '@angular/cdk/scrolling';
@@ -30,7 +29,6 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
 @Component({
   selector: 'app-chat-layout',
   imports: [
-    CommonModule,
     MatSidenavModule,
     MatButtonModule,
     MatIconModule,
@@ -43,7 +41,7 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
     ConversationComponent,
     QueryCartComponent,
   ],
-  /* v8 ignore next */
+
   providers: [ChatStore],
 
   templateUrl: './chat-layout.component.html',

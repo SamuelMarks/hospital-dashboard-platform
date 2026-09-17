@@ -15,6 +15,8 @@
 
 package io.healthplatform.pulsequery.api.models
 
+
+
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*

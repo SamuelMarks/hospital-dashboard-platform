@@ -1,8 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/chat/conversation/sql-snippet.component.ts
 import { Component, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 /** @docs */
 @Component({
   selector: 'app-sql-snippet',
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
 
   styles: [
     `
@@ -69,7 +67,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 })
 /** @docs */
 export class SqlSnippetComponent {
-  /* v8 ignore next */
   readonly sql = input<string | null | undefined>('');
   readonly run = output<string>();
   readonly addToCart = output<string>();

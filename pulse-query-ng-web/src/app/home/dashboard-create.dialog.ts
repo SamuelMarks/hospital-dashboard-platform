@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormRoot, FormField, form, required, minLength } from '@angular/forms/signals';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,7 +17,6 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
 @Component({
   selector: 'app-dashboard-create-dialog',
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     MatDialogModule,
@@ -49,7 +46,7 @@ export class DashboardCreateDialog {
   readonly formModel = signal({ name: '' });
 
   /** Signal Form Tree. */
-  readonly form = form(this.formModel, (f) => {
+  readonly createForm = form(this.formModel, (f) => {
     required(f.name, { message: 'Name is required' });
     minLength(f.name, 3, { message: 'Name must be at least 3 characters' });
   });
@@ -60,7 +57,7 @@ export class DashboardCreateDialog {
    * passing the new object back to the caller.
    */
   submit(): void {
-    if (this.form().invalid()) return;
+    if (this.createForm().invalid()) return;
 
     this.isSubmitting.set(true);
     this.error.set(null);

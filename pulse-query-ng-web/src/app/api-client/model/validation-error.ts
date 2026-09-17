@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -11,7 +9,6 @@
  */
 import { ValidationErrorLocInner } from './validation-error-loc-inner';
 
-/** @docs */
 export interface ValidationError {
   loc: Array<ValidationErrorLocInner>;
   msg: string;

@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
 import { provideServerRendering, withRoutes } from '@angular/ssr';

@@ -59,7 +59,7 @@ class Translator:
             if lang not in self.messages:
               self.messages[lang] = {}
             self.messages[lang].update(data)
-        except Exception:  # pragma: no cover
+        except Exception:
           pass
 
   def get_message(self, lang: str, key: str, default: Optional[str] = None) -> str:

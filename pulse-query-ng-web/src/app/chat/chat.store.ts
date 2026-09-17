@@ -1,4 +1,5 @@
 import { DATE_NOW } from '../core/time.token';
+import { safeStorage } from '../core/storage.utils';
 /** @docs */
 /**
  * @fileoverview Centralized State Management for the Chat Feature.
@@ -46,6 +47,11 @@ export interface ChatState {
   availableModels: ModelInfo[];
   /** Currently selected model IDs (if empty, implicit 'all'). */
   selectedModelIds: string[];
+
+  /** Content accumulated during real-time streaming. */
+  streamingMessageContent: string | null;
+  /** Whether currently consuming real-time token stream. */
+  isStreaming: boolean;
 }
 
 /** Initial State constant. */
@@ -58,11 +64,12 @@ const initialState: ChatState = {
   error: null,
   availableModels: [],
   selectedModelIds: [],
+  streamingMessageContent: null,
+  isStreaming: false,
 };
 
 /** Chat store. */
 @Service()
-/* v8 ignore start */
 export class ChatStore implements OnDestroy {
   /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
@@ -103,6 +110,12 @@ export class ChatStore implements OnDestroy {
   /** Selected Models. */
   /* istanbul ignore next */
   readonly selectedModelIds = computed(() => this._state().selectedModelIds);
+  /** Whether actively streaming tokens. */
+  /* istanbul ignore next */
+  readonly isStreaming = computed(() => this._state().isStreaming);
+  /** Live streaming token text. */
+  /* istanbul ignore next */
+  readonly streamingMessageContent = computed(() => this._state().streamingMessageContent);
 
   /** Ng On Destroy. */
   ngOnDestroy(): void {
@@ -195,7 +208,7 @@ export class ChatStore implements OnDestroy {
 
     if (!currentId) {
       // Create new
-      const payload: ConversationCreate = { message: content };
+      const payload: ConversationCreate = { message: content, target_models: targetModels };
       this.chatApi
         .createConversationApiV1ConversationsPost(payload)
         .pipe(
@@ -239,6 +252,82 @@ export class ChatStore implements OnDestroy {
             this.handleError(err);
           },
         });
+    }
+  }
+
+  /**
+   * Streams LLM generation for a conversation using SSE / readable stream.
+   *
+   * @param conversationId The target conversation ID.
+   * @param modelId Optional target model ID.
+   * @returns Promise resolving when streaming is complete.
+   */
+  async streamResponse(conversationId: string, modelId?: string): Promise<void> {
+    this.patch({ isStreaming: true, streamingMessageContent: '', error: null });
+    const url = `/api/v1/chat/stream/${conversationId}${modelId ? `?model_id=${encodeURIComponent(modelId)}` : ''}`;
+    try {
+      const token = safeStorage.getItem('token');
+      const headers: Record<string, string> = {
+        Accept: 'text/event-stream',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        throw new Error(`Streaming failed with status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      if (!reader) throw new Error('Readable stream not supported');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data:')) {
+            try {
+              const data = JSON.parse(trimmed.substring(5).trim());
+              if (data.event === 'token' && typeof data.token === 'string') {
+                const current = this._state().streamingMessageContent || '';
+                this.patch({ streamingMessageContent: current + data.token });
+              } else if (data.event === 'done') {
+                const finalMsg: MessageResponse = {
+                  id: data.message_id || `msg-${Date.now()}`,
+                  conversation_id: conversationId,
+                  role: 'assistant',
+                  content: data.content || this._state().streamingMessageContent || '',
+                  sql_snippet: data.sql_snippet || null,
+                  created_at: this.dateNow().toISOString(),
+                  candidates: [],
+                };
+                this.patch({
+                  messages: [...this.messages(), finalMsg],
+                  streamingMessageContent: null,
+                  isStreaming: false,
+                });
+                return;
+              }
+            } catch {
+              // Ignore partial JSON chunks
+            }
+          }
+        }
+      }
+      this.patch({ isStreaming: false });
+    } catch (err: unknown) {
+      this.patch({ isStreaming: false, streamingMessageContent: null });
+      this.handleError(err);
     }
   }
 

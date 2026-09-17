@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -12,11 +10,12 @@
 import { WidgetResponse } from './widget-response';
 
 /**
- * API Response model for a Dashboard. Includes the nested list of Widgets.
+ * API Response model for a Dashboard. Includes the nested list of Widgets and permission level.
  */
 export interface DashboardResponse {
   name: string;
   id: string;
   owner_id: string;
+  permission_level?: string;
   widgets?: Array<WidgetResponse>;
 }

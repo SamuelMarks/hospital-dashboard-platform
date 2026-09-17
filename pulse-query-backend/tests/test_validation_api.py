@@ -34,6 +34,7 @@ async def test_update_widget_valid_sql_dry_run() -> None:
   mock_existing.type = "SQL"
   mock_existing.id = uuid.uuid4()
   mock_existing.dashboard_id = uuid.uuid4()
+  mock_existing.owner_id = mock_user.id
   mock_existing.title = "Test Widget"
   mock_existing.visualization = "table"
   mock_existing.config = {"query": "SELECT 1"}
@@ -73,10 +74,9 @@ async def test_update_widget_invalid_sql_returns_400() -> None:
   mock_session = AsyncMock()
   mock_existing = MagicMock()
   mock_existing.type = "SQL"
-  # Basic fields not needed here as we crash before return,
-  # but good practice to keep them for robustness
   mock_existing.id = uuid.uuid4()
   mock_existing.dashboard_id = uuid.uuid4()
+  mock_existing.owner_id = mock_user.id
   mock_existing.title = "Test Widget"
 
   mock_result = MagicMock()

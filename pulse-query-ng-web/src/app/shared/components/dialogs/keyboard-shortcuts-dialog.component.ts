@@ -5,7 +5,6 @@
  */
 
 import { Component, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,7 +27,7 @@ import {
  */
 @Component({
   selector: 'app-keyboard-shortcuts-dialog',
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
 
   template: `
     <div class="dialog-container">
@@ -165,19 +164,17 @@ import {
     `,
   ],
 })
-/* v8 ignore start */
 export class KeyboardShortcutsDialogComponent {
   /** Injected MatDialogRef. */ private readonly dialogRef = inject(
     MatDialogRef<KeyboardShortcutsDialogComponent>,
   );
   /** Injected KeyboardService. */ private readonly keyboardService =
     inject(KeyboardShortcutsService);
-  /* v8 ignore stop */
 
   /**
    * Computed signal containing shortcuts grouped by category.
    */
-  /* v8 ignore start */
+
   readonly categories = computed(() => {
     const shortcutsByCategory = this.keyboardService.getShortcutsByCategory();
     const categoryLabels: Record<string, string> = {
@@ -193,7 +190,6 @@ export class KeyboardShortcutsDialogComponent {
       shortcuts,
     }));
   });
-  /* v8 ignore stop */
 
   /**
    * Formats key combination for display.

@@ -3,6 +3,13 @@ CREATE TABLE AppConfig (
     value TEXT NOT NULL
 );
 
+CREATE TABLE CachedWidget (
+    widget_id TEXT NOT NULL PRIMARY KEY,
+    dashboard_id TEXT NOT NULL,
+    data_json TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
 insertConfig:
 INSERT OR REPLACE INTO AppConfig(key, value) VALUES (?, ?);
 
@@ -11,3 +18,19 @@ SELECT value FROM AppConfig WHERE key = ?;
 
 clearConfig:
 DELETE FROM AppConfig WHERE key = ?;
+
+insertCachedWidget:
+INSERT OR REPLACE INTO CachedWidget(widget_id, dashboard_id, data_json, updated_at)
+VALUES (?, ?, ?, ?);
+
+getCachedWidgetsForDashboard:
+SELECT widget_id, dashboard_id, data_json, updated_at
+FROM CachedWidget
+WHERE dashboard_id = ?
+ORDER BY updated_at ASC;
+
+deleteCachedWidgetsForDashboard:
+DELETE FROM CachedWidget WHERE dashboard_id = ?;
+
+deleteCachedWidget:
+DELETE FROM CachedWidget WHERE widget_id = ?;

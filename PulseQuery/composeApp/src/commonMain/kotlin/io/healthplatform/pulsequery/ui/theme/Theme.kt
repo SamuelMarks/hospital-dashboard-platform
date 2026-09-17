@@ -55,6 +55,9 @@ private val DarkColors = darkColorScheme(
 
 /**
  * PulseQuery Material 3 Theme.
+ *
+ * @param useDarkTheme Whether to apply dark color scheme. Defaults to system setting.
+ * @param content Composable children within this theme context.
  */
 @Composable
 fun PulseQueryTheme(

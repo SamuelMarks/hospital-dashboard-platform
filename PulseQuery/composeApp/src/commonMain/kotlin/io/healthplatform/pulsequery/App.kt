@@ -15,6 +15,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -22,13 +24,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.components.BackendOfflineBanner
 import io.healthplatform.pulsequery.ui.screens.AdminScreen
+import io.healthplatform.pulsequery.ui.screens.AlertRulesScreen
 import io.healthplatform.pulsequery.ui.screens.AnalyticsScreen
+import io.healthplatform.pulsequery.ui.screens.BenchmarksScreen
 import io.healthplatform.pulsequery.ui.screens.ChatScreen
 import io.healthplatform.pulsequery.ui.screens.DashboardScreen
 import io.healthplatform.pulsequery.ui.screens.EditorScreen
+import io.healthplatform.pulsequery.ui.screens.admin.UserManagementScreen
 import io.healthplatform.pulsequery.ui.screens.LoginScreen
+import io.healthplatform.pulsequery.ui.screens.MpaxArenaScreen
+import io.healthplatform.pulsequery.ui.screens.RegisterScreen
 import io.healthplatform.pulsequery.ui.screens.SimulationScreen
+import io.healthplatform.pulsequery.ui.screens.wizard.WizardScreen
 import io.healthplatform.pulsequery.ui.theme.PulseQueryTheme
 
 /**
@@ -41,6 +51,13 @@ fun App() {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
 
+        val isOnline by AppContainer.networkHealthRepository.isOnline.collectAsState()
+        val isChecking by AppContainer.networkHealthRepository.isChecking.collectAsState()
+
+        LaunchedEffect(Unit) {
+            AppContainer.networkHealthRepository.checkHealth()
+        }
+
         val items = listOf(
             "dashboard" to Icons.Filled.Dashboard,
             "chat" to Icons.AutoMirrored.Filled.Chat,
@@ -51,8 +68,16 @@ fun App() {
         )
 
         Scaffold(
+            topBar = {
+                if (!isOnline) {
+                    BackendOfflineBanner(
+                        onRetry = { AppContainer.networkHealthRepository.refreshHealth() },
+                        isRetrying = isChecking
+                    )
+                }
+            },
             bottomBar = {
-                if (currentDestination?.route != "login") {
+                if (currentDestination?.route != "login" && currentDestination?.route?.startsWith("wizard") != true) {
                     NavigationBar {
                         items.forEach { (route, icon) ->
                             NavigationBarItem(
@@ -83,15 +108,87 @@ fun App() {
                             navController.navigate("dashboard") {
                                 popUpTo("login") { inclusive = true }
                             }
+                        },
+                        onNavigateToRegister = {
+                            navController.navigate("register")
                         }
                     )
                 }
-                composable("dashboard") { DashboardScreen() }
+                composable("register") {
+                    RegisterScreen(
+                        onRegisterSuccess = {
+                            navController.navigate("login") {
+                                popUpTo("register") { inclusive = true }
+                            }
+                        },
+                        onNavigateToLogin = {
+                            navController.popBackStack()
+                        }
+                    )
+                }
+                composable("dashboard") {
+                    DashboardScreen(
+                        onAddWidget = { dashboardId ->
+                            navController.navigate("wizard/$dashboardId")
+                        }
+                    )
+                }
+                composable("wizard/{dashboardId}") { backStackEntry ->
+                    val dashboardId = backStackEntry.savedStateHandle.get<String>("dashboardId") ?: ""
+                    WizardScreen(
+                        dashboardId = dashboardId,
+                        onComplete = { navController.popBackStack() },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable("wizard") {
+                    WizardScreen(
+                        dashboardId = "",
+                        onComplete = { navController.popBackStack() },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
                 composable("chat") { ChatScreen(conversationId = null) }
-                composable("analytics") { AnalyticsScreen() }
+                composable("analytics") {
+                    AnalyticsScreen(
+                        onNavigateToAlertRules = { navController.navigate("alert_rules") }
+                    )
+                }
+                composable("alert_rules") { AlertRulesScreen() }
                 composable("editor") { EditorScreen() }
                 composable("simulation") { SimulationScreen() }
-                composable("admin") { AdminScreen() }
+                composable("benchmarks") {
+                    BenchmarksScreen(
+                        onSimulateMpax = { prompt ->
+                            navController.navigate("mpax_arena?prompt=$prompt")
+                        }
+                    )
+                }
+                composable("mpax_arena") { MpaxArenaScreen() }
+                composable("mpax_arena?prompt={prompt}") { backStackEntry ->
+                    val scenarioPrompt = backStackEntry.savedStateHandle.get<String>("prompt")
+                    MpaxArenaScreen(initialPrompt = scenarioPrompt)
+                }
+                composable("admin") {
+                    AdminScreen(
+                        onNavigateToUserManagement = { navController.navigate("admin/users") }
+                    )
+                }
+                composable("admin/users") {
+                    UserManagementScreen(
+                        onNavigateBack = { navController.popBackStack() }
+                    )
+                }
+                composable("tv/dashboard") {
+                    io.healthplatform.pulsequery.ui.screens.tv.TvDashboardScreen(
+                        onExit = { navController.popBackStack() }
+                    )
+                }
+                composable("wear/census") {
+                    io.healthplatform.pulsequery.ui.screens.wear.WearCensusScreen(
+                        onExit = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

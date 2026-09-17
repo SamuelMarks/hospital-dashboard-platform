@@ -7,7 +7,8 @@ that stored templates conform to valid JSON Schema Draft 7 specifications for ea
 frontend rendering.
 """
 
-from typing import Any, Dict, Optional
+import re
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -19,10 +20,10 @@ class TemplateBase(BaseModel):
 
   Attributes:
       title (str): Display name.
-      description (Optional[str]): Helper text for the user.
+      description (str | None): Helper text for the user.
       sql_template (str): The raw DuckDB SQL logic with Handlebars {{variables}}.
       category (str): The thematic grouping tag.
-      parameters_schema (Dict[str, Any]): A valid JSON Schema object defining
+      parameters_schema (dict[str, Any]): A valid JSON Schema object defining
           the expected inputs. This schema drives the frontend dynamic form.
           Example:
           {
@@ -50,14 +51,28 @@ class TemplateBase(BaseModel):
     """
     Validates that every variable in the JSON schema 'properties' exists
     as a placeholder in the `sql_template`.
+
+    Returns:
+        TemplateBase: The validated template instance.
+
+    Raises:
+        ValueError: If a parameter defined in `parameters_schema['properties']`
+            is not present as a `{{placeholder}}` in `sql_template`.
     """
+    if not isinstance(self.parameters_schema, dict):
+      return self
 
-    # Simple extraction of {{ var }} pattern
+    properties = self.parameters_schema.get("properties")
+    if not isinstance(properties, dict) or not properties:
+      return self
 
-    # Justification for accessing internals: Non-blocking validator
-    # We assume schema has 'properties' if it's an object type schema
-    # placeholders = set(re.findall(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", sql))
-    # defined_props = set(schema.get("properties", {}).keys())
+    placeholders = set(re.findall(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", self.sql_template))
+    defined_props = set(properties.keys())
+
+    missing_in_sql = defined_props - placeholders
+    if missing_in_sql:
+      missing_str = ", ".join(sorted(missing_in_sql))
+      raise ValueError(f"Parameters schema defines properties not found as {{{{placeholder}}}} in SQL: {missing_str}")
     return self
 
 

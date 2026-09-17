@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 /**
  * Hospital Analytics Platform
  *
@@ -27,16 +25,12 @@ export interface WidgetCreateText {
   config: TextConfig;
 }
 export namespace WidgetCreateText {
-  /** @docs */
   export const TypeEnum = {
     Text: 'TEXT',
   } as const;
-  /** @docs */
   export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum];
-  /** @docs */
   export const VisualizationEnum = {
     Markdown: 'markdown',
   } as const;
-  /** @docs */
   export type VisualizationEnum = (typeof VisualizationEnum)[keyof typeof VisualizationEnum];
 }

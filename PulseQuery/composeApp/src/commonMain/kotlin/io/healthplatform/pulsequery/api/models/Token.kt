@@ -21,10 +21,12 @@ import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
 
 /**
- * OAuth2 access token response payload.
+ * OAuth2 access and refresh token response payload.
  *
  * @param accessToken 
  * @param tokenType 
+ * @param refreshToken 
+ * @param expiresIn 
  */
 @Serializable
 
@@ -32,7 +34,11 @@ data class Token (
 
     @SerialName(value = "access_token") @Required val accessToken: kotlin.String,
 
-    @SerialName(value = "token_type") @Required val tokenType: kotlin.String
+    @SerialName(value = "token_type") val tokenType: kotlin.String? = "bearer",
+
+    @SerialName(value = "refresh_token") val refreshToken: kotlin.String? = null,
+
+    @SerialName(value = "expires_in") val expiresIn: kotlin.Int? = 3600
 
 ) {
 

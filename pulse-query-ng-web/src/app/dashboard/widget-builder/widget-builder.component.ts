@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import {
   Component,
@@ -10,7 +9,6 @@ import {
   OnDestroy,
   effect,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
@@ -72,7 +70,6 @@ export interface WidgetBuilderData {
 @Component({
   selector: 'app-widget-builder',
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     MatDialogModule,
@@ -334,8 +331,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       const val = this.vizFormModel().title;
       const w = this.draftWidget();
       if (w && w.title !== val) {
-        // use local update avoiding infinite loops since object ref changes
-        this.draftWidget.update((prev) => (prev ? { ...prev, title: val } : null));
+        this.draftWidget.set({ ...w, title: val });
       }
     });
 
@@ -577,8 +573,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     currentConfig['xKey'] = xKey;
     currentConfig['yKey'] = yKey;
 
-    // using update to avoid effect loops
-    this.draftWidget.update((prev) => (prev ? { ...prev, config: currentConfig } : null));
+    this.draftWidget.set({ ...w, config: currentConfig });
   }
 
   /** Saves and closes dialog. */
@@ -620,14 +615,13 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.dialogRef.close(false);
   }
 
-  /** Returns highlighted SQL html (Stub). */
-  highlightedSql(): string {
-    return '';
-  }
-  /** Syncs scroll position (Stub). */
-  syncScroll(e: Event) {}
-  /** Casts result to table data. */
-  asTableData(res: unknown) {
-    return res || { columns: [], data: [] };
+  /**
+   * Casts raw query execution result to table data format.
+   *
+   * @param res - The raw result payload from execution.
+   * @returns Table dataset with defined columns and data rows.
+   */
+  asTableData(res: unknown): { columns: string[]; data: unknown[] } {
+    return (res as { columns: string[]; data: unknown[] }) || { columns: [], data: [] };
   }
 }

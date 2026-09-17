@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, input, output, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
@@ -35,7 +33,6 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
 @Component({
   selector: 'app-widget',
   imports: [
-    CommonModule,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -306,7 +303,18 @@ export class WidgetComponent {
     }
   }
 
-  onFocus(): void {}
+  /**
+   * Synchronizes browser focus on host element with the dashboard store.
+   * Ensures the focused widget state reflects active keyboard or mouse focus.
+   *
+   * @param _event - Optional DOM focus event.
+   */
+  onFocus(_event?: FocusEvent): void {
+    const id = this.widgetInput().id;
+    if (this.store.focusedWidgetId() !== id) {
+      this.store.setFocusedWidget(id);
+    }
+  }
 
   resetWidget(): void {
     this.dialog
@@ -331,5 +339,39 @@ export class WidgetComponent {
             });
         }
       });
+  }
+
+  /**
+   * Exports the widget's current tabular dataset to a downloadable CSV file.
+   */
+  exportWidgetData(): void {
+    const res = this.rawResult();
+    let raw: Record<string, unknown>[] = [];
+    if (res && Array.isArray(res['data'])) {
+      raw = res['data'] as Record<string, unknown>[];
+    }
+    if (raw.length === 0) return;
+    const keys = Object.keys(raw[0]);
+    const csvRows = [
+      keys.join(','),
+      ...raw.map((row) =>
+        keys
+          .map((k) => {
+            const val = row[k] !== undefined && row[k] !== null ? String(row[k]) : '';
+            if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+              return `"${val.replace(/"/g, '""')}"`;
+            }
+            return val;
+          })
+          .join(','),
+      ),
+    ];
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.widgetInput().title || 'widget'}_export.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   }
 }

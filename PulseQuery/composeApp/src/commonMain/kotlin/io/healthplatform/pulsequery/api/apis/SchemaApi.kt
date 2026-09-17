@@ -15,6 +15,7 @@
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.TableInfo
 
 import io.healthplatform.pulsequery.api.infrastructure.*
@@ -45,10 +46,11 @@ open class SchemaApi : ApiClient {
     /**
      * Get Database Schema
      * Retrieve the current OLAP database schema (Tables and Columns).  This endpoint introspects the active DuckDB connection. It is synchronous to ensure FastAPI executes it in a threadpool, preventing blocking of the main event loop during database I/O.  Args:     current_user: Authenticated user (required for access).  Returns:     List[TableInfo]: A structured list of tables and their column definitions.
+     * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<TableInfo>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getDatabaseSchemaApiV1SchemaGet(): HttpResponse<kotlin.collections.List<TableInfo>> {
+    open suspend fun getDatabaseSchemaApiV1SchemaGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<TableInfo>> {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -56,9 +58,10 @@ open class SchemaApi : ApiClient {
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
+        token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlinx.serialization.json.JsonElement?>(
+        val localVariableConfig = RequestConfig<kotlin.Any?>(
             RequestMethod.GET,
             "/api/v1/schema/",
             query = localVariableQuery,

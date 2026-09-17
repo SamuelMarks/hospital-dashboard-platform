@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AdminComponent } from './admin.component';
 import { AdminService, AiService } from '../api-client';
+import { ConnectionStatusService } from '../core/health/connection-status.service';
 import { of, throwError, delay } from 'rxjs';
 import { FormRoot, FormField } from '@angular/forms/signals';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
@@ -11,6 +12,7 @@ describe('AdminComponent', () => {
   let fixture: ComponentFixture<AdminComponent>;
   let adminServiceMock: any;
   let aiServiceMock: any;
+  let mockConnectionService: any;
 
   beforeEach(async () => {
     adminServiceMock = {
@@ -33,11 +35,22 @@ describe('AdminComponent', () => {
       ),
     };
 
+    mockConnectionService = {
+      healthData: signal({
+        postgres: { status: 'healthy' },
+        duckdb: { status: 'healthy' },
+        data: { has_default_data: true },
+      }),
+      openDiagnosticsDialog: vi.fn(),
+      triggerReingest: vi.fn().mockReturnValue(of({ message: 'Re-ingested' })),
+    };
+
     await TestBed.configureTestingModule({
       imports: [AdminComponent, FormRoot, FormField],
       providers: [
         { provide: AdminService, useValue: adminServiceMock },
         { provide: AiService, useValue: aiServiceMock },
+        { provide: ConnectionStatusService, useValue: mockConnectionService },
       ],
     }).compileComponents();
   });
@@ -235,6 +248,39 @@ describe('AdminComponent', () => {
       );
       component.saveSettings();
       expect(component.isSaving()).toBe(false);
+    });
+
+    it('should test diagnostics and health status helpers', () => {
+      expect(component.pgStatus()).toBe('healthy');
+      expect(component.duckStatus()).toBe('healthy');
+      expect(component.dataStatusText()).toBe('Default CSV Present');
+
+      mockConnectionService.healthData.set({
+        data: { has_default_data: false },
+      });
+      expect(component.dataStatusText()).toBe('Synthetic Fallback Active');
+
+      mockConnectionService.healthData.set(null);
+      expect(component.pgStatus()).toBe('Unknown');
+      expect(component.duckStatus()).toBe('Unknown');
+      expect(component.dataStatusText()).toBe('Checking...');
+
+      component.openDiagnostics();
+      expect(mockConnectionService.openDiagnosticsDialog).toHaveBeenCalled();
+    });
+
+    it('should test reingestData success and error paths', () => {
+      mockConnectionService.triggerReingest.mockReturnValue(
+        of({ message: 'Data re-ingested successfully!' }),
+      );
+      component.reingestData();
+      expect(component.message()).toBe('Data re-ingested successfully!');
+
+      mockConnectionService.triggerReingest.mockReturnValue(
+        throwError(() => new Error('Reingest error')),
+      );
+      component.reingestData();
+      expect(component.message()).toBe('Failed to re-ingest CSV data.');
     });
   });
 

@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';

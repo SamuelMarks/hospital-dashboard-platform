@@ -1,8 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/login/login.component.ts
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormRoot, FormField, form, required, email, minLength } from '@angular/forms/signals';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 
@@ -21,7 +19,6 @@ import { environment } from '../../environments/environment';
 @Component({
   selector: 'app-login',
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     RouterModule,
@@ -91,7 +88,6 @@ import { environment } from '../../environments/environment';
 })
 /** @docs */
 export class LoginComponent implements OnInit {
-  /* v8 ignore stop */
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);

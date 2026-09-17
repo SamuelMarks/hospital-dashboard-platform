@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Widget Creation Wizard.
@@ -11,7 +10,6 @@
  */
 
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { finalize, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { Subject, Subscription } from 'rxjs';
@@ -54,11 +52,10 @@ export interface WizardData {
 /** Template Wizard component. */
 @Component({
   selector: 'app-template-wizard',
-  /* v8 ignore start */
+
   providers: [provideNativeDateAdapter()],
-  /* v8 ignore stop */
+
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     MatDialogModule,
@@ -71,9 +68,9 @@ export interface WizardData {
     MatProgressSpinnerModule,
     MatChipsModule,
     MatCardModule,
-    /* v8 ignore start */
+
     VizTableComponent, // Imported for usage in @defer block
-    /* v8 ignore stop */
+
     DynamicFormComponent,
   ],
 
@@ -152,9 +149,7 @@ export interface WizardData {
     `,
   ],
 })
-/* v8 ignore start */
 export class TemplateWizardComponent implements OnInit, OnDestroy {
-  /* v8 ignore stop */
   /** dialogRef property. */
   private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
   /** dashboardsApi property. */

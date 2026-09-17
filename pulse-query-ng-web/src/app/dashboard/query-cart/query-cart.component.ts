@@ -1,7 +1,5 @@
-/* v8 ignore start */
 /** @docs */
 import { Component, input, inject, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,14 +17,7 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
 /** @docs */
 @Component({
   selector: 'app-query-cart',
-  imports: [
-    CommonModule,
-    DragDropModule,
-    MatButtonModule,
-    MatIconModule,
-    MatTooltipModule,
-    MatSnackBarModule,
-  ],
+  imports: [DragDropModule, MatButtonModule, MatIconModule, MatTooltipModule, MatSnackBarModule],
 
   templateUrl: './query-cart.component.html',
   styles: [

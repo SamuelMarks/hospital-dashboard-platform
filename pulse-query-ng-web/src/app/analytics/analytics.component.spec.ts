@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { AnalyticsComponent } from './analytics.component';
 import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
 import { of, throwError } from 'rxjs';
@@ -17,6 +18,7 @@ describe('AnalyticsComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [AnalyticsComponent, NoopAnimationsModule],
+      providers: [provideRouter([])],
     })
       .overrideComponent(AnalyticsComponent, {
         set: { providers: [{ provide: AnalyticsService, useValue: mockApi }] },
@@ -240,5 +242,9 @@ describe('AnalyticsComponent', () => {
     expect(component.error()).toBe('Failed to load analytics. Please try again.');
     expect(component.isLoading()).toBe(false);
     errorSpy.mockRestore();
+  });
+
+  it('should extract event value', () => {
+    expect(component.getEventValue({ target: { value: 'test-val' } } as any)).toBe('test-val');
   });
 });

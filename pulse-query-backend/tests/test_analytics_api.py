@@ -105,3 +105,47 @@ async def test_analytics_llm_combines_chat_and_ai(client: AsyncClient, analytics
   assert ai_row["prompt_strategy"] == "zero-shot"
   assert ai_row["query_text"] == "AI prompt"
   assert ai_row["sql_snippet"] == "SELECT 2"
+
+
+@pytest.mark.asyncio
+async def test_get_capacity_alerts_with_configured_rules(client: AsyncClient, analytics_user, db_session) -> None:
+  """Test capacity alerts endpoint with custom AlertRules and DuckDB mock."""
+  from unittest.mock import MagicMock, patch
+  from app.models.alert_rule import AlertRule
+
+  rule = AlertRule(
+    unit_category="ICU",
+    threshold_percentage=80.0,
+    severity="CRITICAL",
+    is_active=True,
+  )
+  db_session.add(rule)
+  await db_session.commit()
+
+  mock_cursor = MagicMock()
+  mock_cursor.fetchall.return_value = [
+    ("ICU", 18, 20),  # 90% >= 80% -> alert triggered
+    ("General", 30, 100),  # 30% < 95% -> no alert
+  ]
+  mock_conn = MagicMock()
+  mock_conn.cursor.return_value = mock_cursor
+
+  with patch("app.api.routers.analytics.duckdb_manager.get_readonly_connection", return_value=mock_conn):
+    res = await client.get("/api/v1/analytics/alerts")
+    assert res.status_code == 200
+    alerts = res.json()
+    assert len(alerts) == 1
+    assert alerts[0]["unit_category"] == "ICU"
+    assert alerts[0]["occupancy_percentage"] == 90.0
+    assert alerts[0]["severity"] == "CRITICAL"
+
+
+@pytest.mark.asyncio
+async def test_get_capacity_alerts_fallback_and_duckdb_exception(client: AsyncClient, analytics_user) -> None:
+  """Test capacity alerts fallback rules and graceful exception handling when DuckDB is inaccessible."""
+  from unittest.mock import patch
+
+  with patch("app.api.routers.analytics.duckdb_manager.get_readonly_connection", side_effect=Exception("DB Down")):
+    res = await client.get("/api/v1/analytics/alerts")
+    assert res.status_code == 200
+    assert res.json() == []

@@ -8,7 +8,7 @@ import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
 import { AuthService as AuthApiClient, Token, UserResponse } from '../../api-client';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, throwError, Subject } from 'rxjs';
 import { PLATFORM_ID } from '@angular/core';
 
 describe('AuthService', () => {
@@ -17,15 +17,21 @@ describe('AuthService', () => {
     loginAccessTokenApiV1AuthLoginPost: ReturnType<typeof vi.fn>;
     registerUserApiV1AuthRegisterPost: ReturnType<typeof vi.fn>;
     readUsersMeApiV1AuthMeGet: ReturnType<typeof vi.fn>;
+    refreshAccessTokenApiV1AuthRefreshPost: ReturnType<typeof vi.fn>;
   };
   let mockRouter: { navigate: ReturnType<typeof vi.fn> };
 
-  const mockToken: Token = { access_token: 'abc-123', token_type: 'bearer' };
+  const mockToken: Token = {
+    access_token: 'abc-123',
+    token_type: 'bearer',
+    refresh_token: 'ref-456',
+  };
   const mockUser: UserResponse = {
     id: 'u1',
     email: 'test@test.com',
     is_active: true,
     is_admin: false,
+    language_preference: 'en',
   };
 
   beforeEach(() => {
@@ -33,6 +39,7 @@ describe('AuthService', () => {
       loginAccessTokenApiV1AuthLoginPost: vi.fn(),
       registerUserApiV1AuthRegisterPost: vi.fn(),
       readUsersMeApiV1AuthMeGet: vi.fn(),
+      refreshAccessTokenApiV1AuthRefreshPost: vi.fn(),
     };
     mockRouter = {
       navigate: vi.fn(),
@@ -101,6 +108,72 @@ describe('AuthService', () => {
   it('should return false when no token is stored', () => {
     safeStorage.removeItem('pulse_auth_token');
     expect(service.hasStoredToken()).toBe(false);
+  });
+
+  describe('refreshToken', () => {
+    it('should throw error when no refresh token is stored', () =>
+      new Promise<void>((done) => {
+        service.refreshToken().subscribe({
+          error: (err) => {
+            expect(err.message).toBe('No refresh token available');
+            done();
+          },
+        });
+      }));
+
+    it('should call API, update tokens and fetch profile on success', () => {
+      safeStorage.setItem('pulse_refresh_token', 'initial-ref');
+      const rotatedToken: Token = {
+        access_token: 'new-acc',
+        token_type: 'bearer',
+        refresh_token: 'new-ref',
+      };
+      mockApiClient.refreshAccessTokenApiV1AuthRefreshPost.mockReturnValue(of(rotatedToken));
+      mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
+
+      service.refreshToken().subscribe((res) => {
+        expect(res).toEqual(rotatedToken);
+      });
+
+      expect(safeStorage.getItem('pulse_auth_token')).toBe('new-acc');
+      expect(safeStorage.getItem('pulse_refresh_token')).toBe('new-ref');
+    });
+
+    it('should serialize concurrent refreshToken calls into a single API request', () => {
+      safeStorage.setItem('pulse_refresh_token', 'initial-ref');
+      const refreshSubject = new Subject<Token>();
+      mockApiClient.refreshAccessTokenApiV1AuthRefreshPost.mockReturnValue(refreshSubject);
+      mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
+
+      let res1: Token | undefined;
+      let res2: Token | undefined;
+      service.refreshToken().subscribe((t) => (res1 = t));
+      service.refreshToken().subscribe((t) => (res2 = t));
+
+      refreshSubject.next(mockToken);
+      refreshSubject.complete();
+
+      expect(mockApiClient.refreshAccessTokenApiV1AuthRefreshPost).toHaveBeenCalledTimes(1);
+      expect(res1).toEqual(mockToken);
+      expect(res2).toEqual(mockToken);
+    });
+
+    it('should logout on refresh failure', () =>
+      new Promise<void>((done) => {
+        safeStorage.setItem('pulse_refresh_token', 'initial-ref');
+        mockApiClient.refreshAccessTokenApiV1AuthRefreshPost.mockReturnValue(
+          throwError(() => new Error('Invalid token')),
+        );
+
+        service.refreshToken().subscribe({
+          error: () => {
+            expect(safeStorage.getItem('pulse_auth_token')).toBeNull();
+            expect(safeStorage.getItem('pulse_refresh_token')).toBeNull();
+            expect(mockRouter.navigate).toHaveBeenCalledWith(['/login']);
+            done();
+          },
+        });
+      }));
   });
 
   describe('logout', () => {

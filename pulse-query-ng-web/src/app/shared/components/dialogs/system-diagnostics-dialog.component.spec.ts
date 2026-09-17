@@ -167,4 +167,62 @@ describe('SystemDiagnosticsDialogComponent', () => {
     mockService.overallStatus.set('critical');
     expect(component.getStatusDescription()).toContain('Critical database');
   });
+
+  it('should test status helpers with null and present health values', () => {
+    expect(component.pgStatus()).toBe('connected');
+    expect(component.duckStatus()).toBe('ready');
+    expect(component.hasDefaultData()).toBe(false);
+    expect(component.isMockLlm()).toBe(true);
+
+    mockService.healthData.set({
+      postgres: null,
+      duckdb: null,
+      data: { has_default_data: false },
+      llm: { mock_mode: false },
+    } as any);
+    expect(component.pgStatus()).toBe('unknown');
+    expect(component.duckStatus()).toBe('unknown');
+    expect(component.hasDefaultData()).toBe(false);
+    expect(component.isMockLlm()).toBe(false);
+
+    mockService.healthData.set(null);
+    expect(component.pgStatus()).toBe('unknown');
+    expect(component.duckStatus()).toBe('unknown');
+    expect(component.hasDefaultData()).toBe(true);
+    expect(component.isMockLlm()).toBe(true);
+  });
+
+  it('should handle fetchDiagnostics with no troubleshooting guides', () => {
+    mockService.getDiagnostics.mockReturnValueOnce(of({}));
+    component.fetchDiagnostics();
+  });
+
+  it('should handle reingest success with empty message fallback', () => {
+    mockService.triggerReingest.mockReturnValueOnce(of({ message: '' }));
+    component.reingestData();
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Dataset re-ingestion completed.',
+      'OK',
+      expect.any(Object),
+    );
+  });
+
+  it('should handle clipboard copy callback', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: writeTextMock },
+      configurable: true,
+    });
+    component.copyCommand('test-cmd');
+    await Promise.resolve();
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Command copied to clipboard!',
+      undefined,
+      expect.any(Object),
+    );
+
+    // When clipboard is undefined
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    component.copyCommand('no-clipboard-cmd');
+  });
 });

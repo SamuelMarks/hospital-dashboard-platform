@@ -23,6 +23,7 @@ import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metr
 import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
+import { ConnectionStatusService } from '../core/health/connection-status.service';
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
@@ -129,6 +130,7 @@ describe('WidgetComponent', () => {
   let mockDashApi: any;
   let mockDialog: any;
   let mockRouter: any;
+  let mockConnectionService: any;
 
   beforeEach(async () => {
     dataMapSig = signal({});
@@ -137,6 +139,7 @@ describe('WidgetComponent', () => {
     focusedWidgetIdSig = signal(null);
     mockDialog = { open: vi.fn() };
     mockRouter = { navigate: vi.fn() };
+    mockConnectionService = { openDiagnosticsDialog: vi.fn() };
 
     mockStore = {
       dataMap: dataMapSig,
@@ -161,6 +164,7 @@ describe('WidgetComponent', () => {
         { provide: ErrorHandler, useValue: { clearError: vi.fn(), handleError: vi.fn() } },
         { provide: MatDialog, useValue: mockDialog },
         { provide: Router, useValue: mockRouter },
+        { provide: ConnectionStatusService, useValue: mockConnectionService },
       ],
     })
       .overrideComponent(WidgetComponent, {
@@ -305,9 +309,21 @@ describe('WidgetComponent', () => {
     expect(viz).toBeTruthy();
   });
 
-  it('should allow focus handler', () => {
+  it('should synchronize focus to DashboardStore when host receives focus', () => {
+    focusedWidgetIdSig.set(null);
+    mockStore.setFocusedWidget.mockClear();
+
     component.onFocus();
-    expect(true).toBe(true);
+
+    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith('w1');
+
+    // Second focus when already active should not trigger duplicate store call
+    focusedWidgetIdSig.set('w1');
+    mockStore.setFocusedWidget.mockClear();
+
+    component.onFocus();
+
+    expect(mockStore.setFocusedWidget).not.toHaveBeenCalled();
   });
 
   it('should compute visualization type for text widgets', () => {
@@ -422,5 +438,97 @@ describe('WidgetComponent', () => {
     setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT' });
     component.simulateWidget();
     expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('should export widget data to csv', () => {
+    // 1. When data is empty
+    component.exportWidgetData();
+
+    // 2. When data is present
+    const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-blob');
+    const revokeObjectURLMock = vi.fn();
+    window.URL.createObjectURL = createObjectURLMock;
+    window.URL.revokeObjectURL = revokeObjectURLMock;
+
+    dataMapSig.set({
+      w1: {
+        data: [
+          {
+            col1: 'val,with,comma',
+            col2: 'with"quotes"',
+            col3: 'with\nnewline',
+            col4: null,
+            col5: undefined,
+            col6: 'plain',
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+
+    component.exportWidgetData();
+    expect(createObjectURLMock).toHaveBeenCalled();
+    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:http://localhost/mock-blob');
+
+    // Without title fallback
+    setInputSignal(component, 'widgetInput', { ...mockWidget, title: '' });
+    component.exportWidgetData();
+    expect(createObjectURLMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('should call openDiagnosticsDialog when openDiagnostics is invoked', () => {
+    component.openDiagnostics();
+    expect(mockConnectionService.openDiagnosticsDialog).toHaveBeenCalled();
+  });
+
+  it('should compute error flags for table not found and db locked', () => {
+    dataMapSig.set({
+      w1: { error: 'TABLE_NOT_FOUND: table missing' },
+    });
+    expect(component.isMissingTableError()).toBe(true);
+
+    dataMapSig.set({
+      w1: { error: 'table does not exist' },
+    });
+    expect(component.isMissingTableError()).toBe(true);
+
+    dataMapSig.set({
+      w1: { error: 'DATABASE_ERROR: connection refused' },
+    });
+    expect(component.isDbUnavailableError()).toBe(true);
+
+    dataMapSig.set({
+      w1: { error: 'database engine is down' },
+    });
+    expect(component.isDbUnavailableError()).toBe(true);
+
+    dataMapSig.set({
+      w1: { error: 'file is locked' },
+    });
+    expect(component.isDbUnavailableError()).toBe(true);
+
+    dataMapSig.set({
+      w1: { error: 'unrelated syntax error' },
+    });
+    expect(component.isMissingTableError()).toBe(false);
+    expect(component.isDbUnavailableError()).toBe(false);
+
+    dataMapSig.set({
+      w1: { data: [] },
+    });
+    expect(component.isMissingTableError()).toBe(false);
+    expect(component.isDbUnavailableError()).toBe(false);
+
+    // Empty object in dataMap for exportWidgetData
+    dataMapSig.set({ w1: {} });
+    component.exportWidgetData();
+
+    // Data explicitly null
+    dataMapSig.set({ w1: { data: null } });
+    component.exportWidgetData();
+
+    // Completely empty dataMap (res is undefined)
+    dataMapSig.set({});
+    component.exportWidgetData();
   });
 });

@@ -1,5 +1,3 @@
-/* v8 ignore start */
-/** @docs */
 import { HttpParameterCodec } from '@angular/common/http';
 
 /**
@@ -21,7 +19,6 @@ export class CustomHttpParameterCodec implements HttpParameterCodec {
   }
 }
 
-/** @docs */
 export class IdentityHttpParameterCodec implements HttpParameterCodec {
   encodeKey(k: string): string {
     return k;

@@ -122,4 +122,12 @@ describe('AppRoutes', () => {
     const component = await route?.loadComponent!();
     expect(component).toBeTruthy();
   });
+
+  it('should define benchmarks route', async () => {
+    const route = routes.find((r) => r.path === 'benchmarks');
+    expect(route).toBeDefined();
+    expect(route?.canActivate).toContain(authGuard);
+    const component = await route?.loadComponent!();
+    expect(component).toBeTruthy();
+  });
 });

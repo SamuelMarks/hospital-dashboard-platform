@@ -1,8 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts
 import { Component, input, computed, Signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
@@ -16,7 +14,7 @@ export interface ScalarData {
 /** @docs */
 @Component({
   selector: 'viz-scalar',
-  imports: [CommonModule, MatTooltipModule, MatProgressBarModule],
+  imports: [MatTooltipModule, MatProgressBarModule],
 
   styles: [
     `
@@ -71,24 +69,23 @@ export interface ScalarData {
 })
 /** @docs */
 export class VizScalarComponent {
-  /* v8 ignore next */
   readonly data = input<ScalarData | null>();
 
-  /* v8 ignore next */
   readonly value: Signal<number | null> = computed(() => {
     const d = this.data();
     if (!d) return null;
-    if (!Array.isArray(d.data) && typeof d.value === 'number') return d.value ?? null;
-
-    if (Array.isArray(d.data) && d.data.length > 0) {
-      const row = d.data![0];
-      const valKey = Object.keys(row).find((k) => typeof row[k] === 'number');
-      return valKey ? (row[valKey] as number) : null;
+    if (Array.isArray(d.data)) {
+      if (d.data.length > 0) {
+        const row = d.data[0];
+        const valKey = Object.keys(row).find((k) => typeof row[k] === 'number');
+        return valKey ? (row[valKey] as number) : null;
+      }
+      return null;
     }
+    if (typeof d.value === 'number') return d.value;
     return null;
   });
 
-  /* v8 ignore next */
   readonly formattedValue = computed(() => {
     const v = this.value();
     if (v === null) return '-';
@@ -96,7 +93,6 @@ export class VizScalarComponent {
     return v.toLocaleString();
   });
 
-  /* v8 ignore next */
   readonly label = computed(() => {
     const d = this.data();
     if (d?.columns && d.columns.length > 0)
@@ -104,7 +100,6 @@ export class VizScalarComponent {
     return 'Result';
   });
 
-  /* v8 ignore next */
   readonly isCorrelation = computed(() => {
     const v = this.value();
     const l = this.label().toLowerCase();
@@ -119,20 +114,17 @@ export class VizScalarComponent {
     return false;
   });
 
-  /* v8 ignore next */
   readonly gaugePosition = computed(() => {
     const v = this.value() || 0;
     return ((v + 1) / 2) * 100;
   });
 
-  /* v8 ignore next */
   readonly colorClass = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'gauge-neutral';
     return v > 0 ? 'gauge-pos' : 'gauge-neg';
   });
 
-  /* v8 ignore next */
   readonly strengthLabel = computed(() => {
     const v = this.value() || 0;
     const abs = Math.abs(v);
@@ -141,7 +133,6 @@ export class VizScalarComponent {
     return 'Strong Correlation';
   });
 
-  /* v8 ignore next */
   readonly strengthColor = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'var(--sys-text-secondary)';

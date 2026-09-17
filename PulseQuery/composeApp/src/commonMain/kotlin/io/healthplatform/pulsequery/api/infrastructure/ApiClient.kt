@@ -1,4 +1,3 @@
-@file:Suppress("UNNECESSARY_SAFE_CALL")
 package io.healthplatform.pulsequery.api.infrastructure
 
 import io.ktor.client.HttpClient
@@ -20,6 +19,7 @@ import kotlin.Unit
 import kotlinx.serialization.json.Json
 
 import io.healthplatform.pulsequery.api.auth.*
+import io.healthplatform.pulsequery.core.error.PulseQueryError
 
 open class ApiClient(
         private val baseUrl: String
@@ -50,7 +50,7 @@ open class ApiClient(
         this.client = httpClient
     }
 
-    private val authentications: kotlin.collections.Map<String, Authentication> by lazy {
+    protected open val authentications: kotlin.collections.Map<String, Authentication> by lazy {
         mapOf(
                 "OAuth2PasswordBearer" to OAuth())
     }
@@ -69,22 +69,26 @@ open class ApiClient(
      * Set the username for the first HTTP basic authentication.
      *
      * @param username Username
+     * @return [Result] containing [Unit] on success, or [PulseQueryError.Auth.Unconfigured] on failure.
      */
-    fun setUsername(username: String) {
+    fun setUsername(username: String): Result<Unit> {
         val auth = authentications?.values?.firstOrNull { it is HttpBasicAuth } as HttpBasicAuth?
-                ?: throw Exception("No HTTP basic authentication configured")
+            ?: return Result.failure(PulseQueryError.Auth.Unconfigured("HTTP basic"))
         auth.username = username
+        return Result.success(Unit)
     }
 
     /**
      * Set the password for the first HTTP basic authentication.
      *
      * @param password Password
+     * @return [Result] containing [Unit] on success, or [PulseQueryError.Auth.Unconfigured] on failure.
      */
-    fun setPassword(password: String) {
+    fun setPassword(password: String): Result<Unit> {
         val auth = authentications?.values?.firstOrNull { it is HttpBasicAuth } as HttpBasicAuth?
-                ?: throw Exception("No HTTP basic authentication configured")
+            ?: return Result.failure(PulseQueryError.Auth.Unconfigured("HTTP basic"))
         auth.password = password
+        return Result.success(Unit)
     }
 
     /**
@@ -92,11 +96,13 @@ open class ApiClient(
      *
      * @param apiKey API key
      * @param paramName The name of the API key parameter, or null or set the first key.
+     * @return [Result] containing [Unit] on success, or [PulseQueryError.Auth.Unconfigured] on failure.
      */
-    fun setApiKey(apiKey: String, paramName: String? = null) {
-        val auth = authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName)} as ApiKeyAuth?
-                ?: throw Exception("No API key authentication configured")
+    fun setApiKey(apiKey: String, paramName: String? = null): Result<Unit> {
+        val auth = authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName) } as ApiKeyAuth?
+            ?: return Result.failure(PulseQueryError.Auth.Unconfigured("API key"))
         auth.apiKey = apiKey
+        return Result.success(Unit)
     }
 
     /**
@@ -104,33 +110,39 @@ open class ApiClient(
      *
      * @param apiKeyPrefix API key prefix
      * @param paramName The name of the API key parameter, or null or set the first key.
+     * @return [Result] containing [Unit] on success, or [PulseQueryError.Auth.Unconfigured] on failure.
      */
-    fun setApiKeyPrefix(apiKeyPrefix: String, paramName: String? = null) {
+    fun setApiKeyPrefix(apiKeyPrefix: String, paramName: String? = null): Result<Unit> {
         val auth = authentications?.values?.firstOrNull { it is ApiKeyAuth && (paramName == null || paramName == it.paramName) } as ApiKeyAuth?
-                ?: throw Exception("No API key authentication configured")
+            ?: return Result.failure(PulseQueryError.Auth.Unconfigured("API key prefix"))
         auth.apiKeyPrefix = apiKeyPrefix
+        return Result.success(Unit)
     }
 
     /**
      * Set the access token for the first OAuth2 authentication.
      *
      * @param accessToken Access token
+     * @return [Result] containing [Unit] on success, or [PulseQueryError.Auth.Unconfigured] on failure.
      */
-    fun setAccessToken(accessToken: String) {
+    fun setAccessToken(accessToken: String): Result<Unit> {
         val auth = authentications?.values?.firstOrNull { it is OAuth } as OAuth?
-                ?: throw Exception("No OAuth2 authentication configured")
+            ?: return Result.failure(PulseQueryError.Auth.Unconfigured("OAuth2"))
         auth.accessToken = accessToken
+        return Result.success(Unit)
     }
 
     /**
      * Set the access token for the first Bearer authentication.
      *
      * @param bearerToken The bearer token.
+     * @return [Result] containing [Unit] on success, or [PulseQueryError.Auth.Unconfigured] on failure.
      */
-    fun setBearerToken(bearerToken: String) {
+    fun setBearerToken(bearerToken: String): Result<Unit> {
         val auth = authentications?.values?.firstOrNull { it is HttpBearerAuth } as HttpBearerAuth?
-                ?: throw Exception("No Bearer authentication configured")
+            ?: return Result.failure(PulseQueryError.Auth.Unconfigured("Bearer"))
         auth.bearerToken = bearerToken
+        return Result.success(Unit)
     }
 
     protected suspend fun <T: Any?> multipartFormRequest(requestConfig: RequestConfig<T>, body: kotlin.collections.List<PartData>?, authNames: kotlin.collections.List<String>): HttpResponse {
@@ -160,22 +172,21 @@ open class ApiClient(
             this.method = requestConfig.method.httpMethod
             headers.filter { header -> !UNSAFE_HEADERS.contains(header.key) }.forEach { header -> this.header(header.key, header.value) }
             if (requestConfig.method in listOf(RequestMethod.PUT, RequestMethod.POST, RequestMethod.PATCH)) {
-                val contentType = requestConfig.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
-                if (contentType != null) {
-                    this.contentType(contentType)
-                } else if (body !is io.ktor.http.content.OutgoingContent) {
-                    this.contentType(ContentType.Application.Json)
-                }
+                val contentType = (requestConfig.headers[HttpHeaders.ContentType]?.let { ContentType.parse(it) }
+                    ?: ContentType.Application.Json)
+                this.contentType(contentType)
                 this.setBody(body)
             }
         }
     }
 
-    private fun <T: Any?> RequestConfig<T>.updateForAuth(authNames: kotlin.collections.List<String>) {
+    private fun <T: Any?> RequestConfig<T>.updateForAuth(authNames: kotlin.collections.List<String>): Result<Unit> {
         for (authName in authNames) {
-            val auth = authentications?.get(authName) ?: throw Exception("Authentication undefined: $authName")
+            val auth = authentications?.get(authName)
+                ?: return Result.failure(PulseQueryError.Auth.Undefined(authName))
             auth.apply(query, headers)
         }
+        return Result.success(Unit)
     }
 
     private fun URLBuilder.appendPath(components: kotlin.collections.List<String>): URLBuilder = apply {

@@ -131,4 +131,10 @@ describe('VizScalarComponent', () => {
     fixture.detectChanges();
     expect(component.strengthLabel()).toBe('Strong Correlation');
   });
+
+  it('should return null when data array is empty', () => {
+    dataSig.set({ data: [] });
+    fixture.detectChanges();
+    expect(component.value()).toBeNull();
+  });
 });

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api import deps
+from app.api.routers.dashboards import get_dashboard_with_access
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
 from app.models.dashboard import Dashboard, Widget
@@ -36,22 +37,31 @@ async def refresh_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   authorization: Annotated[str | None, Header()] = None,
+  accept_language: Annotated[str | None, Header(alias="Accept-Language")] = None,
   # New: Accept arbitrary JSON body for params
   global_params: dict[str, Any] = Body(default={}),
 ) -> dict[UUID, Any]:
   """
   Refreshes data for ALL widgets in a specific dashboard.
   Injects global_params into SQL queries before execution.
-  """
-  result = await db.execute(
-    select(Dashboard)
-    .where(Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id)
-    .options(selectinload(Dashboard.widgets))
-  )
-  dashboard = result.scalars().first()
 
-  if not dashboard:
-    raise HTTPException(status_code=404, detail="Dashboard not found")
+  Args:
+      dashboard_id (UUID): ID of the target dashboard to refresh.
+      current_user (User): Authenticated user requesting the refresh.
+      db (AsyncSession): PostgreSQL async database session.
+      authorization (Optional[str]): Authorization header for token forwarding.
+      accept_language (Optional[str]): Preferred response language header.
+      global_params (dict[str, Any]): Global filter parameters for queries.
+
+  Returns:
+      dict[UUID, Any]: Map of widget UUID to execution results.
+
+  Raises:
+      HTTPException: 404 if dashboard not found or user lacks access.
+  """
+  dashboard, _ = await get_dashboard_with_access(
+    dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
+  )
 
   forward_token = _extract_token(authorization)
   results_map: dict[UUID, Any] = {}
@@ -98,7 +108,7 @@ async def refresh_dashboard(
 
     for (widget, _, cache_key), res in zip(http_widgets_to_run, http_results_list):
       results_map[widget.id] = res
-      if not res.get("error"):  # pragma: no cover
+      if not res.get("error"):
         cache_service.set(cache_key, res)
 
   # Execute SQL
@@ -115,18 +125,34 @@ async def refresh_widget(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   authorization: Annotated[str | None, Header()] = None,
+  accept_language: Annotated[str | None, Header(alias="Accept-Language")] = None,
   force_refresh: bool = False,
 ) -> dict[UUID, Any]:
   """
   Refreshes data for a SINGLE widget.
   Supports ?force_refresh=true to bypass cache.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      widget_id (UUID): Target widget ID within the dashboard.
+      current_user (User): Authenticated user requesting refresh.
+      db (AsyncSession): PostgreSQL async database session.
+      authorization (Optional[str]): Optional authorization header for forwarding.
+      accept_language (Optional[str]): Preferred response language header.
+      force_refresh (bool): Whether to bypass query cache.
+
+  Returns:
+      dict[UUID, Any]: Dictionary mapping widget ID to query execution payload.
+
+  Raises:
+      HTTPException: 404 if dashboard or widget not found or access denied.
   """
-  # 1. Fetch Widget with Ownership Check
-  result = await db.execute(
-    select(Widget)
-    .join(Dashboard)
-    .where(Widget.id == widget_id, Dashboard.id == dashboard_id, Dashboard.owner_id == current_user.id)
+  dashboard, _ = await get_dashboard_with_access(
+    dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
+
+  # 1. Fetch Widget ensuring it belongs to authorized dashboard
+  result = await db.execute(select(Widget).where(Widget.id == widget_id, Widget.dashboard_id == dashboard.id))
   widget = result.scalars().first()
 
   if not widget:
@@ -160,7 +186,7 @@ async def refresh_widget(
     except Exception as e:
       res = {"error": str(e)}
     finally:
-      if conn:  # pragma: no cover
+      if conn:
         conn.close()
   elif widget.type == "HTTP":
     res = await run_http_widget(run_config, forward_auth_token=forward_token)
@@ -168,23 +194,37 @@ async def refresh_widget(
     res = {"error": f"Unknown widget type: {widget.type}"}
 
   # 5. Cache and Return
-  if not res.get("error"):  # pragma: no cover
+  if not res.get("error"):
     cache_service.set(cache_key, res)
 
   return {widget.id: res}
 
 
 def _extract_token(auth_header: str | None) -> str | None:
-  """Extract bearer token from Authorization header if present."""
+  """
+  Extract bearer token from Authorization header if present.
+
+  Args:
+      auth_header (Optional[str]): Raw Authorization header value.
+
+  Returns:
+      Optional[str]: Extracted token string, or None if not present/invalid.
+  """
   if auth_header and auth_header.startswith("Bearer "):
     return auth_header.split(" ")[1]
   return None
 
 
-def _execute_sql_batch(widgets_info: list[tuple[Widget, dict[str, Any], str]], results_map: dict[UUID, Any]):
+def _execute_sql_batch(widgets_info: list[tuple[Widget, dict[str, Any], str]], results_map: dict[UUID, Any]) -> None:
   """
   Helper to run SQL widgets over a single DuckDB connection.
-  Accepts (Widget, InjectedConfig, CacheKey).
+
+  Args:
+      widgets_info (list[tuple[Widget, dict[str, Any], str]]): Tuples of (Widget, InjectedConfig, CacheKey).
+      results_map (dict[UUID, Any]): Mutable dictionary to populate with execution results.
+
+  Returns:
+      None
   """
   try:
     conn = duckdb_manager.get_readonly_connection()
@@ -194,13 +234,13 @@ def _execute_sql_batch(widgets_info: list[tuple[Widget, dict[str, Any], str]], r
       res = run_sql_widget(cursor, config)
       results_map[widget.id] = res
 
-      if not res.get("error"):  # pragma: no cover
+      if not res.get("error"):
         cache_service.set(cache_key, res)
 
   except Exception as e:
     logger.error(f"DuckDB Execution Error: {e}")
     for widget, _, _ in widgets_info:
-      if widget.id not in results_map:  # pragma: no cover
+      if widget.id not in results_map:
         results_map[widget.id] = {"error": "Internal Database Error"}
   finally:
     if "conn" in locals():

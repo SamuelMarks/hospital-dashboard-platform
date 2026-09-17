@@ -1,4 +1,3 @@
-/* v8 ignore start */
 /** @docs */
 /**
  * @fileoverview Reusable Dynamic Form Generator.
@@ -13,7 +12,6 @@
  */
 
 import { Component, input, output, OnChanges, SimpleChanges, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,
   FormGroup,
@@ -77,7 +75,6 @@ interface JsonSchema {
   // '' removed (default).
   providers: [provideNativeDateAdapter()],
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,

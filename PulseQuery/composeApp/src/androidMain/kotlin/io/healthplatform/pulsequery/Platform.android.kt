@@ -1,16 +1,32 @@
+/**
+ * Android platform-specific implementation module for Pulse Query.
+ */
 package io.healthplatform.pulsequery
 
 import android.os.Build
+import io.healthplatform.pulsequery.core.error.PulseQueryError
 
+/**
+ * Represents the Android execution platform metadata.
+ *
+ * @property name Android SDK version string.
+ */
 class AndroidPlatform : Platform {
     override val name: String = "Android ${Build.VERSION.SDK_INT}"
 }
 
+/**
+ * Returns the current [AndroidPlatform] descriptor.
+ *
+ * @return Active Android platform descriptor.
+ */
 actual fun getPlatform(): Platform = AndroidPlatform()
 
 /**
- * Android emulators route localhost/127.0.0.1 to their own internal loopback.
- * 10.0.2.2 routes back to the host machine's loopback interface.
+ * Resolves the default backend localhost endpoint.
+ * Android emulators route localhost to 10.0.2.2 to reach the host machine loopback.
+ *
+ * @return Default API base URL string.
  */
 actual fun getDefaultLocalHost(): String {
     val fingerprint = Build.FINGERPRINT ?: ""
@@ -40,7 +56,33 @@ actual fun getDefaultLocalHost(): String {
     return if (isEmulator) {
         "http://10.0.2.2:8000"
     } else {
-        // Use standard localhost fallback, though typical deployments use an IP for testing
         "http://localhost:8000"
+    }
+}
+
+/**
+ * Persists an exported file to Android's public Downloads directory, falling back to temp cache
+ * if external storage is inaccessible.
+ *
+ * @param filename File name including extension.
+ * @param mimeType MIME type of the payload.
+ * @param bytes Binary payload of the file.
+ * @return [Result] containing absolute path or exception.
+ */
+actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
+    val downloadsDir = runCatching {
+        android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+    }.getOrNull()
+    val targetDir = if (downloadsDir != null && (downloadsDir.exists() || downloadsDir.mkdirs())) {
+        downloadsDir
+    } else {
+        java.io.File(System.getProperty("java.io.tmpdir") ?: "/tmp")
+    }
+    val targetFile = java.io.File(targetDir, filename)
+    return runCatching {
+        targetFile.writeBytes(bytes)
+        targetFile.absolutePath
+    }.recoverCatching { error ->
+        throw PulseQueryError.Storage.WriteFailure(filename, targetFile.absolutePath, error)
     }
 }

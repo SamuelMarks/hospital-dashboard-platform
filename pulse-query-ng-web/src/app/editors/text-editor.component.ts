@@ -1,8 +1,6 @@
-/* v8 ignore start */
 /** @docs */
 // pulse-query-ng-web/src/app/editors/text-editor.component.ts
 import { Component, input, output, signal, linkedSignal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { DashboardsService, WidgetUpdate } from '../api-client';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -15,7 +13,6 @@ import { finalize } from 'rxjs';
 @Component({
   selector: 'app-text-editor',
   imports: [
-    CommonModule,
     FormRoot,
     FormField,
     MatFormFieldModule,
@@ -64,15 +61,14 @@ import { finalize } from 'rxjs';
 export class TextEditorComponent {
   private readonly dashboardsApi = inject(DashboardsService);
 
-  /* v8 ignore next */
   readonly dashboardId = input.required<string>();
-  /* v8 ignore next */
+
   readonly widgetId = input.required<string>();
-  /* v8 ignore next */
+
   readonly initialContent = input<string>('');
 
   readonly contentChange = output<string>();
-  /* v8 ignore next */
+
   readonly isRunning = signal(false);
 
   readonly formModel = linkedSignal(() => ({ content: this.initialContent() }));
