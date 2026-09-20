@@ -150,7 +150,7 @@ class DashboardExportHelperTest {
     fun testSaveFileToDevicePlatform() {
         val testBytes = "Sample Report Content".encodeToByteArray()
         val res = io.healthplatform.pulsequery.saveFileToDevice("test-report.pdf", "application/pdf", testBytes)
-        assertTrue(res.isSuccess)
+        assertTrue(res.isSuccess, "saveFileToDevice failed: ${res.exceptionOrNull()?.message}")
     }
 
     @Test
