@@ -59,7 +59,8 @@ class WidgetCacheStorage(private val database: PulseQueryDatabase? = null) {
         return if (db != null) {
             db.appDatabaseQueries.getCachedWidgetsForDashboard(dashboardId).executeAsList()
         } else {
-            memoryWidgets[dashboardId]?.values?.toList() ?: emptyList()
+            val widgets = memoryWidgets[dashboardId]
+            if (widgets != null) widgets.values.toList() else emptyList()
         }
     }
 

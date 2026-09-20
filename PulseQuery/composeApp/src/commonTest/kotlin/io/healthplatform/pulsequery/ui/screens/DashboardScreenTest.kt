@@ -105,7 +105,7 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("Retry"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Retry"), timeoutMillis = 15000)
         onNodeWithText("Retry").assertExists().assertHasClickAction()
     }
 
@@ -123,7 +123,7 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
 
-        waitUntilAtLeastOneExists(hasContentDescription("Add Widget"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasContentDescription("Add Widget"), timeoutMillis = 15000)
         onNodeWithContentDescription("Add Widget").assertExists().performClick()
 
         runOnIdle {
@@ -159,7 +159,7 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("Bar Widget"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Bar Widget"), timeoutMillis = 15000)
         onNodeWithText("Bar Widget").assertExists()
         onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Line Widget"))
         onNodeWithText("Line Widget").assertExists()

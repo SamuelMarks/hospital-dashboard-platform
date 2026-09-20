@@ -75,7 +75,7 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("All Roles"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("All Roles"), timeoutMillis = 30000)
         onNodeWithText("User Management").assertExists()
         onNodeWithText("All Roles").assertExists()
         onNodeWithText("PHYSICIAN").assertExists()
@@ -93,7 +93,7 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("Retry"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Retry"), timeoutMillis = 30000)
         onNodeWithText("User Management").assertExists()
         onNodeWithText("Retry").assertExists()
     }

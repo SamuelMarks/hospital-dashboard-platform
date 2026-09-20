@@ -74,79 +74,90 @@ data class BenchmarksUiState(
  * Screen rendering golden evaluation benchmarks for SQL generation and MPAX optimization.
  *
  * @param modifier Optional layout modifier.
+ * @param initialState Optional initial [BenchmarksUiState] (useful for deterministic state testing and previews).
  * @param onSimulateMpax Callback invoked with scenario prompt to launch MPAX arena.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarksScreen(
     modifier: Modifier = Modifier,
+    initialState: BenchmarksUiState? = null,
     onSimulateMpax: (String) -> Unit = {}
 ) {
-    var uiState by remember { mutableStateOf(BenchmarksUiState(isLoading = true)) }
+    var uiState by remember { mutableStateOf(initialState ?: BenchmarksUiState(isLoading = true)) }
     val coroutineScope = rememberCoroutineScope()
 
     /**
-     * Loads SQL and MPAX benchmarks asynchronously from the backend API.
+     * Executes the asynchronous loading of SQL and MPAX benchmark catalogs.
+     */
+    suspend fun performLoadBenchmarks() {
+        uiState = uiState.copy(isLoading = true, errorMessage = null)
+        runCatching {
+            val sqlRaw = AppContainer.benchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().body()
+            val mpaxRaw = AppContainer.benchmarksApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet().body()
+
+            val sqlItems = sqlRaw.map { map ->
+                val elemMap = map as? Map<*, *> ?: emptyMap<String, Any>()
+                val themeVal = elemMap["theme"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "General"
+                val sqlVal = elemMap["sql"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
+                val diffVal = elemMap["difficulty"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Medium"
+                val descVal = elemMap["description"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') }
+                    ?: elemMap["question"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
+
+                SqlBenchmarkItem(
+                    theme = themeVal,
+                    sql = sqlVal,
+                    difficulty = diffVal,
+                    description = descVal
+                )
+            }
+
+            val mpaxItems = mpaxRaw.map { map ->
+                val elemMap = map as? Map<*, *> ?: emptyMap<String, Any>()
+                val titleVal = elemMap["title"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Optimization Scenario"
+                val diffVal = elemMap["difficulty"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Standard"
+                val descVal = elemMap["description"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
+                val targetVal = elemMap["target_service"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Hospital Wide"
+
+                MpaxBenchmarkItem(
+                    title = titleVal,
+                    difficulty = diffVal,
+                    description = descVal,
+                    targetService = targetVal
+                )
+            }
+
+            Pair(sqlItems, mpaxItems)
+        }.fold(
+            onSuccess = { (sqlItems, mpaxItems) ->
+                uiState = uiState.copy(
+                    isLoading = false,
+                    sqlBenchmarks = sqlItems,
+                    mpaxBenchmarks = mpaxItems
+                )
+            },
+            onFailure = { e ->
+                uiState = uiState.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Failed to load benchmarks"
+                )
+            }
+        )
+    }
+
+    /**
+     * Triggers asynchronous benchmark reload in coroutine scope.
      */
     fun loadBenchmarks() {
         coroutineScope.launch {
-            uiState = uiState.copy(isLoading = true, errorMessage = null)
-            runCatching {
-                val sqlRaw = AppContainer.benchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().body()
-                val mpaxRaw = AppContainer.benchmarksApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet().body()
-
-                val sqlItems = sqlRaw.map { map ->
-                    val elemMap = map as? Map<*, *> ?: emptyMap<String, Any>()
-                    val themeVal = elemMap["theme"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "General"
-                    val sqlVal = elemMap["sql"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
-                    val diffVal = elemMap["difficulty"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Medium"
-                    val descVal = elemMap["description"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') }
-                        ?: elemMap["question"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
-
-                    SqlBenchmarkItem(
-                        theme = themeVal,
-                        sql = sqlVal,
-                        difficulty = diffVal,
-                        description = descVal
-                    )
-                }
-
-                val mpaxItems = mpaxRaw.map { map ->
-                    val elemMap = map as? Map<*, *> ?: emptyMap<String, Any>()
-                    val titleVal = elemMap["title"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Optimization Scenario"
-                    val diffVal = elemMap["difficulty"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Standard"
-                    val descVal = elemMap["description"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
-                    val targetVal = elemMap["target_service"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Hospital Wide"
-
-                    MpaxBenchmarkItem(
-                        title = titleVal,
-                        difficulty = diffVal,
-                        description = descVal,
-                        targetService = targetVal
-                    )
-                }
-
-                Pair(sqlItems, mpaxItems)
-            }.fold(
-                onSuccess = { (sqlItems, mpaxItems) ->
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        sqlBenchmarks = sqlItems,
-                        mpaxBenchmarks = mpaxItems
-                    )
-                },
-                onFailure = { e ->
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "Failed to load benchmarks"
-                    )
-                }
-            )
+            performLoadBenchmarks()
         }
     }
 
-    LaunchedEffect(Unit) {
-        loadBenchmarks()
+    if (initialState == null) {
+        LaunchedEffect(Unit) {
+            performLoadBenchmarks()
+        }
     }
 
     Scaffold(

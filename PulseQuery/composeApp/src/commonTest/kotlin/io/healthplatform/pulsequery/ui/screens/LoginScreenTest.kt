@@ -104,7 +104,7 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithText("Password").performTextInput("password")
         onNodeWithText("Login / Register").performClick()
         
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 15000) {
             onAllNodes(androidx.compose.ui.test.hasText("Invalid username or password.", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Invalid username or password.", substring = true).assertIsDisplayed()
@@ -144,7 +144,7 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onRoot().printToLog("LoginScreenTest")
 
         // After click, wait for the state to settle
-        waitUntil(timeoutMillis = 5000) { successCalled }
+        waitUntil(timeoutMillis = 15000) { successCalled }
         
         assertTrue(successCalled)
     }

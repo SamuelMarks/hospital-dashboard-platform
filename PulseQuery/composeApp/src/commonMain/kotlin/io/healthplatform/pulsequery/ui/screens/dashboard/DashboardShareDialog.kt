@@ -230,7 +230,7 @@ fun DashboardShareContent(
                 modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.shares, key = { it.id }) { share ->
+                items(state.shares) { share ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

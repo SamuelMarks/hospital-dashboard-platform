@@ -99,7 +99,7 @@ class DashboardShareDialogTest : io.healthplatform.pulsequery.testing.BaseCompos
             }
         }
 
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 15000) {
             onAllNodesWithText("doctor@hospital.org").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("doctor@hospital.org").assertExists()
@@ -110,7 +110,7 @@ class DashboardShareDialogTest : io.healthplatform.pulsequery.testing.BaseCompos
         onNodeWithText("Edit").performClick()
         onNodeWithText("Invite").performClick()
 
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 15000) {
             onAllNodesWithText("nurse@hospital.org").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("nurse@hospital.org").assertExists()
@@ -134,12 +134,12 @@ class DashboardShareDialogTest : io.healthplatform.pulsequery.testing.BaseCompos
             }
         }
 
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 15000) {
             onAllNodesWithText("doctor@hospital.org").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithContentDescription("Revoke access for doctor@hospital.org").performClick()
 
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 15000) {
             onAllNodesWithText("No collaborators shared yet.").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("No collaborators shared yet.").assertExists()

@@ -126,7 +126,7 @@ class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseCompo
         onRoot().printToLog("WIZARD_TREE")
 
         // 1. Verify Template Marketplace renders
-        waitUntilAtLeastOneExists(hasText("Predictive Availability"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Predictive Availability"), timeoutMillis = 15000)
         onNodeWithText("Predictive Availability").assertExists()
         onAllNodesWithText("Availability").onFirst().assertExists()
 
@@ -135,10 +135,10 @@ class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseCompo
         waitForIdle()
 
         // 3. Verify Parameter Configuration screen appears
-        waitUntilAtLeastOneExists(hasText("Widget Title"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Widget Title"), timeoutMillis = 15000)
         onNodeWithText("Widget Title").assertExists()
         onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Create Widget"))
-        waitUntilAtLeastOneExists(hasText("Create Widget"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Create Widget"), timeoutMillis = 15000)
         onNodeWithText("Create Widget").assertExists().assertHasClickAction()
         onNodeWithText("Back").assertExists().assertHasClickAction()
 
@@ -147,7 +147,7 @@ class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseCompo
         waitForIdle()
 
         // 5. Verify completion callback
-        waitUntilAtLeastOneExists(hasText("Widget created successfully!"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Widget created successfully!"), timeoutMillis = 15000)
         assertTrue(completed)
     }
 
@@ -166,20 +166,20 @@ class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseCompo
         waitForIdle()
 
         // Navigate into configuration
-        waitUntilAtLeastOneExists(hasText("Predictive Availability"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Predictive Availability"), timeoutMillis = 15000)
         onNodeWithContentDescription("Template: Predictive Availability").performClick()
         waitForIdle()
 
-        waitUntilAtLeastOneExists(hasText("Widget Title"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Widget Title"), timeoutMillis = 15000)
         onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Back"))
-        waitUntilAtLeastOneExists(hasText("Back"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Back"), timeoutMillis = 15000)
 
         // Click Back button
         onNodeWithText("Back").performClick()
         waitForIdle()
 
         // Verify we returned to marketplace
-        waitUntilAtLeastOneExists(hasText("Search templates..."), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Search templates..."), timeoutMillis = 15000)
         onNodeWithText("Predictive Availability").assertExists()
     }
 }

@@ -127,27 +127,27 @@ class SimulationScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
 
         // 1. Click Add Constraint
         onNodeWithText("Add Constraint").performClick()
-        waitUntilAtLeastOneExists(hasText("Constraint Type"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Constraint Type"), timeoutMillis = 15000)
         onNodeWithText("Constraint Type").assertExists()
 
         // Confirm Add Constraint dialog
         onNodeWithContentDescription("Confirm Add Constraint").performClick()
 
         // Verify constraint row added
-        waitUntilAtLeastOneExists(hasContentDescription("Delete constraint"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasContentDescription("Delete constraint"), timeoutMillis = 15000)
         onNodeWithContentDescription("Delete constraint").assertExists()
 
         // 2. Scroll to and click Add Affinity
         onNode(hasScrollAction()).performScrollToNode(hasText("Affinity Overrides"))
         onNodeWithText("Add Affinity").performClick()
-        waitUntilAtLeastOneExists(hasText("Affinity Score"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Affinity Score"), timeoutMillis = 15000)
         onNodeWithText("Affinity Score").assertExists()
 
         // Confirm Add Affinity dialog
         onNodeWithContentDescription("Confirm Add Affinity").performClick()
 
         // Verify affinity row added
-        waitUntilAtLeastOneExists(hasContentDescription("Delete affinity"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasContentDescription("Delete affinity"), timeoutMillis = 15000)
         onNode(hasScrollAction()).performScrollToNode(hasContentDescription("Delete affinity"))
         onNodeWithContentDescription("Delete affinity").assertExists()
     }

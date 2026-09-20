@@ -6,6 +6,7 @@ package io.healthplatform.pulsequery.ui.screens.wear
 import androidx.compose.ui.test.*
 import io.healthplatform.pulsequery.testing.BaseComposeTest
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * Validates rendering and semantic content of the Wear OS Census screen.
@@ -33,6 +34,6 @@ class WearCensusScreenTest : BaseComposeTest() {
         }
 
         onNodeWithText("Exit").performClick()
-        assert(exitCalled)
+        assertTrue(exitCalled)
     }
 }

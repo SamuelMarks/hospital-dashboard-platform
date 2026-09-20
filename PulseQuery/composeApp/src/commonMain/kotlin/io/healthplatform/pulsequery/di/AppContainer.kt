@@ -226,14 +226,7 @@ object AppContainer {
             if (_httpClient == null) {
                 _httpClient = createHttpClient(
                     baseUrl = currentBaseUrl,
-                    tokenProvider = { currentToken },
-                    refreshTokenProvider = { refreshToken },
-                    onTokenRefreshed = { newAccess, newRefresh ->
-                        currentToken = newAccess
-                        if (newRefresh != null) {
-                            refreshToken = newRefresh
-                        }
-                    }
+                    tokenProvider = { currentToken }
                 )
             }
             return _httpClient!!

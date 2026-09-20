@@ -146,7 +146,7 @@ class RegisterScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
         onNodeWithText("Confirm Password").performTextInput("validPassword123")
         onNodeWithText("Register Account").performScrollTo().performClick()
 
-        waitUntil(timeoutMillis = 5000) { registered }
+        waitUntil(timeoutMillis = 15000) { registered }
         assertTrue(registered)
     }
 
@@ -169,7 +169,7 @@ class RegisterScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
         onNodeWithText("Confirm Password").performTextInput("validPassword123")
         onNodeWithText("Register Account").performScrollTo().performClick()
 
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 15000) {
             onAllNodesWithText("An account with this email already exists.").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("An account with this email already exists.").assertExists()

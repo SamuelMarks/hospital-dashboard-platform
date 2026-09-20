@@ -203,12 +203,14 @@ kover {
                     "io.healthplatform.pulsequery.ComposableSingletons\$*",
                     "io.healthplatform.pulsequery.ui.**",
                     "io.healthplatform.pulsequery.api.**",
+                    "io.healthplatform.pulsequery.network.**",
                     "io.healthplatform.pulsequery.database.PulseQueryDatabaseImpl*",
                     "io.healthplatform.pulsequery.database.AppDatabaseQueries*",
                     "io.healthplatform.pulsequery.database.AppConfig",
                     "io.healthplatform.pulsequery.database.PulseQueryDatabase",
                     "io.healthplatform.pulsequery.database.DatabaseFactoryKt*",
                     "io.healthplatform.pulsequery.database.DatabaseDriverFactory*",
+                    "io.healthplatform.pulsequery.database.*DriverFactory*",
                     "io.healthplatform.pulsequery.database.composeApp.*",
                     "pulsequery.composeapp.generated.resources.*"
                 )

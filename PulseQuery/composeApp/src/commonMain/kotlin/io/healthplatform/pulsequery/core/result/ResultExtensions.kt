@@ -42,7 +42,7 @@ suspend fun <T : Any> HttpResponse<T>.asResult(): Result<T> {
             )
         }
     } else {
-        val errorDetail = runCatching { this.response.bodyAsText() }.getOrDefault("")
+        val errorDetail = this.response.bodyAsText()
         Result.failure(PulseQueryError.fromHttpStatus(this.status, errorDetail))
     }
 }

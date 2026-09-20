@@ -57,16 +57,18 @@ val MPAX_ARENA_MODES: List<String> = listOf("critic", "translator", "constraints
  *
  * @param modifier Optional layout modifier.
  * @param initialPrompt Optional pre-filled scenario prompt (e.g., from benchmarks).
+ * @param initialState Optional initial [MpaxArenaUiState] for testing and previews.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MpaxArenaScreen(
     modifier: Modifier = Modifier,
-    initialPrompt: String? = null
+    initialPrompt: String? = null,
+    initialState: MpaxArenaUiState? = null
 ) {
     var uiState by remember {
         mutableStateOf(
-            MpaxArenaUiState(
+            initialState ?: MpaxArenaUiState(
                 prompt = initialPrompt ?: "Optimize bed capacity during an influx of emergency ICU admissions."
             )
         )

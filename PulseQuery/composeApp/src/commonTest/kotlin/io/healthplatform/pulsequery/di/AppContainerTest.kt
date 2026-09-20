@@ -4,6 +4,7 @@ import io.healthplatform.pulsequery.api.models.UserResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.serialization.kotlinx.json.json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -123,6 +124,18 @@ class AppContainerTest {
         val healthRepo = AppContainer.networkHealthRepository
         assertNotNull(healthRepo)
         assertEquals(healthRepo, AppContainer.networkHealthRepository)
+
+        val adminUsers = AppContainer.adminUsersApi
+        assertNotNull(adminUsers)
+        assertEquals(adminUsers, AppContainer.adminUsersApi)
+
+        val wsRepo = AppContainer.dashboardWebSocketRepository
+        assertNotNull(wsRepo)
+        assertEquals(wsRepo, AppContainer.dashboardWebSocketRepository)
+
+        val chatStreaming = AppContainer.chatStreamingRepository
+        assertNotNull(chatStreaming)
+        assertEquals(chatStreaming, AppContainer.chatStreamingRepository)
     }
     
     @Test
@@ -138,5 +151,62 @@ class AppContainerTest {
         AppContainer.setHttpClientForTest(mockClient)
         
         assertEquals(mockClient, AppContainer.httpClient)
+    }
+
+    @Test
+    fun testRefreshSessionNoToken() = kotlinx.coroutines.test.runTest {
+        AppContainer.refreshToken = null
+        val result = AppContainer.refreshSession()
+        kotlin.test.assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun testRefreshSessionSuccess() = kotlinx.coroutines.test.runTest {
+        val mockClient = HttpClient(MockEngine) {
+            engine {
+                addHandler { request ->
+                    respond(
+                        content = """{"access_token":"new-access-token","token_type":"bearer","refresh_token":"new-refresh-token"}""",
+                        status = io.ktor.http.HttpStatusCode.OK,
+                        headers = io.ktor.http.headersOf(io.ktor.http.HttpHeaders.ContentType, "application/json")
+                    )
+                }
+            }
+            install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+                json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true })
+            }
+        }
+        AppContainer.setHttpClientForTest(mockClient)
+        AppContainer.refreshToken = "initial-refresh"
+
+        val result = AppContainer.refreshSession()
+        kotlin.test.assertTrue(result.isSuccess)
+        assertEquals("new-access-token", AppContainer.currentToken)
+        assertEquals("new-refresh-token", AppContainer.refreshToken)
+    }
+
+    @Test
+    fun testRefreshSessionWithoutRefreshTokenInResponse() = kotlinx.coroutines.test.runTest {
+        val mockClient = HttpClient(MockEngine) {
+            engine {
+                addHandler { request ->
+                    respond(
+                        content = """{"access_token":"token-only","token_type":"bearer"}""",
+                        status = io.ktor.http.HttpStatusCode.OK,
+                        headers = io.ktor.http.headersOf(io.ktor.http.HttpHeaders.ContentType, "application/json")
+                    )
+                }
+            }
+            install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+                json(kotlinx.serialization.json.Json { ignoreUnknownKeys = true })
+            }
+        }
+        AppContainer.setHttpClientForTest(mockClient)
+        AppContainer.refreshToken = "initial-refresh"
+
+        val result = AppContainer.refreshSession()
+        kotlin.test.assertTrue(result.isSuccess)
+        assertEquals("token-only", AppContainer.currentToken)
+        assertEquals("initial-refresh", AppContainer.refreshToken)
     }
 }

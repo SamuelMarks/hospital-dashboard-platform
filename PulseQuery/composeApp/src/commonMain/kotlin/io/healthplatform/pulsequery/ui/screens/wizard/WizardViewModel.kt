@@ -60,16 +60,20 @@ class WizardViewModel(
                 onSuccess = { templates ->
                     allTemplates = templates
                     allCategories = allTemplates.map { it.category }.distinct().sorted()
-                    _state.value = WizardState.TemplateSelection(
-                        templates = allTemplates,
-                        categories = allCategories,
-                        selectedCategory = null,
-                        searchQuery = "",
-                        filteredTemplates = allTemplates
-                    )
+                    if (_state.value is WizardState.Loading) {
+                        _state.value = WizardState.TemplateSelection(
+                            templates = allTemplates,
+                            categories = allCategories,
+                            selectedCategory = null,
+                            searchQuery = "",
+                            filteredTemplates = allTemplates
+                        )
+                    }
                 },
                 onFailure = { e ->
-                    _state.value = WizardState.Error(e.message ?: "Failed to load templates")
+                    if (_state.value is WizardState.Loading) {
+                        _state.value = WizardState.Error(e.message ?: "Failed to load templates")
+                    }
                 }
             )
         }

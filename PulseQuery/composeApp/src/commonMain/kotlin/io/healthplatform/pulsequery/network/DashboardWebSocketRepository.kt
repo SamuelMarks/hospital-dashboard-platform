@@ -188,8 +188,10 @@ class DashboardWebSocketRepository(
      * @param widgetId Unique ID of updated widget.
      */
     fun onRemoteWidgetUpdate(widgetId: String) {
-        coroutineScope.launch {
-            _remoteWidgetUpdates.emit(widgetId)
+        if (!_remoteWidgetUpdates.tryEmit(widgetId)) {
+            coroutineScope.launch {
+                _remoteWidgetUpdates.emit(widgetId)
+            }
         }
     }
 }

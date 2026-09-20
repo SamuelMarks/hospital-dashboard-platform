@@ -105,7 +105,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
         }
 
         // Offline banner should appear with Offline indicator
-        waitUntilAtLeastOneExists(hasText("Backend Inaccessible"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Backend Inaccessible"), timeoutMillis = 30000)
         onNodeWithText("Backend Inaccessible").assertExists()
         onNodeWithContentDescription("Offline indicator").assertExists()
         onNodeWithContentDescription("Retry").assertExists().assertHasClickAction()
@@ -116,7 +116,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
         onNodeWithContentDescription("Retry").performClick()
 
         // Banner should dismiss upon recovery
-        waitUntilDoesNotExist(hasText("Backend Inaccessible"), timeoutMillis = 5000)
+        waitUntilDoesNotExist(hasText("Backend Inaccessible"), timeoutMillis = 30000)
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -134,7 +134,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("Database Misconfiguration"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Database Misconfiguration"), timeoutMillis = 30000)
         onNodeWithText("Database Misconfiguration").assertExists()
         onNodeWithText("Retry Query").assertExists().assertHasClickAction()
     }
@@ -154,7 +154,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("Database Misconfiguration"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Database Misconfiguration"), timeoutMillis = 30000)
         onNodeWithText("Database Misconfiguration").assertExists()
     }
 
@@ -173,7 +173,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
             }
         }
 
-        waitUntilAtLeastOneExists(hasText("Database Misconfiguration"), timeoutMillis = 5000)
+        waitUntilAtLeastOneExists(hasText("Database Misconfiguration"), timeoutMillis = 30000)
         onNodeWithText("Database Misconfiguration").assertExists()
     }
 

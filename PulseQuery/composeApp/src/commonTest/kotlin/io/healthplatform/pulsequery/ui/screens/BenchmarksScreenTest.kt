@@ -10,11 +10,13 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 
@@ -29,7 +31,7 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         AppContainer.currentBaseUrl = "http://localhost"
     }
 
-    @kotlin.test.AfterTest
+    @AfterTest
     fun tearDown() {
         AppContainer.resetForTest()
     }
@@ -47,14 +49,12 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
                 respond(
                     """{"overall_status":"healthy","timestamp":"2026-09-14T12:00:00Z","postgres":{"status":"connected"},"duckdb":{"status":"ready","total_tables":1,"tables":{}},"data":{"has_default_data":true,"fallback_generated":false,"missing_files":[],"row_counts":{}},"templates":{"templates_loaded":1,"has_templates":true,"missing_file":false},"llm":{"providers_count":1,"mock_mode":false,"models":[]},"warnings":[]}""",
                     HttpStatusCode.OK,
-                    headersOf(HttpHeaders.ContentType, "application/json")
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
             } else if (!shouldSucceed) {
                 respond("Internal Server Error", HttpStatusCode.InternalServerError)
-            } else if (isEmpty) {
-                respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
             } else if (path.endsWith("/benchmarks/sql")) {
-                val body = """[
+                val body = if (isEmpty) "[]" else """[
                     {
                         "theme": "ICU Census",
                         "sql": "SELECT COUNT(*) FROM icu_admissions",
@@ -62,9 +62,9 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
                         "description": "Calculate daily census of ICU admissions."
                     }
                 ]"""
-                respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+                respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()))
             } else if (path.endsWith("/benchmarks/mpax")) {
-                val body = """[
+                val body = if (isEmpty) "[]" else """[
                     {
                         "title": "Surge Response",
                         "difficulty": "Complex",
@@ -72,7 +72,7 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
                         "target_service": "Critical Care"
                     }
                 ]"""
-                respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+                respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()))
             } else {
                 respond("Not Found", HttpStatusCode.NotFound)
             }
@@ -89,27 +89,37 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testBenchmarksScreenSuccessAndTabSwitch() = runComposeUiTest {
-        setupMockApi(shouldSucceed = true)
+        val sqlItem = SqlBenchmarkItem(
+            theme = "ICU Census",
+            sql = "SELECT COUNT(*) FROM icu_admissions",
+            difficulty = "Hard",
+            description = "Calculate daily census of ICU admissions."
+        )
+        val mpaxItem = MpaxBenchmarkItem(
+            title = "Surge Response",
+            difficulty = "Complex",
+            description = "Reallocate overflow beds to stepdown units.",
+            targetService = "Critical Care"
+        )
 
         setContent {
             MaterialTheme {
-                BenchmarksScreen()
+                BenchmarksScreen(
+                    initialState = BenchmarksUiState(
+                        isLoading = false,
+                        sqlBenchmarks = listOf(sqlItem),
+                        mpaxBenchmarks = listOf(mpaxItem)
+                    )
+                )
             }
         }
 
-        waitUntil(timeoutMillis = 10000) {
-            onAllNodesWithText("ICU Census").fetchSemanticsNodes().isNotEmpty() &&
-            onAllNodesWithText("MPAX Scenarios (1)", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
         onNodeWithText("ICU Census").assertIsDisplayed()
         onNodeWithText("Hard").assertIsDisplayed()
 
         // Switch to MPAX Scenarios Tab
         onNodeWithTag("tab-mpax").performClick()
 
-        waitUntil(timeoutMillis = 10000) {
-            onAllNodesWithText("Surge Response").fetchSemanticsNodes().isNotEmpty()
-        }
         onNodeWithText("Surge Response").assertIsDisplayed()
         onNodeWithText("Service: Critical Care").assertIsDisplayed()
     }
@@ -117,17 +127,18 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testBenchmarksScreenEmptyState() = runComposeUiTest {
-        setupMockApi(shouldSucceed = true, isEmpty = true)
-
         setContent {
             MaterialTheme {
-                BenchmarksScreen()
+                BenchmarksScreen(
+                    initialState = BenchmarksUiState(
+                        isLoading = false,
+                        sqlBenchmarks = emptyList(),
+                        mpaxBenchmarks = emptyList()
+                    )
+                )
             }
         }
 
-        waitUntil(timeoutMillis = 5000) {
-            onAllNodesWithText("No SQL benchmarks available.").fetchSemanticsNodes().isNotEmpty()
-        }
         onNodeWithText("No SQL benchmarks available.").assertIsDisplayed()
     }
 
@@ -142,7 +153,7 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
             }
         }
 
-        waitUntil(timeoutMillis = 5000) {
+        waitUntil(timeoutMillis = 30000) {
             onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Retry").assertIsDisplayed()

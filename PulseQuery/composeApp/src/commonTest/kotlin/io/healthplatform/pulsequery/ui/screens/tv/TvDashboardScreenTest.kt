@@ -6,6 +6,7 @@ package io.healthplatform.pulsequery.ui.screens.tv
 import androidx.compose.ui.test.*
 import io.healthplatform.pulsequery.testing.BaseComposeTest
 import kotlin.test.Test
+import kotlin.test.assertTrue
 
 /**
  * Validates rendering and semantic properties of the TV Wallboard dashboard.
@@ -31,6 +32,6 @@ class TvDashboardScreenTest : BaseComposeTest() {
         }
 
         onNodeWithText("Exit Wallboard").performClick()
-        assert(exitCalled)
+        assertTrue(exitCalled)
     }
 }

@@ -120,4 +120,42 @@ class UndoRedoManagerTest {
         assertFalse(manager.canUndo.value)
         assertFalse(manager.canRedo.value)
     }
+
+    @Test
+    fun testCommandExecutionFailure() = runTest {
+        val manager = UndoRedoManager()
+        val failingCommand = TestCommand("Failing Command", onExecute = { false })
+        val res = manager.executeCommand(failingCommand)
+        assertTrue(res.isFailure)
+        assertFalse(manager.canUndo.value)
+    }
+
+    @Test
+    fun testCommandUndoFailure() = runTest {
+        val manager = UndoRedoManager()
+        val command = TestCommand("Failing Undo", onUndo = { false })
+        manager.executeCommand(command)
+        assertTrue(manager.canUndo.value)
+
+        val res = manager.undo()
+        assertTrue(res.isFailure)
+        assertTrue(manager.canUndo.value)
+        assertFalse(manager.canRedo.value)
+    }
+
+    @Test
+    fun testCommandRedoFailure() = runTest {
+        var shouldExecuteSucceed = true
+        val command = TestCommand("Failing Redo", onExecute = { shouldExecuteSucceed })
+        val manager = UndoRedoManager()
+        manager.executeCommand(command)
+        manager.undo()
+        assertTrue(manager.canRedo.value)
+
+        // Make re-execution fail
+        shouldExecuteSucceed = false
+        val res = manager.redo()
+        assertTrue(res.isFailure)
+        assertTrue(manager.canRedo.value)
+    }
 }

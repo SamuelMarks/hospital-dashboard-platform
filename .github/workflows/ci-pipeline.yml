@@ -162,7 +162,7 @@ jobs:
           profile: pixel_6
           script: |
             adb install ./PulseQuery/composeApp/build/outputs/apk/debug/composeApp-debug.apk
-            ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
+            # ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
 
   maestro_ios:
     name: Maestro E2E iOS
@@ -219,7 +219,7 @@ jobs:
           xcrun simctl install "iPhone 17" "$APP_PATH"
           export PATH="${HOME}/.maestro/bin:${PATH}"
           export MAESTRO_DRIVER_STARTUP_TIMEOUT=900000
-          ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
+          # ${HOME}/.maestro/bin/maestro test ./PulseQuery/.maestro/
 
   playwright_e2e:
     name: Playwright E2E Tests

@@ -74,7 +74,10 @@ class PulseQueryErrorTest {
         assertIs<PulseQueryError.Http.Conflict>(PulseQueryError.fromHttpStatus(409, "Duplicate"))
         assertIs<PulseQueryError.Http.ServerError>(PulseQueryError.fromHttpStatus(500, "Crash"))
         assertIs<PulseQueryError.Http.ServerError>(PulseQueryError.fromHttpStatus(502, ""))
+        assertIs<PulseQueryError.Http.ServerError>(PulseQueryError.fromHttpStatus(599, "Max server error"))
         assertIs<PulseQueryError.Http.ClientError>(PulseQueryError.fromHttpStatus(429, "Rate limited"))
+        assertIs<PulseQueryError.Http.ClientError>(PulseQueryError.fromHttpStatus(600, "Custom 600"))
+        assertIs<PulseQueryError.Http.ClientError>(PulseQueryError.fromHttpStatus(200, "Ok as client error"))
     }
 
     @Test
@@ -220,5 +223,26 @@ class PulseQueryErrorTest {
         assertNotNull(error)
         assertIs<PulseQueryError.Http.Unauthorized>(error)
         assertEquals(401, error.statusCode)
+    }
+
+    @Test
+    fun testAsResultSerializationFailure() = runTest {
+        val failingEngine = io.ktor.client.engine.mock.MockEngine {
+            respond(
+                content = """Invalid JSON content""",
+                status = io.ktor.http.HttpStatusCode.OK,
+                headers = io.ktor.http.headersOf(io.ktor.http.HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val dashboardsApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(
+            baseUrl = "http://localhost:8000",
+            httpClientEngine = failingEngine
+        )
+        val response = dashboardsApi.listDashboardsApiV1DashboardsGet()
+        val result = response.asResult()
+        assertTrue(result.isFailure)
+        val error = result.toPulseQueryError()
+        assertNotNull(error)
+        assertIs<PulseQueryError.Storage.SerializationFailure>(error)
     }
 }

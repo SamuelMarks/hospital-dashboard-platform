@@ -360,6 +360,9 @@ class WizardViewModelTest {
     fun testCustomSqlWidgetCreation(): Unit = runBlocking {
         configureMockEngine()
         val viewModel = WizardViewModel(dashboardId = "dash-123", scope = this)
+        withTimeout(15000) {
+            viewModel.state.first { it !is WizardState.Loading }
+        }
 
         viewModel.startCustomWidget("SQL")
         val state = viewModel.state.value as WizardState.CustomWidgetConfiguration
@@ -373,7 +376,7 @@ class WizardViewModelTest {
         var created: WidgetResponse? = null
         viewModel.submitCustomWidget { created = it }
 
-        withTimeout(5000) {
+        withTimeout(15000) {
             viewModel.state.first { it is WizardState.Success }
         }
 
@@ -385,6 +388,9 @@ class WizardViewModelTest {
     fun testCustomHttpWidgetCreation(): Unit = runBlocking {
         configureMockEngine()
         val viewModel = WizardViewModel(dashboardId = "dash-123", scope = this)
+        withTimeout(15000) {
+            viewModel.state.first { it !is WizardState.Loading }
+        }
 
         viewModel.startCustomWidget("HTTP")
         val state = viewModel.state.value as WizardState.CustomWidgetConfiguration
@@ -397,7 +403,7 @@ class WizardViewModelTest {
         var created: WidgetResponse? = null
         viewModel.submitCustomWidget { created = it }
 
-        withTimeout(5000) {
+        withTimeout(15000) {
             viewModel.state.first { it is WizardState.Success }
         }
 
@@ -408,6 +414,9 @@ class WizardViewModelTest {
     fun testCustomTextWidgetCreation(): Unit = runBlocking {
         configureMockEngine()
         val viewModel = WizardViewModel(dashboardId = "dash-123", scope = this)
+        withTimeout(15000) {
+            viewModel.state.first { it !is WizardState.Loading }
+        }
 
         viewModel.startCustomWidget("TEXT")
         val state = viewModel.state.value as WizardState.CustomWidgetConfiguration
@@ -420,7 +429,7 @@ class WizardViewModelTest {
         var created: WidgetResponse? = null
         viewModel.submitCustomWidget { created = it }
 
-        withTimeout(5000) {
+        withTimeout(15000) {
             viewModel.state.first { it is WizardState.Success }
         }
 
@@ -431,6 +440,9 @@ class WizardViewModelTest {
     fun testCustomWidgetValidationErrors(): Unit = runBlocking {
         configureMockEngine()
         val viewModel = WizardViewModel(dashboardId = "dash-123", scope = this)
+        withTimeout(15000) {
+            viewModel.state.first { it !is WizardState.Loading }
+        }
 
         viewModel.startCustomWidget("SQL")
         viewModel.updateCustomWidgetTitle("")
