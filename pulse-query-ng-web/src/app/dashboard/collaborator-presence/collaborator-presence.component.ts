@@ -5,7 +5,6 @@
  */
 
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
@@ -20,8 +19,7 @@ import {
  */
 @Component({
   selector: 'app-collaborator-presence',
-  standalone: true,
-  imports: [CommonModule, MatTooltipModule, MatIconModule, MatChipsModule],
+  imports: [MatTooltipModule, MatIconModule, MatChipsModule],
   template: `
     <div
       class="collaborator-presence-container collaborator-presence collaborators"

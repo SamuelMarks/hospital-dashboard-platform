@@ -181,7 +181,8 @@
     <!-- Error State -->
     @if (store.error(); as err) {
       <div
-        class="p-4 mx-6 mt-4 bg-red-50 text-red-700 border-l-4 border-red-500 rounded flex gap-3 items-center"
+        role="alert"
+        class="error-banner error-box p-4 mx-6 mt-4 bg-red-50 text-red-700 border-l-4 border-red-500 rounded flex gap-3 items-center"
       >
         <mat-icon i18n>error</mat-icon>
         <div><strong i18n>Simulation Error:</strong> {{ err }}</div>

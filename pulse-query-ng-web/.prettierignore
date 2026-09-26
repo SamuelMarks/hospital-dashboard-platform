@@ -1,0 +1,10 @@
+node_modules/
+.angular/
+dist/
+docs/
+documentation/
+coverage/
+playwright-report/
+test-results/
+.pytest_cache/
+.ruff_cache/

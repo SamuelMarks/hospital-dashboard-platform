@@ -5,7 +5,6 @@
  */
 
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -29,9 +28,7 @@ import { UserResponse } from '../../api-client/model/user-response';
  */
 @Component({
   selector: 'app-user-management',
-  standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,

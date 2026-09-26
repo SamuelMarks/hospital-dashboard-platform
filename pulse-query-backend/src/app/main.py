@@ -6,11 +6,15 @@ Main Application Entry Point.
 
 import asyncio
 from contextlib import asynccontextmanager
+import logging
+import os
+from pathlib import Path
 
 import duckdb
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 import pydantic.root_model  # noqa: F401
 
 from app.api.routers import (
@@ -177,8 +181,33 @@ app.include_router(mpax_arena.router, prefix=f"{settings.API_V1_STR}/mpax_arena"
 app.include_router(benchmarks.router, prefix=f"{settings.API_V1_STR}/benchmarks", tags=["benchmarks"])
 app.include_router(system.router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])
 
+logger = logging.getLogger(__name__)
 
-@app.get("/")
+
 def root() -> dict[str, str]:
   """Health check endpoint for the API root."""
   return {"message": "Hospital Analytics Platform API is running"}
+
+
+def setup_static_files(app_instance: FastAPI) -> None:
+  """Configure static file serving if DEBUG is enabled and build assets exist.
+
+  Args:
+      app_instance: The FastAPI application instance to configure.
+  """
+  if os.environ.get("DEBUG"):  # pragma: no cover
+    dist_candidates = [
+      Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web" / "browser",
+      Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web",
+      Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist",
+    ]
+    dist_path = next((p for p in dist_candidates if p.exists()), None)
+    if dist_path:
+      logger.info("DEBUG mode enabled. Serving static frontend from %s", dist_path)
+      app_instance.mount("/", StaticFiles(directory=str(dist_path), html=True), name="static")
+      return
+    logger.warning("DEBUG mode enabled but static dist folder not found.")
+  app_instance.add_api_route("/", root, methods=["GET"])
+
+
+setup_static_files(app)

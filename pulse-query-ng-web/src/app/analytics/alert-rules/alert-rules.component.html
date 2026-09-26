@@ -145,7 +145,7 @@
       <ng-container matColumnDef="severity">
         <th i18n mat-header-cell *matHeaderCellDef>Severity</th>
         <td i18n mat-cell *matCellDef="let rule" data-testid="severity-cell">
-          <span class="severity-chip" [ngClass]="getSeverityClass(rule.severity)">
+          <span class="severity-chip" [class]="getSeverityClass(rule.severity)">
             {{ rule.severity }}
           </span>
         </td>

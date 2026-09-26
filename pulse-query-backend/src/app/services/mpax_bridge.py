@@ -175,6 +175,10 @@ class MpaxBridgeService:
       u_bound = jnp.full(num_vars, jnp.inf)
 
       # 7. Apply Custom "Hard" Constraints Logic & Pre-solve Validation
+      for u_name, cap in capacities.items():
+        if cap < 0:
+          return json.dumps({"error": f"Infeasible constraint: capacity for unit '{u_name}' cannot be negative ({cap})."})
+
       service_min_totals: dict[str, float] = {}
       unit_min_totals: dict[str, float] = {}
 

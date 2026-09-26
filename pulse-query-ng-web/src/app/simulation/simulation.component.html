@@ -29,7 +29,7 @@
 </div>
 
 @if (store.error(); as err) {
-  <div class="error-box">
+  <div class="error-box error-banner" role="alert">
     <mat-icon i18n class="mr-2 align-middle">error</mat-icon>
     <span i18n>{{ err }}</span>
   </div>

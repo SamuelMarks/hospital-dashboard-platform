@@ -1,7 +1,7 @@
 services:
-  # Application Database
   db:
     image: postgres:18-alpine
+    container_name: pulse-query-db
     restart: always
     environment:
       - POSTGRES_USER=postgres
@@ -11,7 +11,10 @@ services:
       - "5433:5432"
 
   backend:
-    build: .
+    build:
+      context: ./pulse-query-backend
+      dockerfile: Dockerfile
+    container_name: pulse-query-backend
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -25,3 +28,15 @@ services:
       - DEBUG=1
     depends_on:
       - db
+
+  frontend:
+    build:
+      context: ./pulse-query-ng-web
+      dockerfile: Dockerfile
+    container_name: pulse-query-frontend
+    ports:
+      - "4200:4200"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - backend

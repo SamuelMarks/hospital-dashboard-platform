@@ -32,6 +32,53 @@ async def test_cors_preflight_allowed_origin() -> None:
 
 
 @pytest.mark.asyncio
+async def test_root_get_returns_health_message() -> None:
+  """GET request to root endpoint should return health status message."""
+  transport = ASGITransport(app=app)
+  async with AsyncClient(transport=transport, base_url="http://test") as client:
+    response = await client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Hospital Analytics Platform API is running"}
+
+
+@pytest.mark.asyncio
+async def test_debug_static_files_serving(tmp_path: pytest.TempPathFactory) -> None:
+  """Static files should be served when DEBUG environment is set and dist path exists."""
+  from pathlib import Path
+  from unittest.mock import patch
+  from fastapi import FastAPI
+  from app.main import setup_static_files
+
+  dummy_app = FastAPI()
+  dist_dir = tmp_path / "browser"  # type: ignore[operator]
+  dist_dir.mkdir(parents=True, exist_ok=True)
+  index_file = dist_dir / "index.html"
+  index_file.write_text("<!doctype html><html><body><h1>Pulse Test</h1></body></html>")
+
+  with patch.dict("os.environ", {"DEBUG": "1"}):
+    with patch.object(Path, "exists", return_value=True):
+      with patch("app.main.StaticFiles") as mock_static_files:
+        setup_static_files(dummy_app)
+        assert mock_static_files.called
+
+
+@pytest.mark.asyncio
+async def test_debug_static_files_missing_dist() -> None:
+  """Fallback to root handler when DEBUG environment is set but dist path does not exist."""
+  from pathlib import Path
+  from unittest.mock import patch
+  from fastapi import FastAPI
+  from app.main import setup_static_files
+
+  dummy_app = FastAPI()
+  with patch.dict("os.environ", {"DEBUG": "1"}):
+    with patch.object(Path, "exists", return_value=False):
+      with patch("app.main.StaticFiles") as mock_static_files:
+        setup_static_files(dummy_app)
+        assert not mock_static_files.called
+
+
+@pytest.mark.asyncio
 async def test_cors_preflight_rejected_origin() -> None:
   """Unauthorized origins should not receive Access-Control-Allow-Origin header."""
   transport = ASGITransport(app=app)

@@ -5,7 +5,7 @@
  */
 
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -33,9 +33,8 @@ import { AlertSeverity } from '../../api-client/model/alert-severity';
  */
 @Component({
   selector: 'app-alert-rules',
-  standalone: true,
   imports: [
-    CommonModule,
+    DatePipe,
     ReactiveFormsModule,
     RouterLink,
     MatCardModule,

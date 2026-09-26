@@ -319,3 +319,15 @@ def test_force_flow_to_overflow_unit() -> None:
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
   data = json.loads(result)
   assert isinstance(data, list)
+
+
+def test_negative_unit_capacity_rejected() -> None:
+  """Test that negative unit capacities are rejected as infeasible constraints."""
+  demand = json.dumps({"ServiceA": 5.0})
+  capacity = json.dumps({"Unit1": -10.0})
+  affinity = json.dumps({})
+
+  result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
+  data = json.loads(result)
+  assert "error" in data
+  assert "cannot be negative" in data["error"].lower()

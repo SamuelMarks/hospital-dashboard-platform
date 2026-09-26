@@ -4,6 +4,14 @@ node_modules/
 pulse-query-backend/.venv/
 coverage/
 dist/
+docs/
+documentation/
+**/docs/
+**/documentation/
+**/coverage/
+**/dist/
+**/playwright-report/
+**/test-results/
 e2e/node_modules/
 pulse-query-ng-web/node_modules/
 pulse-query-ng-web/.angular/
@@ -14,4 +22,5 @@ pulse-query-backend/.mypy_cache/
 pulse-query-backend/.pytest_cache/
 pulse-query-backend/.ruff_cache/
 PulseQuery/
+
 

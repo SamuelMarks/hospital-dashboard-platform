@@ -104,7 +104,7 @@
       <ng-container matColumnDef="is_admin">
         <th i18n mat-header-cell *matHeaderCellDef>Super Admin</th>
         <td i18n mat-cell *matCellDef="let user" data-testid="is-admin-cell">
-          <span class="role-chip" [ngClass]="getRoleBadgeClass(user.role)">
+          <span class="role-chip" [class]="getRoleBadgeClass(user.role)">
             {{ user.is_admin ? 'SUPER_ADMIN' : 'STANDARD' }}
           </span>
         </td>
