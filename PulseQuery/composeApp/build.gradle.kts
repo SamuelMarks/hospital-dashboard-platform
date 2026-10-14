@@ -1,4 +1,3 @@
-@file:Suppress("DEPRECATION")
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -12,12 +11,20 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
     alias(libs.plugins.kover)
+    alias(libs.plugins.detekt)
+    alias(libs.plugins.ktlint)
 }
 
 kotlin {
+    compilerOptions {
+        allWarningsAsErrors.set(true)
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
+            allWarningsAsErrors.set(true)
         }
     }
     
@@ -25,24 +32,36 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach { iosTarget ->
+        iosTarget.compilerOptions {
+            allWarningsAsErrors.set(true)
+        }
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
-            // Provide SQLDelight driver export for iOS target
             export(libs.sqldelight.native)
             linkerOpts("-lsqlite3")
         }
     }
     
-    jvm()
+    jvm {
+        compilerOptions {
+            allWarningsAsErrors.set(true)
+        }
+    }
     
     js {
+        compilerOptions {
+            allWarningsAsErrors.set(true)
+        }
         browser()
         binaries.executable()
     }
     
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
+        compilerOptions {
+            allWarningsAsErrors.set(true)
+        }
         browser()
         binaries.executable()
     }
@@ -66,7 +85,6 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
-            implementation(compose.materialIconsExtended)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
@@ -92,6 +110,7 @@ kotlin {
 
             // SQLDelight Common
             implementation(libs.sqldelight.coroutines)
+            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -183,36 +202,68 @@ sqldelight {
     }
 }
 
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    source.setFrom(
+        "src/commonMain/kotlin",
+        "src/androidMain/kotlin",
+        "src/jvmMain/kotlin",
+        "src/iosMain/kotlin",
+        "src/jsMain/kotlin",
+        "src/wasmJsMain/kotlin",
+        "src/webMain/kotlin"
+    )
+}
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    exclude("**/api/**")
+    exclude("**/generated/**")
+    exclude("**/build/**")
+}
+
+ktlint {
+    filter {
+        exclude { element ->
+            val path = element.file.path
+            path.contains("/api/") || path.contains("/build/") || path.contains("/generated/")
+        }
+    }
+}
+
 kover {
     reports {
         filters {
             excludes {
+                annotatedBy(
+                    "androidx.compose.runtime.Composable",
+                    "kotlinx.serialization.Serializable"
+                )
                 classes(
-                    "io.healthplatform.pulsequery.MainKt",
-                    "io.healthplatform.pulsequery.AppKt",
-                    "io.healthplatform.pulsequery.AppKt\$*",
-                    "io.healthplatform.pulsequery.Greeting",
-                    "io.healthplatform.pulsequery.Platform",
-                    "io.healthplatform.pulsequery.AndroidPlatform",
-                    "io.healthplatform.pulsequery.JVMPlatform",
-                    "io.healthplatform.pulsequery.IOSPlatform",
-                    "io.healthplatform.pulsequery.PlatformKt",
-                    "io.healthplatform.pulsequery.Platform_*",
-                    "io.healthplatform.pulsequery.MainActivity",
-                    "io.healthplatform.pulsequery.MainActivityKt",
-                    "io.healthplatform.pulsequery.ComposableSingletons\$*",
-                    "io.healthplatform.pulsequery.ui.**",
+                    "*.generated.resources.*",
+                    "pulsequery.composeapp.generated.resources.*",
                     "io.healthplatform.pulsequery.api.**",
-                    "io.healthplatform.pulsequery.network.**",
                     "io.healthplatform.pulsequery.database.PulseQueryDatabaseImpl*",
                     "io.healthplatform.pulsequery.database.AppDatabaseQueries*",
-                    "io.healthplatform.pulsequery.database.AppConfig",
-                    "io.healthplatform.pulsequery.database.PulseQueryDatabase",
-                    "io.healthplatform.pulsequery.database.DatabaseFactoryKt*",
-                    "io.healthplatform.pulsequery.database.DatabaseDriverFactory*",
-                    "io.healthplatform.pulsequery.database.*DriverFactory*",
+                    "io.healthplatform.pulsequery.database.AppConfig*",
+                    "io.healthplatform.pulsequery.database.CachedWidget*",
+                    "io.healthplatform.pulsequery.database.PulseQueryDatabase*",
                     "io.healthplatform.pulsequery.database.composeApp.*",
-                    "pulsequery.composeapp.generated.resources.*"
+                    "io.healthplatform.pulsequery.database.*DriverFactory*",
+                    "io.healthplatform.pulsequery.ComposableSingletons\$*",
+                    "*ComposableSingletons*",
+                    "*\$serializer",
+                    "*\$Companion",
+                    "io.healthplatform.pulsequery.MainKt*",
+                    "io.healthplatform.pulsequery.MainActivity*",
+                    "io.healthplatform.pulsequery.Platform_*",
+                    "io.healthplatform.pulsequery.AndroidPlatform*",
+                    "io.healthplatform.pulsequery.JVMPlatform*",
+                    "io.healthplatform.pulsequery.ui.components.**",
+                    "io.healthplatform.pulsequery.ui.screens.*ScreenKt*",
+                    "io.healthplatform.pulsequery.ui.screens.**.*ScreenKt*",
+                    "io.healthplatform.pulsequery.ui.screens.**.*DialogKt*"
                 )
             }
         }
@@ -221,6 +272,10 @@ kover {
                 bound {
                     minValue = 100
                     coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.LINE
+                }
+                bound {
+                    minValue = 100
+                    coverageUnits = kotlinx.kover.gradle.plugin.dsl.CoverageUnit.INSTRUCTION
                 }
                 bound {
                     minValue = 100

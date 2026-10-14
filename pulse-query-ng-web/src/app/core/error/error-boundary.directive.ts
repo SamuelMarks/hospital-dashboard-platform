@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Functional Directive providing "Safe Mode" UI swapping.
  * Similar to React Error Boundaries, this allows components to catch
@@ -14,7 +13,7 @@ import {
   ErrorHandler,
   OnDestroy,
   OnInit,
-  input,
+  Input,
 } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 import { Subscription } from 'rxjs';
@@ -24,10 +23,10 @@ import { Subscription } from 'rxjs';
  * Exposes the error object and a retry function to the template.
  */
 export interface ErrorBoundaryContext {
-  /** $implicit property. */
-  $implicit: unknown; // The error object
-  /** retry property. */
-  retry: () => void; // Callback to reset state
+  /** Caught error instance exposed as the default template context variable. */
+  $implicit: unknown;
+  /** Callback function that clears the error state and re-renders the primary template. */
+  retry: () => void;
 }
 
 /**
@@ -54,22 +53,21 @@ export interface ErrorBoundaryContext {
 @Directive({
   selector: '[appErrorBoundary]',
 })
-/** @docs */
 export class ErrorBoundaryDirective implements OnInit, OnDestroy {
-  /** vcr property. */
+  /** View container reference used to mount either the primary template or the fallback view. */
   private readonly vcr = inject(ViewContainerRef);
-  /** templateCallback property. */
+  /** Primary structural template reference wrapped by the error boundary. */
   private readonly templateCallback = inject(TemplateRef<unknown>);
-  /** globalHandler property. */
+  /** Global error handler instance used to reset global error state on retry. */
   private readonly globalHandler = inject(ErrorHandler) as GlobalErrorHandler;
 
-  /** sub property. */
+  /** Optional subscription to error streams cleaned up on directive destruction. */
   private sub?: Subscription;
 
   /**
    * The Fallback Template to render when an error state is active.
    */
-  readonly appErrorBoundary = input<TemplateRef<ErrorBoundaryContext> | undefined>(undefined);
+  @Input() appErrorBoundary: TemplateRef<ErrorBoundaryContext> | undefined = undefined;
 
   /**
    * Initializes the view.
@@ -109,10 +107,7 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
    */
   public renderFallback(error: unknown): void {
     this.vcr.clear();
-    const fallbackTemplate =
-      typeof this.appErrorBoundary === 'function'
-        ? this.appErrorBoundary()
-        : (this.appErrorBoundary as TemplateRef<ErrorBoundaryContext> | undefined);
+    const fallbackTemplate = this.appErrorBoundary;
     if (fallbackTemplate) {
       this.vcr.createEmbeddedView(fallbackTemplate, {
         $implicit: error,

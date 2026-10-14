@@ -2,6 +2,8 @@
 Edge-path tests for execution router.
 """
 
+from typing import Any
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -53,6 +55,7 @@ async def test_refresh_dashboard_text_widget_short_circuit() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_text_returns_stub() -> None:
+  """Verify refresh widget text returns stub behavior."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -84,6 +87,7 @@ async def test_refresh_widget_text_returns_stub() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_not_found_returns_404() -> None:
+  """Verify refresh widget not found returns 404 behavior."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -142,6 +146,7 @@ async def test_refresh_widget_cache_hit_short_circuit() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_http_runs_request() -> None:
+  """Verify refresh widget http runs request behavior."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -174,6 +179,7 @@ async def test_refresh_widget_http_runs_request() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_sql_exception_returns_error() -> None:
+  """Verify refresh widget sql exception returns error behavior."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -206,6 +212,7 @@ async def test_refresh_widget_sql_exception_returns_error() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_unknown_type_returns_error() -> None:
+  """Verify refresh widget unknown type returns error behavior."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -269,3 +276,79 @@ async def test_refresh_dashboard_sql_batch_error_sets_internal_error() -> None:
   assert res.json()[str(widget_id)]["error"] == "Internal Database Error"
 
   app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
+async def test_execution_multi_widget_branches(client: AsyncClient, db_session: Any) -> None:
+  """Verifies batch refresh across multiple HTTP and SQL widgets with mixed success, error, and exceptions."""
+  from app.core.security import create_access_token
+  from app.models.dashboard import Dashboard, Widget
+  from app.models.user import User
+
+  user = User(id=uuid.uuid4(), email=f"exec_m_{uuid.uuid4()}@test.com", hashed_password="x", is_active=True)
+  db_session.add(user)
+  await db_session.commit()
+  headers = {"Authorization": f"Bearer {create_access_token(user.id)}"}
+
+  dash = Dashboard(id=uuid.uuid4(), name="multi_exec_d", owner_id=user.id)
+  db_session.add(dash)
+  await db_session.flush()
+
+  w_http_1 = Widget(
+    id=uuid.uuid4(), dashboard_id=dash.id, title="h1", type="HTTP", visualization="table", config={"url": "http1"}
+  )
+  w_http_2 = Widget(
+    id=uuid.uuid4(), dashboard_id=dash.id, title="h2", type="HTTP", visualization="table", config={"url": "http2"}
+  )
+  w_sql_1 = Widget(
+    id=uuid.uuid4(), dashboard_id=dash.id, title="s1", type="SQL", visualization="table", config={"query": "q1"}
+  )
+  w_sql_2 = Widget(
+    id=uuid.uuid4(), dashboard_id=dash.id, title="s2", type="SQL", visualization="table", config={"query": "q2"}
+  )
+  w_sql_3 = Widget(
+    id=uuid.uuid4(), dashboard_id=dash.id, title="s3", type="SQL", visualization="table", config={"query": "q3"}
+  )
+  db_session.add_all([w_http_1, w_http_2, w_sql_1, w_sql_2, w_sql_3])
+  await db_session.commit()
+
+  async def mock_http_impl(cfg: Any, **_kwargs: Any) -> Any:
+    """
+    Verify mock http impl behavior.
+
+    Args:
+        cfg: Test parameter or fixture.
+        _kwargs: Test parameter or fixture.
+    """
+    if cfg.get("url") == "http1":
+      return {"error": "HTTP Error"}
+    return {"status": "ok", "data": [1]}
+
+  def mock_sql_impl(_cursor: Any, cfg: Any) -> Any:
+    """
+    Verify mock sql impl behavior.
+
+    Args:
+        _cursor: Test parameter or fixture.
+        cfg: Test parameter or fixture.
+    """
+    q = cfg.get("query")
+    if q == "q1":
+      return {"error": "SQL Error"}
+    if q == "q2":
+      return {"data": [{"val": 1}]}
+    raise RuntimeError("Crash on q3")
+
+  cache_service.clear()
+  with (
+    patch("app.api.routers.execution.run_http_widget", side_effect=mock_http_impl),
+    patch("app.api.routers.execution.run_sql_widget", side_effect=mock_sql_impl),
+  ):
+    res = await client.post(f"/api/v1/dashboards/{dash.id}/refresh", headers=headers)
+    assert res.status_code == 200
+    body = res.json()
+    assert body[str(w_http_1.id)]["error"] == "HTTP Error"
+    assert body[str(w_http_2.id)]["data"] == [1]
+    assert body[str(w_sql_1.id)]["error"] == "SQL Error"
+    assert body[str(w_sql_2.id)]["data"] == [{"val": 1}]
+    assert body[str(w_sql_3.id)]["error"] == "Internal Database Error"

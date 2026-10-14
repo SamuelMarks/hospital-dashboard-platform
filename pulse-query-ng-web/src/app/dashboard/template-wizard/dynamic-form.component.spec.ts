@@ -119,7 +119,7 @@ describe('DynamicFormComponent', () => {
   });
 
   it('should ignore ngOnChanges when jsonSchema is not provided', () => {
-    const rebuildSpy = vi.spyOn(component as any, 'rebuildForm');
+    const rebuildSpy = vi.spyOn(component as unknown as { rebuildForm: () => void }, 'rebuildForm');
     component.ngOnChanges({});
     expect(rebuildSpy).not.toHaveBeenCalled();
   });
@@ -210,16 +210,18 @@ describe('DynamicFormComponent', () => {
     }));
 });
 
-function setInputSignal(component: any, key: string, value: unknown): void {
-  const current = component[key];
+function setInputSignal(component: object, key: string, value: unknown): void {
+  const record = component as Record<string, unknown>;
+  const current = record[key] as
+    { [SIGNAL]?: { applyValueToInputSignal?: (node: unknown, val: unknown) => void } } | undefined;
   const node = current?.[SIGNAL];
   if (node) {
     if (typeof node.applyValueToInputSignal === 'function') {
       node.applyValueToInputSignal(node, value);
     } else {
-      signalSetFn(node, value as never);
+      signalSetFn(node as Parameters<typeof signalSetFn>[0], value as never);
     }
   } else {
-    component[key] = value;
+    record[key] = value;
   }
 }

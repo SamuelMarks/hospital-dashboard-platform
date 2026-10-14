@@ -96,11 +96,11 @@ describe('ConnectionStatusService', () => {
   });
 
   it('should handle checkHealth with failing database status and missing warnings', () => {
-    const unhealthyPayload: any = {
+    const unhealthyPayload: Partial<SystemHealthResponse> = {
       overall_status: 'critical',
       timestamp: '2026-09-06T00:00:00Z',
-      postgres: { status: 'error' },
-      duckdb: { status: 'error' },
+      postgres: { status: 'error', latency_ms: null, details: '', error: 'err' },
+      duckdb: { status: 'error', path: '', tables: {}, total_tables: 0, error: 'err' },
     };
 
     service.checkHealth().subscribe();

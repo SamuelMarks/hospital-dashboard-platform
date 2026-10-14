@@ -276,6 +276,9 @@ sealed class PulseQueryError(
         override val cause: Throwable? = null
     ) : PulseQueryError(message, cause)
 
+    /**
+     * Factory methods for mapping HTTP status codes and generic throwables into [PulseQueryError] instances.
+     */
     companion object {
         /**
          * Maps an HTTP status code and error body into the corresponding [PulseQueryError.Http].

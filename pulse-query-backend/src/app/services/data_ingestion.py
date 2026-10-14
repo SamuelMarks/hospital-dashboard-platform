@@ -18,6 +18,7 @@ import random
 import re
 from builtins import open as open
 from datetime import datetime, timedelta
+from typing import Any
 
 from app.core.diagnostics import (
   diagnostics_registry,
@@ -192,6 +193,71 @@ class DataIngestionService:
       logger.error(f"❌ Failed to generate synthetic clinical sample data: {e}")
 
   @classmethod
+  def _ingest_single_csv(cls, conn: Any, filename: str) -> bool:
+    """
+    Loads a single CSV file from `DATA_DIR` into DuckDB and creates standard indices.
+
+    Args:
+        conn (Any): Active DuckDB read-write connection.
+        filename (str): CSV filename inside `DATA_DIR`.
+
+    Returns:
+        bool: True if ingestion succeeded, False if an error occurred.
+    """
+    filepath = os.path.join(DATA_DIR, filename)
+    table_name = cls._sanitize_table_name(filename)
+    logger.info(f"   ... Ingesting {filename} -> Table: '{table_name}'")
+
+    try:
+      conn.execute(f"""
+                    CREATE OR REPLACE TABLE {table_name} AS 
+                    SELECT * FROM read_csv_auto('{filepath}', header=True); 
+                """)
+
+      columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
+      col_names = [c[0].lower() for c in columns]
+
+      if "clinical_service" in col_names:
+        conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_service ON {table_name} (Clinical_Service)")
+        logger.info("       Using Index: Clinical_Service")
+
+      if "entry_point" in col_names:
+        conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_entry ON {table_name} (Entry_Point)")
+        logger.info("       Using Index: Entry_Point")
+
+      count = conn.execute(f"SELECT count(*) FROM {table_name}").fetchone()
+      row_count = count[0] if count else 0
+      logger.info(f"       ✅ Loaded {row_count} rows.")
+      diagnostics_registry.data_status["row_counts"][table_name] = row_count
+      return True
+    except Exception as e:
+      logger.error(f"       ❌ Failed to load {filename}: {e}")
+      diagnostics_registry.add_warning(
+        code="CSV_INGESTION_FAILED",
+        message=f"Failed to ingest CSV '{filename}': {e}",
+        severity="error",
+        remediation=f"Verify CSV syntax and encoding for {filename}.",
+      )
+      return False
+
+  @classmethod
+  def _ensure_alias_views(cls, conn: Any) -> None:
+    """
+    Creates compatibility alias views between `synthetic_hospital_data` and `hospital_data`.
+
+    Args:
+        conn (Any): Active DuckDB read-write connection.
+    """
+    try:
+      existing_tables = [c[0].lower() for c in conn.execute("SHOW TABLES").fetchall()]
+      if "synthetic_hospital_data" in existing_tables and "hospital_data" not in existing_tables:
+        conn.execute("CREATE VIEW hospital_data AS SELECT * FROM synthetic_hospital_data")
+      elif "hospital_data" in existing_tables and "synthetic_hospital_data" not in existing_tables:
+        conn.execute("CREATE VIEW synthetic_hospital_data AS SELECT * FROM hospital_data")
+    except Exception as view_err:
+      logger.warning(f"Could not create compatibility alias view: {view_err}")
+
+  @classmethod
   def ingest_all_csvs(cls) -> None:
     """
     Scans the data directory and loads every `.csv` file into DuckDB as a table.
@@ -224,58 +290,10 @@ class DataIngestionService:
 
       try:
         for filename in csv_files:
-          filepath = os.path.join(DATA_DIR, filename)
-          table_name = cls._sanitize_table_name(filename)
-
-          logger.info(f"   ... Ingesting {filename} -> Table: '{table_name}'")
-
-          try:
-            # 1. Create/Replace Table from CSV
-            conn.execute(f"""
-                          CREATE OR REPLACE TABLE {table_name} AS 
-                          SELECT * FROM read_csv_auto('{filepath}', header=True); 
-                      """)
-
-            # 2. Check for relevant columns and create indices
-            # We check metadata first to avoid errors if column doesn't exist
-            columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
-            col_names = [c[0].lower() for c in columns]
-
-            # Standardize index naming
-            # Clinical_Service / department -> Index for Service Mix
-            # Entry_Point -> Index for Cohort Analysis
-
-            if "clinical_service" in col_names:
-              conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_service ON {table_name} (Clinical_Service)")
-              logger.info("       Using Index: Clinical_Service")
-
-            if "entry_point" in col_names:
-              conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_entry ON {table_name} (Entry_Point)")
-              logger.info("       Using Index: Entry_Point")
-
-            count = conn.execute(f"SELECT count(*) FROM {table_name}").fetchone()
-            row_count = count[0] if count else 0
-            logger.info(f"       ✅ Loaded {row_count} rows.")
-            diagnostics_registry.data_status["row_counts"][table_name] = row_count
+          if cls._ingest_single_csv(conn, filename):
             files_processed += 1
-          except Exception as e:
-            logger.error(f"       ❌ Failed to load {filename}: {e}")
-            diagnostics_registry.add_warning(
-              code="CSV_INGESTION_FAILED",
-              message=f"Failed to ingest CSV '{filename}': {e}",
-              severity="error",
-              remediation=f"Verify CSV syntax and encoding for {filename}.",
-            )
 
-        try:
-          existing_tables = [c[0].lower() for c in conn.execute("SHOW TABLES").fetchall()]
-          if "synthetic_hospital_data" in existing_tables and "hospital_data" not in existing_tables:
-            conn.execute("CREATE VIEW hospital_data AS SELECT * FROM synthetic_hospital_data")
-          elif "hospital_data" in existing_tables and "synthetic_hospital_data" not in existing_tables:
-            conn.execute("CREATE VIEW synthetic_hospital_data AS SELECT * FROM hospital_data")
-        except Exception as view_err:
-          logger.warning(f"Could not create compatibility alias view: {view_err}")
-
+        cls._ensure_alias_views(conn)
         logger.info(f"✅ Ingestion Complete. {files_processed} files processed.")
 
       except Exception as e:

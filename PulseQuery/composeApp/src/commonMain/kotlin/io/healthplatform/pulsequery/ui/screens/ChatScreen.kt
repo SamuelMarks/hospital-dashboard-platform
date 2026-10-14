@@ -1,163 +1,109 @@
 /**
  * Component for rendering the ChatScreen.
- * Provides the main user interface for this screen.
+ * Provides the main user interface for conversational SQL generation and model arena evaluation,
+ * delegating all state and SSE streaming to [ChatViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import io.healthplatform.pulsequery.api.models.ConversationCreate
-import io.healthplatform.pulsequery.api.models.ConversationResponse
-import io.healthplatform.pulsequery.api.models.MessageCreate
-import io.healthplatform.pulsequery.api.models.MessageResponse
-import io.healthplatform.pulsequery.api.models.MessageVoteRequest
-import io.healthplatform.pulsequery.di.AppContainer
-import io.healthplatform.pulsequery.network.ChatStreamEvent
 import androidx.compose.ui.text.font.FontFamily
-import kotlinx.coroutines.launch
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.models.MessageResponse
+import io.healthplatform.pulsequery.ui.screens.chat.ChatViewModel
 import org.jetbrains.compose.resources.stringResource
-import pulsequery.composeapp.generated.resources.*
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.ask_a_query
+import pulsequery.composeapp.generated.resources.close
+import pulsequery.composeapp.generated.resources.conversations_history
+import pulsequery.composeapp.generated.resources.delete
+import pulsequery.composeapp.generated.resources.history
+import pulsequery.composeapp.generated.resources.new_chat
+import pulsequery.composeapp.generated.resources.new_conversation
+import pulsequery.composeapp.generated.resources.send
+import pulsequery.composeapp.generated.resources.start_a_new_conversation
+import pulsequery.composeapp.generated.resources.untitled
 
 /**
  * Main chat interface for querying the system using natural language.
  *
  * @param conversationId Optional existing conversation ID to load. If null, starts a new conversation.
+ * @param viewModel Optional [ChatViewModel] instance for state orchestration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    conversationId: String? = null
+    conversationId: String? = null,
+    viewModel: ChatViewModel? = null
 ) {
-    var activeConversation by remember { mutableStateOf<ConversationResponse?>(null) }
-    var conversations by remember { mutableStateOf<List<ConversationResponse>>(emptyList()) }
-    var messages by remember { mutableStateOf<List<MessageResponse>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var streamingCandidateText by remember { mutableStateOf<String?>(null) }
-    var inputText by remember { mutableStateOf("") }
-    var showConversationsDialog by remember { mutableStateOf(false) }
-    
     val coroutineScope = rememberCoroutineScope()
+    val vm = remember(viewModel, conversationId) {
+        viewModel ?: ChatViewModel(initialConversationId = conversationId, scope = coroutineScope)
+    }
+
+    val uiState by vm.state.collectAsState()
+    var showConversationsDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    fun loadConversations() {
-        coroutineScope.launch {
-            runCatching {
-                val response = AppContainer.chatApi.listConversationsApiV1ConversationsGet()
-                response.body()
-            }.onSuccess { list ->
-                conversations = list
-                if (activeConversation == null && conversationId != null) {
-                    activeConversation = conversations.find { it.id == conversationId }
-                }
-            }.onFailure { e ->
-                println("Failed to load conversations: ${e.message}")
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        loadConversations()
-    }
-
-    fun loadMessages() {
-        val active = activeConversation ?: run {
-            messages = emptyList()
-            return
-        }
-        coroutineScope.launch {
-            isLoading = true
-            runCatching {
-                val response = AppContainer.chatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
-                    conversationId = active.id
-                )
-                response.body()
-            }.onSuccess {
-                messages = it
-            }.onFailure { e ->
-                println("Failed to load messages: ${e.message}")
-            }
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(activeConversation) {
-        loadMessages()
-    }
-
-    fun deleteConversation(id: String) {
-        coroutineScope.launch {
-            runCatching {
-                AppContainer.chatApi.deleteConversationApiV1ConversationsConversationIdDelete(id)
-            }.onSuccess {
-                if (activeConversation?.id == id) {
-                    activeConversation = null
-                    messages = emptyList()
-                }
-                loadConversations()
-            }.onFailure { e ->
-                println("Failed to delete conversation: ${e.message}")
-            }
-        }
-    }
-
-    fun sendMessage() {
-        if (inputText.isBlank()) return
-        
-        val textToSend = inputText.trim()
-        inputText = ""
-        
-        coroutineScope.launch {
-            isLoading = true
-            runCatching {
-                if (activeConversation == null) {
-                    val response = AppContainer.chatApi.createConversationApiV1ConversationsPost(
-                        ConversationCreate(
-                            title = textToSend.take(20),
-                            message = textToSend
-                        )
-                    )
-                    val detail: io.healthplatform.pulsequery.api.models.ConversationDetail = response.body()
-                    activeConversation = io.healthplatform.pulsequery.api.models.ConversationResponse(id = detail.id, userId = detail.userId, createdAt = detail.createdAt, updatedAt = detail.updatedAt, title = detail.title)
-                    loadConversations()
-                } else {
-                    val messagePayload = MessageCreate(content = textToSend)
-                    AppContainer.chatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
-                        conversationId = activeConversation!!.id,
-                        messageCreate = messagePayload
-                    )
-                    loadMessages()
-                }
-            }.onFailure { e ->
-                println("Failed to send message: ${e.message}")
-            }
-            isLoading = false
-        }
+    LaunchedEffect(vm) {
+        vm.loadConversations()
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(activeConversation?.title ?: stringResource(Res.string.new_chat)) },
+                title = { Text(uiState.activeConversation?.title ?: stringResource(Res.string.new_chat)) },
                 actions = {
-                    IconButton(onClick = { 
-                        activeConversation = null
-                        messages = emptyList()
-                    }) {
+                    IconButton(onClick = { vm.selectConversation(null) }) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.new_conversation))
                     }
                     IconButton(onClick = { showConversationsDialog = true }) {
@@ -166,7 +112,7 @@ fun ChatScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -176,6 +122,15 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            uiState.errorMessage?.let { err ->
+                Text(
+                    text = err,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
@@ -184,45 +139,31 @@ fun ChatScreen(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (messages.isEmpty() && !isLoading) {
+                if (uiState.messages.isEmpty() && !uiState.isLoading) {
                     item {
                         Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(Res.string.start_a_new_conversation), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                stringResource(Res.string.start_a_new_conversation),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
-                items(messages) { message ->
+                items(uiState.messages) { message ->
                     ChatBubble(
                         message = message,
                         onVoteCandidate = { candidateId ->
-                            val convId = activeConversation?.id ?: return@ChatBubble
-                            coroutineScope.launch {
-                                runCatching {
-                                    AppContainer.chatApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
-                                        conversationId = convId,
-                                        messageId = message.id,
-                                        messageVoteRequest = MessageVoteRequest(candidateId = candidateId)
-                                    )
-                                }.fold(
-                                    onSuccess = {
-                                        snackbarHostState.showSnackbar("Vote recorded successfully")
-                                    },
-                                    onFailure = { e ->
-                                        snackbarHostState.showSnackbar(e.message ?: "Failed to record vote")
-                                    }
-                                )
-                            }
+                            vm.voteCandidate(message.id, candidateId)
                         },
                         onStageToCart = { title, sql ->
-                            AppContainer.queryCartRepository.addQuery(title, sql)
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Query staged to cart")
-                            }
+                            vm.stageToCart(title, sql)
                         }
                     )
                 }
 
-                if (streamingCandidateText != null) {
+                val streamingText = uiState.streamingCandidateText
+                if (streamingText != null) {
                     item {
                         Card(
                             colors = CardDefaults.cardColors(
@@ -239,7 +180,7 @@ fun ChatScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = streamingCandidateText!!,
+                                    text = streamingText,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
@@ -248,7 +189,7 @@ fun ChatScreen(
                 }
             }
 
-            if (isLoading) {
+            if (uiState.isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
@@ -259,15 +200,22 @@ fun ChatScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
+                    value = uiState.inputText,
+                    onValueChange = { vm.updateInputText(it) },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text(stringResource(Res.string.ask_a_query)) },
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 4,
                     trailingIcon = {
-                        IconButton(onClick = { sendMessage() }, enabled = inputText.isNotBlank() && !isLoading) {
-                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(Res.string.send), tint = MaterialTheme.colorScheme.primary)
+                        IconButton(
+                            onClick = { vm.sendMessage() },
+                            enabled = uiState.inputText.isNotBlank() && !uiState.isLoading
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = stringResource(Res.string.send),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 )
@@ -280,7 +228,7 @@ fun ChatScreen(
                 title = { Text(stringResource(Res.string.conversations_history)) },
                 text = {
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                        items(conversations) { conv ->
+                        items(uiState.conversations) { conv ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -288,15 +236,19 @@ fun ChatScreen(
                             ) {
                                 TextButton(
                                     onClick = {
-                                        activeConversation = conv
+                                        vm.selectConversation(conv)
                                         showConversationsDialog = false
                                     },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(conv.title ?: stringResource(Res.string.untitled), maxLines = 1)
                                 }
-                                IconButton(onClick = { deleteConversation(conv.id) }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = stringResource(Res.string.delete), tint = MaterialTheme.colorScheme.error)
+                                IconButton(onClick = { vm.deleteConversation(conv.id) }) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = stringResource(Res.string.delete),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
                         }
@@ -354,7 +306,8 @@ fun ChatBubble(
                     style = MaterialTheme.typography.bodyLarge
                 )
 
-                if (!message.sqlSnippet.isNullOrBlank()) {
+                val snippet = message.sqlSnippet
+                if (!snippet.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
@@ -366,7 +319,7 @@ fun ChatBubble(
                             .padding(8.dp)
                     ) {
                         Text(
-                            text = message.sqlSnippet!!,
+                            text = snippet,
                             fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -374,7 +327,7 @@ fun ChatBubble(
                     if (onStageToCart != null) {
                         Spacer(modifier = Modifier.height(4.dp))
                         TextButton(
-                            onClick = { onStageToCart("Chat Query", message.sqlSnippet!!) },
+                            onClick = { onStageToCart("Chat Query", snippet) },
                             modifier = Modifier.align(Alignment.End)
                         ) {
                             Text("Stage to Cart")
@@ -382,11 +335,12 @@ fun ChatBubble(
                     }
                 }
 
-                if (!message.candidates.isNullOrEmpty()) {
+                val candidateList = message.candidates
+                if (!candidateList.isNullOrEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(onClick = { showCandidates = !showCandidates }) {
                         Text(
-                            text = if (showCandidates) "Hide Variations" else "${message.candidates!!.size} Model Variations",
+                            text = if (showCandidates) "Hide Variations" else "${candidateList.size} Model Variations",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -397,7 +351,7 @@ fun ChatBubble(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         ) {
-                            message.candidates!!.forEach { candidate ->
+                            candidateList.forEach { candidate ->
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                                     modifier = Modifier.fillMaxWidth()
@@ -410,7 +364,7 @@ fun ChatBubble(
                                             Text(
                                                 text = candidate.modelName,
                                                 style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                fontWeight = FontWeight.Bold
                                             )
                                             Text(
                                                 text = if (candidate.isSelected) "Winner" else "",
@@ -418,10 +372,11 @@ fun ChatBubble(
                                                 color = MaterialTheme.colorScheme.tertiary
                                             )
                                         }
-                                        if (!candidate.sqlSnippet.isNullOrBlank()) {
+                                        val candSql = candidate.sqlSnippet
+                                        if (!candSql.isNullOrBlank()) {
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
-                                                text = candidate.sqlSnippet!!,
+                                                text = candSql,
                                                 fontFamily = FontFamily.Monospace,
                                                 style = MaterialTheme.typography.bodySmall
                                             )
@@ -431,8 +386,8 @@ fun ChatBubble(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.End
                                         ) {
-                                            if (!candidate.sqlSnippet.isNullOrBlank() && onStageToCart != null) {
-                                                TextButton(onClick = { onStageToCart("${candidate.modelName} SQL", candidate.sqlSnippet!!) }) {
+                                            if (!candSql.isNullOrBlank() && onStageToCart != null) {
+                                                TextButton(onClick = { onStageToCart("${candidate.modelName} SQL", candSql) }) {
                                                     Text("Stage")
                                                 }
                                             }

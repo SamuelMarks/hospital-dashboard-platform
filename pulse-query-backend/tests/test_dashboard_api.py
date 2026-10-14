@@ -1,3 +1,7 @@
+"""Tests for dashboard api."""
+
+from typing import Any
+
 import uuid
 
 import pytest
@@ -71,7 +75,7 @@ async def test_dashboard_crud_flow(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_restore_defaults_endpoint(client: AsyncClient, db_session) -> None:
+async def test_restore_defaults_endpoint(client: AsyncClient, db_session: Any) -> None:
   """
   Tests the 'Restore Defaults' functionality.
   Included Scenarios:
@@ -172,7 +176,7 @@ async def test_reorder_endpoint(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_clone_dashboard_endpoint(client: AsyncClient, db_session) -> None:
+async def test_clone_dashboard_endpoint(client: AsyncClient, db_session: Any) -> None:
   """
   Test the 'Clone Dashboard' functionality.
   Verifies that a deep copy of the dashboard and its widgets is created.

@@ -20,7 +20,6 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Tuple
 
 # Path to the .env file relative to this script
 ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
@@ -91,8 +90,7 @@ def update_env_file(ollama_models: list[tuple[str, str]]) -> None:
     print("obs: No Ollama models to persist.")
     return
 
-  # Format the value string
-  # Entry: "qwen2.5:latest|Qwen 2.5"
+  # Format the value string as comma-separated model_id|Alias pairs
   env_value = ", ".join([f"{mid}|{alias}" for mid, alias in ollama_models])
 
   # Read existing content
@@ -137,7 +135,10 @@ def inspect_cloud_keys() -> None:
     print("   ℹ️ No cloud API keys found in current environment.")
 
 
-def main():
+def main() -> None:
+  """
+  CLI entry point inspecting local Ollama models and cloud API keys and updating `.env`.
+  """
   print("=== Pulse Query Model Updater ===")
 
   # 1. Ollama

@@ -5,7 +5,7 @@ This module defines the Pydantic models used for the AI/LLM interaction endpoint
 specifically for the Text-to-SQL generation feature.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 

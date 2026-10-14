@@ -9,6 +9,7 @@ These macros allow the Text-to-SQL AI and the Human Analyst to write cleaner que
 without repeating complex mathematical formulas (e.g., Z-Scores or Window overlaps).
 """
 
+import contextlib
 import logging
 
 import duckdb
@@ -132,7 +133,7 @@ def create_hospital_macros(conn: duckdb.DuckDBPyConnection) -> None:
 
     # --- UDFs (Python Bridges) ---
 
-    try:
+    with contextlib.suppress(duckdb.Error):
       conn.create_function(
         "OPTIMIZE_ASSIGNMENTS",
         mpax_bridge.solve_unit_assignment,
@@ -140,9 +141,6 @@ def create_hospital_macros(conn: duckdb.DuckDBPyConnection) -> None:
         return_type=sqltypes.VARCHAR,
         side_effects=True,
       )
-    except duckdb.InvalidInputException:
-      # Function might already exist in persistent connection context
-      pass
 
     logger.info("✅ DuckDB Statistical Macros (Dynamic Shift) & MPAX Solver UDF registered successfully.")
 

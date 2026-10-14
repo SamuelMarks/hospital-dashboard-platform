@@ -74,6 +74,7 @@
             color="warn"
             (click)="revokeShare(share.id)"
             matTooltip="Revoke access"
+            i18n-matTooltip
             [attr.data-testid]="'btn-revoke-' + share.id"
           >
             <mat-icon i18n>delete</mat-icon>

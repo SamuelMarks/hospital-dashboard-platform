@@ -125,3 +125,50 @@ async def test_limit_pagination(client: AsyncClient) -> None:
 
   assert res.status_code == 200
   assert len(res.json()) == 2
+
+
+@pytest.mark.asyncio
+async def test_instantiate_template_success_and_not_found(client: AsyncClient) -> None:
+  """Verifies `POST /api/v1/templates/{id}/instantiate` interpolates parameters and returns 404 when missing."""
+  email = f"inst_{uuid.uuid4()}@example.com"
+  await client.post("/api/v1/auth/register", json={"email": email, "password": "x"})
+  token = (await client.post("/api/v1/auth/login", data={"username": email, "password": "x"})).json()["access_token"]
+  headers = {"Authorization": f"Bearer {token}"}
+
+  created = await client.post(
+    f"{TEMPLATES_URL}/",
+    json={
+      "title": "Admission Rate By Ward",
+      "description": "Ward admission rate",
+      "sql_template": "SELECT * FROM hospital_data WHERE ward = '{{ward}}' LIMIT {{limit}}",
+      "category": "Access",
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "ward": {"type": "string", "default": "ICU"},
+          "limit": {"type": "integer", "default": 10},
+        },
+      },
+    },
+    headers=headers,
+  )
+  assert created.status_code == 201
+  tid = created.json()["id"]
+
+  res_ok = await client.post(
+    f"{TEMPLATES_URL}/{tid}/instantiate",
+    json={"parameters": {"ward": "O'Connor", "limit": 25}},
+    headers=headers,
+  )
+  assert res_ok.status_code == 200
+  body = res_ok.json()
+  assert body["template_id"] == tid
+  assert body["visualization"] == "metric"
+  assert body["query"] == "SELECT * FROM hospital_data WHERE ward = 'O''Connor' LIMIT 25"
+
+  res_404 = await client.post(
+    f"{TEMPLATES_URL}/{uuid.uuid4()}/instantiate",
+    json={"parameters": {}},
+    headers=headers,
+  )
+  assert res_404.status_code == 404

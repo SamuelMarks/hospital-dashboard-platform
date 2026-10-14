@@ -4,10 +4,19 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, PLATFORM_ID } from '@angular/core';
+import { signal, WritableSignal, PLATFORM_ID } from '@angular/core';
 import { VizChartComponent } from './viz-chart.component';
+import { TableDataSet } from '../viz-table/viz-table.component';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
+
+interface VizChartPrivate {
+  dataSet: WritableSignal<TableDataSet>;
+  config: WritableSignal<Record<string, unknown> | undefined>;
+  palette: WritableSignal<string[]>;
+  document: Document | null;
+  updatePaletteFromDom: () => void;
+}
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -27,8 +36,8 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('VizChartComponent', () => {
   let component: VizChartComponent;
   let fixture: ComponentFixture<VizChartComponent>;
-  let dataSetSig: any;
-  let configSig: any;
+  let dataSetSig: WritableSignal<TableDataSet>;
+  let configSig: WritableSignal<Record<string, unknown> | undefined>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -37,10 +46,11 @@ describe('VizChartComponent', () => {
 
     fixture = TestBed.createComponent(VizChartComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal({ columns: [], data: [] });
-    configSig = signal(undefined);
-    (component as any).dataSet = dataSetSig;
-    (component as any).config = configSig;
+    dataSetSig = signal<TableDataSet>({ columns: [], data: [] });
+    configSig = signal<Record<string, unknown> | undefined>(undefined);
+    const priv = component as unknown as VizChartPrivate;
+    priv.dataSet = dataSetSig;
+    priv.config = configSig;
 
     fixture.detectChanges();
   });
@@ -104,21 +114,22 @@ describe('VizChartComponent', () => {
   it('should fallback palette colors when CSS vars are missing', () => {
     const styleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
       getPropertyValue: vi.fn().mockReturnValue(''),
-    } as any);
+    } as unknown as CSSStyleDeclaration);
 
-    (component as any).updatePaletteFromDom();
+    (component as unknown as VizChartPrivate).updatePaletteFromDom();
 
     expect(component.getPalette(-1)).toBe('#ba1a1a');
     styleSpy.mockRestore();
   });
 
   it('should no-op palette update when document missing', () => {
-    const originalDoc = (component as any).document;
-    (component as any).document = null;
+    const priv = component as unknown as VizChartPrivate;
+    const originalDoc = priv.document;
+    priv.document = null;
 
-    (component as any).updatePaletteFromDom();
+    priv.updatePaletteFromDom();
 
-    (component as any).document = originalDoc;
+    priv.document = originalDoc;
     expect(true).toBe(true);
   });
 
@@ -155,7 +166,7 @@ describe('VizChartComponent', () => {
   });
 
   it('should fallback palette when empty', () => {
-    (component as any).palette.set([]);
+    (component as unknown as VizChartPrivate).palette.set([]);
     const colors = component.getPalette(0);
     const neg = component.getPalette(-1);
     expect(colors).toBeTruthy();
@@ -194,7 +205,7 @@ describe('VizChartComponent', () => {
   });
 
   it('should use palette when available', () => {
-    (component as any).palette.set(['#111', '#222', '#333']);
+    (component as unknown as VizChartPrivate).palette.set(['#111', '#222', '#333']);
     expect(component.getPalette(0)).toBe('#111');
     expect(component.getPalette(5)).toBe('#222');
     expect(component.getPalette(-1)).toBe('#333');
@@ -215,7 +226,7 @@ describe('VizChartComponent', () => {
     const data = {
       data: [{ a: 1, b: 2, c: 3 }],
     };
-    dataSetSig.set(data as any);
+    dataSetSig.set(data as unknown as TableDataSet);
     configSig.set(undefined);
     fixture.detectChanges();
 
@@ -226,7 +237,7 @@ describe('VizChartComponent', () => {
     const data = {
       data: [{ a: 'one', b: 'two', c: 'three' }],
     };
-    dataSetSig.set(data as any);
+    dataSetSig.set(data as unknown as TableDataSet);
     configSig.set(undefined);
     fixture.detectChanges();
 
@@ -237,7 +248,7 @@ describe('VizChartComponent', () => {
     const data = {
       data: [{ only: 'A' }],
     };
-    dataSetSig.set(data as any);
+    dataSetSig.set(data as unknown as TableDataSet);
     configSig.set(undefined);
     fixture.detectChanges();
 
@@ -254,11 +265,12 @@ describe('VizChartComponent', () => {
 
     const serverFixture = TestBed.createComponent(VizChartComponent);
     const serverComponent = serverFixture.componentInstance;
-    const serverDataSig = signal({ columns: [], data: [] });
-    const serverConfigSig = signal(undefined);
-    (serverComponent as any).dataSet = serverDataSig;
-    (serverComponent as any).config = serverConfigSig;
-    const updateSpy = vi.spyOn(serverComponent as any, 'updatePaletteFromDom');
+    const serverDataSig = signal<TableDataSet>({ columns: [], data: [] });
+    const serverConfigSig = signal<Record<string, unknown> | undefined>(undefined);
+    const serverPriv = serverComponent as unknown as VizChartPrivate;
+    serverPriv.dataSet = serverDataSig;
+    serverPriv.config = serverConfigSig;
+    const updateSpy = vi.spyOn(serverPriv, 'updatePaletteFromDom');
     serverFixture.detectChanges();
 
     expect(updateSpy).not.toHaveBeenCalled();

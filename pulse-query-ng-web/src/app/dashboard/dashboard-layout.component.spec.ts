@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { DashboardLayoutComponent } from './dashboard-layout.component';
 import { DashboardStore } from './dashboard.store';
 import { DashboardsService, TemplateResponse, WidgetResponse } from '../api-client';
@@ -43,23 +44,40 @@ const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => 
 });
 
 describe('DashboardLayoutComponent', () => {
-  let mockStore: any;
-  let mockDashApi: any;
-  let mockProvisioning: any;
-  let mockCartProvisioning: any;
-  let mockDialog: any;
-  let mockSnackBar: any;
-  let mockTheme: any;
-  let mockCollab: any;
+  let mockStore: {
+    dashboard: WritableSignal<{ id: string } | null>;
+    reset: ReturnType<typeof vi.fn>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+    refreshWidget: ReturnType<typeof vi.fn>;
+    setGlobalParams: ReturnType<typeof vi.fn>;
+    updateWidgetOrder: ReturnType<typeof vi.fn>;
+    setLoading: ReturnType<typeof vi.fn>;
+    optimisticRemoveWidget: ReturnType<typeof vi.fn>;
+    optimisticRestoreWidget: ReturnType<typeof vi.fn>;
+  };
+  let mockDashApi: {
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+    deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: ReturnType<typeof vi.fn>;
+  };
+  let mockProvisioning: { provisionWidget: ReturnType<typeof vi.fn> };
+  let mockCartProvisioning: { addToDashboard: ReturnType<typeof vi.fn> };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
+  let mockSnackBar: { open: ReturnType<typeof vi.fn> };
+  let mockTheme: { isTvMode: WritableSignal<boolean> };
+  let mockCollab: {
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+    remoteWidgetUpdates$: ReturnType<Subject<string>['asObservable']>;
+  };
   let remoteWidgetUpdates$: Subject<string>;
-  let paramMap$: Subject<any>;
-  let queryParamMap$: Subject<any>;
+  let paramMap$: Subject<{ get: (key: string) => string | null }>;
+  let queryParamMap$: Subject<{ keys: string[]; get: (key: string) => string | null }>;
 
   const setup = () => TestBed.runInInjectionContext(() => new DashboardLayoutComponent());
 
   beforeEach(() => {
-    paramMap$ = new Subject<any>();
-    queryParamMap$ = new Subject<any>();
+    paramMap$ = new Subject<{ get: (key: string) => string | null }>();
+    queryParamMap$ = new Subject<{ keys: string[]; get: (key: string) => string | null }>();
     remoteWidgetUpdates$ = new Subject<string>();
 
     mockStore = {
@@ -150,7 +168,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: makeCartItem() },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockStore.updateWidgetOrder).not.toHaveBeenCalled();
     expect(mockCartProvisioning.addToDashboard).not.toHaveBeenCalled();
@@ -165,7 +183,7 @@ describe('DashboardLayoutComponent', () => {
       container,
       previousIndex: 1,
       currentIndex: 2,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockStore.updateWidgetOrder).toHaveBeenCalledWith(1, 2);
   });
@@ -180,7 +198,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: makeTemplate() },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockProvisioning.provisionWidget).not.toHaveBeenCalled();
   });
@@ -194,7 +212,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: null },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockProvisioning.provisionWidget).not.toHaveBeenCalled();
     expect(mockCartProvisioning.addToDashboard).not.toHaveBeenCalled();
@@ -211,7 +229,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: item },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockStore.setLoading).toHaveBeenCalledWith(true);
     expect(mockCartProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'd1');
@@ -236,7 +254,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: item },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to add query to dashboard', 'Close');
     expect(mockStore.setLoading).toHaveBeenCalledWith(false);
@@ -255,7 +273,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: template },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockProvisioning.provisionWidget).toHaveBeenCalledWith(template, 'd1');
     expect(mockSnackBar.open).toHaveBeenCalledWith(
@@ -279,7 +297,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: template },
       previousIndex: 0,
       currentIndex: 0,
-    } as any);
+    } as unknown as CdkDragDrop<unknown>);
 
     expect(mockSnackBar.open).toHaveBeenCalledWith(
       'Failed to create widget from template',
@@ -292,7 +310,7 @@ describe('DashboardLayoutComponent', () => {
 
   // ... rest of the tests remain unchanged
   it('should identify query cart drag data', () => {
-    const component = setup() as any;
+    const component = setup() as unknown as { isQueryCartItem: (data: unknown) => boolean };
     expect(component.isQueryCartItem(null)).toBe(false);
     expect(component.isQueryCartItem('bad')).toBe(false);
     expect(component.isQueryCartItem(makeTemplate())).toBe(false);
@@ -301,12 +319,12 @@ describe('DashboardLayoutComponent', () => {
 
   it('should compute column and row spans', () => {
     const component = setup();
-    expect(component.getColSpan(makeWidget({ config: { w: 2 } as any }))).toBe(2);
-    expect(component.getColSpan(makeWidget({ config: { w: 20 } as any }))).toBe(12);
-    expect(component.getColSpan(makeWidget({ config: {} as any }))).toBe(6);
-    expect(component.getRowSpan(makeWidget({ config: { h: 1 } as any }))).toBe(1);
-    expect(component.getRowSpan(makeWidget({ config: { h: 10 } as any }))).toBe(4);
-    expect(component.getRowSpan(makeWidget({ config: {} as any }))).toBe(2);
+    expect(component.getColSpan(makeWidget({ config: { w: 2 } }))).toBe(2);
+    expect(component.getColSpan(makeWidget({ config: { w: 20 } }))).toBe(12);
+    expect(component.getColSpan(makeWidget({ config: {} }))).toBe(6);
+    expect(component.getRowSpan(makeWidget({ config: { h: 1 } }))).toBe(1);
+    expect(component.getRowSpan(makeWidget({ config: { h: 10 } }))).toBe(4);
+    expect(component.getRowSpan(makeWidget({ config: {} }))).toBe(2);
   });
 
   it('should return early from startResizing in TV mode', () => {
@@ -320,7 +338,7 @@ describe('DashboardLayoutComponent', () => {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
         target: { closest: () => null },
-      } as any,
+      } as unknown as MouseEvent,
       makeWidget(),
     );
 
@@ -337,7 +355,7 @@ describe('DashboardLayoutComponent', () => {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
         target: { closest: () => null },
-      } as any,
+      } as unknown as MouseEvent,
       makeWidget(),
     );
 
@@ -361,8 +379,8 @@ describe('DashboardLayoutComponent', () => {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
         target: handle,
-      } as any,
-      makeWidget({ config: { w: 6 } as any }),
+      } as unknown as MouseEvent,
+      makeWidget({ config: { w: 6 } }),
     );
 
     document.dispatchEvent(new MouseEvent('mousemove', { clientX: 200 }));
@@ -388,8 +406,8 @@ describe('DashboardLayoutComponent', () => {
         preventDefault: vi.fn(),
         stopPropagation: vi.fn(),
         target: handle,
-      } as any,
-      makeWidget({ config: { w: 6 } as any }),
+      } as unknown as MouseEvent,
+      makeWidget({ config: { w: 6 } }),
     );
 
     document.dispatchEvent(new MouseEvent('mouseup', { clientX: 100 }));

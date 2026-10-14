@@ -123,7 +123,15 @@ class ChatStreamingRepositoryTest {
     fun testStreamTokensMalformedJsonSkipped() = runTest {
         val dq = 34.toChar()
         val nl = 10.toChar()
-        val ssePayload = "data: not-a-valid-json$nl$nl" + "data: {$dq" + "event$dq:$dq" + "token$dq,$dq" + "token$dq:$dq" + "valid$dq}$nl$nl"
+        val ssePayload = ": comment line$nl" +
+            "data:   $nl" +
+            "data: not-a-valid-json$nl$nl" +
+            "data: {$dq" + "event$dq:$dq" + "start$dq}$nl" +
+            "data: {$dq" + "event$dq:$dq" + "token$dq}$nl" +
+            "data: {$dq" + "event$dq:$dq" + "token$dq,$dq" + "token$dq:$dq" + "valid$dq}$nl" +
+            "data: {$dq" + "event$dq:$dq" + "done$dq}$nl" +
+            "data: {$dq" + "event$dq:$dq" + "error$dq}$nl" +
+            "data: {$dq" + "event$dq:$dq" + "ping$dq}$nl$nl"
 
         val mockEngine = MockEngine {
             respond(
@@ -133,13 +141,46 @@ class ChatStreamingRepositoryTest {
             )
         }
         val client = HttpClient(mockEngine)
-        val repo = ChatStreamingRepository(httpClient = client)
+        AppContainer.setHttpClientForTest(client)
+        val repo = ChatStreamingRepository(httpClient = null)
 
-        val events = repo.streamTokens("conv-1").toList()
+        val events = repo.streamTokens("conv-fallback", token = "   ", modelId = null).toList()
 
-        assertEquals(1, events.size)
-        assertTrue(events[0] is ChatStreamEvent.TokenChunk)
-        assertEquals("valid", (events[0] as ChatStreamEvent.TokenChunk).token)
+        assertEquals(4, events.size)
+        assertEquals(ChatStreamEvent.StreamStarted("conv-fallback"), events[0])
+        assertEquals(ChatStreamEvent.TokenChunk("valid"), events[1])
+        assertEquals(ChatStreamEvent.StreamDone(messageId = "", content = "", sqlSnippet = null), events[2])
+        assertEquals(ChatStreamEvent.StreamError("Streaming failed"), events[3])
+    }
+
+    @Test
+    fun testStreamTokensNonSuccessHttpAndExceptionsWithAndWithoutMessage() = runTest {
+        // Non-2xx response with expectSuccess = false so processStreamResponse handles !response.status.isSuccess()
+        val non2xxClient = HttpClient(MockEngine {
+            respond("Bad Request", HttpStatusCode.BadRequest)
+        }) {
+            expectSuccess = false
+        }
+        val repoNon2xx = ChatStreamingRepository(httpClient = non2xxClient)
+        val non2xxEvents = repoNon2xx.streamTokens("conv-1", token = null).toList()
+        assertEquals(1, non2xxEvents.size)
+        assertTrue((non2xxEvents[0] as ChatStreamEvent.StreamError).message.contains("400"))
+
+        // Exception with non-null message
+        val errMsgClient = HttpClient(MockEngine {
+            throw IllegalStateException("Connection reset")
+        })
+        val repoErrMsg = ChatStreamingRepository(httpClient = errMsgClient)
+        val errMsgEvents = repoErrMsg.streamTokens("conv-1").toList()
+        assertEquals(listOf(ChatStreamEvent.StreamError("Connection reset")), errMsgEvents)
+
+        // Exception with null message
+        val nullMsgClient = HttpClient(MockEngine {
+            throw RuntimeException(null as String?)
+        })
+        val repoNullMsg = ChatStreamingRepository(httpClient = nullMsgClient)
+        val nullMsgEvents = repoNullMsg.streamTokens("conv-1").toList()
+        assertEquals(listOf(ChatStreamEvent.StreamError("Network error during token streaming")), nullMsgEvents)
     }
 
     @Test

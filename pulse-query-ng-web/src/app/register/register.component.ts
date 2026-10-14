@@ -1,4 +1,6 @@
-/** @docs */
+/**
+ * @fileoverview User registration component providing account creation with password confirmation validation.
+ */
 import { Component, inject, signal } from '@angular/core';
 import {
   FormRoot,
@@ -21,7 +23,9 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 
-/** @docs */
+/**
+ * New user account registration component.
+ */
 @Component({
   selector: 'app-register',
   imports: [
@@ -94,21 +98,27 @@ import { UserCreate } from '../api-client';
   ],
   templateUrl: './register.component.html',
 })
-/** @docs */
 export class RegisterComponent {
+  /** Authentication service handling user registration and auto-login. */
   private readonly authService = inject(AuthService);
+  /** Angular router for navigating after successful registration. */
   private readonly router = inject(Router);
 
+  /** Whether a registration request is currently in progress. */
   readonly isLoading = signal(false);
+  /** Error message displayed when registration fails. */
   readonly errorMessage = signal<string | null>(null);
+  /** Whether password input characters are masked. */
   readonly hidePassword = signal(true);
 
+  /** Signal model backing the registration form fields. */
   readonly formModel = signal({
     email: '',
     password: '',
     confirmPassword: '',
   });
 
+  /** Signal form instance enforcing email, password length, and password match validation. */
   readonly registerForm = form(this.formModel, (f) => {
     required(f.email, { message: 'Email is required' });
     email(f.email, { message: 'Please enter a valid email' });
@@ -127,11 +137,17 @@ export class RegisterComponent {
     });
   });
 
+  /**
+   * Toggles whether the password fields are masked or visible.
+   *
+   * @param event - DOM click event from the visibility toggle button.
+   */
   togglePasswordVisibility(event: Event): void {
     event.preventDefault();
     this.hidePassword.update((v) => !v);
   }
 
+  /** Validates the registration form and submits the new user account request. */
   onSubmit(): void {
     if (this.registerForm().invalid()) {
       this.registerForm().markAsTouched();
@@ -150,7 +166,7 @@ export class RegisterComponent {
         this.isLoading.set(false);
         this.router.navigate(['/dashboard']);
       },
-      error: (err) => {
+      error: (err: { error?: { detail?: string } }) => {
         this.isLoading.set(false);
         const msg = err?.error?.detail || 'Registration failed. Please try again.';
         this.errorMessage.set(msg);

@@ -13,7 +13,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
@@ -23,8 +23,6 @@ from app.core.i18n import get_translated_message
 from app.database.postgres import get_db
 from app.models.token import RefreshToken
 from app.models.user import User
-
-logger = logging.getLogger(__name__)
 from app.schemas.token import (
   ForgotPasswordRequest,
   PasswordResetResponse,
@@ -33,7 +31,10 @@ from app.schemas.token import (
   Token,
 )
 from app.schemas.user import UserCreate, UserResponse
-from app.services.provisioning import provisioning_service  # New Dependency
+from app.services.email import EmailNotificationService, get_email_service
+from app.services.provisioning import provisioning_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -57,6 +58,7 @@ async def register_user(
   Args:
       user_in (UserCreate): The payload containing email and password.
       db (AsyncSession): Database session.
+      accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.
 
   Returns:
       User: The newly created user object.
@@ -110,6 +112,7 @@ async def login_access_token(
   Args:
       form_data (OAuth2PasswordRequestForm): Login credentials (username=email).
       db (AsyncSession): Database session.
+      accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.
 
   Returns:
       Token: Access token and type.
@@ -182,8 +185,8 @@ async def refresh_access_token(
     user_id = UUID(user_id_str)
   except HTTPException:
     raise
-  except Exception:
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate refresh token")
+  except Exception as err:
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate refresh token") from err
 
   result = await db.execute(
     select(RefreshToken).where(
@@ -250,9 +253,6 @@ async def revoke_session(
         await db.commit()
   except Exception:
     pass
-
-
-from app.services.email import EmailNotificationService, get_email_service
 
 
 @router.post("/forgot-password", response_model=PasswordResetResponse)

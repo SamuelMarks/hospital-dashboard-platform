@@ -7,7 +7,6 @@ Create Date: 2026-02-27 16:59:12.970428
 """
 
 from collections.abc import Sequence
-from typing import Union
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -22,6 +21,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+  """Add is_admin column to users and create admin_settings table."""
   # Add is_admin column to users table with default false
   op.add_column("users", sa.Column("is_admin", sa.Boolean(), server_default="false", nullable=False))
 
@@ -36,6 +36,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+  """Drop admin_settings table and remove is_admin column from users."""
   op.drop_index(op.f("ix_admin_settings_setting_key"), table_name="admin_settings")
   op.drop_table("admin_settings")
   op.drop_column("users", "is_admin")

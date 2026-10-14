@@ -18,14 +18,16 @@ import logging
 import time
 from collections import OrderedDict
 from threading import Lock
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Generic, TypeVar
 
 from app.core.config import settings
 
 logger = logging.getLogger("cache_service")
 
+T = TypeVar("T")
 
-class ResultCacheService:
+
+class ResultCacheService(Generic[T]):
   """
   Singleton service managing the lifecycle of cached analytics results.
   """
@@ -34,7 +36,7 @@ class ResultCacheService:
     """
     Initialize the cache storage and synchronization lock.
     """
-    self._cache: OrderedDict[str, tuple[float, Any]] = OrderedDict()
+    self._cache: OrderedDict[str, tuple[float, T]] = OrderedDict()
     self._lock = Lock()
     self._ttl = settings.CACHE_TTL_SECONDS
     self._max_entries = settings.CACHE_MAX_ENTRIES
@@ -46,7 +48,7 @@ class ResultCacheService:
 
     Args:
         widget_type (str): The type of widget (e.g., "SQL", "HTTP").
-        config (Dict[str, Any]): The configuration dictionary.
+        config (dict[str, Any]): The configuration dictionary.
 
     Returns:
         str: A hex digest string representing the unique key.
@@ -69,7 +71,7 @@ class ResultCacheService:
 
     return hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
-  def get(self, key: str) -> Any | None:
+  def get(self, key: str) -> T | None:
     """
     Retrieve an item from the cache if it exists and hasn't expired.
     Updates the LRU position of the item (moves to end).
@@ -78,7 +80,7 @@ class ResultCacheService:
         key (str): The unique hash key.
 
     Returns:
-        Optional[Any]: The cached data, or None if missing/expired.
+        T | None: The cached data, or None if missing/expired.
     """
     with self._lock:
       if key not in self._cache:
@@ -97,14 +99,14 @@ class ResultCacheService:
       logger.debug(f"Cache HIT for key: {key[:8]}...")
       return value
 
-  def set(self, key: str, value: Any) -> None:
+  def set(self, key: str, value: T) -> None:
     """
     Store an item in the cache.
     Enforces Size limits and LRU capacity.
 
     Args:
         key (str): The unique hash key.
-        value (Any): The result set to store.
+        value (T): The result set to store.
     """
     # 1. Size Safety Check (Rough estimation via JSON dump length)
     # We perform this outside the lock purely for performance, though strictly
@@ -138,4 +140,4 @@ class ResultCacheService:
 
 
 # Singleton Instance
-cache_service = ResultCacheService()
+cache_service: ResultCacheService[Any] = ResultCacheService()

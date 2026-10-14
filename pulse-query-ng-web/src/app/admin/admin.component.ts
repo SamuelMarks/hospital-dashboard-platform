@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Administrative configuration component for managing LLM API keys,
+ * model visibility, and database/dataset diagnostics.
+ */
 import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
 import { form, FormRoot, FormField } from '@angular/forms/signals';
 import { AdminService, AiService, ModelInfo } from '../api-client';
@@ -6,7 +9,9 @@ import { ConnectionStatusService } from '../core/health/connection-status.servic
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
-/** @docs */
+/**
+ * Component providing the administration interface for API keys, model selection, and system diagnostics.
+ */
 @Component({
   selector: 'app-admin',
   imports: [FormRoot, FormField],
@@ -26,6 +31,7 @@ import { forkJoin } from 'rxjs';
                 type="password"
                 [formField]="adminForm.openai"
                 placeholder="sk-..."
+                i18n-placeholder
                 autocomplete="off"
               />
             </div>
@@ -36,6 +42,7 @@ import { forkJoin } from 'rxjs';
                 type="password"
                 [formField]="adminForm.anthropic"
                 placeholder="sk-..."
+                i18n-placeholder
                 autocomplete="off"
               />
             </div>
@@ -53,7 +60,7 @@ import { forkJoin } from 'rxjs';
                   <div class="model-item">
                     <label [for]="'model-' + $index">
                       <input [id]="'model-' + $index" type="checkbox" [formField]="modelVal" />
-                      {{ availableModels()[$index].name }} ({{ availableModels()[$index].id }})
+                      {{ availableModels()[$index]?.name }} ({{ availableModels()[$index]?.id }})
                     </label>
                   </div>
                 }
@@ -198,44 +205,70 @@ import { forkJoin } from 'rxjs';
     `,
   ],
 })
-/** @docs */
 export class AdminComponent implements OnInit {
+  /** Backend administration API service. */
   private adminService = inject(AdminService);
+  /** AI model management API service. */
   private aiService = inject(AiService);
+  /** Destroy reference for cleaning up subscriptions and timers. */
   private destroyRef = inject(DestroyRef);
+  /** Service monitoring backend and database health statuses. */
   private connectionService = inject(ConnectionStatusService);
 
+  /** Whether the initial admin settings have finished loading. */
   settingsLoaded = signal<boolean>(false);
+  /** List of all available LLM models from the backend. */
   availableModels = signal<ModelInfo[]>([]);
+  /** Status or feedback message displayed to the administrator. */
   message = signal<string>('');
+  /** Whether a settings save operation is currently in progress. */
   isSaving = signal<boolean>(false);
 
+  /** Reactive signal model backing the admin settings form. */
   formModel = signal({
     openai: '',
     anthropic: '',
     models: [] as boolean[],
   });
 
+  /** Signal-based form instance bound to `formModel`. */
   adminForm = form(this.formModel, (f) => {});
 
+  /**
+   * Returns the current PostgreSQL connection status label.
+   *
+   * @returns Current PostgreSQL status label.
+   */
   pgStatus(): string {
     return this.connectionService.healthData()?.postgres?.status || 'Unknown';
   }
 
+  /**
+   * Returns the current DuckDB OLAP engine status label.
+   *
+   * @returns Current DuckDB status label.
+   */
   duckStatus(): string {
     return this.connectionService.healthData()?.duckdb?.status || 'Unknown';
   }
 
+  /**
+   * Returns a human-readable description of the hospital dataset status.
+   *
+   * @returns Human-readable dataset status description.
+   */
   dataStatusText(): string {
     const data = this.connectionService.healthData()?.data;
     if (!data) return 'Checking...';
     return data.has_default_data ? 'Default CSV Present' : 'Synthetic Fallback Active';
   }
 
+  /** Opens the system connection diagnostics modal dialog. */
   openDiagnostics(): void {
     this.connectionService.openDiagnosticsDialog();
   }
 
+  /** Triggers a re-ingestion of the hospital CSV datasets on the backend. */
   reingestData(): void {
     this.connectionService.triggerReingest().subscribe({
       next: (res) => {
@@ -251,11 +284,18 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  /**
+   * TrackBy function for rendering model checkboxes by index.
+   *
+   * @param index - The index of the item in the list.
+   * @returns The item index.
+   */
   trackByFn(index: number): number {
     return index;
   }
 
-  ngOnInit() {
+  /** Loads current admin settings and available models on component initialization. */
+  ngOnInit(): void {
     forkJoin({
       settings: this.adminService.readAdminSettingsApiV1AdminSettingsGet(),
       models: this.aiService.listAvailableModelsApiV1AiModelsGet(true),
@@ -274,7 +314,8 @@ export class AdminComponent implements OnInit {
       });
   }
 
-  saveSettings() {
+  /** Validates and persists the updated API keys and visible model selections. */
+  saveSettings(): void {
     if (this.adminForm().invalid()) return;
 
     this.isSaving.set(true);
@@ -289,14 +330,9 @@ export class AdminComponent implements OnInit {
       finalKeys['anthropic'] = formValue.anthropic.trim();
     }
 
-    const selectedModels: string[] = [];
-    const models = this.availableModels();
-
-    formValue.models.forEach((isSelected, index) => {
-      if (isSelected) {
-        selectedModels.push(models[index].id);
-      }
-    });
+    const selectedModels = this.availableModels()
+      .filter((_, index) => formValue.models[index])
+      .map((model) => model.id);
 
     this.adminService
       .writeAdminSettingsApiV1AdminSettingsPut({

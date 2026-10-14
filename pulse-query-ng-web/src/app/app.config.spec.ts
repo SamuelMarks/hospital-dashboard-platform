@@ -78,7 +78,11 @@ describe('AppConfig', () => {
 
   it('should include BASE_PATH provider in appConfig', () => {
     const hasBasePath = appConfig.providers.some(
-      (provider) => (provider as any)?.provide === BASE_PATH,
+      (provider) =>
+        typeof provider === 'object' &&
+        provider !== null &&
+        'provide' in provider &&
+        provider.provide === BASE_PATH,
     );
     expect(hasBasePath).toBe(true);
   });

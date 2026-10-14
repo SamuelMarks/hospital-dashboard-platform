@@ -6,6 +6,7 @@ Allows authenticated users to run optimization scenarios without persisting
 dashboards or widgets.
 """
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -37,11 +38,10 @@ async def run_simulation(
       ScenarioResult: The calculated assignments.
   """
   try:
-    result = simulation_service.run_scenario(request)
-    return result
+    return await asyncio.to_thread(simulation_service.run_scenario, request)
   except SimulationInfeasibleError as e:
-    raise HTTPException(status_code=422, detail=str(e))
+    raise HTTPException(status_code=422, detail=str(e)) from e
   except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
   except Exception as e:
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Simulation Failed: {e!s}")
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Simulation Failed: {e!s}") from e

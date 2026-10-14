@@ -2,6 +2,8 @@
 Tests for application configuration helpers.
 """
 
+from typing import Any
+
 from app.core.config import Settings
 
 
@@ -31,7 +33,18 @@ def test_sqlalchemy_database_uri_builds_expected_url() -> None:
     os.environ["USE_SQLITE_ALEMBIC"] = old_val
 
 
-def test_llm_swarm_defaults_to_empty(monkeypatch) -> None:
+def test_config_sqlite_alembic_branch() -> None:
+  """Tests SQLALCHEMY_DATABASE_URI when USE_SQLITE_ALEMBIC is enabled."""
+  import os
+  from unittest.mock import patch
+
+  with patch.dict(os.environ, {"USE_SQLITE_ALEMBIC": "1"}):
+    s = Settings()
+    uri = s.SQLALCHEMY_DATABASE_URI
+    assert "sqlite" in uri
+
+
+def test_llm_swarm_defaults_to_empty(monkeypatch: Any) -> None:
   """Ensure default behavior is an empty list if no env vars are set."""
   # Clear all relevant keys to simulate clean env
   settings = Settings(

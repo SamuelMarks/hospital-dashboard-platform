@@ -4,8 +4,9 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { VizHeatmapComponent } from './viz-heatmap.component';
+import { TableDataSet } from '../viz-table/viz-table.component';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
@@ -16,7 +17,7 @@ import { vi } from 'vitest';
 describe('VizHeatmapComponent', () => {
   let component: VizHeatmapComponent;
   let fixture: ComponentFixture<VizHeatmapComponent>;
-  let dataSetSig: any;
+  let dataSetSig: WritableSignal<TableDataSet>;
 
   /**
    * Setup global browser mocks for Material components.
@@ -47,8 +48,8 @@ describe('VizHeatmapComponent', () => {
 
     fixture = TestBed.createComponent(VizHeatmapComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal({ columns: [], data: [] });
-    (component as any).dataSet = dataSetSig;
+    dataSetSig = signal<TableDataSet>({ columns: [], data: [] });
+    (component as unknown as { dataSet: WritableSignal<TableDataSet> }).dataSet = dataSetSig;
     fixture.detectChanges();
   });
 

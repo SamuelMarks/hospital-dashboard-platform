@@ -1,64 +1,73 @@
+/**
+ * @fileoverview Unit tests for `TemplateWizardComponent`.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TemplateWizardComponent } from './template-wizard.component';
-import {
-  DashboardsService,
-  ExecutionService,
-  TemplatesService,
-  TemplateResponse,
-} from '../../api-client';
+import { AiService, DashboardsService, TemplatesService, TemplateResponse } from '../../api-client';
+import { TemplateConfigurationService } from '../template-configuration.service';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { ReactiveFormsModule } from '@angular/forms';
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 describe('TemplateWizardComponent', () => {
   let component: TemplateWizardComponent;
   let fixture: ComponentFixture<TemplateWizardComponent>;
 
-  let mockDashApi: any;
-  let mockExecApi: any;
-  let mockTemplatesApi: any;
-  let mockDialogRef: any;
+  let mockDashApi: {
+    createWidgetApiV1DashboardsDashboardIdWidgetsPost: Mock;
+  };
+  let mockAiApi: {
+    executeSqlPreviewApiV1AiExecutePost: Mock;
+  };
+  let mockTemplatesApi: {
+    listTemplatesApiV1TemplatesGet: Mock;
+  };
+  let mockDialogRef: { close: Mock };
 
   const mockTemplates: TemplateResponse[] = [
-    { id: 't1', title: 'Admissions', category: 'Operational', sql_template: 'SELECT 1' },
+    {
+      id: 't1',
+      title: 'Admissions Trend',
+      category: 'Operational',
+      sql_template: 'SELECT 1 GROUP BY d',
+    },
     { id: 't2', title: 'Revenue', category: 'Financial', sql_template: 'SELECT 2' },
   ];
 
   beforeEach(async () => {
     mockDashApi = {
-      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
-      updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn(),
-      deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn(),
+      createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn().mockReturnValue(
+        of({
+          id: 'w-created',
+          dashboard_id: 'dash-1',
+          title: 'Admissions Trend',
+          type: 'SQL',
+          visualization: 'bar_chart',
+          config: {},
+        }),
+      ),
     };
-    mockExecApi = {
-      refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn(),
+    mockAiApi = {
+      executeSqlPreviewApiV1AiExecutePost: vi
+        .fn()
+        .mockReturnValue(of({ data: [{ v: 1 }], columns: ['v'], error: null })),
     };
     mockTemplatesApi = {
-      listTemplatesApiV1TemplatesGet: vi.fn(),
+      listTemplatesApiV1TemplatesGet: vi.fn().mockReturnValue(of(mockTemplates)),
     };
     mockDialogRef = { close: vi.fn() };
-
-    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
-      of({
-        id: 'draft-1',
-        dashboard_id: 'dash-1',
-        title: 'Draft',
-        type: 'SQL',
-        visualization: 'table',
-        config: {},
-      }),
-    );
-    mockTemplatesApi.listTemplatesApiV1TemplatesGet.mockReturnValue(of(mockTemplates));
 
     await TestBed.configureTestingModule({
       imports: [TemplateWizardComponent, NoopAnimationsModule, ReactiveFormsModule],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
+        TemplateConfigurationService,
         { provide: DashboardsService, useValue: mockDashApi },
-        { provide: ExecutionService, useValue: mockExecApi },
+        { provide: AiService, useValue: mockAiApi },
         { provide: TemplatesService, useValue: mockTemplatesApi },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'dash-1' } },
@@ -74,10 +83,14 @@ describe('TemplateWizardComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should validate form and enable/disable next button', () => {
-    expect(component.selectionValid()).toBe(false); // Initially valid as mode is predefined
+  it('does not create any draft widget on initialization', () => {
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).not.toHaveBeenCalled();
+  });
 
-    component.selectTemplate(mockTemplates[0]);
+  it('should validate form and enable/disable next button', () => {
+    expect(component.selectionValid()).toBe(false);
+
+    component.selectTemplate(mockTemplates[0]!);
     expect(component.selectionValid()).toBe(true);
 
     component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: '' }));
@@ -89,56 +102,78 @@ describe('TemplateWizardComponent', () => {
     expect(component.selectionValid()).toBe(true);
   });
 
-  it('should parse parameters correctly', () => {
+  it('should parse parameters correctly for custom and predefined modes', () => {
     component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: 'SELECT {{var}}' }));
     fixture.detectChanges();
     component.parseParams();
     expect(component.paramsSchema()).toEqual({});
     expect(component.paramsValid()).toBe(true);
+
+    component.formModel.update((m) => ({ ...m, mode: 'predefined' }));
+    component.paramsSchema.set({ properties: {} });
+    component.paramsValid.set(false);
+    component.parseParams();
+    expect(component.paramsValid()).toBe(true);
+
+    component.paramsValid.set(false);
+    component.paramsSchema.set({ properties: { a: { type: 'string' } } });
+    component.parseParams();
+    expect(component.paramsValid()).toBe(false);
   });
 
-  it('should save widget with template title', () => {
+  it('should create widget with inferred template visualization on saveWidget()', () => {
     component.templates.set(mockTemplates);
-    component.selectTemplate(mockTemplates[0]);
-    // Ensure the final SQL signal is set as that is what saveWidget uses
-    component.finalSql.set('SELECT 1');
-
-    // Must invoke create first to set draft ID if not already set by ngOnInit
-    if (!component.draftWidgetId()) {
-      (component as any).createDraftWidget();
-    }
-
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+    component.selectTemplate(mockTemplates[0]!);
+    component.finalSql.set('SELECT 1 GROUP BY d');
 
     component.saveWidget();
 
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'draft-1',
-      expect.objectContaining({
-        title: 'Admissions',
-        config: { query: 'SELECT 1' },
-      }),
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'dash-1',
+      {
+        title: 'Admissions Trend',
+        type: 'SQL',
+        visualization: 'bar_chart',
+        config: { query: 'SELECT 1 GROUP BY d' },
+      },
     );
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
   });
 
-  it('should save widget with default title when template missing', () => {
+  it('should save widget with default title when template is not found or mode is custom', () => {
     component.formModel.update((m) => ({ ...m, mode: 'predefined', templateId: 'missing' }));
-    fixture.detectChanges();
     component.finalSql.set('SELECT 1');
-    component.draftWidgetId.set('draft-1');
-
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
 
     component.saveWidget();
 
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'draft-1',
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'dash-1',
+      {
+        title: 'Custom SQL Widget',
+        type: 'SQL',
+        visualization: 'table',
+        config: { query: 'SELECT 1' },
+      },
+    );
+
+    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockClear();
+    component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: 'SELECT 2' }));
+    component.finalSql.set('SELECT 2');
+    component.saveWidget();
+
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'dash-1',
       expect.objectContaining({
         title: 'Custom SQL Widget',
-        config: { query: 'SELECT 1' },
+        config: { query: 'SELECT 2' },
       }),
     );
+  });
+
+  it('should no-op saveWidget when finalSql is blank', () => {
+    component.finalSql.set('   ');
+    component.saveWidget();
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).not.toHaveBeenCalled();
   });
 
   it('should toggle category and reload templates', () => {
@@ -153,9 +188,9 @@ describe('TemplateWizardComponent', () => {
   it('should update search with debounce', () => {
     vi.useFakeTimers();
     const loadSpy = vi.spyOn(component, 'loadTemplates');
-    component.updateSearch({ target: { value: 'adm' } } as any);
+    component.updateSearch({ target: { value: 'adm' } } as unknown as Event);
     vi.advanceTimersByTime(300);
-    expect(loadSpy).toHaveBeenCalled();
+    expect(loadSpy).toHaveBeenCalledWith('adm');
     vi.useRealTimers();
   });
 
@@ -177,119 +212,57 @@ describe('TemplateWizardComponent', () => {
 
     component.handleStatusChange('VALID');
     expect(component.paramsValid()).toBe(true);
-  });
 
-  it('should mark params invalid on status INVALID', () => {
     component.handleStatusChange('INVALID');
     expect(component.paramsValid()).toBe(false);
   });
 
-  it('should render preview and execute draft', () => {
-    component.draftWidgetId.set('draft-1');
+  it('should render preview via stateless AiService.executeSqlPreviewApiV1AiExecutePost', () => {
     component.formModel.update((m) => ({ ...m, rawSql: 'SELECT {{x}}' }));
-    fixture.detectChanges();
     component.paramsValue.set({ x: 5 });
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
-    mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
-      of({ 'draft-1': { data: [] } }),
-    );
 
     component.renderPreview();
 
     expect(component.finalSql()).toBe('SELECT 5');
-    expect(component.executionResult()).toEqual({ data: [] });
+    expect(mockAiApi.executeSqlPreviewApiV1AiExecutePost).toHaveBeenCalledWith({
+      sql: 'SELECT 5',
+      max_rows: 100,
+    });
+    expect(component.executionResult()).toEqual({
+      data: [{ v: 1 }],
+      columns: ['v'],
+      error: null,
+    });
   });
 
-  it('should render preview with empty SQL when rawSql missing', () => {
-    component.draftWidgetId.set(null);
+  it('should handle renderPreview when SQL is empty or execution fails', () => {
     component.formModel.update((m) => ({ ...m, rawSql: '' }));
-    fixture.detectChanges();
     component.paramsValue.set({});
-
     component.renderPreview();
-
     expect(component.finalSql()).toBe('');
-  });
+    expect(component.executionResult()).toEqual({ data: [], columns: [] });
 
-  it('should handle executeDraft error', () => {
-    component.draftWidgetId.set('draft-1');
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(
       throwError(() => new Error('fail')),
     );
-
-    (component as any).executeDraft('SELECT 1');
-
+    component.formModel.update((m) => ({ ...m, rawSql: 'SELECT 1' }));
+    component.renderPreview();
     expect(component.isRunning()).toBe(false);
     expect(component.executionResult()).toEqual({ error: 'Failed to execute query' });
   });
 
-  it('should no-op executeDraft when no draft', () => {
-    component.draftWidgetId.set(null);
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockClear();
-
-    (component as any).executeDraft('SELECT 1');
-
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
-  });
-
-  it('should no-op save when no draft', () => {
-    component.draftWidgetId.set(null);
-    component.saveWidget();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
-  });
-
-  it('should save widget with default title for custom mode', () => {
-    component.draftWidgetId.set('draft-1');
-    component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: 'SELECT 1' }));
-    fixture.detectChanges();
-    component.finalSql.set('SELECT 1');
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
-
-    component.saveWidget();
-
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'draft-1',
-      expect.objectContaining({ title: 'Custom SQL Widget' }),
-    );
-  });
-
-  it('should cancel and delete draft when present', () => {
-    component.draftWidgetId.set('draft-1');
-    mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(of({}));
-    component.cancel();
-    expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).toHaveBeenCalledWith(
-      'draft-1',
-    );
-    expect(mockDialogRef.close).toHaveBeenCalledWith(false);
-  });
-
-  it('should cancel and close when no draft', () => {
-    component.draftWidgetId.set(null);
+  it('should close dialog without deleting anything on cancel()', () => {
     component.cancel();
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
-  });
-
-  it('should parse params for predefined schema', () => {
-    component.formModel.update((m) => ({ ...m, mode: 'predefined' }));
-    fixture.detectChanges();
-    component.paramsSchema.set({ properties: {} });
-    component.parseParams();
-    expect(component.paramsValid()).toBe(true);
-  });
-
-  it('should keep params invalid when schema has fields', () => {
-    component.formModel.update((m) => ({ ...m, mode: 'predefined' }));
-    fixture.detectChanges();
-    component.paramsValid.set(false);
-    component.paramsSchema.set({ properties: { a: { type: 'string' } } });
-    component.parseParams();
-    expect(component.paramsValid()).toBe(false);
   });
 
   it('should highlight SQL and sync scroll', () => {
     component.finalSql.set("SELECT * FROM t WHERE a = 'x' AND b = 5");
-    const html = component.highlightedSql() as any;
+    const html = component.highlightedSql();
     expect(html).toBeTruthy();
+
+    component.finalSql.set('');
+    expect(component.highlightedSql()).toBeTruthy();
 
     const highlight = document.createElement('div');
     highlight.classList.add('highlight-layer');
@@ -300,35 +273,18 @@ describe('TemplateWizardComponent', () => {
     textarea.scrollTop = 10;
     textarea.scrollLeft = 5;
 
-    component.syncScroll({ target: textarea } as any);
+    component.syncScroll({ target: textarea } as unknown as Event);
     expect(highlight.scrollTop).toBe(10);
     expect(highlight.scrollLeft).toBe(5);
-  });
 
-  it('should highlight empty SQL safely', () => {
-    component.finalSql.set('');
-    const html = component.highlightedSql() as any;
-    expect(html).toBeTruthy();
-  });
-
-  it('should no-op syncScroll when highlight missing', () => {
-    const parent = document.createElement('div');
-    const textarea = document.createElement('textarea');
-    parent.appendChild(textarea);
-
-    component.syncScroll({ target: textarea } as any);
-    expect(true).toBe(true);
-  });
-
-  it('should unsubscribe on destroy', () => {
-    (component as any).searchSub = { unsubscribe: vi.fn() };
-    (component as any).modeSub = { unsubscribe: vi.fn() };
-    component.ngOnDestroy();
-    expect((component as any).searchSub.unsubscribe).toHaveBeenCalled();
+    const loneParent = document.createElement('div');
+    const loneTextarea = document.createElement('textarea');
+    loneParent.appendChild(loneTextarea);
+    component.syncScroll({ target: loneTextarea } as unknown as Event);
   });
 
   it('should cast results to table data', () => {
-    const res = { columns: [], data: [] };
-    expect(component.asTableData(res)).toBe(res as any);
+    const res = { columns: ['a'], data: [{ a: 1 }] };
+    expect(component.asTableData(res)).toEqual(res);
   });
 });

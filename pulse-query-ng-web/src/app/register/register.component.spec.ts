@@ -10,7 +10,7 @@ import { vi } from 'vitest';
 describe('RegisterComponent', () => {
   let component: RegisterComponent;
   let fixture: ComponentFixture<RegisterComponent>;
-  let mockAuthService: any;
+  let mockAuthService: { register: ReturnType<typeof vi.fn> };
   let router: Router;
 
   beforeEach(async () => {

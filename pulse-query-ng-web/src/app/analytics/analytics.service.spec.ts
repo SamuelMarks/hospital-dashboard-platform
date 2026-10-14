@@ -1,83 +1,60 @@
-import { AnalyticsService } from './analytics.service';
-import { environment } from '../../environments/environment';
-import { of } from 'rxjs';
-import { vi } from 'vitest';
+/**
+ * @fileoverview Unit tests for `AnalyticsService`.
+ */
+
 import { TestBed } from '@angular/core/testing';
-import { HttpClient } from '@angular/common/http';
-import { BASE_PATH } from '../api-client';
+import { of } from 'rxjs';
+import { vi, type Mock } from 'vitest';
+import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
+import { AnalyticsService as GeneratedAnalyticsService } from '../api-client';
 
 describe('AnalyticsService', () => {
+  let service: AnalyticsService;
+  let mockGeneratedApi: { listLlmOutputsApiV1AnalyticsLlmGet: Mock };
+
+  beforeEach(() => {
+    mockGeneratedApi = {
+      listLlmOutputsApiV1AnalyticsLlmGet: vi.fn().mockReturnValue(of([])),
+    };
+
+    TestBed.configureTestingModule({
+      providers: [
+        AnalyticsService,
+        { provide: GeneratedAnalyticsService, useValue: mockGeneratedApi },
+      ],
+    });
+    service = TestBed.inject(AnalyticsService);
+  });
+
   afterEach(() => {
     TestBed.resetTestingModule();
   });
-  it('uses BASE_PATH when provided', () => {
-    const http = { get: vi.fn().mockReturnValue(of([])) } as any;
-    TestBed.configureTestingModule({
-      providers: [
-        AnalyticsService,
-        { provide: HttpClient, useValue: http },
-        { provide: BASE_PATH, useValue: 'http://api.test' },
-      ],
+
+  it('delegates listLlmOutputs with explicit limit and offset to generated AnalyticsService', () => {
+    const sampleRows: LlmAnalyticsRow[] = [
+      {
+        source: 'chat',
+        candidate_id: 'c1',
+        user_id: 'u1',
+        user_email: 'doc@hospital.org',
+        llm: 'GPT-4o',
+        is_selected: true,
+        created_at: '2026-10-14T00:00:00Z',
+      },
+    ];
+    mockGeneratedApi.listLlmOutputsApiV1AnalyticsLlmGet.mockReturnValue(of(sampleRows));
+
+    let received: LlmAnalyticsRow[] = [];
+    service.listLlmOutputs(10, 5).subscribe((rows) => {
+      received = rows;
     });
-    const service = TestBed.inject(AnalyticsService);
 
-    service.listLlmOutputs(10, 5).subscribe();
-
-    const [url, options] = http.get.mock.calls[0];
-    expect(url).toBe('http://api.test/api/v1/analytics/llm');
-    expect(options.params.toString()).toBe('limit=10&offset=5');
+    expect(mockGeneratedApi.listLlmOutputsApiV1AnalyticsLlmGet).toHaveBeenCalledWith(10, 5);
+    expect(received).toEqual(sampleRows);
   });
 
-  it('uses BASE_PATH arrays by taking the first entry', () => {
-    const http = { get: vi.fn().mockReturnValue(of([])) } as any;
-    TestBed.configureTestingModule({
-      providers: [
-        AnalyticsService,
-        { provide: HttpClient, useValue: http },
-        { provide: BASE_PATH, useValue: ['http://array.test', 'http://fallback.test'] },
-      ],
-    });
-    const service = TestBed.inject(AnalyticsService);
-
-    service.listLlmOutputs(1, 0).subscribe();
-
-    const [url, options] = http.get.mock.calls[0];
-    expect(url).toBe('http://array.test/api/v1/analytics/llm');
-    expect(options.params.toString()).toBe('limit=1&offset=0');
-  });
-
-  it('falls back to environment apiUrl when base path is missing', () => {
-    const http = { get: vi.fn().mockReturnValue(of([])) } as any;
-    const original = environment.apiUrl;
-    (environment as any).apiUrl = 'http://env.api';
-
-    TestBed.configureTestingModule({
-      providers: [AnalyticsService, { provide: HttpClient, useValue: http }],
-    });
-    const service = TestBed.inject(AnalyticsService);
-
+  it('uses default limit=500 and offset=0 when arguments are omitted', () => {
     service.listLlmOutputs().subscribe();
-
-    const [url, options] = http.get.mock.calls[0];
-    expect(url).toBe('http://env.api/api/v1/analytics/llm');
-    expect(options.params.toString()).toBe('limit=500&offset=0');
-    (environment as any).apiUrl = original;
-  });
-
-  it('falls back to localhost when environment apiUrl is empty', () => {
-    const http = { get: vi.fn().mockReturnValue(of([])) } as any;
-    const original = environment.apiUrl;
-    (environment as any).apiUrl = '';
-
-    TestBed.configureTestingModule({
-      providers: [AnalyticsService, { provide: HttpClient, useValue: http }],
-    });
-    const service = TestBed.inject(AnalyticsService);
-    service.listLlmOutputs().subscribe();
-
-    const [url] = http.get.mock.calls[0];
-    expect(url).toBe('http://localhost:8000/api/v1/analytics/llm');
-
-    (environment as any).apiUrl = original;
+    expect(mockGeneratedApi.listLlmOutputsApiV1AnalyticsLlmGet).toHaveBeenCalledWith(500, 0);
   });
 });

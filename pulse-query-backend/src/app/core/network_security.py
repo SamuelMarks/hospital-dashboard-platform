@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+
 
 def is_ip_private_or_restricted(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
   """
@@ -39,6 +41,139 @@ def is_ip_private_or_restricted(ip: ipaddress.IPv4Address | ipaddress.IPv6Addres
   )
 
 
+def _check_numeric_or_literal_ip(hostname: str, hostname_lower: str) -> AppResult[bool]:
+  """
+  Checks if `hostname` is an IP literal, integer IP, or hex IP and validates it.
+
+  Args:
+      hostname (str): Original hostname string.
+      hostname_lower (str): Lowercase hostname string.
+
+  Returns:
+      AppResult[bool]: `Ok(True)` if hostname is a valid safe IP literal, `Ok(False)` if not an IP literal,
+          or `Err(AppError)` if it resolves to a restricted IP.
+  """
+  try:
+    ip = ipaddress.ip_address(hostname)
+    if is_ip_private_or_restricted(ip):
+      return Err(
+        AppError(
+          code=ErrorCode.SSRF_BLOCKED,
+          message=f"Direct access to private or restricted IP '{hostname}' is prohibited.",
+          status_code=403,
+        )
+      )
+    return Ok(True)
+  except ValueError:
+    pass
+
+  base = 10 if hostname_lower.isdigit() else (16 if hostname_lower.startswith("0x") else 0)
+  if base:
+    try:
+      parsed_ip = ipaddress.IPv4Address(int(hostname_lower, base))
+      if is_ip_private_or_restricted(parsed_ip):
+        return Err(
+          AppError(
+            code=ErrorCode.SSRF_BLOCKED,
+            message=f"Direct access to private or restricted IP '{parsed_ip}' is prohibited.",
+            status_code=403,
+          )
+        )
+      return Ok(True)
+    except (ValueError, OverflowError):
+      pass
+
+  return Ok(False)
+
+
+def _check_dns_resolution(hostname: str) -> AppResult[bool]:
+  """
+  Resolves `hostname` via DNS and verifies no resolved IP address is private or restricted.
+
+  Args:
+      hostname (str): Hostname to resolve.
+
+  Returns:
+      AppResult[bool]: `Ok(True)` if all resolved IPs are public, or `Err(AppError)` if restricted.
+  """
+  try:
+    addr_info = socket.getaddrinfo(hostname, None)
+    for info in addr_info:
+      ip_str = info[4][0]
+      try:
+        resolved_ip = ipaddress.ip_address(ip_str)
+        if is_ip_private_or_restricted(resolved_ip):
+          return Err(
+            AppError(
+              code=ErrorCode.SSRF_BLOCKED,
+              message=f"Hostname '{hostname}' resolves to restricted IP '{ip_str}'.",
+              status_code=403,
+            )
+          )
+      except ValueError:
+        pass
+  except socket.gaierror:
+    pass
+  return Ok(True)
+
+
+def validate_safe_url_result(url: str, allowed_schemes: tuple[str, ...] = ("http", "https")) -> AppResult[str]:
+  """
+  Validates a URL against SSRF and private IP ranges, returning an explicit `AppResult[str]`.
+
+  Args:
+      url (str): Target URL string to inspect.
+      allowed_schemes (tuple[str, ...]): Permitted URL schemes (defaults to http, https).
+
+  Returns:
+      AppResult[str]: `Ok(url)` if safe, or `Err(AppError)` with `ErrorCode.SSRF_BLOCKED`.
+  """
+  if not url or not isinstance(url, str):
+    return Err(AppError(code=ErrorCode.SSRF_BLOCKED, message="URL must be a non-empty string.", status_code=403))
+
+  try:
+    parsed = urlparse(url)
+  except Exception as e:
+    return Err(AppError(code=ErrorCode.SSRF_BLOCKED, message=f"Malformed URL: {e}", status_code=403))
+
+  if not parsed.scheme or parsed.scheme.lower() not in allowed_schemes:
+    return Err(
+      AppError(
+        code=ErrorCode.SSRF_BLOCKED,
+        message=f"Unsupported scheme: '{parsed.scheme}'. Allowed: {', '.join(allowed_schemes)}",
+        status_code=403,
+      )
+    )
+
+  hostname = parsed.hostname
+  if not hostname:
+    return Err(AppError(code=ErrorCode.SSRF_BLOCKED, message="Missing hostname in URL.", status_code=403))
+
+  hostname_lower = hostname.lower()
+  if hostname_lower in ("localhost", "metadata.google.internal") or hostname_lower.endswith(
+    (".localhost", ".local", ".internal")
+  ):
+    return Err(
+      AppError(
+        code=ErrorCode.SSRF_BLOCKED,
+        message=f"Access to local or internal hostname '{hostname}' is prohibited.",
+        status_code=403,
+      )
+    )
+
+  ip_check = _check_numeric_or_literal_ip(hostname, hostname_lower)
+  if isinstance(ip_check, Err):
+    return ip_check
+  if ip_check.value:
+    return Ok(url)
+
+  dns_check = _check_dns_resolution(hostname)
+  if isinstance(dns_check, Err):
+    return dns_check
+
+  return Ok(url)
+
+
 def validate_safe_url(url: str, allowed_schemes: tuple[str, ...] = ("http", "https")) -> tuple[bool, str | None]:
   """
   Validates a URL to prevent SSRF by ensuring it uses allowed schemes and does
@@ -51,73 +186,41 @@ def validate_safe_url(url: str, allowed_schemes: tuple[str, ...] = ("http", "htt
   Returns:
       tuple[bool, str | None]: A tuple of (is_safe, error_detail).
   """
-  if not url or not isinstance(url, str):
-    return False, "URL must be a non-empty string."
-
-  try:
-    parsed = urlparse(url)
-  except Exception as e:
-    return False, f"Malformed URL: {e}"
-
-  if not parsed.scheme or parsed.scheme.lower() not in allowed_schemes:
-    return False, f"Unsupported scheme: '{parsed.scheme}'. Allowed: {', '.join(allowed_schemes)}"
-
-  hostname = parsed.hostname
-  if not hostname:
-    return False, "Missing hostname in URL."
-
-  hostname_lower = hostname.lower()
-
-  # Check standard prohibited hostnames
-  if hostname_lower in ("localhost", "metadata.google.internal") or hostname_lower.endswith(
-    (".localhost", ".local", ".internal")
-  ):
-    return False, f"Access to local or internal hostname '{hostname}' is prohibited."
-
-  # Check direct IP literal
-  try:
-    ip = ipaddress.ip_address(hostname)
-    if is_ip_private_or_restricted(ip):
-      return False, f"Direct access to private or restricted IP '{hostname}' is prohibited."
+  res = validate_safe_url_result(url, allowed_schemes=allowed_schemes)
+  if isinstance(res, Ok):
     return True, None
-  except ValueError:
-    pass  # Not a standard IP literal, proceed to decimal/hex and resolution checks
+  return False, res.error.message
 
-  # Check decimal/integer or hex IP representation
-  if hostname_lower.isdigit():
-    try:
-      int_ip = ipaddress.IPv4Address(int(hostname_lower))
-      if is_ip_private_or_restricted(int_ip):
-        return False, f"Direct access to private or restricted IP '{int_ip}' is prohibited."
-      return True, None
-    except (ValueError, OverflowError):
-      pass
-  elif hostname_lower.startswith("0x"):
-    try:
-      hex_ip = ipaddress.IPv4Address(int(hostname_lower, 16))
-      if is_ip_private_or_restricted(hex_ip):
-        return False, f"Direct access to private or restricted IP '{hex_ip}' is prohibited."
-      return True, None
-    except (ValueError, OverflowError):
-      pass
 
-  # Attempt DNS resolution to check for DNS rebinding / internal hosts
+def resolve_and_pin_safe_ip_result(url: str, allowed_schemes: tuple[str, ...] = ("http", "https")) -> AppResult[str]:
+  """
+  Validates a URL against SSRF rules and resolves its hostname once to a verified safe IP.
+
+  Prevents DNS rebinding TOCTOU attacks by returning the validated IP address string
+  (or hostname when offline/unresolvable in mock environments) so the HTTP transport
+  can pin the validated resolution in `request.extensions["pinned_safe_ip"]`.
+
+  Args:
+      url (str): Target URL string to inspect and resolve.
+      allowed_schemes (tuple[str, ...]): Permitted URL schemes (defaults to http, https).
+
+  Returns:
+      AppResult[str]: `Ok(pinned_ip_or_host)` if safe, or `Err(AppError)` with `ErrorCode.SSRF_BLOCKED`.
+  """
+  url_res = validate_safe_url_result(url, allowed_schemes=allowed_schemes)
+  if isinstance(url_res, Err):
+    return url_res
+
+  parsed = urlparse(url)
+  hostname = parsed.hostname or ""
   try:
     addr_info = socket.getaddrinfo(hostname, None)
-    for info in addr_info:
-      ip_str = info[4][0]
-      try:
-        resolved_ip = ipaddress.ip_address(ip_str)
-        if is_ip_private_or_restricted(resolved_ip):
-          return False, f"Hostname '{hostname}' resolves to restricted IP '{ip_str}'."
-      except ValueError:
-        pass
+    if addr_info:
+      first_ip = str(addr_info[0][4][0])
+      return Ok(first_ip)
   except socket.gaierror:
-    # If DNS cannot resolve (e.g. mock test domains or offline environments),
-    # allow execution to proceed to HTTP client which handles connection failure.
     pass
-
-  return True, None
+  return Ok(hostname)
 
 
 class SafeAsyncHTTPTransport(httpx.AsyncHTTPTransport):
@@ -128,7 +231,7 @@ class SafeAsyncHTTPTransport(httpx.AsyncHTTPTransport):
 
   async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
     """
-    Validates request destination before dispatching across the wire.
+    Validates request destination and pins the validated IP before dispatching across the wire.
 
     Args:
         request (httpx.Request): The outgoing HTTP request.
@@ -139,7 +242,8 @@ class SafeAsyncHTTPTransport(httpx.AsyncHTTPTransport):
     Raises:
         httpx.RequestError: If the target host or resolved IP violates SSRF policy.
     """
-    is_safe, error_detail = validate_safe_url(str(request.url))
-    if not is_safe:
-      raise httpx.RequestError(f"Security restriction: {error_detail}", request=request)
+    pin_res = resolve_and_pin_safe_ip_result(str(request.url))
+    if isinstance(pin_res, Err):
+      raise httpx.RequestError(f"Security restriction: {pin_res.error.message}", request=request)
+    request.extensions["pinned_safe_ip"] = pin_res.value
     return await super().handle_async_request(request)

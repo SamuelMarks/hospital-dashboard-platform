@@ -1,27 +1,42 @@
-/** @docs */
-// pulse-query-ng-web/src/app/shared/visualizations/viz-metric/viz-metric.component.ts
+/**
+ * @fileoverview Single-value KPI metric card visualization component with sparkline trend and threshold alerts.
+ */
+
 import { Component, input, computed, Signal } from '@angular/core';
 
-/** @docs */
+/**
+ * Input data payload accepted by `VizMetricComponent`.
+ */
 export interface MetricData {
+  /** Primary scalar metric value to display. */
   value?: number | string;
+  /** Descriptive label for the KPI metric. */
   label?: string;
+  /** Percentage or absolute delta trend value. */
   trend?: number;
+  /** Historical numeric series used to render the background SVG sparkline. */
   trend_data?: number[];
+  /** Optional tabular row array when fed directly from a SQL query result. */
   data?: Record<string, unknown>[];
+  /** Optional column names corresponding to `data` rows. */
   columns?: string[];
   [key: string]: unknown;
 }
 
-/** @docs */
+/**
+ * Optional threshold configuration for coloring metric values in warning or critical states.
+ */
 export interface MetricConfig {
+  /** Numeric warning and critical threshold bounds. */
   thresholds?: {
     warning?: number;
     critical?: number;
   };
 }
 
-/** @docs */
+/**
+ * Displays a prominent KPI metric value, label, directional trend indicator, and SVG sparkline.
+ */
 @Component({
   selector: 'viz-metric',
   imports: [],
@@ -102,12 +117,15 @@ export interface MetricConfig {
   ],
   templateUrl: './viz-metric.component.html',
 })
-/** @docs */
 export class VizMetricComponent {
+  /** Raw metric data object or tabular query result. */
   readonly data = input<MetricData | null>();
+  /** Optional explicit label overriding the dataset's inferred column or label name. */
   readonly titleOverride = input<string>('');
+  /** Optional threshold configuration for warning and critical state styling. */
   readonly config = input<MetricConfig | null>(null);
 
+  /** Computed primary scalar value extracted from the metric data payload. */
   readonly displayValue: Signal<string | number> = computed(() => {
     const d = this.data();
     if (d === null || d === undefined) return '-';
@@ -117,9 +135,9 @@ export class VizMetricComponent {
     if ('value' in d && !Array.isArray(d)) return d.value ?? '-';
 
     if (Array.isArray(d.data) && d.data.length > 0) {
-      const firstRow = d.data[0];
+      const firstRow = d.data[0] as Record<string, unknown>;
       const keys = Object.keys(firstRow);
-      return keys.length > 0 ? (firstRow[keys[0]] as string | number) : '-';
+      return keys.length > 0 ? (firstRow[keys[0] as string] as string | number) : '-';
     }
 
     if (!Array.isArray(d)) {
@@ -131,18 +149,20 @@ export class VizMetricComponent {
     return '-';
   });
 
+  /** Computed human-readable label displayed beneath the metric value. */
   readonly displayLabel: Signal<string> = computed(() => {
     const override = this.titleOverride();
     if (override) return override;
     const d = this.data();
     if (!d || typeof d !== 'object') return '';
     if (Array.isArray(d.data) && Array.isArray(d.columns) && d.columns.length > 0) {
-      return d.columns[0];
+      return d.columns[0] as string;
     }
     if ('label' in d) return d.label ?? '';
     return '';
   });
 
+  /** Computed numeric trend delta, or `null` if no trend is provided. */
   readonly parsedTrend: Signal<number | null> = computed(() => {
     const d = this.data();
     if (d && typeof d === 'object' && 'trend' in d) {
@@ -151,6 +171,7 @@ export class VizMetricComponent {
     return null;
   });
 
+  /** Computed array of historical numeric values used to plot the sparkline. */
   readonly trendSeries: Signal<number[]> = computed(() => {
     const d = this.data();
     if (d && typeof d === 'object' && Array.isArray(d.trend_data)) {
@@ -159,12 +180,14 @@ export class VizMetricComponent {
     return [];
   });
 
+  /** Computed boolean indicating whether the sparkline series finishes higher than or equal to its start. */
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
     if (series.length < 2) return true;
-    return series[series.length - 1] >= series[0];
+    return (series[series.length - 1] as number) >= (series[0] as number);
   });
 
+  /** Computed SVG path command (`d` attribute) for the sparkline stroke, or `null` when insufficient points exist. */
   readonly sparklinePath = computed<string | null>(() => {
     const raw = this.trendSeries();
     if (!raw || raw.length < 2) return null;
@@ -183,12 +206,14 @@ export class VizMetricComponent {
     return 'M ' + points.join(' L ');
   });
 
+  /** Computed closed SVG path command for the shaded area beneath the sparkline. */
   readonly sparklineFill = computed<string | null>(() => {
     const path = this.sparklinePath();
     if (!path) return null;
     return `${path} L 100,50 L 0,50 Z`;
   });
 
+  /** Computed CSS class (`'val-warn'`, `'val-critical'`, or `''`) based on configured thresholds. */
   readonly alertClass: Signal<string> = computed(() => {
     const val = this.displayValue();
     const conf = this.config();

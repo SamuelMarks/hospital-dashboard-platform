@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Dialog component displaying live backend system diagnostics,
  * database connectivity status, active warnings, and copyable troubleshooting commands.

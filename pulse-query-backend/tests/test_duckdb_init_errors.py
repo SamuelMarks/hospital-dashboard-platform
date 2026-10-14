@@ -2,6 +2,8 @@
 Tests for DuckDB initialization error paths.
 """
 
+from typing import Any
+
 from unittest.mock import MagicMock
 
 import duckdb
@@ -12,18 +14,44 @@ from app.database.duckdb_init import create_hospital_macros, init_duckdb_on_star
 
 
 class _ConnWithUdfConflict:
-  def execute(self, _query: str):
+  def execute(self, _query: str) -> Any:
+    """
+    Verify execute behavior.
+
+    Args:
+        _query: Test parameter or fixture.
+    """
     return None
 
-  def create_function(self, *_args, **_kwargs):
+  def create_function(self, *_args: Any, **_kwargs: Any) -> None:
+    """
+    Verify create function behavior.
+
+    Args:
+        _args: Test parameter or fixture.
+        _kwargs: Test parameter or fixture.
+    """
     raise duckdb.InvalidInputException("already exists")
 
 
 class _ConnWithExecuteFailure:
-  def execute(self, _query: str):
+  def execute(self, _query: str) -> None:
+    """
+    Verify execute behavior.
+
+    Args:
+        _query: Test parameter or fixture.
+    """
     raise RuntimeError("boom")
 
-  def create_function(self, *_args, **_kwargs):
+  def create_function(self, *_args: Any, **_kwargs: Any) -> Any:
+    """
+    Verify create function behavior.
+
+    Args:
+        _args: Test parameter or fixture.
+        _kwargs: Test parameter or fixture.
+    """
     return None
 
 
@@ -37,7 +65,7 @@ def test_create_hospital_macros_handles_execute_errors() -> None:
   create_hospital_macros(_ConnWithExecuteFailure())
 
 
-def test_init_duckdb_on_startup_closes_connection(monkeypatch) -> None:
+def test_init_duckdb_on_startup_closes_connection(monkeypatch: Any) -> None:
   """Startup initialization should always close its connection."""
   conn = MagicMock()
   monkeypatch.setattr(duckdb_manager, "get_connection", lambda: conn)

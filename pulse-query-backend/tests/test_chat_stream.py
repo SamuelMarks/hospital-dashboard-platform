@@ -7,6 +7,7 @@ and `/api/v1/conversations/stream/{conversation_id}` endpoints.
 
 import json
 import uuid
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,11 +18,11 @@ from app.api.deps import get_current_user
 from app.models.chat import Conversation, Message
 from app.models.user import User
 from app.schemas.admin import AdminSettingsResponse
-from app.services.llm_client import ArenaResponse, LLMArenaClient, llm_client
+from app.services.llm_client import ArenaResponse, LLMArenaClient
 
 
 @pytest.fixture
-async def mock_user_auth(db_session):
+async def mock_user_auth(db_session: Any) -> Any:
   """
   Creates a persisted user and overrides the current_user dependency.
   """
@@ -136,15 +137,13 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
   ]
 
   # Run with matching admin settings
-  tokens = []
-  async for token in client_instance.stream_tokens(messages=[], admin_settings=admin_settings_match):
-    tokens.append(token)
+  tokens = [token async for token in client_instance.stream_tokens(messages=[], admin_settings=admin_settings_match)]
   assert tokens == ["SELECT ", "1;"]
 
   # Run with unmatched admin settings
-  tokens_unmatched = []
-  async for token in client_instance.stream_tokens(messages=[], admin_settings=admin_settings_unmatched):
-    tokens_unmatched.append(token)
+  tokens_unmatched = [
+    token async for token in client_instance.stream_tokens(messages=[], admin_settings=admin_settings_unmatched)
+  ]
   assert tokens_unmatched == ["SELECT ", "1;"]
 
   # 2. Test text-based chunk
@@ -155,25 +154,23 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
   text_chunk.choices = [choice_txt]
   mock_client.completion.return_value = [text_chunk]
 
-  text_tokens = []
-  async for token in client_instance.stream_tokens(messages=[]):
-    text_tokens.append(token)
+  text_tokens = [token async for token in client_instance.stream_tokens(messages=[])]
   assert text_tokens == ["COUNT(*) "]
 
   # 2b. Test async iterable stream (__aiter__)
-  async def async_chunk_generator():
+  async def async_chunk_generator() -> Any:
+    """Yield mock stream chunks asynchronously."""
     yield chunk1
     yield chunk_empty
     yield chunk2
 
   mock_client.completion.return_value = async_chunk_generator()
-  async_tokens = []
-  async for token in client_instance.stream_tokens(messages=[]):
-    async_tokens.append(token)
+  async_tokens = [token async for token in client_instance.stream_tokens(messages=[])]
   assert async_tokens == ["SELECT ", "1;"]
 
   # 2c. Test generator raising exception during stream pump
-  def faulty_generator():
+  def faulty_generator() -> Any:
+    """Yield one chunk then raise RuntimeError."""
     yield chunk1
     raise RuntimeError("Pump generator crashed")
 
@@ -182,9 +179,7 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
     mock_single.return_value = ArenaResponse(
       provider_name="Mock", model_identifier="test/mock", content="SELECT recovered;", latency_ms=5, error=None
     )
-    pump_tokens = []
-    async for token in client_instance.stream_tokens(messages=[]):
-      pump_tokens.append(token)
+    pump_tokens = [token async for token in client_instance.stream_tokens(messages=[])]
     assert "SELECT " in pump_tokens[0]
     assert "recovered;" in "".join(pump_tokens)
 
@@ -193,9 +188,7 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
   single_response.choices = [MagicMock(message=MagicMock(content="SELECT 42;"))]
   mock_client.completion.return_value = single_response
 
-  single_tokens = []
-  async for token in client_instance.stream_tokens(messages=[]):
-    single_tokens.append(token)
+  single_tokens = [token async for token in client_instance.stream_tokens(messages=[])]
   assert "".join(single_tokens).strip() == "SELECT 42;"
 
   # 4. Test fallback with res.error
@@ -224,7 +217,7 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
 
 
 @pytest.mark.asyncio
-async def test_chat_sse_stream_endpoint_success(client: AsyncClient, mock_user_auth, db_session) -> None:
+async def test_chat_sse_stream_endpoint_success(client: AsyncClient, mock_user_auth: Any, db_session: Any) -> None:
   """
   Verifies full Server-Sent Events stream lifecycle for a conversation.
   """
@@ -285,7 +278,9 @@ async def test_chat_sse_stream_endpoint_success(client: AsyncClient, mock_user_a
 
 
 @pytest.mark.asyncio
-async def test_chat_sse_stream_endpoint_conversations_alias(client: AsyncClient, mock_user_auth, db_session) -> None:
+async def test_chat_sse_stream_endpoint_conversations_alias(
+  client: AsyncClient, mock_user_auth: Any, db_session: Any
+) -> None:
   """
   Verifies that the `/api/v1/conversations/stream/{id}` alias operates equivalently.
   """
@@ -299,7 +294,7 @@ async def test_chat_sse_stream_endpoint_conversations_alias(client: AsyncClient,
 
 
 @pytest.mark.asyncio
-async def test_chat_sse_stream_not_found(client: AsyncClient, mock_user_auth) -> None:
+async def test_chat_sse_stream_not_found(client: AsyncClient, mock_user_auth: Any) -> None:
   """
   Verifies 404 response when streaming for a non-existent conversation.
   """

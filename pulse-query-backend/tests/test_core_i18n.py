@@ -1,9 +1,13 @@
-import pytest
+"""Tests for core i18n."""
+
+from typing import Any
+
 from app.core.i18n import Translator, get_translated_message
 
 
-def test_translator_fallback():
+def test_translator_fallback() -> None:
   # Test valid language
+  """Verify translator fallback behavior."""
   msg = get_translated_message("en-US", "error.invalid_credentials")
   assert msg == "Incorrect email or password"
 
@@ -135,7 +139,13 @@ def test_translator_fallback():
   assert msg == "missing.key2"
 
 
-def test_load_locales(tmp_path):
+def test_load_locales(tmp_path: Any) -> None:
+  """
+  Verify load locales behavior.
+
+  Args:
+      tmp_path: Test parameter or fixture.
+  """
   import json
 
   locale_dir = tmp_path / "locales"

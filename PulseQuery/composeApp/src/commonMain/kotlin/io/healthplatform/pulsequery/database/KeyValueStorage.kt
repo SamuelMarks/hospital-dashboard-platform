@@ -9,7 +9,7 @@ package io.healthplatform.pulsequery.database
  *
  * @property database Optional SQLDelight database connection instance.
  */
-class KeyValueStorage(private val database: PulseQueryDatabase? = null) {
+open class KeyValueStorage(private val database: PulseQueryDatabase? = null) {
     private val memoryStorage: MutableMap<String, String> = mutableMapOf()
 
     /**
@@ -18,7 +18,7 @@ class KeyValueStorage(private val database: PulseQueryDatabase? = null) {
      * @param key Unique key to associate with the value.
      * @param value String value to persist.
      */
-    fun save(key: String, value: String) {
+    open fun save(key: String, value: String) {
         val db = database
         if (db != null) {
             db.appDatabaseQueries.insertConfig(key, value)
@@ -33,7 +33,7 @@ class KeyValueStorage(private val database: PulseQueryDatabase? = null) {
      * @param key Key to look up.
      * @return String value or null if not found.
      */
-    fun get(key: String): String? {
+    open fun get(key: String): String? {
         val db = database
         return if (db != null) {
             db.appDatabaseQueries.getConfig(key).executeAsOneOrNull()
@@ -47,7 +47,7 @@ class KeyValueStorage(private val database: PulseQueryDatabase? = null) {
      *
      * @param key Key to delete.
      */
-    fun remove(key: String) {
+    open fun remove(key: String) {
         val db = database
         if (db != null) {
             db.appDatabaseQueries.clearConfig(key)

@@ -1,74 +1,80 @@
 /**
- * Benchmarks Screen module for displaying SQL and MPAX evaluation benchmarks.
+ * Benchmarks Screen module for displaying SQL and MPAX evaluation benchmarks,
+ * delegating state and API calls to [BenchmarksViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.healthplatform.pulsequery.di.AppContainer
-import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonPrimitive
+import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksUiState as ViewModelBenchmarksUiState
+import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksViewModel
+import io.healthplatform.pulsequery.ui.screens.benchmarks.MpaxBenchmarkItem as ViewModelMpaxBenchmarkItem
+import io.healthplatform.pulsequery.ui.screens.benchmarks.SqlBenchmarkItem as ViewModelSqlBenchmarkItem
 
 /**
- * Represents a parsed gold-standard SQL benchmark entry.
- *
- * @property theme Clinical or operational theme of the query.
- * @property sql Ground-truth SQL query text.
- * @property difficulty Complexity rating of the scenario.
- * @property description Detailed scenario problem statement.
+ * Re-exported [ViewModelSqlBenchmarkItem] typealias preserving package compatibility for callers and tests.
  */
-data class SqlBenchmarkItem(
-    val theme: String,
-    val sql: String,
-    val difficulty: String,
-    val description: String
-)
+typealias SqlBenchmarkItem = ViewModelSqlBenchmarkItem
 
 /**
- * Represents a parsed MPAX linear programming benchmark scenario.
- *
- * @property title Scenario title.
- * @property difficulty Difficulty tier (e.g., Simple, Medium, Complex).
- * @property description High-level description of capacity constraints.
- * @property targetService Target medical service or department.
+ * Re-exported [ViewModelSqlBenchmarkItem] scenario typealias preserving package compatibility for callers and tests.
  */
-data class MpaxBenchmarkItem(
-    val title: String,
-    val difficulty: String,
-    val description: String,
-    val targetService: String
-)
+typealias SqlBenchmarkScenario = ViewModelSqlBenchmarkItem
 
 /**
- * State container for the Benchmarks UI screen.
- *
- * @property isLoading Flag indicating whether benchmarks are currently being fetched.
- * @property errorMessage User-visible error text if loading fails.
- * @property selectedTabIndex Currently selected tab index (0 for SQL, 1 for MPAX).
- * @property sqlBenchmarks List of loaded SQL benchmark items.
- * @property mpaxBenchmarks List of loaded MPAX benchmark items.
+ * Re-exported [ViewModelMpaxBenchmarkItem] typealias preserving package compatibility for callers and tests.
  */
-data class BenchmarksUiState(
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val selectedTabIndex: Int = 0,
-    val sqlBenchmarks: List<SqlBenchmarkItem> = emptyList(),
-    val mpaxBenchmarks: List<MpaxBenchmarkItem> = emptyList()
-)
+typealias MpaxBenchmarkItem = ViewModelMpaxBenchmarkItem
+
+/**
+ * Re-exported [ViewModelMpaxBenchmarkItem] scenario typealias preserving package compatibility for callers and tests.
+ */
+typealias MpaxBenchmarkScenario = ViewModelMpaxBenchmarkItem
+
+/**
+ * Re-exported [ViewModelBenchmarksUiState] typealias preserving package compatibility for callers and tests.
+ */
+typealias BenchmarksUiState = ViewModelBenchmarksUiState
 
 /**
  * Screen rendering golden evaluation benchmarks for SQL generation and MPAX optimization.
@@ -76,87 +82,29 @@ data class BenchmarksUiState(
  * @param modifier Optional layout modifier.
  * @param initialState Optional initial [BenchmarksUiState] (useful for deterministic state testing and previews).
  * @param onSimulateMpax Callback invoked with scenario prompt to launch MPAX arena.
+ * @param viewModel Optional [BenchmarksViewModel] instance for state orchestration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BenchmarksScreen(
     modifier: Modifier = Modifier,
     initialState: BenchmarksUiState? = null,
-    onSimulateMpax: (String) -> Unit = {}
+    onSimulateMpax: (String) -> Unit = {},
+    viewModel: BenchmarksViewModel? = null
 ) {
-    var uiState by remember { mutableStateOf(initialState ?: BenchmarksUiState(isLoading = true)) }
     val coroutineScope = rememberCoroutineScope()
-
-    /**
-     * Executes the asynchronous loading of SQL and MPAX benchmark catalogs.
-     */
-    suspend fun performLoadBenchmarks() {
-        uiState = uiState.copy(isLoading = true, errorMessage = null)
-        runCatching {
-            val sqlRaw = AppContainer.benchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().body()
-            val mpaxRaw = AppContainer.benchmarksApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet().body()
-
-            val sqlItems = sqlRaw.map { map ->
-                val elemMap = map as? Map<*, *> ?: emptyMap<String, Any>()
-                val themeVal = elemMap["theme"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "General"
-                val sqlVal = elemMap["sql"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
-                val diffVal = elemMap["difficulty"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Medium"
-                val descVal = elemMap["description"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') }
-                    ?: elemMap["question"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
-
-                SqlBenchmarkItem(
-                    theme = themeVal,
-                    sql = sqlVal,
-                    difficulty = diffVal,
-                    description = descVal
-                )
-            }
-
-            val mpaxItems = mpaxRaw.map { map ->
-                val elemMap = map as? Map<*, *> ?: emptyMap<String, Any>()
-                val titleVal = elemMap["title"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Optimization Scenario"
-                val diffVal = elemMap["difficulty"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Standard"
-                val descVal = elemMap["description"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: ""
-                val targetVal = elemMap["target_service"]?.let { (it as? JsonElement)?.jsonPrimitive?.content ?: it.toString().trim('"') } ?: "Hospital Wide"
-
-                MpaxBenchmarkItem(
-                    title = titleVal,
-                    difficulty = diffVal,
-                    description = descVal,
-                    targetService = targetVal
-                )
-            }
-
-            Pair(sqlItems, mpaxItems)
-        }.fold(
-            onSuccess = { (sqlItems, mpaxItems) ->
-                uiState = uiState.copy(
-                    isLoading = false,
-                    sqlBenchmarks = sqlItems,
-                    mpaxBenchmarks = mpaxItems
-                )
-            },
-            onFailure = { e ->
-                uiState = uiState.copy(
-                    isLoading = false,
-                    errorMessage = e.message ?: "Failed to load benchmarks"
-                )
-            }
+    val vm = remember(viewModel, initialState, coroutineScope) {
+        viewModel ?: BenchmarksViewModel(
+            scope = coroutineScope,
+            initialState = initialState ?: BenchmarksUiState(isLoading = true)
         )
     }
 
-    /**
-     * Triggers asynchronous benchmark reload in coroutine scope.
-     */
-    fun loadBenchmarks() {
-        coroutineScope.launch {
-            performLoadBenchmarks()
-        }
-    }
+    val uiState by vm.state.collectAsState()
 
-    if (initialState == null) {
-        LaunchedEffect(Unit) {
-            performLoadBenchmarks()
+    if (initialState == null && viewModel == null) {
+        LaunchedEffect(vm) {
+            vm.performLoadBenchmarks()
         }
     }
 
@@ -165,7 +113,7 @@ fun BenchmarksScreen(
             TopAppBar(
                 title = { Text("AI & Optimization Benchmarks") },
                 actions = {
-                    IconButton(onClick = { loadBenchmarks() }) {
+                    IconButton(onClick = { vm.loadBenchmarks() }) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh Benchmarks")
                     }
                 }
@@ -178,16 +126,16 @@ fun BenchmarksScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TabRow(selectedTabIndex = uiState.selectedTabIndex) {
+            PrimaryTabRow(selectedTabIndex = uiState.selectedTabIndex) {
                 Tab(
                     selected = uiState.selectedTabIndex == 0,
-                    onClick = { uiState = uiState.copy(selectedTabIndex = 0) },
+                    onClick = { vm.selectTab(0) },
                     text = { Text("Text-to-SQL (${uiState.sqlBenchmarks.size})") },
                     modifier = Modifier.testTag("tab-sql")
                 )
                 Tab(
                     selected = uiState.selectedTabIndex == 1,
-                    onClick = { uiState = uiState.copy(selectedTabIndex = 1) },
+                    onClick = { vm.selectTab(1) },
                     text = { Text("MPAX Scenarios (${uiState.mpaxBenchmarks.size})") },
                     modifier = Modifier.testTag("tab-mpax")
                 )
@@ -211,7 +159,7 @@ fun BenchmarksScreen(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.height(12.dp))
-                            Button(onClick = { loadBenchmarks() }) {
+                            Button(onClick = { vm.loadBenchmarks() }) {
                                 Text("Retry")
                             }
                         }

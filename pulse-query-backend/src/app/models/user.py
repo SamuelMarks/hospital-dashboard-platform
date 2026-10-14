@@ -2,7 +2,7 @@
 
 import enum
 import uuid
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -53,7 +53,7 @@ class User(Base):
   role: Mapped[str] = mapped_column(String, default=Role.DATA_ANALYST.value, nullable=False)
   language_preference: Mapped[str] = mapped_column(String, default="en", nullable=False)
 
-  # Relationship: One-to-Many
+  # One-to-many relationships
   dashboards: Mapped[list["Dashboard"]] = relationship("app.models.dashboard.Dashboard", back_populates="owner")
   dashboard_shares: Mapped[list["DashboardShare"]] = relationship(
     "app.models.dashboard.DashboardShare", back_populates="user", cascade="all, delete-orphan", lazy="selectin"

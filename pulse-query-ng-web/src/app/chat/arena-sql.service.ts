@@ -1,62 +1,36 @@
-/** @docs */
 /**
- * Arena SQL execution client.
- *
- * Executes candidate SQL snippets against the preview endpoint.
+ * @fileoverview Arena SQL execution client delegating to the generated OpenAPI `AiService`.
  */
-import { inject, Service } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { BASE_PATH } from '../api-client';
-import { environment } from '../../environments/environment';
+
+import { inject, Injectable } from '@angular/core';
+import { AiService, SQLExecutionRequest, SQLExecutionResponse } from '../api-client';
 import { Observable } from 'rxjs';
 
-/** Payload for executing a SQL preview. */
-export interface SqlExecutionRequest {
-  /** SQL query text. */
-  sql: string;
-  /** Optional row limit for previews. */
-  max_rows?: number;
-  /** Optional global parameters injected into templates. */
-  global_params?: Record<string, unknown>;
-}
+/**
+ * Payload for executing a read-only SQL preview query.
+ */
+export type SqlExecutionRequest = SQLExecutionRequest;
 
-/** Response shape for SQL preview execution. */
-export interface SqlExecutionResponse {
-  /** Result rows. */
-  data: Record<string, unknown>[];
-  /** Column list. */
-  columns: string[];
-  /** Optional error message. */
-  error?: string | null;
-}
+/**
+ * Response shape returned by the read-only SQL preview endpoint.
+ */
+export type SqlExecutionResponse = SQLExecutionResponse;
 
-/** Service wrapper for the AI execute endpoint. */
-@Service()
+/**
+ * Service wrapper delegating read-only SQL preview execution to `AiService`.
+ */
+@Injectable({ providedIn: 'root' })
 export class ArenaSqlService {
-  /** Resolved API base URL. */
-  private readonly baseUrl: string;
+  /** Injected generated OpenAPI AI service client. */
+  private readonly aiApi = inject(AiService);
 
   /**
-   * Creates a new ArenaSqlService.
-   */
-  /** HttpClient instance */
-  private readonly http = inject(HttpClient);
-  /** Injected base path */
-  private readonly basePathRaw = inject(BASE_PATH, { optional: true });
-
-  /** Initializes base URL */
-  constructor() {
-    const basePath = this.basePathRaw;
-    const resolved = Array.isArray(basePath) ? basePath[0] : basePath;
-    this.baseUrl = resolved || environment.apiUrl || 'http://localhost:8000';
-  }
-
-  /**
-   * Execute a SQL preview request.
+   * Executes a read-only SQL preview query via `/api/v1/ai/execute`.
    *
-   * @param request Execution payload.
+   * @param request - SQL execution request payload.
+   * @returns Observable emitting the SQL execution response.
    */
   execute(request: SqlExecutionRequest): Observable<SqlExecutionResponse> {
-    return this.http.post<SqlExecutionResponse>(`${this.baseUrl}/api/v1/ai/execute`, request);
+    return this.aiApi.executeSqlPreviewApiV1AiExecutePost(request);
   }
 }

@@ -6,8 +6,8 @@ import { RouterStateSnapshot } from '@angular/router';
 
 describe('A11yTitleStrategy', () => {
   let strategy: A11yTitleStrategy;
-  let titleSpy: { setTitle: any };
-  let announcerSpy: { announce: any };
+  let titleSpy: { setTitle: ReturnType<typeof vi.fn> };
+  let announcerSpy: { announce: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     titleSpy = { setTitle: vi.fn() };
@@ -25,7 +25,7 @@ describe('A11yTitleStrategy', () => {
 
   it('should set title and announce it when a title is built', () => {
     // Stub buildTitle since it's a protected method of the base class
-    vi.spyOn(strategy as any, 'buildTitle').mockReturnValue('Test Title');
+    vi.spyOn(strategy, 'buildTitle').mockReturnValue('Test Title');
 
     const snapshot = {} as RouterStateSnapshot;
     strategy.updateTitle(snapshot);
@@ -35,7 +35,7 @@ describe('A11yTitleStrategy', () => {
   });
 
   it('should not set title or announce if title is undefined', () => {
-    vi.spyOn(strategy as any, 'buildTitle').mockReturnValue(undefined);
+    vi.spyOn(strategy, 'buildTitle').mockReturnValue(undefined);
 
     const snapshot = {} as RouterStateSnapshot;
     strategy.updateTitle(snapshot);

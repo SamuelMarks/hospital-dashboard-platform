@@ -5,9 +5,9 @@ import { QueryCartProvisioningService } from '../query-cart-provisioning.service
 import { DashboardStore } from '../dashboard.store';
 import { type QueryCartItem } from '../../global/query-cart.models';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { computed, signal } from '@angular/core';
+import { computed, signal, Signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-dialog.component';
@@ -15,15 +15,21 @@ import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-
 describe('QueryCartComponent', () => {
   let fixture: ComponentFixture<QueryCartComponent>;
   let component: QueryCartComponent;
-  let mockCart: any;
-  let mockDialog: any;
-  let mockProvisioning: any;
-  let mockStore: any;
+  let mockCart: {
+    items: Signal<QueryCartItem[]>;
+    count: Signal<number>;
+    clear: ReturnType<typeof vi.fn>;
+    remove: ReturnType<typeof vi.fn>;
+    rename: ReturnType<typeof vi.fn>;
+  };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
+  let mockProvisioning: { addToDashboard: ReturnType<typeof vi.fn> };
+  let mockStore: { loadDashboard: ReturnType<typeof vi.fn> };
   let snackBar: MatSnackBar;
 
   beforeEach(async () => {
     mockCart = {
-      items: signal([]).asReadonly(),
+      items: signal<QueryCartItem[]>([]).asReadonly(),
       count: computed(() => 0),
       clear: vi.fn(),
       remove: vi.fn(),
@@ -46,7 +52,9 @@ describe('QueryCartComponent', () => {
     fixture = TestBed.createComponent(QueryCartComponent);
     component = fixture.componentInstance;
     snackBar = fixture.debugElement.injector.get(MatSnackBar);
-    vi.spyOn(snackBar, 'open').mockImplementation((() => {}) as any);
+    vi.spyOn(snackBar, 'open').mockImplementation(
+      () => ({}) as unknown as MatSnackBarRef<TextOnlySnackBar>,
+    );
     fixture.detectChanges();
   });
 

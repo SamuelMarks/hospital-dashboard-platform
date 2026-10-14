@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview HTTP Interceptor for Authentication Headers and 401 Handling.
  */
@@ -55,7 +54,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
               });
               return next(retryReq);
             }),
-            catchError((refreshErr) => {
+            catchError((refreshErr: unknown) => {
               authService.logout(false);
               const returnUrl = router.routerState.snapshot.url || '/';
               router.navigate(['/login'], { queryParams: { returnUrl } });

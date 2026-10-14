@@ -1,10 +1,21 @@
 /**
- * MPAX Arena Screen module for evaluating LLM outputs against mathematical hospital optimization models.
+ * MPAX Arena Screen module for evaluating LLM outputs against mathematical hospital optimization models,
+ * delegating state and backend calls to [MpaxArenaViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,45 +23,45 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.MpaxArenaCandidate
-import io.healthplatform.pulsequery.api.models.MpaxArenaRequest
-import io.healthplatform.pulsequery.di.AppContainer
-import kotlinx.coroutines.launch
+import io.healthplatform.pulsequery.ui.screens.mpax.MPAX_ARENA_MODES as ViewModelMpaxArenaModes
+import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaUiState as ViewModelMpaxArenaUiState
+import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaViewModel
 
 /**
- * State container for the MPAX Arena UI screen.
- *
- * @property prompt Input prompt for the optimization arena.
- * @property selectedMode Chosen evaluation mode (critic, translator, constraints, sql_vs_mpax).
- * @property isRunning Flag indicating whether an arena run is currently executing.
- * @property isVoting Flag indicating whether a candidate vote is currently in flight.
- * @property experimentId Unique identifier of the persisted arena run.
- * @property errorMessage Error text if evaluation fails.
- * @property candidates Evaluated candidate results from the LLM arena.
- * @property selectedCandidateId Identifier of user-voted winning candidate.
+ * Re-exported [ViewModelMpaxArenaUiState] typealias preserving package compatibility for callers and tests.
  */
-data class MpaxArenaUiState(
-    val prompt: String = "Optimize bed capacity during an influx of emergency ICU admissions.",
-    val selectedMode: String = "critic",
-    val isRunning: Boolean = false,
-    val isVoting: Boolean = false,
-    val experimentId: String? = null,
-    val errorMessage: String? = null,
-    val candidates: List<MpaxArenaCandidate> = emptyList(),
-    val selectedCandidateId: String? = null
-)
+typealias MpaxArenaUiState = ViewModelMpaxArenaUiState
 
 /**
- * Available evaluation modes for MPAX Arena.
+ * Re-exported available evaluation modes for MPAX Arena.
  */
-val MPAX_ARENA_MODES: List<String> = listOf("critic", "translator", "constraints", "sql_vs_mpax")
+val MPAX_ARENA_MODES: List<String> = ViewModelMpaxArenaModes
 
 /**
  * Screen providing comparative evaluation between LLM responses and MPAX linear programming solutions.
@@ -58,86 +69,27 @@ val MPAX_ARENA_MODES: List<String> = listOf("critic", "translator", "constraints
  * @param modifier Optional layout modifier.
  * @param initialPrompt Optional pre-filled scenario prompt (e.g., from benchmarks).
  * @param initialState Optional initial [MpaxArenaUiState] for testing and previews.
+ * @param viewModel Optional [MpaxArenaViewModel] instance for state orchestration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MpaxArenaScreen(
     modifier: Modifier = Modifier,
     initialPrompt: String? = null,
-    initialState: MpaxArenaUiState? = null
+    initialState: MpaxArenaUiState? = null,
+    viewModel: MpaxArenaViewModel? = null
 ) {
-    var uiState by remember {
-        mutableStateOf(
-            initialState ?: MpaxArenaUiState(
+    val coroutineScope = rememberCoroutineScope()
+    val vm = remember(viewModel, initialPrompt, initialState, coroutineScope) {
+        viewModel ?: MpaxArenaViewModel(
+            scope = coroutineScope,
+            initialState = initialState ?: MpaxArenaUiState(
                 prompt = initialPrompt ?: "Optimize bed capacity during an influx of emergency ICU admissions."
             )
         )
     }
-    val coroutineScope = rememberCoroutineScope()
 
-    /**
-     * Executes the MPAX arena evaluation using the current prompt and mode.
-     */
-    fun runArena() {
-        if (uiState.prompt.isBlank()) return
-        coroutineScope.launch {
-            uiState = uiState.copy(isRunning = true, errorMessage = null)
-            runCatching {
-                val req = MpaxArenaRequest(
-                    prompt = uiState.prompt,
-                    mode = uiState.selectedMode
-                )
-                AppContainer.mpaxArenaApi.runMpaxArenaModeApiV1MpaxArenaRunPost(req).body()
-            }.fold(
-                onSuccess = { response ->
-                    uiState = uiState.copy(
-                        isRunning = false,
-                        experimentId = response.experimentId,
-                        candidates = response.candidates,
-                        selectedCandidateId = response.candidates.firstOrNull { it.isSelected == true }?.id
-                    )
-                },
-                onFailure = { e ->
-                    uiState = uiState.copy(
-                        isRunning = false,
-                        errorMessage = e.message ?: "Failed to execute MPAX Arena evaluation"
-                    )
-                }
-            )
-        }
-    }
-
-    /**
-     * Casts a persistent winning vote for an LLM candidate.
-     *
-     * @param candidateId Unique ID of the winning candidate.
-     */
-    fun voteCandidate(candidateId: String) {
-        val expId = uiState.experimentId ?: return
-        coroutineScope.launch {
-            uiState = uiState.copy(isVoting = true)
-            runCatching {
-                AppContainer.mpaxArenaApi.voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(
-                    runId = expId,
-                    candidateId = candidateId
-                ).body()
-            }.fold(
-                onSuccess = { updated ->
-                    uiState = uiState.copy(
-                        isVoting = false,
-                        candidates = updated.candidates,
-                        selectedCandidateId = candidateId
-                    )
-                },
-                onFailure = { e ->
-                    uiState = uiState.copy(
-                        isVoting = false,
-                        errorMessage = e.message ?: "Failed to record candidate vote"
-                    )
-                }
-            )
-        }
-    }
+    val uiState by vm.state.collectAsState()
 
     Scaffold(
         topBar = {
@@ -155,7 +107,7 @@ fun MpaxArenaScreen(
         ) {
             OutlinedTextField(
                 value = uiState.prompt,
-                onValueChange = { uiState = uiState.copy(prompt = it) },
+                onValueChange = { vm.updatePrompt(it) },
                 label = { Text("Clinical Optimization Scenario Prompt") },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
@@ -178,7 +130,7 @@ fun MpaxArenaScreen(
                 MPAX_ARENA_MODES.forEach { mode ->
                     FilterChip(
                         selected = uiState.selectedMode == mode,
-                        onClick = { uiState = uiState.copy(selectedMode = mode) },
+                        onClick = { vm.selectMode(mode) },
                         label = { Text(mode.replace('_', ' ').replaceFirstChar { it.uppercase() }) }
                     )
                 }
@@ -187,7 +139,7 @@ fun MpaxArenaScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Button(
-                onClick = { runArena() },
+                onClick = { vm.runArena() },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isRunning && uiState.prompt.isNotBlank()
             ) {
@@ -207,19 +159,19 @@ fun MpaxArenaScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (uiState.errorMessage != null) {
+            uiState.errorMessage?.let { err ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = uiState.errorMessage ?: "Unknown error",
+                            text = err,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { runArena() }) {
+                        Button(onClick = { vm.runArena() }) {
                             Text("Retry")
                         }
                     }
@@ -248,7 +200,7 @@ fun MpaxArenaScreen(
                             isWinner = uiState.selectedCandidateId == candidate.id,
                             isVoting = uiState.isVoting,
                             onVote = {
-                                voteCandidate(candidate.id)
+                                vm.voteCandidate(candidate.id)
                             }
                         )
                     }

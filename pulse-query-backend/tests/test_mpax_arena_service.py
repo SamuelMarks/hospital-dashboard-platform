@@ -1,3 +1,7 @@
+"""Tests for mpax arena service."""
+
+from typing import Any
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,46 +12,75 @@ from app.services.mpax_arena_service import MpaxArenaService
 
 
 @pytest.fixture
-def service():
+def service() -> Any:
+  """Verify service behavior."""
   return MpaxArenaService()
 
 
 @pytest.fixture
-def mock_user():
+def mock_user() -> Any:
+  """Verify mock user behavior."""
   return User(id="user1")
 
 
 @pytest.fixture
-def mock_db():
+def mock_db() -> Any:
+  """Verify mock db behavior."""
   return AsyncMock()
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_invalid_mode(service, mock_db, mock_user):
+async def test_run_mpax_arena_invalid_mode(service: Any, mock_db: Any, mock_user: Any) -> None:
+  """
+  Verify run mpax arena invalid mode behavior.
+
+  Args:
+      service: Test parameter or fixture.
+      mock_db: Test parameter or fixture.
+      mock_user: Test parameter or fixture.
+  """
   req = MpaxArenaRequest(prompt="Test", mode="invalid_mode")
   with pytest.raises(ValueError, match="Unknown mode"):
     await service.run_mpax_arena(req, mock_db, mock_user)
 
 
 @pytest.mark.asyncio
-async def test_run_judge_mode(service, mock_db, mock_user):
+async def test_run_judge_mode(service: Any, mock_db: Any, mock_user: Any) -> None:
+  """
+  Verify run judge mode behavior.
+
+  Args:
+      service: Test parameter or fixture.
+      mock_db: Test parameter or fixture.
+      mock_user: Test parameter or fixture.
+  """
   req = MpaxArenaRequest(prompt="Test", mode="judge", demand_sql="SELECT 1")
 
-  with patch.object(service, "_get_demand_data", return_value=[{"a": 1}]):
-    with patch("app.services.mpax_arena_service.simulation_service.run_scenario") as mock_sim:
-      mock_sim.return_value.model_dump.return_value = {"status": "ok"}
-      with patch(
-        "app.services.mpax_arena_service.llm_client.generate_arena_competition", new_callable=AsyncMock
-      ) as mock_llm:
-        mock_llm.return_value = [MagicMock(provider_name="m1", content="```sql\nSELECT 1\n```")]
+  with (
+    patch.object(service, "_get_demand_data", return_value=[{"a": 1}]),
+    patch("app.services.mpax_arena_service.simulation_service.run_scenario") as mock_sim,
+  ):
+    mock_sim.return_value.model_dump.return_value = {"status": "ok"}
+    with patch(
+      "app.services.mpax_arena_service.llm_client.generate_arena_competition", new_callable=AsyncMock
+    ) as mock_llm:
+      mock_llm.return_value = [MagicMock(provider_name="m1", content="```sql\nSELECT 1\n```")]
 
-        res = await service.run_mpax_arena(req, mock_db, mock_user)
-        assert res.mode == "judge"
-        assert len(res.candidates) == 1
+      res = await service.run_mpax_arena(req, mock_db, mock_user)
+      assert res.mode == "judge"
+      assert len(res.candidates) == 1
 
 
 @pytest.mark.asyncio
-async def test_run_translator_mode(service, mock_db, mock_user):
+async def test_run_translator_mode(service: Any, mock_db: Any, mock_user: Any) -> None:
+  """
+  Verify run translator mode behavior.
+
+  Args:
+      service: Test parameter or fixture.
+      mock_db: Test parameter or fixture.
+      mock_user: Test parameter or fixture.
+  """
   req = MpaxArenaRequest(prompt="Test", mode="translator")
 
   with patch("app.services.mpax_arena_service.simulation_service.run_scenario") as mock_sim:
@@ -64,7 +97,15 @@ async def test_run_translator_mode(service, mock_db, mock_user):
 
 
 @pytest.mark.asyncio
-async def test_run_constraints_mode(service, mock_db, mock_user):
+async def test_run_constraints_mode(service: Any, mock_db: Any, mock_user: Any) -> None:
+  """
+  Verify run constraints mode behavior.
+
+  Args:
+      service: Test parameter or fixture.
+      mock_db: Test parameter or fixture.
+      mock_user: Test parameter or fixture.
+  """
   req = MpaxArenaRequest(prompt="Test", mode="constraints")
 
   with patch("app.services.mpax_arena_service.llm_client.generate_arena_competition", new_callable=AsyncMock) as mock_llm:
@@ -86,7 +127,15 @@ async def test_run_constraints_mode(service, mock_db, mock_user):
 
 
 @pytest.mark.asyncio
-async def test_run_sql_vs_mpax_mode(service, mock_db, mock_user):
+async def test_run_sql_vs_mpax_mode(service: Any, mock_db: Any, mock_user: Any) -> None:
+  """
+  Verify run sql vs mpax mode behavior.
+
+  Args:
+      service: Test parameter or fixture.
+      mock_db: Test parameter or fixture.
+      mock_user: Test parameter or fixture.
+  """
   req = MpaxArenaRequest(prompt="Test", mode="sql_vs_mpax")
 
   with patch("app.services.mpax_arena_service.simulation_service.run_scenario") as mock_sim:
@@ -109,7 +158,15 @@ async def test_run_sql_vs_mpax_mode(service, mock_db, mock_user):
 
 
 @pytest.mark.asyncio
-async def test_run_critic_mode(service, mock_db, mock_user):
+async def test_run_critic_mode(service: Any, mock_db: Any, mock_user: Any) -> None:
+  """
+  Verify run critic mode behavior.
+
+  Args:
+      service: Test parameter or fixture.
+      mock_db: Test parameter or fixture.
+      mock_user: Test parameter or fixture.
+  """
   req = MpaxArenaRequest(prompt="Test", mode="critic")
 
   with patch("app.services.mpax_arena_service.llm_client.generate_arena_competition", new_callable=AsyncMock) as mock_llm:
@@ -132,11 +189,23 @@ async def test_run_critic_mode(service, mock_db, mock_user):
       assert res.candidates[1].mpax_score == 0
 
 
-def test_get_demand_data_empty(service):
+def test_get_demand_data_empty(service: Any) -> None:
+  """
+  Verify get demand data empty behavior.
+
+  Args:
+      service: Test parameter or fixture.
+  """
   assert service._get_demand_data("") == []
 
 
-def test_get_demand_data_valid(service):
+def test_get_demand_data_valid(service: Any) -> None:
+  """
+  Verify get demand data valid behavior.
+
+  Args:
+      service: Test parameter or fixture.
+  """
   with patch("app.services.mpax_arena_service.duckdb_manager.get_readonly_connection") as mock_conn:
     mock_cursor = mock_conn.return_value.cursor.return_value
     mock_cursor.description = [("col1",), ("col2",)]
@@ -147,6 +216,12 @@ def test_get_demand_data_valid(service):
     assert data[0]["col1"] == 1
 
 
-def test_extract_sql(service):
+def test_extract_sql(service: Any) -> None:
+  """
+  Verify extract sql behavior.
+
+  Args:
+      service: Test parameter or fixture.
+  """
   assert service._extract_sql("```sql\n SELECT 1 \n```") == "SELECT 1"
   assert service._extract_sql("SELECT 1") is None

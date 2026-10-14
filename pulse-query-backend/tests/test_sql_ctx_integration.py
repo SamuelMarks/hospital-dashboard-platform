@@ -3,13 +3,16 @@ Tests for AI Context Integration.
 Extended to verify Complex Multitable SQL execution paths.
 """
 
+from typing import Any
+
 # Use in-memory DuckDB for functional verification of complex queries
 import duckdb
 import pytest
 
 
 @pytest.fixture
-def complex_db():
+def complex_db() -> Any:
+  """Verify complex db behavior."""
   conn = duckdb.connect(":memory:")
   # Seed Census
   conn.execute(
@@ -30,7 +33,7 @@ def complex_db():
   conn.close()
 
 
-def test_midnight_noon_calculus(complex_db):
+def test_midnight_noon_calculus(complex_db: Any) -> None:
   """
   Test the Q20 'Midnight vs Noon' query logic specifically.
   This query uses correlated subqueries which can be tricky in some SQL dialects.
@@ -62,7 +65,7 @@ def test_midnight_noon_calculus(complex_db):
   assert res[0][2] == 1
 
 
-def test_transfer_join_logic(complex_db):
+def test_transfer_join_logic(complex_db: Any) -> None:
   """
   Verify Q10 Transfers Join logic.
   """

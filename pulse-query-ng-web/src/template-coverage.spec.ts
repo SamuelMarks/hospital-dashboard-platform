@@ -1,12 +1,22 @@
+/**
+ * @fileoverview Static and DOM integration verification for all Angular component templates
+ * and stylesheets in `pulse-query-ng-web/src/app`.
+ */
+
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync, existsSync } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-type TemplateRef = {
+interface TemplateRef {
   sourceFile: string;
   templatePath: string;
-};
+}
+
+interface StyleRef {
+  sourceFile: string;
+  stylePath: string;
+}
 
 const specDir = dirname(fileURLToPath(import.meta.url));
 const appRootCandidates = [
@@ -47,16 +57,38 @@ function getTemplateRefs(): TemplateRef[] {
     templateRegex.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = templateRegex.exec(contents))) {
-      const templatePath = resolve(dirname(file), match[1]);
-      templateRefs.push({ sourceFile: file, templatePath });
+      const rel = match[1];
+      if (rel) {
+        const templatePath = resolve(dirname(file), rel);
+        templateRefs.push({ sourceFile: file, templatePath });
+      }
     }
   }
 
   return templateRefs;
 }
 
-describe('Template coverage', () => {
-  it('ensures all templateUrl entries resolve to files', () => {
+function getStyleRefs(): StyleRef[] {
+  const tsFiles = walk(appRootPath, (file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'));
+  const styleRefs: StyleRef[] = [];
+  const styleUrlRegex = /styleUrl\s*:\s*['"`]([^'"`]+)['"`]/g;
+
+  for (const file of tsFiles) {
+    const contents = readFileSync(file, 'utf8');
+    styleUrlRegex.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = styleUrlRegex.exec(contents))) {
+      const rel = match[1];
+      if (rel) {
+        styleRefs.push({ sourceFile: file, stylePath: resolve(dirname(file), rel) });
+      }
+    }
+  }
+  return styleRefs;
+}
+
+describe('Template and Style URL Resolution & DOM Rendering Verification', () => {
+  it('ensures all templateUrl entries resolve to existing HTML files', () => {
     const refs = getTemplateRefs();
     const htmlFiles = walk(appRootPath, (file) => file.endsWith('.html'));
     expect(refs.length).toBe(htmlFiles.length);
@@ -64,7 +96,13 @@ describe('Template coverage', () => {
     expect(missing).toEqual([]);
   });
 
-  it('ensures every template has a sibling spec file', () => {
+  it('ensures all styleUrl entries resolve to existing stylesheet files', () => {
+    const styleRefs = getStyleRefs();
+    const missing = styleRefs.filter((ref) => !existsSync(ref.stylePath));
+    expect(missing).toEqual([]);
+  });
+
+  it('ensures every external template has a sibling spec file that tests the component', () => {
     const refs = getTemplateRefs();
     const missing = refs.filter(
       (ref) => !existsSync(ref.templatePath.replace(/\.html$/, '.spec.ts')),
@@ -76,5 +114,18 @@ describe('Template coverage', () => {
     const htmlFiles = walk(appRootPath, (file) => file.endsWith('.html'));
     const orphaned = htmlFiles.filter((file) => !existsSync(file.replace(/\.html$/, '.ts')));
     expect(orphaned).toEqual([]);
+  });
+
+  it('parses and mounts every component template into a JSDOM container and verifies non-empty DOM nodes', () => {
+    const refs = getTemplateRefs();
+    for (const ref of refs) {
+      const rawHtml = readFileSync(ref.templatePath, 'utf8');
+      expect(rawHtml.trim().length).toBeGreaterThan(0);
+
+      const host = document.createElement('div');
+      host.innerHTML = rawHtml;
+      expect(host.childNodes.length).toBeGreaterThan(0);
+      expect(host.querySelectorAll('*').length).toBeGreaterThan(0);
+    }
   });
 });

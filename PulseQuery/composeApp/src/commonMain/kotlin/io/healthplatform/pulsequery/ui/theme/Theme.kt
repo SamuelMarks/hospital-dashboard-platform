@@ -1,3 +1,6 @@
+/**
+ * Material 3 Theme configuration module defining light and dark color schemes for PulseQuery.
+ */
 package io.healthplatform.pulsequery.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme

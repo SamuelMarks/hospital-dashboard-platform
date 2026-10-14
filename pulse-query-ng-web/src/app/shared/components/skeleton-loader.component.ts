@@ -1,11 +1,15 @@
-/** @docs */
-// pulse-query-ng-web/src/app/shared/components/skeleton-loader.component.ts
+/**
+ * @fileoverview Shimmer skeleton placeholder component for asynchronous widget loading states.
+ */
+
 import { Component, input } from '@angular/core';
 
-/** @docs */
+/** Supported visual layout variants for the skeleton placeholder. */
 export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 
-/** @docs */
+/**
+ * Renders animated shimmer placeholder layouts tailored to specific widget visualization types.
+ */
 @Component({
   selector: 'app-skeleton-loader',
   imports: [],
@@ -116,7 +120,7 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
   ],
   templateUrl: './skeleton-loader.component.html',
 })
-/** @docs */
 export class SkeletonLoaderComponent {
+  /** Layout shape variant to display while widget data is loading. */
   readonly variant = input<SkeletonVariant>('card');
 }

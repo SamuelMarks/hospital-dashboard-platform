@@ -1,9 +1,12 @@
-/** @docs */
+/**
+ * @fileoverview Hospital What-If Simulation component for configuring patient demand SQL,
+ * unit capacities, hard flow constraints, and clinical affinity overrides.
+ */
+
 import { Component, inject, OnInit } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
-// Material
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,10 +15,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { SimulationStore, UnitCapacity } from './simulation.store';
+import { SimulationStore } from './simulation.store';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 
-/** @docs */
+/**
+ * Component providing an interactive What-If capacity simulation workspace.
+ */
 @Component({
   selector: 'app-simulation',
   imports: [
@@ -29,7 +34,6 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
     MatProgressSpinnerModule,
     VizTableComponent,
   ],
-
   providers: [SimulationStore],
   styles: [
     `
@@ -78,37 +82,71 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
   ],
   templateUrl: './simulation.component.html',
 })
-/** @docs */
 export class SimulationComponent implements OnInit {
-  /* istanbul ignore next */
+  /** Injected simulation state store. */
+  readonly store = inject(SimulationStore);
+
+  /** Current activated route used to inspect initial `sql` query parameters. */
+  private readonly route = inject(ActivatedRoute);
+
+  /**
+   * Extracts the string value from a DOM `input` or `textarea` event target.
+   *
+   * @param event - DOM input event.
+   * @returns String value of the input element.
+   */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
-  readonly store = inject(SimulationStore);
-  private readonly route = inject(ActivatedRoute);
 
-  ngOnInit() {
+  /**
+   * Initializes demand SQL from the URL `sql` query parameter if provided.
+   */
+  ngOnInit(): void {
     this.route.queryParams.subscribe((params) => {
-      if (params['sql']) {
-        this.store.setDemandSql(params['sql']);
+      const sqlParam: unknown = params['sql'];
+      if (typeof sqlParam === 'string' && sqlParam) {
+        this.store.setDemandSql(sqlParam);
       }
     });
   }
 
-  updateDemandSql(sql: string) {
+  /**
+   * Forwards updated demand SQL text to `SimulationStore`.
+   *
+   * @param sql - Updated SQL query string.
+   */
+  updateDemandSql(sql: string): void {
     this.store.setDemandSql(sql);
   }
 
-  addCapacity() {
+  /**
+   * Appends a new unit capacity row to the simulation store.
+   */
+  addCapacity(): void {
     this.store.addCapacityParam();
   }
 
-  updateCapacity(index: number, field: 'unit' | 'capacity', value: string | number) {
+  /**
+   * Updates either the `unit` name or numeric `capacity` of a capacity row.
+   *
+   * @param index - Zero-based row index.
+   * @param field - Field to modify (`'unit'` or `'capacity'`).
+   * @param value - New field value.
+   */
+  updateCapacity(index: number, field: 'unit' | 'capacity', value: string | number): void {
     const current = this.store.capacityParams()[index];
-    this.store.updateCapacityParam(index, { ...current, [field]: value });
+    if (current) {
+      this.store.updateCapacityParam(index, { ...current, [field]: value });
+    }
   }
 
-  removeCapacity(index: number) {
+  /**
+   * Removes the unit capacity row at `index`.
+   *
+   * @param index - Zero-based row index to remove.
+   */
+  removeCapacity(index: number): void {
     this.store.removeCapacityParam(index);
   }
 }

@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { DashboardStore } from './dashboard.store';
+import { DashboardOfflineCacheService } from './dashboard-offline-cache.service';
 import {
   DashboardsService,
   ExecutionService,
@@ -126,15 +127,46 @@ describe('DashboardStore', () => {
       expect(store.isLoading()).toBe(false);
       expect(store.dashboard()).toEqual(d1);
       expect(store.dataMap()).toEqual({ w1: [1, 2] });
+
+      // When dashboard becomes null before refresh response arrives
+      store['patch']({ dashboard: d1 });
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockImplementationOnce(
+        () => {
+          store['patch']({ dashboard: null });
+          return of({ w1: [3, 4] });
+        },
+      );
+      store.refreshAll();
+      expect(store.isLoading()).toBe(false);
     });
 
-    it('should handle API errors securely mapping HttpErrorResponse details', () => {
+    it('should handle API errors securely mapping HttpErrorResponse details and restore offline snapshot if cached', () => {
+      const offlineCache = TestBed.inject(DashboardOfflineCacheService);
+      offlineCache.clearSnapshot('d1');
+
       const err = new HttpErrorResponse({ error: { detail: 'API Fail' }, status: 500 });
       mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(throwError(() => err));
 
       store.loadDashboard('d1');
-
       expect(store.error()).toBe('API Fail');
+      expect(store.dashboard()).toBeNull();
+
+      // Now populate offline cache and verify fallback
+      offlineCache.saveSnapshot(d1, { w1: { data: [] } });
+      store.loadDashboard('d1');
+      expect(store.dashboard()).toEqual(d1);
+      expect(store.dataMap()).toEqual({ w1: { data: [] } });
+
+      const dNoWidgets = {
+        ...d1,
+        id: 'd-empty',
+        widgets: undefined as unknown as WidgetResponse[],
+      };
+      offlineCache.saveSnapshot(dNoWidgets, {});
+      store.loadDashboard('d-empty');
+      expect(store.widgets()).toEqual([]);
+      offlineCache.clearSnapshot('d1');
+      offlineCache.clearSnapshot('d-empty');
     });
 
     it('should deduplicate global params updates', () => {
@@ -313,7 +345,10 @@ describe('DashboardStore', () => {
       ).not.toHaveBeenCalled();
     });
     it('startPolling triggers refreshTrigger', () => {
-      const spy = vi.spyOn((store as any).refreshTrigger$, 'next');
+      const spy = vi.spyOn(
+        (store as unknown as { refreshTrigger$: { next: () => void } }).refreshTrigger$,
+        'next',
+      );
       store['startPolling']();
       vi.advanceTimersByTime(300_000);
       expect(spy).toHaveBeenCalled();
@@ -393,8 +428,14 @@ describe('DashboardStore', () => {
   });
 
   describe('updateWidgetOrder', () => {
-    it('should early return if same index or no dashboard', () => {
+    it('should early return if same index, out-of-bounds index, or no dashboard', () => {
       store.updateWidgetOrder(0, 0);
+      expect(
+        mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost,
+      ).not.toHaveBeenCalled();
+
+      store['patch']({ dashboard: d1, widgets: [] });
+      store.updateWidgetOrder(5, 0);
       expect(
         mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost,
       ).not.toHaveBeenCalled();
@@ -550,7 +591,10 @@ describe('DashboardStore', () => {
     });
 
     it('ngOnDestroy stops polling and destroys', () => {
-      const unsubSpy = vi.spyOn((store as any).destroy$, 'next');
+      const unsubSpy = vi.spyOn(
+        (store as unknown as { destroy$: { next: () => void } }).destroy$,
+        'next',
+      );
       store.ngOnDestroy();
       expect(unsubSpy).toHaveBeenCalled();
     });

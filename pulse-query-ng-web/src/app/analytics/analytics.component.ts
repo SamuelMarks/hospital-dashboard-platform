@@ -1,5 +1,8 @@
-/** @docs */
-import { Component, inject, signal, computed, effect, OnInit } from '@angular/core';
+/**
+ * @fileoverview Analytics component providing read-only exploration and filtering
+ * over LLM Arena candidate outputs and clinician selection telemetry.
+ */
+import { Component, inject, signal, computed, linkedSignal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -270,64 +273,49 @@ export class AnalyticsComponent implements OnInit {
   private readonly analyticsApi = inject(AnalyticsService);
 
   /** Full set of analytics rows. */
-  /* istanbul ignore next */
   readonly rows = signal<LlmAnalyticsRow[]>([]);
   /** Loading state for the page. */
-  /* istanbul ignore next */
   readonly isLoading = signal(true);
   /** Error state for load failures. */
-  /* istanbul ignore next */
   readonly error = signal<string | null>(null);
-  /** Currently selected row for the detail pane. */
-  /* istanbul ignore next */
-  readonly selectedRow = signal<LlmAnalyticsRow | null>(null);
 
   /** Search filter text. */
-  /* istanbul ignore next */
   readonly searchText = signal('');
   /** LLM filter value. */
-  /* istanbul ignore next */
   readonly modelFilter = signal('all');
   /** User filter value. */
-  /* istanbul ignore next */
   readonly userFilter = signal('all');
   /** Score filter value. */
-  /* istanbul ignore next */
   readonly scoreFilter = signal('all');
   /** SQL presence filter value. */
-  /* istanbul ignore next */
   readonly sqlFilter = signal('all');
   /** Source filter value. */
-  /* istanbul ignore next */
   readonly sourceFilter = signal('all');
 
   /** Table column order. */
   readonly displayedColumns = ['query', 'sql', 'llm', 'source', 'user', 'score', 'time'];
 
   /** Available model labels derived from the dataset. */
-  /* istanbul ignore next */
   readonly models = computed(() => {
     const unique = new Set(
       this.rows()
         .map((r) => r.llm)
-        .filter(Boolean),
+        .filter((v): v is string => Boolean(v)),
     );
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   });
 
   /** Available user emails derived from the dataset. */
-  /* istanbul ignore next */
   readonly users = computed(() => {
     const unique = new Set(
       this.rows()
         .map((r) => r.user_email)
-        .filter(Boolean),
+        .filter((v): v is string => Boolean(v)),
     );
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   });
 
   /** Rows filtered by the active filters and search text. */
-  /* istanbul ignore next */
   readonly filteredRows = computed(() => {
     const search = this.searchText().toLowerCase().trim();
     const model = this.modelFilter();
@@ -362,8 +350,23 @@ export class AnalyticsComponent implements OnInit {
     });
   });
 
+  /** Currently selected row for the detail pane, automatically synchronized with `filteredRows`. */
+  readonly selectedRow = linkedSignal<LlmAnalyticsRow[], LlmAnalyticsRow | null>({
+    source: this.filteredRows,
+    computation: (filtered, previous) => {
+      const [first] = filtered;
+      if (!first) {
+        return null;
+      }
+      const prevVal = previous?.value ?? null;
+      if (prevVal && filtered.some((r) => r.candidate_id === prevVal.candidate_id)) {
+        return prevVal;
+      }
+      return first;
+    },
+  });
+
   /** Summary metrics for the filtered dataset. */
-  /* istanbul ignore next */
   readonly summary = computed(() => {
     const rows = this.filteredRows();
     const totalCandidates = rows.length;
@@ -386,29 +389,12 @@ export class AnalyticsComponent implements OnInit {
     };
   });
 
-  /** Creates a new AnalyticsComponent. */
-  constructor() {
-    effect(() => {
-      const filtered = this.filteredRows();
-      const selected = this.selectedRow();
-
-      if (filtered.length === 0) {
-        if (selected) this.selectedRow.set(null);
-        return;
-      }
-
-      if (!selected || !filtered.some((r) => r.candidate_id === selected.candidate_id)) {
-        this.selectedRow.set(filtered[0]);
-      }
-    });
-  }
-
-  /** Ng On Init. */
+  /** Initializes analytics data on component creation. */
   ngOnInit(): void {
     this.load();
   }
 
-  /** Loads analytics data. */
+  /** Loads analytics data from the backend service. */
   load(): void {
     this.isLoading.set(true);
     this.error.set(null);
@@ -418,9 +404,8 @@ export class AnalyticsComponent implements OnInit {
       .subscribe({
         next: (rows) => {
           this.rows.set(rows);
-          if (!this.selectedRow() && rows.length) this.selectedRow.set(rows[0]);
         },
-        error: (err) => {
+        error: (err: unknown) => {
           console.error(err);
           this.error.set('Failed to load analytics. Please try again.');
         },
@@ -437,17 +422,31 @@ export class AnalyticsComponent implements OnInit {
     this.sourceFilter.set('all');
   }
 
-  /** Selects a row. */
+  /**
+   * Selects a row for detailed inspection.
+   *
+   * @param row - The analytics row to select.
+   */
   selectRow(row: LlmAnalyticsRow): void {
     this.selectedRow.set(row);
   }
 
-  /** Score label. */
+  /**
+   * Formats the selection score label for a row.
+   *
+   * @param row - The analytics row to inspect.
+   * @returns Human-readable selection status label.
+   */
   scoreLabel(row: LlmAnalyticsRow): string {
     return row.is_selected ? 'Selected' : 'Not selected';
   }
 
-  /** Source label. */
+  /**
+   * Formats the arena source label for a row.
+   *
+   * @param row - The analytics row to inspect.
+   * @returns Human-readable arena source label.
+   */
   sourceLabel(row: LlmAnalyticsRow): string {
     return row.source === 'ai' ? 'AI Arena' : 'Chat Arena';
   }

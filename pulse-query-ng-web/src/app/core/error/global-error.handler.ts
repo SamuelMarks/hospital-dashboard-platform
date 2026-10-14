@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Global Error Handler Strategy & Bus.
  * Replaces Angular's default ErrorHandler to intercept unhandled exceptions
@@ -22,9 +21,8 @@ import { BehaviorSubject } from 'rxjs';
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class GlobalErrorHandler implements ErrorHandler {
-  /** injector property. */
+  /** Angular dependency injector used to lazily resolve `MatSnackBar` without cyclic dependency issues. */
   private readonly injector = inject(Injector);
 
   /**
@@ -71,7 +69,7 @@ export class GlobalErrorHandler implements ErrorHandler {
       .subscribe(() => this.reloadApp());
   }
 
-  /** reloadApp method. */
+  /** Reloads the current browser window to recover from a fatal runtime error. */
   private reloadApp(): void {
     try {
       window.location.reload();

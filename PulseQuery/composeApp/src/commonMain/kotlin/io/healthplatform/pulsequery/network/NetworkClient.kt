@@ -1,3 +1,7 @@
+/**
+ * HTTP Client factory module configuring Ktor timeouts, WebSockets, JSON serialization,
+ * logging, and bearer token authentication headers.
+ */
 package io.healthplatform.pulsequery.network
 
 import io.ktor.client.HttpClient
@@ -10,7 +14,6 @@ import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.header
 import io.ktor.client.request.url
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
@@ -20,9 +23,9 @@ import kotlinx.serialization.json.Json
  *
  * @param baseUrl The base URL of the Pulse Query backend API.
  * @param engine Optional [io.ktor.client.engine.HttpClientEngine] for test mocking.
- * @param tokenProvider A lambda providing the current authentication token.
  * @param refreshTokenProvider Optional lambda providing the current refresh token.
  * @param onTokenRefreshed Optional callback invoked when tokens are refreshed.
+ * @param tokenProvider A lambda providing the current authentication token.
  * @return A fully configured [HttpClient] instance.
  */
 fun createHttpClient(
@@ -65,8 +68,13 @@ fun createHttpClient(
 
         defaultRequest {
             url(baseUrl)
-            tokenProvider()?.let { token ->
-                header(HttpHeaders.Authorization, "Bearer $token")
+            val currentToken = tokenProvider()
+            if (currentToken != null) {
+                header(HttpHeaders.Authorization, "Bearer $currentToken")
+            } else {
+                refreshTokenProvider?.invoke()?.let { refreshToken ->
+                    onTokenRefreshed?.invoke(refreshToken, refreshToken)
+                }
             }
         }
     }

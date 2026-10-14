@@ -8,6 +8,8 @@ Verifies the Linear Programming formulation logic, specifically focusing on:
 4. **Robustness/Overflow handling** (Surge Scenarios).
 """
 
+from typing import Any
+
 import json
 
 import pytest
@@ -139,7 +141,7 @@ def test_empty_input_handling() -> None:
   assert len(data) == 0
 
 
-def test_overflow_only_when_no_capacity_units(monkeypatch) -> None:
+def test_overflow_only_when_no_capacity_units(monkeypatch: Any) -> None:
   """
   If no real capacity units exist but demand does, Overflow should carry the load.
   This covers the G_rows empty-but-nonzero variables branch.
@@ -149,14 +151,32 @@ def test_overflow_only_when_no_capacity_units(monkeypatch) -> None:
   affinity = json.dumps({})
 
   class _DummyResult:
-    def __init__(self, sol):
+    def __init__(self, sol: Any) -> None:
+      """
+      Verify init behavior.
+
+      Args:
+          sol: Test parameter or fixture.
+      """
       self.primal_solution = sol
 
   class _DummySolver:
-    def __init__(self, sol):
+    def __init__(self, sol: Any) -> None:
+      """
+      Verify init behavior.
+
+      Args:
+          sol: Test parameter or fixture.
+      """
       self._sol = sol
 
-    def optimize(self, _lp):
+    def optimize(self, _lp: Any) -> Any:
+      """
+      Verify optimize behavior.
+
+      Args:
+          _lp: Test parameter or fixture.
+      """
       return _DummyResult(self._sol)
 
   # Avoid long-running optimization for this edge-case branch.
@@ -170,7 +190,7 @@ def test_overflow_only_when_no_capacity_units(monkeypatch) -> None:
   assert data[0]["Patient_Count"] == pytest.approx(5.0)
 
 
-def test_hard_constraint_max_enforced(monkeypatch) -> None:
+def test_hard_constraint_max_enforced(monkeypatch: Any) -> None:
   """
   Explicit max constraints should cap allocations for a unit.
   """
@@ -181,14 +201,32 @@ def test_hard_constraint_max_enforced(monkeypatch) -> None:
   constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "max": 2.0}])
 
   class _DummyResult:
-    def __init__(self, sol):
+    def __init__(self, sol: Any) -> None:
+      """
+      Verify init behavior.
+
+      Args:
+          sol: Test parameter or fixture.
+      """
       self.primal_solution = sol
 
   class _DummySolver:
-    def __init__(self, sol):
+    def __init__(self, sol: Any) -> None:
+      """
+      Verify init behavior.
+
+      Args:
+          sol: Test parameter or fixture.
+      """
       self._sol = sol
 
-    def optimize(self, _lp):
+    def optimize(self, _lp: Any) -> Any:
+      """
+      Verify optimize behavior.
+
+      Args:
+          _lp: Test parameter or fixture.
+      """
       return _DummyResult(self._sol)
 
   # Solution order: Unit1, Unit2, Overflow (single service).
@@ -229,7 +267,7 @@ def test_infeasible_min_exceeds_demand_constraint() -> None:
   assert "exceeds total service demand" in data["error"].lower()
 
 
-def test_solver_none_primal_solution(monkeypatch) -> None:
+def test_solver_none_primal_solution(monkeypatch: Any) -> None:
   """Test handling when solver returns None primal solution."""
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({"Unit1": 10.0})
@@ -239,7 +277,13 @@ def test_solver_none_primal_solution(monkeypatch) -> None:
     primal_solution = None
 
   class _DummyNoneSolver:
-    def optimize(self, _lp):
+    def optimize(self, _lp: Any) -> Any:
+      """
+      Verify optimize behavior.
+
+      Args:
+          _lp: Test parameter or fixture.
+      """
       return _DummyNoneResult()
 
   monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummyNoneSolver())
@@ -249,7 +293,7 @@ def test_solver_none_primal_solution(monkeypatch) -> None:
   assert "mathematically infeasible or failed to converge" in data["error"].lower()
 
 
-def test_solver_nan_primal_solution(monkeypatch) -> None:
+def test_solver_nan_primal_solution(monkeypatch: Any) -> None:
   """Test handling when solver returns NaN primal solution."""
   import numpy as np
 
@@ -261,7 +305,13 @@ def test_solver_nan_primal_solution(monkeypatch) -> None:
     primal_solution = [np.nan, 2.0]
 
   class _DummyNaNSolver:
-    def optimize(self, _lp):
+    def optimize(self, _lp: Any) -> Any:
+      """
+      Verify optimize behavior.
+
+      Args:
+          _lp: Test parameter or fixture.
+      """
       return _DummyNaNResult()
 
   monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummyNaNSolver())
@@ -331,3 +381,40 @@ def test_negative_unit_capacity_rejected() -> None:
   data = json.loads(result)
   assert "error" in data
   assert "cannot be negative" in data["error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_solve_unit_assignment_result_and_async() -> None:
+  """Verify `solve_unit_assignment_result` and `solve_unit_assignment_async` return Ok and Err results."""
+  from app.core.result import Err, ErrorCode, Ok
+
+  demand = json.dumps({"ServiceA": 4.0})
+  capacity = json.dumps({"Unit1": 10.0})
+  affinity = json.dumps({"ServiceA": {"Unit1": 1.0}})
+
+  ok_res = await mpax_bridge.solve_unit_assignment_async(demand, capacity, affinity)
+  assert isinstance(ok_res, Ok)
+  assert ok_res.value[0]["Patient_Count"] == 4.0
+
+  infeasible_res = mpax_bridge.solve_unit_assignment_result(demand, json.dumps({"Unit1": -5.0}), affinity)
+  assert isinstance(infeasible_res, Err)
+  assert infeasible_res.error.code == ErrorCode.SIMULATION_INFEASIBLE
+
+  invalid_res = mpax_bridge.solve_unit_assignment_result("{bad_json", capacity, affinity)
+  assert isinstance(invalid_res, Err)
+  assert invalid_res.error.code == ErrorCode.SIMULATION_INVALID_DATA
+
+
+def test_mpax_other_constraint_and_missing_service_branches() -> None:
+  """Verifies non-force_flow constraints and force_flow rules referencing non-existent services."""
+  from unittest.mock import patch
+
+  with patch.object(mpax_bridge, "_get_var_index", return_value=0):
+    raw_res = mpax_bridge.solve_unit_assignment(
+      '{"A": 10}',
+      '{"U1": 20}',
+      '{"A": {"U1": 5}}',
+      '[{"type":"other"}, {"type":"force_flow","service":"X","unit":"U1"}]',
+    )
+    parsed = json.loads(raw_res)
+    assert isinstance(parsed, list)

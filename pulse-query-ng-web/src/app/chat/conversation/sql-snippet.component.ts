@@ -1,11 +1,15 @@
-/** @docs */
-// pulse-query-ng-web/src/app/chat/conversation/sql-snippet.component.ts
+/**
+ * @fileoverview Syntax-highlighted SQL code block component with actions to run,
+ * copy, simulate, or save the query to the cart.
+ */
 import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-/** @docs */
+/**
+ * Displays a formatted and syntax-highlighted SQL snippet with quick action buttons.
+ */
 @Component({
   selector: 'app-sql-snippet',
   imports: [MatButtonModule, MatIconModule, MatTooltipModule],
@@ -65,13 +69,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   ],
   templateUrl: './sql-snippet.component.html',
 })
-/** @docs */
 export class SqlSnippetComponent {
+  /** Raw SQL query string to display and highlight. */
   readonly sql = input<string | null | undefined>('');
+  /** Emits the SQL string when the user clicks the Run action. */
   readonly run = output<string>();
+  /** Emits the SQL string when the user adds the query to the cart. */
   readonly addToCart = output<string>();
+  /** Emits the SQL string when the user launches the simulation view. */
   readonly simulate = output<string>();
 
+  /** Returns HTML-escaped SQL string with syntax highlighting span tags. */
   get highlightedSql(): string {
     let code = this.sql() || '';
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -92,21 +100,25 @@ export class SqlSnippetComponent {
     return code;
   }
 
+  /** Emits the `run` output event if a SQL snippet is present. */
   emitRun(): void {
     const val = this.sql();
     if (val) this.run.emit(val);
   }
 
+  /** Emits the `addToCart` output event if a SQL snippet is present. */
   emitAddToCart(): void {
     const val = this.sql();
     if (val) this.addToCart.emit(val);
   }
 
+  /** Emits the `simulate` output event if a SQL snippet is present. */
   emitSimulate(): void {
     const val = this.sql();
     if (val) this.simulate.emit(val);
   }
 
+  /** Copies the raw SQL string to the system clipboard. */
   copy(): void {
     const val = this.sql();
     if (val) navigator.clipboard.writeText(val);

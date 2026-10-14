@@ -2,6 +2,8 @@
 Tests for Network Security, SSRF Prevention, and DNS Rebinding Interception.
 """
 
+from typing import Any
+
 import ipaddress
 import socket
 from unittest.mock import patch
@@ -121,7 +123,7 @@ def test_validate_safe_url_public_ip() -> None:
   assert err is None
 
 
-def test_validate_safe_url_dns_resolution(monkeypatch) -> None:
+def test_validate_safe_url_dns_resolution(monkeypatch: Any) -> None:
   """Test DNS resolution branches for public, private, and malformed IPs."""
   # Case 1: Host resolves to private IP
   monkeypatch.setattr(
@@ -151,7 +153,7 @@ def test_validate_safe_url_dns_resolution(monkeypatch) -> None:
   assert err is None
 
 
-def test_validate_safe_url_parse_exception(monkeypatch) -> None:
+def test_validate_safe_url_parse_exception(monkeypatch: Any) -> None:
   """Test handling when urlparse raises an exception."""
   monkeypatch.setattr(
     "app.core.network_security.urlparse",
@@ -201,3 +203,41 @@ async def test_run_http_widget_redirect_interception() -> None:
 
   assert res["status"] == 0
   assert "Security restriction" in res["error"]
+
+
+@pytest.mark.asyncio
+async def test_resolve_and_pin_safe_ip_and_transport_extension() -> None:
+  """Verifies `resolve_and_pin_safe_ip_result` resolves and pins safe IPs on the request extension."""
+  from unittest.mock import AsyncMock
+
+  from app.core.network_security import resolve_and_pin_safe_ip_result
+  from app.core.result import Err, Ok
+
+  with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 0))]):
+    res_ok = resolve_and_pin_safe_ip_result("https://example.com/api")
+    assert isinstance(res_ok, Ok)
+    assert res_ok.value == "93.184.216.34"
+
+    transport = SafeAsyncHTTPTransport()
+    req = httpx.Request("GET", "https://example.com/api")
+    with patch.object(
+      httpx.AsyncHTTPTransport,
+      "handle_async_request",
+      new=AsyncMock(return_value=httpx.Response(200)),
+    ):
+      resp = await transport.handle_async_request(req)
+      assert resp.status_code == 200
+      assert req.extensions.get("pinned_safe_ip") == "93.184.216.34"
+
+  with patch("socket.getaddrinfo", return_value=[]):
+    res_empty = resolve_and_pin_safe_ip_result("https://example.com/api")
+    assert isinstance(res_empty, Ok)
+    assert res_empty.value == "example.com"
+
+  with patch("socket.getaddrinfo", side_effect=socket.gaierror("offline")):
+    res_offline = resolve_and_pin_safe_ip_result("https://example.com/api")
+    assert isinstance(res_offline, Ok)
+    assert res_offline.value == "example.com"
+
+  res_err = resolve_and_pin_safe_ip_result("http://127.0.0.1/admin")
+  assert isinstance(res_err, Err)

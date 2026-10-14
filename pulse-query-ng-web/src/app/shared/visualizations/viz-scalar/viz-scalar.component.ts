@@ -1,17 +1,28 @@
-/** @docs */
-// pulse-query-ng-web/src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts
+/**
+ * @fileoverview Single-scalar and correlation coefficient gauge visualization component.
+ */
+
 import { Component, input, computed, Signal } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
+/**
+ * Input data payload accepted by `VizScalarComponent`.
+ */
 export interface ScalarData {
+  /** Direct numeric scalar value when provided outside a tabular row set. */
   value?: number;
+  /** Optional array of tabular result rows containing a numeric column. */
   data?: Record<string, unknown>[];
+  /** Optional list of column names corresponding to `data`. */
   columns?: string[];
   [key: string]: unknown;
 }
 
-/** @docs */
+/**
+ * Renders a prominent scalar number and, when the column represents a correlation or probability,
+ * a linear progress bar gauge with qualitative strength interpretation.
+ */
 @Component({
   selector: 'viz-scalar',
   imports: [MatTooltipModule, MatProgressBarModule],
@@ -67,16 +78,17 @@ export interface ScalarData {
   ],
   templateUrl: './viz-scalar.component.html',
 })
-/** @docs */
 export class VizScalarComponent {
+  /** Scalar or single-row tabular dataset to display. */
   readonly data = input<ScalarData | null>();
 
+  /** Computed numeric scalar value extracted from `data`, or `null` if unavailable. */
   readonly value: Signal<number | null> = computed(() => {
     const d = this.data();
     if (!d) return null;
     if (Array.isArray(d.data)) {
       if (d.data.length > 0) {
-        const row = d.data[0];
+        const row = d.data[0] as Record<string, unknown>;
         const valKey = Object.keys(row).find((k) => typeof row[k] === 'number');
         return valKey ? (row[valKey] as number) : null;
       }
@@ -86,6 +98,7 @@ export class VizScalarComponent {
     return null;
   });
 
+  /** Computed formatted string representation of `value` (2 decimals for unit-interval values, locale string otherwise). */
   readonly formattedValue = computed(() => {
     const v = this.value();
     if (v === null) return '-';
@@ -93,13 +106,15 @@ export class VizScalarComponent {
     return v.toLocaleString();
   });
 
+  /** Computed uppercase label derived from the dataset's primary column name. */
   readonly label = computed(() => {
     const d = this.data();
     if (d?.columns && d.columns.length > 0)
-      return d.columns.find((c: string) => c !== 'value') || d.columns[0];
+      return d.columns.find((c: string) => c !== 'value') || (d.columns[0] as string);
     return 'Result';
   });
 
+  /** Computed flag indicating whether the scalar represents a correlation or probability in `[-1, 1]`. */
   readonly isCorrelation = computed(() => {
     const v = this.value();
     const l = this.label().toLowerCase();
@@ -114,17 +129,20 @@ export class VizScalarComponent {
     return false;
   });
 
+  /** Computed 0-100 percentage position mapping a `[-1, 1]` correlation value onto the progress bar. */
   readonly gaugePosition = computed(() => {
     const v = this.value() || 0;
     return ((v + 1) / 2) * 100;
   });
 
+  /** Computed CSS modifier class coloring the progress gauge positive, negative, or neutral. */
   readonly colorClass = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'gauge-neutral';
     return v > 0 ? 'gauge-pos' : 'gauge-neg';
   });
 
+  /** Computed qualitative description of correlation magnitude (Weak, Moderate, or Strong). */
   readonly strengthLabel = computed(() => {
     const v = this.value() || 0;
     const abs = Math.abs(v);
@@ -133,6 +151,7 @@ export class VizScalarComponent {
     return 'Strong Correlation';
   });
 
+  /** Computed CSS color variable matching the sign and strength of the correlation. */
   readonly strengthColor = computed(() => {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'var(--sys-text-secondary)';

@@ -1,11 +1,19 @@
-/** @docs */
 /**
  * @fileoverview Focus Trap Directive.
  * Traps keyboard focus within a container for modal dialogs and overlays.
  * Ensures WCAG 2.1 AA compliance for keyboard navigation.
  */
 
-import { Directive, ElementRef, inject, OnInit, OnDestroy, input, output } from '@angular/core';
+import {
+  Directive,
+  ElementRef,
+  inject,
+  OnInit,
+  OnDestroy,
+  Input,
+  Output,
+  EventEmitter,
+} from '@angular/core';
 
 /**
  * Focus Trap Directive.
@@ -26,17 +34,17 @@ import { Directive, ElementRef, inject, OnInit, OnDestroy, input, output } from 
   selector: '[appFocusTrap]',
 })
 export class FocusTrapDirective implements OnInit, OnDestroy {
-  /** Element ref. */ private readonly elementRef = inject(ElementRef<HTMLElement>);
+  /** Element ref. */ private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /**
    * Whether to automatically focus the first focusable element on init.
    */
-  readonly autoFocus = input<boolean>(true);
+  @Input() autoFocus = true;
 
   /**
    * Emits when the Escape key is pressed.
    */
-  readonly escape = output<void>();
+  @Output() readonly escape = new EventEmitter<void>();
 
   /** Previous active element. */ private previousActiveElement: HTMLElement | null = null;
   /** Bound keydown handler. */ private boundKeydownHandler = this.handleKeydown.bind(this);
@@ -47,7 +55,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.previousActiveElement = document.activeElement as HTMLElement;
 
-    if (this.autoFocus()) {
+    if (this.autoFocus) {
       this.focusFirstElement();
     }
 
@@ -81,12 +89,12 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
     }
 
     const focusableElements = this.getFocusableElements();
-    if (focusableElements.length === 0) {
+    const [firstElement] = focusableElements;
+    if (!firstElement) {
       return;
     }
 
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
+    const lastElement = focusableElements.reduce((_, el) => el, firstElement);
     const activeElement = document.activeElement;
 
     if (event.shiftKey) {
@@ -108,10 +116,10 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
    * Focuses the first focusable element within the container.
    */
   private focusFirstElement(): void {
-    const focusableElements = this.getFocusableElements();
+    const [firstElement] = this.getFocusableElements();
 
-    if (focusableElements.length > 0) {
-      focusableElements[0].focus();
+    if (firstElement) {
+      firstElement.focus();
     }
   }
 

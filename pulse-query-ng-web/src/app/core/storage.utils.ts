@@ -1,6 +1,8 @@
 /**
  * In-memory storage implementation for fallback environments.
  *
+ * @fileoverview Safe browser storage abstraction with automatic in-memory fallback
+ * for server-side rendering and restricted storage environments.
  * @returns An in-memory Storage compliant instance.
  */
 export function createMemoryStorage(): Storage {

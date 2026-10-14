@@ -5,7 +5,7 @@ Exposes endpoints to retrieve the structure of the analytical database (DuckDB).
 Used primarily by the Frontend SQL Editor to provide schema-aware autocomplete/IntelliSense.
 """
 
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 

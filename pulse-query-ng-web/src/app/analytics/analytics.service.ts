@@ -1,76 +1,35 @@
-/** @docs */
 /**
- * Analytics API service and DTOs.
- *
- * Provides typed access to the backend analytics endpoints.
+ * @fileoverview Analytics API service delegating to the generated OpenAPI `AnalyticsService`.
  */
-import { inject, Service } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { BASE_PATH } from '../api-client';
-import { environment } from '../../environments/environment';
+
+import { inject, Injectable } from '@angular/core';
+import {
+  AnalyticsService as GeneratedAnalyticsService,
+  LlmOutputAnalyticsRow,
+} from '../api-client';
 import { Observable } from 'rxjs';
 
-/** Single analytics row returned by the backend. */
-export interface LlmAnalyticsRow {
-  /** Data origin label. */
-  source: 'chat' | 'ai';
-  /** Unique candidate identifier. */
-  candidate_id: string;
-  /** Assistant message identifier (chat arena only). */
-  assistant_message_id?: string | null;
-  /** Conversation identifier (chat arena only). */
-  conversation_id?: string | null;
-  /** Conversation title (chat arena only). */
-  conversation_title?: string | null;
-  /** User identifier. */
-  user_id: string;
-  /** User email. */
-  user_email: string;
-  /** User query text. */
-  query_text?: string | null;
-  /** Prompt strategy used (AI arena only). */
-  prompt_strategy?: string | null;
-  /** LLM display label. */
-  llm: string;
-  /** SQL snippet if present. */
-  sql_snippet?: string | null;
-  /** SQL hash for grouping. */
-  sql_hash?: string | null;
-  /** Whether user selected this candidate. */
-  is_selected: boolean;
-  /** ISO timestamp for the candidate row. */
-  created_at: string;
-}
+/**
+ * Type alias re-exporting the generated `LlmOutputAnalyticsRow` DTO for LLM analytics views.
+ */
+export type LlmAnalyticsRow = LlmOutputAnalyticsRow;
 
-/** Client for analytics endpoints. */
-@Service()
+/**
+ * Service providing typed access to LLM candidate telemetry and analytics endpoints.
+ */
+@Injectable({ providedIn: 'root' })
 export class AnalyticsService {
-  /** Resolved API base URL. */
-  private readonly baseUrl: string;
+  /** Injected generated OpenAPI analytics service client. */
+  private readonly api = inject(GeneratedAnalyticsService);
 
   /**
-   * Creates a new AnalyticsService.
-   */
-  /** HttpClient instance */
-  private readonly http = inject(HttpClient);
-  /** Injected base path */
-  private readonly basePathRaw = inject(BASE_PATH, { optional: true });
-
-  /** Initializes base URL */
-  constructor() {
-    const basePath = this.basePathRaw;
-    const resolved = Array.isArray(basePath) ? basePath[0] : basePath;
-    this.baseUrl = resolved || environment.apiUrl || 'http://localhost:8000';
-  }
-
-  /**
-   * Fetch the flattened LLM analytics rows.
+   * Fetches paginated LLM output analytics rows from the backend.
    *
-   * @param limit Maximum number of rows to return.
-   * @param offset Offset for pagination.
+   * @param limit - Maximum number of rows to return (defaults to `500`).
+   * @param offset - Pagination offset (defaults to `0`).
+   * @returns Observable emitting the list of `LlmAnalyticsRow` items.
    */
   listLlmOutputs(limit = 500, offset = 0): Observable<LlmAnalyticsRow[]> {
-    const params = new HttpParams().set('limit', String(limit)).set('offset', String(offset));
-    return this.http.get<LlmAnalyticsRow[]>(`${this.baseUrl}/api/v1/analytics/llm`, { params });
+    return this.api.listLlmOutputsApiV1AnalyticsLlmGet(limit, offset);
   }
 }

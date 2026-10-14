@@ -3,7 +3,11 @@ Tests for the SQL Runner Service Integration.
 Verifies query execution flow and error handling from the Database layer.
 """
 
+from typing import Any
+
 from unittest.mock import MagicMock
+
+import pytest
 
 from app.services.runners import sql as sql_runner
 from app.services.runners.sql import run_sql_widget
@@ -123,16 +127,19 @@ def test_run_sql_widget_no_result_set() -> None:
   assert result["columns"] == []
 
 
-def test_run_sql_widget_continues_on_validation_warning(monkeypatch) -> None:
+def test_run_sql_widget_continues_on_validation_warning(monkeypatch: Any) -> None:
   """Validation errors should not prevent execution."""
+  from app.core.result import AppError, Err, ErrorCode
+
   mock_cursor = MagicMock()
   mock_cursor.description = [("id", "int")]
   mock_cursor.fetchall.return_value = [(1,)]
 
-  def _boom(_query: str) -> None:
-    raise sql_runner.SQLSecurityError("bad")
-
-  monkeypatch.setattr(sql_runner, "validate_query_ast", _boom)
+  monkeypatch.setattr(
+    sql_runner,
+    "validate_query_ast_result",
+    lambda _q: Err(AppError(code=ErrorCode.SQL_VALIDATION_ERROR, message="bad")),
+  )
 
   result = run_sql_widget(mock_cursor, {"query": "SELECT 1"})
 
@@ -149,3 +156,17 @@ def test_run_sql_widget_respects_max_rows() -> None:
 
   mock_cursor.fetchmany.assert_called_once_with(1)
   assert result["data"] == [{"id": 1}]
+
+
+@pytest.mark.asyncio
+async def test_run_sql_widget_async_offloads_to_thread() -> None:
+  """Verify `run_sql_widget_async` executes query in a background thread and returns result."""
+  from app.services.runners.sql import run_sql_widget_async
+
+  mock_cursor = MagicMock()
+  mock_cursor.description = [("col", "int")]
+  mock_cursor.fetchall.return_value = [(99,)]
+
+  res = await run_sql_widget_async(mock_cursor, {"query": "SELECT 99 AS col"})
+  assert res["error"] is None
+  assert res["data"] == [{"col": 99}]

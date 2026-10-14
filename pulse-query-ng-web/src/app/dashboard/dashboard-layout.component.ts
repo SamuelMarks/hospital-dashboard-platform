@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Dashboard layout component orchestrating the responsive widget grid,
+ * edit-mode sidebars, drag-and-drop provisioning, and undo/redo actions.
+ */
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -136,7 +139,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex);
     } else {
       // External Drop (Widget Gallery or Query Cart)
-      const data = event.item.data;
+      const data: unknown = event.item.data;
       const dashboard = this.store.dashboard();
 
       if (!dashboard || !data) return;
@@ -230,9 +233,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     const gridSize = container.clientWidth;
     const colPixelWidth = gridSize / 12;
 
-    const onMove = (e: MouseEvent) => {};
+    const onMove = (e: MouseEvent): void => {};
 
-    const onUp = (e: MouseEvent) => {
+    const onUp = (e: MouseEvent): void => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       const deltaX = e.clientX - startX;

@@ -1,7 +1,8 @@
+/**
+ * @fileoverview Service managing the reactive state and localStorage persistence of the Query Cart.
+ */
 import { DATE_NOW } from '../core/time.token';
 import { safeStorage } from '../core/storage.utils';
-
-/** @docs */
 import { Injectable, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
@@ -14,7 +15,6 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class QueryCartService {
   /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
@@ -24,14 +24,12 @@ export class QueryCartService {
   private readonly storageKey = 'pulse-query-cart-v1';
 
   /** _items property. */
-  /* istanbul ignore next */
   private readonly _items = signal<QueryCartItem[]>([]);
 
   /** Read-only list of cart items. */
   readonly items = this._items.asReadonly();
 
   /** Count of items in the cart. */
-  /* istanbul ignore next */
   readonly count = computed(() => this._items().length);
 
   /** Creates a new QueryCartService. */
@@ -96,7 +94,12 @@ export class QueryCartService {
     this._items.set([]);
   }
 
-  /** deriveTitle method. */
+  /**
+   * Derives a concise default title from a raw SQL query string.
+   *
+   * @param sql - The raw SQL query string.
+   * @returns Truncated single-line title derived from the SQL text.
+   */
   private deriveTitle(sql: string): string {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     if (!normalized) return 'Untitled Query';
@@ -104,12 +107,16 @@ export class QueryCartService {
     return normalized.length > max ? `${normalized.slice(0, max)}...` : normalized;
   }
 
-  /** createId method. */
+  /**
+   * Generates a unique identifier for a new query cart item.
+   *
+   * @returns Generated unique query cart item identifier.
+   */
   private createId(): string {
     return `qc-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
   }
 
-  /** loadFromStorage method. */
+  /** Loads and validates saved query cart items from local storage. */
   private loadFromStorage(): void {
     try {
       const raw = safeStorage.getItem(this.storageKey);
@@ -122,7 +129,11 @@ export class QueryCartService {
     }
   }
 
-  /** persistToStorage method. */
+  /**
+   * Serializes and persists the current query cart items to local storage.
+   *
+   * @param items - Array of query cart items to persist.
+   */
   private persistToStorage(items: QueryCartItem[]): void {
     try {
       safeStorage.setItem(this.storageKey, JSON.stringify(items));
@@ -131,7 +142,12 @@ export class QueryCartService {
     }
   }
 
-  /** isValidItem method. */
+  /**
+   * Type guard validating that a parsed storage entry conforms to `QueryCartItem`.
+   *
+   * @param item - Candidate item loaded from storage.
+   * @returns True if the item has all required `QueryCartItem` fields.
+   */
   private isValidItem(item: QueryCartItem): boolean {
     return (
       !!item &&

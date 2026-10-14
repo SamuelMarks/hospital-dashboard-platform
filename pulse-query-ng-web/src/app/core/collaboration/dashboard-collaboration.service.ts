@@ -4,10 +4,30 @@
  * facilitating presence indicators, remote layout updates, and live widget refresh synchronization.
  */
 
-import { Injectable, inject, signal, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Injectable, InjectionToken, inject, signal, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subject } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+
+/**
+ * Minimal browser location interface used to construct WebSocket URLs without direct `window` coupling.
+ */
+export interface BrowserLocationLike {
+  /** URL protocol (e.g., `'http:'` or `'https:'`). */
+  readonly protocol: string;
+  /** Hostname without port (e.g., `'localhost'` or `'pulse.hospital.org'`). */
+  readonly hostname: string;
+  /** Host including port if non-default (e.g., `'localhost:4200'`). */
+  readonly host: string;
+}
+
+/**
+ * Injection token providing the current browser location for WebSocket URL resolution.
+ */
+export const BROWSER_LOCATION = new InjectionToken<BrowserLocationLike>('BROWSER_LOCATION', {
+  providedIn: 'root',
+  factory: (): BrowserLocationLike => window.location,
+});
 
 /**
  * Collaborator metadata profile broadcast over WebSockets.
@@ -50,6 +70,8 @@ export class DashboardCollaborationService implements OnDestroy {
   private readonly authService = inject(AuthService);
   /** Angular platform ID. */
   private readonly platformId = inject(PLATFORM_ID);
+  /** Injected browser location provider. */
+  private readonly browserLocation = inject(BROWSER_LOCATION);
 
   /** Active WebSocket connection instance. */
   private socket: WebSocket | null = null;
@@ -150,7 +172,7 @@ export class DashboardCollaborationService implements OnDestroy {
       return;
     }
 
-    const loc = window.location;
+    const loc = this.browserLocation;
     const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     const host =
       loc.hostname === 'localhost' || loc.hostname === '127.0.0.1'
@@ -167,7 +189,7 @@ export class DashboardCollaborationService implements OnDestroy {
       };
 
       this.socket.onmessage = (event: MessageEvent) => {
-        this.handleMessage(event.data);
+        this.handleMessage(String(event.data));
       };
 
       this.socket.onerror = () => {
@@ -193,7 +215,7 @@ export class DashboardCollaborationService implements OnDestroy {
    */
   private handleMessage(rawData: string): void {
     try {
-      const data: CollaborationMessage = JSON.parse(rawData);
+      const data = JSON.parse(rawData) as CollaborationMessage;
       this.message$.next(data);
 
       if (data.type === 'USER_JOINED' || data.type === 'USER_LEFT') {
@@ -220,9 +242,7 @@ export class DashboardCollaborationService implements OnDestroy {
     this.reconnectAttempts++;
 
     this.reconnectTimeout = setTimeout(() => {
-      if (this.currentDashboardId) {
-        this.initSocket();
-      }
+      this.initSocket();
     }, backoffMs);
   }
 }

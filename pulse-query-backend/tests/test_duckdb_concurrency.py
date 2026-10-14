@@ -6,6 +6,7 @@ execute safely without deadlock or database file corruption.
 """
 
 import concurrent.futures
+import contextlib
 import os
 import tempfile
 from typing import Any
@@ -61,10 +62,8 @@ def test_concurrent_readonly_query_execution() -> None:
     assert all(r["success"] for r in results)
   finally:
     if os.path.exists(temp_path):
-      try:
+      with contextlib.suppress(Exception):
         os.remove(temp_path)
-      except Exception:
-        pass
 
 
 def test_sequential_write_and_read_isolation() -> None:
@@ -85,7 +84,9 @@ def test_sequential_write_and_read_isolation() -> None:
 
     # 2. Read back over readonly connection
     read_conn1 = manager.get_readonly_connection()
-    count1 = read_conn1.cursor().execute("SELECT COUNT(*) FROM admissions").fetchone()[0]
+    row1 = read_conn1.cursor().execute("SELECT COUNT(*) FROM admissions").fetchone()
+    assert row1 is not None
+    count1 = row1[0]
     read_conn1.close()
     assert count1 == 1
 
@@ -96,12 +97,12 @@ def test_sequential_write_and_read_isolation() -> None:
 
     # 4. Read back over new readonly connection
     read_conn2 = manager.get_readonly_connection()
-    count2 = read_conn2.cursor().execute("SELECT COUNT(*) FROM admissions").fetchone()[0]
+    row2 = read_conn2.cursor().execute("SELECT COUNT(*) FROM admissions").fetchone()
+    assert row2 is not None
+    count2 = row2[0]
     read_conn2.close()
     assert count2 == 3
   finally:
     if os.path.exists(temp_path):
-      try:
+      with contextlib.suppress(Exception):
         os.remove(temp_path)
-      except Exception:
-        pass

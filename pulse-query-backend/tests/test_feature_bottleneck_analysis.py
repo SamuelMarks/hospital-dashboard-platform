@@ -7,7 +7,7 @@ outpace discharges for specific clinical services.
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import duckdb
 import pytest

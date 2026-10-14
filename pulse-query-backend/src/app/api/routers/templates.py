@@ -6,7 +6,7 @@ Updated to support server-side searching and limiting to efficiently handle
 large catalogs of analytics questions.
 """
 
-from typing import Annotated, List, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,10 +14,19 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.postgres import get_db
 from app.models.template import WidgetTemplate
 from app.models.user import User
-from app.schemas.template import TemplateCreate, TemplateResponse, TemplateUpdate
+from app.schemas.template import (
+  TemplateCreate,
+  TemplateInstantiateRequest,
+  TemplateInstantiateResponse,
+  TemplateResponse,
+  TemplateUpdate,
+)
+from app.services.provisioning import provisioning_service
+from app.services.sql_utils import interpolate_template_parameters
 
 router = APIRouter()
 
@@ -186,3 +195,77 @@ async def delete_template(
 
   await db.delete(template)
   await db.commit()
+
+
+async def instantiate_template_result(
+  template_id: UUID,
+  payload: TemplateInstantiateRequest,
+  db: AsyncSession,
+) -> AppResult[TemplateInstantiateResponse]:
+  """
+  Resolves a `WidgetTemplate` by ID, interpolates its SQL parameters, and returns an `AppResult`.
+
+  Args:
+      template_id (UUID): Unique identifier of the template to instantiate.
+      payload (TemplateInstantiateRequest): Parameter key-value overrides.
+      db (AsyncSession): Active database session.
+
+  Returns:
+      AppResult[TemplateInstantiateResponse]: `Ok(TemplateInstantiateResponse)` or `Err(AppError)` if not found.
+  """
+  result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
+  template = result.scalars().first()
+  if not template:
+    return Err(
+      AppError(
+        code=ErrorCode.RESOURCE_NOT_FOUND,
+        message="Template not found",
+        status_code=status.HTTP_404_NOT_FOUND,
+      )
+    )
+
+  schema_dict = template.parameters_schema if isinstance(template.parameters_schema, dict) else None
+  query_str = interpolate_template_parameters(
+    template.sql_template,
+    parameters_schema=schema_dict,
+    param_overrides=payload.parameters,
+  )
+  viz_type = provisioning_service._determine_visual_type(template)
+
+  return Ok(
+    TemplateInstantiateResponse(
+      template_id=template.id,
+      title=template.title,
+      visualization=viz_type,
+      query=query_str,
+    )
+  )
+
+
+@router.post("/{template_id}/instantiate", response_model=TemplateInstantiateResponse)
+async def instantiate_template(
+  template_id: UUID,
+  payload: TemplateInstantiateRequest,
+  db: Annotated[AsyncSession, Depends(get_db)],
+  current_user: User = Depends(deps.get_current_user),
+) -> TemplateInstantiateResponse:
+  """
+  Instantiates a widget template on the backend by substituting schema defaults
+  and user-supplied parameter values into `sql_template`.
+
+  Args:
+      template_id (UUID): Unique identifier of the template to instantiate.
+      payload (TemplateInstantiateRequest): User-supplied parameter values.
+      db (AsyncSession): Database session.
+      current_user (User): Authenticated user session.
+
+  Returns:
+      TemplateInstantiateResponse: Rendered SQL query, title, and recommended visualization.
+
+  Raises:
+      HTTPException: 404 if the template does not exist.
+  """
+  res = await instantiate_template_result(template_id, payload, db)
+  if isinstance(res, Err):
+    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
+  return res.value

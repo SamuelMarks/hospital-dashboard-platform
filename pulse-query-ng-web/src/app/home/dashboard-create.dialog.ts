@@ -1,4 +1,6 @@
-/** @docs */
+/**
+ * @fileoverview Modal dialog component for creating a new analytics dashboard.
+ */
 import { Component, inject, signal } from '@angular/core';
 import { FormRoot, FormField, form, required, minLength } from '@angular/forms/signals';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
@@ -26,7 +28,6 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
   ],
   templateUrl: './dashboard-create.dialog.html',
 })
-/** @docs */
 export class DashboardCreateDialog {
   /** API Client for Dashboard Operations. */
   private readonly dashboardsApi = inject(DashboardsService);
@@ -35,11 +36,9 @@ export class DashboardCreateDialog {
   private readonly dialogRef = inject(MatDialogRef<DashboardCreateDialog>);
 
   /** Loading state signal during API submission. */
-  /* istanbul ignore next */
   readonly isSubmitting = signal(false);
 
   /** Error message signal for API failures. */
-  /* istanbul ignore next */
   readonly error = signal<string | null>(null);
 
   /** Signal form model. */

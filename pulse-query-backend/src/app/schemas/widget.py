@@ -15,7 +15,7 @@ Classes:
     WidgetUpdate: Loose schema for partial updates.
 """
 
-from typing import Annotated, Any, Dict, Literal, Optional, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, HttpUrl
 

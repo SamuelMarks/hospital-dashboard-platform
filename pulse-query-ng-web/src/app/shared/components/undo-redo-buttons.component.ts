@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Undo/Redo Buttons Component.
  * Provides UI controls for undo and redo operations.
@@ -21,7 +20,6 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
  * <app-undo-redo-buttons />
  * ```
  */
-
 @Component({
   selector: 'app-undo-redo-buttons',
   imports: [MatButtonModule, MatIconModule, MatTooltipModule],
@@ -33,6 +31,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
         [disabled]="!undoRedoService.canUndo()"
         (click)="undo()"
         [matTooltip]="undoTooltip()"
+        i18n-aria-label
         aria-label="Undo"
         data-testid="undo-button"
       >
@@ -44,6 +43,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
         [disabled]="!undoRedoService.canRedo()"
         (click)="redo()"
         [matTooltip]="redoTooltip()"
+        i18n-aria-label
         aria-label="Redo"
         data-testid="redo-button"
       >

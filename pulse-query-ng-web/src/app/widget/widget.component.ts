@@ -1,4 +1,8 @@
-/** @docs */
+/**
+ * @fileoverview Dashboard widget container component responsible for rendering the appropriate
+ * visualization (table, chart, metric, pie, heatmap, scalar, markdown), skeleton loading states,
+ * safe-mode error recovery, and widget toolbar actions.
+ */
 import { Component, input, output, inject, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,7 +33,9 @@ import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-he
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 
-/** @docs */
+/**
+ * Renders a single dashboard widget card with dynamic visualization switching and error recovery.
+ */
 @Component({
   selector: 'app-widget',
   imports: [
@@ -215,26 +221,39 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
     `,
   ],
 })
-/** @docs */
 export class WidgetComponent {
+  /** Active dashboard state store. */
   private readonly store = inject(DashboardStore);
+  /** Backend dashboards API service. */
   private readonly dashApi = inject(DashboardsService);
+  /** Material dialog service for confirmation modals. */
   private readonly dialog = inject(MatDialog);
+  /** Angular router for navigating to the scenario simulator. */
   private readonly router = inject(Router);
+  /** Service monitoring backend and database connection health. */
   readonly connectionService = inject(ConnectionStatusService);
 
+  /** Widget configuration and metadata model passed from the parent dashboard grid. */
   readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' });
+  /** Emits when the user clicks the edit action on the widget. */
   readonly edit = output<void>();
+  /** Emits when the user clicks the duplicate action on the widget. */
   readonly duplicate = output<void>();
+  /** Emits when the user requests to delete the widget. */
   readonly delete = output<void>();
 
+  /** Whether this specific widget is currently refreshing its data. */
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id));
+  /** Raw execution result payload for this widget from the dashboard store. */
   readonly rawResult = computed(
     () => this.store.dataMap()[this.widgetInput().id] as Record<string, unknown> | null,
   );
+  /** Signal indicating whether the parent dashboard is in edit mode. */
   readonly isEditMode = this.store.isEditMode;
+  /** Whether this widget currently holds keyboard/selection focus in the dashboard store. */
   readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id);
 
+  /** Execution error message extracted from the widget's latest result payload, if any. */
   readonly errorMessage = computed(() => {
     const res = this.rawResult();
     return res && (res as Record<string, unknown>)['error']
@@ -242,11 +261,13 @@ export class WidgetComponent {
       : null;
   });
 
+  /** Whether the widget error indicates a missing DuckDB table. */
   readonly isMissingTableError = computed(() => {
     const err = this.errorMessage();
     return err ? err.includes('does not exist') || err.includes('TABLE_NOT_FOUND') : false;
   });
 
+  /** Whether the widget error indicates the database engine is locked or unavailable. */
   readonly isDbUnavailableError = computed(() => {
     const err = this.errorMessage();
     return err
@@ -254,11 +275,13 @@ export class WidgetComponent {
       : false;
   });
 
+  /** Normalized lowercase visualization type identifier for template switching. */
   readonly visualizationType = computed(() => {
     if (this.widgetInput().type === 'TEXT') return 'markdown';
     return (this.widgetInput().visualization || 'table').toLowerCase();
   });
 
+  /** Skeleton loader variant matching the widget's visualization type. */
   readonly skeletonType = computed<SkeletonVariant>(() => {
     const viz = this.visualizationType();
     if (viz.includes('chart') || viz.includes('graph')) return 'chart';
@@ -268,32 +291,45 @@ export class WidgetComponent {
     return 'card';
   });
 
+  /** Execution result cast as a `TableDataSet` for tabular and chart visualizations. */
   readonly typedDataAsTable = computed(() => this.rawResult() as unknown as TableDataSet);
+  /** Visualization configuration dictionary extracted from the widget model. */
   readonly chartConfig = computed(() => this.widgetInput().config as never);
 
+  /** Triggers an immediate data refresh for this widget. */
   manualRefresh(): void {
     this.store.refreshWidget(this.widgetInput().id);
   }
 
+  /** Opens the system connection diagnostics dialog. */
   openDiagnostics(): void {
     this.connectionService.openDiagnosticsDialog();
   }
 
+  /** Navigates to the scenario simulation page pre-populated with this widget's SQL query. */
   simulateWidget(): void {
     const widget = this.widgetInput();
     if (widget.type === 'SQL' && widget.config['query']) {
-      this.router.navigate(['/simulation'], { queryParams: { sql: widget.config['query'] } });
+      this.router.navigate(['/simulation'], {
+        queryParams: { sql: String(widget.config['query']) },
+      });
     } else if (widget.type === 'TEMPLATE') {
       // We could add template to sql logic here, but simply pass widgetId if we want
     }
   }
 
+  /** Toggles the focused state of this widget in the dashboard store. */
   toggleFocus(): void {
     const id = this.widgetInput().id;
     const current = this.store.focusedWidgetId();
     this.store.setFocusedWidget(current === id ? null : id);
   }
 
+  /**
+   * Handles the Escape key press to clear widget focus or emit delete in edit mode.
+   *
+   * @param event - Keyboard event triggered by pressing Escape.
+   */
   onEscape(event: Event): void {
     (event as KeyboardEvent).stopPropagation();
     if (this.isFocused()) {
@@ -316,6 +352,7 @@ export class WidgetComponent {
     }
   }
 
+  /** Prompts for confirmation and resets the widget configuration to safe-mode defaults. */
   resetWidget(): void {
     this.dialog
       .open(ConfirmDialogComponent, {
@@ -350,8 +387,9 @@ export class WidgetComponent {
     if (res && Array.isArray(res['data'])) {
       raw = res['data'] as Record<string, unknown>[];
     }
-    if (raw.length === 0) return;
-    const keys = Object.keys(raw[0]);
+    const [firstRow] = raw;
+    if (!firstRow) return;
+    const keys = Object.keys(firstRow);
     const csvRows = [
       keys.join(','),
       ...raw.map((row) =>

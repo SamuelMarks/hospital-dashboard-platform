@@ -1,19 +1,44 @@
 /**
- * TV Form Factor module providing 10-foot viewing distance layouts and D-pad navigation.
+ * TV Form Factor module providing 10-foot viewing distance layouts and D-pad navigation,
+ * delegating state and dashboard retrieval to [TvDashboardViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens.tv
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -26,41 +51,29 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.healthplatform.pulsequery.api.models.DashboardResponse
 import io.healthplatform.pulsequery.api.models.WidgetResponse
-import io.healthplatform.pulsequery.di.AppContainer
-import kotlinx.coroutines.launch
 
 /**
  * TV Wallboard dashboard screen optimized for passive 10-foot nursing station displays,
  * featuring large high-contrast KPI cards and D-pad directional navigation focus states.
  *
  * @param onExit Optional callback to exit TV mode.
+ * @param viewModel Optional [TvDashboardViewModel] instance for state orchestration.
  */
 @Composable
 fun TvDashboardScreen(
-    onExit: () -> Unit = {}
+    onExit: () -> Unit = {},
+    viewModel: TvDashboardViewModel? = null
 ) {
-    var activeDashboard by remember { mutableStateOf<DashboardResponse?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val vm = remember(viewModel, coroutineScope) {
+        viewModel ?: TvDashboardViewModel(scope = coroutineScope)
+    }
 
-    LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            runCatching {
-                val res = AppContainer.dashboardsApi.listDashboardsApiV1DashboardsGet()
-                res.body().firstOrNull()
-            }.fold(
-                onSuccess = { db ->
-                    activeDashboard = db
-                },
-                onFailure = { e ->
-                    errorMessage = e.message ?: "Failed to load TV dashboard"
-                }
-            )
-            isLoading = false
-        }
+    val uiState by vm.state.collectAsState()
+
+    LaunchedEffect(vm) {
+        vm.loadDashboard()
     }
 
     Surface(
@@ -72,13 +85,15 @@ fun TvDashboardScreen(
                 .fillMaxSize()
                 .padding(32.dp)
         ) {
-            // Header Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Tv,
                         contentDescription = "TV Wallboard",
@@ -87,8 +102,11 @@ fun TvDashboardScreen(
                     )
                     Column {
                         Text(
-                            text = activeDashboard?.name ?: "Clinical Status Wallboard",
-                            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, fontWeight = FontWeight.Bold),
+                            text = uiState.activeDashboard?.name ?: "Clinical Status Wallboard",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
+                            ),
                             color = Color.White,
                             modifier = Modifier.semantics { heading() }
                         )
@@ -109,18 +127,22 @@ fun TvDashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             when {
-                isLoading -> {
+                uiState.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
                     }
                 }
-                errorMessage != null -> {
+                uiState.errorMessage != null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, fontSize = 24.sp)
+                        Text(
+                            text = uiState.errorMessage.orEmpty(),
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 24.sp
+                        )
                     }
                 }
                 else -> {
-                    val widgets = activeDashboard?.widgets ?: emptyList()
+                    val widgets = uiState.activeDashboard?.widgets ?: emptyList()
                     if (widgets.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Text("No telemetry widgets active on this board.", color = Color.White, fontSize = 24.sp)
@@ -204,7 +226,10 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
             Column {
                 Text(
                     text = widget.title,
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
                     color = Color.White,
                     maxLines = 1
                 )

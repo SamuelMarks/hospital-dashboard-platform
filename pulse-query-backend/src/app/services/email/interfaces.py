@@ -24,4 +24,3 @@ class EmailNotificationService(Protocol):
     Raises:
         Exception: If email transmission fails.
     """
-    ...

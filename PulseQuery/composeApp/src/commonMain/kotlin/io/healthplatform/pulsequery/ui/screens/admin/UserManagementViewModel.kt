@@ -50,8 +50,11 @@ sealed interface UserManagementUiState {
  */
 class UserManagementViewModel(
     private val scope: CoroutineScope,
-    private val adminUsersApi: AdminUsersApi = AppContainer.adminUsersApi
+    private val adminUsersApi: AdminUsersApi? = null
 ) {
+    private val currentAdminUsersApi: AdminUsersApi
+        get() = adminUsersApi ?: AppContainer.adminUsersApi
+
     private val _state = MutableStateFlow<UserManagementUiState>(UserManagementUiState.Loading)
 
     /** Exposes read-only StateFlow of user management state for UI observation. */
@@ -68,7 +71,7 @@ class UserManagementViewModel(
         _state.value = UserManagementUiState.Loading
         scope.launch {
             runCatching {
-                val response = adminUsersApi.listUsersApiV1AdminUsersGet(limit = 100)
+                val response = currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100)
                 response.body()
             }.fold(
                 onSuccess = { users ->
@@ -96,7 +99,7 @@ class UserManagementViewModel(
         val current = _state.value as? UserManagementUiState.Success ?: return
         scope.launch {
             runCatching {
-                val response = adminUsersApi.updateUserRoleApiV1AdminUsersUserIdRolePut(
+                val response = currentAdminUsersApi.updateUserRoleApiV1AdminUsersUserIdRolePut(
                     userId = userId,
                     userRoleUpdate = UserRoleUpdate(role = newRole)
                 )
@@ -126,7 +129,7 @@ class UserManagementViewModel(
         val current = _state.value as? UserManagementUiState.Success ?: return
         scope.launch {
             runCatching {
-                val response = adminUsersApi.updateUserStatusApiV1AdminUsersUserIdStatusPut(
+                val response = currentAdminUsersApi.updateUserStatusApiV1AdminUsersUserIdStatusPut(
                     userId = userId,
                     userStatusUpdate = UserStatusUpdate(isActive = newStatus)
                 )

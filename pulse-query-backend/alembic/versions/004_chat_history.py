@@ -7,7 +7,6 @@ Create Date: 2024-04-01 10:00:00.000000
 """
 
 from collections.abc import Sequence
-from typing import Union
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql

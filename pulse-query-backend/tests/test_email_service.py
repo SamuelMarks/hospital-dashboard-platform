@@ -5,6 +5,8 @@ Validates MockEmailService tracking, SmtpEmailService MIME construction,
 SMTP connection flows, error handling, and provider resolution.
 """
 
+from typing import Any
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -106,9 +108,11 @@ async def test_smtp_email_service_failure_raises() -> None:
   """Verifies that socket or SMTP errors bubble up as exceptions."""
   service = SmtpEmailService(host="invalid.smtp.host")
 
-  with patch("smtplib.SMTP", side_effect=ConnectionRefusedError("Connection refused")):
-    with pytest.raises(ConnectionRefusedError):
-      await service.send_password_reset_email("user@hospital.org", "token")
+  with (
+    patch("smtplib.SMTP", side_effect=ConnectionRefusedError("Connection refused")),
+    pytest.raises(ConnectionRefusedError),
+  ):
+    await service.send_password_reset_email("user@hospital.org", "token")
 
 
 def test_get_email_service_provider_resolution() -> None:
@@ -123,7 +127,7 @@ def test_get_email_service_provider_resolution() -> None:
 
 
 @pytest.mark.asyncio
-async def test_forgot_password_handles_email_service_exception(client, db_session) -> None:
+async def test_forgot_password_handles_email_service_exception(client: Any, db_session: Any) -> None:
   """Verifies forgot-password route handles email transmission failure gracefully without crashing."""
   import uuid
   from app.models.user import User

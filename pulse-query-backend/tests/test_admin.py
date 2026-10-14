@@ -1,3 +1,7 @@
+"""Tests for admin."""
+
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
@@ -7,8 +11,15 @@ from app.models.user import User
 
 
 @pytest.mark.asyncio
-async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession):
+async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) -> None:
   # 1. Register a normal user
+  """
+  Verify admin endpoints behavior.
+
+  Args:
+      client: Test parameter or fixture.
+      db_session: Test parameter or fixture.
+  """
   await client.post("/api/v1/auth/register", json={"email": "normal@example.com", "password": "pass"})
   res = await client.post("/api/v1/auth/login", data={"username": "normal@example.com", "password": "pass"})
   normal_token = res.json()["access_token"]
@@ -54,14 +65,16 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession):
   assert res.json() == payload2
 
 
-def test_admin_setting_repr():
+def test_admin_setting_repr() -> None:
+  """Verify admin setting repr behavior."""
   from app.models.admin_setting import AdminSetting
 
   setting = AdminSetting(setting_key="test_key", setting_value="test_val")
   assert repr(setting) == "<AdminSetting test_key>"
 
 
-def test_llm_client_reload_swarm():
+def test_llm_client_reload_swarm() -> None:
+  """Verify llm client reload swarm behavior."""
   from app.schemas.admin import AdminSettingsResponse
   from app.services.llm_client import llm_client
 
@@ -73,7 +86,14 @@ def test_llm_client_reload_swarm():
 
 
 @pytest.mark.asyncio
-async def test_admin_settings_unknown_key_and_reload_error(db_session: AsyncSession, monkeypatch):
+async def test_admin_settings_unknown_key_and_reload_error(db_session: AsyncSession, monkeypatch: Any) -> None:
+  """
+  Verify admin settings unknown key and reload error behavior.
+
+  Args:
+      db_session: Test parameter or fixture.
+      monkeypatch: Test parameter or fixture.
+  """
   from app.schemas.admin import AdminSettingsUpdateRequest
   from app.services.admin import get_admin_settings, update_admin_settings
   import app.services.admin as admin_module
@@ -91,3 +111,27 @@ async def test_admin_settings_unknown_key_and_reload_error(db_session: AsyncSess
   req = AdminSettingsUpdateRequest(api_keys={"k": "v"}, visible_models=["m"])
   res = await update_admin_settings(db_session, req)
   assert res.api_keys == {"k": "v"}
+
+
+@pytest.mark.asyncio
+async def test_admin_ignore_unknown_setting_key(db_session: AsyncSession) -> None:
+  """Verifies `get_admin_settings` ignores unknown setting keys stored in `AdminSetting`."""
+  from app.models.admin_setting import AdminSetting
+  from app.services.admin import get_admin_settings
+
+  db_session.add(AdminSetting(setting_key="ignore", setting_value={"a": 1}))
+  await db_session.commit()
+  settings_res = await get_admin_settings(db_session)
+  assert isinstance(settings_res.api_keys, dict)
+  assert isinstance(settings_res.visible_models, list)
+
+
+def test_verify_admin_key_constant_time_comparison() -> None:
+  """Verifies `verify_admin_key` uses constant-time comparison and returns `Ok`/`Err` appropriately."""
+  from app.api.routers.admin import verify_admin_key
+  from app.core.result import Err, Ok
+
+  assert isinstance(verify_admin_key("secret-123", "secret-123"), Ok)
+  assert isinstance(verify_admin_key("wrong", "secret-123"), Err)
+  assert isinstance(verify_admin_key(None, "secret-123"), Err)
+  assert isinstance(verify_admin_key("secret-123", None), Err)

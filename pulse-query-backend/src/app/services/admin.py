@@ -1,5 +1,7 @@
 """Service for managing admin configuration."""
 
+import contextlib
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,8 +54,6 @@ async def update_admin_settings(db: AsyncSession, request: AdminSettingsUpdateRe
 
   await db.commit()
   new_settings = await get_admin_settings(db)
-  try:
+  with contextlib.suppress(Exception):
     llm_client.reload_swarm(new_settings)
-  except Exception:
-    pass
   return new_settings

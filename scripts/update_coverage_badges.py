@@ -15,13 +15,39 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "pulse-query-backend"
 README = ROOT / "README.md"
 APP_ROOT = BACKEND / "src" / "app"
+WEB_APP_ROOT = ROOT / "pulse-query-ng-web" / "src" / "app"
 
 TEST_BADGE_ALT = "Test Coverage"
 DOC_BADGE_ALT = "Doc Coverage"
 
+_BYPASS_RE = re.compile(r"(istanbul\s+ignore|v8\s+ignore|pragma:\s*no\s*cover)", re.IGNORECASE)
+
 
 class CoverageError(RuntimeError):
   """Raised when coverage is missing or below the required threshold."""
+
+
+def scan_for_coverage_bypasses() -> list[str]:
+  """
+  Scans backend and frontend application source files for forbidden coverage bypass comments.
+
+  Returns:
+      list[str]: List of relative file paths and line numbers containing bypass comments.
+  """
+  offenders: list[str] = []
+  for py_path in APP_ROOT.rglob("*.py"):
+    for idx, line in enumerate(py_path.read_text(encoding="utf-8").splitlines(), start=1):
+      if _BYPASS_RE.search(line):
+        offenders.append(f"{py_path.relative_to(ROOT)}:{idx}")
+
+  if WEB_APP_ROOT.exists():
+    for ts_path in WEB_APP_ROOT.rglob("*.ts"):
+      if ts_path.name.endswith(".spec.ts") or "api-client" in ts_path.parts:
+        continue
+      for idx, line in enumerate(ts_path.read_text(encoding="utf-8").splitlines(), start=1):
+        if _BYPASS_RE.search(line):
+          offenders.append(f"{ts_path.relative_to(ROOT)}:{idx}")
+  return offenders
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
@@ -100,6 +126,39 @@ def compute_test_coverage() -> float:
   return read_percent(percent)
 
 
+def _check_class_docs(path: Path, node: ast.ClassDef, missing: list[str]) -> tuple[int, int]:
+  """
+  Counts total and documented items for a class definition and its public methods.
+
+  Args:
+      path: Source file path.
+      node: AST `ClassDef` node.
+      missing: Mutable list collecting missing docstring identifiers.
+
+  Returns:
+      tuple[int, int]: `(total_count, documented_count)` for this class.
+  """
+  if node.name.startswith("_"):
+    return 0, 0
+
+  total = 1
+  documented = 1 if ast.get_docstring(node) else 0
+  if not documented:
+    missing.append(f"{path.relative_to(ROOT)}: class {node.name}")
+
+  for child in node.body:
+    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+      name = child.name
+      if name.startswith("_"):
+        continue
+      total += 1
+      if ast.get_docstring(child):
+        documented += 1
+      else:
+        missing.append(f"{path.relative_to(ROOT)}: method {node.name}.{name}")
+  return total, documented
+
+
 def compute_doc_coverage() -> tuple[float, list[str]]:
   """Compute docstring coverage using interrogate-equivalent rules."""
   total = 0
@@ -120,36 +179,15 @@ def compute_doc_coverage() -> tuple[float, list[str]]:
 
     for node in tree.body:
       if isinstance(node, ast.ClassDef):
-        if node.name.startswith("_"):
-          continue
+        c_tot, c_doc = _check_class_docs(path, node, missing)
+        total += c_tot
+        documented += c_doc
+      elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_"):
         total += 1
         if ast.get_docstring(node):
           documented += 1
         else:
-          missing.append(f"{path.relative_to(ROOT)}: class {node.name}")
-        for child in node.body:
-          if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            name = child.name
-            if name.startswith("_"):
-              continue
-            if name.startswith("__") and name.endswith("__"):
-              continue
-            total += 1
-            if ast.get_docstring(child):
-              documented += 1
-            else:
-              missing.append(f"{path.relative_to(ROOT)}: method {node.name}.{name}")
-      elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-        name = node.name
-        if name.startswith("_"):
-          continue
-        if name.startswith("__") and name.endswith("__"):
-          continue
-        total += 1
-        if ast.get_docstring(node):
-          documented += 1
-        else:
-          missing.append(f"{path.relative_to(ROOT)}: function {name}")
+          missing.append(f"{path.relative_to(ROOT)}: function {node.name}")
 
   percent = 100.0 if total == 0 else (documented / total * 100)
   return percent, missing
@@ -209,6 +247,12 @@ def update_readme(test_percent: float, doc_percent: float) -> bool:
 
 
 def main() -> int:
+  """
+  CLI entry point computing test and docstring coverage and updating `README.md` badges.
+
+  Returns:
+      int: Process exit code (`0` on success).
+  """
   parser = argparse.ArgumentParser(description="Update coverage badges and enforce 100% coverage.")
   parser.add_argument("--stage", action="store_true", help="Stage README updates with git add.")
   args = parser.parse_args()
@@ -227,6 +271,9 @@ def main() -> int:
     run(["git", "add", str(README)], cwd=ROOT)
 
   failures = []
+  bypasses = scan_for_coverage_bypasses()
+  if bypasses:
+    failures.append(f"Forbidden coverage bypass comments found in: {', '.join(bypasses)}")
   if test_percent < 100:
     failures.append(f"Test coverage is {format_percent(test_percent)}%")
   if doc_percent < 100:
@@ -247,4 +294,4 @@ if __name__ == "__main__":
     raise SystemExit(main())
   except CoverageError as exc:
     print(f"Coverage check failed: {exc}")
-    raise SystemExit(1)
+    raise SystemExit(1) from exc

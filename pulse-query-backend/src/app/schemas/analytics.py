@@ -5,7 +5,7 @@ Defines DTOs for analytics views over LLM candidate output.
 """
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict

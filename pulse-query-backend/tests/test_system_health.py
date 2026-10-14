@@ -2,8 +2,10 @@
 Tests for system health API, diagnostics router, and exception handlers.
 """
 
+from typing import Any
+
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 import os
 
 import duckdb
@@ -33,7 +35,7 @@ def test_get_system_health_endpoint() -> None:
   assert "warnings" in data
 
 
-def test_get_system_health_strict_mode_when_critical(monkeypatch) -> None:
+def test_get_system_health_strict_mode_when_critical(monkeypatch: Any) -> None:
   """GET /api/v1/system/health?strict=true should return 503 when overall_status is critical."""
   monkeypatch.setattr(
     "app.api.routers.system.validate_postgres_connection",
@@ -92,7 +94,7 @@ def test_trigger_reingest_endpoint_forbidden_for_non_admin() -> None:
     main_module.app.dependency_overrides = {}
 
 
-def test_trigger_reingest_endpoint_admin(monkeypatch) -> None:
+def test_trigger_reingest_endpoint_admin(monkeypatch: Any) -> None:
   """POST /api/v1/system/reingest should invoke CSV auto-ingestion for admin users."""
   mock_admin = MagicMock()
   mock_admin.is_admin = True
@@ -141,7 +143,7 @@ async def test_duckdb_database_exception_handler() -> None:
 
 
 @pytest.mark.asyncio
-async def test_template_seeder_edge_cases(tmp_path, monkeypatch) -> None:
+async def test_template_seeder_edge_cases(tmp_path: Any, monkeypatch: Any) -> None:
   """TemplateSeeder should handle missing file, empty list, and malformed JSON."""
   nonexistent_file = str(tmp_path / "nonexistent.json")
   monkeypatch.setattr("app.services.template_seeder.DATA_FILE", nonexistent_file)
@@ -161,7 +163,7 @@ async def test_template_seeder_edge_cases(tmp_path, monkeypatch) -> None:
   assert any(w.code == "CORRUPTED_TEMPLATE_PACK" for w in diagnostics_registry.warnings)
 
 
-def test_data_ingestion_edge_cases(tmp_path, monkeypatch) -> None:
+def test_data_ingestion_edge_cases(tmp_path: Any, monkeypatch: Any) -> None:
   """DataIngestionService should handle missing data directory and ingestion errors."""
   empty_dir = str(tmp_path / "empty_data_dir")
   monkeypatch.setattr("app.services.data_ingestion.DATA_DIR", empty_dir)

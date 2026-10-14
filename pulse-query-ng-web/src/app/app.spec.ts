@@ -34,15 +34,26 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('App', () => {
   let fixture: ComponentFixture<App>;
   let component: App;
-  let queryParams$: Subject<Record<string, any>>;
+  let queryParams$: Subject<Record<string, unknown>>;
 
-  let mockThemeService: any;
-  let mockDashboardsService: any;
-  let mockCartService: any;
-  let mockAuthService: any;
-  let mockDashboardStore: any;
-  let mockDialog: any;
-  let mockAskDataService: any;
+  let mockThemeService: { isTvMode: WritableSignal<boolean>; setTvMode: ReturnType<typeof vi.fn> };
+  let mockDashboardsService: Record<string, ReturnType<typeof vi.fn>>;
+  let mockCartService: { count: WritableSignal<number>; add: ReturnType<typeof vi.fn> };
+  let mockAuthService: {
+    currentUser: WritableSignal<{ email: string }>;
+    isAuthenticated: WritableSignal<boolean>;
+    logout: ReturnType<typeof vi.fn>;
+  };
+  let mockDashboardStore: {
+    dashboard: WritableSignal<null>;
+    isEditMode: WritableSignal<boolean>;
+    toggleEditMode: ReturnType<typeof vi.fn>;
+    refreshAll: ReturnType<typeof vi.fn>;
+    isLoading: WritableSignal<boolean>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+  };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
+  let mockAskDataService: { isOpen: WritableSignal<boolean>; close: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     // Force resolving resources because lazy chunks might trigger loader in JSDOM
@@ -70,7 +81,7 @@ describe('App', () => {
       loadDashboard: vi.fn(),
     };
     mockDialog = { open: vi.fn().mockReturnValue({ afterClosed: () => of(false) }) };
-    queryParams$ = new Subject<Record<string, any>>();
+    queryParams$ = new Subject<Record<string, unknown>>();
     mockThemeService = { isTvMode: signal(false), setTvMode: vi.fn() };
 
     await TestBed.configureTestingModule({

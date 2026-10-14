@@ -1,5 +1,4 @@
 import { By } from '@angular/platform-browser';
-/** @docs */
 /**
  * @fileoverview Unit tests for FocusTrapDirective.
  */
@@ -67,8 +66,20 @@ describe('FocusTrapDirective', () => {
     }
   });
 
-  it('should create', () => {
+  it('should create and support autoFocus=true on init', () => {
     expect(component).toBeTruthy();
+
+    @Component({
+      selector: 'app-autofocus-trap',
+      imports: [FocusTrapDirective],
+      template: '<div appFocusTrap [autoFocus]="true"><button id="b1">One</button></div>',
+    })
+    class AutoFocusHostComponent {}
+
+    const afFixture = TestBed.createComponent(AutoFocusHostComponent);
+    afFixture.detectChanges();
+    expect(afFixture.componentInstance).toBeTruthy();
+    afFixture.destroy();
   });
 
   it('should emit escape when Escape key is pressed on the container', () => {
@@ -156,6 +167,15 @@ describe('FocusTrapDirective', () => {
     expect(() => {
       emptyContainer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
     }).not.toThrow();
+
+    @Component({
+      selector: 'app-empty-autofocus-trap',
+      imports: [FocusTrapDirective],
+      template: '<div appFocusTrap [autoFocus]="true"><span>No focusable</span></div>',
+    })
+    class EmptyAutoFocusTrapComponent {}
+    const emptyAfFixture = TestBed.createComponent(EmptyAutoFocusTrapComponent);
+    expect(() => emptyAfFixture.detectChanges()).not.toThrow();
   });
 
   it('should not throw when Escape is pressed in a container with no focusable elements', async () => {
@@ -223,7 +243,9 @@ describe('FocusTrapDirective', () => {
 
     const mockElement = document.createElement('button');
     document.body.appendChild(mockElement);
-    (directiveInstance as any).previousActiveElement = mockElement;
+    (
+      directiveInstance as unknown as { previousActiveElement: HTMLElement | null }
+    ).previousActiveElement = mockElement;
 
     const spy = vi.spyOn(mockElement, 'focus');
     directiveInstance.ngOnDestroy();
@@ -235,7 +257,9 @@ describe('FocusTrapDirective', () => {
     const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
     const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
 
-    (directiveInstance as any).previousActiveElement = null;
+    (
+      directiveInstance as unknown as { previousActiveElement: HTMLElement | null }
+    ).previousActiveElement = null;
     expect(() => directiveInstance.ngOnDestroy()).not.toThrow();
   });
 
@@ -262,7 +286,9 @@ describe('FocusTrapDirective', () => {
     const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
     const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
 
-    const focusable = (directiveInstance as any).getFocusableElements();
+    const focusable = (
+      directiveInstance as unknown as { getFocusableElements: () => HTMLElement[] }
+    ).getFocusableElements();
     expect(focusable).not.toContain(zeroDim);
     expect(focusable).not.toContain(attrHidden);
     expect(focusable).not.toContain(styleHidden);

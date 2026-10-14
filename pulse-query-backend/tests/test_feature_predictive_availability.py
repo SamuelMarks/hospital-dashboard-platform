@@ -7,7 +7,7 @@ based on current utilization conditions using a self-join pattern.
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import duckdb
 import pytest
@@ -56,10 +56,9 @@ def db_conn() -> duckdb.DuckDBPyConnection:
     """)
 
   # --- Seeding Strategy ---
-  # Target Ward: 'ICU_A'
-  # Capacity: 10
-  # Threshold: > 90% (i.e. > 9 patients) -> Condition requires 10 patients
-  # Target Available: >= 2 beds (i.e. <= 8 patients)
+  # Target Ward is 'ICU_A' with capacity 10 beds
+  # Threshold is > 90% (i.e. > 9 patients) -> Condition requires 10 patients
+  # Target Available is >= 2 beds (i.e. <= 8 patients)
 
   # 1. Condition Day (Thursday): 2023-01-05. Load = 10 (Full, >90%). Meet Condition.
   #    Outcome Day (Sunday): 2023-01-08. Load = 5 (5 Avail >= 2). Success.
@@ -99,13 +98,7 @@ def test_predictive_availability_logic(db_conn: duckdb.DuckDBPyConnection, predi
   """
   raw_sql = predictive_template["sql_template"]
 
-  # Inject Parameters matching the Seeding Strategy
-  # Ward: ICU
-  # Start DOW: 4 (Thursday)
-  # Gap: 3 days (Thu -> Sun)
-  # Capacity: 10
-  # Threshold: 0.9
-  # Target Beds: 2
+  # Inject Parameters matching the Seeding Strategy (ICU, Thursday DOW=4, 3-day gap, 10 capacity, 0.9 threshold, 2 beds)
 
   sql = (
     raw_sql.replace("{{target_ward}}", "ICU")

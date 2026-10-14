@@ -1,19 +1,31 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { HttpConfigComponent } from './http-config.component';
 import { DashboardsService, ExecutionService } from '../api-client';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 
+interface HttpConfigPrivate {
+  dashboardId: WritableSignal<string>;
+  widgetId: WritableSignal<string>;
+  initialConfig: WritableSignal<Record<string, unknown>>;
+  parseConfig: (cfg: Record<string, unknown> | null) => void;
+  arrToObj: (arr: Array<{ key: string; value: string }>) => Record<string, string>;
+}
+
 describe('HttpConfigComponent', () => {
   let component: HttpConfigComponent;
   let fixture: ComponentFixture<HttpConfigComponent>;
 
-  let mockDashboardsApi: any;
-  let mockExecutionApi: any;
+  let mockDashboardsApi: {
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+  };
+  let mockExecutionApi: {
+    refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
+  };
 
-  let initialConfigSig: any;
+  let initialConfigSig: WritableSignal<Record<string, unknown>>;
 
   beforeEach(async () => {
     mockDashboardsApi = {
@@ -34,9 +46,10 @@ describe('HttpConfigComponent', () => {
     fixture = TestBed.createComponent(HttpConfigComponent);
     component = fixture.componentInstance;
 
-    (component as any).dashboardId = signal('d1');
-    (component as any).widgetId = signal('w1');
-    initialConfigSig = signal({
+    const priv = component as unknown as HttpConfigPrivate;
+    priv.dashboardId = signal('d1');
+    priv.widgetId = signal('w1');
+    initialConfigSig = signal<Record<string, unknown>>({
       method: 'POST',
       url: 'https://api.test.com',
       params: { q: 'search' },
@@ -44,7 +57,7 @@ describe('HttpConfigComponent', () => {
       body: { someProperty: 123 },
       meta_forward_auth: true,
     });
-    (component as any).initialConfig = initialConfigSig;
+    priv.initialConfig = initialConfigSig;
 
     fixture.detectChanges();
   });
@@ -241,7 +254,7 @@ describe('HttpConfigComponent', () => {
   });
 
   it('should no-op hydrate when config is null', () => {
-    (component as any).parseConfig(null);
+    (component as unknown as HttpConfigPrivate).parseConfig(null);
     expect(component.formModel().method).toBe('POST');
   });
 
@@ -252,7 +265,7 @@ describe('HttpConfigComponent', () => {
   });
 
   it('should omit empty keys when building object', () => {
-    const obj = (component as any).arrToObj([
+    const obj = (component as unknown as HttpConfigPrivate).arrToObj([
       { key: '', value: 'x' },
       { key: 'a', value: '1' },
     ]);

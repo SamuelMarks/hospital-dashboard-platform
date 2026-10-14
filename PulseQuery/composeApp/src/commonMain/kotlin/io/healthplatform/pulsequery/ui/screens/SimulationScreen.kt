@@ -1,21 +1,60 @@
 /**
  * Component for rendering the SimulationScreen.
- * Provides the main user interface for capacity simulation with advanced constraint editing.
+ * Provides the main user interface for capacity simulation with advanced constraint editing,
+ * delegating all state and API calls to [SimulationViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,112 +66,72 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.ScenarioConstraint
-import io.healthplatform.pulsequery.api.models.ScenarioResult
-import io.healthplatform.pulsequery.api.models.ScenarioRunRequest
 import io.healthplatform.pulsequery.api.models.SimulationAssignment
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
+import io.healthplatform.pulsequery.ui.screens.simulation.SimulationViewModel
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
-import pulsequery.composeapp.generated.resources.*
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.add_affinity_override
+import pulsequery.composeapp.generated.resources.add_constraint
+import pulsequery.composeapp.generated.resources.admitted_patients_msg
+import pulsequery.composeapp.generated.resources.affinity_overrides
+import pulsequery.composeapp.generated.resources.affinity_score
+import pulsequery.composeapp.generated.resources.before_after_comparison
+import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.capacity_simulation
+import pulsequery.composeapp.generated.resources.clinical_service
+import pulsequery.composeapp.generated.resources.constraint_type
+import pulsequery.composeapp.generated.resources.custom_constraints
+import pulsequery.composeapp.generated.resources.delta_change
+import pulsequery.composeapp.generated.resources.delta_msg
+import pulsequery.composeapp.generated.resources.demand_sql
+import pulsequery.composeapp.generated.resources.error
+import pulsequery.composeapp.generated.resources.icu_capacity
+import pulsequery.composeapp.generated.resources.max_beds
+import pulsequery.composeapp.generated.resources.min_beds
+import pulsequery.composeapp.generated.resources.no_affinities_added
+import pulsequery.composeapp.generated.resources.no_constraints_added
+import pulsequery.composeapp.generated.resources.original_occupancy
+import pulsequery.composeapp.generated.resources.proposed_occupancy
+import pulsequery.composeapp.generated.resources.run_simulation
+import pulsequery.composeapp.generated.resources.service_msg
+import pulsequery.composeapp.generated.resources.simulation_failed
+import pulsequery.composeapp.generated.resources.status_msg
+import pulsequery.composeapp.generated.resources.target_unit_msg
+import pulsequery.composeapp.generated.resources.ward_capacity
+import pulsequery.composeapp.generated.resources.ward_unit
 
 /**
  * Screen for running complex capacity simulations with custom constraints and affinity overrides.
  *
  * @param customScope Optional custom coroutine scope for tests or lifecycle override.
+ * @param viewModel Optional [SimulationViewModel] instance for state orchestration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimulationScreen(
-    customScope: CoroutineScope? = null
+    customScope: CoroutineScope? = null,
+    viewModel: SimulationViewModel? = null
 ) {
-    var sqlQuery by remember { mutableStateOf("SELECT service, count FROM incoming_patients") }
-    var icuCapacity by remember { mutableStateOf("10") }
-    var wardCapacity by remember { mutableStateOf("50") }
+    val scope = customScope ?: rememberCoroutineScope()
+    val vm = remember(viewModel, scope) {
+        viewModel ?: SimulationViewModel(scope = scope)
+    }
 
-    var constraints by remember { mutableStateOf<List<ScenarioConstraint>>(emptyList()) }
-    var affinityOverrides by remember { mutableStateOf<Map<String, Map<String, Double>>>(emptyMap()) }
+    val uiState by vm.state.collectAsState()
 
     var showAddConstraintDialog by remember { mutableStateOf(false) }
     var showAddAffinityDialog by remember { mutableStateOf(false) }
 
-    var availableServices by remember {
-        mutableStateOf(
-            listOf(
-                "General Medicine",
-                "General Surgery",
-                "Cardiology",
-                "Neurology",
-                "Pediatrics",
-                "ICU",
-                "Orthopedics"
-            )
-        )
-    }
-    var availableUnits by remember {
-        mutableStateOf(
-            listOf(
-                "ICU",
-                "NICU",
-                "CCU",
-                "WARD_A",
-                "WARD_B",
-                "SURG_WARD",
-                "STEPDOWN"
-            )
-        )
-    }
-
-    var result by remember { mutableStateOf<ScenarioResult?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
     val isDatabaseHealthy by AppContainer.networkHealthRepository.isDatabaseHealthy.collectAsState()
     val healthState by AppContainer.networkHealthRepository.healthState.collectAsState()
 
-    val scope = customScope ?: rememberCoroutineScope()
     val errSimFailed = stringResource(Res.string.simulation_failed)
 
-    LaunchedEffect(Unit) {
-        runCatching {
-            AppContainer.schemaApi.getDatabaseSchemaApiV1SchemaGet().body()
-        }.onSuccess { tables ->
-            if (tables.isNotEmpty()) {
-                val tableNames = tables.map { it.tableName }
-                val enrichedUnits = (availableUnits + tableNames).distinct()
-                availableUnits = enrichedUnits
-            }
-        }
-    }
-
-    fun runSimulation() {
-        scope.launch {
-            isLoading = true
-            errorMessage = null
-            result = null
-            runCatching {
-                val req = ScenarioRunRequest(
-                    demandSourceSql = sqlQuery,
-                    capacityParameters = mapOf(
-                        "ICU" to (icuCapacity.toDoubleOrNull() ?: 10.0),
-                        "WARD" to (wardCapacity.toDoubleOrNull() ?: 50.0)
-                    ),
-                    constraints = if (constraints.isNotEmpty()) constraints else null,
-                    affinityOverrides = if (affinityOverrides.isNotEmpty()) affinityOverrides else null
-                )
-                val response = AppContainer.simulationApi.runSimulationApiV1SimulationRunPost(req)
-                response.body()
-            }.fold(
-                onSuccess = { res ->
-                    result = res
-                },
-                onFailure = { e ->
-                    errorMessage = e.message ?: errSimFailed
-                }
-            )
-            isLoading = false
-        }
+    LaunchedEffect(vm) {
+        vm.loadSchemaTables()
     }
 
     Scaffold(
@@ -141,23 +140,23 @@ fun SimulationScreen(
                 title = { Text(stringResource(Res.string.capacity_simulation)) },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { runSimulation() },
+                onClick = { vm.runSimulation(fallbackError = errSimFailed) },
                 modifier = Modifier.semantics { contentDescription = "Run Simulation" },
                 icon = {
-                    if (isLoading) {
+                    if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     } else {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     }
                 },
                 text = { Text(stringResource(Res.string.run_simulation)) },
-                expanded = !isLoading
+                expanded = !uiState.isLoading
             )
         }
     ) { padding ->
@@ -185,8 +184,8 @@ fun SimulationScreen(
 
             item {
                 OutlinedTextField(
-                    value = sqlQuery,
-                    onValueChange = { sqlQuery = it },
+                    value = uiState.sqlQuery,
+                    onValueChange = { vm.updateSqlQuery(it) },
                     label = { Text(stringResource(Res.string.demand_sql)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
                     textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
@@ -200,15 +199,15 @@ fun SimulationScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = icuCapacity,
-                        onValueChange = { icuCapacity = it },
+                        value = uiState.icuCapacity,
+                        onValueChange = { vm.updateIcuCapacity(it) },
                         label = { Text(stringResource(Res.string.icu_capacity)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
-                        value = wardCapacity,
-                        onValueChange = { wardCapacity = it },
+                        value = uiState.wardCapacity,
+                        onValueChange = { vm.updateWardCapacity(it) },
                         label = { Text(stringResource(Res.string.ward_capacity)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f)
@@ -240,7 +239,7 @@ fun SimulationScreen(
                             }
                         }
 
-                        if (constraints.isEmpty()) {
+                        if (uiState.constraints.isEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = stringResource(Res.string.no_constraints_added),
@@ -249,7 +248,7 @@ fun SimulationScreen(
                             )
                         } else {
                             Spacer(modifier = Modifier.height(8.dp))
-                            constraints.forEachIndexed { index, c ->
+                            uiState.constraints.forEachIndexed { index, c ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -264,7 +263,7 @@ fun SimulationScreen(
                                     )
                                     IconButton(
                                         onClick = {
-                                            constraints = constraints.filterIndexed { i, _ -> i != index }
+                                            vm.removeConstraintAt(index)
                                         }
                                     ) {
                                         Icon(Icons.Default.Close, contentDescription = "Delete constraint", modifier = Modifier.size(16.dp))
@@ -300,7 +299,7 @@ fun SimulationScreen(
                             }
                         }
 
-                        if (affinityOverrides.isEmpty()) {
+                        if (uiState.affinityOverrides.isEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = stringResource(Res.string.no_affinities_added),
@@ -309,7 +308,7 @@ fun SimulationScreen(
                             )
                         } else {
                             Spacer(modifier = Modifier.height(8.dp))
-                            affinityOverrides.forEach { (srv, unitMap) ->
+                            uiState.affinityOverrides.forEach { (srv, unitMap) ->
                                 unitMap.forEach { (unit, score) ->
                                     Row(
                                         modifier = Modifier
@@ -325,15 +324,7 @@ fun SimulationScreen(
                                         )
                                         IconButton(
                                             onClick = {
-                                                val mutableSrv = unitMap.toMutableMap()
-                                                mutableSrv.remove(unit)
-                                                val mutableRoot = affinityOverrides.toMutableMap()
-                                                if (mutableSrv.isEmpty()) {
-                                                    mutableRoot.remove(srv)
-                                                } else {
-                                                    mutableRoot[srv] = mutableSrv
-                                                }
-                                                affinityOverrides = mutableRoot
+                                                vm.removeAffinityOverride(srv, unit)
                                             }
                                         ) {
                                             Icon(Icons.Default.Close, contentDescription = "Delete affinity", modifier = Modifier.size(16.dp))
@@ -346,13 +337,13 @@ fun SimulationScreen(
                 }
             }
 
-            if (errorMessage != null) {
+            uiState.errorMessage?.let { err ->
                 item {
                     ElevatedCard(
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        val errTxt = stringResource(Res.string.error, errorMessage!!)
+                        val errTxt = stringResource(Res.string.error, err)
                         Text(
                             text = errTxt,
                             color = MaterialTheme.colorScheme.onErrorContainer,
@@ -362,7 +353,7 @@ fun SimulationScreen(
                 }
             }
 
-            result?.let { res ->
+            uiState.result?.let { res ->
                 item {
                     ElevatedCard(
                         colors = CardDefaults.elevatedCardColors(
@@ -401,11 +392,11 @@ fun SimulationScreen(
         // Add Constraint Dialog
         if (showAddConstraintDialog) {
             AddConstraintDialog(
-                availableServices = availableServices,
-                availableUnits = availableUnits,
+                availableServices = uiState.availableServices,
+                availableUnits = uiState.availableUnits,
                 onDismiss = { showAddConstraintDialog = false },
                 onAdd = { newConstraint ->
-                    constraints = constraints + newConstraint
+                    vm.addConstraint(newConstraint)
                     showAddConstraintDialog = false
                 }
             )
@@ -414,15 +405,11 @@ fun SimulationScreen(
         // Add Affinity Dialog
         if (showAddAffinityDialog) {
             AddAffinityDialog(
-                availableServices = availableServices,
-                availableUnits = availableUnits,
+                availableServices = uiState.availableServices,
+                availableUnits = uiState.availableUnits,
                 onDismiss = { showAddAffinityDialog = false },
                 onAdd = { srv, unt, score ->
-                    val existing = affinityOverrides[srv]?.toMutableMap() ?: mutableMapOf()
-                    existing[unt] = score
-                    val mutableRoot = affinityOverrides.toMutableMap()
-                    mutableRoot[srv] = existing
-                    affinityOverrides = mutableRoot
+                    vm.putAffinityOverride(srv, unt, score)
                     showAddAffinityDialog = false
                 }
             )
@@ -473,7 +460,7 @@ fun AddConstraintDialog(
                         onValueChange = { selectedService = it },
                         label = { Text(stringResource(Res.string.clinical_service)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = serviceExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = serviceExpanded,
@@ -501,7 +488,7 @@ fun AddConstraintDialog(
                         onValueChange = { selectedUnit = it },
                         label = { Text(stringResource(Res.string.ward_unit)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = unitExpanded,
@@ -610,7 +597,7 @@ fun AddAffinityDialog(
                         onValueChange = { selectedService = it },
                         label = { Text(stringResource(Res.string.clinical_service)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = serviceExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = serviceExpanded,
@@ -637,7 +624,7 @@ fun AddAffinityDialog(
                         onValueChange = { selectedUnit = it },
                         label = { Text(stringResource(Res.string.ward_unit)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = unitExpanded,
@@ -831,19 +818,20 @@ fun AssignmentElevatedCard(assignment: SimulationAssignment) {
                     text = stringResource(Res.string.admitted_patients_msg, assignment.patientCount.toString()),
                     style = MaterialTheme.typography.bodyMedium
                 )
-                if (assignment.delta != null && assignment.delta != 0.0) {
+                val rowDelta = assignment.delta
+                if (rowDelta != null && rowDelta != 0.0) {
                     Surface(
-                        color = if (assignment.delta > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+                        color = if (rowDelta > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
                         shape = MaterialTheme.shapes.small
                     ) {
                         Text(
                             text = stringResource(
                                 Res.string.delta_msg,
-                                if (assignment.delta > 0) "+" else "",
-                                assignment.delta.toString()
+                                if (rowDelta > 0) "+" else "",
+                                rowDelta.toString()
                             ),
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (assignment.delta > 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                            color = if (rowDelta > 0) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }

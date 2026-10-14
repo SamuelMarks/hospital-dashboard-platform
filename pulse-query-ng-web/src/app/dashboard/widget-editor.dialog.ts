@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Modal dialog component for editing an existing dashboard widget's
+ * data source configuration and visualization column mappings.
+ */
 import { Component, computed, Signal, inject, signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 
@@ -93,10 +96,8 @@ export class WidgetEditorDialog {
 
   // --- Local State for Settings Form ---
   /** X Key. */
-  /* istanbul ignore next */
   readonly xKey = signal<string | null>(null);
   /** Y Key. */
-  /* istanbul ignore next */
   readonly yKey = signal<string | null>(null);
 
   /** Creates a new WidgetEditorDialog. */
@@ -113,24 +114,30 @@ export class WidgetEditorDialog {
   }
 
   /** Extract SQL for the editor. */
-  /* istanbul ignore next */
   readonly initialSql: Signal<string> = computed(() => {
-    return this.widget.config?.['query'] || '';
+    return (this.widget.config?.['query'] as string | undefined) || '';
   });
 
-  /** Check if the current viz type needs mapping controls. */
+  /**
+   * Check if the current viz type needs mapping controls.
+   *
+   * @returns True if the visualization type supports column mapping.
+   */
   supportsMapping(): boolean {
     const v = (this.widget.visualization || '').toLowerCase();
     return ['bar_chart', 'line_graph', 'pie'].includes(v);
   }
 
-  /** Helper for label customization. */
+  /**
+   * Helper for label customization.
+   *
+   * @returns True if the visualization type is a pie chart.
+   */
   isPie(): boolean {
     return this.widget.visualization === 'pie';
   }
 
   /** Available columns from the latest execution result. */
-  /* istanbul ignore next */
   readonly columns = computed(() => {
     const result = this.store.dataMap()[this.widget.id];
     if (result && Array.isArray((result as Record<string, unknown>)['columns'])) {
@@ -155,7 +162,7 @@ export class WidgetEditorDialog {
    * Saves the Column Mapping configuration.
    * Merges with existing config to prevent overwriting Query/URL logic.
    */
-  saveSettings() {
+  saveSettings(): void {
     // 1. Get fresh widget state (in case Editor modified config)
     this.dashboardsApi
       .getDashboardApiV1DashboardsDashboardIdGet(this.data.dashboardId)

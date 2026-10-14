@@ -89,7 +89,7 @@ def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
     )
 
     # Construct Demand Data
-    demand_data = []
+    demand_data: list[dict[str, Any]] = []
     if "{demand1}" in theme["template"]:
       demand_data.append({"Service": s1, "Count": d1})
       demand_data.append({"Service": s2, "Count": d2})
@@ -97,12 +97,12 @@ def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
       demand_data.append({"Service": s1, "Count": d1})
 
     # Construct Capacity Base
-    base_capacity = {u1: c1, u2: c2}
+    base_capacity: dict[str, int] = {u1: c1, u2: c2}
     if "{cap3}" in theme["template"]:
       base_capacity[u3] = c3
 
     # Determine logical expectation (for automated scoring)
-    total_demand = sum(d["Count"] for d in demand_data)
+    total_demand = sum(int(d["Count"]) for d in demand_data)
     total_capacity = sum(base_capacity.values())
     expected_overflow = max(0, total_demand - total_capacity)
 
@@ -125,14 +125,31 @@ def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
   return scenarios
 
 
-if __name__ == "__main__":
-  out_dir = Path(__file__).parent.parent / "data"
-  out_dir.mkdir(exist_ok=True)
-  out_file = out_dir / "mpax_benchmark_scenarios.json"
+def main(out_file: Path | None = None, count: int = 200) -> Path:
+  """
+  Generates MPAX benchmark scenarios and writes them to JSON on disk.
 
-  data = generate_scenarios(200)  # Generate 200 variations
+  Args:
+      out_file (Path | None): Optional target file path; defaults to `data/mpax_benchmark_scenarios.json`.
+      count (int): Number of scenarios to generate.
 
-  with open(out_file, "w") as f:
+  Returns:
+      Path: Path to the written JSON file.
+  """
+  if out_file is None:
+    out_dir = Path(__file__).parent.parent / "data"
+    out_dir.mkdir(exist_ok=True)
+    out_file = out_dir / "mpax_benchmark_scenarios.json"
+  else:
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+
+  data = generate_scenarios(count)
+  with open(out_file, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
 
   print(f"Successfully generated {len(data)} MPAX benchmark scenarios at {out_file}")
+  return out_file
+
+
+if __name__ == "__main__":
+  main()

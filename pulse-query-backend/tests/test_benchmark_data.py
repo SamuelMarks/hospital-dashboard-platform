@@ -8,7 +8,7 @@ of the LLM Arena.
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -63,7 +63,8 @@ def test_sql_syntax_validity(benchmark_data: list[dict[str, Any]]) -> None:
     theme = row["theme"]
 
     # 1. Check non-empty
-    assert sql and len(sql.strip()) > 10, f"Empty SQL for {theme}"
+    assert sql, f"Empty SQL for {theme}"
+    assert len(sql.strip()) > 10, f"Empty SQL for {theme}"
 
     # 2. Key phrases presence
     # e.g. macro usage checks

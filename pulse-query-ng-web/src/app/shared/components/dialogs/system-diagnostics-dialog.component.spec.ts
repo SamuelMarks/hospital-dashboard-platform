@@ -179,7 +179,7 @@ describe('SystemDiagnosticsDialogComponent', () => {
       duckdb: null,
       data: { has_default_data: false },
       llm: { mock_mode: false },
-    } as any);
+    } as unknown as SystemHealthResponse);
     expect(component.pgStatus()).toBe('unknown');
     expect(component.duckStatus()).toBe('unknown');
     expect(component.hasDefaultData()).toBe(false);

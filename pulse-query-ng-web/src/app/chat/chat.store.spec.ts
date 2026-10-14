@@ -13,30 +13,41 @@ import {
 import { of, throwError, Subject } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { safeStorage } from '../core/storage.utils';
+import {
+  createMockCandidate,
+  createMockConversation,
+  createMockMessage,
+} from '../../test-utils/mock-factories';
 
 describe('ChatStore', () => {
   let store: ChatStore;
-  let mockApi: any;
-  let mockAiApi: any;
+  let mockApi: Record<string, ReturnType<typeof vi.fn>>;
+  let mockAiApi: { listAvailableModelsApiV1AiModelsGet?: ReturnType<typeof vi.fn> };
 
-  const MOCK_CONV: ConversationResponse = {
+  const MOCK_CONV: ConversationResponse = createMockConversation({
     id: 'c1',
     title: 'Start',
     updated_at: '2023-01-01',
     user_id: 'u1',
     created_at: '2023-01-01',
-  };
+  });
 
-  const MOCK_MSG: MessageResponse = {
+  const MOCK_MSG: MessageResponse = createMockMessage({
     id: 'm1',
     conversation_id: 'c1',
     role: 'assistant',
     content: 'test',
     created_at: 'now',
     candidates: [
-      { id: 'cand1', model_name: 'M1', content: 'C1', sql_hash: 'hashA', is_selected: false },
+      createMockCandidate({
+        id: 'cand1',
+        model_name: 'M1',
+        content: 'C1',
+        sql_hash: 'hashA',
+        is_selected: false,
+      }),
     ],
-  };
+  });
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -166,7 +177,10 @@ describe('ChatStore', () => {
 
     it('does nothing if already fresh', () => {
       store['patch']({ activeConversationId: null, messages: [] });
-      const spy = vi.spyOn(store as any, 'patch');
+      const spy = vi.spyOn(
+        store as unknown as { patch: (partial: Record<string, unknown>) => void },
+        'patch',
+      );
       store.createNewChat();
       expect(spy).not.toHaveBeenCalled();
     });
@@ -191,7 +205,7 @@ describe('ChatStore', () => {
     });
 
     it('creates new conversation if no active ID', () => {
-      const resp: ConversationDetail = { ...MOCK_CONV, messages: [MOCK_MSG] } as any;
+      const resp: ConversationDetail = { ...MOCK_CONV, messages: [MOCK_MSG] };
       mockApi.createConversationApiV1ConversationsPost.mockReturnValue(of(resp));
 
       store.sendMessage('hello');
@@ -202,7 +216,7 @@ describe('ChatStore', () => {
     });
 
     it('creates new conversation and handles undefined messages', () => {
-      const resp: ConversationDetail = { ...MOCK_CONV } as any;
+      const resp = { ...MOCK_CONV } as unknown as ConversationDetail;
       mockApi.createConversationApiV1ConversationsPost.mockReturnValue(of(resp));
 
       store.sendMessage('hello');
@@ -291,8 +305,18 @@ describe('ChatStore', () => {
       const msgNoCandContent: MessageResponse = {
         ...MOCK_MSG,
         candidates: [
-          { id: 'cand2', model_name: 'M2', is_selected: false } as any,
-          { id: 'cand3', model_name: 'M3', is_selected: false } as any,
+          createMockCandidate({
+            id: 'cand2',
+            model_name: 'M2',
+            content: undefined as unknown as string,
+            is_selected: false,
+          }),
+          createMockCandidate({
+            id: 'cand3',
+            model_name: 'M3',
+            content: undefined as unknown as string,
+            is_selected: false,
+          }),
         ],
       };
       store['patch']({ activeConversationId: 'c1', messages: [msgNoCandContent] });
@@ -313,10 +337,25 @@ describe('ChatStore', () => {
       const msgWithHash: MessageResponse = {
         ...MOCK_MSG,
         candidates: [
-          { id: 'c1', model_name: 'M1', sql_hash: 'hashA', is_selected: false },
-          { id: 'c2', model_name: 'M2', sql_hash: 'hashA', is_selected: false },
-          { id: 'c3', model_name: 'M3', sql_hash: 'hashB', is_selected: false },
-        ] as any,
+          createMockCandidate({
+            id: 'c1',
+            model_name: 'M1',
+            sql_hash: 'hashA',
+            is_selected: false,
+          }),
+          createMockCandidate({
+            id: 'c2',
+            model_name: 'M2',
+            sql_hash: 'hashA',
+            is_selected: false,
+          }),
+          createMockCandidate({
+            id: 'c3',
+            model_name: 'M3',
+            sql_hash: 'hashB',
+            is_selected: false,
+          }),
+        ],
       };
       store['patch']({ activeConversationId: 'c1', messages: [msgWithHash] });
 
@@ -475,6 +514,53 @@ describe('ChatStore', () => {
       expect(store.messages().length).toBe(1);
       expect(store.messages()[0].content).toBe('Hello World');
       expect(store.messages()[0].sql_snippet).toBe('SELECT 1');
+    });
+
+    it('handles streamResponse fallback fields, malformed JSON chunks, and natural EOF without done event', async () => {
+      const mockStream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode('comment: ignore\ndata: {bad json\n'));
+          controller.enqueue(encoder.encode('data: {"event":"token","token":"Streamed"}\n\n'));
+          controller.enqueue(encoder.encode('data: {"event":"done"}\n'));
+          controller.close();
+        },
+      });
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(mockStream, { status: 200 }));
+      await store.streamResponse('c1');
+      expect(store.messages()[store.messages().length - 1]?.content).toBe('Streamed');
+      expect(store.messages()[store.messages().length - 1]?.sql_snippet).toBeNull();
+
+      // Stream ending without a done event and with empty content fallback
+      const eofStream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode('data: {"event":"done"}\n\n'));
+          controller.close();
+        },
+      });
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(eofStream, { status: 200 }));
+      await store.streamResponse('c1');
+      expect(store.messages()[store.messages().length - 1]?.content).toBe('');
+
+      const noDoneStream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          controller.enqueue(encoder.encode('data: {"event":"other"}\n\n'));
+          controller.close();
+        },
+      });
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(noDoneStream, { status: 200 }));
+      await store.streamResponse('c1');
+      expect(store.isStreaming()).toBe(false);
+
+      // Response with null body
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        body: null,
+      } as unknown as Response);
+      await store.streamResponse('c1');
+      expect(store.error()).toBe('Readable stream not supported');
     });
 
     it('handles streamResponse network error', async () => {

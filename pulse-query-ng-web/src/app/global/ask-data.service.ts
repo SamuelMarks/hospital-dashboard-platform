@@ -1,4 +1,6 @@
-/** @docs */
+/**
+ * @fileoverview Service managing the open/close visibility state of the global Ask Data sidebar.
+ */
 import { Injectable, signal, computed } from '@angular/core';
 
 /**
@@ -8,10 +10,8 @@ import { Injectable, signal, computed } from '@angular/core';
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class AskDataService {
   /** Private mutable signal for open/close state. */
-  /* istanbul ignore next */
   private _isOpen = signal(false);
 
   /** Public read-only signal for UI binding. */
@@ -20,21 +20,21 @@ export class AskDataService {
   /**
    * Toggles the visibility state of the sidebar.
    */
-  toggle() {
+  toggle(): void {
     this._isOpen.update((v) => !v);
   }
 
   /**
    * Explicitly closes the sidebar.
    */
-  close() {
+  close(): void {
     this._isOpen.set(false);
   }
 
   /**
    * Explicitly opens the sidebar.
    */
-  open() {
+  open(): void {
     this._isOpen.set(true);
   }
 }

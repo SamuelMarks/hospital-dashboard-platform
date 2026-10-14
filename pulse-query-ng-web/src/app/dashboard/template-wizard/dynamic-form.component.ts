@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Reusable Dynamic Form Generator.
  *
@@ -119,10 +118,8 @@ interface JsonSchema {
     `,
   ],
 })
-/** @docs */
 export class DynamicFormComponent implements OnChanges {
   /** valid JSON Schema Object (subset). */
-  /* istanbul ignore next */
   readonly jsonSchema = input<Record<string, unknown>>({});
 
   /** Output emitting validity status. */
@@ -133,10 +130,13 @@ export class DynamicFormComponent implements OnChanges {
   /** Form. */
   readonly form = new FormGroup({});
   /** Field Keys. */
-  /* istanbul ignore next */
   readonly fieldKeys = signal<string[]>([]);
 
-  /** Ng On Changes. */
+  /**
+   * Rebuilds the reactive form when the input JSON schema changes.
+   *
+   * @param changes - Angular SimpleChanges map of changed input properties.
+   */
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['jsonSchema']) {
       this.rebuildForm();
@@ -152,19 +152,18 @@ export class DynamicFormComponent implements OnChanges {
 
     // 2. Coerce type safely
     const raw = this.jsonSchema() || {};
+    const schema = raw as unknown as JsonSchema;
+    const props = schema.properties;
     // Ensure basic structure match
-    if (!raw['properties']) {
+    if (!props) {
       this.fieldKeys.set([]);
       return;
     }
-    const schema = raw as unknown as JsonSchema;
 
-    const props = schema.properties!;
     const requiredList = schema.required || [];
-    const keys = Object.keys(props);
+    const entries = Object.entries(props);
 
-    keys.forEach((key) => {
-      const prop = props[key];
+    entries.forEach(([key, prop]) => {
       const validators: ValidatorFn[] = [];
 
       if (requiredList.includes(key)) {
@@ -179,7 +178,7 @@ export class DynamicFormComponent implements OnChanges {
       this.form.addControl(key, control);
     });
 
-    this.fieldKeys.set(keys);
+    this.fieldKeys.set(Object.keys(props));
 
     // Subscribe to changes
     this.form.valueChanges.subscribe((val) => {
@@ -193,25 +192,42 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   /**
-   * Helper to retrieve property definition for template binding.
+   * Retrieves the JSON schema property definition for a given field key.
+   *
+   * @param key - The property key in the JSON schema.
+   * @returns The property definition or null if not found.
    */
   getProperty(key: string): JsonSchemaProperty | null {
     const schema = this.jsonSchema() as unknown as JsonSchema; // Safe cast after rebuild
     return schema?.properties?.[key] || null;
   }
 
-  /** Whether error. */
+  /**
+   * Checks whether a specific form control has the given validation error.
+   *
+   * @param key - The form control name.
+   * @param errorName - The validator error key to check.
+   * @returns True if the control currently has the specified error.
+   */
   hasError(key: string, errorName: string): boolean {
     return this.form.get(key)?.hasError(errorName) ?? false;
   }
 
-  /** Format Label. */
+  /**
+   * Formats a snake_case property key into a Title Case human-readable label.
+   *
+   * @param key - The raw property key.
+   * @returns Formatted label string.
+   */
   formatLabel(key: string): string {
     return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   /**
-   * Sanitizes values before emission (e.g. Date Objects -> strings).
+   * Sanitizes form values before emission (e.g., converting Date instances to YYYY-MM-DD strings).
+   *
+   * @param raw - Raw key-value map from the reactive FormGroup.
+   * @returns Sanitized key-value map.
    */
   private cleanValues(raw: Record<string, unknown>): Record<string, unknown> {
     const result = { ...raw };

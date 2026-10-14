@@ -13,7 +13,7 @@ It handles:
 import logging
 import re
 import uuid
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,8 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.dashboard import Dashboard, Widget
 from app.models.template import WidgetTemplate
 from app.models.user import User
+from app.services.sql_utils import interpolate_template_parameters
 
-logger = logging.getLogger("provisioning")
+logger = logging.getLogger(__name__)
 
 
 class ProvisioningService:
@@ -62,8 +63,7 @@ class ProvisioningService:
     target_name = await self._get_safe_dashboard_name(db, user.id, self.DEFAULT_DASHBOARD_NAME)
 
     # 2. Create logic
-    dashboard = await self._create_dashboard_from_templates(db, user, target_name)
-    return dashboard
+    return await self._create_dashboard_from_templates(db, user, target_name)
 
   async def _get_safe_dashboard_name(self, db: AsyncSession, user_id: uuid.UUID, base_name: str) -> str:
     """
@@ -92,18 +92,16 @@ class ProvisioningService:
       return restored_base
 
     # If that exists, find the highest suffix number
-    # Pattern: "Name (Restored X)"
     pattern = f"{base_name} (Restored %)%"
-    query = select(Dashboard.name).where(Dashboard.owner_id == user_id, Dashboard.name.like(pattern))
-    result = await db.execute(query)
-    existing_names = result.scalars().all()
+    name_query = select(Dashboard.name).where(Dashboard.owner_id == user_id, Dashboard.name.like(pattern))
+    name_result = await db.execute(name_query)
+    existing_names = name_result.scalars().all()
 
     max_suffix = 0
-    # Match: "Name (Restored 1)"
     regex = re.compile(rf"{re.escape(base_name)} \(Restored (\d+)\)")
 
     for name in existing_names:
-      match = regex.fullmatch(name)
+      match = regex.fullmatch(str(name))
       if match:
         max_suffix = max(max_suffix, int(match.group(1)))
 
@@ -180,9 +178,10 @@ class ProvisioningService:
     title_lower = template.title.lower()
 
     # 1. Scalar / Single Number -> Metric
-    if "probability" in title_lower or "rate" in title_lower or "growth" in title_lower:
-      if "group by" not in sql_lower:
-        return "metric"
+    if ("probability" in title_lower or "rate" in title_lower or "growth" in title_lower) and (
+      "group by" not in sql_lower
+    ):
+      return "metric"
 
     # 2. Trends / Time Series -> Chart
     if "over time" in title_lower or "daily" in title_lower or "monthly" in title_lower:
@@ -210,26 +209,11 @@ class ProvisioningService:
     Returns:
         Dict[str, Any]: Configuration dictionary for the Widget model.
     """
-    raw_sql = template.sql_template
-    params_schema = template.parameters_schema or {}
-    properties = params_schema.get("properties", {})
-
-    # Replace handlebars {{ var }} with default values from schema
-    processed_sql = raw_sql
-    for key, prop_def in properties.items():
-      if "default" in prop_def:
-        default_val = prop_def["default"]
-        # Must handle string quotes for SQL
-        if isinstance(default_val, str):  # pragma: no branch
-          clean_val = str(default_val).replace("'", "''")
-          processed_sql = processed_sql.replace(f"{{{{{key}}}}}", str(clean_val))
-          processed_sql = processed_sql.replace(f"{{{{ {key} }}}}", str(clean_val))
-        else:
-          processed_sql = processed_sql.replace(f"{{{{{key}}}}}", str(default_val))
-          processed_sql = processed_sql.replace(f"{{{{ {key} }}}}", str(default_val))
-
-    config = {"query": processed_sql}
-    return config
+    processed_sql = interpolate_template_parameters(
+      template.sql_template,
+      template.parameters_schema if isinstance(template.parameters_schema, dict) else None,
+    )
+    return {"query": processed_sql}
 
 
 # Singleton Instance

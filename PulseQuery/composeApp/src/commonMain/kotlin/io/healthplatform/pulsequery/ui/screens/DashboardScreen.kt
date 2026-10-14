@@ -1,20 +1,27 @@
 /**
  * Component for rendering the DashboardScreen.
  * Provides the main user interface for this screen with full multi-modal widget lifecycle,
- * reordering, global filtering, undo/redo, and collaboration.
+ * reordering, global filtering, undo/redo, and collaboration delegated to [DashboardViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.heading
-
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -25,219 +32,135 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.healthplatform.pulsequery.api.models.DashboardCreate
-import io.healthplatform.pulsequery.api.models.DashboardResponse
-import io.healthplatform.pulsequery.api.models.WidgetIn
-import io.healthplatform.pulsequery.api.models.WidgetReorderItem
-import io.healthplatform.pulsequery.api.models.WidgetReorderRequest
 import io.healthplatform.pulsequery.api.models.WidgetResponse
-import io.healthplatform.pulsequery.api.models.WidgetCreateText
-import io.healthplatform.pulsequery.api.models.WidgetCreateSql
-import io.healthplatform.pulsequery.api.models.WidgetCreateHttp
-import io.healthplatform.pulsequery.core.undo.DashboardCommand
-import io.healthplatform.pulsequery.core.undo.UndoRedoManager
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.saveFileToDevice
+import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import io.healthplatform.pulsequery.ui.components.FilterRibbon
 import io.healthplatform.pulsequery.ui.components.cart.QueryCartBottomSheet
-import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardExportHelper
-import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardShareDialog
-import io.healthplatform.pulsequery.ui.screens.dashboard.EditWidgetDialog
-import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import io.healthplatform.pulsequery.ui.components.charts.BarChart
+import io.healthplatform.pulsequery.ui.components.charts.HeatmapChart
 import io.healthplatform.pulsequery.ui.components.charts.LineChart
-import io.healthplatform.pulsequery.ui.components.charts.PieChart
 import io.healthplatform.pulsequery.ui.components.charts.MetricCard
 import io.healthplatform.pulsequery.ui.components.charts.MultiColumnTableView
+import io.healthplatform.pulsequery.ui.components.charts.PieChart
 import io.healthplatform.pulsequery.ui.components.charts.TableView
 import io.healthplatform.pulsequery.ui.components.charts.TextMarkdownWidget
-import io.healthplatform.pulsequery.ui.components.charts.HeatmapChart
+import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardExportHelper
+import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardShareDialog
+import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardViewModel
+import io.healthplatform.pulsequery.ui.screens.dashboard.EditWidgetDialog
+import io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.floatOrNull
 import org.jetbrains.compose.resources.stringResource
-import pulsequery.composeapp.generated.resources.*
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.create
+import pulsequery.composeapp.generated.resources.create_dashboard
+import pulsequery.composeapp.generated.resources.create_new_dashboard
+import pulsequery.composeapp.generated.resources.dashboard_is_empty
+import pulsequery.composeapp.generated.resources.dashboard_name
+import pulsequery.composeapp.generated.resources.dashboards
+import pulsequery.composeapp.generated.resources.delete_dashboard
+import pulsequery.composeapp.generated.resources.delete_widget
+import pulsequery.composeapp.generated.resources.error
+import pulsequery.composeapp.generated.resources.failed_to_create_dashboard
+import pulsequery.composeapp.generated.resources.failed_to_delete_dashboard
+import pulsequery.composeapp.generated.resources.failed_to_delete_widget
+import pulsequery.composeapp.generated.resources.failed_to_load_dashboards
+import pulsequery.composeapp.generated.resources.no_dashboards_found
+import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.select_dashboard
 
 /**
- * Main application dashboard managing dashboards, global filtering, reordering, and displaying widgets.
+ * Main application dashboard screen delegating all state and network operations to [DashboardViewModel].
  *
  * @param onAddWidget Optional callback invoked with the active dashboard ID to navigate to the widget creation wizard.
+ * @param viewModel Optional [DashboardViewModel] instance for state orchestration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    onAddWidget: ((String) -> Unit)? = null
+    onAddWidget: ((String) -> Unit)? = null,
+    viewModel: DashboardViewModel? = null
 ) {
-    var dashboards by remember { mutableStateOf<List<DashboardResponse>>(emptyList()) }
-    var activeDashboard by remember { mutableStateOf<DashboardResponse?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showShareDialog by remember { mutableStateOf(false) }
-    var showExportMenu by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val vm = remember(viewModel) { viewModel ?: DashboardViewModel(scope = coroutineScope) }
+
+    val uiState by vm.state.collectAsState()
+    val collaborators by vm.collaborators.collectAsState()
+    val cartItems by vm.cartItems.collectAsState()
+    val canUndo by vm.undoRedoManager.canUndo.collectAsState()
+    val canRedo by vm.undoRedoManager.canRedo.collectAsState()
 
     val isDatabaseHealthy by AppContainer.networkHealthRepository.isDatabaseHealthy.collectAsState()
     val healthState by AppContainer.networkHealthRepository.healthState.collectAsState()
-    
+
+    var showShareDialog by remember { mutableStateOf(false) }
+    var showExportMenu by remember { mutableStateOf(false) }
     var showCreateDashboardDialog by remember { mutableStateOf(false) }
     var showDashboardMenu by remember { mutableStateOf(false) }
     var showCartSheet by remember { mutableStateOf(false) }
     var widgetToEdit by remember { mutableStateOf<WidgetResponse?>(null) }
 
-    val undoRedoManager = remember { UndoRedoManager() }
-    val canUndo by undoRedoManager.canUndo.collectAsState()
-    val canRedo by undoRedoManager.canRedo.collectAsState()
-
-    var filterDepartment by remember { mutableStateOf<String?>(null) }
-    var filterTimeRange by remember { mutableStateOf<String?>(null) }
-
-    val cartItems by AppContainer.queryCartRepository.stagedQueries.collectAsState()
-    val collaborators by AppContainer.dashboardWebSocketRepository.activeCollaborators.collectAsState()
-
-    val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     val errLoadDb = stringResource(Res.string.failed_to_load_dashboards, "")
     val errCreateDb = stringResource(Res.string.failed_to_create_dashboard, "")
     val errDeleteDb = stringResource(Res.string.failed_to_delete_dashboard, "")
     val errDeleteWidget = stringResource(Res.string.failed_to_delete_widget, "")
-    var isOfflineSnapshot by remember { mutableStateOf(false) }
 
-    fun loadDashboards() {
-        coroutineScope.launch {
-            isLoading = true
-            errorMessage = null
-            runCatching {
-                val response = AppContainer.dashboardsApi.listDashboardsApiV1DashboardsGet()
-                response.body()
-            }.fold(
-                onSuccess = { fetched ->
-                    dashboards = fetched
-                    isOfflineSnapshot = false
-                    if (activeDashboard == null || dashboards.none { it.id == activeDashboard?.id }) {
-                        activeDashboard = dashboards.firstOrNull()
-                    } else {
-                        activeDashboard = dashboards.find { it.id == activeDashboard?.id }
-                    }
-                    activeDashboard?.let { db ->
-                        db.widgets?.forEach { w ->
-                            AppContainer.widgetCacheStorage?.cacheWidget(
-                                widgetId = w.id,
-                                dashboardId = db.id,
-                                dataJson = w.config.toString()
-                            )
-                        }
-                    }
-                },
-                onFailure = { e ->
-                    if (activeDashboard != null && AppContainer.widgetCacheStorage != null) {
-                        val cached = AppContainer.widgetCacheStorage?.getCachedWidgets(activeDashboard!!.id)
-                        if (!cached.isNullOrEmpty()) {
-                            isOfflineSnapshot = true
-                            errorMessage = null
-                        } else {
-                            errorMessage = errLoadDb + e.message
-                        }
-                    } else {
-                        errorMessage = errLoadDb + e.message
-                    }
-                }
-            )
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(activeDashboard?.id) {
-        val dashId = activeDashboard?.id
-        if (dashId != null) {
-            AppContainer.dashboardWebSocketRepository.connect(dashId, AppContainer.currentToken)
-        } else {
-            AppContainer.dashboardWebSocketRepository.disconnect()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        AppContainer.dashboardWebSocketRepository.remoteWidgetUpdates.collect {
-            loadDashboards()
-        }
-    }
-
-    DisposableEffect(Unit) {
+    DisposableEffect(vm) {
         onDispose {
-            AppContainer.dashboardWebSocketRepository.disconnect()
+            vm.onCleared()
         }
     }
 
-    LaunchedEffect(Unit) {
-        loadDashboards()
+    LaunchedEffect(vm) {
+        vm.loadDashboards(errLoadDb)
     }
 
-    fun createDashboard(name: String) {
-        coroutineScope.launch {
-            runCatching {
-                AppContainer.dashboardsApi.createDashboardApiV1DashboardsPost(DashboardCreate(name = name))
-            }.fold(
-                onSuccess = { loadDashboards() },
-                onFailure = { e -> errorMessage = errCreateDb + e.message }
-            )
-        }
-    }
-
-    fun deleteDashboard(id: String) {
-        coroutineScope.launch {
-            runCatching {
-                AppContainer.dashboardsApi.deleteDashboardApiV1DashboardsDashboardIdDelete(id)
-            }.fold(
-                onSuccess = {
-                    activeDashboard = null
-                    loadDashboards()
-                },
-                onFailure = { e -> errorMessage = errDeleteDb + e.message }
-            )
-        }
-    }
-
-    fun deleteWidget(widgetId: String) {
-        coroutineScope.launch {
-            runCatching {
-                AppContainer.dashboardsApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widgetId)
-            }.fold(
-                onSuccess = { loadDashboards() },
-                onFailure = { e -> errorMessage = errDeleteWidget + e.message }
-            )
-        }
-    }
-
-    fun reorderWidget(currentIndex: Int, targetIndex: Int) {
-        val currentDb = activeDashboard ?: return
-        val currentWidgets = currentDb.widgets?.toMutableList() ?: return
-        if (currentIndex !in currentWidgets.indices || targetIndex !in currentWidgets.indices) return
-        val moved = currentWidgets.removeAt(currentIndex)
-        currentWidgets.add(targetIndex, moved)
-        activeDashboard = currentDb.copy(widgets = currentWidgets)
-        coroutineScope.launch {
-            runCatching {
-                val req = WidgetReorderRequest(
-                    items = currentWidgets.mapIndexed { idx, w ->
-                        WidgetReorderItem(id = w.id, order = idx)
-                    }
-                )
-                AppContainer.dashboardsApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost(currentDb.id, req)
-            }.onFailure { e ->
-                errorMessage = "Failed to persist widget order: ${e.message}"
-                loadDashboards()
-            }
-        }
-    }
+    val activeDashboard = uiState.activeDashboard
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -246,16 +169,16 @@ fun DashboardScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(activeDashboard?.name ?: stringResource(Res.string.dashboards))
-                        if (dashboards.isNotEmpty()) {
+                        if (uiState.dashboards.isNotEmpty()) {
                             IconButton(onClick = { showDashboardMenu = true }) {
                                 Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(Res.string.select_dashboard))
                             }
                             DropdownMenu(expanded = showDashboardMenu, onDismissRequest = { showDashboardMenu = false }) {
-                                dashboards.forEach { db ->
+                                uiState.dashboards.forEach { db ->
                                     DropdownMenuItem(
                                         text = { Text(db.name) },
                                         onClick = {
-                                            activeDashboard = db
+                                            vm.selectDashboard(db)
                                             showDashboardMenu = false
                                         }
                                     )
@@ -298,23 +221,13 @@ fun DashboardScreen(
                             }
                         }
                         IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    undoRedoManager.undo()
-                                    loadDashboards()
-                                }
-                            },
+                            onClick = { vm.undo() },
                             enabled = canUndo
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
                         }
                         IconButton(
-                            onClick = {
-                                coroutineScope.launch {
-                                    undoRedoManager.redo()
-                                    loadDashboards()
-                                }
-                            },
+                            onClick = { vm.redo() },
                             enabled = canRedo
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
@@ -346,7 +259,7 @@ fun DashboardScreen(
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
-                                            val result = DashboardExportHelper.exportDashboardPdf(activeDashboard!!.id)
+                                            val result = DashboardExportHelper.exportDashboardPdf(activeDashboard.id)
                                             if (result.success) {
                                                 DashboardExportHelper.saveExportedFile(result.filename, "binary_pdf_cached")
                                                 val saveRes = saveFileToDevice(result.filename, result.mimeType, result.bytes)
@@ -366,7 +279,7 @@ fun DashboardScreen(
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
-                                            val result = DashboardExportHelper.exportDashboard(activeDashboard!!.id, "csv")
+                                            val result = DashboardExportHelper.exportDashboard(activeDashboard.id, "csv")
                                             if (result.success) {
                                                 DashboardExportHelper.saveExportedFile(result.filename, result.content)
                                                 val saveRes = saveFileToDevice(result.filename, result.mimeType, result.bytes)
@@ -386,7 +299,7 @@ fun DashboardScreen(
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
-                                            val result = DashboardExportHelper.exportDashboard(activeDashboard!!.id, "json")
+                                            val result = DashboardExportHelper.exportDashboard(activeDashboard.id, "json")
                                             if (result.success) {
                                                 DashboardExportHelper.saveExportedFile(result.filename, result.content)
                                                 val saveRes = saveFileToDevice(result.filename, result.mimeType, result.bytes)
@@ -403,7 +316,7 @@ fun DashboardScreen(
                                 )
                             }
                         }
-                        IconButton(onClick = { deleteDashboard(activeDashboard!!.id) }) {
+                        IconButton(onClick = { vm.deleteDashboard(activeDashboard.id, errDeleteDb) }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.delete_dashboard))
                         }
                     }
@@ -413,7 +326,7 @@ fun DashboardScreen(
         floatingActionButton = {
             if (activeDashboard != null) {
                 FloatingActionButton(
-                    onClick = { activeDashboard?.let { onAddWidget?.invoke(it.id) } },
+                    onClick = { onAddWidget?.invoke(activeDashboard.id) },
                     modifier = Modifier.semantics { contentDescription = "Add Widget" }
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
@@ -422,27 +335,25 @@ fun DashboardScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+            val currentError = uiState.errorMessage
             when {
-                isLoading -> CircularProgressIndicator()
+                uiState.isLoading -> CircularProgressIndicator()
                 !isDatabaseHealthy -> {
                     val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: "Database service is experiencing storage or configuration errors."
                     DatabaseErrorCard(
                         title = "Database Misconfiguration",
                         message = dbMsg,
-                        onRetry = {
-                            AppContainer.networkHealthRepository.refreshHealth()
-                            loadDashboards()
-                        },
+                        onRetry = { vm.retryHealthAndLoad() },
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                errorMessage != null -> {
+                currentError != null -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-                        Button(onClick = { loadDashboards() }) { Text(stringResource(Res.string.retry)) }
+                        Text(text = currentError, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                        Button(onClick = { vm.loadDashboards(errLoadDb) }) { Text(stringResource(Res.string.retry)) }
                     }
                 }
-                dashboards.isEmpty() -> {
+                uiState.dashboards.isEmpty() -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(stringResource(Res.string.no_dashboards_found), style = MaterialTheme.typography.bodyLarge)
                         Spacer(modifier = Modifier.height(16.dp))
@@ -452,24 +363,20 @@ fun DashboardScreen(
                     }
                 }
                 activeDashboard != null -> {
-                    val widgets = activeDashboard?.widgets ?: emptyList()
+                    val widgets = activeDashboard.widgets ?: emptyList()
                     Column(modifier = Modifier.fillMaxSize()) {
                         FilterRibbon(
-                            activeDepartment = filterDepartment,
-                            activeTimeRange = filterTimeRange,
+                            activeDepartment = uiState.filterDepartment,
+                            activeTimeRange = uiState.filterTimeRange,
                             onFiltersChanged = { dept, tr ->
-                                filterDepartment = dept
-                                filterTimeRange = tr
-                                loadDashboards()
+                                vm.updateFilters(dept, tr)
                             },
                             onResetFilters = {
-                                filterDepartment = null
-                                filterTimeRange = null
-                                loadDashboards()
+                                vm.resetFilters()
                             }
                         )
 
-                        if (isOfflineSnapshot) {
+                        if (uiState.isOfflineSnapshot) {
                             Surface(
                                 color = MaterialTheme.colorScheme.tertiaryContainer,
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
@@ -493,31 +400,19 @@ fun DashboardScreen(
                                 contentPadding = PaddingValues(16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize().testTag("dashboard_grid")
                             ) {
                                 itemsIndexed(widgets) { index, widget ->
+                                    val renderState = uiState.widgetDataMap[widget.id] ?: WidgetRenderState()
                                     WidgetElevatedCard(
                                         widget = widget,
+                                        renderState = renderState,
                                         canMoveUp = index > 0,
                                         canMoveDown = index < widgets.size - 1,
-                                        onMoveUp = { reorderWidget(index, index - 1) },
-                                        onMoveDown = { reorderWidget(index, index + 1) },
+                                        onMoveUp = { vm.reorderWidget(index, index - 1) },
+                                        onMoveDown = { vm.reorderWidget(index, index + 1) },
                                         onEdit = { widgetToEdit = widget },
-                                        onDelete = {
-                                            coroutineScope.launch {
-                                                undoRedoManager.executeCommand(object : DashboardCommand {
-                                                    override val description: String = "Delete Widget ${widget.title}"
-                                                    override suspend fun execute(): Result<Unit> {
-                                                        deleteWidget(widget.id)
-                                                        return Result.success(Unit)
-                                                    }
-                                                    override suspend fun undo(): Result<Unit> {
-                                                        loadDashboards()
-                                                        return Result.success(Unit)
-                                                    }
-                                                })
-                                            }
-                                        }
+                                        onDelete = { vm.deleteWidgetWithUndo(widget, errDeleteWidget) }
                                     )
                                 }
                             }
@@ -541,7 +436,7 @@ fun DashboardScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = {
-                        if (newName.isNotBlank()) createDashboard(newName)
+                        if (newName.isNotBlank()) vm.createDashboard(newName, errCreateDb)
                         showCreateDashboardDialog = false
                     }) { Text(stringResource(Res.string.create)) }
                 },
@@ -553,7 +448,7 @@ fun DashboardScreen(
 
         if (showShareDialog && activeDashboard != null) {
             DashboardShareDialog(
-                dashboardId = activeDashboard!!.id,
+                dashboardId = activeDashboard.id,
                 onDismiss = { showShareDialog = false }
             )
         }
@@ -562,17 +457,18 @@ fun DashboardScreen(
             QueryCartBottomSheet(
                 activeDashboardId = activeDashboard?.id,
                 onDismiss = { showCartSheet = false },
-                onQueriesDeployed = { loadDashboards() }
+                onQueriesDeployed = { vm.loadDashboards(errLoadDb) }
             )
         }
 
-        if (widgetToEdit != null) {
+        val currentEditTarget = widgetToEdit
+        if (currentEditTarget != null) {
             EditWidgetDialog(
-                widget = widgetToEdit!!,
+                widget = currentEditTarget,
                 onDismiss = { widgetToEdit = null },
                 onWidgetUpdated = {
                     widgetToEdit = null
-                    loadDashboards()
+                    vm.loadDashboards(errLoadDb)
                 }
             )
         }
@@ -580,9 +476,10 @@ fun DashboardScreen(
 }
 
 /**
- * Card container rendering an analytical widget with header controls for editing, reordering, and deletion.
+ * Stateless card container rendering an analytical widget with header controls for editing, reordering, and deletion.
  *
  * @param widget The [WidgetResponse] data model to render.
+ * @param renderState Parsed [WidgetRenderState] produced by [DashboardViewModel].
  * @param canMoveUp Whether this widget can be shifted earlier in the display order.
  * @param canMoveDown Whether this widget can be shifted later in the display order.
  * @param onMoveUp Callback to move the widget upward.
@@ -593,6 +490,7 @@ fun DashboardScreen(
 @Composable
 fun WidgetElevatedCard(
     widget: WidgetResponse,
+    renderState: WidgetRenderState = WidgetRenderState(),
     canMoveUp: Boolean = false,
     canMoveDown: Boolean = false,
     onMoveUp: () -> Unit = {},
@@ -601,7 +499,7 @@ fun WidgetElevatedCard(
     onDelete: () -> Unit = {}
 ) {
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp),
+        modifier = Modifier.fillMaxWidth().height(300.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -636,112 +534,58 @@ fun WidgetElevatedCard(
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(8.dp))
-            WidgetContent(widget)
+            WidgetContent(widget = widget, renderState = renderState)
         }
     }
 }
 
 /**
- * Dispatches and renders widget data visualization (charts, tables, or markdown notes)
- * based on the widget's type and visualization schema.
+ * Stateless renderer for a widget's visualization (charts, tables, or markdown notes)
+ * based on the widget's type, visualization schema, and pre-parsed [renderState].
  *
- * @param widget The [WidgetResponse] data model to fetch data for and display.
+ * @param widget The [WidgetResponse] metadata model.
+ * @param renderState The [WidgetRenderState] containing parsed data rows, columns, text, or error.
  */
 @Composable
-fun WidgetContent(widget: WidgetResponse) {
-    var data by remember { mutableStateOf<List<Pair<String, Float>>?>(null) }
-    var tableColumns by remember { mutableStateOf<List<String>>(emptyList()) }
-    var tableRows by remember { mutableStateOf<List<List<String>>>(emptyList()) }
-    var textContent by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    val errLoadDataMsg = stringResource(Res.string.failed_to_load_data)
-
-    LaunchedEffect(widget.id) {
-        if (widget.type.equals("TEXT", ignoreCase = true)) {
-            val content = (widget.config["content"] as? JsonPrimitive)?.content
-                ?: widget.config["text"]?.toString()?.replace("\"", "")
-                ?: ""
-            textContent = content
-            return@LaunchedEffect
-        }
-
-        isLoading = true
-        runCatching {
-            val response = AppContainer.executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
-                dashboardId = widget.dashboardId,
-                widgetId = widget.id
-            )
-            val jsonResult = response.body()
-            val parsedData = mutableListOf<Pair<String, Float>>()
-            val cols = mutableListOf<String>()
-            val rows = mutableListOf<List<String>>()
-
-            val xKey = widget.config["xKey"]?.toString()?.replace('"', ' ')?.trim() ?: "label"
-            val yKey = widget.config["yKey"]?.toString()?.replace('"', ' ')?.trim() ?: "value"
-            val elements = jsonResult["data"]
-            if (elements is kotlinx.serialization.json.JsonArray) {
-                elements.forEachIndexed { index, element ->
-                    if (element is kotlinx.serialization.json.JsonObject) {
-                        if (index == 0) {
-                            cols.addAll(element.keys)
-                        }
-                        val rowVals = cols.map { k ->
-                            (element[k] as? JsonPrimitive)?.content ?: ""
-                        }
-                        rows.add(rowVals)
-
-                        val label = (element[xKey] as? JsonPrimitive)?.content ?: "Unknown"
-                        val value = (element[yKey] as? JsonPrimitive)?.floatOrNull ?: 0f
-                        parsedData.add(label to value)
-                    }
-                }
-            }
-            Triple(parsedData, cols, rows)
-        }.fold(
-            onSuccess = { (parsedData, cols, rows) ->
-                data = parsedData
-                tableColumns = cols
-                tableRows = rows
-            },
-            onFailure = { e ->
-                errorMessage = e.message ?: errLoadDataMsg
-            }
-        )
-        isLoading = false
-    }
+fun WidgetContent(
+    widget: WidgetResponse,
+    renderState: WidgetRenderState = WidgetRenderState()
+) {
+    val errText = renderState.errorMessage
+    val textContent = renderState.textContent
+    val data = renderState.data
+    val tableColumns = renderState.tableColumns
+    val tableRows = renderState.tableRows
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when {
-            isLoading -> CircularProgressIndicator()
-            errorMessage != null -> {
-                val errorTxt = stringResource(Res.string.error, errorMessage!!)
+            errText != null -> {
+                val errorTxt = stringResource(Res.string.error, errText)
                 Text(text = errorTxt, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             textContent != null -> {
-                TextMarkdownWidget(content = textContent!!)
+                TextMarkdownWidget(content = textContent)
             }
-            data != null -> {
-                if (data!!.isEmpty() && tableRows.isEmpty()) {
-                    Text(
-                        text = "No data returned for this query",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else {
-                    when (widget.visualization.lowercase()) {
-                        "bar", "barchart", "bar_chart" -> BarChart(data = data!!)
-                        "line", "linechart", "line_chart" -> LineChart(data = data!!)
-                        "pie", "donut" -> PieChart(data = data!!)
-                        "metric", "scalar" -> MetricCard(data = data!!)
-                        "heatmap", "matrix" -> HeatmapChart(columns = tableColumns, rows = tableRows)
-                        "markdown", "text", "note" -> TextMarkdownWidget(content = data!!.joinToString("\n") { "${it.first}: ${it.second}" })
-                        else -> {
-                            if (tableColumns.size > 2) {
-                                MultiColumnTableView(columns = tableColumns, rows = tableRows)
-                            } else {
-                                TableView(data = data!!)
-                            }
+            data.isEmpty() && tableRows.isEmpty() -> {
+                Text(
+                    text = "No data returned for this query",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            else -> {
+                when (widget.visualization.lowercase()) {
+                    "bar", "barchart", "bar_chart" -> BarChart(data = data)
+                    "line", "linechart", "line_chart" -> LineChart(data = data)
+                    "pie", "donut" -> PieChart(data = data)
+                    "metric", "scalar" -> MetricCard(data = data)
+                    "heatmap", "matrix" -> HeatmapChart(columns = tableColumns, rows = tableRows)
+                    "markdown", "text", "note" -> TextMarkdownWidget(content = data.joinToString("; ") { "${it.first}: ${it.second}" })
+                    else -> {
+                        if (tableColumns.size > 2) {
+                            MultiColumnTableView(columns = tableColumns, rows = tableRows)
+                        } else {
+                            TableView(data = data)
                         }
                     }
                 }

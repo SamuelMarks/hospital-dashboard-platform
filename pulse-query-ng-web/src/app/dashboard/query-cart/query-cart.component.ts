@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Query Cart sidebar component displaying saved SQL snippets that can be
+ * renamed, removed, or dragged onto a dashboard grid.
+ */
 import { Component, input, inject, computed } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
@@ -14,7 +17,9 @@ import { DashboardStore } from '../dashboard.store';
 import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-dialog.component';
 import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-dialog.component';
 
-/** @docs */
+/**
+ * Component displaying the user's saved SQL queries with drag-and-drop dashboard provisioning.
+ */
 @Component({
   selector: 'app-query-cart',
   imports: [DragDropModule, MatButtonModule, MatIconModule, MatTooltipModule, MatSnackBarModule],
@@ -164,19 +169,28 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
     `,
   ],
 })
-/** @docs */
 export class QueryCartComponent {
+  /** Service managing the persistent query cart state. */
   private readonly cart = inject(QueryCartService);
+  /** Service provisioning dashboard widgets from query cart items. */
   private readonly provisioning = inject(QueryCartProvisioningService);
+  /** Active dashboard state store. */
   private readonly store = inject(DashboardStore);
+  /** Material snackbar for status notifications. */
   private readonly snackBar = inject(MatSnackBar);
+  /** Material dialog service for confirmation and rename modals. */
   private readonly dialog = inject(MatDialog);
 
+  /** Optional target dashboard ID when rendered inside a dashboard editor. */
   readonly dashboardId = input<string | null>(null);
+  /** Signal list of items currently in the query cart. */
   readonly items = this.cart.items;
+  /** Signal count of items currently in the query cart. */
   readonly count = this.cart.count;
+  /** Connected CDK drop list IDs for dragging cart items onto the dashboard grid. */
   readonly connectedDropLists = computed(() => ['dashboard-grid']);
 
+  /** Prompts the user for confirmation and clears all items from the query cart. */
   clear(): void {
     this.dialog
       .open(ConfirmDialogComponent, {
@@ -188,10 +202,20 @@ export class QueryCartComponent {
       });
   }
 
+  /**
+   * Removes a single item from the query cart.
+   *
+   * @param item - The query cart item to remove.
+   */
   remove(item: QueryCartItem): void {
     this.cart.remove(item.id);
   }
 
+  /**
+   * Opens a prompt dialog to rename a query cart item.
+   *
+   * @param item - The query cart item to rename.
+   */
   rename(item: QueryCartItem): void {
     this.dialog
       .open(PromptDialogComponent, {
@@ -203,6 +227,11 @@ export class QueryCartComponent {
       });
   }
 
+  /**
+   * Provisions the specified cart item as a new widget on the active dashboard.
+   *
+   * @param item - The query cart item to add to the dashboard.
+   */
   addToDashboard(item: QueryCartItem): void {
     const dashboardId = this.dashboardId();
     if (!dashboardId) return;
@@ -215,6 +244,12 @@ export class QueryCartComponent {
     });
   }
 
+  /**
+   * Normalizes whitespace and truncates a SQL query string for compact preview display.
+   *
+   * @param sql - Raw SQL query string.
+   * @returns Single-line truncated SQL preview string.
+   */
   previewSql(sql: string): string {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     const max = 70;

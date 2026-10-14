@@ -3,14 +3,14 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { VizMarkdownComponent } from './viz-markdown.component';
 import { By } from '@angular/platform-browser';
 
 describe('VizMarkdownComponent', () => {
   let component: VizMarkdownComponent;
   let fixture: ComponentFixture<VizMarkdownComponent>;
-  let contentSig: any;
+  let contentSig: WritableSignal<string>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -20,7 +20,7 @@ describe('VizMarkdownComponent', () => {
     fixture = TestBed.createComponent(VizMarkdownComponent);
     component = fixture.componentInstance;
     contentSig = signal('');
-    (component as any).content = contentSig;
+    (component as unknown as { content: WritableSignal<string> }).content = contentSig;
     fixture.detectChanges();
   });
 

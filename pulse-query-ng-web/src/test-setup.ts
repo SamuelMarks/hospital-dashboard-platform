@@ -106,13 +106,11 @@ beforeAll(async () => {
     { DashboardLayoutComponent },
     { TemplateWizardComponent },
     { WidgetBuilderComponent },
-    { ScenarioEditorComponent },
   ] = await Promise.all([
     import('./app/dashboard/toolbar.component'),
     import('./app/dashboard/dashboard-layout.component'),
     import('./app/dashboard/template-wizard/template-wizard.component'),
     import('./app/dashboard/widget-builder/widget-builder.component'),
-    import('./app/simulation/scenario-editor/scenario-editor.component'),
   ]);
 
   componentsNeedingResources = [
@@ -120,7 +118,6 @@ beforeAll(async () => {
     DashboardLayoutComponent,
     TemplateWizardComponent,
     WidgetBuilderComponent,
-    ScenarioEditorComponent,
   ];
   componentsNeedingResources.forEach((cmp) => void cmp);
 });
@@ -142,21 +139,26 @@ TestBed.compileComponents = async () => {
 // Angular's JIT compiler does not understand `input()` metadata, so `setInput`
 // throws for signal inputs. Patch setInput to fall back to writing via the
 // internal signal node when available.
+interface SignalNodeLike {
+  applyValueToInputSignal?: (node: SignalNodeLike, value: unknown) => void;
+}
+
 const originalSetInput = ComponentRef.prototype.setInput;
 ComponentRef.prototype.setInput = function (name: string, value: unknown) {
   try {
     return originalSetInput.call(this, name, value);
   } catch (err) {
-    const instance = (this as ComponentRef<any>).instance as Record<string, any> | undefined;
+    const instance = (this as ComponentRef<unknown>).instance as
+      Record<string, unknown> | undefined;
     if (instance && Object.prototype.hasOwnProperty.call(instance, name)) {
       const current = instance[name];
       if (typeof current === 'function') {
-        const node = (current as any)[SIGNAL];
+        const node = (current as unknown as Record<symbol, SignalNodeLike | undefined>)[SIGNAL];
         if (node) {
           if (typeof node.applyValueToInputSignal === 'function') {
             node.applyValueToInputSignal(node, value);
           } else {
-            signalSetFn(node, value);
+            signalSetFn(node as Parameters<typeof signalSetFn>[0], value);
           }
           return;
         }
@@ -169,7 +171,7 @@ ComponentRef.prototype.setInput = function (name: string, value: unknown) {
   }
 };
 
-const storageMock = (() => {
+const storageMock: Storage = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: (key: string) => store[key] || null,
@@ -191,13 +193,29 @@ const storageMock = (() => {
 
 if (typeof window !== 'undefined') {
   try {
-    (window as any).localStorage = storageMock;
-    (window as any).sessionStorage = storageMock;
+    Object.defineProperty(window, 'localStorage', {
+      value: storageMock,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, 'sessionStorage', {
+      value: storageMock,
+      writable: true,
+      configurable: true,
+    });
   } catch (e) {}
 }
 
 try {
-  (globalThis as any).localStorage = storageMock;
-  (globalThis as any).sessionStorage = storageMock;
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: storageMock,
+    writable: true,
+    configurable: true,
+  });
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    value: storageMock,
+    writable: true,
+    configurable: true,
+  });
 } catch (e) {}
 import '@angular/localize/init';

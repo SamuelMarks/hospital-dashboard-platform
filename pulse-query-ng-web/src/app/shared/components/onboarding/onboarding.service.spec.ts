@@ -1,5 +1,4 @@
 import { safeStorage } from '../../../core/storage.utils';
-/** @docs */
 /**
  * @fileoverview Unit tests for OnboardingService.
  */

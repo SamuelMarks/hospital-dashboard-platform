@@ -185,6 +185,18 @@ export class AddWidgetCommand implements Command {
 }
 
 /**
+ * Snapshot of a widget's mutable configuration fields for undo/redo state transitions.
+ */
+export interface WidgetConfigSnapshot {
+  /** Widget display title. */
+  title: string;
+  /** Visualization component type identifier. */
+  visualization: string;
+  /** Arbitrary widget configuration dictionary. */
+  config: Record<string, unknown>;
+}
+
+/**
  * Command for updating an existing widget configuration.
  */
 export class UpdateWidgetConfigCommand implements Command {
@@ -207,16 +219,8 @@ export class UpdateWidgetConfigCommand implements Command {
    */
   constructor(
     private readonly widgetId: string,
-    private readonly previous: {
-      title: string;
-      visualization: string;
-      config: Record<string, unknown>;
-    },
-    private readonly next: {
-      title: string;
-      visualization: string;
-      config: Record<string, unknown>;
-    },
+    private readonly previous: WidgetConfigSnapshot,
+    private readonly next: WidgetConfigSnapshot,
     private readonly dashboardApi: DashboardsService,
     private readonly store: DashboardStore,
     now: Date,
@@ -245,11 +249,7 @@ export class UpdateWidgetConfigCommand implements Command {
    *
    * @param target - Configuration target.
    */
-  private applyUpdate(target: {
-    title: string;
-    visualization: string;
-    config: Record<string, unknown>;
-  }): void {
+  private applyUpdate(target: WidgetConfigSnapshot): void {
     const updatePayload: WidgetUpdate = {
       title: target.title,
       visualization: target.visualization,

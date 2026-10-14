@@ -1,9 +1,8 @@
-/** @docs */
 /**
- * Shared models for the Query Cart feature.
+ * Discriminator constant for query-cart drag-and-drop items.
+ *
+ * @fileoverview Shared data models and type discriminators for the Query Cart feature.
  */
-
-/** Discriminator for query-cart drag/drop items. */
 export const QUERY_CART_ITEM_KIND = 'query-cart-item' as const;
 
 /** Type for the query-cart discriminator. */

@@ -162,6 +162,7 @@
               rows="8"
               class="font-mono"
               placeholder='{ "key": "value" }'
+              i18n-placeholder
             ></textarea>
             @for (err of form.body().errors(); track err.kind) {
               @if (err.kind === 'invalidJson') {

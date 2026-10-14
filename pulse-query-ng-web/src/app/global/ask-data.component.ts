@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Global "Ask Data" scratchpad component enabling ad-hoc SQL exploration
+ * and conversational AI query generation via a temporary scratchpad dashboard.
+ */
 import { Component, inject, signal, OnDestroy, PLATFORM_ID, effect } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
@@ -102,23 +105,35 @@ import { QueryCartService } from './query-cart.service';
   ],
   templateUrl: './ask-data.component.html',
 })
-/** @docs */
 export class AskDataComponent implements OnDestroy {
+  /** Service managing the visibility of the Ask Data sidenav. */
   public readonly vis = inject(AskDataService);
+  /** Service managing the user's saved query cart. */
   private readonly cart = inject(QueryCartService);
+  /** Backend dashboards API service. */
   private readonly dashboardsApi = inject(DashboardsService);
+  /** Authentication service for tracking user login state. */
   private readonly auth = inject(AuthService);
+  /** Angular platform identifier for browser vs. SSR checks. */
   private readonly platformId = inject(PLATFORM_ID);
+  /** Material snackbar for user feedback notifications. */
   private readonly snackBar = inject(MatSnackBar);
 
+  /** Reserved dashboard name used for the temporary scratchpad. */
   private readonly SCRATCHPAD_NAME = 'Scratchpad (Temp)';
+  /** Default title assigned to the scratchpad ad-hoc SQL widget. */
   private readonly WIDGET_TITLE = 'AdHoc Query';
 
+  /** Whether the scratchpad dashboard context is currently being initialized. */
   readonly loadingContext = signal(true);
+  /** Error message if scratchpad initialization fails. */
   readonly contextError = signal<string | null>(null);
+  /** Resolved dashboard and widget IDs for the active scratchpad session. */
   readonly scratchpadIds = signal<{ dashboardId: string; widgetId: string } | null>(null);
+  /** Reactive count of queries saved in the query cart. */
   readonly cartCount = this.cart.count;
 
+  /** Initializes an effect to provision or reset the scratchpad when authentication state changes. */
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       effect(() => {
@@ -140,6 +155,7 @@ export class AskDataComponent implements OnDestroy {
     }
   }
 
+  /** Deletes the temporary scratchpad dashboard when the component is destroyed. */
   ngOnDestroy(): void {
     if (isPlatformBrowser(this.platformId)) {
       const ids = this.scratchpadIds();
@@ -153,6 +169,7 @@ export class AskDataComponent implements OnDestroy {
     }
   }
 
+  /** Finds an existing scratchpad dashboard or creates a new one for the current user. */
   private initializeScratchpad(): void {
     this.loadingContext.set(true);
     this.contextError.set(null);
@@ -170,6 +187,7 @@ export class AskDataComponent implements OnDestroy {
     });
   }
 
+  /** Creates a new temporary scratchpad dashboard on the backend. */
   private createDashboard(): void {
     const scratchDash: DashboardCreate = { name: this.SCRATCHPAD_NAME };
     this.dashboardsApi.createDashboardApiV1DashboardsPost(scratchDash).subscribe({
@@ -178,6 +196,12 @@ export class AskDataComponent implements OnDestroy {
     });
   }
 
+  /**
+   * Ensures the scratchpad dashboard has a default ad-hoc SQL widget.
+   *
+   * @param dashboardId - The scratchpad dashboard ID.
+   * @param widgets - Existing widgets on the scratchpad dashboard.
+   */
   private ensureWidget(dashboardId: string, widgets: WidgetResponse[]): void {
     const existingWidget = widgets.find((w) => w.title === this.WIDGET_TITLE);
 
@@ -198,17 +222,34 @@ export class AskDataComponent implements OnDestroy {
     }
   }
 
+  /**
+   * Stores the active scratchpad dashboard and widget IDs and clears the loading state.
+   *
+   * @param dashboardId - The scratchpad dashboard ID.
+   * @param widgetId - The ad-hoc SQL widget ID.
+   */
   private setContext(dashboardId: string, widgetId: string): void {
     this.scratchpadIds.set({ dashboardId, widgetId });
     this.loadingContext.set(false);
   }
 
+  /**
+   * Logs an initialization error and updates the error state signal.
+   *
+   * @param msg - User-facing error message.
+   * @param error - Raw error object for console diagnostics.
+   */
   private handleError(msg: string, error: unknown): void {
     console.error(error);
     this.contextError.set(msg);
     this.loadingContext.set(false);
   }
 
+  /**
+   * Adds the given SQL query to the query cart and displays a confirmation snackbar.
+   *
+   * @param sql - The SQL query string to save to the cart.
+   */
   handleSaveToCart(sql: string): void {
     this.cart.add(sql);
     this.snackBar.open('Query saved to Cart. Open dashboard editor to use.', 'OK', {

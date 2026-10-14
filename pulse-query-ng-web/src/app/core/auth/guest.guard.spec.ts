@@ -3,7 +3,13 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  Router,
+  RouterStateSnapshot,
+  UrlTree,
+} from '@angular/router';
 import { guestGuard } from './guest.guard';
 import { AuthService } from './auth.service';
 
@@ -29,7 +35,7 @@ describe('guestGuard', () => {
   it('should allow access if user is NOT authenticated', () => {
     mockAuthService.isAuthenticated.mockReturnValue(false);
 
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
 
     expect(result).toBe(true);
     expect(mockRouter.createUrlTree).not.toHaveBeenCalled();
@@ -41,7 +47,7 @@ describe('guestGuard', () => {
     const mockUrlTree = {} as UrlTree;
     mockRouter.createUrlTree.mockReturnValue(mockUrlTree);
 
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
 
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/']);
     expect(result).toBe(mockUrlTree);

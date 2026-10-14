@@ -1,5 +1,7 @@
 /**
- * Configuration settings for the application environment.
+ * Runtime configuration settings for the application environment.
+ *
+ * @fileoverview Configuration settings for the application environment.
  */
 export const environment = {
   /** Whether the application is running in production mode. */

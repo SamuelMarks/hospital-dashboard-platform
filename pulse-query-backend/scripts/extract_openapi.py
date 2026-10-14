@@ -11,7 +11,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, Dict
+from typing import Any
 
 # Ensure backend modules are resolvable by adding the 'src' directory to sys.path
 # Structure: pulse-query-backend/scripts/extract_openapi.py -> ../src -> pulse-query-backend/src
@@ -47,7 +47,13 @@ def extract_openapi(output_path: str) -> None:
   print(f"✅ OpenAPI schema saved to: {output_path}")
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> None:
+  """
+  CLI entry point for extracting the FastAPI OpenAPI schema to disk.
+
+  Args:
+      argv (list[str] | None): Optional command-line argument list.
+  """
   parser = argparse.ArgumentParser(description="Extract OpenAPI Schema")
   parser.add_argument(
     "--output",
@@ -55,6 +61,9 @@ if __name__ == "__main__":
     default="openapi.json",
     help="Path to save the generated JSON file.",
   )
-  args = parser.parse_args()
-
+  args = parser.parse_args(argv)
   extract_openapi(args.output)
+
+
+if __name__ == "__main__":
+  main()

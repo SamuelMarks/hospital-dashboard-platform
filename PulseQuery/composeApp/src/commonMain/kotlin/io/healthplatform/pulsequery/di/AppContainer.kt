@@ -1,6 +1,8 @@
+/**
+ * Dependency Injection container and immutable API service registry for PulseQuery.
+ */
 package io.healthplatform.pulsequery.di
 
-import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.api.apis.AdminApi
 import io.healthplatform.pulsequery.api.apis.AdminUsersApi
 import io.healthplatform.pulsequery.api.apis.AiApi
@@ -16,22 +18,114 @@ import io.healthplatform.pulsequery.api.apis.SchemaApi
 import io.healthplatform.pulsequery.api.apis.SimulationApi
 import io.healthplatform.pulsequery.api.apis.SystemApi
 import io.healthplatform.pulsequery.api.apis.TemplatesApi
-import io.healthplatform.pulsequery.network.createHttpClient
-import io.healthplatform.pulsequery.network.DashboardWebSocketRepository
-import io.healthplatform.pulsequery.network.ChatStreamingRepository
-import io.healthplatform.pulsequery.network.NetworkHealthRepository
-import io.healthplatform.pulsequery.getDefaultLocalHost
+import io.healthplatform.pulsequery.api.models.RefreshTokenRequest
+import io.healthplatform.pulsequery.api.models.UserResponse
+import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.database.DatabaseDriverFactory
 import io.healthplatform.pulsequery.database.KeyValueStorage
 import io.healthplatform.pulsequery.database.WidgetCacheStorage
-import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.database.createDatabase
+import io.healthplatform.pulsequery.getDefaultLocalHost
+import io.healthplatform.pulsequery.network.ChatStreamingRepository
+import io.healthplatform.pulsequery.network.DashboardWebSocketRepository
+import io.healthplatform.pulsequery.network.NetworkHealthRepository
+import io.healthplatform.pulsequery.network.QueryCartRepository
+import io.healthplatform.pulsequery.network.createHttpClient
+import io.ktor.client.HttpClient
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Lightweight, manual Dependency Injection container for PulseQuery.
- * Ensures singletons for network clients and API endpoints.
+ * Immutable registry encapsulating all generated OpenAPI clients and network repositories
+ * bound to a specific [baseUrl] and lazy [httpClientProvider].
+ *
+ * @property baseUrl Base URL of the Pulse Query backend API.
+ * @property httpClientProvider Lazy factory providing the Ktor [HttpClient] instance used by all API services.
+ */
+class ApiServiceRegistry(
+    val baseUrl: String,
+    private val httpClientProvider: () -> HttpClient
+) {
+    /** Active Ktor [HttpClient] instance resolved lazily on first network access. */
+    val httpClient: HttpClient by lazy { httpClientProvider() }
+
+    /** Secondary constructor accepting an already-created [HttpClient] instance. */
+    constructor(baseUrl: String, httpClient: HttpClient) : this(
+        baseUrl = baseUrl,
+        httpClientProvider = { httpClient }
+    )
+    /** Client for authentication endpoints. */
+    val authApi: AuthApi by lazy { AuthApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for dashboard layout and widget persistence endpoints. */
+    val dashboardsApi: DashboardsApi by lazy { DashboardsApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for conversational AI chat and SQL generation endpoints. */
+    val chatApi: ChatApi by lazy { ChatApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for analytical report queries. */
+    val analyticsApi: AnalyticsApi by lazy { AnalyticsApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for MPAX capacity simulation endpoints. */
+    val simulationApi: SimulationApi by lazy { SimulationApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for admin configuration endpoints. */
+    val adminApi: AdminApi by lazy { AdminApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for admin user management endpoints (listing, roles, active status). */
+    val adminUsersApi: AdminUsersApi by lazy { AdminUsersApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for LLM model discovery and arena queries. */
+    val aiApi: AiApi by lazy { AiApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for analytical database catalog schemas. */
+    val schemaApi: SchemaApi by lazy { SchemaApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for widget template marketplace endpoints. */
+    val templatesApi: TemplatesApi by lazy { TemplatesApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for widget analytical query execution endpoints. */
+    val executionApi: ExecutionApi by lazy { ExecutionApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for system diagnostics and health endpoints. */
+    val systemApi: SystemApi by lazy { SystemApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for SQL and MPAX benchmark query endpoints. */
+    val benchmarksApi: BenchmarksApi by lazy { BenchmarksApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for multi-candidate MPAX Arena competitive evaluation endpoints. */
+    val mpaxArenaApi: MpaxArenaApi by lazy { MpaxArenaApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Client for hospital capacity alerting thresholds and alert rules endpoints. */
+    val alertRulesApi: AlertRulesApi by lazy { AlertRulesApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** Repository managing live WebSocket collaboration and collaborator presence. */
+    val dashboardWebSocketRepository: DashboardWebSocketRepository by lazy {
+        DashboardWebSocketRepository(httpClient = httpClient, baseUrlProvider = { baseUrl })
+    }
+
+    /** Repository managing live Server-Sent Events chat token streaming. */
+    val chatStreamingRepository: ChatStreamingRepository by lazy {
+        ChatStreamingRepository(httpClient = httpClient, baseUrlProvider = { baseUrl })
+    }
+
+    /** Repository monitoring backend health and reachability. */
+    val networkHealthRepository: NetworkHealthRepository by lazy {
+        NetworkHealthRepository(systemApi = systemApi)
+    }
+}
+
+/**
+ * Lightweight Dependency Injection container for PulseQuery.
+ * Holds an immutable [ApiServiceRegistry] in a [StateFlow] and manages session persistence.
  */
 object AppContainer {
 
+    /** Storage key for the active JWT access token. */
     const val KEY_AUTH_TOKEN: String = "pulse_auth_token"
+
+    /** Storage key for the active JWT refresh token. */
     const val KEY_REFRESH_TOKEN: String = "pulse_refresh_token"
 
     private var _keyValueStorage: KeyValueStorage? = null
@@ -56,19 +150,19 @@ object AppContainer {
      *
      * @param driverFactory Factory providing the platform SQLite driver.
      */
-    fun initDatabase(driverFactory: io.healthplatform.pulsequery.database.DatabaseDriverFactory) {
-        val database = io.healthplatform.pulsequery.database.createDatabase(driverFactory)
+    fun initDatabase(driverFactory: DatabaseDriverFactory) {
+        val database = createDatabase(driverFactory)
         keyValueStorage = KeyValueStorage(database)
         widgetCacheStorage = WidgetCacheStorage(database)
     }
 
     /** Repository for staging ad-hoc clinical queries in mobile query cart. */
-    val queryCartRepository: io.healthplatform.pulsequery.network.QueryCartRepository = io.healthplatform.pulsequery.network.QueryCartRepository()
+    val queryCartRepository: QueryCartRepository = QueryCartRepository()
 
     private var _currentToken: String? = null
 
     /**
-     * Stores the current auth token across the session, persisting to KeyValueStorage if present.
+     * Stores the current auth token across the session, persisting to [KeyValueStorage] if present.
      */
     var currentToken: String?
         get() = _currentToken
@@ -84,7 +178,7 @@ object AppContainer {
     private var _refreshToken: String? = null
 
     /**
-     * Stores the current refresh token across the session, persisting to KeyValueStorage if present.
+     * Stores the current refresh token across the session, persisting to [KeyValueStorage] if present.
      */
     var refreshToken: String?
         get() = _refreshToken
@@ -123,7 +217,7 @@ object AppContainer {
         )
         return runCatching {
             val response = authApi.refreshAccessTokenApiV1AuthRefreshPost(
-                io.healthplatform.pulsequery.api.models.RefreshTokenRequest(refreshToken = ref)
+                RefreshTokenRequest(refreshToken = ref)
             )
             val body = response.body()
             currentToken = body.accessToken
@@ -134,35 +228,35 @@ object AppContainer {
         }
     }
 
+    private fun buildDefaultRegistry(baseUrl: String): ApiServiceRegistry {
+        return ApiServiceRegistry(
+            baseUrl = baseUrl,
+            httpClientProvider = {
+                createHttpClient(
+                    baseUrl = baseUrl,
+                    tokenProvider = { currentToken }
+                )
+            }
+        )
+    }
+
+    private val _registryFlow = MutableStateFlow(buildDefaultRegistry(getDefaultLocalHost()))
+
+    /** Reactive [StateFlow] of the current immutable [ApiServiceRegistry]. */
+    val registryFlow: StateFlow<ApiServiceRegistry> = _registryFlow.asStateFlow()
+
     /**
-     * The base URL to use for API requests.
+     * The base URL to use for API requests. Updating this atomically replaces [registryFlow]
+     * with a fresh [ApiServiceRegistry] instance.
      */
-    var currentBaseUrl: String = getDefaultLocalHost()
+    var currentBaseUrl: String
+        get() = _registryFlow.value.baseUrl
         set(value) {
-            field = value
-            _httpClient = null
-            _authApi = null
-            _dashboardsApi = null
-            _chatApi = null
-            _analyticsApi = null
-            _simulationApi = null
-            _adminApi = null
-            _adminUsersApi = null
-            _dashboardWebSocketRepository = null
-            _chatStreamingRepository = null
-            _aiApi = null
-            _schemaApi = null
-            _templatesApi = null
-            _executionApi = null
-            _systemApi = null
-            _benchmarksApi = null
-            _mpaxArenaApi = null
-            _alertRulesApi = null
-            _networkHealthRepository = null
+            _registryFlow.value = buildDefaultRegistry(value)
         }
 
     /**
-     * Resets all cached HTTP clients and API services for test isolation.
+     * Resets all cached HTTP clients, tokens, storage, and API services for test isolation.
      */
     fun resetForTest() {
         _currentToken = null
@@ -170,263 +264,92 @@ object AppContainer {
         currentUser = null
         _keyValueStorage = null
         widgetCacheStorage = null
-        _httpClient = null
-        _authApi = null
-        _dashboardsApi = null
-        _chatApi = null
-        _analyticsApi = null
-        _simulationApi = null
-        _adminApi = null
-        _adminUsersApi = null
-        _dashboardWebSocketRepository = null
-        _chatStreamingRepository = null
-        _aiApi = null
-        _schemaApi = null
-        _templatesApi = null
-        _executionApi = null
-        _systemApi = null
-        _benchmarksApi = null
-        _mpaxArenaApi = null
-        _alertRulesApi = null
-        _networkHealthRepository = null
+        queryCartRepository.clearCart()
+        _registryFlow.value = buildDefaultRegistry(currentBaseUrl)
     }
 
     /**
-     * Overrides the active HTTP client for mock test execution.
+     * Overrides the active HTTP client for mock test execution by publishing a new [ApiServiceRegistry].
      *
-     * @param client Mocked [io.ktor.client.HttpClient] instance.
+     * @param client Mocked [HttpClient] instance.
      */
-    fun setHttpClientForTest(client: io.ktor.client.HttpClient) { 
-        _httpClient = client
-        _authApi = null
-        _dashboardsApi = null
-        _chatApi = null
-        _analyticsApi = null
-        _simulationApi = null
-        _adminApi = null
-        _adminUsersApi = null
-        _dashboardWebSocketRepository = null
-        _chatStreamingRepository = null
-        _aiApi = null
-        _schemaApi = null
-        _templatesApi = null
-        _executionApi = null
-        _systemApi = null
-        _benchmarksApi = null
-        _mpaxArenaApi = null
-        _alertRulesApi = null
-        _networkHealthRepository = null
+    fun setHttpClientForTest(client: HttpClient) {
+        _registryFlow.value = ApiServiceRegistry(baseUrl = currentBaseUrl, httpClient = client)
     }
 
-    private var _httpClient: io.ktor.client.HttpClient? = null
-
-    /** Lazily instantiated HTTP client configured for current base URL and auth token. */
-    val httpClient: io.ktor.client.HttpClient
-        get() {
-            if (_httpClient == null) {
-                _httpClient = createHttpClient(
-                    baseUrl = currentBaseUrl,
-                    tokenProvider = { currentToken }
-                )
-            }
-            return _httpClient!!
-        }
-
-    private var _authApi: AuthApi? = null
+    /** Active Ktor [HttpClient] from the current [ApiServiceRegistry]. */
+    val httpClient: HttpClient
+        get() = _registryFlow.value.httpClient
 
     /** Client for authentication endpoints. */
     val authApi: AuthApi
-        get() {
-            if (_authApi == null) {
-                _authApi = AuthApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _authApi!!
-        }
-
-    private var _dashboardsApi: DashboardsApi? = null
+        get() = _registryFlow.value.authApi
 
     /** Client for dashboard layout and widget persistence endpoints. */
     val dashboardsApi: DashboardsApi
-        get() {
-            if (_dashboardsApi == null) {
-                _dashboardsApi = DashboardsApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _dashboardsApi!!
-        }
-
-    private var _chatApi: ChatApi? = null
+        get() = _registryFlow.value.dashboardsApi
 
     /** Client for conversational AI chat and SQL generation endpoints. */
     val chatApi: ChatApi
-        get() {
-            if (_chatApi == null) {
-                _chatApi = ChatApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _chatApi!!
-        }
-
-    private var _analyticsApi: AnalyticsApi? = null
+        get() = _registryFlow.value.chatApi
 
     /** Client for analytical report queries. */
     val analyticsApi: AnalyticsApi
-        get() {
-            if (_analyticsApi == null) {
-                _analyticsApi = AnalyticsApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _analyticsApi!!
-        }
-
-    private var _simulationApi: SimulationApi? = null
+        get() = _registryFlow.value.analyticsApi
 
     /** Client for MPAX capacity simulation endpoints. */
     val simulationApi: SimulationApi
-        get() {
-            if (_simulationApi == null) {
-                _simulationApi = SimulationApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _simulationApi!!
-        }
-
-    private var _adminApi: AdminApi? = null
+        get() = _registryFlow.value.simulationApi
 
     /** Client for admin configuration endpoints. */
     val adminApi: AdminApi
-        get() {
-            if (_adminApi == null) {
-                _adminApi = AdminApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _adminApi!!
-        }
-
-    private var _adminUsersApi: AdminUsersApi? = null
+        get() = _registryFlow.value.adminApi
 
     /** Client for admin user management endpoints (listing, roles, active status). */
     val adminUsersApi: AdminUsersApi
-        get() {
-            if (_adminUsersApi == null) {
-                _adminUsersApi = AdminUsersApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _adminUsersApi!!
-        }
-
-    private var _dashboardWebSocketRepository: DashboardWebSocketRepository? = null
+        get() = _registryFlow.value.adminUsersApi
 
     /** Repository managing live WebSocket collaboration and collaborator presence. */
     val dashboardWebSocketRepository: DashboardWebSocketRepository
-        get() {
-            if (_dashboardWebSocketRepository == null) {
-                _dashboardWebSocketRepository = DashboardWebSocketRepository()
-            }
-            return _dashboardWebSocketRepository!!
-        }
-
-    private var _chatStreamingRepository: ChatStreamingRepository? = null
+        get() = _registryFlow.value.dashboardWebSocketRepository
 
     /** Repository managing live Server-Sent Events chat token streaming. */
     val chatStreamingRepository: ChatStreamingRepository
-        get() {
-            if (_chatStreamingRepository == null) {
-                _chatStreamingRepository = ChatStreamingRepository()
-            }
-            return _chatStreamingRepository!!
-        }
-
-    private var _aiApi: AiApi? = null
+        get() = _registryFlow.value.chatStreamingRepository
 
     /** Client for LLM model discovery and arena queries. */
     val aiApi: AiApi
-        get() {
-            if (_aiApi == null) {
-                _aiApi = AiApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _aiApi!!
-        }
-
-    private var _schemaApi: SchemaApi? = null
+        get() = _registryFlow.value.aiApi
 
     /** Client for analytical database catalog schemas. */
     val schemaApi: SchemaApi
-        get() {
-            if (_schemaApi == null) {
-                _schemaApi = SchemaApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _schemaApi!!
-        }
-
-    private var _templatesApi: TemplatesApi? = null
+        get() = _registryFlow.value.schemaApi
 
     /** Client for widget template marketplace endpoints. */
     val templatesApi: TemplatesApi
-        get() {
-            if (_templatesApi == null) {
-                _templatesApi = TemplatesApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _templatesApi!!
-        }
-
-    private var _executionApi: ExecutionApi? = null
+        get() = _registryFlow.value.templatesApi
 
     /** Client for widget analytical query execution endpoints. */
     val executionApi: ExecutionApi
-        get() {
-            if (_executionApi == null) {
-                _executionApi = ExecutionApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _executionApi!!
-        }
-
-    private var _systemApi: SystemApi? = null
+        get() = _registryFlow.value.executionApi
 
     /** Client for system diagnostics and health endpoints. */
     val systemApi: SystemApi
-        get() {
-            if (_systemApi == null) {
-                _systemApi = SystemApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _systemApi!!
-        }
-
-    private var _benchmarksApi: BenchmarksApi? = null
+        get() = _registryFlow.value.systemApi
 
     /** Client for SQL and MPAX benchmark query endpoints. */
     val benchmarksApi: BenchmarksApi
-        get() {
-            if (_benchmarksApi == null) {
-                _benchmarksApi = BenchmarksApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _benchmarksApi!!
-        }
-
-    private var _mpaxArenaApi: MpaxArenaApi? = null
+        get() = _registryFlow.value.benchmarksApi
 
     /** Client for multi-candidate MPAX Arena competitive evaluation endpoints. */
     val mpaxArenaApi: MpaxArenaApi
-        get() {
-            if (_mpaxArenaApi == null) {
-                _mpaxArenaApi = MpaxArenaApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _mpaxArenaApi!!
-        }
-
-    private var _alertRulesApi: AlertRulesApi? = null
+        get() = _registryFlow.value.mpaxArenaApi
 
     /** Client for hospital capacity alerting thresholds and alert rules endpoints. */
     val alertRulesApi: AlertRulesApi
-        get() {
-            if (_alertRulesApi == null) {
-                _alertRulesApi = AlertRulesApi(baseUrl = currentBaseUrl, httpClient = httpClient)
-            }
-            return _alertRulesApi!!
-        }
-
-    private var _networkHealthRepository: NetworkHealthRepository? = null
+        get() = _registryFlow.value.alertRulesApi
 
     /** Repository monitoring backend health and reachability. */
     val networkHealthRepository: NetworkHealthRepository
-        get() {
-            if (_networkHealthRepository == null) {
-                _networkHealthRepository = NetworkHealthRepository(systemApi = systemApi)
-            }
-            return _networkHealthRepository!!
-        }
+        get() = _registryFlow.value.networkHealthRepository
 }

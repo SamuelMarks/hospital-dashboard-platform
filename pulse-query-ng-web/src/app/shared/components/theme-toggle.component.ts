@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Theme Toggle Component.
  * Provides a button to toggle between light and dark themes.
@@ -31,6 +30,7 @@ import { ThemeService } from '../../core/theme/theme.service';
       mat-icon-button
       (click)="toggleTheme()"
       [matTooltip]="isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+      i18n-aria-label
       aria-label="Toggle theme"
       data-testid="theme-toggle"
     >
@@ -46,8 +46,8 @@ import { ThemeService } from '../../core/theme/theme.service';
   ],
 })
 export class ThemeToggleComponent {
-  /** Injected ThemeService. */
-  /** Injected ThemeService. */ private readonly themeService = inject(ThemeService);
+  /** Injected ThemeService managing application light/dark appearance state. */
+  private readonly themeService = inject(ThemeService);
 
   /**
    * Signal indicating whether dark mode is active.

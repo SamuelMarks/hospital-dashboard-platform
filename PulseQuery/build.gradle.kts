@@ -10,5 +10,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.sqldelight) apply false
     alias(libs.plugins.kover) apply false
+    alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.ktlint) apply false
     id("com.github.ben-manes.versions") version "0.51.0"
 }

@@ -97,24 +97,26 @@ class MockVizMarkdownComponent {
   readonly content = input<string | undefined>();
 }
 
-function setInputSignal(component: any, key: string, value: unknown): void {
-  const current = component[key];
+function setInputSignal(component: object, key: string, value: unknown): void {
+  const record = component as Record<string, unknown>;
+  const current = record[key] as
+    { [SIGNAL]?: { applyValueToInputSignal?: (node: unknown, val: unknown) => void } } | undefined;
   const node = current?.[SIGNAL];
   if (node) {
     if (typeof node.applyValueToInputSignal === 'function') {
       node.applyValueToInputSignal(node, value);
     } else {
-      signalSetFn(node, value as never);
+      signalSetFn(node as Parameters<typeof signalSetFn>[0], value as never);
     }
   } else {
-    component[key] = value;
+    record[key] = value;
   }
 }
 
 describe('WidgetComponent', () => {
   let component: WidgetComponent;
   let fixture: ComponentFixture<WidgetComponent>;
-  let dataMapSig: WritableSignal<Record<string, any>>;
+  let dataMapSig: WritableSignal<Record<string, unknown>>;
   let isLoadingSig: WritableSignal<boolean>;
   let isEditModeSig: WritableSignal<boolean>;
   let focusedWidgetIdSig: WritableSignal<string | null>;
@@ -126,11 +128,23 @@ describe('WidgetComponent', () => {
     visualization: 'table',
     config: { query: 'SELECT 1' },
   };
-  let mockStore: any;
-  let mockDashApi: any;
-  let mockDialog: any;
-  let mockRouter: any;
-  let mockConnectionService: any;
+  let mockStore: {
+    dataMap: WritableSignal<Record<string, unknown>>;
+    isLoading: WritableSignal<boolean>;
+    isEditMode: WritableSignal<boolean>;
+    focusedWidgetId: WritableSignal<string | null>;
+    isWidgetLoading: WritableSignal<() => boolean>;
+    refreshWidget: ReturnType<typeof vi.fn>;
+    setFocusedWidget: ReturnType<typeof vi.fn>;
+    duplicateWidget: ReturnType<typeof vi.fn>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+  };
+  let mockDashApi: {
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+  };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
+  let mockRouter: { navigate: ReturnType<typeof vi.fn> };
+  let mockConnectionService: { openDiagnosticsDialog: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     dataMapSig = signal({});

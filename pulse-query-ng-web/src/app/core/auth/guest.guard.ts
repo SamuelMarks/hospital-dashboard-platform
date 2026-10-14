@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Route Guard for guest-only routes (Login, Register).
  */

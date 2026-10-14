@@ -1,5 +1,6 @@
-/** @docs */
-// pulse-query-ng-web/src/app/login/login.component.ts
+/**
+ * @fileoverview User login component providing email/password authentication via Signal Forms.
+ */
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormRoot, FormField, form, required, email, minLength } from '@angular/forms/signals';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -15,7 +16,9 @@ import { AuthService } from '../core/auth/auth.service';
 import { UserCreate } from '../api-client';
 import { environment } from '../../environments/environment';
 
-/** @docs */
+/**
+ * Authentication login screen component.
+ */
 @Component({
   selector: 'app-login',
   imports: [
@@ -86,23 +89,31 @@ import { environment } from '../../environments/environment';
   ],
   templateUrl: './login.component.html',
 })
-/** @docs */
 export class LoginComponent implements OnInit {
+  /** Authentication service handling credential verification and token storage. */
   private readonly authService = inject(AuthService);
+  /** Angular router for post-login redirects. */
   private readonly router = inject(Router);
+  /** Activated route for reading `returnUrl` query parameters. */
   private readonly route = inject(ActivatedRoute);
 
+  /** Whether self-service account registration is enabled in environment config. */
   readonly registrationEnabled = environment.registrationEnabled;
 
+  /** Whether an authentication request is currently in progress. */
   readonly isLoading = signal(false);
+  /** Error message displayed when authentication fails. */
   readonly errorMessage = signal<string | null>(null);
+  /** Whether the password input characters are masked. */
   readonly hidePassword = signal(true);
 
+  /** Signal model backing the login form fields. */
   readonly formModel = signal({
     email: '',
     password: '',
   });
 
+  /** Signal form instance with email and password validation rules. */
   readonly loginForm = form(this.formModel, (f) => {
     required(f.email, { message: 'Email is required' });
     email(f.email, { message: 'Please enter a valid email address' });
@@ -111,17 +122,24 @@ export class LoginComponent implements OnInit {
     minLength(f.password, 4, { message: 'Password must be at least 4 characters' });
   });
 
+  /** Redirects already authenticated users away from the login screen. */
   ngOnInit(): void {
     if (this.authService.isAuthenticated()) {
       this.router.navigateByUrl('/');
     }
   }
 
+  /**
+   * Toggles whether the password input field is masked or visible.
+   *
+   * @param event - DOM click event from the visibility toggle button.
+   */
   togglePasswordVisibility(event: Event): void {
     event.preventDefault();
     this.hidePassword.update((v) => !v);
   }
 
+  /** Validates credentials and submits the login request. */
   onSubmit(): void {
     if (this.loginForm().invalid()) {
       this.loginForm().markAsTouched();
@@ -142,7 +160,7 @@ export class LoginComponent implements OnInit {
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
         this.router.navigateByUrl(returnUrl);
       },
-      error: (err) => {
+      error: (err: { error?: { detail?: string } }) => {
         this.isLoading.set(false);
         const msg = err?.error?.detail || $localize`Invalid email or password. Please try again.`;
         this.errorMessage.set(msg);

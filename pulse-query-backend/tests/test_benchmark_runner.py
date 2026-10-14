@@ -8,8 +8,10 @@ Verifies the logic for:
 4. Full Run Orchestration (dry-run mode).
 """
 
+import importlib
 import os
 import sys
+from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,7 +24,10 @@ BACKEND_ROOT = os.path.dirname(TESTS_DIR)
 if BACKEND_ROOT not in sys.path:
   sys.path.insert(0, BACKEND_ROOT)
 
-from scripts.run_benchmark import BenchmarkRunner
+if TYPE_CHECKING:
+  from scripts.run_benchmark import BenchmarkRunner
+else:
+  BenchmarkRunner = importlib.import_module("scripts.run_benchmark").BenchmarkRunner
 
 # Dummy Dataset for Testing
 MOCK_DATASET = [
@@ -92,6 +97,22 @@ def test_execute_sql_safety(runner: BenchmarkRunner) -> None:
     assert "Syntax Error" in err
 
 
+def _verify_and_cleanup_report(filepath: str) -> bool:
+  """
+  Checks whether `filepath` exists on disk and removes it if present.
+
+  Args:
+      filepath (str): Report file path.
+
+  Returns:
+      bool: True if the file existed.
+  """
+  exists = os.path.exists(filepath)
+  if exists:
+    os.remove(filepath)
+  return exists
+
+
 @pytest.mark.asyncio
 async def test_full_run_dry_mode(runner: BenchmarkRunner) -> None:
   """
@@ -99,20 +120,89 @@ async def test_full_run_dry_mode(runner: BenchmarkRunner) -> None:
   Ensures it iterates strategies and attempts to save report.
   We must mock the components that sql_generator uses internally (schema_svc).
   """
-  # 1. Mock SQL Execution to always succeed return 10
-  with patch.object(runner, "_execute_sql", return_value=([(10,)], None)) as mock_exec:
-    # 2. Mock Schema Service to prevent real DB access during message build
-    with patch("scripts.run_benchmark.sql_generator.schema_svc") as mock_schema:
-      mock_schema.get_schema_context_string.return_value = "CREATE TABLE t (id INT);"
+  with (
+    patch.object(runner, "_execute_sql", return_value=([(10,)], None)) as mock_exec,
+    patch("scripts.run_benchmark.sql_generator.schema_svc") as mock_schema,
+  ):
+    mock_schema.get_schema_context_string.return_value = "CREATE TABLE t (id INT);"
+    await runner.run(strategies=["zero-shot"])
+    assert _verify_and_cleanup_report("test_report.csv")
+    assert mock_exec.call_count >= 2
 
-      # 3. Run
-      await runner.run(strategies=["zero-shot"])
 
-      # 4. Verify Report
-      try:
-        assert os.path.exists("test_report.csv")
-        # Should have run Gold SQL (1) and Gen SQL (1)
-        assert mock_exec.call_count >= 2
-      finally:
-        if os.path.exists("test_report.csv"):
-          os.remove("test_report.csv")
+@pytest.mark.asyncio
+async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: Any) -> None:
+  """Verify edge branches in BenchmarkRunner (_load_dataset missing, _init_duckdb error, empty query, etc.)."""
+  from app.models.feedback import ExperimentLog, ModelCandidate
+  from scripts.run_benchmark import main as runner_main
+
+  # 1. Missing GOLD_FILE exits with 1
+  with patch("scripts.run_benchmark.os.path.exists", return_value=False):
+    with pytest.raises(SystemExit) as exc:
+      runner._load_dataset()
+    assert exc.value.code == 1
+
+  # 2. _init_duckdb exception logs warning without crashing
+  with patch("scripts.run_benchmark.duckdb_manager.get_connection", side_effect=RuntimeError("duckdb locked")):
+    runner._init_duckdb()
+
+  # 3. _execute_sql with empty query and successful query
+  assert runner._execute_sql("") == (None, "Empty Query")
+  with patch("scripts.run_benchmark.duckdb_manager.get_readonly_connection") as mock_get:
+    mock_conn = MagicMock()
+    mock_conn.execute.return_value.fetchall.return_value = [(1,)]
+    mock_get.return_value = mock_conn
+    rows, err = runner._execute_sql("SELECT 1")
+    assert rows == [(1,)]
+    assert err is None
+
+  # 4. _compare_results with None
+  assert runner._compare_results(None, [(1,)]) is False
+
+  # 5. _create_mock_db branches (pre-populated id/created_at, non-ExperimentLog refresh)
+  mock_db = runner._create_mock_db()
+  cand = ModelCandidate(model_tag="m", generated_sql="SELECT 1", is_selected=True)
+  cand_none = ModelCandidate(model_tag="m2", generated_sql="SELECT 2")
+  cand_none.is_selected = None  # type: ignore[assignment]
+  import uuid
+  from datetime import UTC, datetime
+
+  cand.id = uuid.uuid4()
+  mock_db.add(cand)
+  mock_db.add(cand_none)
+  await mock_db.flush()
+  assert cand_none.is_selected is False
+
+  dummy_obj = MagicMock()
+  dummy_obj.id = uuid.uuid4()
+  dummy_obj.created_at = datetime.now(UTC)
+  await mock_db.refresh(dummy_obj)
+
+  exp = ExperimentLog(user_id=uuid.uuid4(), prompt_text="q", prompt_strategy="zero-shot")
+  exp.id = None
+  exp.created_at = None
+  await mock_db.refresh(exp)
+  assert exp.id is not None
+
+  # 6. Gold SQL failure and strategy exception in run(), plus empty _save_report
+  runner._save_report([])
+  runner._save_report([{"Success": False, "Model": "M"}])
+
+  with patch.object(runner, "_execute_sql", return_value=(None, "Gold Error")):
+    await runner.run(strategies=["zero-shot"])
+
+  with (
+    patch.object(runner, "_execute_sql", return_value=([(1,)], None)),
+    patch.object(runner, "_evaluate_strategy_case", side_effect=RuntimeError("arena boom")),
+  ):
+    await runner.run(strategies=["zero-shot"])
+
+  # 7. CLI main()
+  out_csv = tmp_path / "cli_out.csv"
+  with (
+    patch("scripts.run_benchmark.asyncio.run") as mock_asio_run,
+    patch.object(BenchmarkRunner, "run", new=MagicMock(return_value="coro")) as mock_run,
+  ):
+    runner_main(["--dry-run", "--output", str(out_csv), "--strategies", "zero-shot"])
+    mock_run.assert_called_once_with(strategies=["zero-shot"])
+    mock_asio_run.assert_called_once_with("coro")

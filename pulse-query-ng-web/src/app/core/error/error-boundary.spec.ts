@@ -2,12 +2,20 @@
  * @fileoverview Unit tests for Error Boundary Directive.
  */
 
-import { Component, TemplateRef } from '@angular/core';
+import { Component, TemplateRef, ViewContainerRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ErrorBoundaryDirective, ErrorBoundaryContext } from './error-boundary.directive';
 import { ErrorHandler } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 import { By } from '@angular/platform-browser';
+
+interface ErrorBoundaryPrivate {
+  vcr: ViewContainerRef;
+  sub: { unsubscribe: ReturnType<typeof vi.fn> };
+  ngOnInit: () => void;
+  ngOnDestroy: () => void;
+  renderFallback: (err: unknown) => void;
+}
 
 /**
  * Host component to test structural directive usage.
@@ -63,11 +71,7 @@ describe('ErrorBoundaryDirective', () => {
         { provide: ErrorHandler, useValue: handlerMock },
         { provide: GlobalErrorHandler, useValue: handlerMock },
       ],
-    })
-      .overrideDirective(ErrorBoundaryDirective, {
-        set: { inputs: ['appErrorBoundary'] },
-      })
-      .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(TestHostComponent);
     fixture.detectChanges();
@@ -122,16 +126,20 @@ describe('ErrorBoundaryDirective', () => {
 
   it('should render fallback when content creation throws', () => {
     const debugNode = fixture.debugElement
-      .queryAllNodes((node) => true)
+      .queryAllNodes((_node) => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
-    const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
+    const directive = debugNode?.injector.get(
+      ErrorBoundaryDirective,
+    ) as unknown as ErrorBoundaryPrivate;
 
     const originalCreate = directive.vcr.createEmbeddedView.bind(directive.vcr);
     vi.spyOn(directive.vcr, 'createEmbeddedView')
       .mockImplementationOnce(() => {
         throw new Error('boom');
       })
-      .mockImplementation((...args: any[]) => originalCreate(...args));
+      .mockImplementation((...args: Parameters<ViewContainerRef['createEmbeddedView']>) =>
+        originalCreate(...args),
+      );
 
     directive.ngOnInit();
     fixture.detectChanges();
@@ -144,9 +152,11 @@ describe('ErrorBoundaryDirective', () => {
     noTemplateFixture.detectChanges();
 
     const debugNode = noTemplateFixture.debugElement
-      .queryAllNodes((node) => true)
+      .queryAllNodes((_node) => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
-    const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
+    const directive = debugNode?.injector.get(
+      ErrorBoundaryDirective,
+    ) as unknown as ErrorBoundaryPrivate;
 
     const createSpy = vi.spyOn(directive.vcr, 'createEmbeddedView');
     createSpy.mockClear();
@@ -158,9 +168,11 @@ describe('ErrorBoundaryDirective', () => {
 
   it('should unsubscribe on destroy', () => {
     const debugNode = fixture.debugElement
-      .queryAllNodes((node) => true)
+      .queryAllNodes((_node) => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
-    const directive = debugNode?.injector.get(ErrorBoundaryDirective) as any;
+    const directive = debugNode?.injector.get(
+      ErrorBoundaryDirective,
+    ) as unknown as ErrorBoundaryPrivate;
 
     directive.sub = { unsubscribe: vi.fn() };
     directive.ngOnDestroy();

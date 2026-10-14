@@ -3,7 +3,13 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  Router,
+  RouterStateSnapshot,
+  UrlTree,
+} from '@angular/router';
 import { registrationGuard } from './registration.guard';
 import { environment } from '../../../environments/environment';
 
@@ -28,7 +34,7 @@ describe('registrationGuard', () => {
 
   it('should allow access if environment.registrationEnabled is true', () => {
     environment.registrationEnabled = true;
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
     expect(result).toBe(true);
   });
 
@@ -37,7 +43,7 @@ describe('registrationGuard', () => {
     const mockUrlTree = {} as UrlTree;
     mockRouter.createUrlTree.mockReturnValue(mockUrlTree);
 
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
 
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login']);
     expect(result).toBe(mockUrlTree);

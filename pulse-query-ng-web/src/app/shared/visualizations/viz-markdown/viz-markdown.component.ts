@@ -1,9 +1,13 @@
-/** @docs */
-// pulse-query-ng-web/src/app/shared/visualizations/viz-markdown/viz-markdown.component.ts
+/**
+ * @fileoverview Sanitized Markdown rendering component for text widgets and AI assistant responses.
+ */
+
 import { Component, input, computed, SecurityContext, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
-/** @docs */
+/**
+ * Parses lightweight Markdown syntax into HTML and sanitizes the output via Angular's `DomSanitizer`.
+ */
 @Component({
   selector: 'viz-markdown',
   imports: [],
@@ -72,17 +76,25 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
   ],
   templateUrl: './viz-markdown.component.html',
 })
-/** @docs */
 export class VizMarkdownComponent {
+  /** Raw Markdown source text to render. */
   readonly content = input<string>('');
+  /** Angular DOM sanitizer used to strip unsafe HTML tags and attributes. */
   private readonly sanitizer = inject(DomSanitizer);
 
+  /** Computed sanitized HTML string ready for `[innerHTML]` binding. */
   readonly safeHtml = computed<SafeHtml>(() => {
     const raw = this.content() || '';
     const html = this.parseMarkdown(raw);
     return this.sanitizer.sanitize(SecurityContext.HTML, html) || '';
   });
 
+  /**
+   * Converts basic Markdown formatting (headings, bold, italics, inline code, lists, blockquotes) into HTML.
+   *
+   * @param text - Raw Markdown string to convert.
+   * @returns Unsanitized HTML string produced from the Markdown input.
+   */
   private parseMarkdown(text: string): string {
     let md = text.replace(/&/g, '&amp;').replace(/</g, '&lt;');
     md = md.replace(/^### (.*$)/gim, '<h3>$1</h3>');

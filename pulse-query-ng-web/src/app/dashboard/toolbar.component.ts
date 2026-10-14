@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Top application toolbar component providing global navigation,
+ * dashboard editing controls, theme customization, export actions, and user session management.
+ */
 import { Component, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
@@ -50,21 +53,32 @@ import { ThemeColorPickerDialogComponent } from './theme-picker/theme-color-pick
   templateUrl: './toolbar.component.html',
   styles: ['/* See existing styles */'],
 })
-/** @docs */
 export class ToolbarComponent {
+  /** Active dashboard state store. */
   public readonly store = inject(DashboardStore);
+  /** Service controlling the global Ask Data drawer. */
   public readonly askDataService = inject(AskDataService);
+  /** Service managing the user's saved query cart. */
   private readonly cart = inject(QueryCartService);
+  /** Authentication service for user state and logout. */
   public readonly authService = inject(AuthService);
+  /** Theme service for dark mode and Material 3 color seed updates. */
   public readonly themeService = inject(ThemeService);
+  /** Angular router for route inspection and navigation. */
   public readonly router = inject(Router);
+  /** Material dialog service for opening modals. */
   private readonly dialog = inject(MatDialog);
+  /** Material snackbar service for toast notifications. */
   private readonly snackBar = inject(MatSnackBar);
+  /** HTTP client for downloading dashboard export blobs. */
   private readonly http = inject(HttpClient);
 
+  /** Reactive count of queries currently stored in the query cart. */
   readonly cartCount = this.cart.count;
+  /** Preset Material 3 seed hex colors available in the theme menu. */
   readonly presetColors = ['#1565c0', '#7b1fa2', '#00796b', '#c62828', '#ef6c00'];
 
+  /** Signal indicating whether the current route is an active dashboard view. */
   readonly isDashboardRoute = toSignal(
     this.router.events.pipe(
       filter((e) => e instanceof NavigationEnd),
@@ -75,10 +89,12 @@ export class ToolbarComponent {
     },
   );
 
+  /** Logs out the current user. */
   logout(): void {
     this.authService.logout();
   }
 
+  /** Toggles dashboard edit mode to reveal the query cart or prompts the user to open a dashboard. */
   openCart(): void {
     // Logic split based on location context
     if (this.isDashboardRoute() && this.store.dashboard()) {
@@ -94,6 +110,7 @@ export class ToolbarComponent {
     }
   }
 
+  /** Opens the multi-step Widget Builder dialog for the active dashboard. */
   openWidgetBuilder(): void {
     const currentDash = this.store.dashboard();
     if (!currentDash) return;
@@ -110,10 +127,20 @@ export class ToolbarComponent {
     });
   }
 
+  /**
+   * Updates the application theme seed color.
+   *
+   * @param hex - The hex color string to apply as the Material 3 seed color.
+   */
   updateTheme(hex: string): void {
     this.themeService.setSeedColor(hex);
   }
 
+  /**
+   * Handles native color picker input events to update the theme color.
+   *
+   * @param event - The DOM input change event from the color input element.
+   */
   onColorPickerChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.value) {

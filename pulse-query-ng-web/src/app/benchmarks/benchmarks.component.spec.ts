@@ -137,7 +137,12 @@ describe('BenchmarksComponent', () => {
 
   it('should navigate on mpax click', () => {
     fixture.detectChanges();
-    const item = { prompt: 'Test prompt' } as any;
+    const item = {
+      id: '1',
+      theme: 'T1',
+      prompt: 'Test prompt',
+      expected_metrics: { total_demand: 10, total_capacity: 5, expected_overflow: 5 },
+    };
     component.simulateMpax(item);
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/mpax-arena'], {
       queryParams: { prompt: 'Test prompt' },

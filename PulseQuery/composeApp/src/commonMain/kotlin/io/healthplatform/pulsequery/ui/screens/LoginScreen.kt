@@ -1,21 +1,56 @@
 /**
  * Component for rendering the LoginScreen.
- * Provides the main user interface for this screen.
+ * Provides the main user interface for authentication, delegating state and
+ * backend operations to [AuthViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import io.healthplatform.pulsequery.api.models.UserCreate
 import io.healthplatform.pulsequery.di.AppContainer
-import kotlinx.coroutines.launch
+import io.healthplatform.pulsequery.ui.screens.auth.AuthViewModel
 import org.jetbrains.compose.resources.stringResource
-import pulsequery.composeapp.generated.resources.*
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.authentication_failed
+import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.email
+import pulsequery.composeapp.generated.resources.email_and_password_cannot_be_empty
+import pulsequery.composeapp.generated.resources.failed_to_fetch_user_profile
+import pulsequery.composeapp.generated.resources.login_register
+import pulsequery.composeapp.generated.resources.password
+import pulsequery.composeapp.generated.resources.save
+import pulsequery.composeapp.generated.resources.server_url
+import pulsequery.composeapp.generated.resources.server_url_hint
+import pulsequery.composeapp.generated.resources.settings
+import pulsequery.composeapp.generated.resources.settings_icon
+import pulsequery.composeapp.generated.resources.welcome_to_pulsequery
 
 /**
  * Authentication Screen.
@@ -23,30 +58,29 @@ import pulsequery.composeapp.generated.resources.*
  *
  * @param onLoginSuccess Callback invoked upon successful user authentication.
  * @param onNavigateToRegister Optional callback to navigate to dedicated registration screen.
+ * @param viewModel Optional [AuthViewModel] instance for state orchestration.
  */
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: (() -> Unit)? = null
+    onNavigateToRegister: (() -> Unit)? = null,
+    viewModel: AuthViewModel? = null
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var isRegisterMode by remember { mutableStateOf(false) }
-
     val coroutineScope = rememberCoroutineScope()
-    
+    val vm = remember(viewModel, coroutineScope) {
+        viewModel ?: AuthViewModel(scope = coroutineScope)
+    }
+
+    val uiState by vm.state.collectAsState()
+
     val errEmptyFields = stringResource(Res.string.email_and_password_cannot_be_empty)
     val errFetchProfile = stringResource(Res.string.failed_to_fetch_user_profile)
     val errAuthFailed = stringResource(Res.string.authentication_failed)
-    val errLoginRegFailed = stringResource(Res.string.login_failed, "")
 
-    if (showSettingsDialog) {
+    if (uiState.showSettingsDialog) {
         var tempUrl by remember { mutableStateOf(AppContainer.currentBaseUrl) }
         AlertDialog(
-            onDismissRequest = { showSettingsDialog = false },
+            onDismissRequest = { vm.setShowSettingsDialog(false) },
             title = { Text(stringResource(Res.string.settings)) },
             text = {
                 Column {
@@ -66,15 +100,12 @@ fun LoginScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    AppContainer.currentBaseUrl = tempUrl
-                    showSettingsDialog = false
-                }) {
+                TextButton(onClick = { vm.saveBaseUrl(tempUrl) }) {
                     Text(stringResource(Res.string.save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSettingsDialog = false }) {
+                TextButton(onClick = { vm.setShowSettingsDialog(false) }) {
                     Text(stringResource(Res.string.cancel))
                 }
             }
@@ -83,7 +114,7 @@ fun LoginScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         IconButton(
-            onClick = { showSettingsDialog = true },
+            onClick = { vm.setShowSettingsDialog(true) },
             modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
         ) {
             Text(stringResource(Res.string.settings_icon), style = MaterialTheme.typography.headlineMedium)
@@ -104,23 +135,23 @@ fun LoginScreen(
             )
 
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = uiState.email,
+                onValueChange = { vm.updateEmail(it) },
                 label = { Text(stringResource(Res.string.email)) },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 singleLine = true
             )
 
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = uiState.password,
+                onValueChange = { vm.updatePassword(it) },
                 label = { Text(stringResource(Res.string.password)) },
                 visualTransformation = PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                 singleLine = true
             )
 
-            errorMessage?.let { msg ->
+            uiState.errorMessage?.let { msg ->
                 Text(
                     text = msg,
                     color = MaterialTheme.colorScheme.error,
@@ -131,62 +162,23 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    if (email.isBlank() || password.isBlank()) {
-                        errorMessage = errEmptyFields
-                        return@Button
-                    }
-
-                    isLoading = true
-                    errorMessage = null
-
-                    coroutineScope.launch {
-                        runCatching {
-                            if (isRegisterMode) {
-                                val userCreate = UserCreate(email = email, password = password)
-                                AppContainer.authApi.registerUserApiV1AuthRegisterPost(userCreate)
-                            }
-
-                            val tokenResponse = AppContainer.authApi.loginAccessTokenApiV1AuthLoginPost(
-                                grantType = "password",
-                                username = email,
-                                password = password,
-                                scope = "",
-                                clientId = null,
-                                clientSecret = null
-                            )
-                            AppContainer.currentToken = tokenResponse.body().accessToken
-
-                            // Fetch current user details
-                            val meResponse = AppContainer.authApi.readUsersMeApiV1AuthMeGet()
-                            if (meResponse.success) {
-                                AppContainer.currentUser = meResponse.body()
-                                onLoginSuccess()
-                            } else {
-                                errorMessage = errFetchProfile
-                            }
-                        }.onFailure { e ->
-                            println("LoginScreen ERROR: ${e.message}")
-                            val msg = e.message ?: ""
-                            errorMessage = when {
-                                isRegisterMode -> "Registration failed: ${if (msg.contains("already registered", ignoreCase = true)) "Email already registered" else msg.ifBlank { errAuthFailed }}"
-                                msg.contains("401", ignoreCase = true) || msg.contains("Unauthorized", ignoreCase = true) -> "Invalid username or password."
-                                msg.contains("timeout", ignoreCase = true) -> "Network timeout. Please check your connection."
-                                else -> errAuthFailed
-                            }
-                        }
-                        isLoading = false
-                    }
+                    vm.login(
+                        errEmptyFields = errEmptyFields,
+                        errFetchProfile = errFetchProfile,
+                        errAuthFailed = errAuthFailed,
+                        onLoginSuccess = onLoginSuccess
+                    )
                 },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
-                enabled = !isLoading
+                enabled = !uiState.isLoading
             ) {
-                if (isLoading) {
+                if (uiState.isLoading) {
                     CircularProgressIndicator(
                         color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Text(if (isRegisterMode) "Register" else stringResource(Res.string.login_register))
+                    Text(if (uiState.isRegisterMode) "Register" else stringResource(Res.string.login_register))
                 }
             }
 
@@ -196,13 +188,12 @@ fun LoginScreen(
                     if (onNavigateToRegister != null) {
                         onNavigateToRegister()
                     } else {
-                        isRegisterMode = !isRegisterMode
-                        errorMessage = null
+                        vm.toggleRegisterMode()
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (isRegisterMode) "Already have an account? Log In" else "Need an account? Register")
+                Text(if (uiState.isRegisterMode) "Already have an account? Log In" else "Need an account? Register")
             }
         }
     }

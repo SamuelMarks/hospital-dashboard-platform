@@ -8,7 +8,6 @@ AI Agent, allowing context retention and SQL snippet tracking.
 
 import uuid
 from datetime import datetime
-from typing import List, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID

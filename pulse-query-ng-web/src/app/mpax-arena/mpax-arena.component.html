@@ -14,6 +14,7 @@
           [value]="prompt()"
           (input)="prompt.set(promptInput.value)"
           rows="3"
+          i18n-placeholder
           placeholder="Describe the scenario..."
         ></textarea>
       </mat-form-field>
@@ -23,6 +24,7 @@
         <mat-select
           [value]="mode()"
           (selectionChange)="mode.set($event.value)"
+          i18n-aria-label
           aria-label="Select option"
         >
           <mat-option i18n value="judge">1. Ground Truth Judge</mat-option>

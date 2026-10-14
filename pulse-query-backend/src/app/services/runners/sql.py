@@ -6,10 +6,14 @@ Security is primarily enforced by the Database Connection itself (Read-Only Mode
 We perform basic syntax checking but defer execution policy to DuckDB.
 """
 
+import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 import sqlglot
+
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.schemas.execution import SqlRunnerPayload, SqlRunnerResultDict
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +22,42 @@ class SQLSecurityError(Exception):
   """
   Raised when a query violates security policies (Legacy checking).
   """
+
+
+def validate_query_ast_result(query: str) -> AppResult[str]:
+  """
+  Validates a SQL query string and returns an explicit `AppResult[str]`.
+
+  Args:
+      query (str): Raw SQL string to validate.
+
+  Returns:
+      AppResult[str]: `Ok(cleaned_query)` if non-empty and valid, or `Err(AppError)` if empty.
+  """
+  if not query or not query.strip():
+    return Err(
+      AppError(
+        code=ErrorCode.SQL_VALIDATION_ERROR,
+        message="Empty query.",
+        status_code=400,
+      )
+    )
+
+  cleaned = query.strip()
+  try:
+    statements = sqlglot.parse(cleaned, read="duckdb")
+    if not statements or statements[0] is None:
+      return Err(
+        AppError(
+          code=ErrorCode.SQL_VALIDATION_ERROR,
+          message="Empty query.",
+          status_code=400,
+        )
+      )
+  except sqlglot.errors.ParseError as e:
+    logger.warning(f"SQLParse Warning: {e}")
+
+  return Ok(cleaned)
 
 
 def validate_query_ast(query: str) -> None:
@@ -35,73 +75,93 @@ def validate_query_ast(query: str) -> None:
   Raises:
       SQLSecurityError: If the query cannot be parsed (Syntax Error).
   """
-  # Immediate check for empty queries to satisfy strict testing requirements.
-  if not query or not query.strip():
-    raise SQLSecurityError("Empty query.")
+  res = validate_query_ast_result(query)
+  if isinstance(res, Err):
+    raise SQLSecurityError(res.error.message)
+
+
+def execute_sql_result(cursor: Any, config: dict[str, Any]) -> AppResult[SqlRunnerPayload]:
+  """
+  Executes a SQL query against a DuckDB cursor and returns a strongly typed `AppResult[SqlRunnerPayload]`.
+
+  Args:
+      cursor (Any): Active DuckDB cursor object.
+      config (dict[str, Any]): Widget configuration dictionary containing `query` and optional `max_rows`.
+
+  Returns:
+      AppResult[SqlRunnerPayload]: `Ok(SqlRunnerPayload)` on success, or `Err(AppError)` on validation/execution failure.
+  """
+  query: str = str(config.get("query", "")).strip()
+  if not query:
+    return Err(
+      AppError(
+        code=ErrorCode.SQL_VALIDATION_ERROR,
+        message="Missing SQL query in widget configuration.",
+        status_code=400,
+      )
+    )
+
+  ast_res = validate_query_ast_result(query)
+  if isinstance(ast_res, Err):
+    logger.warning(f"AST Parse Warning: {ast_res.error.message}")
 
   try:
-    # Just parse for validity check.
-    # We do NOT block statement types in the runner anymore.
-    statements = sqlglot.parse(query, read="duckdb")
-    if not statements:
-      raise SQLSecurityError("Empty query.")
-  except sqlglot.errors.ParseError as e:
-    # If we can't parse it, we probably shouldn't run it, but strictly speaking DuckDB might parse it better.
-    # We log logic errors but generally let it proceed to execution to get accurate DB errors
-    # unless it's fundamentally broken logic.
-    logger.warning(f"SQLParse Warning: {e}")
-    # Note: We allow execution even if sqlglot fails, because sqlglot might not cover 100% of DuckDB syntax.
+    logger.debug(f"Executing SQL Widget: {query}")
+    cursor.execute(query)
+
+    if cursor.description:
+      columns: list[str] = [desc[0] for desc in cursor.description]
+      max_rows = config.get("max_rows")
+      rows = cursor.fetchmany(max_rows) if isinstance(max_rows, int) and max_rows > 0 else cursor.fetchall()
+      results: list[dict[str, Any]] = [dict(zip(columns, row, strict=False)) for row in rows]
+      return Ok(SqlRunnerPayload(data=results, columns=columns))
+    return Ok(SqlRunnerPayload(data=[], columns=[]))
+  except Exception as e:
+    error_msg = f"SQL Execution Error: {e!s}"
+    logger.error(f"SQL Widget Error: {error_msg}")
+    return Err(
+      AppError(
+        code=ErrorCode.SQL_EXECUTION_ERROR,
+        message=error_msg,
+        status_code=400,
+      )
+    )
 
 
-def run_sql_widget(cursor: Any, config: dict[str, Any]) -> dict[str, Any]:
+def run_sql_widget(cursor: Any, config: dict[str, Any]) -> SqlRunnerResultDict:
   """
   Executes a SQL query within a protected environment.
 
   Args:
       cursor (Any): An active DuckDB standard cursor object.
-      config (Dict[str, Any]): The configuration dictionary containing the 'query'.
+      config (dict[str, Any]): The configuration dictionary containing the 'query'.
 
   Returns:
-      Dict[str, Any]: Execution result containing 'data', 'columns', or 'error'.
+      SqlRunnerResultDict: Execution result containing 'data', 'columns', or 'error'.
   """
-  query: str = config.get("query", "").strip()
-
-  # 1. Basic Validation
-  if not query:
+  result = execute_sql_result(cursor, config)
+  if isinstance(result, Ok):
     return {
-      "data": [],
-      "columns": [],
-      "error": "Missing SQL query in widget configuration.",
+      "data": result.value.data,
+      "columns": result.value.columns,
+      "error": None,
     }
+  return {
+    "data": [],
+    "columns": [],
+    "error": result.error.message,
+  }
 
-  # 2. Relaxed Validation (Optional Logging)
-  # We permit the query to pass through to the Read-Only connection.
-  try:
-    validate_query_ast(query)
-  except Exception as e:
-    logger.warning(f"AST Parse Warning: {e}")
 
-  try:
-    # 3. Execution
-    logger.debug(f"Executing SQL Widget: {query}")
-    cursor.execute(query)
+async def run_sql_widget_async(cursor: Any, config: dict[str, Any]) -> SqlRunnerResultDict:
+  """
+  Asynchronously executes a SQL widget query in a worker thread via `asyncio.to_thread`.
 
-    # 4. Fetching Metadata & Data
-    if cursor.description:
-      columns: list[str] = [desc[0] for desc in cursor.description]
-      max_rows = config.get("max_rows")
-      if isinstance(max_rows, int) and max_rows > 0:
-        rows = cursor.fetchmany(max_rows)
-      else:
-        rows = cursor.fetchall()
-      results: list[dict[str, Any]] = [dict(zip(columns, row)) for row in rows]
-      return {"data": results, "columns": columns, "error": None}
-    else:
-      # Queries like 'SET x=1' might pass parser if logically allowed but return no rows
-      return {"data": [], "columns": [], "error": None}
+  Args:
+      cursor (Any): Active DuckDB cursor object.
+      config (dict[str, Any]): Widget configuration dictionary.
 
-  except Exception as e:
-    # This catches the DuckDB Read-Only violations (e.g. Catalog Error on DROP attempts)
-    error_msg = f"SQL Execution Error: {e!s}"
-    logger.error(f"SQL Widget Error: {error_msg}")
-    return {"data": [], "columns": [], "error": error_msg}
+  Returns:
+      SqlRunnerResultDict: Execution result dictionary containing `data`, `columns`, and `error`.
+  """
+  return await asyncio.to_thread(run_sql_widget, cursor, config)

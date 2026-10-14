@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +31,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("seed_templates")
 
 
+def _read_templates_disk(filepath: str) -> list[dict[str, Any]] | None:
+  """
+  Synchronously checks and reads template JSON records from `filepath`.
+
+  Args:
+      filepath (str): Path to the template JSON file.
+
+  Returns:
+      list[dict[str, Any]] | None: Parsed list of templates, or None if missing.
+  """
+  if not os.path.exists(filepath):
+    return None
+  with open(filepath, "r", encoding="utf-8") as f:
+    data: list[dict[str, Any]] = json.load(f)
+    return data
+
+
 async def seed_templates() -> None:
   """
   Main execution orchestration.
@@ -38,17 +55,16 @@ async def seed_templates() -> None:
   2. Reads and parses JSON.
   3. Opens DB session and iterates through records for Upsert.
   """
-  if not os.path.exists(DATA_FILE):
-    logger.error(f"❌ Data file not found at {DATA_FILE}")
-    return
-
   logger.info(f"📂 Loading templates from {DATA_FILE}")
 
   try:
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-      templates_data: list[dict[str, Any]] = json.load(f)
+    templates_data = _read_templates_disk(DATA_FILE)
   except json.JSONDecodeError as e:
     logger.error(f"❌ Invalid JSON format in content pack: {e}")
+    return
+
+  if templates_data is None:
+    logger.error(f"❌ Data file not found at {DATA_FILE}")
     return
 
   async with AsyncSessionLocal() as db:
@@ -82,7 +98,8 @@ async def upsert_template(db: AsyncSession, data: dict[str, Any]) -> None:
   if existing:
     # Update existing record
     logger.info(f"🔄 Updating: {title}")
-    existing.description = data.get("description")
+    raw_desc = data.get("description")
+    existing.description = str(raw_desc) if raw_desc is not None else ""
     existing.sql_template = data["sql_template"]
     existing.category = data["category"]
     existing.parameters_schema = data.get("parameters_schema", [])
@@ -99,9 +116,15 @@ async def upsert_template(db: AsyncSession, data: dict[str, Any]) -> None:
     db.add(new_template)
 
 
-if __name__ == "__main__":
-  # Windows compatibility for asyncio loop
-  if sys.platform == "win32":
+def main() -> None:
+  """
+  CLI entry point for running `seed_templates()`.
+  """
+  if sys.platform == "win32":  # pragma: no cover
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
   asyncio.run(seed_templates())
+
+
+if __name__ == "__main__":
+  main()

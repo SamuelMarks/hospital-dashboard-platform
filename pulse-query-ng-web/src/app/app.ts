@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Root Application Component.
  *
@@ -84,7 +83,6 @@ import { SystemHealthBannerComponent } from './shared/components/system-health-b
     `,
   ],
 })
-/** @docs */
 export class App implements OnInit {
   /**
    * Service controlling the visibility state of the side drawer.
@@ -93,19 +91,19 @@ export class App implements OnInit {
    * @readonly
    */
   readonly askData = inject(AskDataService);
-  /** Theme Service. */
+  /** Reactive theme service managing light/dark mode and TV kiosk display state. */
   readonly themeService = inject(ThemeService);
-  /** Connection Status Service. */
+  /** Service monitoring backend and database health status. */
   readonly connectionService = inject(ConnectionStatusService);
-  /** route property. */
+  /** Activated route reference used to observe global query parameters such as `?mode=tv`. */
   private readonly route = inject(ActivatedRoute);
 
-  /** Document reference for lang manipulation */
+  /** Document reference for setting the root HTML language attribute. */
   private readonly document = inject(DOCUMENT);
-  /** Locale ID for accessibility lang attribute */
+  /** Active Angular locale identifier applied to the document root element. */
   private readonly localeId = inject(LOCALE_ID);
 
-  /** Ng On Init. */
+  /** Initializes document language, triggers a system health check, and subscribes to TV mode query parameters. */
   ngOnInit(): void {
     this.document.documentElement.lang = this.localeId;
 

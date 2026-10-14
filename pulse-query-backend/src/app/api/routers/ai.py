@@ -5,7 +5,7 @@ Exposes the endpoint for generating SQL.
 Now returns an `ExperimentResponse` containing multiple candidates for user comparison.
 """
 
-from typing import Annotated, List
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,14 +21,12 @@ from app.schemas.ai import (
   SQLGenerationRequest,
 )
 from app.schemas.feedback import ExperimentResponse
+from app.services.admin import get_admin_settings
 from app.services.llm_client import llm_client
 from app.services.runners.sql import run_sql_widget
 from app.services.sql_generator import sql_generator
 
 router = APIRouter()
-
-
-from app.services.admin import get_admin_settings
 
 
 @router.get("/models", response_model=list[ModelInfo])
@@ -74,30 +72,38 @@ async def generate_sql_comparison(
 
   try:
     # Use the new Swarm-capable method
-    response = await sql_generator.run_arena_experiment(user_query=request.prompt, db=db, user=current_user)
-    return response
+    return await sql_generator.run_arena_experiment(user_query=request.prompt, db=db, user=current_user)
 
   except RuntimeError as e:
     # If the Swarm has 0 providers configured
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail=str(e),
-    )
+    ) from e
   except Exception as e:
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       detail=f"Arena Generation failed: {e!s}",
-    )
+    ) from e
 
 
 @router.post("/execute", response_model=SQLExecutionResponse)
 async def execute_sql_preview(
   request: SQLExecutionRequest,
   current_user: Annotated[User, Depends(deps.get_current_user)],
+  olap_conn: Any = None,
 ) -> SQLExecutionResponse:
   """
   Executes SQL (read-only) and returns a small preview result.
   Intended for Arena candidate comparison in the UI.
+
+  Args:
+      request (SQLExecutionRequest): SQL query and optional global filter parameters.
+      current_user (User): Authenticated user session.
+      olap_conn (Any): Optional pre-opened DuckDB connection.
+
+  Returns:
+      SQLExecutionResponse: Tabular rows, column names, or error details.
   """
   if not request.sql.strip():
     raise HTTPException(
@@ -107,15 +113,16 @@ async def execute_sql_preview(
 
   runnable_sql = sql_generator.process_global_filters(request.sql, request.global_params or {})
 
+  owns_conn = olap_conn is None
   conn = None
   try:
-    conn = duckdb_manager.get_readonly_connection()
+    conn = olap_conn if olap_conn is not None else duckdb_manager.get_readonly_connection()
     cursor = conn.cursor()
     res = run_sql_widget(cursor, {"query": runnable_sql, "max_rows": request.max_rows})
   except Exception as e:
     res = {"data": [], "columns": [], "error": str(e)}
   finally:
-    if conn:
+    if owns_conn and conn:
       conn.close()
 
   return SQLExecutionResponse(**res)

@@ -1,15 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { adminGuard } from './admin.guard';
 import { AuthService } from './auth.service';
-import { PLATFORM_ID } from '@angular/core';
-import { Router } from '@angular/router';
-import { signal } from '@angular/core';
+import { PLATFORM_ID, signal, WritableSignal } from '@angular/core';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { Observable } from 'rxjs';
 import { vi, describe, beforeEach, it, expect } from 'vitest';
 
 describe('adminGuard', () => {
-  let routerMock: any;
-  let authServiceMock: any;
+  let routerMock: { createUrlTree: ReturnType<typeof vi.fn> };
+  let authServiceMock: {
+    currentUser: WritableSignal<{ is_admin?: boolean; role?: string } | null>;
+    hasStoredToken: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     routerMock = {
@@ -36,7 +38,10 @@ describe('adminGuard', () => {
       authServiceMock.hasStoredToken.mockReturnValue(true);
 
       TestBed.runInInjectionContext(() => {
-        const result = adminGuard(null as any, null as any) as Observable<any>;
+        const result = adminGuard(
+          {} as ActivatedRouteSnapshot,
+          {} as RouterStateSnapshot,
+        ) as Observable<boolean | UrlTree>;
         result.subscribe((val) => {
           expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/']);
           expect(val).toBe('mockTree');
@@ -52,7 +57,10 @@ describe('adminGuard', () => {
       authServiceMock.hasStoredToken.mockReturnValue(true);
 
       TestBed.runInInjectionContext(() => {
-        const result = adminGuard(null as any, null as any) as Observable<any>;
+        const result = adminGuard(
+          {} as ActivatedRouteSnapshot,
+          {} as RouterStateSnapshot,
+        ) as Observable<boolean | UrlTree>;
         result.subscribe((val) => {
           expect(val).toBe(true);
           resolve();
@@ -67,7 +75,10 @@ describe('adminGuard', () => {
       authServiceMock.hasStoredToken.mockReturnValue(true);
 
       TestBed.runInInjectionContext(() => {
-        const result = adminGuard(null as any, null as any) as Observable<any>;
+        const result = adminGuard(
+          {} as ActivatedRouteSnapshot,
+          {} as RouterStateSnapshot,
+        ) as Observable<boolean | UrlTree>;
         result.subscribe((val) => {
           expect(val).toBe(true);
           resolve();
@@ -82,7 +93,10 @@ describe('adminGuard', () => {
       authServiceMock.hasStoredToken.mockReturnValue(false);
 
       TestBed.runInInjectionContext(() => {
-        const result = adminGuard(null as any, null as any) as Observable<any>;
+        const result = adminGuard(
+          {} as ActivatedRouteSnapshot,
+          {} as RouterStateSnapshot,
+        ) as Observable<boolean | UrlTree>;
         result.subscribe((val) => {
           expect(routerMock.createUrlTree).toHaveBeenCalledWith(['/']);
           expect(val).toBe('mockTree');
@@ -95,7 +109,7 @@ describe('adminGuard', () => {
   it('should return true on server platform', () => {
     TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
     TestBed.runInInjectionContext(() => {
-      const result = adminGuard(null as any, null as any);
+      const result = adminGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
       expect(result).toBe(true);
     });
   });

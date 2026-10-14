@@ -129,11 +129,18 @@ describe('AlertRulesComponent', () => {
   });
 
   it('should populate form when editing and update rule on submit', () => {
-    component.startEditing(mockRules[0]);
+    component.startEditing({
+      ...mockRules[0],
+      severity: undefined as unknown as AlertSeverity,
+      is_active: undefined as unknown as boolean,
+    });
     expect(component.editingRuleId()).toBe('rule-1');
     expect(component.ruleForm.value.unit_category).toBe('ICU');
 
-    component.ruleForm.patchValue({ threshold_percentage: 95 });
+    component.ruleForm.patchValue({
+      threshold_percentage: 95,
+      is_active: null as unknown as boolean,
+    });
     component.submitRule();
 
     expect(
@@ -141,10 +148,25 @@ describe('AlertRulesComponent', () => {
     ).toHaveBeenCalledWith('rule-1', {
       unit_category: 'ICU',
       threshold_percentage: 95,
-      severity: AlertSeverity.Critical,
+      severity: AlertSeverity.Warning,
       is_active: true,
     });
     expect(component.editingRuleId()).toBeNull();
+
+    // Also test create branch with is_active: null
+    component.ruleForm.patchValue({
+      unit_category: 'NICU',
+      threshold_percentage: 80,
+      severity: AlertSeverity.Info,
+      is_active: null as unknown as boolean,
+    });
+    component.submitRule();
+    expect(alertRulesServiceMock.createAlertRuleApiV1AnalyticsAlertRulesPost).toHaveBeenCalledWith({
+      unit_category: 'NICU',
+      threshold_percentage: 80,
+      severity: AlertSeverity.Info,
+      is_active: true,
+    });
   });
 
   it('should handle update failure gracefully', () => {

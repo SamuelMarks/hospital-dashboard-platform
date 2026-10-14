@@ -1,6 +1,3 @@
-import { DATE_NOW } from '../core/time.token';
-import { safeStorage } from '../core/storage.utils';
-/** @docs */
 /**
  * @fileoverview Centralized State Management for the Chat Feature.
  *
@@ -12,10 +9,12 @@ import { safeStorage } from '../core/storage.utils';
  * - **Target Model Selection**.
  */
 
-import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { DATE_NOW } from '../core/time.token';
+import { safeStorage } from '../core/storage.utils';
+import { extractApiErrorMessage } from '../core/error.utils';
+import { signal, computed, inject, OnDestroy, Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, retry } from 'rxjs/operators';
-import { HttpErrorResponse } from '@angular/common/http';
 
 import {
   ChatService,
@@ -69,7 +68,7 @@ const initialState: ChatState = {
 };
 
 /** Chat store. */
-@Service()
+@Injectable({ providedIn: 'root' })
 export class ChatStore implements OnDestroy {
   /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
@@ -78,7 +77,6 @@ export class ChatStore implements OnDestroy {
   /** aiApi property. */
   private readonly aiApi = inject(AiService);
   /** _state property. */
-  /* istanbul ignore next */
   private readonly _state = signal<ChatState>(initialState);
   /** destroy$ property. */
   private readonly destroy$ = new Subject<void>();
@@ -86,35 +84,25 @@ export class ChatStore implements OnDestroy {
   /** State. */
   readonly state = this._state.asReadonly();
   /** Conversations. */
-  /* istanbul ignore next */
   readonly conversations = computed(() => this._state().conversations);
   /** Active Conversation Id. */
-  /* istanbul ignore next */
   readonly activeConversationId = computed(() => this._state().activeConversationId);
   /** Messages. */
-  /* istanbul ignore next */
   readonly messages = computed(() => this._state().messages);
   /** Whether data Loading. */
-  /* istanbul ignore next */
   readonly isDataLoading = computed(() => this._state().isLoadingList);
   /** Whether generating. */
-  /* istanbul ignore next */
   readonly isGenerating = computed(() => this._state().isGenerating);
   /** Error. */
-  /* istanbul ignore next */
   readonly error = computed(() => this._state().error);
 
   /** Available Models. */
-  /* istanbul ignore next */
   readonly availableModels = computed(() => this._state().availableModels);
   /** Selected Models. */
-  /* istanbul ignore next */
   readonly selectedModelIds = computed(() => this._state().selectedModelIds);
   /** Whether actively streaming tokens. */
-  /* istanbul ignore next */
   readonly isStreaming = computed(() => this._state().isStreaming);
   /** Live streaming token text. */
-  /* istanbul ignore next */
   readonly streamingMessageContent = computed(() => this._state().streamingMessageContent);
 
   /** Ng On Destroy. */
@@ -140,8 +128,6 @@ export class ChatStore implements OnDestroy {
 
     // Load Models logic
     try {
-      // Safe check for method existence
-      /* istanbul ignore next */
       if (this.aiApi.listAvailableModelsApiV1AiModelsGet) {
         this.aiApi
           .listAvailableModelsApiV1AiModelsGet()
@@ -156,7 +142,11 @@ export class ChatStore implements OnDestroy {
     }
   }
 
-  /** Select Conversation. */
+  /**
+   * Selects a conversation and loads its message history.
+   *
+   * @param id - The conversation ID to select.
+   */
   selectConversation(id: string): void {
     this.patch({ activeConversationId: id, messages: [], error: null, isLoadingList: true });
     this.chatApi
@@ -178,7 +168,11 @@ export class ChatStore implements OnDestroy {
     this.patch({ activeConversationId: null, messages: [], error: null });
   }
 
-  /** Toggles model selection. */
+  /**
+   * Toggles a model ID in the selected models list for arena generation.
+   *
+   * @param modelId - The model identifier to toggle.
+   */
   toggleModelSelection(modelId: string): void {
     const current = this.selectedModelIds();
     if (current.includes(modelId)) {
@@ -188,7 +182,11 @@ export class ChatStore implements OnDestroy {
     }
   }
 
-  /** Send Message. */
+  /**
+   * Sends a user message to the active conversation or creates a new conversation.
+   *
+   * @param content - The message text to send.
+   */
   sendMessage(content: string): void {
     if (!content.trim()) return;
     const currentId = this.activeConversationId();
@@ -204,7 +202,7 @@ export class ChatStore implements OnDestroy {
     };
     this.patch({ messages: [...this.messages(), tempUserMsg] });
 
-    const targetModels = this.selectedModelIds().length > 0 ? this.selectedModelIds() : undefined;
+    const targetModels = this.selectedModelIds().length > 0 ? this.selectedModelIds() : null;
 
     if (!currentId) {
       // Create new
@@ -297,7 +295,13 @@ export class ChatStore implements OnDestroy {
           const trimmed = line.trim();
           if (trimmed.startsWith('data:')) {
             try {
-              const data = JSON.parse(trimmed.substring(5).trim());
+              const data = JSON.parse(trimmed.substring(5).trim()) as {
+                event?: string;
+                token?: unknown;
+                message_id?: string;
+                content?: string;
+                sql_snippet?: string | null;
+              };
               if (data.event === 'token' && typeof data.token === 'string') {
                 const current = this._state().streamingMessageContent || '';
                 this.patch({ streamingMessageContent: current + data.token });
@@ -332,7 +336,10 @@ export class ChatStore implements OnDestroy {
   }
 
   /**
-   * Vote for a Candidate.
+   * Votes for a specific model candidate response within a message.
+   *
+   * @param messageId - The ID of the assistant message containing candidates.
+   * @param candidateId - The ID of the chosen candidate response.
    */
   voteCandidate(messageId: string, candidateId: string): void {
     console.log('[ChatStore] Voting for candidate', candidateId, 'in message', messageId);
@@ -343,17 +350,19 @@ export class ChatStore implements OnDestroy {
     // Optimistic Logic
     const currentMsgs = this.messages();
     const idx = currentMsgs.findIndex((m) => m.id === messageId);
-    if (idx === -1) return;
+    const targetMsg = currentMsgs[idx];
+    if (!targetMsg) return;
 
-    const msg = { ...currentMsgs[idx] };
-    const cand = msg.candidates?.find((c) => c.id === candidateId);
+    const msg: MessageResponse = { ...targetMsg };
+    const candidates = msg.candidates ?? [];
+    const cand = candidates.find((c) => c.id === candidateId);
     if (!cand) return;
 
     msg.content = cand.content || '';
     msg.sql_snippet = cand.sql_snippet || null;
     const selectedHash = cand.sql_hash;
 
-    msg.candidates = msg.candidates!.map((c) => ({
+    msg.candidates = candidates.map((c) => ({
       ...c,
       is_selected: selectedHash ? c.sql_hash === selectedHash : c.id === candidateId,
     }));
@@ -385,8 +394,11 @@ export class ChatStore implements OnDestroy {
       });
   }
 
-  /** Deletes conversation. */
-
+  /**
+   * Deletes a conversation by ID with optimistic state update and error rollback.
+   *
+   * @param id - The ID of the conversation to delete.
+   */
   deleteConversation(id: string): void {
     const currentList = this.conversations();
     this.patch({ conversations: currentList.filter((c) => c.id !== id) });
@@ -406,7 +418,12 @@ export class ChatStore implements OnDestroy {
       });
   }
 
-  /** Rename Conversation. */
+  /**
+   * Renames an existing conversation by ID.
+   *
+   * @param id - The ID of the conversation to rename.
+   * @param newTitle - The new title to assign to the conversation.
+   */
   renameConversation(id: string, newTitle: string): void {
     const currentList = this.conversations();
     const original = currentList.find((c) => c.id === id);
@@ -427,24 +444,22 @@ export class ChatStore implements OnDestroy {
       });
   }
 
-  /** Patches state. */
+  /**
+   * Patches the internal chat store state with partial updates.
+   *
+   * @param p - Partial state properties to merge into the current state.
+   */
   private patch(p: Partial<ChatState>): void {
     this._state.update((s) => ({ ...s, ...p }));
   }
 
-  /** Handles error securely translating message payloads */
+  /**
+   * Handles API errors by logging and updating the error state signal.
+   *
+   * @param e - The caught error object or HTTP error response.
+   */
   private handleError(e: unknown): void {
     console.error('[ChatStore] API Error:', e);
-    let msg = 'Error';
-    if (e instanceof HttpErrorResponse) {
-      if (e.error?.detail) {
-        msg = typeof e.error.detail === 'string' ? e.error.detail : JSON.stringify(e.error.detail);
-      } else {
-        msg = e.message;
-      }
-    } else if (e instanceof Error) {
-      msg = e.message;
-    }
-    this.patch({ error: msg });
+    this.patch({ error: extractApiErrorMessage(e, 'Error') });
   }
 }

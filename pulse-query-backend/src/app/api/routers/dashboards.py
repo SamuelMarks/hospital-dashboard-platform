@@ -6,12 +6,9 @@ Allows users to create, list, update, and delete their analytics workspaces.
 Also provides the ability to restore the default content pack and clone existing dashboards.
 """
 
+import asyncio
 import copy
-import csv
-import io
-import json
-from datetime import UTC, datetime
-from typing import Annotated, Any, List
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
@@ -21,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api import deps
 from app.core.i18n import get_translated_message
+from app.core.result import Err
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
 from app.models.dashboard import Dashboard, DashboardShare, Widget
@@ -37,6 +35,7 @@ from app.schemas.widget import (
   WidgetCreate,
   WidgetUpdate,
 )
+from app.services.dashboard_service import dashboard_service
 from app.services.provisioning import provisioning_service
 from app.services.runners.sql import run_sql_widget
 
@@ -68,43 +67,16 @@ async def get_dashboard_with_access(
   Raises:
       HTTPException: 404 if not found, 403 if permission denied.
   """
-  stmt = (
-    select(Dashboard)
-    .where(Dashboard.id == dashboard_id)
-    .options(selectinload(Dashboard.widgets), selectinload(Dashboard.shares))
+  res = await dashboard_service.get_dashboard_with_access_result(
+    dashboard_id=dashboard_id,
+    current_user=current_user,
+    db=db,
+    required_level=required_level,
+    accept_language=accept_language,
   )
-  result = await db.execute(stmt)
-  dashboard = result.scalars().first()
-  if not dashboard:
-    msg = get_translated_message(
-      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
-    )
-    raise HTTPException(status_code=404, detail=msg)
-
-  # Check Ownership
-  if dashboard.owner_id == current_user.id:
-    return dashboard, "OWNER"
-
-  if required_level == "OWNER":
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the dashboard owner can perform this action.")
-
-  # Check Share permissions
-  share_stmt = select(DashboardShare).where(
-    and_(DashboardShare.dashboard_id == dashboard_id, DashboardShare.user_id == current_user.id)
-  )
-  share_res = await db.execute(share_stmt)
-  share = share_res.scalars().first()
-
-  if not share:
-    msg = get_translated_message(
-      accept_language or current_user.language_preference, "error.dashboard_not_found", "Dashboard not found"
-    )
-    raise HTTPException(status_code=404, detail=msg)
-
-  if required_level == "EDIT" and share.permission_level.upper() != "EDIT":
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Edit permission required for this operation.")
-
-  return dashboard, share.permission_level.upper()
+  if isinstance(res, Err):
+    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
+  return res.value
 
 
 _get_dashboard_with_access = get_dashboard_with_access
@@ -118,29 +90,18 @@ def _validate_sql_query(query: str, accept_language: str | None = None) -> None:
 
   Args:
       query (str): The raw SQL string.
+      accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.
 
   Raises:
       HTTPException: If the SQL is invalid (400 Bad Request).
   """
-  if not query or not query.strip():
-    return
-
-  conn = duckdb_manager.get_readonly_connection()
-  try:
-    # PREPARE parses and binds the query. If table missing or syntax wrong, it raises.
-    conn.execute(f"PREPARE v AS {query}")
-    # Cleanup
-    conn.execute("DEALLOCATE v")
-  except Exception as e:
-    # Extract the specific DuckDB error message
-    error_msg = str(e).split("\n")[0]  # First line usually contains the core reason
-    msg = get_translated_message(accept_language, "error.invalid_sql", "Invalid SQL Query")
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail=f"{msg}: {error_msg}",
-    )
-  finally:
-    conn.close()
+  res = dashboard_service.validate_sql_query_result(
+    query,
+    accept_language=accept_language,
+    conn_factory=duckdb_manager.get_readonly_connection,
+  )
+  if isinstance(res, Err):
+    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
 
 
 # --- Dashboards ---
@@ -151,7 +112,7 @@ def _validate_sql_query(query: str, accept_language: str | None = None) -> None:
 async def list_dashboards(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> list[Dashboard]:
   """List all dashboards owned by or shared with the current user."""
   owned_stmt = select(Dashboard).where(Dashboard.owner_id == current_user.id).options(selectinload(Dashboard.widgets))
   owned_res = await db.execute(owned_stmt)
@@ -179,7 +140,7 @@ async def create_dashboard(
   dashboard_in: DashboardCreate,
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Dashboard:
   """Create a new empty dashboard."""
   new_dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
   db.add(new_dashboard)
@@ -201,7 +162,7 @@ async def clone_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> Dashboard:
   """
   Creates a deep copy of an existing dashboard and all its widgets.
   The new dashboard will have the name "Copy of {original_name}".
@@ -256,7 +217,7 @@ async def clone_dashboard(
 async def restore_default_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Dashboard:
   """
   Re-creates the standard 'Hospital Command Center' dashboard.
   If the dashboard already exists, creates a copy with a suffix to prevent data loss.
@@ -281,7 +242,7 @@ async def get_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> Dashboard:
   """Get a specific dashboard details."""
   dashboard, perm = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
@@ -297,7 +258,7 @@ async def update_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> Dashboard:
   """Rename a dashboard."""
   dashboard, perm = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
@@ -314,7 +275,7 @@ async def delete_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> None:
   """Delete dashboard (and cascades to widgets and shares). Only owner can delete."""
   dashboard, _ = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
@@ -333,7 +294,7 @@ async def create_widget(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> Widget:
   """Add a widget to the dashboard with Dry-Run Validation."""
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language)
 
@@ -362,7 +323,7 @@ async def update_widget(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> Widget:
   """Update widget configuration (e.g., resize, change query) with Dry-Run."""
   result = await db.execute(select(Widget).where(Widget.id == widget_id))
   widget = result.scalars().first()
@@ -399,7 +360,7 @@ async def delete_widget(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-):
+) -> None:
   """Delete a widget from a dashboard."""
   result = await db.execute(select(Widget).where(Widget.id == widget_id))
   widget = result.scalars().first()
@@ -424,7 +385,7 @@ async def reorder_widgets(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
-) -> dict:
+) -> dict[str, int]:
   """
   Bulk update widget positions and groups.
   Used for Drag-and-Drop persistence.
@@ -481,88 +442,17 @@ async def export_dashboard(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
 
-  safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in dashboard.name)
-
-  if format == "json":
-    export_payload: dict[str, Any] = {
-      "dashboard_id": str(dashboard.id),
-      "name": dashboard.name,
-      "exported_at": datetime.now(UTC).isoformat(),
-      "widgets": [],
-    }
-
-    conn = duckdb_manager.get_readonly_connection()
-    try:
-      cursor = conn.cursor()
-      for widget in dashboard.widgets:
-        data_records: list[dict[str, Any]] = []
-        if widget.type == "SQL":
-          res = run_sql_widget(cursor, widget.config)
-          data_records = res.get("data", [])
-
-        export_payload["widgets"].append(
-          {
-            "id": str(widget.id),
-            "title": widget.title,
-            "type": widget.type,
-            "visualization": widget.visualization,
-            "config": widget.config,
-            "data": data_records,
-          }
-        )
-    finally:
-      conn.close()
-
-    json_str = json.dumps(export_payload, indent=2)
-    return Response(
-      content=json_str,
-      media_type="application/json",
-      headers={"Content-Disposition": f'attachment; filename="{safe_title}_export.json"'},
-    )
-
-  # CSV Format
-  output = io.StringIO()
-  writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
-
-  def sanitize_csv_val(val: Any) -> str:
-    """
-    Sanitizes values against CSV formula injection by prefixing with a single quote.
-    """
-    s = str(val) if val is not None else ""
-    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
-      return f"'{s}"
-    return s
-
-  writer.writerow(["# Dashboard Export", sanitize_csv_val(dashboard.name)])
-  writer.writerow(["# Exported At", datetime.now(UTC).isoformat()])
-  writer.writerow([])
-
-  conn = duckdb_manager.get_readonly_connection()
-  try:
-    cursor = conn.cursor()
-    for widget in dashboard.widgets:
-      writer.writerow([f"## Widget: {widget.title} ({widget.type})"])
-      if widget.type == "SQL":
-        res = run_sql_widget(cursor, widget.config)
-        records = res.get("data", [])
-        if records and isinstance(records, list):
-          headers = list(records[0].keys())
-          writer.writerow([sanitize_csv_val(h) for h in headers])
-          for row in records:
-            writer.writerow([sanitize_csv_val(row.get(h)) for h in headers])
-        elif res.get("error"):
-          writer.writerow([f"Error: {res['error']}"])
-        else:
-          writer.writerow(["No data"])
-      writer.writerow([])
-  finally:
-    conn.close()
-
-  csv_content = output.getvalue()
+  content, media_type, filename = await asyncio.to_thread(
+    dashboard_service.build_dashboard_export_content,
+    dashboard,
+    format,
+    duckdb_manager.get_readonly_connection,
+    run_sql_widget,
+  )
   return Response(
-    content=csv_content,
-    media_type="text/csv",
-    headers={"Content-Disposition": f'attachment; filename="{safe_title}_export.csv"'},
+    content=content,
+    media_type=media_type,
+    headers={"Content-Disposition": f'attachment; filename="{filename}"'},
   )
 
 
@@ -600,70 +490,18 @@ async def export_widget(
   if not widget:
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Widget not found")
 
-  safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in widget.title)
-
-  data_records: list[dict[str, Any]] = []
-  if widget.type == "SQL":
-    conn = duckdb_manager.get_readonly_connection()
-    try:
-      cursor = conn.cursor()
-      res = run_sql_widget(cursor, widget.config)
-      data_records = res.get("data", [])
-    finally:
-      conn.close()
-
-  if format == "json":
-    payload = {
-      "dashboard_id": str(dashboard.id),
-      "widget_id": str(widget.id),
-      "title": widget.title,
-      "type": widget.type,
-      "visualization": widget.visualization,
-      "config": widget.config,
-      "data": data_records,
-      "exported_at": datetime.now(UTC).isoformat(),
-    }
-    return Response(
-      content=json.dumps(payload, indent=2),
-      media_type="application/json",
-      headers={"Content-Disposition": f'attachment; filename="{safe_title}_export.json"'},
-    )
-
-  output = io.StringIO()
-  writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
-
-  def sanitize_csv_val(val: Any) -> str:
-    """
-    Sanitizes values against CSV formula injection by prefixing with a single quote.
-
-    Args:
-        val (Any): The raw cell value.
-
-    Returns:
-        str: Formula-safe string representation.
-    """
-    s = str(val) if val is not None else ""
-    if s and s[0] in ("=", "+", "-", "@", "\t", "\r"):
-      return f"'{s}"
-    return s
-
-  writer.writerow(["# Widget Export", sanitize_csv_val(widget.title)])
-  writer.writerow(["# Type", widget.type])
-  writer.writerow(["# Exported At", datetime.now(UTC).isoformat()])
-  writer.writerow([])
-
-  if data_records and isinstance(data_records, list):
-    headers = list(data_records[0].keys())
-    writer.writerow([sanitize_csv_val(h) for h in headers])
-    for row in data_records:
-      writer.writerow([sanitize_csv_val(row.get(h)) for h in headers])
-  else:
-    writer.writerow(["No data"])
-
+  content, media_type, filename = await asyncio.to_thread(
+    dashboard_service.build_widget_export_content,
+    dashboard,
+    widget,
+    format,
+    duckdb_manager.get_readonly_connection,
+    run_sql_widget,
+  )
   return Response(
-    content=output.getvalue(),
-    media_type="text/csv",
-    headers={"Content-Disposition": f'attachment; filename="{safe_title}_export.csv"'},
+    content=content,
+    media_type=media_type,
+    headers={"Content-Disposition": f'attachment; filename="{filename}"'},
   )
 
 
@@ -686,43 +524,21 @@ async def export_dashboard_pdf(
   Returns:
       Response: Binary stream formatted as an application/pdf document.
   """
-  from app.services.pdf_export import generate_clinical_pdf_report
-
   dashboard, _ = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
 
-  safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in dashboard.name)
-
-  widgets_data: list[dict[str, Any]] = []
-  conn = duckdb_manager.get_readonly_connection()
-  try:
-    cursor = conn.cursor()
-    for widget in dashboard.widgets:
-      w_info: dict[str, Any] = {
-        "title": widget.title,
-        "type": widget.type,
-        "data": [],
-        "error": None,
-      }
-      if widget.type == "SQL":
-        res = run_sql_widget(cursor, widget.config)
-        w_info["data"] = res.get("data", [])
-        w_info["error"] = res.get("error")
-      widgets_data.append(w_info)
-  finally:
-    conn.close()
-
-  pdf_bytes = generate_clinical_pdf_report(
-    dashboard_name=dashboard.name,
+  pdf_bytes, filename = await dashboard_service.build_dashboard_pdf_async(
+    dashboard=dashboard,
     author_email=current_user.email,
-    widgets_data=widgets_data,
+    conn_factory=duckdb_manager.get_readonly_connection,
+    sql_runner_fn=run_sql_widget,
   )
 
   return Response(
     content=pdf_bytes,
     media_type="application/pdf",
-    headers={"Content-Disposition": f'attachment; filename="{safe_title}_clinical_report.pdf"'},
+    headers={"Content-Disposition": f'attachment; filename="{filename}"'},
   )
 
 

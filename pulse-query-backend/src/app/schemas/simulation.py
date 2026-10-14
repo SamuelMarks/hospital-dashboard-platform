@@ -6,8 +6,6 @@ Separates the definition of the environment (Capacity, Constraints) from
 the data source (Demand SQL), allowing mix-and-match analysis.
 """
 
-from typing import Dict, List, Optional
-
 from pydantic import BaseModel, Field
 
 

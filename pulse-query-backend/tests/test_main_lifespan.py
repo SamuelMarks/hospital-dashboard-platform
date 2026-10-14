@@ -2,6 +2,8 @@
 Tests for the FastAPI lifespan hook.
 """
 
+from typing import Any
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -10,18 +12,33 @@ import app.main as main_module
 
 
 @pytest.mark.asyncio
-async def test_lifespan_invokes_startup_and_shutdown(monkeypatch) -> None:
+async def test_lifespan_invokes_startup_and_shutdown(monkeypatch: Any) -> None:
   """Lifespan should run startup steps and dispose engine on shutdown."""
 
   class _DummyConn:
-    async def run_sync(self, _fn):
+    async def run_sync(self, _fn: Any) -> Any:
+      """
+      Verify run sync behavior.
+
+      Args:
+          _fn: Test parameter or fixture.
+      """
       return None
 
   class _DummyBegin:
-    async def __aenter__(self):
+    async def __aenter__(self) -> Any:
+      """Verify aenter behavior."""
       return _DummyConn()
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+      """
+      Verify aexit behavior.
+
+      Args:
+          exc_type: Test parameter or fixture.
+          exc: Test parameter or fixture.
+          tb: Test parameter or fixture.
+      """
       return False
 
   dummy_engine = MagicMock()
@@ -51,19 +68,34 @@ async def test_lifespan_invokes_startup_and_shutdown(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_lifespan_scheduled_background_ingest(monkeypatch) -> None:
+async def test_lifespan_scheduled_background_ingest(monkeypatch: Any) -> None:
   """Lifespan should spawn and cancel background ingestion task when AUTO_INGEST_INTERVAL_MINUTES > 0."""
   import asyncio
 
   class _DummyConn:
-    async def run_sync(self, _fn):
+    async def run_sync(self, _fn: Any) -> Any:
+      """
+      Verify run sync behavior.
+
+      Args:
+          _fn: Test parameter or fixture.
+      """
       return None
 
   class _DummyBegin:
-    async def __aenter__(self):
+    async def __aenter__(self) -> Any:
+      """Verify aenter behavior."""
       return _DummyConn()
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+      """
+      Verify aexit behavior.
+
+      Args:
+          exc_type: Test parameter or fixture.
+          exc: Test parameter or fixture.
+          tb: Test parameter or fixture.
+      """
       return False
 
   dummy_engine = MagicMock()
@@ -86,22 +118,23 @@ async def test_lifespan_scheduled_background_ingest(monkeypatch) -> None:
     await asyncio.sleep(0.01)
 
   # Check that background loop function can run and handle cancellation
+  import contextlib
+
   cancelled_task = asyncio.create_task(main_module._background_ingest_loop(1))
   cancelled_task.cancel()
-  try:
+  with contextlib.suppress(asyncio.CancelledError):
     await cancelled_task
-  except asyncio.CancelledError:
-    pass
 
 
 @pytest.mark.asyncio
-async def test_background_ingest_loop_iteration_and_exception(monkeypatch) -> None:
+async def test_background_ingest_loop_iteration_and_exception(monkeypatch: Any) -> None:
   """_background_ingest_loop should trigger ingest_all_csvs and handle exceptions gracefully."""
   import asyncio
 
   call_count = 0
 
-  def fake_ingest():
+  def fake_ingest() -> Any:
+    """Verify fake ingest behavior."""
     nonlocal call_count
     call_count += 1
     if call_count == 1:
@@ -113,7 +146,13 @@ async def test_background_ingest_loop_iteration_and_exception(monkeypatch) -> No
   # Mock asyncio.sleep to execute loop immediately then cancel
   sleep_calls = 0
 
-  async def fast_sleep(_sec):
+  async def fast_sleep(_sec: Any) -> None:
+    """
+    Verify fast sleep behavior.
+
+    Args:
+        _sec: Test parameter or fixture.
+    """
     nonlocal sleep_calls
     sleep_calls += 1
     if sleep_calls > 2:

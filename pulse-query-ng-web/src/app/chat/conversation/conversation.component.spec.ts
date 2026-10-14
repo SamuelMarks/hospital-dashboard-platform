@@ -6,7 +6,15 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ConversationComponent } from './conversation.component';
 import { ChatStore } from '../chat.store';
 import { AskDataService } from '../../global/ask-data.service';
-import { Component, input, output, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  input,
+  output,
+  signal,
+  WritableSignal,
+  NO_ERRORS_SCHEMA,
+} from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
 import { MessageResponse } from '../../api-client';
@@ -15,6 +23,7 @@ import { QueryCartService } from '../../global/query-cart.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 import { readTemplate } from '../../../test-utils/component-resources';
+import { createMockCandidate, createMockMessage } from '../../../test-utils/mock-factories';
 import { VizMarkdownComponent } from '../../shared/visualizations/viz-markdown/viz-markdown.component';
 import { SqlSnippetComponent } from './sql-snippet.component';
 import { Router } from '@angular/router';
@@ -23,12 +32,24 @@ import { HttpErrorResponse } from '@angular/common/http';
 describe('ConversationComponent', () => {
   let component: ConversationComponent;
   let fixture: ComponentFixture<ConversationComponent>;
-  let mockStore: any;
-  let mockScratchpad: any;
-  let mockArenaSql: any;
-  let mockCart: any;
-  let mockSnackBar: any;
-  let mockRouter: any;
+  let mockStore: {
+    messages: WritableSignal<MessageResponse[]>;
+    isGenerating: WritableSignal<boolean>;
+    isStreaming: WritableSignal<boolean>;
+    streamingMessageContent: WritableSignal<string | null>;
+    error: WritableSignal<string | null>;
+    availableModels: WritableSignal<unknown[]>;
+    selectedModelIds: WritableSignal<string[]>;
+    toggleModelSelection: ReturnType<typeof vi.fn>;
+    sendMessage: ReturnType<typeof vi.fn>;
+    streamResponse: ReturnType<typeof vi.fn>;
+    voteCandidate: ReturnType<typeof vi.fn>;
+  };
+  let mockScratchpad: { open: ReturnType<typeof vi.fn> };
+  let mockArenaSql: { execute: ReturnType<typeof vi.fn> };
+  let mockCart: { add: ReturnType<typeof vi.fn> };
+  let mockSnackBar: { open: ReturnType<typeof vi.fn> };
+  let mockRouter: { navigate: ReturnType<typeof vi.fn> };
   let messagesSig: WritableSignal<MessageResponse[]>;
 
   beforeEach(async () => {
@@ -118,7 +139,7 @@ describe('ConversationComponent', () => {
   });
 
   it('should run candidate query via ArenaSql service', () => {
-    const cand = { id: 'c9', sql_snippet: 'SELECT 1' } as any;
+    const cand = createMockCandidate({ id: 'c9', sql_snippet: 'SELECT 1' });
     component.runCandidateQuery(cand);
 
     expect(mockArenaSql.execute).toHaveBeenCalledWith({ sql: 'SELECT 1', max_rows: 200 });
@@ -126,7 +147,7 @@ describe('ConversationComponent', () => {
   });
 
   it('should handle candidate execution error', () => {
-    const cand = { id: 'c10', sql_snippet: 'SELECT error' } as any;
+    const cand = createMockCandidate({ id: 'c10', sql_snippet: 'SELECT error' });
     mockArenaSql.execute.mockReturnValue(
       throwError(() => new HttpErrorResponse({ status: 500, error: { detail: 'Boom' } })),
     );
@@ -188,25 +209,29 @@ describe('ConversationComponent', () => {
 
   describe('cleanContent and cleanContentSimple', () => {
     it('cleanContent: should return empty string if content and snippet are empty', () => {
-      expect(component.cleanContent({ content: '   ' } as any)).toBe('');
+      expect(component.cleanContent(createMockMessage({ content: '   ' }))).toBe('');
     });
     it('cleanContent: should handle missing content gracefully', () => {
-      expect(component.cleanContent({} as any)).toBe('');
+      expect(
+        component.cleanContent(createMockMessage({ content: undefined as unknown as string })),
+      ).toBe('');
     });
     it('cleanContent: should return content if no sql_snippet', () => {
-      expect(component.cleanContent({ content: 'hi' } as any)).toBe('hi');
+      expect(component.cleanContent(createMockMessage({ content: 'hi' }))).toBe('hi');
     });
     it('cleanContent: should strip sql block if sql_snippet exists', () => {
       expect(
-        component.cleanContent({
-          content: 'test ```sql \n SELECT 1 \n ``` end',
-          sql_snippet: 'a',
-        } as any),
+        component.cleanContent(
+          createMockMessage({
+            content: 'test ```sql \n SELECT 1 \n ``` end',
+            sql_snippet: 'a',
+          }),
+        ),
       ).toBe('test  end');
     });
     it('cleanContentSimple: should strip sql block and handle empty', () => {
       expect(component.cleanContentSimple('test ```sql\n SELECT \n```')).toBe('test');
-      expect(component.cleanContentSimple(null as any)).toBe('');
+      expect(component.cleanContentSimple(null as unknown as string)).toBe('');
     });
   });
 
@@ -226,73 +251,85 @@ describe('ConversationComponent', () => {
 
   describe('runCandidateQuery', () => {
     it('should early exit if sql is empty', () => {
-      component.runCandidateQuery({ id: 'c1', sql_snippet: '   ' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: '   ' }));
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
 
     it('should early exit if sql is missing', () => {
-      component.runCandidateQuery({ id: 'c1' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1' }));
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
 
     it('should early exit if already loading', () => {
       component.candidateLoading.set({ c1: true });
-      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: 'SELECT 1' }));
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
 
     it('should set error if res.error is present', () => {
       mockArenaSql.execute.mockReturnValue(of({ error: 'Some err' }));
-      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: 'SELECT 1' }));
       expect(component.candidateErrors()['c1']).toBe('Some err');
       expect(component.candidateResults()['c1']).toBeNull();
     });
 
     it('should handle status 0 error', () => {
       mockArenaSql.execute.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
-      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: 'SELECT 1' }));
       expect(component.candidateErrors()['c1']).toBe('Network Error: Cannot reach server.');
     });
 
     it('should handle error without detail', () => {
       mockArenaSql.execute.mockReturnValue(throwError(() => new Error('Generic error')));
-      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: 'SELECT 1' }));
       expect(component.candidateErrors()['c1']).toBe('Generic error');
     });
 
     it('should handle error without message', () => {
       mockArenaSql.execute.mockReturnValue(throwError(() => ({})));
-      component.runCandidateQuery({ id: 'c1', sql_snippet: 'SELECT 1' } as any);
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: 'SELECT 1' }));
       expect(component.candidateErrors()['c1']).toBe('Unknown error');
     });
   });
 
   describe('runAllCandidates', () => {
     it('should do nothing if no candidates', () => {
-      component.runAllCandidates({} as any);
+      component.runAllCandidates(createMockMessage());
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
     it('should run for each candidate', () => {
-      component.runAllCandidates({
-        candidates: [
-          { id: '1', sql_snippet: 's1' },
-          { id: '2', sql_snippet: 's2' },
-        ],
-      } as any);
+      component.runAllCandidates(
+        createMockMessage({
+          candidates: [
+            createMockCandidate({ id: '1', sql_snippet: 's1' }),
+            createMockCandidate({ id: '2', sql_snippet: 's2' }),
+          ],
+        }),
+      );
       expect(mockArenaSql.execute).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('sqlGroupCount', () => {
     it('should return 0 if no sql_hash or no candidates', () => {
-      expect(component.sqlGroupCount({} as any, { sql_hash: 'a' } as any)).toBe(0);
-      expect(component.sqlGroupCount({ candidates: [] } as any, {} as any)).toBe(0);
+      expect(
+        component.sqlGroupCount(createMockMessage(), createMockCandidate({ sql_hash: 'a' })),
+      ).toBe(0);
+      expect(
+        component.sqlGroupCount(createMockMessage({ candidates: [] }), createMockCandidate()),
+      ).toBe(0);
     });
     it('should return matching count', () => {
       expect(
         component.sqlGroupCount(
-          { candidates: [{ sql_hash: 'a' }, { sql_hash: 'a' }, { sql_hash: 'b' }] } as any,
-          { sql_hash: 'a' } as any,
+          createMockMessage({
+            candidates: [
+              createMockCandidate({ sql_hash: 'a' }),
+              createMockCandidate({ sql_hash: 'a' }),
+              createMockCandidate({ sql_hash: 'b' }),
+            ],
+          }),
+          createMockCandidate({ sql_hash: 'a' }),
         ),
       ).toBe(2);
     });
@@ -310,7 +347,7 @@ describe('ConversationComponent', () => {
       expect(component.candidateError('c2')).toBeNull();
     });
     it('candidateResult', () => {
-      component.candidateResults.set({ c1: { data: [], columns: [] } as any });
+      component.candidateResults.set({ c1: { data: [], columns: [] } });
       expect(component.candidateResult('c1')).toEqual({ data: [], columns: [] });
       expect(component.candidateResult('c2')).toBeNull();
     });
@@ -318,35 +355,41 @@ describe('ConversationComponent', () => {
 
   describe('hasPendingCandidates', () => {
     it('should return false if not assistant or no candidates', () => {
-      expect(component.hasPendingCandidates({ role: 'user' } as any)).toBe(false);
-      expect(component.hasPendingCandidates({ role: 'assistant', candidates: [] } as any)).toBe(
-        false,
-      );
+      expect(component.hasPendingCandidates(createMockMessage({ role: 'user' }))).toBe(false);
+      expect(
+        component.hasPendingCandidates(createMockMessage({ role: 'assistant', candidates: [] })),
+      ).toBe(false);
     });
     it('should return true if none selected', () => {
       expect(
-        component.hasPendingCandidates({
-          role: 'assistant',
-          candidates: [{ is_selected: false }],
-        } as any),
+        component.hasPendingCandidates(
+          createMockMessage({
+            role: 'assistant',
+            candidates: [createMockCandidate({ is_selected: false })],
+          }),
+        ),
       ).toBe(true);
     });
     it('should return true if some selected but content is empty', () => {
       expect(
-        component.hasPendingCandidates({
-          role: 'assistant',
-          content: '   ',
-          candidates: [{ is_selected: true }],
-        } as any),
+        component.hasPendingCandidates(
+          createMockMessage({
+            role: 'assistant',
+            content: '   ',
+            candidates: [createMockCandidate({ is_selected: true })],
+          }),
+        ),
       ).toBe(true);
     });
     it('should return false if some selected and content is present', () => {
       expect(
-        component.hasPendingCandidates({
-          role: 'assistant',
-          content: 'hi',
-          candidates: [{ is_selected: true }],
-        } as any),
+        component.hasPendingCandidates(
+          createMockMessage({
+            role: 'assistant',
+            content: 'hi',
+            candidates: [createMockCandidate({ is_selected: true })],
+          }),
+        ),
       ).toBe(false);
     });
   });
@@ -354,14 +397,23 @@ describe('ConversationComponent', () => {
   describe('hasSqlCandidates', () => {
     it('should return true if any candidate has sql_snippet', () => {
       expect(
-        component.hasSqlCandidates({
-          candidates: [{ sql_snippet: '' }, { sql_snippet: 'select' }],
-        } as any),
+        component.hasSqlCandidates(
+          createMockMessage({
+            candidates: [
+              createMockCandidate({ sql_snippet: '' }),
+              createMockCandidate({ sql_snippet: 'select' }),
+            ],
+          }),
+        ),
       ).toBe(true);
     });
     it('should return false if none have sql_snippet or no candidates', () => {
-      expect(component.hasSqlCandidates({ candidates: [{ sql_snippet: '' }] } as any)).toBe(false);
-      expect(component.hasSqlCandidates({} as any)).toBe(false);
+      expect(
+        component.hasSqlCandidates(
+          createMockMessage({ candidates: [createMockCandidate({ sql_snippet: '' })] }),
+        ),
+      ).toBe(false);
+      expect(component.hasSqlCandidates(createMockMessage())).toBe(false);
     });
   });
 
@@ -375,7 +427,9 @@ describe('ConversationComponent', () => {
   describe('scrollToBottom', () => {
     it('should set scrollTop to scrollHeight if element exists', () => {
       vi.useFakeTimers();
-      component['scrollContainer'] = { nativeElement: { scrollTop: 0, scrollHeight: 100 } } as any;
+      component['scrollContainer'] = {
+        nativeElement: { scrollTop: 0, scrollHeight: 100 } as unknown as HTMLElement,
+      } as ElementRef<HTMLElement>;
       component['scrollToBottom']();
       vi.advanceTimersByTime(50);
       expect(component['scrollContainer'].nativeElement.scrollTop).toBe(100);
@@ -383,7 +437,7 @@ describe('ConversationComponent', () => {
     });
     it('should do nothing if scrollContainer is missing', () => {
       vi.useFakeTimers();
-      component['scrollContainer'] = null as any;
+      component['scrollContainer'] = null as unknown as ElementRef<HTMLElement>;
       component['scrollToBottom']();
       vi.advanceTimersByTime(50);
       // Shouldn't crash

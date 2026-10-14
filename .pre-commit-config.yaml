@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: auto-format
         name: Auto Format
-        entry: bash -c "uv run ruff format . && npx --prefix pulse-query-ng-web prettier --write ."
+        entry: bash -c "uv run --project pulse-query-backend ruff format . && npx --prefix pulse-query-ng-web prettier --write ."
         language: system
         pass_filenames: false
       - id: backend-sqlite-setup
@@ -19,6 +19,11 @@ repos:
       - id: backend-format
         name: Backend Format
         entry: bash -c "cd pulse-query-backend && uv run ruff format --check ."
+        language: system
+        pass_filenames: false
+      - id: backend-mypy
+        name: Backend Mypy
+        entry: bash -c "uv run --project pulse-query-backend mypy --config-file pulse-query-backend/pyproject.toml pulse-query-backend/src/app pulse-query-backend/tests pulse-query-backend/scripts"
         language: system
         pass_filenames: false
       - id: backend-test
@@ -38,7 +43,12 @@ repos:
         pass_filenames: false
       - id: frontend-test
         name: Frontend Tests
-        entry: bash -c "cd pulse-query-ng-web && npm run test -- --watch=false"
+        entry: bash -c "cd pulse-query-ng-web && npm run test:coverage && npm run docs:coverage"
+        language: system
+        pass_filenames: false
+      - id: kmp-detekt-and-kover
+        name: KMP Detekt and Kover
+        entry: bash -c "cd PulseQuery && ./gradlew detekt testDebugUnitTest jvmTest koverVerify"
         language: system
         pass_filenames: false
       - id: e2e-test
@@ -48,6 +58,6 @@ repos:
         pass_filenames: false
       - id: update-coverage-badges
         name: Update Coverage Badges
-        entry: bash -c "uv run python3 scripts/update_coverage_badges.py --stage"
+        entry: bash -c "uv run --project pulse-query-backend python3 scripts/update_coverage_badges.py --stage"
         language: system
         pass_filenames: false

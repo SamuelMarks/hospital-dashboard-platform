@@ -204,3 +204,26 @@ async def test_run_http_widget_status_error_with_text_body() -> None:
 
     assert result["status"] == 500
     assert result["data"] is None
+
+
+@pytest.mark.asyncio
+async def test_shared_http_client_pooling_and_reuse() -> None:
+  """Verifies `get_shared_http_client` reuses a pooled client and `close_shared_http_client` closes it."""
+  from app.services.runners.http import close_shared_http_client, get_shared_http_client
+
+  await close_shared_http_client()
+  c1 = get_shared_http_client()
+  c2 = get_shared_http_client()
+  assert c1 is c2
+  assert not c1.is_closed
+
+  target_url = "https://api.example.com/pooled"
+  with respx.mock:
+    respx.get(target_url).mock(return_value=Response(200, json={"pooled": True}))
+    res = await run_http_widget({"url": target_url}, client=c1)
+    assert res["status"] == 200
+    assert res["data"] == {"pooled": True}
+
+  await close_shared_http_client()
+  assert c1.is_closed
+  await close_shared_http_client()  # Idempotent when already closed

@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Onboarding Wizard Component.
  * A multi-step wizard that introduces new users to Pulse Query's key features.
@@ -30,7 +29,6 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
  * }
  * ```
  */
-
 @Component({
   selector: 'app-onboarding-wizard',
   imports: [MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
@@ -53,7 +51,9 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
           <button
             mat-icon-button
             (click)="skip()"
+            i18n-matTooltip
             matTooltip="Skip onboarding"
+            i18n-aria-label
             aria-label="Skip onboarding"
             data-testid="skip-button"
           >
@@ -65,6 +65,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
         <mat-progress-bar
           mode="determinate"
           [value]="onboarding.progress()"
+          i18n-aria-label
           aria-label="Onboarding progress"
         />
 
@@ -79,7 +80,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
         </div>
 
         <!-- Step Dots -->
-        <div class="step-dots" role="tablist" aria-label="Onboarding steps">
+        <div class="step-dots" role="tablist" i18n-aria-label aria-label="Onboarding steps">
           @for (step of steps; track step.id; let i = $index) {
             <button
               class="dot"
@@ -99,6 +100,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
             mat-button
             (click)="prev()"
             [disabled]="!onboarding.hasPrev()"
+            i18n-aria-label
             aria-label="Previous step"
             data-testid="prev-button"
           >

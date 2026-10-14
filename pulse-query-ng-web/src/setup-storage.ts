@@ -1,6 +1,11 @@
+/**
+ * @fileoverview Vitest global setup for in-memory localStorage and sessionStorage mocks.
+ */
+
 import { vi } from 'vitest';
 
-/** Mock storage. */ const mockStorage = {
+/** In-memory storage implementation used during unit testing. */
+const mockStorage = {
   store: {} as Record<string, string>,
   getItem(key: string) {
     return this.store[key] || null;

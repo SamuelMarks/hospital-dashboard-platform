@@ -16,7 +16,7 @@ import os
 import statistics
 import sys
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any
 
 # --- Data Structures ---
 
@@ -33,7 +33,7 @@ class BenchmarkResult:
       latency (int): Generation time in milliseconds.
   """
 
-  def __init__(self, row: dict[str, str]):
+  def __init__(self, row: dict[str, str]) -> None:
     """
     Initialize from a CSV row dictionary.
 
@@ -116,7 +116,7 @@ def aggregate_stats(results: list[BenchmarkResult]) -> dict[str, StrategyStats]:
   Returns:
       Dict: Mapping of Strategy Name -> Stats Object.
   """
-  stats = defaultdict(StrategyStats)
+  stats: dict[str, StrategyStats] = defaultdict(StrategyStats)
   for r in results:
     s = stats[r.strategy]
     s.total += 1
@@ -140,7 +140,7 @@ def analyze_improvements(results: list[BenchmarkResult]) -> list[dict[str, Any]]
   """
   # Group by Theme -> Strategy -> Result
   # Map: Theme -> Strategy -> List[BenchmarkResult]
-  grouped = defaultdict(lambda: defaultdict(list))
+  grouped: dict[str, dict[str, list[BenchmarkResult]]] = defaultdict(lambda: defaultdict(list))
 
   for r in results:
     grouped[r.theme][r.strategy].append(r)

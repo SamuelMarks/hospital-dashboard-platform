@@ -8,7 +8,7 @@ import { vi } from 'vitest';
 describe('PromptDialogComponent', () => {
   let fixture: ComponentFixture<PromptDialogComponent>;
   let component: PromptDialogComponent;
-  let mockRef: any;
+  let mockRef: { close: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockRef = { close: vi.fn() };
@@ -27,6 +27,9 @@ describe('PromptDialogComponent', () => {
 
   it('should initialize with value', () => {
     expect(component.value()).toBe('Init');
+    expect(component.getEventValue({ target: { value: 'typed' } } as unknown as Event)).toBe(
+      'typed',
+    );
   });
 
   it('should close with value on save', () => {

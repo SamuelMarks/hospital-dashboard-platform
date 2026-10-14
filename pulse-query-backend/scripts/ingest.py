@@ -21,7 +21,11 @@ from app.services.data_ingestion import data_ingestion_service
 # Configure simple logging for CLI output
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-if __name__ == "__main__":
+
+def main() -> None:
+  """
+  Executes manual CSV ingestion into DuckDB and exits with status 1 on failure.
+  """
   print("----- Manual Ingestion Triggered -----")
   try:
     data_ingestion_service.ingest_all_csvs()
@@ -29,3 +33,7 @@ if __name__ == "__main__":
   except Exception as e:
     print(f"Error: {e}")
     sys.exit(1)
+
+
+if __name__ == "__main__":
+  main()

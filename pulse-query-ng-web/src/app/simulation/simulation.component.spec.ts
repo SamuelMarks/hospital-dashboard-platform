@@ -1,14 +1,21 @@
+/**
+ * @fileoverview Unit tests for `SimulationComponent`.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimulationComponent } from './simulation.component';
-import { SimulationStore } from './simulation.store';
-import { signal, NO_ERRORS_SCHEMA, Component, input } from '@angular/core';
+import { SimulationStore, UnitCapacity } from './simulation.store';
+import { signal, NO_ERRORS_SCHEMA, Component, input, WritableSignal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
-import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
-import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
+import { vi, describe, beforeEach, it, expect, type Mock } from 'vitest';
+import {
+  VizTableComponent,
+  TableDataSet,
+} from '../shared/visualizations/viz-table/viz-table.component';
 import { readTemplate } from '../../test-utils/component-resources';
-import { ActivatedRoute } from '@angular/router';
-import { of, BehaviorSubject } from 'rxjs';
+import { ActivatedRoute, Params } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { ReactiveFormsModule } from '@angular/forms';
 
 @Component({
@@ -20,21 +27,34 @@ class MockVizTableComponent {
   readonly config = input<unknown>();
 }
 
+interface MockSimulationStore {
+  demandSql: WritableSignal<string>;
+  capacityParams: WritableSignal<UnitCapacity[]>;
+  isSimulating: WritableSignal<boolean>;
+  error: WritableSignal<string | null>;
+  results: WritableSignal<TableDataSet | null>;
+  setDemandSql: Mock;
+  addCapacityParam: Mock;
+  updateCapacityParam: Mock;
+  removeCapacityParam: Mock;
+  runSimulation: Mock;
+}
+
 describe('SimulationComponent', () => {
   let component: SimulationComponent;
   let fixture: ComponentFixture<SimulationComponent>;
-  let mockStore: any;
-  let queryParamsSubject: BehaviorSubject<any>;
+  let mockStore: MockSimulationStore;
+  let queryParamsSubject: BehaviorSubject<Params>;
 
   beforeEach(async () => {
-    queryParamsSubject = new BehaviorSubject({});
+    queryParamsSubject = new BehaviorSubject<Params>({});
 
     mockStore = {
       demandSql: signal('SELECT 1'),
       capacityParams: signal([{ unit: 'ICU', capacity: 10 }]),
       isSimulating: signal(false),
-      error: signal(null),
-      results: signal(null),
+      error: signal<string | null>(null),
+      results: signal<TableDataSet | null>(null),
       setDemandSql: vi.fn(),
       addCapacityParam: vi.fn(),
       updateCapacityParam: vi.fn(),
@@ -72,8 +92,10 @@ describe('SimulationComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create and extract input event values', () => {
     expect(component).toBeTruthy();
+    const fakeEvent = { target: { value: 'ICU_West' } } as unknown as Event;
+    expect(component.getEventValue(fakeEvent)).toBe('ICU_West');
   });
 
   it('should initialize demand sql from query params', () => {
@@ -91,7 +113,7 @@ describe('SimulationComponent', () => {
     expect(mockStore.addCapacityParam).toHaveBeenCalled();
   });
 
-  it('should update capacity param', () => {
+  it('should update capacity param when index exists and ignore out-of-bounds index', () => {
     component.updateCapacity(0, 'unit', 'NewUnit');
     expect(mockStore.updateCapacityParam).toHaveBeenCalledWith(0, {
       unit: 'NewUnit',
@@ -100,6 +122,10 @@ describe('SimulationComponent', () => {
 
     component.updateCapacity(0, 'capacity', 42);
     expect(mockStore.updateCapacityParam).toHaveBeenCalledWith(0, { unit: 'ICU', capacity: 42 });
+
+    mockStore.updateCapacityParam.mockClear();
+    component.updateCapacity(99, 'unit', 'Missing');
+    expect(mockStore.updateCapacityParam).not.toHaveBeenCalled();
   });
 
   it('should remove capacity param', () => {

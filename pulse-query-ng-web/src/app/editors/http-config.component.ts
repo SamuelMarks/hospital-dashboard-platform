@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview HTTP widget configuration editor component supporting custom methods,
+ * URLs, query parameters, headers, JSON body validation, and live test execution.
+ */
 import { Component, input, output, inject, signal, linkedSignal, effect } from '@angular/core';
 import { JsonPipe } from '@angular/common';
 import {
@@ -244,7 +247,7 @@ export class HttpConfigComponent {
    * Adds a new parameter or header item.
    * @param type The type of item to add.
    */
-  addItem(type: 'params' | 'headers') {
+  addItem(type: 'params' | 'headers'): void {
     this.formModel.update((m) => {
       const target = type === 'params' ? m.params : m.headers;
       return {
@@ -259,7 +262,7 @@ export class HttpConfigComponent {
    * @param type The type of item to remove.
    * @param index The index to remove.
    */
-  removeItem(type: 'params' | 'headers', index: number) {
+  removeItem(type: 'params' | 'headers', index: number): void {
     this.formModel.update((m) => {
       const target = type === 'params' ? m.params : m.headers;
       return {
@@ -272,13 +275,13 @@ export class HttpConfigComponent {
   /**
    * Saves the configuration and runs a test.
    */
-  saveAndTest() {
+  saveAndTest(): void {
     if (this.form().invalid()) return;
     this.isRunning.set(true);
     this.result.set(null);
 
     const f = this.formModel();
-    const bodyObj = f.body ? JSON.parse(f.body) : null;
+    const bodyObj: unknown = f.body ? JSON.parse(f.body) : null;
 
     const newConfig = {
       method: f.method,
@@ -297,7 +300,7 @@ export class HttpConfigComponent {
           this.executeTestRun();
           this.configChange.emit(newConfig);
         },
-        error: (err) => {
+        error: (err: unknown) => {
           this.isRunning.set(false);
           this.result.set({ error: 'Save failed', detail: err });
         },
@@ -305,14 +308,14 @@ export class HttpConfigComponent {
   }
 
   /** Executes the test run. */
-  private executeTestRun() {
+  private executeTestRun(): void {
     this.executionApi
       .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId())
       .pipe(finalize(() => this.isRunning.set(false)))
       .subscribe({
-        next: (map) =>
+        next: (map: Record<string, unknown>) =>
           this.result.set(map[this.widgetId()] || { info: 'No Data returned for this widget ID' }),
-        error: (err) => this.result.set({ error: 'Run failed', detail: err }),
+        error: (err: unknown) => this.result.set({ error: 'Run failed', detail: err }),
       });
   }
 

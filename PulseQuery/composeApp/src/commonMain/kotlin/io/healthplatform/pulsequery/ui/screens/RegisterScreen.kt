@@ -1,9 +1,19 @@
 /**
- * Dedicated User Registration Screen module for account creation in PulseQuery.
+ * Dedicated User Registration Screen module for account creation in PulseQuery,
+ * delegating state and registration API calls to [AuthViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,38 +21,34 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import io.healthplatform.pulsequery.api.models.UserCreate
-import io.healthplatform.pulsequery.di.AppContainer
-import kotlinx.coroutines.launch
+import io.healthplatform.pulsequery.ui.screens.auth.AuthUiState
+import io.healthplatform.pulsequery.ui.screens.auth.AuthViewModel
 
 /**
- * State container for the dedicated Registration Screen.
- *
- * @property email Entered email address.
- * @property password Entered password.
- * @property confirmPassword Repeated confirmation password.
- * @property isLoading Whether registration network call is in flight.
- * @property errorMessage Validation or API error message.
- * @property successMessage Confirmation message upon successful account registration.
- * @property passwordVisible Toggle for revealing password text.
+ * Re-exported [AuthUiState] typealias preserving package compatibility for registration state consumers.
  */
-data class RegisterScreenState(
-    val email: String = "",
-    val password: String = "",
-    val confirmPassword: String = "",
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val successMessage: String? = null,
-    val passwordVisible: Boolean = false
-)
+typealias RegisterScreenState = AuthUiState
 
 /**
  * Screen providing dedicated new user registration with client-side password validation.
@@ -50,69 +56,21 @@ data class RegisterScreenState(
  * @param onRegisterSuccess Callback invoked when registration succeeds.
  * @param onNavigateToLogin Callback to switch back to the login screen.
  * @param modifier Optional layout modifier.
+ * @param viewModel Optional [AuthViewModel] instance for state orchestration.
  */
 @Composable
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: AuthViewModel? = null
 ) {
-    var state by remember { mutableStateOf(RegisterScreenState()) }
     val coroutineScope = rememberCoroutineScope()
-
-    /**
-     * Validates input fields and executes user registration via AuthApi.
-     */
-    fun handleRegister() {
-        val email = state.email.trim()
-        val password = state.password
-        val confirm = state.confirmPassword
-
-        if (email.isBlank() || password.isBlank() || confirm.isBlank()) {
-            state = state.copy(errorMessage = "All fields are required.")
-            return
-        }
-
-        if (password != confirm) {
-            state = state.copy(errorMessage = "Passwords do not match.")
-            return
-        }
-
-        if (password.length < 6) {
-            state = state.copy(errorMessage = "Password must be at least 6 characters.")
-            return
-        }
-
-        coroutineScope.launch {
-            state = state.copy(isLoading = true, errorMessage = null)
-            runCatching {
-                val req = UserCreate(email = email, password = password)
-                val res = AppContainer.authApi.registerUserApiV1AuthRegisterPost(req)
-                if (!res.success) {
-                    val displayMsg = if (res.status == 400) {
-                        "An account with this email already exists."
-                    } else {
-                        "Registration failed (Error ${res.status})."
-                    }
-                    state = state.copy(isLoading = false, errorMessage = displayMsg)
-                    return@runCatching
-                }
-                state = state.copy(
-                    isLoading = false,
-                    successMessage = "Account created successfully! Please sign in."
-                )
-                onRegisterSuccess()
-            }.onFailure { e ->
-                val msg = e.message ?: "Registration failed"
-                val displayMsg = if (msg.contains("400") || msg.contains("already registered", ignoreCase = true)) {
-                    "An account with this email already exists."
-                } else {
-                    msg
-                }
-                state = state.copy(isLoading = false, errorMessage = displayMsg)
-            }
-        }
+    val vm = remember(viewModel, coroutineScope) {
+        viewModel ?: AuthViewModel(scope = coroutineScope)
     }
+
+    val state by vm.state.collectAsState()
 
     Box(
         modifier = modifier.fillMaxSize().padding(16.dp),
@@ -144,7 +102,7 @@ fun RegisterScreen(
 
                 OutlinedTextField(
                     value = state.email,
-                    onValueChange = { state = state.copy(email = it, errorMessage = null) },
+                    onValueChange = { vm.updateEmail(it) },
                     label = { Text("Email Address") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -155,14 +113,18 @@ fun RegisterScreen(
 
                 OutlinedTextField(
                     value = state.password,
-                    onValueChange = { state = state.copy(password = it, errorMessage = null) },
+                    onValueChange = { vm.updatePassword(it) },
                     label = { Text("Password") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    visualTransformation = if (state.passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (state.passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     trailingIcon = {
-                        IconButton(onClick = { state = state.copy(passwordVisible = !state.passwordVisible) }) {
+                        IconButton(onClick = { vm.togglePasswordVisibility() }) {
                             Icon(
                                 if (state.passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                                 contentDescription = if (state.passwordVisible) "Hide password" else "Show password"
@@ -175,11 +137,15 @@ fun RegisterScreen(
 
                 OutlinedTextField(
                     value = state.confirmPassword,
-                    onValueChange = { state = state.copy(confirmPassword = it, errorMessage = null) },
+                    onValueChange = { vm.updateConfirmPassword(it) },
                     label = { Text("Confirm Password") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    visualTransformation = if (state.passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    visualTransformation = if (state.passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
                 )
 
@@ -204,7 +170,7 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
-                    onClick = { handleRegister() },
+                    onClick = { vm.register(onRegisterSuccess = onRegisterSuccess) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                     enabled = !state.isLoading
                 ) {

@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Route Guard for the Registration Page via Feature Flag.
  */

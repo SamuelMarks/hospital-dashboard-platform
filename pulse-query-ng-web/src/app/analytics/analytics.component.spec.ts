@@ -116,8 +116,8 @@ describe('AnalyticsComponent', () => {
     component.searchText.set('Revenue');
     expect(component.filteredRows()[0].candidate_id).toBe('c1');
 
-    const missingRow = {
-      source: '' as any,
+    const missingRow: LlmAnalyticsRow = {
+      source: '' as unknown as LlmAnalyticsRow['source'],
       candidate_id: 'c3',
       assistant_message_id: null,
       conversation_id: null,
@@ -131,7 +131,7 @@ describe('AnalyticsComponent', () => {
       sql_hash: null,
       is_selected: false,
       created_at: '2024-01-03T00:00:00Z',
-    } as LlmAnalyticsRow;
+    };
     component.rows.set([...rows, missingRow]);
     component.searchText.set('missing');
     component.filteredRows();
@@ -196,6 +196,10 @@ describe('AnalyticsComponent', () => {
     expect(summary.sqlCoverage).toBe(50);
 
     component.selectedRow.set(rows[1]);
+    component.modelFilter.set('Mistral');
+    TestBed.flushEffects();
+    expect(component.selectedRow()?.candidate_id).toBe('c2');
+
     component.modelFilter.set('GPT-4o');
     TestBed.flushEffects();
     expect(component.selectedRow()?.candidate_id).toBe('c1');
@@ -245,6 +249,7 @@ describe('AnalyticsComponent', () => {
   });
 
   it('should extract event value', () => {
-    expect(component.getEventValue({ target: { value: 'test-val' } } as any)).toBe('test-val');
+    const fakeEvent = { target: { value: 'test-val' } as unknown as EventTarget } as Event;
+    expect(component.getEventValue(fakeEvent)).toBe('test-val');
   });
 });

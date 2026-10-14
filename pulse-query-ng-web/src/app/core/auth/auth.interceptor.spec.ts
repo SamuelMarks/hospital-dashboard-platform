@@ -20,7 +20,11 @@ describe('authInterceptor', () => {
     refreshToken: ReturnType<typeof vi.fn>;
     logout: ReturnType<typeof vi.fn>;
   };
-  let mockRouter: { navigate: ReturnType<typeof vi.fn>; routerState: any; url: string };
+  let mockRouter: {
+    navigate: ReturnType<typeof vi.fn>;
+    routerState: { snapshot: { url: string } };
+    url: string;
+  };
 
   beforeEach(() => {
     mockAuthService = {
@@ -151,7 +155,7 @@ describe('authInterceptor', () => {
   it('should handle duck-typed 401 errors', () => {
     const result$ = TestBed.runInInjectionContext(() => {
       const req = new HttpRequest('GET', '/api/duck');
-      return authInterceptor(req, () => throwError(() => ({ status: 401 }) as any));
+      return authInterceptor(req, () => throwError(() => ({ status: 401 })));
     });
 
     result$.subscribe({ error: () => {} });
@@ -165,7 +169,7 @@ describe('authInterceptor', () => {
       of({ access_token: 'new-access-token', token_type: 'bearer' }),
     );
 
-    let responseData: any = null;
+    let responseData: unknown = null;
     httpClient.get('/api/protected-data').subscribe((data) => (responseData = data));
 
     // First request fails with 401
@@ -188,6 +192,7 @@ describe('authInterceptor', () => {
     mockAuthService.getToken.mockReturnValue('expired-access');
     mockAuthService.getRefreshToken.mockReturnValue('expired-refresh');
     mockAuthService.refreshToken.mockReturnValue(throwError(() => new Error('Refresh failed')));
+    mockRouter.routerState.snapshot.url = '';
 
     httpClient.get('/api/protected-data').subscribe({ error: () => {} });
 
@@ -196,7 +201,7 @@ describe('authInterceptor', () => {
 
     expect(mockAuthService.logout).toHaveBeenCalledWith(false);
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/login'], {
-      queryParams: { returnUrl: '/dashboard/123' },
+      queryParams: { returnUrl: '/' },
     });
   });
 
@@ -207,8 +212,8 @@ describe('authInterceptor', () => {
       of({ access_token: 'new-shared-access-token', token_type: 'bearer' }),
     );
 
-    let res1: any = null;
-    let res2: any = null;
+    let res1: unknown = null;
+    let res2: unknown = null;
 
     httpClient.get('/api/widget-1').subscribe((d) => (res1 = d));
     httpClient.get('/api/widget-2').subscribe((d) => (res2 = d));

@@ -38,18 +38,17 @@ async def run_mpax_arena_mode(
     )
 
   try:
-    response = await mpax_arena_service.run_mpax_arena(request, db, current_user)
-    return response
+    return await mpax_arena_service.run_mpax_arena(request, db, current_user)
   except ValueError as e:
     raise HTTPException(
       status_code=status.HTTP_400_BAD_REQUEST,
       detail=str(e),
-    )
+    ) from e
   except Exception as e:
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       detail=f"MPAX Arena failed: {e!s}",
-    )
+    ) from e
 
 
 @router.post("/runs/{run_id}/candidates/{candidate_id}/vote", response_model=MpaxArenaResponse)
@@ -80,9 +79,9 @@ async def vote_mpax_arena_candidate(
     raise HTTPException(
       status_code=status.HTTP_404_NOT_FOUND,
       detail=str(e),
-    )
+    ) from e
   except Exception as e:
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       detail=f"MPAX Arena voting failed: {e!s}",
-    )
+    ) from e

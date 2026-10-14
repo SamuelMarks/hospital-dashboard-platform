@@ -4,7 +4,8 @@ Tests for Analytical Data Export Engine in Dashboards Router.
 Verifies JSON and CSV export formats, snapshot execution, and formula injection sanitization.
 """
 
-import json
+from typing import Any
+
 import uuid
 
 import pytest
@@ -16,7 +17,7 @@ from app.models.user import User
 
 
 @pytest.fixture
-async def export_test_user(db_session):
+async def export_test_user(db_session: Any) -> Any:
   """
   Creates a persisted user and sets up authentication override.
   """
@@ -42,7 +43,7 @@ async def export_test_user(db_session):
 
 
 @pytest.mark.asyncio
-async def test_export_dashboard_json_format(client: AsyncClient, export_test_user, db_session) -> None:
+async def test_export_dashboard_json_format(client: AsyncClient, export_test_user: Any, db_session: Any) -> None:
   """
   Verifies that JSON export returns the full layout, metadata, and widget snapshot data.
   """
@@ -93,7 +94,7 @@ async def test_export_dashboard_json_format(client: AsyncClient, export_test_use
 
 @pytest.mark.asyncio
 async def test_export_dashboard_csv_format_and_injection_sanitization(
-  client: AsyncClient, export_test_user, db_session
+  client: AsyncClient, export_test_user: Any, db_session: Any
 ) -> None:
   """
   Verifies CSV export and asserts leading formula injection characters are escaped.
@@ -147,7 +148,9 @@ async def test_export_dashboard_csv_format_and_injection_sanitization(
 
 
 @pytest.mark.asyncio
-async def test_export_dashboard_sql_error_and_empty_data(client: AsyncClient, export_test_user, db_session) -> None:
+async def test_export_dashboard_sql_error_and_empty_data(
+  client: AsyncClient, export_test_user: Any, db_session: Any
+) -> None:
   """
   Verifies CSV export handling when a query has an error or returns no rows.
   """
@@ -199,7 +202,7 @@ async def test_export_dashboard_sql_error_and_empty_data(client: AsyncClient, ex
 
 
 @pytest.mark.asyncio
-async def test_export_dashboard_not_found(client: AsyncClient, export_test_user) -> None:
+async def test_export_dashboard_not_found(client: AsyncClient, export_test_user: Any) -> None:
   """
   Verifies 404 response when exporting a non-existent dashboard.
   """
@@ -210,7 +213,7 @@ async def test_export_dashboard_not_found(client: AsyncClient, export_test_user)
 
 
 @pytest.mark.asyncio
-async def test_export_dashboard_pdf_format(client: AsyncClient, export_test_user, db_session) -> None:
+async def test_export_dashboard_pdf_format(client: AsyncClient, export_test_user: Any, db_session: Any) -> None:
   """
   Verifies clinical PDF report export returns valid PDF binary stream and headers.
   """
@@ -272,7 +275,7 @@ async def test_export_dashboard_pdf_format(client: AsyncClient, export_test_user
 
 
 @pytest.mark.asyncio
-async def test_export_dashboard_pdf_not_found(client: AsyncClient, export_test_user) -> None:
+async def test_export_dashboard_pdf_not_found(client: AsyncClient, export_test_user: Any) -> None:
   """
   Verifies 404 response when exporting PDF for a non-existent dashboard.
   """
@@ -325,7 +328,7 @@ def test_generate_clinical_pdf_report_branches() -> None:
 
 
 @pytest.mark.asyncio
-async def test_export_endpoints_query_token_authentication(client: AsyncClient, db_session) -> None:
+async def test_export_endpoints_query_token_authentication(client: AsyncClient, db_session: Any) -> None:
   """
   Verifies that JSON, CSV, and PDF export endpoints accept JWT query tokens.
 

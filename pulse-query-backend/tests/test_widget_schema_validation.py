@@ -2,6 +2,8 @@
 Tests for Widget Schema Validation.
 """
 
+from typing import Any
+
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
@@ -20,7 +22,7 @@ def test_sql_config_valid() -> None:
 def test_sql_config_missing_query() -> None:
   """Test failure when query is missing."""
   with pytest.raises(ValidationError) as exc:
-    SqlConfig(w=10)  # Type: ignore
+    SqlConfig.model_validate({"w": 10})
   assert "query" in str(exc.value)
 
 
@@ -46,7 +48,7 @@ def test_polymorphic_create_sql() -> None:
     "visualization": "table",
     "config": {"query": "SELECT * FROM t"},
   }
-  adapter = TypeAdapter(WidgetCreate)
+  adapter: TypeAdapter[Any] = TypeAdapter(WidgetCreate)
   model = adapter.validate_python(payload)
 
   assert model.type == "SQL"
@@ -68,7 +70,7 @@ def test_polymorphic_create_http() -> None:
       "meta_forward_auth": True,
     },
   }
-  adapter = TypeAdapter(WidgetCreate)
+  adapter: TypeAdapter[Any] = TypeAdapter(WidgetCreate)
   model = adapter.validate_python(payload)
 
   assert model.type == "HTTP"
@@ -86,7 +88,7 @@ def test_polymorphic_create_text() -> None:
     "visualization": "markdown",
     "config": {"content": "**Bold** note"},
   }
-  adapter = TypeAdapter(WidgetCreate)
+  adapter: TypeAdapter[Any] = TypeAdapter(WidgetCreate)
   model = adapter.validate_python(payload)
 
   assert model.type == "TEXT"
@@ -105,7 +107,7 @@ def test_polymorphic_discriminator_mismatch() -> None:
     "config": {"url": "https://api.com"},
   }
 
-  adapter = TypeAdapter(WidgetCreate)
+  adapter: TypeAdapter[Any] = TypeAdapter(WidgetCreate)
 
   with pytest.raises(ValidationError) as exc:
     adapter.validate_python(payload)
@@ -123,7 +125,7 @@ def test_polymorphic_invalid_http_method() -> None:
     "visualization": "table",
     "config": {"url": "https://a.com", "method": "JUMP"},
   }
-  adapter = TypeAdapter(WidgetCreate)
+  adapter: TypeAdapter[Any] = TypeAdapter(WidgetCreate)
 
   with pytest.raises(ValidationError) as exc:
     adapter.validate_python(payload)

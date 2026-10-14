@@ -5,7 +5,7 @@ Implements the 5 distinct "What-If" evaluation modes.
 
 import json
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,14 +20,31 @@ from app.schemas.mpax_arena import (
 )
 from app.schemas.simulation import ScenarioResult, ScenarioRunRequest
 from app.services.llm_client import llm_client
+from app.services.runners.sql import run_sql_widget
 from app.services.simulation_service import simulation_service
+from app.services.sql_utils import extract_sql_from_markdown
 
 
 class MpaxArenaService:
   """Orchestrates MPAX and LLMs based on requested evaluation modes."""
 
-  async def run_mpax_arena(self, request: MpaxArenaRequest, db: AsyncSession, user: User) -> MpaxArenaResponse:
-    """Entry point for all MPAX Arena integrations."""
+  async def run_mpax_arena(
+    self,
+    request: MpaxArenaRequest,
+    db: AsyncSession,
+    user: User,
+  ) -> MpaxArenaResponse:
+    """
+    Entry point for all MPAX Arena integrations.
+
+    Args:
+        request (MpaxArenaRequest): Arena evaluation mode and scenario configuration.
+        db (AsyncSession): Active transactional database session.
+        user (User): Authenticated user running the arena evaluation.
+
+    Returns:
+        MpaxArenaResponse: Evaluated candidate responses and ground-truth MPAX output.
+    """
     mode = request.mode
 
     if mode == "judge":
@@ -132,16 +149,22 @@ class MpaxArenaService:
     )
 
   def _get_demand_data(self, sql: str) -> list[dict[str, Any]]:
-    """Utility to fetch demand data directly from DuckDB."""
+    """
+    Utility to fetch demand data from DuckDB via `run_sql_widget`.
+
+    Args:
+        sql (str): SQL query string for demand extraction.
+
+    Returns:
+        list[dict[str, Any]]: List of row dictionaries returned by the query.
+    """
     if not sql:
       return []
     conn = duckdb_manager.get_readonly_connection()
     try:
       cursor = conn.cursor()
-      cursor.execute(sql)
-      columns = [desc[0] for desc in cursor.description]
-      rows = cursor.fetchall()
-      return [dict(zip(columns, row)) for row in rows]
+      res = run_sql_widget(cursor, {"query": sql})
+      return list(res.get("data", []))
     finally:
       conn.close()
 
@@ -150,8 +173,23 @@ class MpaxArenaService:
     base = cap or {"ICU": 10.0, "MedSurg": 50.0}
     return {str(k): float(v) for k, v in base.items()}
 
-  async def _run_judge_mode(self, request: MpaxArenaRequest, db: AsyncSession, user: User) -> MpaxArenaResponse:
-    """Mode 1: MPAX solves it, LLMs try to solve it logically."""
+  async def _run_judge_mode(
+    self,
+    request: MpaxArenaRequest,
+    db: AsyncSession,
+    user: User,
+  ) -> MpaxArenaResponse:
+    """
+    Mode 1: MPAX solves it, LLMs try to solve it logically.
+
+    Args:
+        request (MpaxArenaRequest): Arena evaluation payload.
+        db (AsyncSession): Active transactional database session.
+        user (User): Authenticated user.
+
+    Returns:
+        MpaxArenaResponse: Judge mode arena response.
+    """
     demand_data = self._get_demand_data(request.demand_sql or "")
 
     # 1. Run MPAX Ground Truth
@@ -205,17 +243,14 @@ class MpaxArenaService:
     experiment_id = str(uuid.uuid4())
 
     for res in llm_responses:
-      cap_map = {}
+      cap_map: dict[str, Any] = {}
       try:
         # Naive json extraction
         text = res.content
         start = text.find("{")
         end = text.rfind("}")
-        if start != -1 and end != -1:
-          cap_map = json.loads(text[start : end + 1])
-        else:
-          cap_map = {"ICU": 0}  # fallback
-      except:
+        cap_map = json.loads(text[start : end + 1]) if start != -1 and end != -1 else {"ICU": 0}
+      except Exception:
         cap_map = {"ICU": 0}
 
       try:
@@ -251,9 +286,7 @@ class MpaxArenaService:
     experiment_id = str(uuid.uuid4())
 
     for res in llm_responses:
-      sql = ""
-      if "```sql" in res.content:
-        sql = res.content.split("```sql")[1].split("```")[0].strip()
+      sql = self._extract_sql(res.content) or ""
 
       candidates.append(
         MpaxArenaCandidate(
@@ -280,16 +313,15 @@ class MpaxArenaService:
     experiment_id = str(uuid.uuid4())
 
     for res in llm_responses:
-      cap_map = {}
+      cap_map: dict[str, Any] = {}
       try:
         text = res.content
         start = text.rfind("{")
         end = text.rfind("}")
-        if start != -1 and end != -1:
-          cap_map = json.loads(text[start : end + 1])
-        else:
-          cap_map = request.base_capacity or {"ICU": 10}
-      except:
+        cap_map = (
+          json.loads(text[start : end + 1]) if start != -1 and end != -1 else (request.base_capacity or {"ICU": 10})
+        )
+      except Exception:
         cap_map = request.base_capacity or {"ICU": 10}
 
       try:
@@ -337,9 +369,17 @@ class MpaxArenaService:
     return MpaxArenaResponse(experiment_id=experiment_id, mode=mode, ground_truth_mpax=mpax_gt, candidates=candidates)
 
   def _extract_sql(self, text: str) -> str | None:
-    """Extract SQL code from a markdown-formatted string."""
+    """
+    Extract SQL code from a markdown-formatted string.
+
+    Args:
+        text (str): Raw markdown text from an LLM response.
+
+    Returns:
+        str | None: Extracted SQL snippet if fenced SQL block exists, else None.
+    """
     if "```sql" in text:
-      return text.split("```sql")[1].split("```")[0].strip()
+      return extract_sql_from_markdown(text)
     return None
 
 

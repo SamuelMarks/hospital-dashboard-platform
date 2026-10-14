@@ -8,7 +8,6 @@ altering the execution logic.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List
 
 
 class PromptStrategy(ABC):

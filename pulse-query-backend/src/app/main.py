@@ -5,6 +5,7 @@ Main Application Entry Point.
 """
 
 import asyncio
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import logging
 import os
@@ -15,7 +16,6 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-import pydantic.root_model  # noqa: F401
 
 from app.api.routers import (
   admin,
@@ -62,9 +62,15 @@ async def _background_ingest_loop(interval_minutes: int) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
   """
   Lifespan context manager for the FastAPI application.
+
+  Args:
+      app (FastAPI): The FastAPI application instance.
+
+  Yields:
+      None: Control back to the ASGI server while running.
   """
   # 0. Settings Hygiene
   check_configuration_hygiene(settings)
@@ -195,7 +201,7 @@ def setup_static_files(app_instance: FastAPI) -> None:
   Args:
       app_instance: The FastAPI application instance to configure.
   """
-  if os.environ.get("DEBUG"):  # pragma: no cover
+  if os.environ.get("DEBUG"):
     dist_candidates = [
       Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web" / "browser",
       Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web",

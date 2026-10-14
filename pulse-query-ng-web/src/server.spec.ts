@@ -1,9 +1,16 @@
 /* @vitest-environment node */
 import { vi } from 'vitest';
 
+type MiddlewareFn = (req: unknown, res: unknown, next: (err?: unknown) => void) => unknown;
+
+interface MockExpressApp {
+  use: ReturnType<typeof vi.fn>;
+  listen: ReturnType<typeof vi.fn>;
+}
+
 let handleMock = vi.fn();
-let middlewares: Array<Function> = [];
-let lastApp: any;
+let middlewares: Array<MiddlewareFn> = [];
+let lastApp: MockExpressApp;
 
 const writeResponseToNodeResponse = vi.fn();
 const createNodeRequestHandler = vi.fn(() => 'handler');
@@ -14,10 +21,10 @@ type ExpressMock = ReturnType<typeof vi.fn> & { static: ReturnType<typeof vi.fn>
 const expressMock = vi.fn(() => {
   middlewares = [];
   lastApp = {
-    use: vi.fn((arg1: any, arg2?: any) => {
+    use: vi.fn((arg1: unknown, arg2?: unknown) => {
       const fn = typeof arg1 === 'function' ? arg1 : arg2;
       if (typeof fn === 'function') {
-        middlewares.push(fn);
+        middlewares.push(fn as MiddlewareFn);
       }
     }),
     listen: vi.fn((port: number, cb?: (err?: Error) => void) => {
@@ -27,7 +34,7 @@ const expressMock = vi.fn(() => {
   };
   return lastApp;
 }) as unknown as ExpressMock;
-expressMock.static = vi.fn(() => (_req: any, _res: any, next: any) => next?.());
+expressMock.static = vi.fn(() => (_req: unknown, _res: unknown, next?: () => void) => next?.());
 
 vi.mock('express', () => ({
   default: expressMock,
@@ -35,7 +42,7 @@ vi.mock('express', () => ({
 
 vi.mock('@angular/ssr/node', () => ({
   AngularNodeAppEngine: class {
-    handle = (...args: any[]) => handleMock(...args);
+    handle = (...args: unknown[]) => handleMock(...args);
   },
   createNodeRequestHandler,
   isMainModule,
@@ -60,7 +67,7 @@ describe('server bootstrap', () => {
     expect(createNodeRequestHandler).toHaveBeenCalledWith(lastApp);
 
     const next = vi.fn();
-    const middleware = middlewares[middlewares.length - 1] as any;
+    const middleware = middlewares[middlewares.length - 1]!;
     await middleware({}, {}, next);
     await Promise.resolve();
 
@@ -74,7 +81,7 @@ describe('server bootstrap', () => {
     await import('./server');
 
     const next = vi.fn();
-    const middleware = middlewares[middlewares.length - 1] as any;
+    const middleware = middlewares[middlewares.length - 1]!;
     await middleware({}, {}, next);
     await Promise.resolve();
 
@@ -88,7 +95,7 @@ describe('server bootstrap', () => {
     await import('./server');
 
     const next = vi.fn();
-    const middleware = middlewares[middlewares.length - 1] as any;
+    const middleware = middlewares[middlewares.length - 1]!;
     await middleware({}, {}, next);
     await Promise.resolve();
 
@@ -108,7 +115,7 @@ describe('server bootstrap', () => {
 
   it('throws when listen callback receives an error', async () => {
     process.env['pm_id'] = '1';
-    const app = {
+    const app: MockExpressApp = {
       use: vi.fn(),
       listen: vi.fn((port: number, cb?: (err?: Error) => void) => {
         if (cb) cb(new Error('listen failed'));

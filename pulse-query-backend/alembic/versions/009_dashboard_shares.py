@@ -19,6 +19,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+  """Create dashboard_shares table and foreign key indices."""
   op.create_table(
     "dashboard_shares",
     sa.Column("id", sa.UUID(), nullable=False),
@@ -35,6 +36,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+  """Drop dashboard_shares table and indices."""
   op.drop_index(op.f("ix_dashboard_shares_user_id"), table_name="dashboard_shares")
   op.drop_index(op.f("ix_dashboard_shares_dashboard_id"), table_name="dashboard_shares")
   op.drop_table("dashboard_shares")

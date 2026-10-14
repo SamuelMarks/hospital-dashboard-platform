@@ -130,12 +130,12 @@ async def test_dashboard_websocket_endpoint_invalid_token_payload() -> None:
   db = AsyncMock()
 
   # Token without 'sub'
-  with patch("app.api.routers.ws.jwt.decode", return_value={"other": "claim"}):
+  with patch("app.api.deps.jwt.decode", return_value={"other": "claim"}):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token="token-without-sub", db=db)
   mock_ws.close.assert_awaited_with(code=4401, reason="Unauthorized: Invalid token payload")
 
   # Malformed JWT
-  with patch("app.api.routers.ws.jwt.decode", side_effect=ValueError("bad token")):
+  with patch("app.api.deps.jwt.decode", side_effect=ValueError("bad token")):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token="bad-jwt", db=db)
   mock_ws.close.assert_awaited_with(code=4401, reason="Unauthorized: Could not validate credentials")
 

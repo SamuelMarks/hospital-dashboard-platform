@@ -1,3 +1,5 @@
+"""Tests for data ingestion."""
+
 from app.services.data_ingestion import DataIngestionService
 
 

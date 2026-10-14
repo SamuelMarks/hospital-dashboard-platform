@@ -10,8 +10,8 @@ import { vi } from 'vitest';
 describe('DashboardCreateDialog', () => {
   let component: DashboardCreateDialog;
   let fixture: ComponentFixture<DashboardCreateDialog>;
-  let mockApi: any;
-  let mockDialogRef: any;
+  let mockApi: { createDashboardApiV1DashboardsPost: ReturnType<typeof vi.fn> };
+  let mockDialogRef: { close: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockApi = { createDashboardApiV1DashboardsPost: vi.fn() };

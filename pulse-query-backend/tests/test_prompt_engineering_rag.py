@@ -8,7 +8,7 @@ Verifies:
 """
 
 import builtins
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import mock_open
 
 import pytest
@@ -99,14 +99,14 @@ def test_strategy_fallback_no_matches() -> None:
   assert "No similar examples found" in user_content
 
 
-def test_retriever_loads_empty_when_file_missing(monkeypatch) -> None:
+def test_retriever_loads_empty_when_file_missing(monkeypatch: Any) -> None:
   """Missing template file should yield empty list."""
   monkeypatch.setattr(rag_module.os.path, "exists", lambda *_: False)
   retriever = TemplateRetriever()
   assert retriever.templates == []
 
 
-def test_retriever_loads_empty_on_json_error(monkeypatch) -> None:
+def test_retriever_loads_empty_on_json_error(monkeypatch: Any) -> None:
   """JSON errors should be swallowed and return empty list."""
   monkeypatch.setattr(rag_module.os.path, "exists", lambda *_: True)
   monkeypatch.setattr(builtins, "open", mock_open(read_data="[]"))

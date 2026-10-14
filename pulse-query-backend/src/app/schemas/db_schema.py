@@ -5,8 +5,6 @@ Defines Pydantic models for representing the analytical database structure
 (Tables and Columns). Used by the Schema API to support frontend IntelliSense.
 """
 
-from typing import List
-
 from pydantic import BaseModel, ConfigDict
 
 

@@ -15,7 +15,7 @@ class FallbackStorageTest {
 
     @Test
     fun testKeyValueStorageInMemoryCRUD() {
-        val storage = KeyValueStorage(database = null)
+        val storage = KeyValueStorage()
 
         assertNull(storage.get("missing_key"))
 
@@ -34,7 +34,7 @@ class FallbackStorageTest {
 
     @Test
     fun testWidgetCacheStorageInMemoryOperations() {
-        val cache = WidgetCacheStorage(database = null)
+        val cache = WidgetCacheStorage()
 
         assertTrue(cache.getCachedWidgets("dash_1").isEmpty())
 
@@ -52,23 +52,43 @@ class FallbackStorageTest {
         assertEquals("""{"value": 42}""", list[0].data_json)
         assertEquals(1000L, list[0].updated_at)
 
-        // Add second widget
+        // Overwrite existing widget with default updatedAt
+        cache.cacheWidget(
+            widgetId = "w1",
+            dashboardId = "dash_1",
+            dataJson = """{"value": 43}"""
+        )
+        assertEquals(1, cache.getCachedWidgets("dash_1").size)
+        assertEquals("""{"value": 43}""", cache.getCachedWidgets("dash_1")[0].data_json)
+        assertTrue(cache.getCachedWidgets("dash_1")[0].updated_at > 0L)
+
+        // Add second widget on dash_1 and another widget on dash_2
         cache.cacheWidget(
             widgetId = "w2",
             dashboardId = "dash_1",
             dataJson = """{"value": 99}""",
             updatedAt = 2000L
         )
+        cache.cacheWidget(
+            widgetId = "w3",
+            dashboardId = "dash_2",
+            dataJson = """{"value": 100}""",
+            updatedAt = 3000L
+        )
         assertEquals(2, cache.getCachedWidgets("dash_1").size)
+        assertEquals(1, cache.getCachedWidgets("dash_2").size)
 
-        // Clear specific widget
+        // Clear specific widget across all dashboards
         cache.clearWidget("w1")
         val remaining = cache.getCachedWidgets("dash_1")
         assertEquals(1, remaining.size)
         assertEquals("w2", remaining[0].widget_id)
+        assertEquals(1, cache.getCachedWidgets("dash_2").size)
 
         // Clear dashboard widgets
         cache.clearDashboardWidgets("dash_1")
         assertTrue(cache.getCachedWidgets("dash_1").isEmpty())
+        assertEquals(1, cache.getCachedWidgets("dash_2").size)
     }
 }
+

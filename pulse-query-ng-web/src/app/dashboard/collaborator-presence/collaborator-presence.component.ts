@@ -29,6 +29,7 @@ import {
         <span
           class="live-dot"
           matTooltip="Real-time collaboration active"
+          i18n-matTooltip
           data-testid="live-indicator"
         ></span>
       }
@@ -101,10 +102,14 @@ export class CollaboratorPresenceComponent {
     if (!email) {
       return '?';
     }
-    const username = email.split('@')[0];
+    const username = email.split('@', 1).join('');
     const parts = username.split(/[._-]/);
     if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
+      return parts
+        .slice(0, 2)
+        .map((p) => p.slice(0, 1))
+        .join('')
+        .toUpperCase();
     }
     return username.slice(0, 2).toUpperCase();
   }

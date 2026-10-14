@@ -5,7 +5,7 @@ Defines the Data Transfer Objects (DTOs) for Dashboards.
 Integrates the strict polymorphic `WidgetCreate` definition from the widget module.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict

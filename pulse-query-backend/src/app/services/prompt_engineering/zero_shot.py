@@ -11,8 +11,6 @@ It strictly enforces basic rules:
 3. No Hallucinations (stick to provided schema).
 """
 
-from typing import Dict, List
-
 from app.services.prompt_engineering.interfaces import PromptStrategy
 
 

@@ -11,7 +11,8 @@ import {
   AddWidgetCommand,
   UpdateWidgetConfigCommand,
 } from './dashboard-commands';
-import { WidgetResponse } from '../../api-client';
+import { DashboardsService, WidgetResponse } from '../../api-client';
+import { DashboardStore } from '../../dashboard/dashboard.store';
 
 describe('Dashboard Undo/Redo Commands', () => {
   const mockDate = new Date('2026-01-01T12:00:00Z');
@@ -64,8 +65,8 @@ describe('Dashboard Undo/Redo Commands', () => {
         'dash-1',
         prev,
         next,
-        mockDashboardApi as any,
-        mockStore as any,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
         mockDate,
       );
 
@@ -107,8 +108,8 @@ describe('Dashboard Undo/Redo Commands', () => {
         'dash-1',
         prev,
         next,
-        mockDashboardApi as any,
-        mockStore as any,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
         mockDate,
       );
 
@@ -122,8 +123,8 @@ describe('Dashboard Undo/Redo Commands', () => {
       const widget = createMockWidget('w1', 'Bed Occupancy');
       const cmd = new DeleteWidgetCommand(
         widget,
-        mockDashboardApi as any,
-        mockStore as any,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
         mockDate,
       );
 
@@ -148,8 +149,8 @@ describe('Dashboard Undo/Redo Commands', () => {
       const widget = createMockWidget('w1');
       const cmd = new DeleteWidgetCommand(
         widget,
-        mockDashboardApi as any,
-        mockStore as any,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
         mockDate,
       );
 
@@ -161,7 +162,12 @@ describe('Dashboard Undo/Redo Commands', () => {
   describe('AddWidgetCommand', () => {
     it('should restore widget on execute and remove widget on undo', async () => {
       const widget = createMockWidget('w2', 'New Chart');
-      const cmd = new AddWidgetCommand(widget, mockDashboardApi as any, mockStore as any, mockDate);
+      const cmd = new AddWidgetCommand(
+        widget,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
+        mockDate,
+      );
 
       expect(cmd.id).toBe(`add-widget-w2-${mockDate.getTime()}`);
       expect(cmd.description).toBe('Add widget "New Chart"');
@@ -182,7 +188,12 @@ describe('Dashboard Undo/Redo Commands', () => {
       );
 
       const widget = createMockWidget('w2');
-      const cmd = new AddWidgetCommand(widget, mockDashboardApi as any, mockStore as any, mockDate);
+      const cmd = new AddWidgetCommand(
+        widget,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
+        mockDate,
+      );
 
       await cmd.undo();
       expect(mockStore.optimisticRestoreWidget).toHaveBeenCalledWith(widget);
@@ -202,8 +213,8 @@ describe('Dashboard Undo/Redo Commands', () => {
         'w1',
         prev,
         next,
-        mockDashboardApi as any,
-        mockStore as any,
+        mockDashboardApi as unknown as DashboardsService,
+        mockStore as unknown as DashboardStore,
         mockDate,
       );
 

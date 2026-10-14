@@ -1,0 +1,73 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: true
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 10
+    ignoreSingleWhenExpression: true
+    ignoreAnnotated: ['Composable']
+  LargeClass:
+    active: true
+    threshold: 300
+  LongParameterList:
+    active: true
+    functionThreshold: 6
+    constructorThreshold: 6
+    ignoreDefaultParameters: true
+    ignoreAnnotated: ['Composable']
+  LongMethod:
+    active: false
+  TooManyFunctions:
+    active: false
+
+style:
+  active: true
+  WildcardImport:
+    active: true
+  ForbiddenComment:
+    active: true
+  MagicNumber:
+    active: false
+  ReturnCount:
+    active: false
+  MaxLineLength:
+    active: false
+  UnusedPrivateMember:
+    active: false
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    ignoreAnnotated: ['Composable']
+  MatchingDeclarationName:
+    active: false
+  TopLevelPropertyNaming:
+    active: false
+  ConstructorParameterNaming:
+    active: false
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: false
+
+comments:
+  active: true
+  UndocumentedPublicClass:
+    active: true
+    searchInNestedClass: true
+    searchInInnerClass: true
+    searchInInnerObject: true
+    searchInInnerInterface: true
+  UndocumentedPublicFunction:
+    active: true
+  UndocumentedPublicProperty:
+    active: true

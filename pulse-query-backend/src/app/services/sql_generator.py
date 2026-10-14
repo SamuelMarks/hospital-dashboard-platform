@@ -15,7 +15,7 @@ allowing for scientific benchmarking of different engineering techniques.
 
 import logging
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +31,7 @@ from app.services.prompt_engineering.interfaces import PromptStrategy
 from app.services.prompt_engineering.macro_cot import MacroCoTStrategy
 from app.services.prompt_engineering.zero_shot import ZeroShotStrategy
 from app.services.schema import schema_service
-from app.services.sql_utils import sql_fingerprint
+from app.services.sql_utils import extract_sql_from_markdown, sql_fingerprint
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class SQLGeneratorService:
 
     if tag == "cot-macro":
       return MacroCoTStrategy()
-    elif tag == "rag-few-shot":
+    if tag == "rag-few-shot":
       return FewShotRAGStrategy()
     # Default fallback
     return ZeroShotStrategy()
@@ -81,12 +81,7 @@ class SQLGeneratorService:
     Returns:
         str: The clean SQL query string.
     """
-    cleaned = raw_response.strip()
-    pattern = r"```(?:sql)?(.*?)```"
-    match = re.search(pattern, cleaned, re.DOTALL)
-    if match:
-      cleaned = match.group(1).strip()
-    return cleaned
+    return extract_sql_from_markdown(raw_response)
 
   def _sanitize_string_literal(self, value: Any) -> str:
     """

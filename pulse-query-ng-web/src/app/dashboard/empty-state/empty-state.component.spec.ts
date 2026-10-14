@@ -9,28 +9,29 @@ import { DashboardStore } from '../dashboard.store';
 import { AskDataService } from '../../global/ask-data.service';
 import { MatDialog } from '@angular/material/dialog';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { WidgetBuilderComponent } from '../widget-builder/widget-builder.component';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
-// MOCK: @material/material-color-utilities
-vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xffffffff,
-  hexFromArgb: () => '#ffffff',
-  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
-  Scheme: class {},
-  Theme: class {},
-  __esModule: true,
-}));
-
 describe('EmptyStateComponent', () => {
   let component: EmptyStateComponent;
   let fixture: ComponentFixture<EmptyStateComponent>;
-  let mockStore: any;
-  let mockAskData: any;
-  let mockDialog: any;
+  let mockStore: {
+    dashboard: WritableSignal<{ id: string } | null>;
+    isLoading: WritableSignal<boolean>;
+    isEditMode: WritableSignal<boolean>;
+    toggleEditMode: ReturnType<typeof vi.fn>;
+    createDefaultDashboard: ReturnType<typeof vi.fn>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+  };
+  let mockAskData: {
+    open: ReturnType<typeof vi.fn>;
+  };
+  let mockDialog: {
+    open: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     mockStore = {

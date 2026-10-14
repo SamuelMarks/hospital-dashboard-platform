@@ -4,10 +4,18 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, PLATFORM_ID } from '@angular/core';
+import { signal, WritableSignal, PLATFORM_ID } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { VizPieComponent } from './viz-pie.component';
+import { TableDataSet } from '../viz-table/viz-table.component';
+
+interface VizPiePrivate {
+  dataSet: WritableSignal<TableDataSet>;
+  config: WritableSignal<Record<string, unknown> | undefined>;
+  document: Document | null;
+  updatePaletteFomDom: () => void;
+}
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -22,8 +30,8 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('VizPieComponent', () => {
   let component: VizPieComponent;
   let fixture: ComponentFixture<VizPieComponent>;
-  let dataSetSig: any;
-  let configSig: any;
+  let dataSetSig: WritableSignal<TableDataSet>;
+  let configSig: WritableSignal<Record<string, unknown> | undefined>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -32,10 +40,11 @@ describe('VizPieComponent', () => {
 
     fixture = TestBed.createComponent(VizPieComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal({ columns: [], data: [] });
-    configSig = signal(undefined);
-    (component as any).dataSet = dataSetSig;
-    (component as any).config = configSig;
+    dataSetSig = signal<TableDataSet>({ columns: [], data: [] });
+    configSig = signal<Record<string, unknown> | undefined>(undefined);
+    const priv = component as unknown as VizPiePrivate;
+    priv.dataSet = dataSetSig;
+    priv.config = configSig;
 
     fixture.detectChanges();
   });
@@ -179,8 +188,9 @@ describe('VizPieComponent', () => {
   });
 
   it('should no-op palette update when document missing', () => {
-    (component as any).document = null;
-    (component as any).updatePaletteFomDom();
+    const priv = component as unknown as VizPiePrivate;
+    priv.document = null;
+    priv.updatePaletteFomDom();
     expect(component['palette']()).toBeTruthy();
   });
 
@@ -193,9 +203,10 @@ describe('VizPieComponent', () => {
 
     const serverFixture = TestBed.createComponent(VizPieComponent);
     const serverComponent = serverFixture.componentInstance;
-    (serverComponent as any).dataSet = signal({ columns: [], data: [] });
-    (serverComponent as any).config = signal(undefined);
-    const updateSpy = vi.spyOn(serverComponent as any, 'updatePaletteFomDom');
+    const serverPriv = serverComponent as unknown as VizPiePrivate;
+    serverPriv.dataSet = signal<TableDataSet>({ columns: [], data: [] });
+    serverPriv.config = signal<Record<string, unknown> | undefined>(undefined);
+    const updateSpy = vi.spyOn(serverPriv, 'updatePaletteFomDom');
     serverFixture.detectChanges();
 
     expect(updateSpy).not.toHaveBeenCalled();

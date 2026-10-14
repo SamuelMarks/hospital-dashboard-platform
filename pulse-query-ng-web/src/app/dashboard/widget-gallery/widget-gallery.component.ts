@@ -1,5 +1,7 @@
-/** @docs */
-// ... (imports same as before)
+/**
+ * @fileoverview Sidebar widget gallery component displaying searchable, categorized
+ * analytical templates that can be dragged onto a dashboard.
+ */
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
@@ -14,7 +16,9 @@ import { MatExpansionModule } from '@angular/material/expansion';
 
 import { TemplatesService, TemplateResponse } from '../../api-client';
 
-/** @docs */
+/**
+ * Displays a searchable gallery of widget templates grouped by clinical category.
+ */
 @Component({
   selector: 'app-widget-gallery',
   imports: [
@@ -111,23 +115,33 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
   ],
   templateUrl: './widget-gallery.component.html',
 })
-/** @docs */
 export class WidgetGalleryComponent implements OnInit {
-  /* istanbul ignore next */
+  /**
+   * Extracts the string value from a DOM input event.
+   *
+   * @param event - The DOM input event.
+   * @returns Current string value of the target HTMLInputElement.
+   */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
-  // ... (Component logic identical to previous version)
+
+  /** Backend templates API service. */
   private readonly templatesApi = inject(TemplatesService);
+  /** Full list of templates loaded from the backend. */
   readonly templates = signal<TemplateResponse[]>([]);
+  /** Whether templates are currently loading from the server. */
   readonly loading = signal(true);
+  /** Current search query string used to filter templates. */
   readonly searchQuery = signal('');
 
-  ngOnInit() {
+  /** Loads available widget templates when the gallery initializes. */
+  ngOnInit(): void {
     this.loadTemplates();
   }
 
-  loadTemplates() {
+  /** Fetches up to 100 widget templates from the backend API. */
+  loadTemplates(): void {
     this.loading.set(true);
     this.templatesApi.listTemplatesApiV1TemplatesGet(undefined, undefined, 100).subscribe({
       next: (data) => {
@@ -138,6 +152,7 @@ export class WidgetGalleryComponent implements OnInit {
     });
   }
 
+  /** Templates filtered by matching the search query against title or description. */
   readonly filteredTemplates = computed(() => {
     const q = this.searchQuery().toLowerCase();
     return this.templates().filter(
@@ -146,6 +161,7 @@ export class WidgetGalleryComponent implements OnInit {
     );
   });
 
+  /** Filtered templates grouped and sorted alphabetically by category name. */
   readonly groupedTemplates = computed(() => {
     const list = this.filteredTemplates();
     const groups: Record<string, TemplateResponse[]> = {};

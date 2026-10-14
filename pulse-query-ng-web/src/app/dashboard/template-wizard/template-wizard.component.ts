@@ -1,12 +1,11 @@
-/** @docs */
 /**
- * @fileoverview Widget Creation Wizard.
+ * @fileoverview Widget Creation Wizard Component.
  *
- * Orchestrates a multi-step process:
- * 1. Select Template (or Custom SQL).
- * 2. Configure Parameters (via Dynamic Form).
- * 3. Preview Execution (Defer loaded VizTable).
- * 4. Save/Commit.
+ * Orchestrates a stateless multi-step widget creation flow:
+ * 1. Select Marketplace Template or enter Custom SQL.
+ * 2. Configure template parameters via `DynamicFormComponent`.
+ * 3. Execute a stateless read-only SQL preview via `AiService.executeSqlPreviewApiV1AiExecutePost`.
+ * 4. Persist the new widget on the target dashboard only when the user confirms "Add Widget".
  */
 
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
@@ -15,7 +14,6 @@ import { finalize, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { Subject, Subscription } from 'rxjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
-// Material Imports
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
@@ -29,32 +27,34 @@ import { MatCardModule } from '@angular/material/card';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 import {
+  AiService,
   DashboardsService,
-  ExecutionService,
+  SQLExecutionResponse,
   TemplatesService,
   TemplateResponse,
-  WidgetIn,
-  WidgetCreateSql, // Import subtype
-  WidgetUpdate,
+  WidgetCreateSql,
 } from '../../api-client';
 import {
   VizTableComponent,
   TableDataSet,
 } from '../../shared/visualizations/viz-table/viz-table.component';
 import { DynamicFormComponent } from './dynamic-form.component';
+import { TemplateConfigurationService } from '../template-configuration.service';
 
-/** Wizard Data interface. */
+/**
+ * Dialog input data passed to `TemplateWizardComponent`.
+ */
 export interface WizardData {
-  /** dashboardId property. */
+  /** Target dashboard UUID where the finalized widget will be created. */
   dashboardId: string;
 }
 
-/** Template Wizard component. */
+/**
+ * Multi-step dialog wizard for instantiating SQL widgets from marketplace templates or custom SQL.
+ */
 @Component({
   selector: 'app-template-wizard',
-
   providers: [provideNativeDateAdapter()],
-
   imports: [
     FormRoot,
     FormField,
@@ -68,12 +68,9 @@ export interface WizardData {
     MatProgressSpinnerModule,
     MatChipsModule,
     MatCardModule,
-
-    VizTableComponent, // Imported for usage in @defer block
-
+    VizTableComponent,
     DynamicFormComponent,
   ],
-
   templateUrl: './template-wizard.component.html',
   styles: [
     `
@@ -84,7 +81,6 @@ export interface WizardData {
         height: 85vh;
         max-height: 900px;
       }
-      /* Template Grid Layout */
       .template-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -97,7 +93,7 @@ export interface WizardData {
         display: flex;
         flex-direction: column;
         transition: all 0.2s;
-        border: 1px solid transparent; /* Fix for high contrast */
+        border: 1px solid transparent;
       }
       .template-card.selected-card {
         background-color: var(--sys-selected);
@@ -107,8 +103,6 @@ export interface WizardData {
         border-color: var(--sys-surface-border);
         background-color: var(--sys-hover);
       }
-
-      /* Editor styles */
       .editor-wrapper {
         position: relative;
         background: #1e1e1e;
@@ -135,7 +129,6 @@ export interface WizardData {
         z-index: 1;
         pointer-events: none;
       }
-      /* Tokens */
       ::ng-deep .kwd {
         color: #569cd6;
         font-weight: bold;
@@ -150,25 +143,31 @@ export interface WizardData {
   ],
 })
 export class TemplateWizardComponent implements OnInit, OnDestroy {
-  /** dialogRef property. */
+  /** Hosting dialog reference. */
   private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
-  /** dashboardsApi property. */
+
+  /** Generated OpenAPI dashboards service used on final widget creation. */
   private readonly dashboardsApi = inject(DashboardsService);
-  /** executionApi property. */
-  private readonly executionApi = inject(ExecutionService);
-  /** templatesApi property. */
+
+  /** Generated OpenAPI AI service used for stateless read-only SQL previews. */
+  private readonly aiApi = inject(AiService);
+
+  /** Generated OpenAPI templates service used to query the marketplace catalog. */
   private readonly templatesApi = inject(TemplatesService);
-  /** data property. */
+
+  /** Shared template parameter and SQL interpolation service. */
+  private readonly templateConfig = inject(TemplateConfigurationService);
+
+  /** Injected dialog configuration containing `dashboardId`. */
   private readonly data = inject<WizardData>(MAT_DIALOG_DATA);
-  /** sanitizer property. */
+
+  /** DOM sanitizer for rendering syntax-highlighted SQL HTML. */
   private readonly sanitizer = inject(DomSanitizer);
 
-  // --- State ---
-  /** Templates. */
-  /* istanbul ignore next */
+  /** Marketplace templates loaded from the backend. */
   readonly templates = signal<TemplateResponse[]>([]);
-  /** Categories. */
-  /* istanbul ignore next */
+
+  /** Available template category filter chips. */
   readonly categories = signal<string[]>([
     'Predictive',
     'Operational',
@@ -176,70 +175,63 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     'Clinical',
     'Financial',
   ]);
-  /** Loading Templates. */
-  /* istanbul ignore next */
-  readonly loadingTemplates = signal(false);
-  /** Selected Category. */
-  /* istanbul ignore next */
+
+  /** Whether a template list fetch is currently in progress. */
+  readonly loadingTemplates = signal<boolean>(false);
+
+  /** Currently selected category chip filter, or `null` for all categories. */
   readonly selectedCategory = signal<string | null>(null);
-  /** Selected Template Id. */
-  /* istanbul ignore next */
+
+  /** ID of the currently selected marketplace template. */
   readonly selectedTemplateId = signal<string | null>(null);
 
-  // --- RxJS for Search Debounce ---
-  /** searchSubject property. */
+  /** Debounced search input stream. */
   private readonly searchSubject = new Subject<string>();
-  /** searchSub property. */
+
+  /** Active subscription to `searchSubject`. */
   private searchSub?: Subscription;
 
-  // --- Wizard Logic ---
-  /** Params Schema. */
-  /* istanbul ignore next */
+  /** JSON Schema for the selected template's parameters. */
   readonly paramsSchema = signal<Record<string, unknown>>({});
-  /** Final Sql. */
-  /* istanbul ignore next */
+
+  /** Interpolated SQL query string ready for preview and saving. */
   readonly finalSql = signal<string>('');
-  /** Whether running. */
-  /* istanbul ignore next */
-  readonly isRunning = signal(false);
-  /** Execution Result. */
-  /* istanbul ignore next */
+
+  /** Whether a preview query or widget creation call is currently running. */
+  readonly isRunning = signal<boolean>(false);
+
+  /** Latest stateless SQL preview result or error message. */
   readonly executionResult = signal<{
-    error?: string;
+    error?: string | null;
     columns?: string[];
-    data?: unknown[];
+    data?: Record<string, unknown>[];
   } | null>(null);
-  /** Draft Widget Id. */
-  /* istanbul ignore next */
-  readonly draftWidgetId = signal<string | null>(null);
 
-  /** Params Value. */
-  /* istanbul ignore next */
+  /** Current parameter values emitted by `DynamicFormComponent`. */
   readonly paramsValue = signal<Record<string, unknown>>({});
-  /** Params Valid. */
-  /* istanbul ignore next */
-  readonly paramsValid = signal(false);
 
-  // Form Group Migrated to Signal Form
-  /** Selection Form Model. */
+  /** Whether the dynamic parameter form is currently valid. */
+  readonly paramsValid = signal<boolean>(false);
+
+  /** Signal backing the step-1 mode and SQL selection form. */
   readonly formModel = signal({
     mode: 'predefined',
     templateId: '',
     rawSql: '',
   });
 
-  /** Selection Form. */
+  /** Signal form instance for step 1. */
   readonly selectionForm = form(this.formModel, (f) => {
     required(f.mode);
-    // Conditional validation modeled here
   });
 
-  /** Placeholder Text. */
+  /** Placeholder hint shown in the custom SQL textarea. */
   readonly placeholderText = "SELECT * FROM table WHERE col = '{{param}}'";
 
-  /** Ng On Init. */
+  /**
+   * Loads initial marketplace templates and subscribes to debounced search input.
+   */
   ngOnInit(): void {
-    this.createDraftWidget();
     this.loadTemplates();
 
     this.searchSub = this.searchSubject
@@ -247,20 +239,32 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
       .subscribe((term) => this.loadTemplates(term));
   }
 
-  /** Ng On Destroy. */
+  /**
+   * Cleans up the search subscription when the dialog is destroyed.
+   */
   ngOnDestroy(): void {
     this.searchSub?.unsubscribe();
   }
 
-  /** Gets whether the current selection step is valid. */
+  /**
+   * Checks whether step 1 has a valid template or custom SQL selection.
+   *
+   * @returns `true` if the user can advance from step 1.
+   */
   selectionValid(): boolean {
     const val = this.formModel();
-    if (val.mode === 'predefined') return !!val.templateId;
-    return !!val.rawSql && val.rawSql.trim().length > 0;
+    if (val.mode === 'predefined') {
+      return Boolean(val.templateId);
+    }
+    return Boolean(val.rawSql && val.rawSql.trim().length > 0);
   }
 
-  /** Loads templates. */
-  loadTemplates(searchTerm?: string) {
+  /**
+   * Fetches marketplace templates filtered by `selectedCategory()` and optional `searchTerm`.
+   *
+   * @param searchTerm - Optional search substring.
+   */
+  loadTemplates(searchTerm?: string): void {
     this.loadingTemplates.set(true);
     const cat = this.selectedCategory() || undefined;
     const search = searchTerm && searchTerm.trim().length > 0 ? searchTerm : undefined;
@@ -270,173 +274,194 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
       .pipe(finalize(() => this.loadingTemplates.set(false)))
       .subscribe({
         next: (data) => this.templates.set(data),
-        error: (err) => console.error('Failed to load templates', err),
+        error: (err: unknown) => console.error('Failed to load templates', err),
       });
   }
 
-  /** Select Template. */
-  selectTemplate(template: TemplateResponse) {
+  /**
+   * Selects a marketplace template and populates its SQL template and parameter schema.
+   *
+   * @param template - Chosen `TemplateResponse`.
+   */
+  selectTemplate(template: TemplateResponse): void {
     this.selectedTemplateId.set(template.id);
     this.formModel.update((m) => ({
       ...m,
       templateId: template.id,
       rawSql: template.sql_template,
     }));
-    this.paramsSchema.set(template.parameters_schema || {});
+    const schema = template.parameters_schema || {};
+    this.paramsSchema.set(schema);
+    this.paramsValue.set(this.templateConfig.extractDefaultParameters(schema));
   }
 
-  /** Toggles category. */
-  toggleCategory(cat: string) {
+  /**
+   * Toggles a category filter chip and reloads the template catalog.
+   *
+   * @param cat - Category name to toggle.
+   */
+  toggleCategory(cat: string): void {
     const newCat = this.selectedCategory() === cat ? null : cat;
     this.selectedCategory.set(newCat);
     this.loadTemplates();
   }
 
-  /** Updates search. */
-  updateSearch(event: Event) {
+  /**
+   * Pushes the current search input text into the debounced `searchSubject`.
+   *
+   * @param event - DOM input event from the search field.
+   */
+  updateSearch(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
     this.searchSubject.next(val);
   }
 
-  /** Logic to skip parameter step if none exist. */
-  parseParams() {
+  /**
+   * Prepares parameter schema state when advancing from step 1 to step 2.
+   */
+  parseParams(): void {
     const mode = this.formModel().mode;
     if (mode !== 'predefined') {
       this.paramsSchema.set({});
       this.paramsValid.set(true);
-    } else {
-      const schema = this.paramsSchema();
-      // Fix: Access properties safely
-      if (!schema['properties'] || Object.keys(schema['properties']).length === 0) {
-        this.paramsValid.set(true);
-      }
+    } else if (!this.templateConfig.hasSchemaParameters(this.paramsSchema())) {
+      this.paramsValid.set(true);
     }
   }
 
-  /** Handles form Change. */
-  handleFormChange(values: Record<string, unknown>) {
+  /**
+   * Updates `paramsValue` when the dynamic parameter form emits new values.
+   *
+   * @param values - Map of parameter names to form values.
+   */
+  handleFormChange(values: Record<string, unknown>): void {
     this.paramsValue.set(values);
   }
-  /** Handles status Change. */
-  handleStatusChange(status: 'VALID' | 'INVALID') {
+
+  /**
+   * Updates `paramsValid` when the dynamic parameter form validation status changes.
+   *
+   * @param status - Validation status (`'VALID'` or `'INVALID'`).
+   */
+  handleStatusChange(status: 'VALID' | 'INVALID'): void {
     this.paramsValid.set(status === 'VALID');
   }
 
-  /** Compiles Template + Params into Final SQL. */
-  renderPreview() {
-    // Logic handles {{ mustache }} replacement
-    let sql = this.formModel().rawSql || '';
-    const values = this.paramsValue();
-
-    Object.keys(values).forEach((key) => {
-      const val = values[key];
-      sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
-    });
-
+  /**
+   * Interpolates parameters into the template SQL and executes a stateless preview query.
+   */
+  renderPreview(): void {
+    const sql = this.templateConfig.interpolateSql(
+      this.formModel().rawSql || '',
+      this.paramsValue(),
+    );
     this.finalSql.set(sql);
-    this.executeDraft(sql);
+    this.executePreview(sql);
   }
 
-  /** Save Widget. */
-  saveWidget() {
-    const draftId = this.draftWidgetId();
-    if (!draftId) return;
-
-    // Determine title
-    let title = 'Custom SQL Widget';
-    if (this.formModel().mode === 'predefined') {
-      const t = this.templates().find((x) => x.id === this.formModel().templateId);
-      if (t) title = t.title;
+  /**
+   * Executes a stateless SQL preview via `AiService.executeSqlPreviewApiV1AiExecutePost`.
+   *
+   * @param sql - Interpolated SQL query string to preview.
+   */
+  private executePreview(sql: string): void {
+    if (!sql.trim()) {
+      this.executionResult.set({ data: [], columns: [] });
+      return;
     }
-
-    const update: WidgetUpdate = {
-      title: title,
-      config: { query: this.finalSql() },
-    };
-
-    this.dashboardsApi
-      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, update)
-      .subscribe(() => {
-        this.draftWidgetId.set(null); // Prevent deletion in onDestroy/cancel
-        this.dialogRef.close(true);
-      });
-  }
-
-  /** Cancels the wizard and removes the draft. */
-  cancel() {
-    const draftId = this.draftWidgetId();
-    if (draftId) {
-      this.dashboardsApi
-        .deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(draftId)
-        .subscribe(() => this.dialogRef.close(false));
-    } else {
-      this.dialogRef.close(false);
-    }
-  }
-
-  /** createDraftWidget method. */
-  private createDraftWidget() {
-    // Creates a placeholder to execute queries against
-    // Use proper subtype
-    const createReq: WidgetCreateSql = {
-      title: 'Draft - Template Wizard',
-      type: 'SQL',
-      visualization: 'table',
-      config: { query: 'SELECT 1' },
-    };
-
-    this.dashboardsApi
-      .createWidgetApiV1DashboardsDashboardIdWidgetsPost(this.data.dashboardId, createReq)
-      .subscribe((w: { id: string }) => this.draftWidgetId.set(w.id));
-  }
-
-  /** executeDraft method. */
-  private executeDraft(sql: string) {
-    const draftId = this.draftWidgetId();
-    if (!draftId) return;
 
     this.isRunning.set(true);
-
-    // Update Query -> Refresh Execution -> Fetch Result
-    this.dashboardsApi
-      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, { config: { query: sql } })
+    this.aiApi
+      .executeSqlPreviewApiV1AiExecutePost({ sql, max_rows: 100 })
+      .pipe(finalize(() => this.isRunning.set(false)))
       .subscribe({
-        next: () => {
-          // Fix: Pass necessary args for refresh (id, auth, body) where auth can be undefined
-          this.executionApi
-            .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
-            .pipe(finalize(() => this.isRunning.set(false)))
-            .subscribe((resMap: Record<string, unknown>) => {
-              this.executionResult.set(resMap[draftId] as Record<string, unknown>);
-            });
+        next: (res: SQLExecutionResponse) => {
+          this.executionResult.set({
+            data: res.data,
+            columns: res.columns,
+            error: res.error ?? null,
+          });
         },
         error: () => {
-          this.isRunning.set(false);
           this.executionResult.set({ error: 'Failed to execute query' });
         },
       });
   }
 
-  /** As Table Data. */
+  /**
+   * Persists the configured SQL widget to the target dashboard and closes the wizard dialog.
+   */
+  saveWidget(): void {
+    const query = this.finalSql().trim();
+    if (!query) {
+      return;
+    }
+
+    let title = 'Custom SQL Widget';
+    let visualization = 'table';
+    if (this.formModel().mode === 'predefined') {
+      const selected = this.templates().find((x) => x.id === this.formModel().templateId);
+      if (selected) {
+        title = selected.title;
+        visualization = this.templateConfig.inferVisualization(selected);
+      }
+    }
+
+    const createReq: WidgetCreateSql = {
+      title,
+      type: 'SQL',
+      visualization,
+      config: { query },
+    };
+
+    this.isRunning.set(true);
+    this.dashboardsApi
+      .createWidgetApiV1DashboardsDashboardIdWidgetsPost(this.data.dashboardId, createReq)
+      .pipe(finalize(() => this.isRunning.set(false)))
+      .subscribe(() => {
+        this.dialogRef.close(true);
+      });
+  }
+
+  /**
+   * Cancels the wizard without persisting any widget to the dashboard.
+   */
+  cancel(): void {
+    this.dialogRef.close(false);
+  }
+
+  /**
+   * Converts the preview execution result into a `TableDataSet` for `VizTableComponent`.
+   *
+   * @param res - Raw execution result object.
+   * @returns Typed `TableDataSet` for tabular rendering.
+   */
   asTableData(res: unknown): TableDataSet {
     return res as TableDataSet;
   }
 
-  /** Highlighted Sql. */
+  /**
+   * Produces syntax-highlighted HTML for the preview SQL query.
+   *
+   * @returns Sanitized HTML containing keyword, string, and numeric token spans.
+   */
   highlightedSql(): SafeHtml {
-    // Simple Syntax Highlighter for visual feedback
     let code = this.finalSql() || '';
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const keywords =
       /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|INNER|ON|AND|OR|AS)\b/gi;
     code = code.replace(keywords, '<span class="kwd">$1</span>');
-    code = code.replace(/'([^']*)'/g, '<span class="str">\'$1\'</span>');
+    code = code.replace(/'([^']*)'/g, `<span class="str">'$1'</span>`);
     code = code.replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
     return this.sanitizer.bypassSecurityTrustHtml(code + '<br>');
   }
 
-  /** Sync Scroll. */
-  syncScroll(e: Event) {
+  /**
+   * Synchronizes scroll offsets between the transparent textarea and the syntax-highlight layer.
+   *
+   * @param e - DOM scroll event from the SQL textarea.
+   */
+  syncScroll(e: Event): void {
     const target = e.target as HTMLTextAreaElement;
     const highlight = target.parentElement?.querySelector('.highlight-layer');
     if (highlight) {

@@ -3,8 +3,8 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
-import { VizScalarComponent } from './viz-scalar.component';
+import { signal, WritableSignal } from '@angular/core';
+import { VizScalarComponent, ScalarData } from './viz-scalar.component';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
@@ -12,7 +12,7 @@ import { vi } from 'vitest';
 describe('VizScalarComponent', () => {
   let component: VizScalarComponent;
   let fixture: ComponentFixture<VizScalarComponent>;
-  let dataSig: any;
+  let dataSig: WritableSignal<ScalarData | null>;
 
   /**
    * Fix for "TypeError: mql.addListener is not a function" on CI.
@@ -40,8 +40,8 @@ describe('VizScalarComponent', () => {
 
     fixture = TestBed.createComponent(VizScalarComponent);
     component = fixture.componentInstance;
-    dataSig = signal<any | null>(null);
-    (component as any).data = dataSig;
+    dataSig = signal<ScalarData | null>(null);
+    (component as unknown as { data: WritableSignal<ScalarData | null> }).data = dataSig;
     fixture.detectChanges();
   });
 
@@ -91,7 +91,7 @@ describe('VizScalarComponent', () => {
   });
 
   it('should fall back to neutral helpers when value is missing', () => {
-    dataSig.set({ data: 'invalid' } as any);
+    dataSig.set({ data: 'invalid' } as unknown as ScalarData);
     fixture.detectChanges();
 
     expect(component.value()).toBeNull();

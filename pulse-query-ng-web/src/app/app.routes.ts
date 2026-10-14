@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Application routing configuration.
  * Defines the URL paths and maps them to lazy-loaded components or child route modules.

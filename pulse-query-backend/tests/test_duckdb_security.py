@@ -31,7 +31,7 @@ def test_duckdb_readonly_blocks_external_filesystem_access() -> None:
     assert res == [(1,)]
 
     # External filesystem reading should fail due to disabled external access
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(Exception, match=r"(?i)(disabled|permission|cannot access)") as excinfo:
       conn.execute("SELECT * FROM read_csv('/etc/hosts')")
 
     err_msg = str(excinfo.value).lower()
@@ -48,7 +48,7 @@ def test_duckdb_in_memory_readonly_sandbox() -> None:
   manager = DuckDBManager(":memory:")
   conn = manager.get_readonly_connection()
 
-  with pytest.raises(Exception) as excinfo:
+  with pytest.raises(Exception, match=r"(?i)(disabled|permission|cannot access)") as excinfo:
     conn.execute("SELECT * FROM read_csv('/etc/hosts')")
 
   err_msg = str(excinfo.value).lower()

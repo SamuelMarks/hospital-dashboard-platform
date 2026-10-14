@@ -10,13 +10,15 @@ Unlike standard widget execution, this service performs a multi-step process:
 5. Calculates Deltas to show the user exactly where patients moved.
 """
 
+import asyncio
 import json
 import logging
-from typing import Dict, List, Tuple
 
+import duckdb
+
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import duckdb_manager
 from app.schemas.simulation import (
-  ScenarioConstraint,
   ScenarioResult,
   ScenarioRunRequest,
   SimulationAssignment,
@@ -35,7 +37,11 @@ class SimulationService:
   Service for running transient "What-If" optimization scenarios.
   """
 
-  def run_scenario(self, request: ScenarioRunRequest) -> ScenarioResult:
+  def run_scenario(
+    self,
+    request: ScenarioRunRequest,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+  ) -> ScenarioResult:
     """
     Executes a simulation based on the provided configuration.
 
@@ -45,6 +51,7 @@ class SimulationService:
 
     Args:
         request (ScenarioRunRequest): The scenario definition.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
 
     Returns:
         ScenarioResult: The optimal allocation of patients to beds including differentials.
@@ -53,7 +60,10 @@ class SimulationService:
 
     # 1. Fetch Demand Data from DuckDB
     # Returns the JSON for the solver AND a baseline map for diffing
-    demand_json, current_state = self._fetch_demand_payload(request.demand_source_sql)
+    demand_json, current_state = self._fetch_demand_payload(
+      request.demand_source_sql,
+      olap_conn=olap_conn,
+    )
 
     # 2. Serialize Parameters for Bridge
     capacity_json = json.dumps(request.capacity_parameters)
@@ -74,7 +84,54 @@ class SimulationService:
 
     return ScenarioResult(assignments=parsed_assignments, status="success")
 
-  def _fetch_demand_payload(self, query: str) -> tuple[str, dict[tuple[str, str], float]]:
+  def run_scenario_result(
+    self,
+    request: ScenarioRunRequest,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+  ) -> AppResult[ScenarioResult]:
+    """
+    Executes a simulation scenario and returns an explicit `AppResult[ScenarioResult]`.
+
+    Args:
+        request (ScenarioRunRequest): Scenario configuration payload.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
+
+    Returns:
+        AppResult[ScenarioResult]: `Ok(ScenarioResult)` on success, or `Err(AppError)` on failure.
+    """
+    try:
+      if olap_conn is not None:
+        return Ok(self.run_scenario(request, olap_conn=olap_conn))
+      return Ok(self.run_scenario(request))
+    except SimulationInfeasibleError as e:
+      return Err(AppError(code=ErrorCode.SIMULATION_INFEASIBLE, message=str(e), status_code=422))
+    except ValueError as e:
+      return Err(AppError(code=ErrorCode.SIMULATION_INVALID_DATA, message=str(e), status_code=400))
+    except Exception as e:
+      return Err(AppError(code=ErrorCode.INTERNAL_ERROR, message=f"Simulation Failed: {e!s}", status_code=500))
+
+  async def run_scenario_async(
+    self,
+    request: ScenarioRunRequest,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+  ) -> AppResult[ScenarioResult]:
+    """
+    Asynchronously executes `run_scenario_result` in a worker thread via `asyncio.to_thread`.
+
+    Args:
+        request (ScenarioRunRequest): Scenario configuration payload.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
+
+    Returns:
+        AppResult[ScenarioResult]: `Ok(ScenarioResult)` on success, or `Err(AppError)` on failure.
+    """
+    return await asyncio.to_thread(self.run_scenario_result, request, olap_conn)
+
+  def _fetch_demand_payload(
+    self,
+    query: str,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+  ) -> tuple[str, dict[tuple[str, str], float]]:
     """
     Executes the SQL query and prepares data for both the Solver and the Diff engine.
 
@@ -84,6 +141,7 @@ class SimulationService:
 
     Args:
         query (str): The SQL query string to run against DuckDB.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
 
     Returns:
         Tuple containing:
@@ -91,12 +149,14 @@ class SimulationService:
         - dict: Baseline Map: `{(Service, Unit): Count}`
     """
     try:
-      conn = duckdb_manager.get_readonly_connection()
+      owns_conn = olap_conn is None
+      conn = olap_conn if olap_conn is not None else duckdb_manager.get_readonly_connection()
       try:
         cursor = conn.execute(query)
         rows = cursor.fetchall()
       finally:
-        conn.close()
+        if owns_conn:
+          conn.close()
 
       demand_totals: dict[str, float] = {}
       current_state: dict[tuple[str, str], float] = {}
@@ -126,7 +186,7 @@ class SimulationService:
 
     except Exception as e:
       logger.error(f"Error fetching simulation demand: {e}")
-      raise ValueError(f"Failed to execute demand query: {e!s}")
+      raise ValueError(f"Failed to execute demand query: {e!s}") from e
 
   def _parse_and_diff_result(
     self, raw_json: str, current_state: dict[tuple[str, str], float]
@@ -201,7 +261,7 @@ class SimulationService:
       raise
     except Exception as e:
       logger.error(f"Error parsing simulation result: {e}")
-      raise ValueError("Solver returned invalid data.")
+      raise ValueError("Solver returned invalid data.") from e
 
 
 # Singleton Instance

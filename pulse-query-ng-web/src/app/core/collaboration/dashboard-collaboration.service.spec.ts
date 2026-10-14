@@ -1,15 +1,20 @@
 /**
- * @fileoverview Unit tests for DashboardCollaborationService.
+ * @fileoverview Unit tests for `DashboardCollaborationService`.
  */
 
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { DashboardCollaborationService } from './dashboard-collaboration.service';
+import {
+  BROWSER_LOCATION,
+  BrowserLocationLike,
+  DashboardCollaborationService,
+} from './dashboard-collaboration.service';
 import { AuthService } from '../auth/auth.service';
 
 class MockWebSocket {
   static instances: MockWebSocket[] = [];
+  static shouldThrowOnConstruct = false;
   static readonly OPEN = 1;
   static readonly CLOSED = 3;
 
@@ -22,6 +27,9 @@ class MockWebSocket {
   onclose: ((event: { code: number }) => void) | null = null;
 
   constructor(public url: string) {
+    if (MockWebSocket.shouldThrowOnConstruct) {
+      throw new Error('WebSocket construct error');
+    }
     MockWebSocket.instances.push(this);
   }
 }
@@ -32,6 +40,7 @@ describe('DashboardCollaborationService', () => {
 
   beforeEach(() => {
     MockWebSocket.instances = [];
+    MockWebSocket.shouldThrowOnConstruct = false;
     authServiceMock = {
       getToken: vi.fn().mockReturnValue('mock-jwt-token'),
     };
@@ -64,9 +73,57 @@ describe('DashboardCollaborationService', () => {
     service.connect('dash-123');
     expect(MockWebSocket.instances.length).toBe(1);
 
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     ws.onopen?.();
     expect(service.isConnected()).toBe(true);
+  });
+
+  it('constructs wss:// URL with remote host when BROWSER_LOCATION is https and non-local', () => {
+    const customLoc: BrowserLocationLike = {
+      protocol: 'https:',
+      hostname: 'pulse.stanford.edu',
+      host: 'pulse.stanford.edu:8443',
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        DashboardCollaborationService,
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: BROWSER_LOCATION, useValue: customLoc },
+      ],
+    });
+
+    const httpsService = TestBed.inject(DashboardCollaborationService);
+    httpsService.connect('dash-ssl');
+    expect(MockWebSocket.instances[0]?.url).toBe(
+      'wss://pulse.stanford.edu:8443/api/v1/ws/dashboards/dash-ssl?token=mock-jwt-token',
+    );
+    httpsService.disconnect();
+  });
+
+  it('constructs ws://127.0.0.1:8000 URL when hostname is 127.0.0.1', () => {
+    const loopbackLoc: BrowserLocationLike = {
+      protocol: 'http:',
+      hostname: '127.0.0.1',
+      host: '127.0.0.1:4200',
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        DashboardCollaborationService,
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: BROWSER_LOCATION, useValue: loopbackLoc },
+      ],
+    });
+
+    const localService = TestBed.inject(DashboardCollaborationService);
+    localService.connect('dash-local');
+    expect(MockWebSocket.instances[0]?.url).toBe(
+      'ws://127.0.0.1:8000/api/v1/ws/dashboards/dash-local?token=mock-jwt-token',
+    );
+    localService.disconnect();
   });
 
   it('should ignore connect in non-browser environment', () => {
@@ -93,15 +150,15 @@ describe('DashboardCollaborationService', () => {
 
   it('should not reconnect if already connected to the same dashboard', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     ws.onopen?.();
     service.connect('dash-123');
     expect(MockWebSocket.instances.length).toBe(1);
   });
 
-  it('should handle USER_JOINED and update active collaborators', () => {
+  it('should handle USER_JOINED, USER_LEFT without array, and unknown message types', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     const users = [
       {
         user_id: 'u1',
@@ -119,12 +176,29 @@ describe('DashboardCollaborationService', () => {
     });
 
     expect(service.activeCollaborators().length).toBe(1);
-    expect(service.activeCollaborators()[0].email).toBe('doc@hospital.org');
+    expect(service.activeCollaborators()[0]?.email).toBe('doc@hospital.org');
+
+    // USER_LEFT with non-array active_users should leave collaborators unchanged
+    ws.onmessage?.({
+      data: JSON.stringify({
+        type: 'USER_LEFT',
+        active_users: null,
+      }),
+    });
+    expect(service.activeCollaborators().length).toBe(1);
+
+    // Unknown event type
+    ws.onmessage?.({
+      data: JSON.stringify({
+        type: 'HEARTBEAT',
+      }),
+    });
+    expect(service.activeCollaborators().length).toBe(1);
   });
 
   it('should handle WIDGET_UPDATED event', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     let emittedWidgetId: string | null = null;
     service.remoteWidgetUpdates$.subscribe((id) => (emittedWidgetId = id));
 
@@ -140,7 +214,7 @@ describe('DashboardCollaborationService', () => {
 
   it('should ignore malformed message data', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     expect(() => {
       ws.onmessage?.({ data: 'invalid-json{' });
     }).not.toThrow();
@@ -148,7 +222,7 @@ describe('DashboardCollaborationService', () => {
 
   it('should handle socket error', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     ws.onopen?.();
     expect(service.isConnected()).toBe(true);
 
@@ -158,7 +232,7 @@ describe('DashboardCollaborationService', () => {
 
   it('should send messages when socket is open', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     ws.readyState = MockWebSocket.OPEN;
 
     service.send({ type: 'REFRESH_REQUEST', widget_id: 'w1' });
@@ -169,30 +243,55 @@ describe('DashboardCollaborationService', () => {
 
   it('should safely ignore send when socket is closed', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     ws.readyState = MockWebSocket.CLOSED;
 
     service.send({ type: 'PING' });
     expect(ws.send).not.toHaveBeenCalled();
   });
 
-  it('should schedule reconnect on abnormal close code', () => {
+  it('should schedule reconnect on abnormal close code and stop after MAX_RECONNECT_ATTEMPTS', () => {
     vi.useFakeTimers();
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
 
-    ws.onclose?.({ code: 1006 }); // Abnormal closure
-    expect(service.isConnected()).toBe(false);
+    for (let i = 0; i < 5; i++) {
+      const latestWs = MockWebSocket.instances[MockWebSocket.instances.length - 1]!;
+      latestWs.onclose?.({ code: 1006 });
+      vi.advanceTimersByTime(15000);
+    }
+    expect(MockWebSocket.instances.length).toBe(6);
 
-    vi.advanceTimersByTime(1500);
-    expect(MockWebSocket.instances.length).toBe(2);
+    // 6th close exceeds MAX_RECONNECT_ATTEMPTS (5), so no more sockets are created
+    const finalWs = MockWebSocket.instances[MockWebSocket.instances.length - 1]!;
+    finalWs.onclose?.({ code: 1006 });
+    vi.advanceTimersByTime(15000);
+    expect(MockWebSocket.instances.length).toBe(6);
+
     vi.useRealTimers();
   });
 
-  it('should not reconnect on authorization error code 4401 or 4403', () => {
+  it('should schedule reconnect if WebSocket constructor throws and cancel timer on disconnect', () => {
+    vi.useFakeTimers();
+    MockWebSocket.shouldThrowOnConstruct = true;
+    service.connect('dash-throw');
+    expect(MockWebSocket.instances.length).toBe(0);
+
+    // Disconnecting before timer fires clears pending reconnectTimeout
+    service.disconnect();
+    MockWebSocket.shouldThrowOnConstruct = false;
+    vi.advanceTimersByTime(5000);
+    expect(MockWebSocket.instances.length).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('should not reconnect on normal (1000) or authorization error code (4401, 4403)', () => {
     vi.useFakeTimers();
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
+
+    ws.onclose?.({ code: 1000 });
+    vi.advanceTimersByTime(5000);
+    expect(MockWebSocket.instances.length).toBe(1);
 
     ws.onclose?.({ code: 4401 });
     vi.advanceTimersByTime(5000);
@@ -206,7 +305,7 @@ describe('DashboardCollaborationService', () => {
 
   it('should clean up on disconnect and ngOnDestroy', () => {
     service.connect('dash-123');
-    const ws = MockWebSocket.instances[0];
+    const ws = MockWebSocket.instances[0]!;
     ws.onopen?.();
     expect(service.isConnected()).toBe(true);
 

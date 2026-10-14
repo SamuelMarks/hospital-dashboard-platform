@@ -3,16 +3,16 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { VizMetricComponent } from './viz-metric.component';
 import { By } from '@angular/platform-browser';
 
 describe('VizMetricComponent', () => {
   let component: VizMetricComponent;
   let fixture: ComponentFixture<VizMetricComponent>;
-  let dataSig: any;
-  let configSig: any;
-  let titleOverrideSig: any;
+  let dataSig: WritableSignal<unknown>;
+  let configSig: WritableSignal<Record<string, unknown> | null>;
+  let titleOverrideSig: WritableSignal<string>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -21,12 +21,17 @@ describe('VizMetricComponent', () => {
 
     fixture = TestBed.createComponent(VizMetricComponent);
     component = fixture.componentInstance;
-    dataSig = signal<any | null>(null);
-    configSig = signal<any>(null);
+    dataSig = signal<unknown>(null);
+    configSig = signal<Record<string, unknown> | null>(null);
     titleOverrideSig = signal<string>('');
-    (component as any).data = dataSig;
-    (component as any).config = configSig;
-    (component as any).titleOverride = titleOverrideSig;
+    const priv = component as unknown as {
+      data: WritableSignal<unknown>;
+      config: WritableSignal<Record<string, unknown> | null>;
+      titleOverride: WritableSignal<string>;
+    };
+    priv.data = dataSig;
+    priv.config = configSig;
+    priv.titleOverride = titleOverrideSig;
     fixture.detectChanges();
   });
 

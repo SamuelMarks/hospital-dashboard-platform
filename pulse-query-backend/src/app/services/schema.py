@@ -7,8 +7,12 @@ the AI/LLM to generate syntactically correct SQL queries corresponding to the
 actual data structure.
 """
 
-from typing import Any, Dict, List
+import asyncio
+from typing import Any
 
+import duckdb
+
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import duckdb_manager
 
 
@@ -25,24 +29,21 @@ class SchemaService:
     """
     self.manager = duckdb_manager
 
-  def get_schema_context_string(self) -> str:
+  def get_schema_context_result(self, conn: duckdb.DuckDBPyConnection | None = None) -> AppResult[str]:
     """
-    Generates a condensed text representation of the database schema and available
-    analytical extensions (UDFs) specifically formatted for LLM System Prompts.
+    Generates the LLM system prompt schema context string wrapped in an `AppResult[str]`.
 
-    Format:
-    1. Tables and Columns
-    2. Macros (Custom SQL Logic)
-    3. UDFs (Python Bridges)
-    4. Examples (Gold Standard Patterns)
+    Args:
+        conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
 
     Returns:
-        str: The formatted schema context string.
+        AppResult[str]: `Ok(schema_string)` on success, or `Err(AppError)` on DuckDB failure.
     """
-    conn = self.manager.get_readonly_connection()
+    owns_conn = conn is None
+    active_conn = conn if conn is not None else self.manager.get_readonly_connection()
     try:
       # 0. Get all tables
-      tables = conn.execute("SHOW TABLES").fetchall()
+      tables = active_conn.execute("SHOW TABLES").fetchall()
       schema_lines: list[str] = []
 
       if not tables:
@@ -53,7 +54,7 @@ class SchemaService:
 
           # 1. Get columns for this table
           # DESCRIBE returns: column_name, column_type, null, key, default, extra
-          columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
+          columns = active_conn.execute(f"DESCRIBE {table_name}").fetchall()
 
           for col in columns:
             col_name = col[0]
@@ -152,29 +153,68 @@ class SchemaService:
         "   SELECT Clinical_Service FROM synthetic_hospital_data GROUP BY 1 HAVING IS_BOTTLENECK(SUM(1), SUM(1));\n"
       )
 
-      return "\n".join(schema_lines) + domain_logic + macros_doc + functions_doc + examples_doc
+      return Ok("\n".join(schema_lines) + domain_logic + macros_doc + functions_doc + examples_doc)
 
     except Exception as e:
-      return f"Error retrieving schema: {e!s}"
+      return Err(
+        AppError(
+          code=ErrorCode.DATABASE_UNAVAILABLE,
+          message=f"Error retrieving schema: {e!s}",
+          status_code=500,
+        )
+      )
     finally:
-      conn.close()
+      if owns_conn:
+        active_conn.close()
 
-  def get_schema_json(self) -> list[dict[str, Any]]:
+  def get_schema_context_string(self, conn: duckdb.DuckDBPyConnection | None = None) -> str:
+    """
+    Generates a condensed text representation of the database schema and available
+    analytical extensions (UDFs) specifically formatted for LLM System Prompts.
+
+    Args:
+        conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+
+    Returns:
+        str: The formatted schema context string.
+    """
+    res = self.get_schema_context_result(conn=conn)
+    if isinstance(res, Ok):
+      return res.value
+    return res.error.message
+
+  async def get_schema_context_string_async(self, conn: duckdb.DuckDBPyConnection | None = None) -> str:
+    """
+    Asynchronously generates the schema context string in a background worker thread.
+
+    Args:
+        conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+
+    Returns:
+        str: Formatted schema context string.
+    """
+    return await asyncio.to_thread(self.get_schema_context_string, conn)
+
+  def get_schema_json(self, conn: duckdb.DuckDBPyConnection | None = None) -> list[dict[str, Any]]:
     """
     Returns structured JSON representation of the database schema.
     Useful for the Frontend SQL Builder UI to display available columns.
 
+    Args:
+        conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+
     Returns:
-        List[Dict[str, Any]]: List of table objects containing name and columns.
+        list[dict[str, Any]]: List of table objects containing name and columns.
     """
-    conn = self.manager.get_readonly_connection()
+    owns_conn = conn is None
+    active_conn = conn if conn is not None else self.manager.get_readonly_connection()
     try:
       tables_list: list[dict[str, Any]] = []
-      tables = conn.execute("SHOW TABLES").fetchall()
+      tables = active_conn.execute("SHOW TABLES").fetchall()
 
       for (table_name,) in tables:
         cols_data: list[dict[str, str]] = []
-        columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
+        columns = active_conn.execute(f"DESCRIBE {table_name}").fetchall()
 
         for col in columns:
           cols_data.append({"name": col[0], "type": col[1]})
@@ -182,7 +222,20 @@ class SchemaService:
         tables_list.append({"table_name": table_name, "columns": cols_data})
       return tables_list
     finally:
-      conn.close()
+      if owns_conn:
+        active_conn.close()
+
+  async def get_schema_json_async(self, conn: duckdb.DuckDBPyConnection | None = None) -> list[dict[str, Any]]:
+    """
+    Asynchronously retrieves structured schema metadata in a background worker thread.
+
+    Args:
+        conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+
+    Returns:
+        list[dict[str, Any]]: List of table metadata dictionaries.
+    """
+    return await asyncio.to_thread(self.get_schema_json, conn)
 
 
 # Singleton instance

@@ -5,8 +5,10 @@ Verifies that the SQLGeneratorService correctly instantiates and utilizes differ
 PromptStrategies (Zero-Shot, CoT, RAG) based on input arguments.
 """
 
+from typing import Any
+
 import uuid
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -28,7 +30,13 @@ def mock_db_session() -> MagicMock:
   )
 
   # Side effect: Populate ID and CreatedAt on refresh
-  async def mock_refresh(instance):
+  async def mock_refresh(instance: Any) -> None:
+    """
+    Verify mock refresh behavior.
+
+    Args:
+        instance: Test parameter or fixture.
+    """
     if not instance.id:
       instance.id = uuid.uuid4()
     if not getattr(instance, "created_at", None):

@@ -1,12 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
-import { SkeletonLoaderComponent } from './skeleton-loader.component';
+import { signal, WritableSignal } from '@angular/core';
+import { SkeletonLoaderComponent, SkeletonVariant } from './skeleton-loader.component';
 import { By } from '@angular/platform-browser';
 
 describe('SkeletonLoaderComponent', () => {
   let component: SkeletonLoaderComponent;
   let fixture: ComponentFixture<SkeletonLoaderComponent>;
-  let variantSig: any;
+  let variantSig: WritableSignal<SkeletonVariant>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -15,8 +15,8 @@ describe('SkeletonLoaderComponent', () => {
 
     fixture = TestBed.createComponent(SkeletonLoaderComponent);
     component = fixture.componentInstance;
-    variantSig = signal('card');
-    (component as any).variant = variantSig;
+    variantSig = signal<SkeletonVariant>('card');
+    (component as unknown as { variant: WritableSignal<SkeletonVariant> }).variant = variantSig;
     fixture.detectChanges();
   });
 

@@ -7,6 +7,8 @@
  */
 
 @file:Suppress(
+    "REDUNDANT_CALL_OF_CONVERSION_METHOD",
+    "UNNECESSARY_SAFE_CALL",
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
@@ -57,7 +59,9 @@ open class ExecutionApi : ApiClient {
 
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = requestBody ?: emptyMap<String, kotlinx.serialization.json.JsonElement>()
+        val localVariableBody = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(
+            requestBody ?: emptyMap<kotlin.String, kotlinx.serialization.json.JsonElement>()
+        )
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }

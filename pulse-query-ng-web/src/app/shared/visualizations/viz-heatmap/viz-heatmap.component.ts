@@ -1,11 +1,30 @@
-/** @docs */
-import { Component, input, computed, inject, PLATFORM_ID, effect, signal } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+/**
+ * @fileoverview Two-dimensional matrix heatmap visualization component for temporal and categorical intensity data.
+ */
+
+import { Component, input, computed } from '@angular/core';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ThemeService } from '../../../core/theme/theme.service';
 
-/** @docs */
+/**
+ * Computed 2D heatmap matrix representation.
+ */
+export interface HeatmapMatrix {
+  /** Sorted horizontal axis header labels. */
+  xHeaders: string[];
+  /** Sorted vertical axis header labels. */
+  yHeaders: string[];
+  /** Coordinate-to-value lookup map keyed by `${x}:${y}`. */
+  dataMap: Map<string, number>;
+  /** Minimum numeric value across all cells. */
+  min: number;
+  /** Maximum numeric value across all cells. */
+  max: number;
+}
+
+/**
+ * Renders a 2D CSS grid heatmap coloring each cell by its relative magnitude between dataset min and max.
+ */
 @Component({
   selector: 'viz-heatmap',
   imports: [MatTooltipModule],
@@ -49,23 +68,20 @@ import { ThemeService } from '../../../core/theme/theme.service';
   ],
   templateUrl: './viz-heatmap.component.html',
 })
-/** @docs */
 export class VizHeatmapComponent {
+  /** Tabular dataset whose first three columns represent Y category, X category, and numeric intensity. */
   readonly dataSet = input.required<TableDataSet | null>();
 
-  // Inject theme service to determine base color logic if needed,
-  // though using CSS variables with opacity is generally robust.
-
-  readonly matrix = computed(() => {
-    // ... logic remains identical ...
+  /**
+   * Computed 2D matrix representation containing sorted X/Y axis headers, a coordinate-to-value lookup map, and min/max bounds.
+   */
+  readonly matrix = computed<HeatmapMatrix | null>(() => {
     const ds = this.dataSet();
     if (!ds || ds.data.length === 0) return null;
-    // ...
-    // Note: Re-include data processing logic from previous valid file
     const cols = ds.columns;
-    const yKey = cols[0];
-    const xKey = cols[1];
-    const valKey = cols[2];
+    const yKey = cols[0] as string;
+    const xKey = cols[1] as string;
+    const valKey = cols[2] as string;
 
     const xSet = new Set<string>();
     const ySet = new Set<string>();
@@ -89,43 +105,32 @@ export class VizHeatmapComponent {
     return { xHeaders, yHeaders, dataMap, min, max };
   });
 
-  getCellColor(
-    m: { dataMap: Map<string, number>; max: number; min: number },
-    x: string,
-    y: string,
-  ): string {
+  /**
+   * Computes a CSS `color-mix` expression blending `--sys-error` and `--sys-surface-variant`
+   * proportionally to the cell's normalized value.
+   *
+   * @param m - Matrix metadata containing the value map and min/max domain bounds.
+   * @param x - Horizontal axis key for the cell.
+   * @param y - Vertical axis key for the cell.
+   * @returns CSS `color-mix(...)` background color string.
+   */
+  getCellColor(m: HeatmapMatrix, x: string, y: string): string {
     const val = m.dataMap.get(`${x}:${y}`) || 0;
     const range = m.max - m.min || 1;
     const pct = (val - m.min) / range;
 
-    // USE CSS VARIABLE FOR COLOR + Opacity
-    // This allows the color to shift from standard Red (Light) to Pastel Red (Dark) automatically if defined.
-    // Falls back to hardcoded hex if var not found.
-    // We use a CSS var trick: We can't access var() in JS easily without getComputedStyle.
-    // Instead, we return an rgba using standard values, or rely on `style.opacity`.
-
-    // Better Approach for Angular:
-    // Return a style object or CSS custom property for opacity.
-
-    // However, to keep it simple and performant:
-    // Dark Mode Red: #cf6679 (Error Container or Error)
-    // Light Mode Red: #b00020
-
-    // We will return a dynamic string that uses the CSS variable syntax directly.
-    // Browsers support `color-mix` now, but for broad support we assume a base color.
-    // We'll use the --sys-error variable and modify opacity.
-
-    // BUT: "background-color: var(--sys-error)" with opacity needs `color-mix` or `rgba`.
-    // Since we don't have the RGB components of the var, we use `color-mix`.
-
     return `color-mix(in srgb, var(--sys-error), var(--sys-surface-variant) ${100 - pct * 100}%)`;
   }
 
-  getCellTooltip(
-    m: { dataMap: Map<string, number>; max: number; min: number },
-    x: string,
-    y: string,
-  ): string {
+  /**
+   * Builds a human-readable tooltip string for a specific heatmap cell coordinate.
+   *
+   * @param m - Matrix metadata containing the coordinate-to-value lookup map.
+   * @param x - Horizontal axis coordinate label.
+   * @param y - Vertical axis coordinate label.
+   * @returns Formatted tooltip text displaying the Y label, X hour, and numeric value.
+   */
+  getCellTooltip(m: HeatmapMatrix, x: string, y: string): string {
     const val = m.dataMap.get(`${x}:${y}`) || 0;
     return `${y} @ Hour ${x}: ${val}`;
   }

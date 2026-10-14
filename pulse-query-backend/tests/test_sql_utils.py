@@ -59,3 +59,42 @@ def test_sql_fingerprint_returns_hash() -> None:
 def test_sql_fingerprint_empty_returns_none() -> None:
   """Empty SQL should return None."""
   assert sql_utils.sql_fingerprint("   ") is None
+
+
+def test_sql_utils_edge_branches() -> None:
+  """Verifies unclosed block comments, markdown SQL extraction, and template parameter interpolation."""
+  assert sql_utils._strip_sql_comments("SELECT 1 /* unfinished") == "SELECT 1  "
+  assert sql_utils.extract_sql_from_markdown("```sql\nSELECT 42;\n```") == "SELECT 42;"
+  assert sql_utils.extract_sql_from_markdown("SELECT 99;") == "SELECT 99;"
+  assert (
+    sql_utils.interpolate_template_parameters(
+      "SELECT '{{dept}}', {{ limit }}",
+      parameters_schema={"properties": {"dept": {"default": "O'Connor"}, "limit": {"default": 5}}},
+      param_overrides={"limit": 25, "ignored": None},
+    )
+    == "SELECT 'O''Connor', 25"
+  )
+  assert (
+    sql_utils.interpolate_template_parameters(
+      "SELECT 1",
+      parameters_schema=None,
+      param_overrides=None,
+    )
+    == "SELECT 1"
+  )
+  assert (
+    sql_utils.interpolate_template_parameters(
+      "SELECT 1",
+      parameters_schema={"properties": None},
+      param_overrides={},
+    )
+    == "SELECT 1"
+  )
+  assert (
+    sql_utils.interpolate_template_parameters(
+      "SELECT 1",
+      parameters_schema={"properties": {"no_default": {}}},
+      param_overrides={},
+    )
+    == "SELECT 1"
+  )

@@ -14,7 +14,7 @@ from app.schemas.mpax_arena import MpaxArenaCandidate, MpaxArenaRequest, MpaxAre
 from app.services.mpax_arena_service import mpax_arena_service
 
 
-def test_mpax_arena_models_repr():
+def test_mpax_arena_models_repr() -> None:
   """Verifies __repr__ implementation on MpaxArenaRun and MpaxArenaCandidateRecord."""
   run_id = uuid.uuid4()
   cand_id = uuid.uuid4()
@@ -44,7 +44,7 @@ def test_mpax_arena_models_repr():
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_success():
+async def test_vote_candidate_success() -> None:
   """Verifies vote_candidate updates winning candidate and sets siblings to False."""
   run_id = uuid.uuid4()
   cand1_id = uuid.uuid4()
@@ -95,7 +95,7 @@ async def test_vote_candidate_success():
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_invalid_uuids():
+async def test_vote_candidate_invalid_uuids() -> None:
   """Verifies vote_candidate raises ValueError when IDs are invalid UUIDs."""
   mock_db = MagicMock(spec=AsyncSession)
   mock_user = MagicMock(spec=User)
@@ -108,7 +108,7 @@ async def test_vote_candidate_invalid_uuids():
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_run_not_found():
+async def test_vote_candidate_run_not_found() -> None:
   """Verifies vote_candidate raises ValueError when run does not exist."""
   mock_db = MagicMock(spec=AsyncSession)
   mock_scalar_result = MagicMock()
@@ -121,7 +121,7 @@ async def test_vote_candidate_run_not_found():
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_not_in_run():
+async def test_vote_candidate_not_in_run() -> None:
   """Verifies vote_candidate raises ValueError when candidate ID is not among run candidates."""
   run_id = uuid.uuid4()
   cand1_id = uuid.uuid4()
@@ -153,7 +153,7 @@ async def test_vote_candidate_not_in_run():
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_persists_run():
+async def test_run_mpax_arena_persists_run() -> None:
   """Verifies run_mpax_arena commits run and candidate entities to DB."""
   mock_db = MagicMock(spec=AsyncSession)
   mock_db.add = MagicMock()
@@ -191,7 +191,7 @@ async def test_run_mpax_arena_persists_run():
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_persistence_failure_recovers():
+async def test_run_mpax_arena_persistence_failure_recovers() -> None:
   """Verifies run_mpax_arena rolls back gracefully if DB persistence fails."""
   mock_db = MagicMock(spec=AsyncSession)
   mock_db.add = MagicMock()

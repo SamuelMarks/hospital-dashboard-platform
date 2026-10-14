@@ -3,7 +3,13 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  CanActivateFn,
+  Router,
+  RouterStateSnapshot,
+  UrlTree,
+} from '@angular/router';
 import { authGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { PLATFORM_ID } from '@angular/core';
@@ -40,7 +46,7 @@ describe('authGuard', () => {
   it('should allow access if user is authenticated via signal', () => {
     mockAuthService.isAuthenticated.mockReturnValue(true);
 
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
     expect(result).toBe(true);
   });
 
@@ -48,7 +54,7 @@ describe('authGuard', () => {
     mockAuthService.isAuthenticated.mockReturnValue(false);
     mockAuthService.hasStoredToken.mockReturnValue(true);
 
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
     expect(result).toBe(true);
   });
 
@@ -59,7 +65,10 @@ describe('authGuard', () => {
     const mockUrlTree = {} as UrlTree;
     mockRouter.createUrlTree.mockReturnValue(mockUrlTree);
 
-    const result = executeGuard({} as any, { url: '/protected' } as any);
+    const result = executeGuard(
+      {} as ActivatedRouteSnapshot,
+      { url: '/protected' } as RouterStateSnapshot,
+    );
 
     expect(mockRouter.createUrlTree).toHaveBeenCalledWith(['/login'], {
       queryParams: { returnUrl: '/protected' },
@@ -77,7 +86,7 @@ describe('authGuard', () => {
       ],
     });
 
-    const result = executeGuard({} as any, {} as any);
+    const result = executeGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot);
     expect(result).toBe(true);
   });
 });

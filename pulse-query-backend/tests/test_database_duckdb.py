@@ -6,6 +6,8 @@ Verifies:
 2. Read-Only enforcement at the database level.
 """
 
+from typing import Any
+
 import os
 
 import duckdb
@@ -18,7 +20,7 @@ TEST_DB_PATH = "test_safety.duckdb"
 
 
 @pytest.fixture(scope="module")
-def db_manager():
+def db_manager() -> Any:
   """Create a manager and seed a table."""
   manager = DuckDBManager(TEST_DB_PATH)
 
@@ -35,7 +37,7 @@ def db_manager():
     os.remove(TEST_DB_PATH)
 
 
-def test_manager_get_readonly_connection(db_manager):
+def test_manager_get_readonly_connection(db_manager: Any) -> None:
   """
   Test that the readonly connection creates a real DuckDB connection.
   """
@@ -44,7 +46,7 @@ def test_manager_get_readonly_connection(db_manager):
   conn.close()
 
 
-def test_cleanup_and_isolation(db_manager):
+def test_cleanup_and_isolation(db_manager: Any) -> None:
   """
   Ensure reading works fine.
   """
@@ -54,14 +56,14 @@ def test_cleanup_and_isolation(db_manager):
   conn.close()
 
 
-def test_write_operation_on_readonly_connection_fails(db_manager):
+def test_write_operation_on_readonly_connection_fails(db_manager: Any) -> None:
   """
   Verify that an INSERT statement fails when using the read-only connection,
   raising a DuckDB-specific error (usually Catalog Error or Access Error).
   """
   conn = db_manager.get_readonly_connection()
 
-  with pytest.raises(Exception) as excinfo:
+  with pytest.raises(Exception, match=r"(?i)(read-only|cannot modify)") as excinfo:
     conn.execute("INSERT INTO protective_test VALUES (3, 'Hacker')")
 
   # DuckDB error message for read-only write attempts usually contains "read-only mode"
@@ -72,12 +74,19 @@ def test_write_operation_on_readonly_connection_fails(db_manager):
   conn.close()
 
 
-def test_readonly_connection_retries_on_lock(monkeypatch) -> None:
+def test_readonly_connection_retries_on_lock(monkeypatch: Any) -> None:
   """Test that transient lock error triggers retry and succeeds on subsequent attempt."""
   manager = DuckDBManager("dummy.duckdb")
   attempts = 0
 
-  def _fake_connect(*args, **kwargs):
+  def _fake_connect(*args: Any, **kwargs: Any) -> Any:
+    """
+    Verify fake connect behavior.
+
+    Args:
+        args: Test parameter or fixture.
+        kwargs: Test parameter or fixture.
+    """
     nonlocal attempts
     attempts += 1
     if attempts == 1:
@@ -90,7 +99,7 @@ def test_readonly_connection_retries_on_lock(monkeypatch) -> None:
   assert attempts == 2
 
 
-def test_readonly_connection_exhausts_retries_on_persistent_lock(monkeypatch) -> None:
+def test_readonly_connection_exhausts_retries_on_persistent_lock(monkeypatch: Any) -> None:
   """Test that persistent lock error eventually raises IOException."""
   manager = DuckDBManager("dummy.duckdb")
   monkeypatch.setattr(
@@ -112,3 +121,37 @@ def test_readonly_connection_zero_retries() -> None:
     manager.get_readonly_connection(max_retries=0)
 
   assert "retries" in str(exc.value).lower()
+
+
+@pytest.mark.asyncio
+async def test_duckdb_udf_available_across_multiple_readonly_connections_and_threads(tmp_path: Any) -> None:
+  """Verifies `OPTIMIZE_ASSIGNMENTS` UDF is registered on every read-only connection and works concurrently."""
+  import asyncio
+  import json
+  from app.database.duckdb import run_in_duckdb_thread
+
+  db_file = str(tmp_path / "concurrent_udf.duckdb")
+  manager = DuckDBManager(db_file)
+  rw_conn = manager.get_connection()
+  rw_conn.execute("CREATE TABLE t (x INT); INSERT INTO t VALUES (1);")
+  rw_conn.close()
+
+  def _query_udf() -> list[dict[str, object]]:
+    """Verify query udf behavior."""
+    ro_conn = manager.get_readonly_connection()
+    try:
+      row = ro_conn.execute(
+        "SELECT OPTIMIZE_ASSIGNMENTS('{\"Cardio\": 5}', '{\"ICU\": 10}', '{\"Cardio\": {\"ICU\": 1.0}}', '[]')"
+      ).fetchone()
+      assert row is not None
+      return json.loads(row[0])
+    finally:
+      ro_conn.close()
+
+  results = await asyncio.gather(
+    run_in_duckdb_thread(_query_udf),
+    run_in_duckdb_thread(_query_udf),
+  )
+  assert len(results) == 2
+  assert results[0][0]["Patient_Count"] == 5.0
+  assert results[1][0]["Patient_Count"] == 5.0

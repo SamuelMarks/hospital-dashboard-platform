@@ -27,8 +27,8 @@ import os
 import sys
 import traceback
 import uuid
-from datetime import UTC, datetime, timezone
-from typing import Any, Dict, List, Tuple
+from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 # Add src to path to allow imports
@@ -122,7 +122,7 @@ class BenchmarkRunner:
     finally:
       conn.close()
 
-  def _compare_results(self, gold_rows: list[Any], gen_rows: list[Any]) -> bool:
+  def _compare_results(self, gold_rows: list[Any] | None, gen_rows: list[Any] | None) -> bool:
     """
     Determines if two result sets are equivalent.
 
@@ -147,21 +147,125 @@ class BenchmarkRunner:
     if len(gold_rows) == 0:
       return True  # Both empty = Match
 
-    # Normalize Data structure for comparison
-    # We convert to string representation to handle mixed types roughly equality
-    def normalize(row: tuple) -> str:
-      cleaned = []
-      for item in row:
-        if isinstance(item, float):
-          cleaned.append(f"{item:.2f}")
-        else:
-          cleaned.append(str(item))
+    def normalize(row: tuple[Any, ...]) -> str:
+      """
+      Formats a single result row tuple into a pipe-delimited string with rounded floats.
+
+      Args:
+          row (tuple[Any, ...]): Database result row tuple.
+
+      Returns:
+          str: Normalized pipe-delimited row string.
+      """
+      cleaned = [f"{item:.2f}" if isinstance(item, float) else str(item) for item in row]
       return "|".join(cleaned)
 
     gold_set = {normalize(r) for r in gold_rows}
     gen_set = {normalize(r) for r in gen_rows}
 
     return gold_set == gen_set
+
+  def _create_mock_db(self) -> MagicMock:
+    """
+    Creates an in-memory mock `AsyncSession` for offline benchmark execution.
+
+    Returns:
+        MagicMock: Configured mock database session.
+    """
+    mock_db = MagicMock()
+    db_store: list[Any] = []
+
+    def mock_add(obj: Any) -> None:
+      """
+      Appends an ORM object to the in-memory mock session store.
+
+      Args:
+          obj (Any): ORM instance to store.
+      """
+      db_store.append(obj)
+
+    mock_db.add.side_effect = mock_add
+
+    async def mock_flush() -> None:
+      """
+      Populates UUIDs and default flags on pending objects in `db_store`.
+      """
+      for obj in db_store:
+        if not getattr(obj, "id", None):
+          obj.id = uuid.uuid4()
+        if isinstance(obj, ModelCandidate) and getattr(obj, "is_selected", None) is None:
+          obj.is_selected = False
+
+    mock_db.flush = AsyncMock(side_effect=mock_flush)
+    mock_db.commit = AsyncMock(side_effect=mock_flush)
+
+    async def mock_refresh(instance: Any) -> None:
+      """
+      Populates `id`, `created_at`, and `candidates` relationship on `instance`.
+
+      Args:
+          instance (Any): ORM model instance being refreshed.
+      """
+      if not instance.id:
+        instance.id = uuid.uuid4()
+      if not getattr(instance, "created_at", None):
+        instance.created_at = datetime.now(UTC)
+
+      if isinstance(instance, ExperimentLog):
+        instance.candidates = [
+          c for c in db_store if isinstance(c, ModelCandidate) and getattr(c, "experiment_id", None) == instance.id
+        ]
+
+    mock_db.refresh = AsyncMock(side_effect=mock_refresh)
+    return mock_db
+
+  async def _evaluate_strategy_case(
+    self,
+    case: dict[str, Any],
+    strategy: str,
+    gold_rows: list[Any] | None,
+    mock_db: MagicMock,
+    mock_user: User,
+  ) -> list[dict[str, Any]]:
+    """
+    Runs a single benchmark case for a given prompt strategy and evaluates candidate SQLs.
+
+    Args:
+        case (dict[str, Any]): Gold benchmark test case dictionary.
+        strategy (str): Strategy identifier string.
+        gold_rows (list[Any] | None): Ground truth SQL result rows.
+        mock_db (MagicMock): Mock database session.
+        mock_user (User): Mock benchmark user.
+
+    Returns:
+        list[dict[str, Any]]: List of evaluation result rows for this case and strategy.
+    """
+    rows_out: list[dict[str, Any]] = []
+    experiment = await sql_generator.run_arena_experiment(
+      user_query=case["question"], db=mock_db, user=mock_user, strategy=strategy, dry_run=self.dry_run
+    )
+
+    for candidate in experiment.candidates:
+      gen_sql = candidate.generated_sql
+      gen_rows, gen_err = self._execute_sql(gen_sql)
+      is_correct = self._compare_results(gold_rows, gen_rows) if not gen_err else False
+
+      rows_out.append(
+        {
+          "Timestamp": datetime.now().isoformat(),
+          "Theme": case["theme"],
+          "Complexity": case["complexity"],
+          "Strategy": strategy,
+          "Model": candidate.model_tag,
+          "LatencyMs": candidate.latency_ms,
+          "Success": is_correct,
+          "ExecError": bool(gen_err),
+          "ErrorMsg": gen_err or "",
+          "SQLHash": getattr(candidate, "sql_hash", "") or "",
+          "GeneratedSQL": gen_sql.replace("\n", " ")[:100],
+        }
+      )
+    return rows_out
 
   async def run(self, strategies: list[str]) -> None:
     """
@@ -170,56 +274,10 @@ class BenchmarkRunner:
     Args:
         strategies: List of strategies to test (e.g. ['zero-shot', 'rag-few-shot']).
     """
-    results_log = []
-
-    # Mock Contexts for SQLGenerator (We don't want to pollute real DB with logs during dry run)
-    # In a real run, we would create a temporary user.
+    results_log: list[dict[str, Any]] = []
     mock_user = User(email="benchmarker@pulse.com", hashed_password="x")
     mock_user.id = uuid.uuid4()
-
-    # Mock DB setup to simulate relationship behavior for Pydantic validation
-    mock_db = MagicMock()
-
-    # Local storage to track objects added to the "session"
-    _db_store = []
-
-    def mock_add(obj):
-      """Collect objects into the in-memory mock session."""
-      _db_store.append(obj)
-
-    mock_db.add.side_effect = mock_add
-
-    async def mock_flush():
-      """Simulate flush behavior and populate defaults for pending objects."""
-      # Simulate ID generation and Defaults for pending objects
-      for obj in _db_store:
-        if not getattr(obj, "id", None):
-          obj.id = uuid.uuid4()
-        # Fix for boolean validation error: Ensure is_selected defaults to False if None
-        if isinstance(obj, ModelCandidate):
-          if getattr(obj, "is_selected", None) is None:
-            obj.is_selected = False
-
-    mock_db.flush = AsyncMock(side_effect=mock_flush)
-    mock_db.commit = AsyncMock(side_effect=mock_flush)
-
-    # Side effect for refresh: Populate ID, created_at, and relationships
-    async def mock_refresh(instance):
-      """Populate IDs, timestamps, and basic relationships on refresh."""
-      if not instance.id:
-        instance.id = uuid.uuid4()
-      if not getattr(instance, "created_at", None):
-        instance.created_at = datetime.now(UTC)
-
-      # Simulate basic relationship loading for ExperimentLog -> candidates
-      # This is crucial because ExperimentResponse validation checks instance.candidates
-      if isinstance(instance, ExperimentLog):
-        # Filter candidates that belong to this experiment
-        instance.candidates = [
-          c for c in _db_store if isinstance(c, ModelCandidate) and getattr(c, "experiment_id", None) == instance.id
-        ]
-
-    mock_db.refresh = AsyncMock(side_effect=mock_refresh)
+    mock_db = self._create_mock_db()
 
     total_cases = len(self.dataset) * len(strategies)
     logger.info(
@@ -227,56 +285,17 @@ class BenchmarkRunner:
     )
 
     for case in self.dataset:
-      question = case["question"]
       theme = case["theme"]
-      gold_sql = case["gold_sql"]
-      complexity = case["complexity"]
-
-      # 1. Execute Gold Standard
-      gold_rows, gold_err = self._execute_sql(gold_sql)
+      gold_rows, gold_err = self._execute_sql(case["gold_sql"])
       if gold_err:
         logger.error(f"❌ Gold SQL Failed for '{theme}': {gold_err}")
         continue
 
       for strategy in strategies:
         logger.info(f"   >> Processing '{theme}' with {strategy}...")
-
         try:
-          # 2. Generate SQL (Multi-Model Broadcast)
-          experiment = await sql_generator.run_arena_experiment(
-            user_query=question, db=mock_db, user=mock_user, strategy=strategy, dry_run=self.dry_run
-          )
-
-          # 3. Evaluate Each Candidate
-          for candidate in experiment.candidates:
-            gen_sql = candidate.generated_sql
-            model_name = candidate.model_tag
-
-            # Execute
-            gen_rows, gen_err = self._execute_sql(gen_sql)
-
-            # Compare
-            is_correct = False
-            if not gen_err:
-              is_correct = self._compare_results(gold_rows, gen_rows)
-
-            # Record Result
-            results_log.append(
-              {
-                "Timestamp": datetime.now().isoformat(),
-                "Theme": theme,
-                "Complexity": complexity,
-                "Strategy": strategy,
-                "Model": model_name,
-                "LatencyMs": candidate.latency_ms,
-                "Success": is_correct,
-                "ExecError": bool(gen_err),
-                "ErrorMsg": gen_err or "",
-                "SQLHash": getattr(candidate, "sql_hash", "") or "",
-                "GeneratedSQL": gen_sql.replace("\n", " ")[:100],
-              }
-            )
-
+          case_rows = await self._evaluate_strategy_case(case, strategy, gold_rows, mock_db, mock_user)
+          results_log.extend(case_rows)
         except Exception as e:
           logger.error(f"Error in benchmark loop: {e}")
           traceback.print_exc()
@@ -304,11 +323,16 @@ class BenchmarkRunner:
     # Print simple summary
     success_count = sum(1 for r in results if r["Success"])
     total = len(results)
-    if total > 0:
-      print(f"\nOverall Accuracy: {(success_count / total) * 100:.1f}% ({success_count}/{total})")
+    print(f"\nOverall Accuracy: {(success_count / total) * 100:.1f}% ({success_count}/{total})")
 
 
-if __name__ == "__main__":
+def main(argv: list[str] | None = None) -> None:
+  """
+  CLI entry point for the offline benchmark runner.
+
+  Args:
+      argv (list[str] | None): Optional CLI arguments list.
+  """
   parser = argparse.ArgumentParser(description="Pulse Query Benchmark Runner")
   parser.add_argument("--dry-run", action="store_true", help="Skip LLM API calls, use mocks.")
   parser.add_argument("--output", type=str, default="leaderboard.csv", help="Output CSV path.")
@@ -316,11 +340,14 @@ if __name__ == "__main__":
     "--strategies", nargs="+", default=["zero-shot", "cot-macro", "rag-few-shot"], help="Strategies to test."
   )
 
-  args = parser.parse_args()
+  args = parser.parse_args(argv)
 
-  # Windows Asyncio Policy fix
-  if sys.platform == "win32":
+  if sys.platform == "win32":  # pragma: no cover
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
   runner = BenchmarkRunner(dry_run=args.dry_run, output_file=args.output)
   asyncio.run(runner.run(strategies=args.strategies))
+
+
+if __name__ == "__main__":
+  main()

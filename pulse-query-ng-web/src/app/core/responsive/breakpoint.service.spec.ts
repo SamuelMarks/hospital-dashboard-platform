@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Unit tests for BreakpointService.
  */
@@ -136,10 +135,11 @@ describe('BreakpointService', () => {
   });
 
   it('should detect touch support when ontouchstart is present', () => {
-    (window as any).ontouchstart = null;
+    const win = window as unknown as Record<string, unknown>;
+    win['ontouchstart'] = null;
     const svc = createService(1000);
     expect(svc.hasTouch()).toBe(true);
-    delete (window as any).ontouchstart;
+    delete win['ontouchstart'];
   });
 
   it('should not detect touch support when ontouchstart is absent', () => {

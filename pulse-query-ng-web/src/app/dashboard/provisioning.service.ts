@@ -1,126 +1,83 @@
-/** @docs */
+/**
+ * @fileoverview Service responsible for instantiating dashboard widgets from templates.
+ *
+ * Delegates default parameter extraction, SQL interpolation, and visualization heuristics
+ * to `TemplateConfigurationService` and persists the resulting widget via `DashboardsService`.
+ */
+
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, switchMap } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import {
   DashboardsService,
   TemplateResponse,
-  WidgetIn,
-  WidgetCreateSql, // Import subtype
+  WidgetCreateSql,
   WidgetResponse,
-  DashboardResponse,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
+import { TemplateConfigurationService } from './template-configuration.service';
 
 /**
- * Service responsible for instantiating Widgets from Templates.
- *
- * Handles the logic of:
- * 1. Extracting default values from the Template's JSON Schema.
- * 2. Compiling the SQL (Handlebars substitution).
- * 3. Persisting the new Widget to the API.
+ * Two-dimensional grid coordinate for placing a newly provisioned widget.
+ */
+export interface GridPosition {
+  /** Horizontal grid column offset. */
+  x: number;
+  /** Vertical grid row offset. */
+  y: number;
+}
+
+/**
+ * Service responsible for instantiating Widgets from Templates using default parameters.
  */
 @Injectable({
   providedIn: 'root',
 })
-/** @docs */
 export class ProvisioningService {
-  /** dashboardApi property. */
+  /** Generated OpenAPI dashboards service client. */
   private readonly dashboardApi = inject(DashboardsService);
-  /** store property. */
+
+  /** Active dashboard state store. */
   private readonly store = inject(DashboardStore);
 
+  /** Shared template configuration and SQL interpolation service. */
+  private readonly templateConfig = inject(TemplateConfigurationService);
+
   /**
-   * Instantiates a template into the current dashboard using its default parameters.
+   * Instantiates a template into the specified dashboard using its default parameter values.
    *
-   * @param {TemplateResponse} template - The source template.
-   * @param {string} dashboardId - The target dashboard UUID.
-   * @param {object} position - Optional grid position {x, y}.
-   * @returns {Observable<WidgetResponse>} The created widget.
+   * @param template - The source template definition.
+   * @param dashboardId - The target dashboard UUID.
+   * @param position - Optional grid position `{ x, y }` (defaults to `{ x: 0, y: 0 }`).
+   * @returns Observable emitting the newly created `WidgetResponse`.
    */
   provisionWidget(
     template: TemplateResponse,
     dashboardId: string,
-    position: { x: number; y: number } = { x: 0, y: 0 },
+    position: GridPosition = { x: 0, y: 0 },
   ): Observable<WidgetResponse> {
-    // 1. Prepare Configuration
-    const config = this.buildConfig(template);
+    const baseConfig = this.templateConfig.buildDefaultConfig(template);
+    const vizType = this.templateConfig.inferVisualization(template);
 
-    // Map grid position
-    config['x'] = position.x;
-    config['y'] = position.y;
-    config['w'] = 6; // Default width
-    config['h'] = 4; // Default height
-
-    // Determine visualization type heuristics
-    const vizType = this.guessVisualization(template);
-
-    // Cast as SQL subtype for backend compat
     const payload: WidgetCreateSql = {
       title: template.title,
       type: 'SQL',
       visualization: vizType,
-      config: { query: config['query'], ...config } as WidgetCreateSql['config'],
+      config: {
+        query: baseConfig.query,
+        x: position.x,
+        y: position.y,
+        w: 6,
+        h: 4,
+      },
     };
 
-    // 2. Call API & Update Store
     return this.dashboardApi
       .createWidgetApiV1DashboardsDashboardIdWidgetsPost(dashboardId, payload)
       .pipe(
         map((widget) => {
-          // Verify widget creation success
-          // Trigger a refresh of the single widget to fetch data immediately
           this.store.refreshWidget(widget.id);
-          // Reload dashboard to sync full layout state if needed
-          // this.store.loadDashboard(dashboardId);
           return widget;
         }),
       );
-  }
-
-  /**
-   * Generates the widget configuration object by injecting schema defaults into the SQL.
-   */
-  private buildConfig(template: TemplateResponse): Record<string, unknown> {
-    const rawSql = template.sql_template;
-    const schema = template.parameters_schema || {};
-    // Fix: Access properties safely via bracket notation or explicit typing
-    const props = schema['properties'] || {};
-
-    let processedSql = rawSql;
-
-    // Iterate over schema properties to find defaults
-    Object.keys(props).forEach((key) => {
-      const prop = props[key];
-      if (prop.default !== undefined) {
-        const val = String(prop.default);
-        // Replace {{key}}
-        processedSql = processedSql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), val);
-      }
-    });
-
-    return { query: processedSql };
-  }
-
-  /**
-   * Heuristic to determine the best visualization based on title/SQL keywords.
-   */
-  private guessVisualization(template: TemplateResponse): string {
-    const title = template.title.toLowerCase();
-    const sql = template.sql_template.toLowerCase();
-
-    if (title.includes('breakdown') || title.includes('share') || title.includes('mix')) {
-      return 'pie';
-    }
-    if (title.includes('trend') || title.includes('over time') || sql.includes('group by')) {
-      return 'bar_chart';
-    }
-    if (title.includes('probability') || title.includes('rate') || title.includes('risk')) {
-      return 'scalar';
-    }
-    if (title.includes('gap') || title.includes('lag')) {
-      return 'metric';
-    }
-
-    return 'table';
   }
 }

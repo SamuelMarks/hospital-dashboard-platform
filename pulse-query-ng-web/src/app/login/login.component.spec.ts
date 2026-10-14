@@ -12,7 +12,10 @@ import { vi } from 'vitest';
 describe('LoginComponent', () => {
   let component: LoginComponent;
   let fixture: ComponentFixture<LoginComponent>;
-  let mockAuthService: any;
+  let mockAuthService: {
+    login: ReturnType<typeof vi.fn>;
+    isAuthenticated: ReturnType<typeof vi.fn>;
+  };
   let router: Router;
   let mockRoute: { snapshot: { queryParamMap: { get: ReturnType<typeof vi.fn> } } };
 

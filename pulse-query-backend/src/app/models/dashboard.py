@@ -1,7 +1,7 @@
 """Dashboard and widget models for the analytics UI."""
 
 import uuid
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -21,6 +21,7 @@ class Dashboard(Base):
   id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
   name: Mapped[str] = mapped_column(String, index=True)
   owner_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+  permission_level: str = "OWNER"
 
   # Relationships
   owner = relationship("app.models.user.User", back_populates="dashboards")

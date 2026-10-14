@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Route Guard for protecting authenticated routes.
  */

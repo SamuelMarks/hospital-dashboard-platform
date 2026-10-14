@@ -13,7 +13,7 @@
     <!-- Error Alert -->
     @if (errorMessage()) {
       <div class="error-box" role="alert" data-testid="error-alert">
-        <mat-icon color="warn">error</mat-icon>
+        <mat-icon color="warn" i18n>error</mat-icon>
         <span>{{ errorMessage() }}</span>
       </div>
     }
@@ -27,6 +27,7 @@
           [formField]="loginForm.email"
           type="email"
           placeholder="doctor@hospital.com"
+          i18n-placeholder
           data-testid="input-email"
         />
         @for (err of loginForm.email().errors(); track err.kind) {

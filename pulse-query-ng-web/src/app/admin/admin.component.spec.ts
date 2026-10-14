@@ -5,14 +5,23 @@ import { ConnectionStatusService } from '../core/health/connection-status.servic
 import { of, throwError, delay } from 'rxjs';
 import { FormRoot, FormField } from '@angular/forms/signals';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
-import { Component, signal, DestroyRef } from '@angular/core';
+import { Component, signal, DestroyRef, WritableSignal } from '@angular/core';
 
 describe('AdminComponent', () => {
   let component: AdminComponent;
   let fixture: ComponentFixture<AdminComponent>;
-  let adminServiceMock: any;
-  let aiServiceMock: any;
-  let mockConnectionService: any;
+  let adminServiceMock: {
+    readAdminSettingsApiV1AdminSettingsGet: ReturnType<typeof vi.fn>;
+    writeAdminSettingsApiV1AdminSettingsPut: ReturnType<typeof vi.fn>;
+  };
+  let aiServiceMock: {
+    listAvailableModelsApiV1AiModelsGet: ReturnType<typeof vi.fn>;
+  };
+  let mockConnectionService: {
+    healthData: WritableSignal<Record<string, unknown> | null>;
+    openDiagnosticsDialog: ReturnType<typeof vi.fn>;
+    triggerReingest: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     adminServiceMock = {
@@ -166,7 +175,9 @@ describe('AdminComponent', () => {
 
     it('should not save invalid form', () => {
       // Create a spy to mock invalid() returning true
-      vi.spyOn(component, 'adminForm').mockReturnValue({ invalid: () => true } as any);
+      vi.spyOn(component, 'adminForm').mockReturnValue({
+        invalid: () => true,
+      } as unknown as ReturnType<AdminComponent['adminForm']>);
 
       component.saveSettings();
       expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).not.toHaveBeenCalled();
@@ -175,8 +186,8 @@ describe('AdminComponent', () => {
     it('should handle missing keys from form safely', () => {
       component.formModel.update((m) => ({
         ...m,
-        openai: null as any,
-        anthropic: null as any,
+        openai: null as unknown as string,
+        anthropic: null as unknown as string,
       }));
 
       component.saveSettings();
@@ -270,17 +281,21 @@ describe('AdminComponent', () => {
     });
 
     it('should test reingestData success and error paths', () => {
-      mockConnectionService.triggerReingest.mockReturnValue(
-        of({ message: 'Data re-ingested successfully!' }),
-      );
+      vi.useFakeTimers();
+      mockConnectionService.triggerReingest.mockReturnValue(of({ message: '' }));
       component.reingestData();
       expect(component.message()).toBe('Data re-ingested successfully!');
+      vi.advanceTimersByTime(3000);
+      expect(component.message()).toBe('');
 
       mockConnectionService.triggerReingest.mockReturnValue(
         throwError(() => new Error('Reingest error')),
       );
       component.reingestData();
       expect(component.message()).toBe('Failed to re-ingest CSV data.');
+      vi.advanceTimersByTime(3000);
+      expect(component.message()).toBe('');
+      vi.useRealTimers();
     });
   });
 

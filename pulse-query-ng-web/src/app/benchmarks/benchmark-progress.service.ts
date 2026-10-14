@@ -53,9 +53,9 @@ export class BenchmarkProgressService {
       const es = new EventSource(streamUrl);
       this.eventSource = es;
 
-      es.onmessage = (event: MessageEvent) => {
+      es.onmessage = (event: MessageEvent<string>) => {
         try {
-          const data: BenchmarkProgress = JSON.parse(event.data);
+          const data = JSON.parse(event.data) as BenchmarkProgress;
           this.ngZone.run(() => {
             this.progress.set(data);
             observer.next(data);

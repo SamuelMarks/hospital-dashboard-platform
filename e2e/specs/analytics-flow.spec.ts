@@ -147,15 +147,13 @@ test.describe("Hospital Analytics Platform", () => {
     const selectBtn = page
       .getByRole("button", { name: /Select Model|Use this SQL|Run/i })
       .first();
-    if (await selectBtn.isVisible()) {
-      await selectBtn.click();
-    }
+    await expect(selectBtn).toBeVisible({ timeout: 10000 });
+    await selectBtn.click();
 
-    // Switch to Code Editor tab if needed to verify SQL
+    // Switch to Code Editor tab to verify SQL
     const codeEditorTab = page.getByRole("tab", { name: /Code Editor/i });
-    if (await codeEditorTab.isVisible()) {
-      await codeEditorTab.click();
-    }
+    await expect(codeEditorTab).toBeVisible({ timeout: 10000 });
+    await codeEditorTab.click();
 
     // Verify: Tab Switch to Code Editor
     const textArea = page.locator(".cm-content, textarea").first();

@@ -249,8 +249,20 @@ describe('AuthService', () => {
 
     await serverService.initialize();
     expect(serverService.getToken()).toBeNull();
+    expect(serverService.getRefreshToken()).toBeNull();
     expect(serverService.hasStoredToken()).toBe(false);
     expect(mockApiClient.readUsersMeApiV1AuthMeGet).not.toHaveBeenCalled();
+  });
+
+  it('should handle token without refresh_token on login', () => {
+    const tokenNoRefresh: Token = { access_token: 'only-acc', token_type: 'bearer' };
+    mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(of(tokenNoRefresh));
+    mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(of(mockUser));
+
+    service.login({ email: 'u', password: 'p' }).subscribe();
+
+    expect(safeStorage.getItem('pulse_auth_token')).toBe('only-acc');
+    expect(safeStorage.getItem('pulse_refresh_token')).toBeNull();
   });
 
   it('should not write to storage on server login', () => {

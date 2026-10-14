@@ -25,15 +25,6 @@ class TemplateBase(BaseModel):
       category (str): The thematic grouping tag.
       parameters_schema (dict[str, Any]): A valid JSON Schema object defining
           the expected inputs. This schema drives the frontend dynamic form.
-          Example:
-          {
-              "type": "object",
-              "properties": {
-                  "unit_name": { "type": "string", "enum": ["ICU", "ER"] },
-                  "target_date": { "type": "string", "format": "date" }
-              },
-              "required": ["unit_name"]
-          }
   """
 
   title: str = Field(..., min_length=3, max_length=100)
@@ -105,3 +96,34 @@ class TemplateResponse(TemplateBase):
   id: UUID
 
   model_config = ConfigDict(from_attributes=True)
+
+
+class TemplateInstantiateRequest(BaseModel):
+  """
+  Request payload for instantiating a SQL template with user-supplied parameters.
+
+  Attributes:
+      parameters (dict[str, Any]): Runtime parameter key-value overrides to inject.
+  """
+
+  parameters: dict[str, Any] = Field(
+    default_factory=dict,
+    description="Runtime parameter values keyed by placeholder name.",
+  )
+
+
+class TemplateInstantiateResponse(BaseModel):
+  """
+  Response payload returned after interpolating a SQL template on the backend.
+
+  Attributes:
+      template_id (UUID): Identifier of the source template.
+      title (str): Default title of the template.
+      visualization (str): Recommended visualization type (`metric`, `bar_chart`, `pie`, `table`).
+      query (str): Interpolated, SQL-injection-safe DuckDB query string.
+  """
+
+  template_id: UUID
+  title: str
+  visualization: str
+  query: str

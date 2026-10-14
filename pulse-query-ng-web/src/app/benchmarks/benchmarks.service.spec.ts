@@ -1,43 +1,51 @@
+/**
+ * @fileoverview Unit tests for `BenchmarksService`.
+ */
+
 import { TestBed } from '@angular/core/testing';
-import { BenchmarksService } from './benchmarks.service';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient, withXhr } from '@angular/common/http';
+import { of } from 'rxjs';
+import { vi, type Mock } from 'vitest';
+import { BenchmarksService, MpaxBenchmark, SqlBenchmark } from './benchmarks.service';
+import { BenchmarksService as GeneratedBenchmarksService } from '../api-client';
 
 describe('BenchmarksService', () => {
   let service: BenchmarksService;
-  let httpMock: HttpTestingController;
+  let mockApi: {
+    getSqlBenchmarksApiV1BenchmarksSqlGet: Mock;
+    getMpaxBenchmarksApiV1BenchmarksMpaxGet: Mock;
+  };
 
   beforeEach(() => {
+    mockApi = {
+      getSqlBenchmarksApiV1BenchmarksSqlGet: vi.fn(),
+      getMpaxBenchmarksApiV1BenchmarksMpaxGet: vi.fn(),
+    };
+
     TestBed.configureTestingModule({
-      providers: [BenchmarksService, provideHttpClient(withXhr()), provideHttpClientTesting()],
+      providers: [BenchmarksService, { provide: GeneratedBenchmarksService, useValue: mockApi }],
     });
     service = TestBed.inject(BenchmarksService);
-    httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => {
-    httpMock.verify();
-  });
+  it('should fetch sql benchmarks via generated BenchmarksService', () => {
+    const dummy: SqlBenchmark[] = [{ theme: 'T1', question: 'Q1', gold_sql: 'SELECT 1' }];
+    mockApi.getSqlBenchmarksApiV1BenchmarksSqlGet.mockReturnValue(of(dummy));
 
-  it('should fetch sql benchmarks', () => {
-    const dummy = [{ theme: 'T1' }];
     service.getSqlBenchmarks().subscribe((res) => {
       expect(res).toEqual(dummy);
     });
 
-    const req = httpMock.expectOne('/api/v1/benchmarks/sql');
-    expect(req.request.method).toBe('GET');
-    req.flush(dummy);
+    expect(mockApi.getSqlBenchmarksApiV1BenchmarksSqlGet).toHaveBeenCalledOnce();
   });
 
-  it('should fetch mpax benchmarks', () => {
-    const dummy = [{ id: '1' }];
+  it('should fetch mpax benchmarks via generated BenchmarksService', () => {
+    const dummy: MpaxBenchmark[] = [{ id: '1', theme: 'Surge' }];
+    mockApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet.mockReturnValue(of(dummy));
+
     service.getMpaxBenchmarks().subscribe((res) => {
       expect(res).toEqual(dummy);
     });
 
-    const req = httpMock.expectOne('/api/v1/benchmarks/mpax');
-    expect(req.request.method).toBe('GET');
-    req.flush(dummy);
+    expect(mockApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet).toHaveBeenCalledOnce();
   });
 });

@@ -1,20 +1,20 @@
 /**
- * @fileoverview Real-Time Dashboard Collaboration Repository.
+ * Real-Time Dashboard Collaboration Repository.
  * Manages live peer collaborator presence and widget update events.
  */
 package io.healthplatform.pulsequery.network
 
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
-import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.plugins.websocket.webSocketSession
 import io.ktor.websocket.Frame
+import io.ktor.websocket.WebSocketSession
 import io.ktor.websocket.readText
-import io.ktor.websocket.send
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /**
@@ -63,16 +64,50 @@ data class CollaborationEvent(
 )
 
 /**
+ * Minimal WebSocket session abstraction used by [DashboardWebSocketRepository]
+ * to receive incoming frames and send outgoing text messages.
+ */
+interface CollaborationSocketSession {
+    /** Channel of incoming WebSocket frames from the server. */
+    val incoming: ReceiveChannel<Frame>
+
+    /**
+     * Sends a raw text payload over the active WebSocket connection.
+     *
+     * @param text Serialized JSON message to transmit.
+     */
+    suspend fun sendText(text: String)
+}
+
+/**
+ * Wraps a Ktor [WebSocketSession] as a [CollaborationSocketSession].
+ */
+fun WebSocketSession.asCollaborationSocketSession(): CollaborationSocketSession {
+    val delegate = this
+    return object : CollaborationSocketSession {
+        override val incoming: ReceiveChannel<Frame>
+            get() = delegate.incoming
+
+        override suspend fun sendText(text: String) {
+            delegate.send(Frame.Text(text))
+        }
+    }
+}
+
+/**
  * Repository orchestrating live peer presence and widget synchronization.
  *
  * @param httpClient Optional [HttpClient] instance for mocking.
  * @param baseUrlProvider Lambda providing the active base URL.
  * @param coroutineScope Scope managing socket lifecycle and asynchronous event dispatching.
+ * @param sessionFactory Factory opening a [CollaborationSocketSession] for a resolved URL.
  */
 class DashboardWebSocketRepository(
     private val httpClient: HttpClient? = null,
     private val baseUrlProvider: () -> String = { AppContainer.currentBaseUrl },
-    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val coroutineScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val sessionFactory: suspend (HttpClient, String) -> CollaborationSocketSession =
+        { client, url -> client.webSocketSession(urlString = url).asCollaborationSocketSession() }
 ) {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
@@ -90,7 +125,7 @@ class DashboardWebSocketRepository(
 
     private var activeDashboardId: String? = null
     private var sessionJob: Job? = null
-    private var activeSession: DefaultClientWebSocketSession? = null
+    private var activeSession: CollaborationSocketSession? = null
 
     /**
      * Connects to collaboration session for target dashboard.
@@ -106,39 +141,52 @@ class DashboardWebSocketRepository(
         sessionJob = coroutineScope.launch {
             try {
                 val client = httpClient ?: AppContainer.httpClient
-                val base = baseUrlProvider().trimEnd('/')
-                val wsScheme = if (base.startsWith("https")) "wss" else "ws"
-                val cleanBase = base.removePrefix("https://").removePrefix("http://")
-                val wsUrl = "$wsScheme://$cleanBase/api/v1/ws/dashboards/$dashboardId?token=$token"
-
+                val wsUrl = buildWebSocketUrl(dashboardId, token)
                 runCatching {
-                    client.webSocket(urlString = wsUrl) {
-                        activeSession = this
-                        _isConnected.value = true
-                        for (frame in incoming) {
-                            if (frame is Frame.Text) {
-                                val text = frame.readText()
-                                runCatching {
-                                    json.decodeFromString<CollaborationEvent>(text)
-                                }.onSuccess { event ->
-                                    when (event.type) {
-                                        "USER_JOINED", "USER_LEFT" -> {
-                                            if (event.activeUsers.isNotEmpty()) {
-                                                _activeCollaborators.value = event.activeUsers
-                                            }
-                                        }
-                                        "WIDGET_UPDATED" -> {
-                                            event.widgetId?.let { _remoteWidgetUpdates.emit(it) }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    val session = sessionFactory(client, wsUrl)
+                    listenToWebSocketSession(session)
                 }
             } finally {
                 _isConnected.value = false
                 activeSession = null
+            }
+        }
+    }
+
+    /**
+     * Constructs the target WebSocket URL from the base HTTP/HTTPS URL.
+     *
+     * @param dashboardId Target dashboard UUID.
+     * @param token Authentication bearer token.
+     * @return Formatted `ws://` or `wss://` URL string.
+     */
+    fun buildWebSocketUrl(dashboardId: String, token: String): String {
+        val base = baseUrlProvider().trimEnd('/')
+        val wsScheme = if (base.startsWith("https")) "wss" else "ws"
+        val cleanBase = base.removePrefix("https://").removePrefix("http://")
+        return "$wsScheme://$cleanBase/api/v1/ws/dashboards/$dashboardId?token=$token"
+    }
+
+    private suspend fun listenToWebSocketSession(session: CollaborationSocketSession) {
+        activeSession = session
+        _isConnected.value = true
+        for (frame in session.incoming) {
+            if (frame is Frame.Text) {
+                handleIncomingTextFrame(frame.readText())
+            }
+        }
+    }
+
+    private suspend fun handleIncomingTextFrame(text: String) {
+        val event = runCatching { json.decodeFromString<CollaborationEvent>(text) }.getOrNull() ?: return
+        when (event.type) {
+            "USER_JOINED", "USER_LEFT" -> {
+                if (event.activeUsers.isNotEmpty()) {
+                    _activeCollaborators.value = event.activeUsers
+                }
+            }
+            "WIDGET_UPDATED" -> {
+                event.widgetId?.let { _remoteWidgetUpdates.emit(it) }
             }
         }
     }
@@ -152,9 +200,10 @@ class DashboardWebSocketRepository(
         val session = activeSession
         if (session != null) {
             runCatching {
-                val dq = 34.toChar()
-                val jsonMsg = "{$dq" + "type$dq:$dq" + "WIDGET_UPDATED$dq,$dq" + "widget_id$dq:$dq" + "$widgetId$dq}"
-                session.send(Frame.Text(jsonMsg))
+                val jsonMsg = json.encodeToString(
+                    CollaborationEvent(type = "WIDGET_UPDATED", widgetId = widgetId)
+                )
+                session.sendText(jsonMsg)
             }
         } else {
             _remoteWidgetUpdates.emit(widgetId)
@@ -188,10 +237,6 @@ class DashboardWebSocketRepository(
      * @param widgetId Unique ID of updated widget.
      */
     fun onRemoteWidgetUpdate(widgetId: String) {
-        if (!_remoteWidgetUpdates.tryEmit(widgetId)) {
-            coroutineScope.launch {
-                _remoteWidgetUpdates.emit(widgetId)
-            }
-        }
+        _remoteWidgetUpdates.tryEmit(widgetId)
     }
 }

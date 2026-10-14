@@ -1,5 +1,9 @@
+"""Tests for sql generator."""
+
+from typing import Any
+
 import uuid
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -9,7 +13,7 @@ from app.services.llm_client import ArenaResponse
 from app.services.sql_generator import sql_generator
 
 
-def test_sql_cleaning_logic():
+def test_sql_cleaning_logic() -> None:
   """Test that the service correctly strips Markdown formatting."""
   raw_1 = "SELECT * FROM hospital_data LIMIT 10;"
   assert sql_generator._clean_sql_response(raw_1) == raw_1
@@ -22,7 +26,7 @@ def test_sql_cleaning_logic():
 
 
 @pytest.mark.asyncio
-async def test_generation_flow_mocked():
+async def test_generation_flow_mocked() -> None:
   """
   Simulate a full Arena flow using mocks.
   Verifies that the service calls the multi-model client and persists data.
@@ -46,14 +50,21 @@ async def test_generation_flow_mocked():
   # Mock side-effects for persistence
   added_objects = []
 
-  def side_effect_add(obj):
+  def side_effect_add(obj: Any) -> None:
+    """
+    Verify side effect add behavior.
+
+    Args:
+        obj: Test parameter or fixture.
+    """
     if hasattr(obj, "is_selected") and obj.is_selected is None:
       obj.is_selected = False
     added_objects.append(obj)
 
   mock_db.add.side_effect = side_effect_add
 
-  async def side_effect_persistence():
+  async def side_effect_persistence() -> None:
+    """Verify side effect persistence behavior."""
     for obj in added_objects:
       if not getattr(obj, "id", None):
         obj.id = uuid.uuid4()
@@ -61,7 +72,14 @@ async def test_generation_flow_mocked():
   mock_db.flush = AsyncMock(side_effect=side_effect_persistence)
   mock_db.commit = AsyncMock(side_effect=side_effect_persistence)
 
-  async def mock_refresh(instance, attribute_names=None):
+  async def mock_refresh(instance: Any, attribute_names: Any = None) -> None:
+    """
+    Verify mock refresh behavior.
+
+    Args:
+        instance: Test parameter or fixture.
+        attribute_names: Test parameter or fixture.
+    """
     if not instance.id:
       instance.id = uuid.uuid4()
     if not hasattr(instance, "created_at") or not instance.created_at:

@@ -5,6 +5,8 @@ Validates export of individual widgets to JSON and CSV formats,
 including formula sanitization, permissions, and 404 handling.
 """
 
+from typing import Any
+
 import uuid
 from unittest.mock import MagicMock
 
@@ -17,7 +19,7 @@ from app.models.user import User
 
 
 @pytest.mark.asyncio
-async def test_export_widget_json_and_csv(client: AsyncClient, db_session) -> None:
+async def test_export_widget_json_and_csv(client: AsyncClient, db_session: Any) -> None:
   """Test exporting an individual SQL widget in JSON and CSV formats."""
   owner = User(
     id=uuid.uuid4(),

@@ -14,7 +14,7 @@ analogy, significantly reducing syntax errors for complex queries.
 import json
 import os
 import re
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 from app.services.prompt_engineering.interfaces import PromptStrategy
 
@@ -54,7 +54,8 @@ class TemplateRetriever:
       return []
     try:
       with open(DATA_FILE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data: list[dict[str, Any]] = json.load(f)
+        return data
     except Exception:
       return []
 

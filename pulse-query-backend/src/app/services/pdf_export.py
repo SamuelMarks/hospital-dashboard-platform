@@ -58,13 +58,12 @@ def _build_page_header(
     commands.append(f"BT /F1 10 Tf 50 685 Td ({escaped_author}) Tj ET")
     commands.append("50 675 m 562 675 l S")
     return commands, 655
-  else:
-    escaped_title = _escape_pdf_text(f"Pulse Query Clinical Report: {dashboard_name} (Cont.)")
-    commands.append(f"BT /F1 14 Tf 50 740 Td ({escaped_title}) Tj ET")
-    escaped_census = _escape_pdf_text(f"Midnight Census: {formatted_time}")
-    commands.append(f"BT /F1 9 Tf 50 720 Td ({escaped_census}) Tj ET")
-    commands.append("50 710 m 562 710 l S")
-    return commands, 690
+  escaped_title = _escape_pdf_text(f"Pulse Query Clinical Report: {dashboard_name} (Cont.)")
+  commands.append(f"BT /F1 14 Tf 50 740 Td ({escaped_title}) Tj ET")
+  escaped_census = _escape_pdf_text(f"Midnight Census: {formatted_time}")
+  commands.append(f"BT /F1 9 Tf 50 720 Td ({escaped_census}) Tj ET")
+  commands.append("50 710 m 562 710 l S")
+  return commands, 690
 
 
 def _build_page_footer(
@@ -91,6 +90,48 @@ def _build_page_footer(
   return commands
 
 
+def _render_widget_block(widget: dict[str, Any], y_pos: int) -> tuple[list[str], int]:
+  """
+  Builds PDF drawing commands for a single widget summary block and returns updated `y_pos`.
+
+  Args:
+      widget (dict[str, Any]): Widget snapshot dictionary (`title`, `type`, `data`, `error`).
+      y_pos (int): Starting vertical coordinate in PDF points.
+
+  Returns:
+      tuple[list[str], int]: Tuple of `(pdf_commands, next_y_pos)`.
+  """
+  cmds: list[str] = []
+  title = widget.get("title", "Untitled Widget")
+  w_type = widget.get("type", "SQL")
+  escaped_w_title = _escape_pdf_text(f"Widget: {title} [{w_type}]")
+  cmds.append(f"BT /F1 11 Tf 50 {y_pos} Td ({escaped_w_title}) Tj ET")
+  y_pos -= 15
+
+  rows = widget.get("data", [])
+  if isinstance(rows, list) and rows:
+    first_row = rows[0]
+    if isinstance(first_row, dict):
+      col_names = list(first_row.keys())[:5]
+      header_str = " | ".join(f"{k}: {first_row[k]}" for k in col_names)
+      escaped_row = _escape_pdf_text(f"Sample: {header_str}")
+      cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_row}) Tj ET")
+      y_pos -= 14
+      escaped_summary = _escape_pdf_text(f"Total Records: {len(rows)}")
+      cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_summary}) Tj ET")
+      y_pos -= 16
+  elif widget.get("error"):
+    escaped_err = _escape_pdf_text(f"Status: Error - {widget['error']}")
+    cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_err}) Tj ET")
+    y_pos -= 16
+  else:
+    escaped_empty = _escape_pdf_text("Status: No data recorded.")
+    cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_empty}) Tj ET")
+    y_pos -= 16
+
+  return cmds, y_pos
+
+
 def generate_clinical_pdf_report(
   dashboard_name: str,
   author_email: str,
@@ -114,18 +155,13 @@ def generate_clinical_pdf_report(
 
   formatted_time = census_timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
 
-  # Group widgets into pages based on coordinate height budgets
   pages_widget_groups: list[list[dict[str, Any]]] = []
   current_group: list[dict[str, Any]] = []
   current_y = 655
 
   for widget in widgets_data:
-    # Estimate widget height in PDF points
     rows = widget.get("data", [])
-    if isinstance(rows, list) and rows:
-      w_height = 45
-    else:
-      w_height = 31
+    w_height = 45 if isinstance(rows, list) and rows else 31
 
     if current_y - w_height < 80 and current_group:
       pages_widget_groups.append(current_group)
@@ -135,10 +171,7 @@ def generate_clinical_pdf_report(
       current_group.append(widget)
       current_y -= w_height
 
-  if current_group:
-    pages_widget_groups.append(current_group)
-  else:
-    pages_widget_groups.append([])
+  pages_widget_groups.append(current_group if current_group else [])
 
   total_pages = len(pages_widget_groups)
   page_streams: list[bytes] = []
@@ -148,38 +181,11 @@ def generate_clinical_pdf_report(
     cmds = list(header_cmds)
 
     for widget in group:
-      title = widget.get("title", "Untitled Widget")
-      w_type = widget.get("type", "SQL")
-      escaped_w_title = _escape_pdf_text(f"Widget: {title} [{w_type}]")
-      cmds.append(f"BT /F1 11 Tf 50 {y_pos} Td ({escaped_w_title}) Tj ET")
-      y_pos -= 15
+      w_cmds, y_pos = _render_widget_block(widget, y_pos)
+      cmds.extend(w_cmds)
 
-      rows = widget.get("data", [])
-      if isinstance(rows, list) and rows:
-        first_row = rows[0]
-        if isinstance(first_row, dict):
-          col_names = list(first_row.keys())[:5]
-          header_str = " | ".join(f"{k}: {first_row[k]}" for k in col_names)
-          escaped_row = _escape_pdf_text(f"Sample: {header_str}")
-          cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_row}) Tj ET")
-          y_pos -= 14
-          escaped_summary = _escape_pdf_text(f"Total Records: {len(rows)}")
-          cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_summary}) Tj ET")
-          y_pos -= 16
-      elif widget.get("error"):
-        escaped_err = _escape_pdf_text(f"Status: Error - {widget['error']}")
-        cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_err}) Tj ET")
-        y_pos -= 16
-      else:
-        escaped_empty = _escape_pdf_text("Status: No data recorded.")
-        cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_empty}) Tj ET")
-        y_pos -= 16
-
-    footer_cmds = _build_page_footer(formatted_time, p_idx, total_pages)
-    cmds.extend(footer_cmds)
-
-    content_str = "\n".join(cmds) + "\n"
-    page_streams.append(content_str.encode("latin1"))
+    cmds.extend(_build_page_footer(formatted_time, p_idx, total_pages))
+    page_streams.append(("\n".join(cmds) + "\n").encode("latin1"))
 
   # Assemble Multi-Page PDF-1.4 Structure
   # Object IDs:

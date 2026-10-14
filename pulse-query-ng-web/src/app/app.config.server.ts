@@ -1,13 +1,16 @@
-/** @docs */
+/**
+ * @fileoverview Server-side `ApplicationConfig` merging browser providers with SSR route providers.
+ */
+
 import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
 import { provideServerRendering, withRoutes } from '@angular/ssr';
 import { appConfig } from './app.config';
 import { serverRoutes } from './app.routes.server';
 
-/** Server Config constant. */
+/** Server-only providers enabling SSR route rendering strategies. */
 const serverConfig: ApplicationConfig = {
   providers: [provideServerRendering(withRoutes(serverRoutes))],
 };
 
-/** Config constant. */
-export const config = mergeApplicationConfig(appConfig, serverConfig);
+/** Merged application configuration used by `main.server.ts`. */
+export const config: ApplicationConfig = mergeApplicationConfig(appConfig, serverConfig);

@@ -9,15 +9,12 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
-from jose import JWTError, jwt
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api import deps
 from app.api.routers.dashboards import get_dashboard_with_access
-from app.core.config import settings
+from app.core.result import Err
 from app.database.postgres import get_db
-from app.models.user import User
-from app.schemas.token import TokenPayload
 from app.services.ws_manager import ws_manager
 
 router = APIRouter()
@@ -41,28 +38,18 @@ async def dashboard_websocket_endpoint(
       token (str | None): JWT access token provided as a query parameter.
       db (AsyncSession): PostgreSQL async database session.
   """
-  # 1. Validate Token
+  # 1. Validate Token & Fetch Active User via shared dependency logic
   if not token:
     await websocket.close(code=4401, reason="Unauthorized: Missing authentication token")
     return
 
-  try:
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    user_id_str = payload.get("sub")
-    if not user_id_str:
-      await websocket.close(code=4401, reason="Unauthorized: Invalid token payload")
-      return
-    token_data = TokenPayload(sub=UUID(user_id_str))
-  except (JWTError, ValueError):
-    await websocket.close(code=4401, reason="Unauthorized: Could not validate credentials")
+  auth_res = await deps.resolve_user_from_token_result(token, db)
+  if isinstance(auth_res, Err):
+    ws_reason = auth_res.error.details.get("ws_reason", "Unauthorized: Could not validate credentials")
+    await websocket.close(code=4401, reason=ws_reason)
     return
 
-  # 2. Fetch User
-  result = await db.execute(select(User).where(User.id == token_data.sub))
-  user = result.scalars().first()
-  if not user or not user.is_active:
-    await websocket.close(code=4401, reason="Unauthorized: Inactive or non-existent user")
-    return
+  user = auth_res.value
 
   # 3. Check Dashboard Permissions
   try:

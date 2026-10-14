@@ -1,13 +1,19 @@
+/**
+ * @fileoverview Unit tests for `ProvisioningService`.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { vi, type Mock } from 'vitest';
 import { ProvisioningService } from './provisioning.service';
 import { DashboardsService, TemplateResponse, WidgetResponse } from '../api-client';
 import { DashboardStore } from './dashboard.store';
+import { TemplateConfigurationService } from './template-configuration.service';
 
 describe('ProvisioningService', () => {
   let service: ProvisioningService;
-  let mockDashApi: { createWidgetApiV1DashboardsDashboardIdWidgetsPost: ReturnType<typeof vi.fn> };
-  let mockStore: { refreshWidget: ReturnType<typeof vi.fn> };
+  let mockDashApi: { createWidgetApiV1DashboardsDashboardIdWidgetsPost: Mock };
+  let mockStore: { refreshWidget: Mock };
 
   beforeEach(() => {
     mockDashApi = {
@@ -18,6 +24,7 @@ describe('ProvisioningService', () => {
     TestBed.configureTestingModule({
       providers: [
         ProvisioningService,
+        TemplateConfigurationService,
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: DashboardStore, useValue: mockStore },
       ],
@@ -26,91 +33,64 @@ describe('ProvisioningService', () => {
     service = TestBed.inject(ProvisioningService);
   });
 
-  it('builds config with default parameter values', () => {
+  it('provisions widget with interpolated default parameters and custom position', () => {
     const template: TemplateResponse = {
       id: 't1',
-      title: 'Template',
+      title: 'Service Breakdown',
       category: 'Ops',
       sql_template: 'SELECT * FROM t WHERE unit = {{unit}}',
       parameters_schema: { properties: { unit: { default: 'ICU_A' } } },
     };
 
-    const config = (service as any).buildConfig(template);
-    expect(config.query).toContain('ICU_A');
-  });
-
-  it('builds config when parameters schema is missing', () => {
-    const template: TemplateResponse = {
-      id: 't2',
-      title: 'Template',
-      category: 'Ops',
-      sql_template: 'SELECT * FROM t WHERE unit = {{unit}}',
+    const created: WidgetResponse = {
+      id: 'w1',
+      dashboard_id: 'd1',
+      title: 'Service Breakdown',
+      type: 'SQL',
+      visualization: 'pie',
+      config: {},
     };
-
-    const config = (service as any).buildConfig(template);
-    expect(config.query).toContain('{{unit}}');
-  });
-
-  it('does not replace placeholders when defaults are missing', () => {
-    const template: TemplateResponse = {
-      id: 't3',
-      title: 'Template',
-      category: 'Ops',
-      sql_template: 'SELECT * FROM t WHERE unit = {{unit}}',
-      parameters_schema: { properties: { unit: {} } },
-    };
-
-    const config = (service as any).buildConfig(template);
-    expect(config.query).toContain('{{unit}}');
-  });
-
-  it('guesses visualization types from title/SQL heuristics', () => {
-    const mk = (title: string, sql: string): TemplateResponse => ({
-      id: title,
-      title,
-      category: 'X',
-      sql_template: sql,
-    });
-
-    expect((service as any).guessVisualization(mk('Service Breakdown', 'select *'))).toBe('pie');
-    expect((service as any).guessVisualization(mk('Trend Over Time', 'select * group by dt'))).toBe(
-      'bar_chart',
-    );
-    expect((service as any).guessVisualization(mk('Risk Rate', 'select *'))).toBe('scalar');
-    expect((service as any).guessVisualization(mk('Gap Analysis', 'select *'))).toBe('metric');
-    expect((service as any).guessVisualization(mk('Raw Table', 'select *'))).toBe('table');
-  });
-
-  it('provisions widget and refreshes it', () => {
-    const template: TemplateResponse = {
-      id: 't1',
-      title: 'Template',
-      category: 'Ops',
-      sql_template: 'SELECT 1',
-      parameters_schema: {},
-    };
-
-    const created: WidgetResponse = { id: 'w1', dashboard_id: 'd1' } as WidgetResponse;
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(created));
 
     service.provisionWidget(template, 'd1', { x: 2, y: 3 }).subscribe((widget) => {
       expect(widget).toBe(created);
     });
 
-    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalled();
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'd1',
+      {
+        title: 'Service Breakdown',
+        type: 'SQL',
+        visualization: 'pie',
+        config: {
+          query: 'SELECT * FROM t WHERE unit = ICU_A',
+          x: 2,
+          y: 3,
+          w: 6,
+          h: 4,
+        },
+      },
+    );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
   });
 
-  it('provisions widget with default position', () => {
+  it('provisions widget with default position (0, 0) when position argument is omitted', () => {
     const template: TemplateResponse = {
-      id: 't1',
-      title: 'Template',
+      id: 't2',
+      title: 'Raw Table',
       category: 'Ops',
       sql_template: 'SELECT 1',
       parameters_schema: {},
     };
 
-    const created: WidgetResponse = { id: 'w1', dashboard_id: 'd1' } as WidgetResponse;
+    const created: WidgetResponse = {
+      id: 'w2',
+      dashboard_id: 'd1',
+      title: 'Raw Table',
+      type: 'SQL',
+      visualization: 'table',
+      config: {},
+    };
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(of(created));
 
     service.provisionWidget(template, 'd1').subscribe((widget) => {
@@ -120,9 +100,10 @@ describe('ProvisioningService', () => {
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
       expect.objectContaining({
-        config: expect.objectContaining({ x: 0, y: 0 }),
+        visualization: 'table',
+        config: expect.objectContaining({ x: 0, y: 0, query: 'SELECT 1' }),
       }),
     );
-    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w2');
   });
 });

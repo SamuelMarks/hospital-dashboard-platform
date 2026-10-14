@@ -121,6 +121,23 @@ describe('errorInterceptor', () => {
       'Close',
       expect.any(Object),
     );
+
+    httpClient.get('/api/test2').subscribe({
+      error: () => {},
+    });
+    const req2 = httpMock.expectOne('/api/test2');
+    req2.flush(
+      {
+        code: 'TABLE_NOT_FOUND',
+        message: 'Table missing without hint.',
+      },
+      { status: 404, statusText: 'Not Found' },
+    );
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
+      'Table missing without hint.',
+      'Close',
+      expect.any(Object),
+    );
   });
 
   it('should display snackbar for 500 Server Error', () => {

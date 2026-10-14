@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Accessible Pie Chart Component.
  *
@@ -22,15 +21,15 @@ import { TableDataSet } from '../viz-table/viz-table.component';
 import { ChartConfig } from '../viz-chart/viz-chart.component';
 import { ThemeService } from '../../../core/theme/theme.service';
 
-/** Represents a calculated arc segment */
+/** Represents a calculated SVG arc segment for a single pie slice. */
 interface PieSlice {
-  /** path property. */
+  /** SVG path command (`d` attribute) describing the slice wedge. */
   path: string;
-  /** color property. */
+  /** Resolved hexadecimal or CSS color string for the slice fill. */
   color: string;
-  /** label property. */
+  /** Category label associated with the slice. */
   label: string;
-  /** percentage property. */
+  /** Rounded integer percentage (0-100) of the total pie represented by the slice. */
   percentage: number;
 }
 
@@ -124,31 +123,28 @@ interface PieSlice {
   ],
   templateUrl: './viz-pie.component.html',
 })
-/** @docs */
 export class VizPieComponent {
-  /** Data Set. */
-  /* istanbul ignore next */
+  /** Tabular dataset containing category labels and numeric values for the pie slices. */
   readonly dataSet = input.required<TableDataSet | null>();
-  /** Config. */
-  /* istanbul ignore next */
+  /** Optional chart configuration specifying label (`xKey`) and value (`yKey`) column names. */
   readonly config = input<ChartConfig>();
 
-  /** document property. */
+  /** Reference to the DOM `Document` used to inspect computed CSS variables. */
   private readonly document = inject(DOCUMENT);
-  /** platformId property. */
+  /** Angular platform identifier used to guard browser-only DOM operations. */
   private readonly platformId = inject(PLATFORM_ID);
-  /** themeService property. */
+  /** Reactive theme service used to refresh slice colors when theme changes. */
   private readonly themeService = inject(ThemeService);
 
-  /** Active Slice. */
-  /* istanbul ignore next */
+  /** Signal tracking the label of the currently hovered or focused slice. */
   readonly activeSlice = signal<string | null>(null);
 
-  /** palette property. */
-  /* istanbul ignore next */
+  /** Internal signal storing the active hexadecimal color palette for slices. */
   private readonly palette = signal<string[]>(['#1976d2', '#42a5f5', '#64b5f6']);
 
-  /** Creates a new VizPieComponent. */
+  /**
+   * Registers a reactive effect to synchronize slice colors with the active Material 3 theme.
+   */
   constructor() {
     // Listen to theme resets
     effect(() => {
@@ -160,7 +156,9 @@ export class VizPieComponent {
     });
   }
 
-  /** updatePaletteFomDom method. */
+  /**
+   * Reads `--chart-color-*` CSS custom properties from the document root and updates `palette`.
+   */
   private updatePaletteFomDom(): void {
     if (!this.document) return;
     const style = getComputedStyle(this.document.documentElement);
@@ -172,20 +170,23 @@ export class VizPieComponent {
     this.palette.set([p1, p2, p3, '#ffb74d', '#ffa726', '#f57c00', '#d32f2f', '#c2185b']);
   }
 
-  /** Whether active. */
+  /**
+   * Determines whether a slice should be rendered at full opacity.
+   *
+   * @param l - Slice category label to check against the active hover/focus selection.
+   * @returns True if no slice is currently highlighted or if `l` matches the active slice.
+   */
   isActive(l: string): boolean {
     return !this.activeSlice() || this.activeSlice() === l;
   }
 
   /** Accessibility Label. */
-  /* istanbul ignore next */
   readonly accessibilityLabel = computed(() => {
     const s = this.slices();
     return `Pie chart with ${s.length} slices. Use tab to navigate legendary items for details.`;
   });
 
   /** Slices. */
-  /* istanbul ignore next */
   readonly slices: Signal<PieSlice[]> = computed(() => {
     const ds = this.dataSet();
     const colors = this.palette();
@@ -197,8 +198,8 @@ export class VizPieComponent {
     const availableCols = ds.columns;
 
     // Default: Col 0 for label, Col 1 for value
-    let labelKey = availableCols[0];
-    let valueKey = availableCols[1] || availableCols[0];
+    let labelKey = availableCols[0] as string;
+    let valueKey = availableCols[1] || (availableCols[0] as string);
 
     if (conf?.xKey && availableCols.includes(conf.xKey)) {
       labelKey = conf.xKey;

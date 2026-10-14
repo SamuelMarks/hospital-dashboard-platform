@@ -3,6 +3,8 @@ Tests for Authentication API.
 Updated to verify that dashboard provisioning occurs during registration.
 """
 
+from typing import Any
+
 import uuid
 
 import pytest
@@ -18,7 +20,7 @@ from app.models.user import User
 
 
 @pytest.mark.asyncio
-async def test_register_flow_provisions_dashboard(client: AsyncClient, db_session):
+async def test_register_flow_provisions_dashboard(client: AsyncClient, db_session: Any) -> None:
   """
   Test that registration creates a user AND triggers provisioning.
   """
@@ -53,7 +55,7 @@ async def test_register_flow_provisions_dashboard(client: AsyncClient, db_sessio
 
 
 @pytest.mark.asyncio
-async def test_register_duplicate_email(client: AsyncClient):
+async def test_register_duplicate_email(client: AsyncClient) -> None:
   """
   Test that registering with an existing email returns 400.
   """
@@ -71,7 +73,7 @@ async def test_register_duplicate_email(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login_flow(client: AsyncClient):
+async def test_login_flow(client: AsyncClient) -> None:
   """
   Test registration followed by login creates a valid token.
   """
@@ -92,7 +94,7 @@ async def test_login_flow(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login_failure(client: AsyncClient, db_session):
+async def test_login_failure(client: AsyncClient, db_session: Any) -> None:
   """
   Test invalid credentials.
   """
@@ -114,7 +116,7 @@ async def test_login_failure(client: AsyncClient, db_session):
 
 
 @pytest.mark.asyncio
-async def test_login_inactive_user(client: AsyncClient, db_session) -> None:
+async def test_login_inactive_user(client: AsyncClient, db_session: Any) -> None:
   """
   Test login failure when user is inactive.
   """
@@ -143,7 +145,7 @@ async def test_login_inactive_user(client: AsyncClient, db_session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_me_protected(client: AsyncClient):
+async def test_me_protected(client: AsyncClient) -> None:
   """
   Test the /me endpoint requires authentication.
   """

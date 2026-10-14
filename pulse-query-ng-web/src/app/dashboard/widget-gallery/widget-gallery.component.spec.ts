@@ -124,5 +124,6 @@ describe('WidgetGalleryComponent', () => {
 
     expect(groups.length).toBe(1);
     expect(groups[0].items.length).toBe(2);
+    expect(component.getEventValue({ target: { value: 'abc' } } as unknown as Event)).toBe('abc');
   });
 });

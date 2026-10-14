@@ -3,6 +3,8 @@ Tests for the Multi-LLM Arena Client.
 Verifies broadcasting logic, latency recording, and error containment using any-llm.
 """
 
+from typing import Any
+
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
@@ -13,7 +15,7 @@ from app.services.llm_client import LLMArenaClient
 
 
 @pytest.fixture
-def mock_swarm_settings():
+def mock_swarm_settings() -> Any:
   """Override swarm settings to have 2 controlled mock providers."""
   mock_conf = [
     {"provider": "openai", "model": "m1", "name": "Model A", "api_key": "k1"},
@@ -24,7 +26,7 @@ def mock_swarm_settings():
     yield
 
 
-def test_get_available_models(mock_swarm_settings):
+def test_get_available_models(mock_swarm_settings: Any) -> None:
   """Verify get_available_models returns mapped DTO compatible list."""
   with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
     arena = LLMArenaClient()
@@ -34,7 +36,7 @@ def test_get_available_models(mock_swarm_settings):
     assert models[0].name == "Model A"
 
 
-def test_reload_swarm(mock_swarm_settings):
+def test_reload_swarm(mock_swarm_settings: Any) -> None:
   """Verify reload_swarm reinitializes swarm with custom api keys."""
   with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
     arena = LLMArenaClient()
@@ -45,7 +47,7 @@ def test_reload_swarm(mock_swarm_settings):
 
 
 @pytest.mark.asyncio
-async def test_arena_competition_target_filtering(mock_swarm_settings):
+async def test_arena_competition_target_filtering(mock_swarm_settings: Any) -> None:
   """Verify target model IDs param correctly cuts down the swarm size."""
   with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
     arena = LLMArenaClient()
@@ -58,7 +60,7 @@ async def test_arena_competition_target_filtering(mock_swarm_settings):
 
 
 @pytest.mark.asyncio
-async def test_arena_competition_no_swarm():
+async def test_arena_competition_no_swarm() -> None:
   """Verify exception is raised if the swarm is completely empty."""
   with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
     mock_prop.return_value = []
@@ -70,7 +72,7 @@ async def test_arena_competition_no_swarm():
 
 
 @pytest.mark.asyncio
-async def test_arena_broadcast_success(mock_swarm_settings):
+async def test_arena_broadcast_success(mock_swarm_settings: Any) -> Any:
   """
   Test that generate_arena_competition calls all providers and aggregates results.
   """
@@ -81,7 +83,13 @@ async def test_arena_broadcast_success(mock_swarm_settings):
 
     arena = LLMArenaClient()
 
-    def make_response(text):
+    def make_response(text: Any) -> Any:
+      """
+      Verify make response behavior.
+
+      Args:
+          text: Test parameter or fixture.
+      """
       m = MagicMock()
       m.choices = [MagicMock(message=MagicMock(content=text))]
       return m
@@ -103,7 +111,7 @@ async def test_arena_broadcast_success(mock_swarm_settings):
 
 
 @pytest.mark.asyncio
-async def test_arena_partial_failure(mock_swarm_settings):
+async def test_arena_partial_failure(mock_swarm_settings: Any) -> None:
   """
   Test that if one model fails, the others still return results,
   and the failure is recorded in the error field.
@@ -128,7 +136,7 @@ async def test_arena_partial_failure(mock_swarm_settings):
 
 
 @pytest.mark.asyncio
-async def test_arena_broadcast_admin_settings(mock_swarm_settings):
+async def test_arena_broadcast_admin_settings(mock_swarm_settings: Any) -> None:
   """
   Test that generate_arena_competition passes api keys from admin settings.
   """
@@ -147,7 +155,7 @@ async def test_arena_broadcast_admin_settings(mock_swarm_settings):
       assert call_args.kwargs.get("api_key") == "override-key"
 
 
-def test_get_available_models_filtered(mock_swarm_settings):
+def test_get_available_models_filtered(mock_swarm_settings: Any) -> None:
   """Verify get_available_models filters based on admin_settings."""
   with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
     arena = LLMArenaClient()
@@ -158,7 +166,7 @@ def test_get_available_models_filtered(mock_swarm_settings):
 
 
 @pytest.mark.asyncio
-async def test_arena_initialization_failure():
+async def test_arena_initialization_failure() -> None:
   """
   Test that if a specific provider configuration is bad, it skips only that one.
   """
@@ -180,7 +188,7 @@ async def test_arena_initialization_failure():
 
 
 @pytest.mark.asyncio
-async def test_arena_defaults_to_mock_when_no_providers():
+async def test_arena_defaults_to_mock_when_no_providers() -> None:
   """If configured swarms fail to load, arena should use Mock fallback."""
   with patch.object(Settings, "LLM_SWARM", new_callable=PropertyMock) as mock_prop:
     mock_prop.return_value = []
@@ -202,7 +210,7 @@ async def test_arena_defaults_to_mock_when_no_providers():
 
 
 @pytest.mark.asyncio
-async def test_arena_handles_malformed_response(mock_swarm_settings):
+async def test_arena_handles_malformed_response(mock_swarm_settings: Any) -> None:
   """Malformed provider responses should be normalized to errors."""
   with patch("app.services.llm_client.AnyLLM.create") as mock_create:
     mock_create.side_effect = [MagicMock(), MagicMock()]
@@ -223,7 +231,7 @@ async def test_arena_handles_malformed_response(mock_swarm_settings):
 
 
 @pytest.mark.asyncio
-async def test_arena_wraps_unhandled_coroutine_errors(mock_swarm_settings):
+async def test_arena_wraps_unhandled_coroutine_errors(mock_swarm_settings: Any) -> None:
   """Exceptions from _generate_single should be wrapped into ArenaResponse errors."""
   with patch("app.services.llm_client.AnyLLM.create") as mock_create:
     mock_create.side_effect = [MagicMock(), MagicMock()]

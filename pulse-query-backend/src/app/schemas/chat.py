@@ -7,7 +7,6 @@ listing conversations, and serializing history for the frontend.
 """
 
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -104,8 +103,6 @@ class ConversationResponse(ConversationBase):
   user_id: UUID
   created_at: datetime
   updated_at: datetime
-  # We generally don't return all messages in the list view to save bandwidth
-  # messages: List[MessageResponse] = []
 
   model_config = ConfigDict(from_attributes=True)
 

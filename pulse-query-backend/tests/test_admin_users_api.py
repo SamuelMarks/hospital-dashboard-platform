@@ -5,6 +5,8 @@ Validates administrative operations including listing users, filtering by role,
 updating clinical roles, and account suspension/activation logic.
 """
 
+from typing import Any
+
 import uuid
 from unittest.mock import MagicMock
 
@@ -13,13 +15,13 @@ from httpx import AsyncClient
 
 from app.api.deps import get_current_user
 from app.main import app
-from app.models.user import Role, User
+from app.models.user import User
 
 BASE_URL = "/api/v1/admin/users"
 
 
 @pytest.fixture
-def admin_user():
+def admin_user() -> Any:
   """Provides a mock admin user for privileged operations."""
   user = MagicMock(spec=User)
   user.id = uuid.uuid4()
@@ -37,7 +39,7 @@ def admin_user():
 
 
 @pytest.mark.asyncio
-async def test_list_users_with_filtering(client: AsyncClient, admin_user, db_session) -> None:
+async def test_list_users_with_filtering(client: AsyncClient, admin_user: Any, db_session: Any) -> None:
   """Test listing users, role filtering, and email substring search."""
   # Seed multiple users with distinct roles
   u1 = User(
@@ -101,7 +103,7 @@ async def test_non_admin_forbidden(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_user_role_lifecycle(client: AsyncClient, admin_user, db_session) -> None:
+async def test_update_user_role_lifecycle(client: AsyncClient, admin_user: Any, db_session: Any) -> None:
   """Test updating user role to valid, invalid, and SUPER_ADMIN roles."""
   target_user = User(
     id=uuid.uuid4(),
@@ -148,7 +150,7 @@ async def test_update_user_role_lifecycle(client: AsyncClient, admin_user, db_se
 
 
 @pytest.mark.asyncio
-async def test_update_user_status_lifecycle(client: AsyncClient, admin_user, db_session) -> None:
+async def test_update_user_status_lifecycle(client: AsyncClient, admin_user: Any, db_session: Any) -> None:
   """Test suspending and activating accounts, preventing self-suspension."""
   target_user = User(
     id=uuid.uuid4(),

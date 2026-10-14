@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Unit tests for UndoRedoService.
  */

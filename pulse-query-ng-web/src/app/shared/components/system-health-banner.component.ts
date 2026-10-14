@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Global System Health Banner component displaying real-time alert notifications
  * for backend inaccessibility, database misconfigurations, and missing default datasets.
@@ -78,7 +77,12 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
         </div>
         <div class="banner-actions">
           <button i18n mat-button color="accent" (click)="openTroubleshoot()">Details</button>
-          <button mat-icon-button (click)="dismiss()" aria-label="Dismiss warning banner">
+          <button
+            mat-icon-button
+            (click)="dismiss()"
+            i18n-aria-label
+            aria-label="Dismiss warning banner"
+          >
             <mat-icon i18n>close</mat-icon>
           </button>
         </div>

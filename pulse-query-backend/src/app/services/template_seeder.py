@@ -9,7 +9,7 @@ performs an idempotent upsert (insert or update) for each template.
 import json
 import logging
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,12 +34,34 @@ class TemplateSeeder:
   """
 
   @staticmethod
+  def _check_template_file_exists() -> bool:
+    """
+    Checks whether `DATA_FILE` exists on disk.
+
+    Returns:
+        bool: True if the template JSON file exists.
+    """
+    return os.path.exists(DATA_FILE)
+
+  @staticmethod
+  def _read_template_file() -> list[dict[str, Any]]:
+    """
+    Reads and parses `DATA_FILE` from disk.
+
+    Returns:
+        list[dict[str, Any]]: Parsed list of template dictionaries.
+    """
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+      data: list[dict[str, Any]] = json.load(f)
+      return data
+
+  @staticmethod
   async def seed_defaults() -> None:
     """
     Orchestrates the loading of default templates into the database.
     Designed to be called during ASGI startup.
     """
-    if not os.path.exists(DATA_FILE):
+    if not TemplateSeeder._check_template_file_exists():
       banner = format_missing_template_warning_banner(DATA_FILE)
       logger.warning("\n" + banner)
       diagnostics_registry.template_status = {
@@ -56,8 +78,7 @@ class TemplateSeeder:
       return
 
     try:
-      with open(DATA_FILE, "r", encoding="utf-8") as f:
-        templates_data: list[dict[str, Any]] = json.load(f)
+      templates_data = TemplateSeeder._read_template_file()
 
       async with AsyncSessionLocal() as db:
         await TemplateSeeder._process_batch(db, templates_data)
@@ -130,7 +151,8 @@ class TemplateSeeder:
 
     if existing:
       # Update existing record (migration strategy: newest JSON always wins)
-      existing.description = data.get("description")
+      raw_desc = data.get("description")
+      existing.description = str(raw_desc) if raw_desc is not None else ""
       existing.sql_template = data["sql_template"]
       existing.category = data["category"]
       existing.parameters_schema = data.get("parameters_schema", {})

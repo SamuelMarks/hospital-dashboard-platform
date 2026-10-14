@@ -50,6 +50,7 @@
         (input)="onColorPickerInput($event)"
         class="w-10 h-10 rounded border border-gray-300 cursor-pointer p-0"
         aria-label="Color Picker Palette"
+        i18n-aria-label
       />
       <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
         <mat-label i18n>Hex Color Code</mat-label>
@@ -58,6 +59,7 @@
           [(ngModel)]="customHex"
           (input)="onHexInputChange()"
           placeholder="#1565C0"
+          i18n-placeholder
           maxlength="7"
         />
       </mat-form-field>

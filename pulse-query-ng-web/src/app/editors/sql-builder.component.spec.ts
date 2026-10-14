@@ -12,7 +12,7 @@ import {
   ChatService,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
-import { signal, NO_ERRORS_SCHEMA } from '@angular/core';
+import { signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { HttpErrorResponse, withXhr } from '@angular/common/http';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -29,16 +29,44 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 import { ConversationComponent } from '../chat/conversation/conversation.component';
 import { vi } from 'vitest';
 
+interface SqlBuilderPrivate {
+  editorView: {
+    state?: { selection: { main: { from: number; to: number } } };
+    dispatch: (tr: unknown) => void;
+    focus?: () => void;
+    destroy: () => void;
+  } | null;
+  editorHost: { nativeElement: HTMLElement } | null;
+  loadSchemaForAutocomplete: () => void;
+  initEditor: () => void;
+}
+
 describe('SqlBuilderComponent', () => {
   let component: SqlBuilderComponent;
   let fixture: ComponentFixture<SqlBuilderComponent>;
 
   // Declare variables in describe scope so 'it' blocks can see them
-  let mockDashApi: any;
-  let mockExecApi: any;
-  let mockSchemaApi: any;
-  let mockChatApi: any;
-  let mockStore: any;
+  let mockDashApi: {
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+  };
+  let mockExecApi: {
+    refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
+  };
+  let mockSchemaApi: {
+    getDatabaseSchemaApiV1SchemaGet: ReturnType<typeof vi.fn>;
+  };
+  let mockChatApi: {
+    listConversationsApiV1ConversationsGet: ReturnType<typeof vi.fn>;
+    getMessagesApiV1ConversationsConversationIdMessagesGet: ReturnType<typeof vi.fn>;
+    createConversationApiV1ConversationsPost: ReturnType<typeof vi.fn>;
+    sendMessageApiV1ConversationsConversationIdMessagesPost: ReturnType<typeof vi.fn>;
+    voteMessageApiV1ConversationsConversationIdMessagesMessageIdVotePost: ReturnType<typeof vi.fn>;
+    deleteConversationApiV1ConversationsConversationIdDelete: ReturnType<typeof vi.fn>;
+    updateConversationApiV1ConversationsConversationIdPut: ReturnType<typeof vi.fn>;
+  };
+  let mockStore: {
+    globalParams: WritableSignal<Record<string, unknown>>;
+  };
 
   beforeEach(async () => {
     mockDashApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn() };
@@ -59,7 +87,7 @@ describe('SqlBuilderComponent', () => {
     };
 
     mockStore = {
-      globalParams: signal<Record<string, any>>({ dept: 'Cardiology' }),
+      globalParams: signal<Record<string, unknown>>({ dept: 'Cardiology' }),
     };
 
     TestBed.overrideComponent(SqlBuilderComponent, {
@@ -117,7 +145,7 @@ describe('SqlBuilderComponent', () => {
     // Simulate no editor view (component created but not viewed/attached fully in test env)
     component.currentSql.set('SELECT ');
     // Force editorView null to test fallback
-    (component as any).editorView = null;
+    (component as unknown as SqlBuilderPrivate).editorView = null;
 
     component.insertParam('dept');
     expect(component.currentSql()).toBe('SELECT  {{dept}}');
@@ -137,7 +165,7 @@ describe('SqlBuilderComponent', () => {
     const dispatch = vi.fn();
     const focus = vi.fn();
     const destroy = vi.fn();
-    (component as any).editorView = {
+    (component as unknown as SqlBuilderPrivate).editorView = {
       state: { selection: { main: { from: 0, to: 0 } } },
       dispatch,
       focus,
@@ -189,8 +217,9 @@ describe('SqlBuilderComponent', () => {
     mockSchemaApi.getDatabaseSchemaApiV1SchemaGet.mockReturnValue(
       throwError(() => new Error('fail')),
     );
-    (component as any).editorView = null;
-    (component as any).loadSchemaForAutocomplete();
+    const priv = component as unknown as SqlBuilderPrivate;
+    priv.editorView = null;
+    priv.loadSchemaForAutocomplete();
 
     expect(consoleSpy).toHaveBeenCalledWith(
       'Failed to load schema for autocomplete',
@@ -202,43 +231,46 @@ describe('SqlBuilderComponent', () => {
   it('should dispatch schema config when editor exists', () => {
     const dispatch = vi.fn();
     const destroy = vi.fn();
-    (component as any).editorView = { dispatch, destroy };
+    const priv = component as unknown as SqlBuilderPrivate;
+    priv.editorView = { dispatch, destroy };
     mockSchemaApi.getDatabaseSchemaApiV1SchemaGet.mockReturnValue(
       of([{ table_name: 't', columns: [{ name: 'c' }] }]),
     );
-    (component as any).loadSchemaForAutocomplete();
+    priv.loadSchemaForAutocomplete();
     expect(dispatch).toHaveBeenCalled();
   });
 
   it('should destroy editor on ngOnDestroy', () => {
     const destroy = vi.fn();
-    (component as any).editorView = { destroy };
+    (component as unknown as SqlBuilderPrivate).editorView = { dispatch: vi.fn(), destroy };
     component.ngOnDestroy();
     expect(destroy).toHaveBeenCalled();
   });
 
   it('should no-op initEditor without host', () => {
-    const prev = (component as any).editorView;
-    (component as any).editorHost = null;
-    (component as any).initEditor();
-    expect((component as any).editorView).toBe(prev);
+    const priv = component as unknown as SqlBuilderPrivate;
+    const prev = priv.editorView;
+    priv.editorHost = null;
+    priv.initEditor();
+    expect(priv.editorView).toBe(prev);
   });
 
   it('should initialize editor when host is available', () => {
     const host = document.createElement('div');
-    (component as any).editorHost = { nativeElement: host };
+    const priv = component as unknown as SqlBuilderPrivate;
+    priv.editorHost = { nativeElement: host };
     const createSpy = vi.spyOn(EditorState, 'create');
-    (component as any).initEditor();
-    expect((component as any).editorView).toBeTruthy();
+    priv.initEditor();
+    expect(priv.editorView).toBeTruthy();
     expect(createSpy).toHaveBeenCalled();
 
-    const view = (component as any).editorView;
+    const view = priv.editorView!;
     view.dispatch({ changes: { from: 0, to: 0, insert: 'X' } });
     view.dispatch({ selection: { anchor: 0 } });
     expect(component.currentSql().startsWith('X')).toBe(true);
 
     createSpy.mockRestore();
-    (component as any).editorView?.destroy();
+    priv.editorView?.destroy();
   });
 
   it('should fall back to default error message when detail missing', () => {
@@ -290,10 +322,18 @@ class MockConversationComponent {}
 describe('SqlBuilderComponent template wiring', () => {
   let fixture: ComponentFixture<SqlBuilderComponent>;
   let component: SqlBuilderComponent;
-  let mockDashApi: any;
-  let mockExecApi: any;
-  let mockSchemaApi: any;
-  let mockStore: any;
+  let mockDashApi: {
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+  };
+  let mockExecApi: {
+    refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
+  };
+  let mockSchemaApi: {
+    getDatabaseSchemaApiV1SchemaGet: ReturnType<typeof vi.fn>;
+  };
+  let mockStore: {
+    globalParams: WritableSignal<Record<string, unknown>>;
+  };
   let overlay: OverlayContainer;
 
   beforeEach(async () => {
@@ -307,7 +347,7 @@ describe('SqlBuilderComponent template wiring', () => {
         .mockReturnValue(of({ w1: { columns: [], data: [] } })),
     };
     mockSchemaApi = { getDatabaseSchemaApiV1SchemaGet: vi.fn().mockReturnValue(of([])) };
-    mockStore = { globalParams: signal<Record<string, any>>({}) };
+    mockStore = { globalParams: signal<Record<string, unknown>>({}) };
 
     await TestBed.configureTestingModule({
       imports: [SqlBuilderComponent, NoopAnimationsModule],
@@ -394,7 +434,7 @@ describe('SqlBuilderComponent template wiring', () => {
   });
 
   it('should render result states in template', () => {
-    component.latestResult.set({ columns: ['a'], data: [{ a: 1 }] } as any);
+    component.latestResult.set({ columns: ['a'], data: [{ a: 1 }] });
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.directive(MockVizTableComponent))).toBeTruthy();
 
@@ -409,16 +449,18 @@ describe('SqlBuilderComponent template wiring', () => {
   });
 });
 
-function setInputSignal(component: any, key: string, value: unknown): void {
-  const current = component[key];
+function setInputSignal(component: object, key: string, value: unknown): void {
+  const record = component as Record<string, unknown>;
+  const current = record[key] as
+    { [SIGNAL]?: { applyValueToInputSignal?: (node: unknown, val: unknown) => void } } | undefined;
   const node = current?.[SIGNAL];
   if (node) {
     if (typeof node.applyValueToInputSignal === 'function') {
       node.applyValueToInputSignal(node, value);
     } else {
-      signalSetFn(node, value as never);
+      signalSetFn(node as Parameters<typeof signalSetFn>[0], value as never);
     }
   } else {
-    component[key] = value;
+    record[key] = value;
   }
 }

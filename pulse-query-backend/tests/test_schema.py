@@ -1,3 +1,5 @@
+"""Tests for schema."""
+
 from app.services.schema import schema_service  # type: ignore
 from app.services.data_ingestion import DataIngestionService
 from app.database.duckdb_init import init_duckdb_on_startup
@@ -5,7 +7,8 @@ import pytest
 
 
 @pytest.fixture(autouse=True, scope="module")
-def setup_schema_tests():
+def setup_schema_tests() -> None:
+  """Verify setup schema tests behavior."""
   DataIngestionService.ingest_all_csvs()
   init_duckdb_on_startup()
 

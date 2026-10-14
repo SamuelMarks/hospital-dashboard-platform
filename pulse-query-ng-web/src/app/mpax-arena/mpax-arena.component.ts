@@ -151,7 +151,7 @@ export class MpaxArenaComponent implements OnInit {
     if (err && typeof err === 'object') {
       const httpErr = err as HttpErrorResponse;
       if (httpErr.error && typeof httpErr.error === 'object' && 'detail' in httpErr.error) {
-        return String(httpErr.error.detail);
+        return String((httpErr.error as Record<string, unknown>)['detail']);
       }
       if ('message' in err && typeof (err as { message: unknown }).message === 'string') {
         const msg = (err as { message: string }).message;

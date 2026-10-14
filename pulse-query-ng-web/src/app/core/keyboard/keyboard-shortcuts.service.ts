@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Keyboard Shortcuts Service.
  * Manages global keyboard shortcuts for the application.
@@ -79,8 +78,14 @@ export class KeyboardShortcutsService implements OnDestroy {
 
   /** Map of shortcuts. */ private readonly shortcuts = new Map<string, KeyboardShortcut>();
   /** Help visibility. */ private readonly _isHelpVisible = signal(false);
-  /** Bound keydown handler. */ private readonly boundKeydownHandler = (e: KeyboardEvent) =>
+  /**
+   * Bound keydown handler.
+   *
+   * @param e - Keyboard event to handle.
+   */
+  private readonly boundKeydownHandler = (e: KeyboardEvent): void => {
     this.handleKeyboardEvent(e);
+  };
 
   /**
    * Signal indicating whether the keyboard shortcuts help dialog is visible.
@@ -128,10 +133,12 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     for (const shortcut of this.shortcuts.values()) {
       const category = shortcut.category;
-      if (!grouped.has(category)) {
-        grouped.set(category, []);
+      const existing = grouped.get(category);
+      if (existing) {
+        existing.push(shortcut);
+      } else {
+        grouped.set(category, [shortcut]);
       }
-      grouped.get(category)!.push(shortcut);
     }
 
     return grouped;
@@ -141,7 +148,6 @@ export class KeyboardShortcutsService implements OnDestroy {
    * Shows the keyboard shortcuts help dialog.
    * Opens the dialog via dynamic import to avoid circular dependency at module load time.
    */
-
   showHelp(): void {
     this._isHelpVisible.set(true);
 

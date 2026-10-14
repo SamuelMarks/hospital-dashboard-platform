@@ -7,7 +7,6 @@ Create Date: 2024-01-01 00:00:00.000000
 """
 
 from collections.abc import Sequence
-from typing import Union
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -22,6 +21,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+  """Create initial users table and email index."""
   # Create Users Table
   op.create_table(
     "users",
@@ -36,5 +36,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+  """Drop users table and email index."""
   op.drop_index(op.f("ix_users_email"), table_name="users")
   op.drop_table("users")

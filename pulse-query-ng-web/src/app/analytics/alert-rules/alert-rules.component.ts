@@ -204,7 +204,12 @@ export class AlertRulesComponent implements OnInit {
       return;
     }
 
-    const formValues = this.ruleForm.value;
+    const formValues = this.ruleForm.value as {
+      unit_category: string;
+      threshold_percentage: number | string;
+      severity: AlertSeverity;
+      is_active?: boolean | null;
+    };
     const editingId = this.editingRuleId();
 
     this.isLoading.set(true);
@@ -215,7 +220,7 @@ export class AlertRulesComponent implements OnInit {
         unit_category: formValues.unit_category,
         threshold_percentage: Number(formValues.threshold_percentage),
         severity: formValues.severity,
-        is_active: formValues.is_active,
+        is_active: formValues.is_active ?? true,
       };
 
       this.alertRulesService

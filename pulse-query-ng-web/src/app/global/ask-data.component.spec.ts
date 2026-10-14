@@ -49,11 +49,26 @@ const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => 
 describe('AskDataComponent', () => {
   let component: AskDataComponent;
   let fixture: ComponentFixture<AskDataComponent>;
-  let mockDashApi: any;
-  let mockAskService: any;
-  let mockAuthService: any;
-  let mockCartService: any;
-  let mockSnackBar: any;
+  let mockDashApi: {
+    listDashboardsApiV1DashboardsGet: ReturnType<typeof vi.fn>;
+    createDashboardApiV1DashboardsPost: ReturnType<typeof vi.fn>;
+    createWidgetApiV1DashboardsDashboardIdWidgetsPost: ReturnType<typeof vi.fn>;
+    deleteDashboardApiV1DashboardsDashboardIdDelete: ReturnType<typeof vi.fn>;
+  };
+  let mockAskService: {
+    close: ReturnType<typeof vi.fn>;
+    isOpen: WritableSignal<boolean>;
+  };
+  let mockAuthService: {
+    isAuthenticated: WritableSignal<boolean>;
+  };
+  let mockCartService: {
+    add: ReturnType<typeof vi.fn>;
+    count: WritableSignal<number>;
+  };
+  let mockSnackBar: {
+    open: ReturnType<typeof vi.fn>;
+  };
   let isAuthenticatedSig: WritableSignal<boolean>;
 
   beforeEach(async () => {
@@ -345,7 +360,9 @@ describe('AskDataComponent', () => {
 describe('AskDataComponent - Platform Server', () => {
   let component: AskDataComponent;
   let fixture: ComponentFixture<AskDataComponent>;
-  let mockDashApi: any;
+  let mockDashApi: {
+    deleteDashboardApiV1DashboardsDashboardIdDelete: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     mockDashApi = {

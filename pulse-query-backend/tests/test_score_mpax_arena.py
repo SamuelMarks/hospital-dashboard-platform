@@ -5,14 +5,9 @@ Verifies mathematical correctness, edge case handling, and scoring accuracy
 for Judge, Constraints, SQL vs MPAX, and Critic evaluation modes.
 """
 
-import sys
-from pathlib import Path
 from typing import Any
 
-# Ensure scripts module is discoverable
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-
-from score_mpax_arena import (
+from scripts.score_mpax_arena import (
   extract_json_from_text,
   score_constraints_mode,
   score_critic_mode,

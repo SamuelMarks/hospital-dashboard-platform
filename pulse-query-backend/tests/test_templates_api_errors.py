@@ -8,7 +8,13 @@ import pytest
 from httpx import AsyncClient
 
 
-async def _auth_headers(client: AsyncClient) -> dict:
+async def _auth_headers(client: AsyncClient) -> dict[str, str]:
+  """
+  Verify auth headers behavior.
+
+  Args:
+      client: Test parameter or fixture.
+  """
   email = f"tmpl_err_{uuid.uuid4()}@example.com"
   pwd = "pw"
   await client.post("/api/v1/auth/register", json={"email": email, "password": pwd})
@@ -18,6 +24,12 @@ async def _auth_headers(client: AsyncClient) -> dict:
 
 @pytest.mark.asyncio
 async def test_get_template_not_found(client: AsyncClient) -> None:
+  """
+  Verify get template not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+  """
   headers = await _auth_headers(client)
   res = await client.get(f"/api/v1/templates/{uuid.uuid4()}", headers=headers)
   assert res.status_code == 404
@@ -25,6 +37,12 @@ async def test_get_template_not_found(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_update_template_not_found(client: AsyncClient) -> None:
+  """
+  Verify update template not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+  """
   headers = await _auth_headers(client)
   res = await client.put(
     f"/api/v1/templates/{uuid.uuid4()}",
@@ -36,6 +54,12 @@ async def test_update_template_not_found(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_delete_template_not_found(client: AsyncClient) -> None:
+  """
+  Verify delete template not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+  """
   headers = await _auth_headers(client)
   res = await client.delete(f"/api/v1/templates/{uuid.uuid4()}", headers=headers)
   assert res.status_code == 404
@@ -43,6 +67,12 @@ async def test_delete_template_not_found(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_template_crud_success(client: AsyncClient) -> None:
+  """
+  Verify template crud success behavior.
+
+  Args:
+      client: Test parameter or fixture.
+  """
   headers = await _auth_headers(client)
 
   create = await client.post(

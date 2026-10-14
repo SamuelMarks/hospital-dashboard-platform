@@ -38,11 +38,15 @@ def upgrade() -> None:
           config = json.loads(config)
         except Exception:
           continue
-      if isinstance(config, dict) and "query" in config and isinstance(config["query"], str):
-        if "Visit_ID" in config["query"]:
-          updated_config = dict(config)
-          updated_config["query"] = config["query"].replace("Visit_ID", "Visit_Type")
-          bind.execute(widgets_table.update().where(widgets_table.c.id == widget_id).values(config=updated_config))
+      if (
+        isinstance(config, dict)
+        and "query" in config
+        and isinstance(config["query"], str)
+        and "Visit_ID" in config["query"]
+      ):
+        updated_config = dict(config)
+        updated_config["query"] = config["query"].replace("Visit_ID", "Visit_Type")
+        bind.execute(widgets_table.update().where(widgets_table.c.id == widget_id).values(config=updated_config))
   except Exception:
     pass
 

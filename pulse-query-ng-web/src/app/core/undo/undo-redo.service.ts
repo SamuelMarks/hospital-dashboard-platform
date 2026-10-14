@@ -95,7 +95,8 @@ export class UndoRedoService {
 
   readonly nextUndoDescription: Signal<string | null> = computed(() => {
     const stack = this._undoStack();
-    return stack.length > 0 ? stack[stack.length - 1].description : null;
+    const last = stack[stack.length - 1];
+    return last ? last.description : null;
   });
 
   /**
@@ -104,7 +105,8 @@ export class UndoRedoService {
 
   readonly nextRedoDescription: Signal<string | null> = computed(() => {
     const stack = this._redoStack();
-    return stack.length > 0 ? stack[stack.length - 1].description : null;
+    const last = stack[stack.length - 1];
+    return last ? last.description : null;
   });
 
   /**
@@ -148,11 +150,11 @@ export class UndoRedoService {
    */
   async undo(): Promise<void> {
     const stack = this._undoStack();
-    if (stack.length === 0) {
+    const command = stack[stack.length - 1];
+    if (!command) {
       return;
     }
 
-    const command = stack[stack.length - 1];
     await command.undo();
 
     this._undoStack.update((s) => s.slice(0, -1));
@@ -166,11 +168,11 @@ export class UndoRedoService {
    */
   async redo(): Promise<void> {
     const stack = this._redoStack();
-    if (stack.length === 0) {
+    const command = stack[stack.length - 1];
+    if (!command) {
       return;
     }
 
-    const command = stack[stack.length - 1];
     await command.execute();
 
     this._redoStack.update((s) => s.slice(0, -1));

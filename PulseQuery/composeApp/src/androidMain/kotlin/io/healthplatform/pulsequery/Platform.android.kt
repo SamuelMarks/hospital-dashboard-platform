@@ -29,35 +29,38 @@ actual fun getPlatform(): Platform = AndroidPlatform()
  * @return Default API base URL string.
  */
 actual fun getDefaultLocalHost(): String {
-    val fingerprint = Build.FINGERPRINT ?: ""
-    val model = Build.MODEL ?: ""
-    val manufacturer = Build.MANUFACTURER ?: ""
-    val brand = Build.BRAND ?: ""
-    val device = Build.DEVICE ?: ""
-    val product = Build.PRODUCT ?: ""
-    val hardware = Build.HARDWARE ?: ""
-
-    val isEmulator = fingerprint.startsWith("generic") ||
-            fingerprint.startsWith("unknown") ||
-            model.contains("google_sdk") ||
-            model.contains("Emulator") ||
-            model.contains("Android SDK built for x86") ||
-            manufacturer.contains("Genymotion") ||
-            (brand.startsWith("generic") && device.startsWith("generic")) ||
-            "google_sdk" == product ||
-            product.contains("sdk_gphone") ||
-            product.contains("sdk_google") ||
-            product.contains("emulator") ||
-            product.contains("simulator") ||
-            hardware.contains("goldfish") ||
-            hardware.contains("ranchu") ||
-            hardware.contains("cutf_cvm")
-
-    return if (isEmulator) {
+    return if (isRunningOnAndroidEmulator()) {
         "http://10.0.2.2:8000"
     } else {
         "http://localhost:8000"
     }
+}
+
+private fun isRunningOnAndroidEmulator(): Boolean {
+    return hasEmulatorBuildIdentity() || hasEmulatorProductOrHardware()
+}
+
+private fun hasEmulatorBuildIdentity(): Boolean {
+    val fingerprint = Build.FINGERPRINT.orEmpty()
+    val model = Build.MODEL.orEmpty()
+    val manufacturer = Build.MANUFACTURER.orEmpty()
+    val brand = Build.BRAND.orEmpty()
+    val device = Build.DEVICE.orEmpty()
+    val modelTokens = listOf("google_sdk", "Emulator", "Android SDK built for x86")
+    return fingerprint.startsWith("generic") ||
+        fingerprint.startsWith("unknown") ||
+        modelTokens.any { model.contains(it) } ||
+        manufacturer.contains("Genymotion") ||
+        (brand.startsWith("generic") && device.startsWith("generic"))
+}
+
+private fun hasEmulatorProductOrHardware(): Boolean {
+    val product = Build.PRODUCT.orEmpty()
+    val hardware = Build.HARDWARE.orEmpty()
+    val productTokens = listOf("google_sdk", "sdk_gphone", "sdk_google", "emulator", "simulator")
+    val hardwareTokens = listOf("goldfish", "ranchu", "cutf_cvm")
+    return productTokens.any { product.contains(it) } ||
+        hardwareTokens.any { hardware.contains(it) }
 }
 
 /**

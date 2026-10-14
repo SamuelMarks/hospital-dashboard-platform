@@ -48,7 +48,9 @@ describe('QueryCartService', () => {
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
-    const service = TestBed.inject(QueryCartService) as any;
+    const service = TestBed.inject(QueryCartService) as unknown as {
+      deriveTitle: (sql: string) => string;
+    };
     expect(service.deriveTitle('   ')).toBe('Untitled Query');
   });
 
@@ -178,7 +180,9 @@ describe('QueryCartService', () => {
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
-    const service = TestBed.inject(QueryCartService) as any;
+    const service = TestBed.inject(QueryCartService) as unknown as {
+      isValidItem: (item: unknown) => boolean;
+    };
     expect(service.isValidItem(null)).toBe(false);
     expect(
       service.isValidItem({
@@ -253,7 +257,9 @@ describe('QueryCartService', () => {
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
-    const service = TestBed.inject(QueryCartService) as any;
+    const service = TestBed.inject(QueryCartService) as unknown as {
+      persistToStorage: (items: QueryCartItem[]) => void;
+    };
     service.persistToStorage([
       {
         id: 'q5',

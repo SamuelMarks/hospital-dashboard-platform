@@ -15,12 +15,16 @@ describe('FilterRibbonComponent', () => {
   let component: FilterRibbonComponent;
   let fixture: ComponentFixture<FilterRibbonComponent>;
 
-  let mockStore: any;
-  let mockRouter: any;
-  let queryParamsSub: BehaviorSubject<any>;
+  let mockStore: {
+    globalParams: WritableSignal<Record<string, unknown>>;
+  };
+  let mockRouter: {
+    navigate: ReturnType<typeof vi.fn>;
+  };
+  let queryParamsSub: BehaviorSubject<{ get: (key: string) => string | null }>;
 
   // Store Signals
-  let globalParamsSig: WritableSignal<Record<string, any>>;
+  let globalParamsSig: WritableSignal<Record<string, unknown>>;
 
   beforeEach(async () => {
     globalParamsSig = signal({});
@@ -28,8 +32,8 @@ describe('FilterRibbonComponent', () => {
       globalParams: globalParamsSig,
     };
 
-    queryParamsSub = new BehaviorSubject({
-      get: (key: string) => null,
+    queryParamsSub = new BehaviorSubject<{ get: (key: string) => string | null }>({
+      get: (_key: string) => null,
     });
 
     mockRouter = {
@@ -135,7 +139,7 @@ describe('FilterRibbonComponent', () => {
   });
 
   it('should not emit navigate during initial load (syncing from route)', () => {
-    (component as any).isSyncingFromRoute = true;
+    (component as unknown as { isSyncingFromRoute: boolean }).isSyncingFromRoute = true;
     component.onDeptChange('Neurology');
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });

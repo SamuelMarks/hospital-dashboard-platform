@@ -11,8 +11,6 @@ to improve reasoning regarding Clinical Service matching and Temporal Window log
 before writing the final SQL.
 """
 
-from typing import Dict, List, Optional
-
 from app.services.prompt_engineering.interfaces import PromptStrategy
 
 

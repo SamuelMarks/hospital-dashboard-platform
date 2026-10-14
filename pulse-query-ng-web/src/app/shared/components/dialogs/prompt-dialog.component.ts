@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Reusable single-field text input modal dialog component.
+ */
+
 import { Component, signal, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -6,15 +9,23 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
-/** @docs */
+/**
+ * Input configuration payload passed into `PromptDialogComponent`.
+ */
 export interface PromptDialogData {
+  /** Dialog header title text. */
   title: string;
+  /** Optional descriptive message displayed above the text field. */
   message?: string;
+  /** Initial string value pre-populated in the text input field. */
   value: string;
+  /** Optional form field label (defaults to `'Value'`). */
   label?: string;
 }
 
-/** @docs */
+/**
+ * Modal dialog prompting the user to enter or edit a single string value.
+ */
 @Component({
   selector: 'app-prompt-dialog',
   imports: [
@@ -60,17 +71,28 @@ export interface PromptDialogData {
     `,
   ],
 })
-/** @docs */
 export class PromptDialogComponent {
-  /* istanbul ignore next */
+  /**
+   * Extracts the current string value from a native DOM input event.
+   *
+   * @param event - DOM input event dispatched by the text field.
+   * @returns Current string value of the target `HTMLInputElement`.
+   */
   getEventValue(event: Event): string {
     return (event.target as HTMLInputElement).value;
   }
+
+  /** Injected dialog configuration data containing the title, label, and initial value. */
   readonly data = inject<PromptDialogData>(MAT_DIALOG_DATA);
+  /** Reference to the active Material dialog instance used to close and return the entered value. */
   readonly dialogRef = inject<MatDialogRef<PromptDialogComponent>>(MatDialogRef);
+  /** Reactive signal holding the current text input value. */
   readonly value = signal(this.data.value || '');
 
-  save() {
+  /**
+   * Validates that the input is non-empty and closes the dialog with the current string value.
+   */
+  save(): void {
     if (this.value().trim()) {
       this.dialogRef.close(this.value());
     }

@@ -7,13 +7,11 @@ Integrates with `LLMArenaClient` to provide multiple response candidates for vot
 
 import json
 import logging
-import re
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime, timezone
-from typing import Annotated, List, Optional
+from datetime import UTC, datetime
+from typing import Annotated, cast
 from uuid import UUID
 
-import sqlglot
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, desc, select, update
@@ -34,9 +32,13 @@ from app.schemas.chat import (
   MessageVoteRequest,
 )
 from app.services.admin import get_admin_settings
-from app.services.llm_client import ArenaResponse, llm_client
+from app.services.chat_service import (
+  build_chat_system_prompt,
+  chat_service,
+  extract_and_validate_chat_sql,
+)
+from app.services.llm_client import llm_client
 from app.services.schema import schema_service
-from app.services.sql_utils import sql_fingerprint
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -55,38 +57,7 @@ def _extract_and_validate_sql(text: str) -> str | None:
   Returns:
       Optional[str]: The valid SQL string if found, otherwise None.
   """
-  if not text:
-    return None
-
-  # 1. First priority: look for explicitly tagged ```sql ... ``` blocks
-  sql_pattern = r"```sql\s+(.*?)\s*```"
-  sql_matches = re.findall(sql_pattern, text, re.DOTALL | re.IGNORECASE)
-
-  for candidate in sql_matches:
-    candidate_sql = candidate.strip()
-    if candidate_sql:
-      try:
-        parsed = sqlglot.parse(candidate_sql, read="duckdb")
-        if parsed and any(stmt for stmt in parsed if stmt and not isinstance(stmt, sqlglot.exp.Column)):
-          return candidate_sql
-      except Exception as e:
-        logger.warning(f"Explicit SQL block failed validation: {e}")
-
-  # 2. Second priority: look for generic ``` ... ``` blocks that parse as valid SQL statements
-  generic_pattern = r"```(?:[a-zA-Z0-9_-]+)?\s+(.*?)\s*```"
-  generic_matches = re.findall(generic_pattern, text, re.DOTALL)
-
-  for candidate in generic_matches:
-    candidate_sql = candidate.strip()
-    if candidate_sql:
-      try:
-        parsed = sqlglot.parse(candidate_sql, read="duckdb")
-        if parsed and any(stmt for stmt in parsed if stmt and not isinstance(stmt, sqlglot.exp.Column)):
-          return candidate_sql
-      except Exception:
-        continue
-
-  return None
+  return extract_and_validate_chat_sql(text)
 
 
 async def _generate_assistant_reply(
@@ -105,137 +76,15 @@ async def _generate_assistant_reply(
   Returns:
       Message: The persisted assistant response object (parent of candidates).
   """
-  # 1. Fetch History
-  stmt = (
-    select(Message)
-    .where(Message.conversation_id == conversation_id)
-    .order_by(desc(Message.created_at))
-    .limit(history_limit)
-  )
-  result = await db.execute(stmt)
-  history_objs = result.scalars().all()[::-1]
-
-  # 2. Build Messages Payload
-  messages_payload = []
-  schema_context = schema_service.get_schema_context_string()
-  system_prompt = (
-    "You are an expert Hospital Analytics Assistant. "
-    "Answer questions using DuckDB SQL based on the schema below. "
-    "If the user asks for data, output the SQL Query inside a markdown block ```sql ... ```. "
-    "Do not execute DML (INSERT/UPDATE). "
-    f"\n\nSchema:\n{schema_context}"
-  )
-  messages_payload.append({"role": "system", "content": system_prompt})
-
-  for msg in history_objs:
-    # Use main content. For voting scenarios, history might need to respect selected candidate content.
-    # Assuming msg.content is updated to the winner content after vote.
-    messages_payload.append({"role": msg.role, "content": msg.content})
-
-  # 3. Call LLM Arena to get Responsens
-  responses: list[ArenaResponse] = []
-  admin_settings = await get_admin_settings(db)
-
-  try:
-    # Broadcast to providers (scoped by target_models if present)
-    # Notice: Single-line invocation avoids .coverage mis-reporting lines
-    responses = await llm_client.generate_arena_competition(
-      messages=messages_payload,
-      temperature=0.7,
-      max_tokens=1000,
-      target_model_ids=target_models,
-      admin_settings=admin_settings,
-    )
-
-    # Ensure we have at least 3 candidates for voting if possible.
-    # If we have fewer candidates than models (e.g. only 1 model configured),
-    # we run repeated generations to provide variety via temperature.
-    target_count = 3
-    # If user explicitly selected fewer than 3 models, don't force expansion
-    if target_models and len(target_models) < 3:
-      target_count = len(target_models)
-
-    attempts = 0
-    max_attempts = 3  # Avoid infinite loops
-
-    # Safety: Only loop if the initial responses were successful.
-    # If all providers returned errors (e.g. 404 Model Not Found), trying again won't help.
-    any_success = any(r.error is None for r in responses)
-
-    while len(responses) < target_count and attempts < max_attempts and any_success:
-      attempts += 1
-      # Vary temperature slightly to encourage different solutions
-      more = await llm_client.generate_arena_competition(
-        messages=messages_payload,
-        temperature=0.7 + (attempts * 0.1),
-        max_tokens=1000,
-        target_model_ids=target_models,
-        admin_settings=admin_settings,
-      )
-      if more:
-        responses.extend(more)
-
-    if len(responses) == 0:
-      # Fallback mock for safety
-      responses = [ArenaResponse("System", "error", "I apologize, no models responded.", 0, "All providers failed")]
-
-  except Exception as e:
-    logger.error(f"LLM Generation Failed: {e}")
-    responses = [ArenaResponse("System", "error", "I apologize, but I am unable to process your request.", 0, str(e))]
-
-  # 4. Persistence
-  now = datetime.now(UTC)
-
-  # Create Parent Message (Placeholder content until vote)
-  assistant_msg = Message(
+  return await chat_service.generate_assistant_reply(
+    db=db,
     conversation_id=conversation_id,
-    role="assistant",
-    content="Multiple options generated. Please select the best response.",
-    sql_snippet=None,
-    created_at=now,
+    history_limit=history_limit,
+    target_models=target_models,
+    arena_client=llm_client,
+    schema_svc=schema_service,
+    admin_settings_fn=get_admin_settings,
   )
-  db.add(assistant_msg)
-  await db.flush()  # Get ID for candidates
-
-  # Create Candidates
-  used_names = set()
-  for idx, res in enumerate(responses):
-    # FIX: Ensure content is never empty string if there was an error
-    content_to_save = res.content
-    if not content_to_save and res.error:
-      content_to_save = f"**Generation Failed**\nError: {res.error}"
-    elif not content_to_save:
-      content_to_save = "(Empty Response)"
-
-    sql_code = _extract_and_validate_sql(content_to_save)
-    sql_hash = sql_fingerprint(sql_code) if sql_code else None
-
-    # Ensure display name uniqueness if provider labels collide (or repeated calls)
-    tag = res.provider_name
-    if tag in used_names:
-      tag = f"{tag} {idx + 1}"
-    used_names.add(tag)
-
-    # Schema Fix: Removed 'error_message' as it is not in the MessageCandidate model
-    cand = MessageCandidate(
-      message_id=assistant_msg.id,
-      model_name=tag,
-      content=content_to_save,
-      sql_snippet=sql_code,
-      sql_hash=sql_hash,
-      is_selected=False,
-    )
-    db.add(cand)
-
-  # Update parent conversation timestamp
-  await db.execute(Conversation.__table__.update().where(Conversation.id == conversation_id).values(updated_at=now))
-
-  await db.commit()
-
-  # Reload to return full structure with candidates
-  stmt = select(Message).where(Message.id == assistant_msg.id).options(selectinload(Message.candidates))
-  result = await db.execute(stmt)
-  return result.scalars().first()
 
 
 # --- Endpoints ---
@@ -293,7 +142,8 @@ async def create_conversation(
     .options(selectinload(Conversation.messages).selectinload(Message.candidates))
   )
   result = await db.execute(stmt)
-  return result.scalars().first()
+  reloaded = result.scalars().first()
+  return reloaded if reloaded is not None else conv
 
 
 @router.put("/{conversation_id}", response_model=ConversationResponse)
@@ -379,8 +229,7 @@ async def send_message(
   conv.updated_at = now
   await db.commit()
 
-  assistant_msg = await _generate_assistant_reply(db, conversation_id, target_models=payload.target_models)
-  return assistant_msg
+  return await _generate_assistant_reply(db, conversation_id, target_models=payload.target_models)
 
 
 @router.post("/{conversation_id}/messages/{message_id}/vote", response_model=MessageResponse)
@@ -427,7 +276,7 @@ async def vote_candidate(
   db.expire_all()
   final_stmt = select(Message).where(Message.id == message_id).options(selectinload(Message.candidates))
   final_result = await db.execute(final_stmt)
-  return final_result.scalars().first()
+  return cast(Message, final_result.scalars().first())
 
 
 @router.get("/stream/{conversation_id}")
@@ -463,13 +312,7 @@ async def stream_conversation_tokens(
   history = hist_res.scalars().all()[::-1]
 
   schema_context = schema_service.get_schema_context_string()
-  system_prompt = (
-    "You are an expert Hospital Analytics Assistant. "
-    "Answer questions using DuckDB SQL based on the schema below. "
-    "If the user asks for data, output the SQL Query inside a markdown block ```sql ... ```. "
-    "Do not execute DML (INSERT/UPDATE). "
-    f"\n\nSchema:\n{schema_context}"
-  )
+  system_prompt = build_chat_system_prompt(schema_context)
   messages_payload = [{"role": "system", "content": system_prompt}]
   for msg in history:
     if msg.role in ["user", "assistant"]:

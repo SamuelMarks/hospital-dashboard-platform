@@ -6,7 +6,7 @@ This table acts as the registry for reusable business questions (e.g., 'Predicti
 """
 
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID

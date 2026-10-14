@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Home landing page component displaying the user's dashboards grid
+ * with actions to create, clone, rename, delete, or restore default dashboards.
+ */
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
@@ -23,7 +26,9 @@ import { ThemeToggleComponent } from '../shared/components/theme-toggle.componen
 import { OnboardingWizardComponent } from '../shared/components/onboarding/onboarding-wizard.component';
 import { OnboardingService } from '../shared/components/onboarding/onboarding.service';
 
-/** @docs */
+/**
+ * Landing page component listing available hospital analytics dashboards and management actions.
+ */
 @Component({
   selector: 'app-home',
   imports: [
@@ -133,24 +138,35 @@ import { OnboardingService } from '../shared/components/onboarding/onboarding.se
     `,
   ],
 })
-/** @docs */
 export class HomeComponent implements OnInit {
+  /** Backend dashboards API service. */
   private readonly dashboardsApi = inject(DashboardsService);
+  /** Material dialog service for modals. */
   private readonly dialog = inject(MatDialog);
+  /** Angular router for navigating to selected dashboards. */
   private readonly router = inject(Router);
+  /** Material snackbar for status notifications. */
   private readonly snackBar = inject(MatSnackBar);
+  /** Service controlling the global Ask Data sidebar. */
   public readonly askDataService = inject(AskDataService);
+  /** Authentication service for user profile and logout actions. */
   public readonly authService = inject(AuthService);
+  /** Service managing the interactive onboarding tour. */
   public readonly onboardingService = inject(OnboardingService);
 
+  /** Reactive list of dashboards accessible to the current user. */
   readonly dashboards = signal<DashboardResponse[]>([]);
+  /** Whether the dashboard list is currently loading. */
   readonly isLoading = signal(true);
+  /** Whether a default dashboard restoration request is in progress. */
   readonly isRestoring = signal(false);
 
+  /** Loads the user's dashboards when the home page initializes. */
   ngOnInit(): void {
     this.loadDashboards();
   }
 
+  /** Fetches the list of dashboards from the backend API. */
   loadDashboards(): void {
     this.isLoading.set(true);
     this.dashboardsApi
@@ -168,12 +184,13 @@ export class HomeComponent implements OnInit {
       });
   }
 
+  /** Opens the create dashboard modal dialog and navigates to the newly created dashboard. */
   openCreateDialog(): void {
     const dialogRef = this.dialog.open(DashboardCreateDialog, {
       width: '400px',
       autoFocus: 'first-tabbable',
     });
-    dialogRef.afterClosed().subscribe((result) => {
+    dialogRef.afterClosed().subscribe((result: DashboardResponse | undefined) => {
       if (result) {
         this.dashboards.update((current) => [...current, result]);
         this.router.navigate(['/dashboard', result.id]);
@@ -181,6 +198,7 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  /** Restores the default seeded hospital dashboard and navigates to it. */
   restoreDefaults(): void {
     this.isRestoring.set(true);
     this.dashboardsApi
@@ -199,13 +217,18 @@ export class HomeComponent implements OnInit {
       });
   }
 
+  /**
+   * Opens a prompt dialog to rename a dashboard with optimistic UI update.
+   *
+   * @param dash - The dashboard record to rename.
+   */
   renameDashboard(dash: DashboardResponse): void {
     this.dialog
       .open(PromptDialogComponent, {
         data: { title: 'Rename Dashboard', value: dash.name, label: 'Name' },
       })
       .afterClosed()
-      .subscribe((newName) => {
+      .subscribe((newName: string | undefined) => {
         if (newName && newName.trim() !== '' && newName !== dash.name) {
           const originalName = dash.name;
           this.dashboards.update((items) =>
@@ -226,6 +249,11 @@ export class HomeComponent implements OnInit {
       });
   }
 
+  /**
+   * Clones an existing dashboard and appends the duplicate to the dashboard list.
+   *
+   * @param dash - The dashboard record to clone.
+   */
   cloneDashboard(dash: DashboardResponse): void {
     this.dashboardsApi.cloneDashboardApiV1DashboardsDashboardIdClonePost(dash.id).subscribe({
       next: (clonedDash) => {
@@ -239,6 +267,11 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  /**
+   * Prompts for confirmation and permanently deletes the specified dashboard.
+   *
+   * @param dash - The dashboard record to delete.
+   */
   deleteDashboard(dash: DashboardResponse): void {
     this.dialog
       .open(ConfirmDialogComponent, {

@@ -9,8 +9,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 describe('ShareDashboardDialog', () => {
   let component: ShareDashboardDialog;
   let fixture: ComponentFixture<ShareDashboardDialog>;
-  let mockHttp: { get: any; post: any; delete: any };
-  let mockDialogRef: { close: any };
+  let mockHttp: {
+    get: ReturnType<typeof vi.fn>;
+    post: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
+  let mockDialogRef: { close: ReturnType<typeof vi.fn> };
 
   const sampleShares = [
     {

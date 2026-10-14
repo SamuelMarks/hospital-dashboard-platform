@@ -2,13 +2,14 @@
 Unit tests for backend startup diagnostics and configuration hygiene.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+
+from unittest.mock import AsyncMock, MagicMock
 import os
 
 import duckdb
 import pytest
 
-from app.core.config import Settings
 from app.core.diagnostics import (
   DiagnosticWarning,
   DiagnosticsRegistry,
@@ -21,8 +22,6 @@ from app.core.diagnostics import (
 )
 from app.database.duckdb import DuckDBManager
 from app.database.postgres import DatabaseConfigurationError, validate_postgres_connection
-from app.services.data_ingestion import DataIngestionService
-from app.services.template_seeder import TemplateSeeder
 
 
 def test_diagnostic_warning_to_dict() -> None:
@@ -84,7 +83,7 @@ def test_check_configuration_hygiene() -> None:
 
   class _InsecureNoSwarm:
     SECRET_KEY = "CHANGEME_IN_PROD_SUPER_SECRET_KEY"
-    LLM_SWARM = []
+    LLM_SWARM: list[Any] = []
 
   warnings = check_configuration_hygiene(_InsecureNoSwarm())
   assert any("Insecure default SECRET_KEY" in w for w in warnings)
@@ -101,16 +100,25 @@ def test_check_configuration_hygiene() -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_postgres_connection_success(monkeypatch) -> None:
+async def test_validate_postgres_connection_success(monkeypatch: Any) -> None:
   """validate_postgres_connection should record connected status on valid query."""
   dummy_conn = AsyncMock()
   dummy_conn.execute = AsyncMock()
 
   class _DummyContext:
-    async def __aenter__(self):
+    async def __aenter__(self) -> Any:
+      """Verify aenter behavior."""
       return dummy_conn
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+      """
+      Verify aexit behavior.
+
+      Args:
+          exc_type: Test parameter or fixture.
+          exc: Test parameter or fixture.
+          tb: Test parameter or fixture.
+      """
       return False
 
   dummy_engine = MagicMock()
@@ -126,14 +134,23 @@ async def test_validate_postgres_connection_success(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_postgres_connection_failure(monkeypatch) -> None:
+async def test_validate_postgres_connection_failure(monkeypatch: Any) -> None:
   """validate_postgres_connection should catch errors and raise when configured."""
 
   class _FailingContext:
-    async def __aenter__(self):
+    async def __aenter__(self) -> None:
+      """Verify aenter behavior."""
       raise ConnectionRefusedError("Connection refused by host")
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+      """
+      Verify aexit behavior.
+
+      Args:
+          exc_type: Test parameter or fixture.
+          exc: Test parameter or fixture.
+          tb: Test parameter or fixture.
+      """
       return False
 
   dummy_engine = MagicMock()
@@ -159,7 +176,7 @@ def test_validate_duckdb_storage_memory_success() -> None:
   assert res["total_tables"] == 0
 
 
-def test_validate_duckdb_storage_with_tables(tmp_path) -> None:
+def test_validate_duckdb_storage_with_tables(tmp_path: Any) -> None:
   """validate_duckdb_storage should report tables and row counts."""
   db_file = str(tmp_path / "test_diag.duckdb")
   mgr = DuckDBManager(db_file)
@@ -173,11 +190,18 @@ def test_validate_duckdb_storage_with_tables(tmp_path) -> None:
   assert res["tables"]["sample"] == 2
 
 
-def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch) -> None:
+def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch: Any) -> None:
   """validate_duckdb_storage should report error when directory creation fails."""
   mgr = DuckDBManager("/nonexistent_forbidden_dir_12345/data.duckdb")
 
-  def _failing_makedirs(_path, **_kwargs):
+  def _failing_makedirs(_path: Any, **_kwargs: Any) -> None:
+    """
+    Verify failing makedirs behavior.
+
+    Args:
+        _path: Test parameter or fixture.
+        _kwargs: Test parameter or fixture.
+    """
     raise PermissionError("Access denied")
 
   monkeypatch.setattr(os, "makedirs", _failing_makedirs)
@@ -186,11 +210,12 @@ def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch) -> Non
   assert "Cannot create database parent directory" in res["error"]
 
 
-def test_validate_duckdb_storage_connection_exception(monkeypatch) -> None:
+def test_validate_duckdb_storage_connection_exception(monkeypatch: Any) -> None:
   """validate_duckdb_storage should catch connection or query errors."""
   mgr = DuckDBManager(":memory:")
 
-  def _failing_get_conn():
+  def _failing_get_conn() -> None:
+    """Verify failing get conn behavior."""
     raise duckdb.IOException("File is locked by another process")
 
   monkeypatch.setattr(mgr, "get_connection", _failing_get_conn)
@@ -199,12 +224,18 @@ def test_validate_duckdb_storage_connection_exception(monkeypatch) -> None:
   assert "File is locked" in res["error"]
 
 
-def test_validate_duckdb_storage_table_count_fallback(monkeypatch) -> None:
+def test_validate_duckdb_storage_table_count_fallback(monkeypatch: Any) -> None:
   """validate_duckdb_storage should handle table row count query exceptions gracefully."""
   mgr = DuckDBManager(":memory:")
 
   class _MockConn:
-    def execute(self, query: str):
+    def execute(self, query: str) -> Any:
+      """
+      Verify execute behavior.
+
+      Args:
+          query: Test parameter or fixture.
+      """
       if "SHOW TABLES" in query:
         mock_res = MagicMock()
         mock_res.fetchall.return_value = [("flaky",)]
@@ -212,6 +243,7 @@ def test_validate_duckdb_storage_table_count_fallback(monkeypatch) -> None:
       raise RuntimeError("Count failed")
 
     def close(self) -> None:
+      """Verify close behavior."""
       pass
 
   monkeypatch.setattr(mgr, "get_connection", lambda: _MockConn())

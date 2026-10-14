@@ -76,7 +76,7 @@ describe('ThemeService', () => {
     if (originalMatchMedia) {
       window.matchMedia = originalMatchMedia;
     } else {
-      (window as any).matchMedia = undefined;
+      (window as unknown as { matchMedia: undefined }).matchMedia = undefined;
     }
   });
 

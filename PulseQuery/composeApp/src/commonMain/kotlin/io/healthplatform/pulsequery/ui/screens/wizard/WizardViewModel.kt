@@ -32,9 +32,15 @@ import kotlinx.serialization.json.JsonPrimitive
 class WizardViewModel(
     val dashboardId: String,
     private val scope: CoroutineScope,
-    private val templatesApi: TemplatesApi = AppContainer.templatesApi,
-    private val dashboardsApi: DashboardsApi = AppContainer.dashboardsApi
+    private val templatesApi: TemplatesApi? = null,
+    private val dashboardsApi: DashboardsApi? = null
 ) {
+    private val currentTemplatesApi: TemplatesApi
+        get() = templatesApi ?: AppContainer.templatesApi
+
+    private val currentDashboardsApi: DashboardsApi
+        get() = dashboardsApi ?: AppContainer.dashboardsApi
+
     private val _state = MutableStateFlow<WizardState>(WizardState.Loading)
 
     /** StateFlow exposing current immutable wizard state to observing UI layers. */
@@ -54,26 +60,21 @@ class WizardViewModel(
         _state.value = WizardState.Loading
         scope.launch {
             runCatching {
-                val response = templatesApi.listTemplatesApiV1TemplatesGet(limit = 100)
-                response.body()
+                currentTemplatesApi.listTemplatesApiV1TemplatesGet(limit = 100).body()
             }.fold(
                 onSuccess = { templates ->
                     allTemplates = templates
                     allCategories = allTemplates.map { it.category }.distinct().sorted()
-                    if (_state.value is WizardState.Loading) {
-                        _state.value = WizardState.TemplateSelection(
-                            templates = allTemplates,
-                            categories = allCategories,
-                            selectedCategory = null,
-                            searchQuery = "",
-                            filteredTemplates = allTemplates
-                        )
-                    }
+                    _state.value = WizardState.TemplateSelection(
+                        templates = allTemplates,
+                        categories = allCategories,
+                        selectedCategory = null,
+                        searchQuery = "",
+                        filteredTemplates = allTemplates
+                    )
                 },
                 onFailure = { e ->
-                    if (_state.value is WizardState.Loading) {
-                        _state.value = WizardState.Error(e.message ?: "Failed to load templates")
-                    }
+                    _state.value = WizardState.Error(e.message ?: "Failed to load templates")
                 }
             )
         }
@@ -86,11 +87,8 @@ class WizardViewModel(
      */
     fun selectCategory(category: String?) {
         val current = _state.value as? WizardState.TemplateSelection ?: return
-        val filtered = filterTemplates(allTemplates, category, current.searchQuery)
-        _state.value = current.copy(
-            selectedCategory = category,
-            filteredTemplates = filtered
-        )
+        val filtered = filterWizardTemplates(allTemplates, category, current.searchQuery)
+        _state.value = current.copy(selectedCategory = category, filteredTemplates = filtered)
     }
 
     /**
@@ -100,11 +98,8 @@ class WizardViewModel(
      */
     fun updateSearchQuery(query: String) {
         val current = _state.value as? WizardState.TemplateSelection ?: return
-        val filtered = filterTemplates(allTemplates, current.selectedCategory, query)
-        _state.value = current.copy(
-            searchQuery = query,
-            filteredTemplates = filtered
-        )
+        val filtered = filterWizardTemplates(allTemplates, current.selectedCategory, query)
+        _state.value = current.copy(searchQuery = query, filteredTemplates = filtered)
     }
 
     /**
@@ -137,10 +132,7 @@ class WizardViewModel(
      * @param type Source type identifier ("SQL", "HTTP", or "TEXT").
      */
     fun startCustomWidget(type: String) {
-        val defaultViz = when (type.uppercase()) {
-            "TEXT" -> "markdown"
-            else -> "table"
-        }
+        val defaultViz = if (type.equals("TEXT", ignoreCase = true)) "markdown" else "table"
         _state.value = WizardState.CustomWidgetConfiguration(
             creationType = type.uppercase(),
             widgetTitle = "Custom $type Widget",
@@ -155,9 +147,7 @@ class WizardViewModel(
      */
     fun updateCustomWidgetTitle(title: String) {
         val current = _state.value as? WizardState.CustomWidgetConfiguration ?: return
-        val updatedErrors = current.fieldErrors.toMutableMap()
-        updatedErrors.remove("title")
-        _state.value = current.copy(widgetTitle = title, fieldErrors = updatedErrors)
+        _state.value = current.copy(widgetTitle = title, fieldErrors = current.fieldErrors - "title")
     }
 
     /**
@@ -167,9 +157,7 @@ class WizardViewModel(
      */
     fun updateCustomWidgetContent(content: String) {
         val current = _state.value as? WizardState.CustomWidgetConfiguration ?: return
-        val updatedErrors = current.fieldErrors.toMutableMap()
-        updatedErrors.remove("content")
-        _state.value = current.copy(queryOrUrlOrContent = content, fieldErrors = updatedErrors)
+        _state.value = current.copy(queryOrUrlOrContent = content, fieldErrors = current.fieldErrors - "content")
     }
 
     /**
@@ -199,61 +187,12 @@ class WizardViewModel(
      */
     fun submitCustomWidget(onSuccess: (WidgetResponse) -> Unit) {
         val current = _state.value as? WizardState.CustomWidgetConfiguration ?: return
-        val errors = mutableMapOf<String, String>()
-        if (current.widgetTitle.isBlank()) {
-            errors["title"] = "Title is required"
-        }
-        if (current.queryOrUrlOrContent.isBlank()) {
-            errors["content"] = "Query/URL/Content cannot be empty"
-        }
+        val errors = validateCustomWidgetConfig(current)
         if (errors.isNotEmpty()) {
             _state.value = current.copy(fieldErrors = errors)
             return
         }
-
-        _state.value = WizardState.Submitting()
-        scope.launch {
-            runCatching {
-                val widgetIn = when (current.creationType.uppercase()) {
-                    "TEXT" -> WidgetIn.Text(
-                        title = current.widgetTitle.trim(),
-                        type = "TEXT",
-                        visualization = current.visualization,
-                        config = TextConfig(content = current.queryOrUrlOrContent)
-                    )
-                    "HTTP" -> {
-                        val methodEnum = HttpConfig.Method.entries.firstOrNull {
-                            it.value.equals(current.httpMethod, ignoreCase = true)
-                        } ?: HttpConfig.Method.GET
-                        WidgetIn.Http(
-                            title = current.widgetTitle.trim(),
-                            type = "HTTP",
-                            visualization = current.visualization,
-                            config = HttpConfig(url = current.queryOrUrlOrContent.trim(), method = methodEnum)
-                        )
-                    }
-                    else -> WidgetIn.Sql(
-                        title = current.widgetTitle.trim(),
-                        type = "SQL",
-                        visualization = current.visualization,
-                        config = SqlConfig(query = current.queryOrUrlOrContent.trim())
-                    )
-                }
-                val response = dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
-                    dashboardId = dashboardId,
-                    widgetIn = widgetIn
-                )
-                response.body()
-            }.fold(
-                onSuccess = { created ->
-                    _state.value = WizardState.Success(created)
-                    onSuccess(created)
-                },
-                onFailure = { e ->
-                    _state.value = WizardState.Error(e.message ?: "Failed to create widget")
-                }
-            )
-        }
+        persistWidget(buildCustomWidgetPayload(current), onSuccess)
     }
 
     /**
@@ -264,13 +203,9 @@ class WizardViewModel(
      */
     fun updateParameterValue(key: String, value: String) {
         val current = _state.value as? WizardState.ParameterConfiguration ?: return
-        val updatedValues = current.parameterValues.toMutableMap()
-        updatedValues[key] = value
-        val updatedErrors = current.fieldErrors.toMutableMap()
-        updatedErrors.remove(key)
         _state.value = current.copy(
-            parameterValues = updatedValues,
-            fieldErrors = updatedErrors
+            parameterValues = current.parameterValues + (key to value),
+            fieldErrors = current.fieldErrors - key
         )
     }
 
@@ -281,12 +216,7 @@ class WizardViewModel(
      */
     fun updateWidgetTitle(title: String) {
         val current = _state.value as? WizardState.ParameterConfiguration ?: return
-        val updatedErrors = current.fieldErrors.toMutableMap()
-        updatedErrors.remove("title")
-        _state.value = current.copy(
-            widgetTitle = title,
-            fieldErrors = updatedErrors
-        )
+        _state.value = current.copy(widgetTitle = title, fieldErrors = current.fieldErrors - "title")
     }
 
     /**
@@ -303,13 +233,18 @@ class WizardViewModel(
      * Navigates back from parameter configuration to template selection.
      */
     fun backToTemplates() {
-        val currentCategory = (_state.value as? WizardState.ParameterConfiguration)?.template?.category
+        val currentState = _state.value
+        val currentCategory = if (currentState is WizardState.ParameterConfiguration) {
+            currentState.template.category
+        } else {
+            null
+        }
         _state.value = WizardState.TemplateSelection(
             templates = allTemplates,
             categories = allCategories,
             selectedCategory = currentCategory,
             searchQuery = "",
-            filteredTemplates = filterTemplates(allTemplates, currentCategory, "")
+            filteredTemplates = filterWizardTemplates(allTemplates, currentCategory, "")
         )
     }
 
@@ -320,51 +255,37 @@ class WizardViewModel(
      */
     fun submitWidget(onSuccess: (WidgetResponse) -> Unit) {
         val current = _state.value as? WizardState.ParameterConfiguration ?: return
-
-        val errors = mutableMapOf<String, String>()
-        if (current.widgetTitle.isBlank()) {
-            errors["title"] = "Title is required"
-        }
-
-        current.parameterFields.forEach { field ->
-            if (field.isRequired) {
-                val value = current.parameterValues[field.key]
-                if (value.isNullOrBlank()) {
-                    errors[field.key] = "${field.title} is required"
-                }
-            }
-        }
-
+        val errors = validateTemplateParameterConfig(current)
         if (errors.isNotEmpty()) {
             _state.value = current.copy(fieldErrors = errors)
             return
         }
+        val renderedSql = substituteParameters(
+            templateSql = current.template.sqlTemplate,
+            parameters = current.parameterValues,
+            fields = current.parameterFields
+        )
+        val widgetIn = WidgetIn.Sql(
+            title = current.widgetTitle.trim(),
+            type = "SQL",
+            visualization = current.visualization,
+            config = SqlConfig(query = renderedSql)
+        )
+        persistWidget(widgetIn, onSuccess)
+    }
 
+    private fun persistWidget(widgetIn: WidgetIn, onSuccess: (WidgetResponse) -> Unit) {
         _state.value = WizardState.Submitting()
-
         scope.launch {
             runCatching {
-                val renderedSql = substituteParameters(
-                    templateSql = current.template.sqlTemplate,
-                    parameters = current.parameterValues
-                )
-
-                val widgetIn = WidgetIn.Sql(
-                    title = current.widgetTitle.trim(),
-                    type = "SQL",
-                    visualization = current.visualization,
-                    config = SqlConfig(query = renderedSql)
-                )
-
-                val response = dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
+                currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                     dashboardId = dashboardId,
                     widgetIn = widgetIn
-                )
-                response.body()
+                ).body()
             }.fold(
-                onSuccess = { createdWidget ->
-                    _state.value = WizardState.Success(createdWidget)
-                    onSuccess(createdWidget)
+                onSuccess = { created ->
+                    _state.value = WizardState.Success(created)
+                    onSuccess(created)
                 },
                 onFailure = { e ->
                     _state.value = WizardState.Error(e.message ?: "Failed to create widget")
@@ -379,54 +300,152 @@ class WizardViewModel(
      * @param schema The JSON Schema object describing template parameters.
      * @return List of extracted and validated [ParameterField] instances.
      */
-    fun extractParameterFields(schema: JsonObject?): List<ParameterField> {
-        if (schema == null) return emptyList()
-        val properties = schema["properties"] as? JsonObject ?: return emptyList()
-        val requiredArray = schema["required"] as? JsonArray
-        val requiredKeys = requiredArray?.mapNotNull { (it as? JsonPrimitive)?.content }?.toSet() ?: emptySet()
-
-        return properties.map { (key, elem) ->
-            val obj = elem as? JsonObject
-            val title = (obj?.get("title") as? JsonPrimitive)?.content ?: key
-            val type = (obj?.get("type") as? JsonPrimitive)?.content ?: "string"
-            val defaultVal = (obj?.get("default") as? JsonPrimitive)?.content ?: ""
-            val isRequired = requiredKeys.contains(key)
-            ParameterField(
-                key = key,
-                title = title,
-                type = type,
-                defaultValue = defaultVal,
-                isRequired = isRequired
-            )
-        }
-    }
+    fun extractParameterFields(schema: JsonObject?): List<ParameterField> =
+        extractSchemaParameterFields(schema)
 
     /**
-     * Substitutes parameter values into handlebars-style placeholders within the SQL template.
+     * Substitutes validated parameter values into handlebars-style placeholders within the SQL template,
+     * escaping single quotes to prevent SQL syntax injection.
      *
      * @param templateSql Raw SQL containing {{placeholder}} tokens.
      * @param parameters Map of token names to user-provided string values.
-     * @return Rendered SQL string with all tokens substituted.
+     * @param fields Optional list of [ParameterField] definitions for type-aware formatting.
+     * @return Rendered SQL string with all tokens substituted safely.
      */
-    fun substituteParameters(templateSql: String, parameters: Map<String, String>): String {
-        var result = templateSql
-        parameters.forEach { (key, value) ->
-            result = result.replace("{{$key}}", value).replace("{{ $key }}", value)
-        }
-        return result
-    }
+    fun substituteParameters(
+        templateSql: String,
+        parameters: Map<String, String>,
+        fields: List<ParameterField> = emptyList()
+    ): String = substituteSqlParameters(templateSql, parameters, fields)
+}
 
-    private fun filterTemplates(
-        templates: List<TemplateResponse>,
-        category: String?,
-        query: String
-    ): List<TemplateResponse> {
-        return templates.filter { item ->
-            val matchesCategory = category == null || item.category.equals(category, ignoreCase = true)
-            val matchesQuery = query.isBlank() ||
-                item.title.contains(query, ignoreCase = true) ||
-                (item.description?.contains(query, ignoreCase = true) == true)
-            matchesCategory && matchesQuery
+private fun validateCustomWidgetConfig(
+    current: WizardState.CustomWidgetConfiguration
+): Map<String, String> {
+    val errors = mutableMapOf<String, String>()
+    if (current.widgetTitle.isBlank()) {
+        errors["title"] = "Title is required"
+    }
+    if (current.queryOrUrlOrContent.isBlank()) {
+        errors["content"] = "Query/URL/Content cannot be empty"
+    }
+    return errors
+}
+
+private fun buildCustomWidgetPayload(
+    current: WizardState.CustomWidgetConfiguration
+): WidgetIn {
+    return when (current.creationType.uppercase()) {
+        "TEXT" -> WidgetIn.Text(
+            title = current.widgetTitle.trim(),
+            type = "TEXT",
+            visualization = current.visualization,
+            config = TextConfig(content = current.queryOrUrlOrContent)
+        )
+        "HTTP" -> {
+            val methodEnum = HttpConfig.Method.entries.firstOrNull {
+                it.value.equals(current.httpMethod, ignoreCase = true)
+            } ?: HttpConfig.Method.GET
+            WidgetIn.Http(
+                title = current.widgetTitle.trim(),
+                type = "HTTP",
+                visualization = current.visualization,
+                config = HttpConfig(url = current.queryOrUrlOrContent.trim(), method = methodEnum)
+            )
         }
+        else -> WidgetIn.Sql(
+            title = current.widgetTitle.trim(),
+            type = "SQL",
+            visualization = current.visualization,
+            config = SqlConfig(query = current.queryOrUrlOrContent.trim())
+        )
+    }
+}
+
+private fun validateTemplateParameterConfig(
+    current: WizardState.ParameterConfiguration
+): Map<String, String> {
+    val errors = mutableMapOf<String, String>()
+    if (current.widgetTitle.isBlank()) {
+        errors["title"] = "Title is required"
+    }
+    current.parameterFields.forEach { field ->
+        val rawValue = current.parameterValues.getValue(field.key)
+        val fieldError = validateSingleParameterField(field, rawValue)
+        if (fieldError != null) {
+            errors[field.key] = fieldError
+        }
+    }
+    return errors
+}
+
+private fun validateSingleParameterField(field: ParameterField, rawValue: String): String? {
+    val cleanValue = rawValue.trim()
+    if (cleanValue.isEmpty()) {
+        return if (field.isRequired) "${field.title} is required" else null
+    }
+    return when (field.type.lowercase()) {
+        "integer" -> if (cleanValue.toLongOrNull() == null) "${field.title} must be a valid integer" else null
+        "number" -> if (cleanValue.toDoubleOrNull() == null) "${field.title} must be a valid number" else null
+        else -> null
+    }
+}
+
+private fun extractJsonString(obj: JsonObject, key: String, fallback: String): String {
+    val prim = obj[key] as? JsonPrimitive ?: return fallback
+    return prim.content
+}
+
+private fun extractSchemaParameterFields(schema: JsonObject?): List<ParameterField> {
+    if (schema == null) return emptyList()
+    val properties = schema["properties"] as? JsonObject ?: return emptyList()
+    val requiredArray = schema["required"] as? JsonArray ?: JsonArray(emptyList())
+    val requiredKeys = requiredArray
+        .filterIsInstance<JsonPrimitive>()
+        .map { it.content }
+        .toSet()
+
+    return properties.map { (key, elem) ->
+        val obj = elem as? JsonObject ?: JsonObject(emptyMap())
+        ParameterField(
+            key = key,
+            title = extractJsonString(obj, "title", key),
+            type = extractJsonString(obj, "type", "string"),
+            defaultValue = extractJsonString(obj, "default", ""),
+            isRequired = requiredKeys.contains(key)
+        )
+    }
+}
+
+private fun substituteSqlParameters(
+    templateSql: String,
+    parameters: Map<String, String>,
+    fields: List<ParameterField>
+): String {
+    val fieldTypes = fields.associate { it.key to it.type.lowercase() }
+    var result = templateSql
+    parameters.forEach { (key, rawValue) ->
+        val safeValue = when (fieldTypes[key]) {
+            "integer" -> (rawValue.trim().toLongOrNull() ?: 0L).toString()
+            "number" -> (rawValue.trim().toDoubleOrNull() ?: 0.0).toString()
+            else -> rawValue.replace("'", "''")
+        }
+        val tokenRegex = Regex("""\{\{\s*${Regex.escape(key)}\s*\}\}""")
+        result = tokenRegex.replace(result, safeValue)
+    }
+    return result
+}
+
+private fun filterWizardTemplates(
+    templates: List<TemplateResponse>,
+    category: String?,
+    query: String
+): List<TemplateResponse> {
+    return templates.filter { item ->
+        val matchesCategory = category == null || item.category.equals(category, ignoreCase = true)
+        val matchesQuery = query.isBlank() ||
+            item.title.contains(query, ignoreCase = true) ||
+            item.description.orEmpty().contains(query, ignoreCase = true)
+        matchesCategory && matchesQuery
     }
 }

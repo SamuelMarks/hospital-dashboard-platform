@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { Subject } from 'rxjs';
+import { MatPaginator } from '@angular/material/paginator';
 import { VizTableComponent, TableDataSet } from './viz-table.component';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -19,8 +20,8 @@ function generateData(count: number): TableDataSet {
 describe('VizTableComponent', () => {
   let component: VizTableComponent;
   let fixture: ComponentFixture<VizTableComponent>;
-  let dataSetSig: any;
-  let configSig: any;
+  let dataSetSig: WritableSignal<TableDataSet | null | undefined>;
+  let configSig: WritableSignal<Record<string, unknown> | null>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -30,9 +31,13 @@ describe('VizTableComponent', () => {
     fixture = TestBed.createComponent(VizTableComponent);
     component = fixture.componentInstance;
     dataSetSig = signal<TableDataSet | null | undefined>(undefined);
-    configSig = signal<any>(null);
-    (component as any).dataSet = dataSetSig;
-    (component as any).config = configSig;
+    configSig = signal<Record<string, unknown> | null>(null);
+    const priv = component as unknown as {
+      dataSet: WritableSignal<TableDataSet | null | undefined>;
+      config: WritableSignal<Record<string, unknown> | null>;
+    };
+    priv.dataSet = dataSetSig;
+    priv.config = configSig;
     fixture.detectChanges();
   });
 
@@ -86,7 +91,7 @@ describe('VizTableComponent', () => {
   });
 
   it('should skip paginator assignment when paginator is missing', () => {
-    component.paginator = undefined as any;
+    component.paginator = undefined as unknown as MatPaginator;
     dataSetSig.set(generateData(2));
     fixture.detectChanges();
     expect(component.dataSource.paginator).toBeUndefined();
@@ -99,7 +104,7 @@ describe('VizTableComponent', () => {
       pageIndex: 0,
       pageSize: 10,
       length: 0,
-    } as any;
+    } as unknown as MatPaginator;
     component.paginator = mockPaginator;
     dataSetSig.set(generateData(1));
     fixture.detectChanges();

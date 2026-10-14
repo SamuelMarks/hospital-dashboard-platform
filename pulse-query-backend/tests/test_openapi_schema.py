@@ -13,7 +13,7 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_openapi_endpoint_status():
+def test_openapi_endpoint_status() -> None:
   """
   Verify the standard /openapi.json endpoint returns 200 OK.
   """
@@ -22,7 +22,7 @@ def test_openapi_endpoint_status():
   assert response.headers["content-type"] == "application/json"
 
 
-def test_openapi_contains_critical_paths():
+def test_openapi_contains_critical_paths() -> None:
   """
   Verify that key business endpoints and schemas are exposed in the specification.
   Specific attention is paid to the 'refresh' endpoint which involves complex types.
@@ -59,7 +59,7 @@ def test_openapi_contains_critical_paths():
   assert "200" in operation["responses"]
 
 
-def test_openapi_version_matches():
+def test_openapi_version_matches() -> None:
   """
   Verify the API version in schema matches configuration.
   """

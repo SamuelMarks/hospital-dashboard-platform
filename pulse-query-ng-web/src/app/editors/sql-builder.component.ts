@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview SQL Builder Component with CodeMirror Integration.
  *
@@ -153,19 +152,14 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly store = inject(DashboardStore);
 
   /** Dashboard Id. */
-  /* istanbul ignore next */
   readonly dashboardId = input.required<string>();
   /** Widget Id. */
-  /* istanbul ignore next */
   readonly widgetId = input.required<string>();
   /** Initial Sql. */
-  /* istanbul ignore next */
   readonly initialSql = input<string>('');
   /** Optional: Set which tab opens by default. 0=Code, 1=AI */
-  /* istanbul ignore next */
   readonly initialTab = input<number>(0);
   /** Optional: Enable cart actions for ad-hoc flows. */
-  /* istanbul ignore next */
   readonly enableCart = input<boolean>(false);
 
   /** Sql Change. */
@@ -174,29 +168,22 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly saveToCart = output<string>();
 
   /** Current Sql. */
-  /* istanbul ignore next */
   readonly currentSql = model<string>('');
   /** Whether running. */
-  /* istanbul ignore next */
   readonly isRunning = signal(false);
   /** Latest Result. */
-  /* istanbul ignore next */
   readonly latestResult = signal<TableDataSet | null>(null);
   /** Validation Error. */
-  /* istanbul ignore next */
   readonly validationError = signal<string | null>(null);
 
   /** Global Params. */
   readonly globalParams = this.store.globalParams;
   /** Available Params. */
-  /* istanbul ignore next */
   readonly availableParams = computed(() => Object.keys(this.globalParams()));
   /** Whether save To Cart. */
-  /* istanbul ignore next */
   readonly canSaveToCart = computed(() => this.currentSql().trim().length > 0);
 
   /** Selected Tab Index. */
-  /* istanbul ignore next */
   selectedTabIndex = signal(0);
 
   // CodeMirror References
@@ -208,7 +195,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private languageConf = new Compartment();
 
   /** Ng On Init. */
-  ngOnInit() {
+  ngOnInit(): void {
     if (this.initialSql()) this.currentSql.set(this.initialSql());
     // Initialize tab selection from input
     this.selectedTabIndex.set(this.initialTab());
@@ -343,7 +330,11 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  /** Insert Param. */
+  /**
+   * Inserts a global dashboard parameter placeholder token at the current cursor position.
+   *
+   * @param key - The parameter name to insert as `{{key}}`.
+   */
   insertParam(key: string): void {
     const token = `{{${key}}}`;
     if (this.editorView) {
@@ -359,7 +350,12 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** injectParameters method. */
+  /**
+   * Replaces `{{param}}` template tokens in a SQL string with current global parameter values.
+   *
+   * @param sqlTemplate - The SQL template string containing parameter tokens.
+   * @returns Compiled SQL string with parameter values injected.
+   */
   private injectParameters(sqlTemplate: string): string {
     let processed = sqlTemplate;
     const params = this.globalParams();
@@ -373,7 +369,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * Feature 2 Fix: Checks result error property to display feedback instead of empty table.
    */
-  runQuery() {
+  runQuery(): void {
     this.isRunning.set(true);
     this.validationError.set(null);
 
@@ -389,7 +385,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
             .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId())
             .pipe(finalize(() => this.isRunning.set(false)))
             .subscribe({
-              next: (map) => {
+              next: (map: Record<string, TableDataSet & { error?: string }>) => {
                 const result = map[this.widgetId()];
 
                 // Logic Fix: Check for embedded error from backend runner
@@ -406,7 +402,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
         error: (err: HttpErrorResponse) => {
           this.isRunning.set(false);
           let msg = 'Failed to save query.';
-          if (err.error && err.error.detail) msg = String(err.error.detail);
+          const errBody = err.error as { detail?: unknown } | null | undefined;
+          if (errBody && errBody.detail) msg = String(errBody.detail);
           this.validationError.set(msg);
         },
       });

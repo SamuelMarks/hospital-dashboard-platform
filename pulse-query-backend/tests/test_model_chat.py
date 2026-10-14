@@ -15,6 +15,12 @@ from app.models.user import User
 
 @pytest.fixture
 async def chat_user(db_session: AsyncSession) -> User:
+  """
+  Verify chat user behavior.
+
+  Args:
+      db_session: Test parameter or fixture.
+  """
   user = User(email=f"chat_{uuid.uuid4()}@example.com", hashed_password="pw", is_active=True)
   db_session.add(user)
   await db_session.commit()

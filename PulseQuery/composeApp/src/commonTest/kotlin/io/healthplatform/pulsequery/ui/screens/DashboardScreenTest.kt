@@ -44,6 +44,23 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
                         headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                     )
                 }
+                request.url.encodedPath.endsWith("/refresh") -> {
+                    if (successLoad) {
+                        respond(
+                            """{
+                                "w-1":{"data":[{"label":"ICU","value":15}]},
+                                "w-2":{"data":[{"label":"ER","value":22}]},
+                                "w-3":{"data":[{"label":"Ward","value":40}]},
+                                "w-4":{"data":[{"label":"Occupancy","value":85}]},
+                                "w-5":{"data":[{"label":"MedSurg","value":30}]}
+                            }""",
+                            HttpStatusCode.OK,
+                            headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        )
+                    } else {
+                        respond("Server error", HttpStatusCode.InternalServerError)
+                    }
+                }
                 request.url.encodedPath.contains("dashboards") -> {
                     if (successLoad) {
                         respond(
@@ -54,13 +71,6 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
                     } else {
                         respond("Server error", HttpStatusCode.InternalServerError)
                     }
-                }
-                request.url.encodedPath.contains("execution") -> {
-                    respond(
-                        """{"widget_id":"w-1","data":[{"ward":"ICU","count":15}],"cached":false,"execution_time_ms":12.0}""",
-                        HttpStatusCode.OK,
-                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    )
                 }
                 else -> respond("Not Found", HttpStatusCode.NotFound)
             }
@@ -161,13 +171,13 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
 
         waitUntilAtLeastOneExists(hasText("Bar Widget"), timeoutMillis = 15000)
         onNodeWithText("Bar Widget").assertExists()
-        onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Line Widget"))
+        onNodeWithTag("dashboard_grid").performScrollToNode(hasText("Line Widget"))
         onNodeWithText("Line Widget").assertExists()
-        onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Pie Widget"))
+        onNodeWithTag("dashboard_grid").performScrollToNode(hasText("Pie Widget"))
         onNodeWithText("Pie Widget").assertExists()
-        onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Metric Widget"))
+        onNodeWithTag("dashboard_grid").performScrollToNode(hasText("Metric Widget"))
         onNodeWithText("Metric Widget").assertExists()
-        onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Table Widget"))
+        onNodeWithTag("dashboard_grid").performScrollToNode(hasText("Table Widget"))
         onNodeWithText("Table Widget").assertExists()
     }
 }

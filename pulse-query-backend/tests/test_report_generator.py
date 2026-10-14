@@ -8,12 +8,19 @@ Verifies:
 4. Markdown Formatting compliance.
 """
 
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
 from scripts.generate_report import (
   BenchmarkResult,
   StrategyStats,
   aggregate_stats,
   analyze_improvements,
   generate_markdown,
+  load_results,
+  main,
 )
 
 
@@ -112,3 +119,34 @@ def test_markdown_generation() -> None:
   # Check Analysis Section
   assert "Failure Analysis" in md
   assert "- **Complex Logic**: Fixed by `GPT-4`" in md
+
+  md_empty = generate_markdown(stats, [])
+  assert "No distinct improvements detected" in md_empty
+
+
+def test_load_results_and_main(tmp_path: Path) -> None:
+  """Verify load_results file reading, FileNotFoundError, and CLI main() execution."""
+  missing_csv = tmp_path / "missing.csv"
+  with pytest.raises(FileNotFoundError):
+    load_results(str(missing_csv))
+
+  csv_path = tmp_path / "results.csv"
+  out_md = tmp_path / "report.md"
+  csv_path.write_text(
+    "Theme,Strategy,Model,Success,LatencyMs\nT1,zero-shot,M1,False,100\nT1,cot-macro,M2,True,120\n",
+    encoding="utf-8",
+  )
+
+  loaded = load_results(str(csv_path))
+  assert len(loaded) == 2
+  assert loaded[1].success is True
+
+  with patch("sys.argv", ["generate_report.py", "--input", str(csv_path), "--output", str(out_md)]):
+    main()
+  assert out_md.exists()
+  assert "M2" in out_md.read_text(encoding="utf-8")
+
+  with patch("sys.argv", ["generate_report.py", "--input", str(missing_csv), "--output", str(out_md)]):
+    with pytest.raises(SystemExit) as exc:
+      main()
+    assert exc.value.code == 1

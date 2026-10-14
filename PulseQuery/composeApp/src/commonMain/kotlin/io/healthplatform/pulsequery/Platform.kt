@@ -1,3 +1,7 @@
+/**
+ * Cross-platform expect declarations for platform identification, default localhost resolution,
+ * and local file persistence.
+ */
 package io.healthplatform.pulsequery
 
 /**
@@ -18,6 +22,8 @@ expect fun getPlatform(): Platform
 /**
  * Returns the default localhost URL for the current platform.
  * E.g., `http://10.0.2.2:8000` for Android emulator, `http://localhost:8000` for others.
+ *
+ * @return Default API base URL string for the current target.
  */
 expect fun getDefaultLocalHost(): String
 

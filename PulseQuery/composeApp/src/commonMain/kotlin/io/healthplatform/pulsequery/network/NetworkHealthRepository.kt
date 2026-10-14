@@ -6,6 +6,7 @@ import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +20,7 @@ import kotlinx.coroutines.launch
  */
 class NetworkHealthRepository(
     private val systemApi: SystemApi = AppContainer.systemApi,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Main)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     private val _isOnline = MutableStateFlow(true)
     /** StateFlow indicating whether the backend server is reachable. */

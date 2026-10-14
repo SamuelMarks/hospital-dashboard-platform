@@ -6,7 +6,7 @@
     (selectedIndexChange)="selectedTabIndex.set($event)"
     animationDuration="0ms"
   >
-    <mat-tab i18n label="Code Editor">
+    <mat-tab i18n label="Code Editor" i18n-label>
       <div class="flex flex-col h-full p-4 gap-4 overflow-hidden">
         <!-- Error Banner -->
         @if (validationError()) {
@@ -109,7 +109,7 @@
     </mat-tab>
 
     <!-- AI Tab: Implements the Conversation UI requirements -->
-    <mat-tab i18n label="AI Assistant">
+    <mat-tab i18n label="AI Assistant" i18n-label>
       <div class="ai-wrapper">
         <app-conversation class="h-full"></app-conversation>
       </div>

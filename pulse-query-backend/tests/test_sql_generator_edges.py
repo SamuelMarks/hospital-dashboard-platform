@@ -2,8 +2,10 @@
 Additional tests for SQL generator edge cases.
 """
 
+from typing import Any
+
 import uuid
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,21 +14,36 @@ from app.models.feedback import ModelCandidate
 from app.services.sql_generator import sql_generator
 
 
-def _make_db():
+def _make_db() -> Any:
+  """Verify make db behavior."""
   db = MagicMock()
   added = []
 
-  def add_side_effect(obj):
+  def add_side_effect(obj: Any) -> None:
+    """
+    Verify add side effect behavior.
+
+    Args:
+        obj: Test parameter or fixture.
+    """
     added.append(obj)
 
   db.add.side_effect = add_side_effect
 
-  async def _assign_ids():
+  async def _assign_ids() -> None:
+    """Verify assign ids behavior."""
     for obj in added:
       if getattr(obj, "id", None) is None:
         obj.id = uuid.uuid4()
 
-  async def _refresh(obj, attribute_names=None):
+  async def _refresh(obj: Any, attribute_names: Any = None) -> None:
+    """
+    Verify refresh behavior.
+
+    Args:
+        obj: Test parameter or fixture.
+        attribute_names: Test parameter or fixture.
+    """
     if getattr(obj, "id", None) is None:
       obj.id = uuid.uuid4()
     if getattr(obj, "created_at", None) is None:

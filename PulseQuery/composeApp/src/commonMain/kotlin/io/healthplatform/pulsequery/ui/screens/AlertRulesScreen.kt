@@ -1,11 +1,20 @@
 /**
  * Component for rendering the AlertRulesScreen in Compose Multiplatform.
  * Provides administrators and clinical analysts with capabilities to review
- * and configure hospital capacity alerting thresholds.
+ * and configure hospital capacity alerting thresholds, delegating state and API calls
+ * to [AlertRulesViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -13,51 +22,62 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import io.healthplatform.pulsequery.api.models.AlertRuleCreate
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
-import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
 import io.healthplatform.pulsequery.api.models.AlertSeverity
-import io.healthplatform.pulsequery.di.AppContainer
-import kotlinx.coroutines.launch
+import io.healthplatform.pulsequery.ui.screens.alertrules.AlertRulesViewModel
 
 /**
  * Screen displaying and managing clinical alert rules for hospital occupancy.
+ *
+ * @param viewModel Optional [AlertRulesViewModel] instance for state orchestration.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertRulesScreen() {
-    var rules by remember { mutableStateOf<List<AlertRuleResponse>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+fun AlertRulesScreen(
+    viewModel: AlertRulesViewModel? = null
+) {
+    val scope = rememberCoroutineScope()
+    val vm = remember(viewModel, scope) {
+        viewModel ?: AlertRulesViewModel(scope = scope)
+    }
+
+    val uiState by vm.state.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
     var ruleToEdit by remember { mutableStateOf<AlertRuleResponse?>(null) }
 
-    val scope = rememberCoroutineScope()
-
-    fun loadRules() {
-        scope.launch {
-            isLoading = true
-            errorMessage = null
-            runCatching {
-                val response = AppContainer.alertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet()
-                response.body()
-            }.fold(
-                onSuccess = { rules = it },
-                onFailure = { errorMessage = it.message ?: "Failed to load alert rules" }
-            )
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        loadRules()
+    LaunchedEffect(vm) {
+        vm.loadRules()
     }
 
     Scaffold(
@@ -65,16 +85,19 @@ fun AlertRulesScreen() {
             TopAppBar(
                 title = { Text("Alert Rules") },
                 actions = {
-                    IconButton(onClick = { loadRules() }) {
+                    IconButton(onClick = { vm.loadRules() }) {
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh Rules")
                     }
-                    IconButton(onClick = { showCreateDialog = true }) {
+                    IconButton(onClick = {
+                        vm.clearDialogError()
+                        showCreateDialog = true
+                    }) {
                         Icon(Icons.Filled.Add, contentDescription = "Add Rule")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -84,15 +107,15 @@ fun AlertRulesScreen() {
             contentAlignment = Alignment.Center
         ) {
             when {
-                isLoading -> CircularProgressIndicator()
-                errorMessage != null -> {
+                uiState.isLoading -> CircularProgressIndicator()
+                uiState.errorMessage != null -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
+                        Text(text = uiState.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { loadRules() }) { Text("Retry") }
+                        Button(onClick = { vm.loadRules() }) { Text("Retry") }
                     }
                 }
-                rules.isEmpty() -> {
+                uiState.rules.isEmpty() -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             "No alert rules configured",
@@ -100,7 +123,10 @@ fun AlertRulesScreen() {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { showCreateDialog = true }) {
+                        Button(onClick = {
+                            vm.clearDialogError()
+                            showCreateDialog = true
+                        }) {
                             Text("Create Rule")
                         }
                     }
@@ -117,20 +143,15 @@ fun AlertRulesScreen() {
                                 modifier = Modifier.semantics { heading() }
                             )
                         }
-                        items(rules, key = { it.id }) { rule ->
+                        items(uiState.rules, key = { it.id }) { rule ->
                             AlertRuleCard(
                                 rule = rule,
-                                onEdit = { ruleToEdit = rule },
+                                onEdit = {
+                                    vm.clearDialogError()
+                                    ruleToEdit = rule
+                                },
                                 onDelete = {
-                                    scope.launch {
-                                        runCatching {
-                                            AppContainer.alertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(rule.id)
-                                        }.onSuccess {
-                                            loadRules()
-                                        }.onFailure { e ->
-                                            errorMessage = e.message ?: "Failed to delete rule"
-                                        }
-                                    }
+                                    vm.deleteRule(rule.id)
                                 }
                             )
                         }
@@ -145,8 +166,8 @@ fun AlertRulesScreen() {
             onDismiss = { showCreateDialog = false },
             onCreated = {
                 showCreateDialog = false
-                loadRules()
-            }
+            },
+            viewModel = vm
         )
     }
 
@@ -156,8 +177,8 @@ fun AlertRulesScreen() {
             onDismiss = { ruleToEdit = null },
             onUpdated = {
                 ruleToEdit = null
-                loadRules()
-            }
+            },
+            viewModel = vm
         )
     }
 }
@@ -197,7 +218,7 @@ fun AlertRuleCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(
-                    progress = (rule.thresholdPercentage / 100.0).toFloat().coerceIn(0f, 1f),
+                    progress = { (rule.thresholdPercentage / 100.0).toFloat().coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(0.6f)
                 )
             }
@@ -227,20 +248,25 @@ fun AlertRuleCard(
  * @param rule The existing alert rule being modified.
  * @param onDismiss Invoked when the user cancels or closes the dialog.
  * @param onUpdated Invoked when the alert rule has been successfully updated on the backend.
+ * @param viewModel Optional [AlertRulesViewModel] instance for state orchestration.
  */
 @Composable
 fun EditAlertRuleDialog(
     rule: AlertRuleResponse,
     onDismiss: () -> Unit,
-    onUpdated: () -> Unit
+    onUpdated: () -> Unit,
+    viewModel: AlertRulesViewModel? = null
 ) {
-    var unitCategory by remember { mutableStateOf(rule.unitCategory) }
-    var thresholdText by remember { mutableStateOf(rule.thresholdPercentage.toString()) }
-    var severity by remember { mutableStateOf<AlertSeverity>(rule.severity ?: AlertSeverity.WARNING) }
-    var isActive by remember { mutableStateOf(rule.isActive ?: true) }
-    var isSaving by remember { mutableStateOf(false) }
-    var errorText by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val vm = remember(viewModel, scope) {
+        viewModel ?: AlertRulesViewModel(scope = scope)
+    }
+    val uiState by vm.state.collectAsState()
+
+    var unitCategory by remember(rule.id) { mutableStateOf(rule.unitCategory) }
+    var thresholdText by remember(rule.id) { mutableStateOf(rule.thresholdPercentage.toString()) }
+    var severity by remember(rule.id) { mutableStateOf<AlertSeverity>(rule.severity ?: AlertSeverity.WARNING) }
+    var isActive by remember(rule.id) { mutableStateOf(rule.isActive ?: true) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -296,49 +322,30 @@ fun EditAlertRuleDialog(
                         onCheckedChange = { isActive = it }
                     )
                 }
-                if (errorText != null) {
-                    Text(errorText!!, color = MaterialTheme.colorScheme.error)
+                uiState.dialogError?.let { err ->
+                    Text(err, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val threshold = thresholdText.toDoubleOrNull()
-                    if (unitCategory.isBlank()) {
-                        errorText = "Unit category is required"
-                        return@Button
-                    }
-                    if (threshold == null || threshold < 1.0 || threshold > 100.0) {
-                        errorText = "Threshold must be between 1 and 100"
-                        return@Button
-                    }
-                    scope.launch {
-                        isSaving = true
-                        runCatching {
-                            AppContainer.alertRulesApi.updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(
-                                ruleId = rule.id,
-                                alertRuleUpdate = AlertRuleUpdate(
-                                    unitCategory = unitCategory.trim(),
-                                    thresholdPercentage = threshold,
-                                    severity = severity,
-                                    isActive = isActive
-                                )
-                            )
-                        }.fold(
-                            onSuccess = { onUpdated() },
-                            onFailure = { errorText = it.message ?: "Update failed" }
-                        )
-                        isSaving = false
-                    }
+                    vm.updateRule(
+                        ruleId = rule.id,
+                        unitCategory = unitCategory,
+                        thresholdText = thresholdText,
+                        severity = severity,
+                        isActive = isActive,
+                        onSuccess = onUpdated
+                    )
                 },
-                enabled = !isSaving
+                enabled = !uiState.isSaving
             ) {
-                Text(if (isSaving) "Saving..." else "Save Changes")
+                Text(if (uiState.isSaving) "Saving..." else "Save Changes")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
+            TextButton(onClick = onDismiss, enabled = !uiState.isSaving) {
                 Text("Cancel")
             }
         }
@@ -350,18 +357,23 @@ fun EditAlertRuleDialog(
  *
  * @param onDismiss Invoked when the user cancels the dialog.
  * @param onCreated Invoked when the new rule is successfully saved.
+ * @param viewModel Optional [AlertRulesViewModel] instance for state orchestration.
  */
 @Composable
 fun CreateAlertRuleDialog(
     onDismiss: () -> Unit,
-    onCreated: () -> Unit
+    onCreated: () -> Unit,
+    viewModel: AlertRulesViewModel? = null
 ) {
+    val scope = rememberCoroutineScope()
+    val vm = remember(viewModel, scope) {
+        viewModel ?: AlertRulesViewModel(scope = scope)
+    }
+    val uiState by vm.state.collectAsState()
+
     var unitCategory by remember { mutableStateOf("") }
     var thresholdText by remember { mutableStateOf("85") }
-    var severity by remember { mutableStateOf<AlertSeverity>(AlertSeverity.WARNING) }
-    var isSaving by remember { mutableStateOf(false) }
-    var errorText by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+    val severity by remember { mutableStateOf<AlertSeverity>(AlertSeverity.WARNING) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -382,48 +394,28 @@ fun CreateAlertRuleDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                if (errorText != null) {
-                    Text(errorText!!, color = MaterialTheme.colorScheme.error)
+                uiState.dialogError?.let { err ->
+                    Text(err, color = MaterialTheme.colorScheme.error)
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val threshold = thresholdText.toDoubleOrNull()
-                    if (unitCategory.isBlank()) {
-                        errorText = "Unit category is required"
-                        return@Button
-                    }
-                    if (threshold == null || threshold < 1.0 || threshold > 100.0) {
-                        errorText = "Threshold must be between 1 and 100"
-                        return@Button
-                    }
-                    scope.launch {
-                        isSaving = true
-                        runCatching {
-                            AppContainer.alertRulesApi.createAlertRuleApiV1AnalyticsAlertRulesPost(
-                                AlertRuleCreate(
-                                    unitCategory = unitCategory.trim(),
-                                    thresholdPercentage = threshold,
-                                    severity = severity,
-                                    isActive = true
-                                )
-                            )
-                        }.fold(
-                            onSuccess = { onCreated() },
-                            onFailure = { errorText = it.message ?: "Creation failed" }
-                        )
-                        isSaving = false
-                    }
+                    vm.createRule(
+                        unitCategory = unitCategory,
+                        thresholdText = thresholdText,
+                        severity = severity,
+                        onSuccess = onCreated
+                    )
                 },
-                enabled = !isSaving
+                enabled = !uiState.isSaving
             ) {
-                Text(if (isSaving) "Saving..." else "Save")
+                Text(if (uiState.isSaving) "Saving..." else "Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isSaving) {
+            TextButton(onClick = onDismiss, enabled = !uiState.isSaving) {
                 Text("Cancel")
             }
         }

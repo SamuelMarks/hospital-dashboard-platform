@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Service for tracking global backend reachability, database connectivity,
  * and system health diagnostic state.
@@ -168,7 +167,7 @@ export class ConnectionStatusService {
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
   /** Signal indicating if the browser has network access. */
-  readonly isOnline = signal<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  readonly isOnline = signal<boolean>(navigator.onLine);
 
   /** Signal indicating if the PulseQuery backend is reachable. */
   readonly isBackendReachable = signal<boolean>(true);
@@ -195,22 +194,20 @@ export class ConnectionStatusService {
   readonly isDismissed = signal<boolean>(false);
 
   /** Base API endpoint URL. */
-  private readonly baseUrl = environment.apiUrl || '';
+  private readonly baseUrl = environment.apiUrl;
 
   /**
    * Initializes browser online/offline listeners.
    */
   constructor() {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', () => {
-        this.isOnline.set(true);
-        this.checkHealth().subscribe();
-      });
-      window.addEventListener('offline', () => {
-        this.isOnline.set(false);
-        this.overallStatus.set('unreachable');
-      });
-    }
+    window.addEventListener('online', () => {
+      this.isOnline.set(true);
+      this.checkHealth().subscribe();
+    });
+    window.addEventListener('offline', () => {
+      this.isOnline.set(false);
+      this.overallStatus.set('unreachable');
+    });
   }
 
   /**

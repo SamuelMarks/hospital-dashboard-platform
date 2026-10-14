@@ -288,7 +288,7 @@ class WizardViewModelTest {
         }
 
         assertNotNull(createdWidget)
-        assertEquals("wid-999", createdWidget?.id)
+        assertEquals("wid-999", createdWidget.id)
         assertIs<WizardState.Success>(successState)
         assertEquals("wid-999", successState.widget.id)
     }
@@ -381,7 +381,7 @@ class WizardViewModelTest {
         }
 
         assertNotNull(created)
-        assertEquals("wid-999", created?.id)
+        assertEquals("wid-999", created.id)
     }
 
     @Test
@@ -455,5 +455,254 @@ class WizardViewModelTest {
         val state = viewModel.state.value as WizardState.CustomWidgetConfiguration
         assertTrue(state.fieldErrors.containsKey("title"))
         assertTrue(state.fieldErrors.containsKey("content"))
+    }
+
+    @Test
+    fun testAllRemainingWizardBranches(): Unit = runBlocking {
+        val customTemplatesApi = io.healthplatform.pulsequery.api.apis.TemplatesApi(
+            baseUrl = "http://localhost",
+            httpClient = HttpClient(MockEngine {
+                respond(
+                    content = sampleTemplatesJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true; isLenient = true })
+                }
+            }
+        )
+        val customDashboardsApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(
+            baseUrl = "http://localhost",
+            httpClient = HttpClient(MockEngine {
+                respond(
+                    content = sampleWidgetResponseJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true; isLenient = true })
+                }
+            }
+        )
+
+        val vm = WizardViewModel(
+            dashboardId = "dash-explicit",
+            scope = this,
+            templatesApi = customTemplatesApi,
+            dashboardsApi = customDashboardsApi
+        )
+        withTimeout(5000) {
+            vm.state.first { it !is WizardState.Loading }
+        }
+
+        // Calling parameter/custom methods when state is TemplateSelection (early returns)
+        vm.updateCustomWidgetTitle("ignored")
+        vm.updateCustomWidgetContent("ignored")
+        vm.updateCustomWidgetViz("ignored")
+        vm.updateCustomWidgetHttpMethod("ignored")
+        vm.submitCustomWidget {}
+        vm.updateParameterValue("k", "v")
+        vm.updateWidgetTitle("ignored")
+        vm.updateVisualization("ignored")
+        vm.submitWidget {}
+        vm.backToTemplates()
+
+        // Search query matching description (and template with null description)
+        val tplWithNullDesc = TemplateResponse(
+            id = "tpl-null-desc",
+            title = "Other Title",
+            description = null,
+            category = "Other",
+            sqlTemplate = "SELECT 1",
+            parametersSchema = null
+        )
+        // Select templates of all category types: census, bottlenecks, utilization, other
+        val tplCensus = tplWithNullDesc.copy(category = "census")
+        val tplBottlenecks = tplWithNullDesc.copy(category = "bottlenecks")
+        val tplUtilization = tplWithNullDesc.copy(category = "utilization")
+        val tplOther = tplWithNullDesc.copy(category = "general")
+
+        vm.selectTemplate(tplCensus)
+        assertEquals("bar_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+        vm.selectTemplate(tplBottlenecks)
+        assertEquals("line_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+        vm.selectTemplate(tplUtilization)
+        assertEquals("line_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+        vm.selectTemplate(tplOther)
+        assertEquals("table", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+
+        // While in ParameterConfiguration, calling TemplateSelection methods is a no-op
+        vm.selectCategory("Census")
+        vm.updateSearchQuery("query")
+
+        // Back to templates then search by description text ("probability")
+        vm.backToTemplates()
+        vm.selectCategory(null)
+        vm.updateSearchQuery("probability")
+        assertEquals(1, (vm.state.value as WizardState.TemplateSelection).filteredTemplates.size)
+
+        // Custom HTTP widget with unknown HTTP method falls back to GET
+        vm.startCustomWidget("HTTP")
+        vm.updateCustomWidgetTitle("Valid Title")
+        vm.updateCustomWidgetContent("https://api.example.com")
+        vm.updateCustomWidgetHttpMethod("INVALID_VERB")
+        vm.submitCustomWidget {}
+        withTimeout(5000) {
+            vm.state.first { it is WizardState.Success }
+        }
+
+        // Schema extraction edge cases: non-object properties, non-array required, non-primitive required element,
+        // non-object property entry, missing title/type/default
+        val nonObjPropertiesSchema = buildJsonObject {
+            put("properties", "not-an-object")
+        }
+        assertTrue(vm.extractParameterFields(nonObjPropertiesSchema).isEmpty())
+
+        val complexSchema = buildJsonObject {
+            putJsonObject("properties") {
+                put("non_obj_prop", "primitive")
+                putJsonObject("minimal_prop") {}
+                putJsonObject("int_prop") {
+                    put("title", 123) // non-string JsonPrimitive still has content
+                    put("type", "integer")
+                    putJsonObject("default") {} // non-primitive default
+                }
+                putJsonObject("num_prop") {
+                    putJsonObject("title") {} // non-primitive title
+                    putJsonObject("type") {} // non-primitive type -> defaults to "string"
+                }
+                putJsonObject("real_num_prop") {
+                    put("title", "Threshold")
+                    put("type", "number")
+                    put("default", "3.14")
+                }
+            }
+            putJsonArray("required") {
+                add(kotlinx.serialization.json.JsonPrimitive("int_prop"))
+                add(buildJsonObject {}) // non-primitive element in required array
+            }
+        }
+        val extracted = vm.extractParameterFields(complexSchema)
+        assertEquals(5, extracted.size)
+
+        // Validate integer, number, and optional blank fields in submitWidget
+        val tplValidation = TemplateResponse(
+            id = "tpl-val",
+            title = "Validation Tpl",
+            description = null,
+            category = "general",
+            sqlTemplate = "SELECT {{int_prop}}, {{real_num_prop}}, '{{opt_str}}'",
+            parametersSchema = buildJsonObject {
+                put("required", "not-an-array")
+                putJsonObject("properties") {
+                    putJsonObject("int_prop") {
+                        put("title", "Count")
+                        put("type", "integer")
+                    }
+                    putJsonObject("real_num_prop") {
+                        put("title", "Ratio")
+                        put("type", "number")
+                    }
+                    putJsonObject("opt_str") {
+                        put("title", "Optional")
+                        put("type", "string")
+                    }
+                }
+            }
+        )
+        vm.selectTemplate(tplValidation)
+        // Missing required int_prop (null in map if removed or blank) and invalid number
+        vm.updateParameterValue("int_prop", "not_int")
+        vm.updateParameterValue("real_num_prop", "not_num")
+        vm.updateParameterValue("opt_str", "")
+        vm.submitWidget {}
+        var paramState = vm.state.value as WizardState.ParameterConfiguration
+        assertEquals("Count must be a valid integer", paramState.fieldErrors["int_prop"])
+        assertEquals("Ratio must be a valid number", paramState.fieldErrors["real_num_prop"])
+
+        // Search templates when one template has description == null
+        val customTemplatesWithNullDescApi = io.healthplatform.pulsequery.api.apis.TemplatesApi(
+            baseUrl = "http://localhost",
+            httpClient = HttpClient(MockEngine {
+                respond(
+                    content = """[{"id":"t-null","title":"NoDesc","description":null,"category":"General","sql_template":"SELECT 1","parameters_schema":null}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true; isLenient = true })
+                }
+            }
+        )
+        val vmNullDesc = WizardViewModel(dashboardId = "d-1", scope = this, templatesApi = customTemplatesWithNullDescApi)
+        withTimeout(5000) {
+            vmNullDesc.state.first { it !is WizardState.Loading }
+        }
+        vmNullDesc.updateSearchQuery("unmatched")
+        assertTrue((vmNullDesc.state.value as WizardState.TemplateSelection).filteredTemplates.isEmpty())
+
+        // Valid integer and valid number
+        vm.updateParameterValue("int_prop", "10")
+        vm.updateParameterValue("real_num_prop", "2.5")
+        vm.submitWidget {}
+        withTimeout(5000) {
+            vm.state.first { it is WizardState.Success }
+        }
+
+        vm.selectTemplate(tplValidation)
+        val currentParamState = vm.state.value as WizardState.ParameterConfiguration
+        // Substitute parameters with integer, number (valid & invalid), and string with single quotes
+        val fields = listOf(
+            ParameterField("i1", "I1", "integer", "0", false),
+            ParameterField("i2", "I2", "integer", "0", false),
+            ParameterField("n1", "N1", "number", "0.0", false),
+            ParameterField("n2", "N2", "number", "0.0", false),
+            ParameterField("s1", "S1", "string", "", false),
+            currentParamState.parameterFields.first()
+        )
+        val subbed = vm.substituteParameters(
+            "SELECT {{i1}}, {{i2}}, {{n1}}, {{n2}}, '{{s1}}'",
+            mapOf("i1" to "42", "i2" to "bad", "n1" to "3.5", "n2" to "bad", "s1" to "O'Reilly"),
+            fields
+        )
+        assertEquals("SELECT 42, 0, 3.5, 0.0, 'O''Reilly'", subbed)
+
+        // Load templates failure with null message and submitWidget failure with null message
+        val nullFailClient = HttpClient(MockEngine { throw RuntimeException(null as String?) }) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true; isLenient = true })
+            }
+        }
+        val nullFailTemplatesApi = io.healthplatform.pulsequery.api.apis.TemplatesApi(
+            baseUrl = "http://localhost",
+            httpClient = nullFailClient
+        )
+        val nullFailDashboardsApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(
+            baseUrl = "http://localhost",
+            httpClient = nullFailClient
+        )
+        val vmNullFail = WizardViewModel(
+            dashboardId = "d-fail",
+            scope = this,
+            templatesApi = nullFailTemplatesApi,
+            dashboardsApi = nullFailDashboardsApi
+        )
+        val errLoad = withTimeout(5000) {
+            vmNullFail.state.first { it is WizardState.Error }
+        } as WizardState.Error
+        assertEquals("Failed to load templates", errLoad.message)
+
+        vmNullFail.startCustomWidget("SQL")
+        vmNullFail.updateCustomWidgetTitle("T")
+        vmNullFail.updateCustomWidgetContent("SELECT 1")
+        vmNullFail.submitCustomWidget {}
+        val errCreate = withTimeout(5000) {
+            vmNullFail.state.first { it is WizardState.Error }
+        } as WizardState.Error
+        assertEquals("Failed to create widget", errCreate.message)
     }
 }

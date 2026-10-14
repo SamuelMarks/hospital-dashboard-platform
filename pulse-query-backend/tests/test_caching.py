@@ -8,6 +8,8 @@ Verifies:
 4. Deterministic Hashing.
 """
 
+from typing import Any
+
 import time
 
 import pytest
@@ -16,9 +18,9 @@ from app.services.cache_service import ResultCacheService
 
 
 @pytest.fixture
-def cache_svc():
+def cache_svc() -> Any:
   """Returns a fresh instance of the service for each test."""
-  svc = ResultCacheService()
+  svc: ResultCacheService[Any] = ResultCacheService()
   # Override settings for easier testing
   svc._ttl = 1  # 1 second TTL
   svc._max_entries = 3  # Small capacity
@@ -26,7 +28,7 @@ def cache_svc():
   return svc
 
 
-def test_cache_set_get_hit(cache_svc):
+def test_cache_set_get_hit(cache_svc: Any) -> None:
   """Test basic storage and retrieval."""
   key = "test_key"
   data = {"value": 100}
@@ -38,12 +40,12 @@ def test_cache_set_get_hit(cache_svc):
   assert result["value"] == 100
 
 
-def test_cache_miss(cache_svc):
+def test_cache_miss(cache_svc: Any) -> None:
   """Test getting a non-existent key returns None."""
   assert cache_svc.get("ghost") is None
 
 
-def test_deterministic_hashing(cache_svc):
+def test_deterministic_hashing(cache_svc: Any) -> None:
   """Test that key generation is consistent regardless of key order in dicts."""
   config_a = {"query": "SELECT *", "limit": 10}
   config_b = {"limit": 10, "query": "SELECT *"}
@@ -55,7 +57,7 @@ def test_deterministic_hashing(cache_svc):
   assert len(key_a) == 64  # SHA256 hex length
 
 
-def test_lru_eviction(cache_svc):
+def test_lru_eviction(cache_svc: Any) -> None:
   """Test that the oldest item is removed when capacity is exceeded."""
   # Capacity is 3
   cache_svc.set("1", "one")
@@ -70,7 +72,7 @@ def test_lru_eviction(cache_svc):
   assert cache_svc.get("4") == "four"
 
 
-def test_lru_update_on_access(cache_svc):
+def test_lru_update_on_access(cache_svc: Any) -> None:
   """Test that accessing an item makes it 'recent'."""
   # Capacity is 3
   cache_svc.set("1", "one")
@@ -87,7 +89,7 @@ def test_lru_update_on_access(cache_svc):
   assert cache_svc.get("1") == "one"  # Still here
 
 
-def test_ttl_expiration(cache_svc):
+def test_ttl_expiration(cache_svc: Any) -> None:
   """Test that items expire after configured seconds."""
   cache_svc.set("temp", "data")
 
@@ -101,7 +103,7 @@ def test_ttl_expiration(cache_svc):
   assert cache_svc.get("temp") is None
 
 
-def test_sql_query_normalization(cache_svc):
+def test_sql_query_normalization(cache_svc: Any) -> None:
   """Test that extra whitespace in SQL config doesn't change key."""
   conf1 = {"query": "SELECT *   FROM table"}
   conf2 = {"query": "SELECT * FROM table"}
@@ -112,7 +114,7 @@ def test_sql_query_normalization(cache_svc):
   assert k1 == k2
 
 
-def test_http_config_hashing(cache_svc):
+def test_http_config_hashing(cache_svc: Any) -> None:
   """Non-SQL widgets should hash full configs deterministically."""
   config = {"url": "https://api.example.com", "method": "GET", "params": {"q": "1"}}
   key = cache_svc.generate_key("HTTP", config)
@@ -120,7 +122,7 @@ def test_http_config_hashing(cache_svc):
   assert len(key) == 64
 
 
-def test_cache_rejects_oversized_items(cache_svc):
+def test_cache_rejects_oversized_items(cache_svc: Any) -> None:
   """Ensure large items are not stored in the cache."""
   cache_svc._max_item_size = 5
   key = "too_big"
@@ -130,11 +132,12 @@ def test_cache_rejects_oversized_items(cache_svc):
   assert cache_svc.get(key) is None
 
 
-def test_cache_handles_unserializable_values(cache_svc):
+def test_cache_handles_unserializable_values(cache_svc: Any) -> None:
   """Ensure serialization failures do not crash the cache set path."""
 
   class BadStr:
     def __str__(self) -> str:
+      """Verify str behavior."""
       raise ValueError("nope")
 
   key = "bad"

@@ -29,16 +29,22 @@ class MockSqlBuilderComponent {
 class MockHttpConfigComponent {
   readonly dashboardId = input<string | undefined>();
   readonly widgetId = input<string | undefined>();
-  readonly initialConfig = input<Record<string, any> | undefined>();
-  readonly configChange = output<Record<string, any>>();
+  readonly initialConfig = input<Record<string, unknown> | undefined>();
+  readonly configChange = output<Record<string, unknown>>();
 }
 
 describe('WidgetEditorDialog', () => {
   let component: WidgetEditorDialog;
   let fixture: ComponentFixture<WidgetEditorDialog>;
-  let mockDialogRef: any;
-  let mockDashApi: any;
-  let mockStore: any;
+  let mockDialogRef: { close: ReturnType<typeof vi.fn> };
+  let mockDashApi: {
+    getDashboardApiV1DashboardsDashboardIdGet: ReturnType<typeof vi.fn>;
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+  };
+  let mockStore: {
+    loadDashboard: ReturnType<typeof vi.fn>;
+    dataMap: ReturnType<typeof signal<Record<string, { columns?: string[] }>>>;
+  };
 
   const makeSqlWidget = (): WidgetResponse => ({
     id: 'w1',
@@ -145,7 +151,7 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should fallback initialSql when query missing', () => {
-    const noQueryWidget = { ...sqlWidget, config: {} as any } as WidgetResponse;
+    const noQueryWidget: WidgetResponse = { ...sqlWidget, config: {} };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -168,7 +174,7 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should report mapping unsupported when visualization is missing', () => {
-    component.data.widget.visualization = undefined as any;
+    component.data.widget.visualization = undefined as unknown as string;
     fixture.detectChanges();
     expect(component.supportsMapping()).toBe(false);
   });

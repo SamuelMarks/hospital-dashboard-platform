@@ -8,7 +8,7 @@ import asyncio
 import logging
 import time
 from collections.abc import AsyncGenerator
-from typing import Any, Dict, List, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 from any_llm import AnyLLM
 from starlette.concurrency import run_in_threadpool
@@ -137,7 +137,7 @@ class LLMArenaClient:
   3. Normalizing errors across different SDKs using `any-llm`.
   """
 
-  def __init__(self, timeout: int = 60):
+  def __init__(self, timeout: int = 60) -> None:
     """
     Initialize the Swarm based on settings.LLM_SWARM.
 
@@ -328,6 +328,7 @@ class LLMArenaClient:
         max_tokens: Length limit.
         stop: Stop sequences (crucial for SQL generation).
         target_model_ids: Optional list of specific 'id's to query.
+        admin_settings: Optional administrative settings overriding API keys and visible models.
 
     Returns:
         List[ArenaResponse]: A list of results from every active model, including errors.
@@ -377,6 +378,58 @@ class LLMArenaClient:
 
     return final_results
 
+  def _select_stream_combatant(self, model_id: str | None) -> dict[str, Any]:
+    """
+    Selects the target combatant dictionary for streaming.
+
+    Args:
+        model_id (str | None): Optional model ID to match.
+
+    Returns:
+        dict[str, Any]: Selected combatant dictionary from `self.swarm`.
+    """
+    combatant = next((c for c in self.swarm if c["id"] == model_id), None) if model_id else None
+    return combatant or self.swarm[0]
+
+  async def _stream_from_live_result(self, stream_result: Any) -> AsyncGenerator[str, None]:
+    """
+    Yields token deltas from an `any-llm` completion result (sync, async iterator, or sync generator).
+
+    Args:
+        stream_result (Any): Raw stream object returned by `client.completion(..., stream=True)`.
+
+    Yields:
+        str: Token delta strings.
+    """
+    if hasattr(stream_result, "choices"):
+      content = getattr(stream_result.choices[0].message, "content", "")
+      for word in content.split(" "):
+        yield word + " "
+        await asyncio.sleep(0.01)
+      return
+
+    if hasattr(stream_result, "__aiter__"):
+      async for chunk in stream_result:
+        delta = _extract_chunk_delta(chunk)
+        if delta:
+          yield delta
+          await asyncio.sleep(0.005)
+      return
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[Any] = asyncio.Queue()
+    pump_task = asyncio.to_thread(_pump_stream_to_queue, stream_result, queue, loop)
+    asyncio.create_task(pump_task)
+
+    while True:
+      item = await queue.get()
+      if item is _DONE_SENTINEL:
+        break
+      if isinstance(item, Exception):
+        raise item
+      yield item
+      await asyncio.sleep(0.005)
+
   async def stream_tokens(
     self,
     messages: list[dict[str, str]],
@@ -402,12 +455,7 @@ class LLMArenaClient:
       yield "SELECT 'No LLM providers configured' as status;"
       return
 
-    combatant = None
-    if model_id:
-      combatant = next((c for c in self.swarm if c["id"] == model_id), None)
-    if not combatant:
-      combatant = self.swarm[0]
-
+    combatant = self._select_stream_combatant(model_id)
     client = combatant.get("client")
     if isinstance(client, FallbackMockProvider) or client is None:
       mock_response = (
@@ -422,72 +470,44 @@ class LLMArenaClient:
       )
       words = mock_response.split(" ")
       for i, word in enumerate(words):
-        token = word + (" " if i < len(words) - 1 else "")
-        yield token
+        yield word + (" " if i < len(words) - 1 else "")
         await asyncio.sleep(0.01)
       return
 
     try:
       kwargs: dict[str, Any] = {}
-      if admin_settings and admin_settings.api_keys:
-        provider = combatant["provider"]
-        if provider in admin_settings.api_keys:
-          kwargs["api_key"] = admin_settings.api_keys[provider]
+      if admin_settings and admin_settings.api_keys and combatant["provider"] in admin_settings.api_keys:
+        kwargs["api_key"] = admin_settings.api_keys[combatant["provider"]]
 
-      target_model_name = combatant["model_name"]
       stream_result = await run_in_threadpool(
         client.completion,
-        model=target_model_name,
+        model=combatant["model_name"],
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
         stream=True,
         **kwargs,
       )
-
-      if hasattr(stream_result, "choices"):
-        content = getattr(stream_result.choices[0].message, "content", "")
-        for word in content.split(" "):
-          yield word + " "
-          await asyncio.sleep(0.01)
-      elif hasattr(stream_result, "__aiter__"):
-        async for chunk in stream_result:
-          delta = _extract_chunk_delta(chunk)
-          if delta:
-            yield delta
-            await asyncio.sleep(0.005)
-      else:
-        loop = asyncio.get_running_loop()
-        queue: asyncio.Queue[Any] = asyncio.Queue()
-        pump_task = asyncio.to_thread(_pump_stream_to_queue, stream_result, queue, loop)
-        asyncio.create_task(pump_task)
-
-        while True:
-          item = await queue.get()
-          if item is _DONE_SENTINEL:
-            break
-          if isinstance(item, Exception):
-            raise item
-          yield item
-          await asyncio.sleep(0.005)
+      async for token in self._stream_from_live_result(stream_result):
+        yield token
 
     except Exception as e:
       logger.warning(f"Streaming failed, falling back to standard generation: {e}")
       res = await self._generate_single(combatant, messages, temperature, max_tokens, None, admin_settings)
-      if res.error:
-        fallback_sql = (
+      fallback_text = (
+        (
           "Here is the fallback analysis query:\n\n"
           "```sql\n"
           "SELECT 'System Fallback' as source, 'synthetic_hospital_data' as dataset;\n"
           "```"
         )
-        for word in fallback_sql.split(" "):
-          yield word + " "
-          await asyncio.sleep(0.005)
-      else:
-        for word in res.content.split(" "):
-          yield word + " "
-          await asyncio.sleep(0.01)
+        if res.error
+        else res.content
+      )
+      delay = 0.005 if res.error else 0.01
+      for word in fallback_text.split(" "):
+        yield word + " "
+        await asyncio.sleep(delay)
 
 
 # Singleton instance

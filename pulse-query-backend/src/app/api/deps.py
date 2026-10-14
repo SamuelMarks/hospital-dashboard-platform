@@ -7,6 +7,7 @@ decoding the JWT, validating the payload, and retrieving the corresponding
 user from the database.
 """
 
+from collections.abc import Awaitable, Callable
 from typing import Annotated
 from uuid import UUID
 
@@ -18,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
@@ -26,6 +28,67 @@ from app.schemas.token import TokenPayload
 # OAuth2 scheme with auto_error=False allowing fallback to URL query token for downloads
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
 oauth2_scheme_optional = oauth2_scheme
+
+
+async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppResult[User]:
+  """
+  Validates a JWT token string, verifies active status, and returns an `AppResult[User]`.
+
+  Args:
+      token (str): Raw JWT token string.
+      db (AsyncSession): Active asynchronous database session.
+
+  Returns:
+      AppResult[User]: `Ok(user)` if valid and active, or `Err(AppError)` with reason details.
+  """
+  try:
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    user_id_str: str | None = payload.get("sub")
+    if user_id_str is None:
+      return Err(
+        AppError(
+          code=ErrorCode.AUTHENTICATION_ERROR,
+          message="Could not validate credentials",
+          status_code=status.HTTP_401_UNAUTHORIZED,
+          details={"ws_reason": "Unauthorized: Invalid token payload"},
+        )
+      )
+
+    token_data = TokenPayload(sub=UUID(user_id_str))
+  except (JWTError, ValidationError, ValueError):
+    return Err(
+      AppError(
+        code=ErrorCode.AUTHENTICATION_ERROR,
+        message="Could not validate credentials",
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        details={"ws_reason": "Unauthorized: Could not validate credentials"},
+      )
+    )
+
+  result = await db.execute(select(User).where(User.id == token_data.sub))
+  user = result.scalars().first()
+
+  if user is None:
+    return Err(
+      AppError(
+        code=ErrorCode.AUTHENTICATION_ERROR,
+        message="Could not validate credentials",
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        details={"ws_reason": "Unauthorized: Inactive or non-existent user"},
+      )
+    )
+
+  if not user.is_active:
+    return Err(
+      AppError(
+        code=ErrorCode.AUTHENTICATION_ERROR,
+        message="Inactive user",
+        status_code=status.HTTP_400_BAD_REQUEST,
+        details={"ws_reason": "Unauthorized: Inactive or non-existent user"},
+      )
+    )
+
+  return Ok(user)
 
 
 async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
@@ -42,32 +105,15 @@ async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
   Raises:
       HTTPException: 401 Unauthorized on invalid/expired token, 400 on inactive user.
   """
-  credentials_exception = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate credentials",
-    headers={"WWW-Authenticate": "Bearer"},
-  )
-
-  try:
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    user_id_str: str | None = payload.get("sub")
-    if user_id_str is None:
-      raise credentials_exception
-
-    token_data = TokenPayload(sub=UUID(user_id_str))
-  except (JWTError, ValidationError):
-    raise credentials_exception
-
-  result = await db.execute(select(User).where(User.id == token_data.sub))
-  user = result.scalars().first()
-
-  if user is None:
-    raise credentials_exception
-
-  if not user.is_active:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
-
-  return user
+  res = await resolve_user_from_token_result(token, db)
+  if isinstance(res, Err):
+    headers = {"WWW-Authenticate": "Bearer"} if res.error.status_code == status.HTTP_401_UNAUTHORIZED else None
+    raise HTTPException(
+      status_code=res.error.status_code,
+      detail=res.error.message,
+      headers=headers,
+    )
+  return res.value
 
 
 async def get_current_user(
@@ -105,7 +151,7 @@ async def get_current_user(
 get_current_user_from_header_or_query = get_current_user
 
 
-def require_role(*allowed_roles: str):
+def require_role(*allowed_roles: str) -> Callable[..., Awaitable[User]]:
   """
   Factory returning a dependency that enforces granular hospital RBAC roles.
 

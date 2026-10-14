@@ -7,9 +7,11 @@ import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.request.headers
 import io.ktor.client.request.prepareGet
+import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.serialization.SerialName
@@ -20,13 +22,34 @@ import kotlinx.serialization.json.Json
  * Strongly typed events emitted during an SSE conversation token stream.
  */
 sealed interface ChatStreamEvent {
-    /** Stream session initiated on the server. */
+    /**
+     * Stream session initiated on the server.
+     *
+     * @property conversationId Unique identifier of the active conversation.
+     */
     data class StreamStarted(val conversationId: String) : ChatStreamEvent
-    /** An incremental token chunk emitted by the generating model. */
+
+    /**
+     * An incremental token chunk emitted by the generating model.
+     *
+     * @property token Incremental text token emitted by the model.
+     */
     data class TokenChunk(val token: String) : ChatStreamEvent
-    /** The assistant response generation completed and persisted to storage. */
+
+    /**
+     * The assistant response generation completed and persisted to storage.
+     *
+     * @property messageId Persisted assistant message identifier.
+     * @property content Complete generated response text.
+     * @property sqlSnippet Extracted SQL query snippet, if present.
+     */
     data class StreamDone(val messageId: String, val content: String, val sqlSnippet: String?) : ChatStreamEvent
-    /** A fatal failure occurred during streaming. */
+
+    /**
+     * A fatal failure occurred during streaming.
+     *
+     * @property message Human-readable error description.
+     */
     data class StreamError(val message: String) : ChatStreamEvent
 }
 
@@ -81,13 +104,7 @@ class ChatStreamingRepository(
         modelId: String? = null
     ): Flow<ChatStreamEvent> = channelFlow {
         val client = httpClient ?: AppContainer.httpClient
-        val base = baseUrlProvider().trimEnd('/')
-        val url = buildString {
-            append("$base/api/v1/chat/stream/$conversationId")
-            if (modelId != null) {
-                append("?model_id=$modelId")
-            }
-        }
+        val url = buildStreamUrl(conversationId, modelId)
 
         runCatching {
             client.prepareGet(url) {
@@ -98,38 +115,67 @@ class ChatStreamingRepository(
                     }
                 }
             }.execute { response ->
-                if (!response.status.isSuccess()) {
-                    send(ChatStreamEvent.StreamError("Server returned ${response.status}"))
-                    return@execute
-                }
-                val rawText = response.bodyAsText()
-                for (line in rawText.lineSequence()) {
-                    val trimmed = line.trim()
-                    if (trimmed.startsWith("data:")) {
-                        val jsonText = trimmed.removePrefix("data:").trim()
-                        if (jsonText.isNotEmpty()) {
-                            runCatching {
-                                json.decodeFromString<SsePacket>(jsonText)
-                            }.onSuccess { packet ->
-                                when (packet.event) {
-                                    "start" -> send(ChatStreamEvent.StreamStarted(packet.conversationId ?: conversationId))
-                                    "token" -> packet.token?.let { send(ChatStreamEvent.TokenChunk(it)) }
-                                    "done" -> send(
-                                        ChatStreamEvent.StreamDone(
-                                            messageId = packet.messageId ?: "",
-                                            content = packet.content ?: "",
-                                            sqlSnippet = packet.sqlSnippet
-                                        )
-                                    )
-                                    "error" -> send(ChatStreamEvent.StreamError(packet.error ?: "Streaming failed"))
-                                }
-                            }
-                        }
-                    }
-                }
+                processStreamResponse(response, conversationId)
             }
         }.onFailure { e ->
             send(ChatStreamEvent.StreamError(e.message ?: "Network error during token streaming"))
+        }
+    }
+
+    private fun buildStreamUrl(conversationId: String, modelId: String?): String {
+        val base = baseUrlProvider().trimEnd('/')
+        return if (modelId != null) {
+            "$base/api/v1/chat/stream/$conversationId?model_id=$modelId"
+        } else {
+            "$base/api/v1/chat/stream/$conversationId"
+        }
+    }
+
+    private suspend fun ProducerScope<ChatStreamEvent>.processStreamResponse(
+        response: HttpResponse,
+        conversationId: String
+    ) {
+        if (!response.status.isSuccess()) {
+            send(ChatStreamEvent.StreamError("Server returned ${response.status}"))
+            return
+        }
+        val rawText = response.bodyAsText()
+        for (line in rawText.lineSequence()) {
+            val jsonText = extractSseDataPayload(line)
+            if (jsonText != null) {
+                emitPacketEvent(jsonText, conversationId)
+            }
+        }
+    }
+
+    private fun extractSseDataPayload(line: String): String? {
+        val trimmed = line.trim()
+        if (!trimmed.startsWith("data:")) return null
+        return trimmed.removePrefix("data:").trim().takeIf { it.isNotEmpty() }
+    }
+
+    private suspend fun ProducerScope<ChatStreamEvent>.emitPacketEvent(
+        jsonText: String,
+        conversationId: String
+    ) {
+        val packet = runCatching { json.decodeFromString<SsePacket>(jsonText) }.getOrNull() ?: return
+        val event = mapPacketToEvent(packet, conversationId)
+        if (event != null) {
+            send(event)
+        }
+    }
+
+    private fun mapPacketToEvent(packet: SsePacket, fallbackConversationId: String): ChatStreamEvent? {
+        return when (packet.event) {
+            "start" -> ChatStreamEvent.StreamStarted(packet.conversationId ?: fallbackConversationId)
+            "token" -> packet.token?.let { ChatStreamEvent.TokenChunk(it) }
+            "done" -> ChatStreamEvent.StreamDone(
+                messageId = packet.messageId ?: "",
+                content = packet.content ?: "",
+                sqlSnippet = packet.sqlSnippet
+            )
+            "error" -> ChatStreamEvent.StreamError(packet.error ?: "Streaming failed")
+            else -> null
         }
     }
 }

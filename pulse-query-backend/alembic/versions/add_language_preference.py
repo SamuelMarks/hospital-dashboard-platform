@@ -19,8 +19,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+  """Add language_preference column to users table."""
   op.add_column("users", sa.Column("language_preference", sa.String(), server_default="en", nullable=False))
 
 
 def downgrade() -> None:
+  """Remove language_preference column from users table."""
   op.drop_column("users", "language_preference")

@@ -1,8 +1,19 @@
+/**
+ * @fileoverview Server-side application bootstrap function for Angular SSR.
+ */
+
+import { ApplicationRef } from '@angular/core';
 import { BootstrapContext, bootstrapApplication } from '@angular/platform-browser';
 import { App } from './app/app';
 import { config } from './app/app.config.server';
 
-/** Bootstrap constant. */
-const bootstrap = (context: BootstrapContext) => bootstrapApplication(App, config, context);
+/**
+ * Bootstraps the root `App` component using the merged server `ApplicationConfig`.
+ *
+ * @param context - Angular SSR `BootstrapContext` for the current request.
+ * @returns Promise resolving to the bootstrapped `ApplicationRef`.
+ */
+const bootstrap = (context: BootstrapContext): Promise<ApplicationRef> =>
+  bootstrapApplication(App, config, context);
 
 export default bootstrap;

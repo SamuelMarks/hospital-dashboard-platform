@@ -2,6 +2,8 @@
 Additional tests for chat router edge cases.
 """
 
+from typing import Any
+
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -16,7 +18,7 @@ from app.services.llm_client import ArenaResponse
 
 
 @pytest.fixture
-async def chat_user(db_session):
+async def chat_user(db_session: Any) -> Any:
   """Create a user and override auth dependency."""
   user = User(email=f"edge_{uuid.uuid4()}@example.com", hashed_password="pw", is_active=True)
   db_session.add(user)
@@ -98,7 +100,7 @@ def test_extract_and_validate_sql_column_only_blocks() -> None:
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_with_target_models(db_session, chat_user) -> None:
+async def test_generate_assistant_reply_with_target_models(db_session: Any, chat_user: Any) -> None:
   """Tests behavior when specific target models are provided (covers line 140/150)."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -115,7 +117,7 @@ async def test_generate_assistant_reply_with_target_models(db_session, chat_user
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_empty_response(db_session, chat_user) -> None:
+async def test_generate_assistant_reply_empty_response(db_session: Any, chat_user: Any) -> None:
   """Tests behavior when ZERO models respond within the Arena (line 140 coverage)."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -132,7 +134,7 @@ async def test_generate_assistant_reply_empty_response(db_session, chat_user) ->
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_empty_content(db_session, chat_user) -> None:
+async def test_generate_assistant_reply_empty_content(db_session: Any, chat_user: Any) -> None:
   """Tests fallback when an LLM successfully responds but leaves content empty string (line 160 coverage)."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -149,7 +151,7 @@ async def test_generate_assistant_reply_empty_content(db_session, chat_user) -> 
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_expands_candidates(db_session, chat_user) -> None:
+async def test_generate_assistant_reply_expands_candidates(db_session: Any, chat_user: Any) -> None:
   """When fewer than 3 responses are returned, extras should be generated."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -178,7 +180,7 @@ async def test_generate_assistant_reply_expands_candidates(db_session, chat_user
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_handles_exception(db_session, chat_user) -> None:
+async def test_generate_assistant_reply_handles_exception(db_session: Any, chat_user: Any) -> None:
   """Exceptions during generation should return a fallback response."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -197,7 +199,7 @@ async def test_generate_assistant_reply_handles_exception(db_session, chat_user)
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_dedupes_model_names(db_session, chat_user) -> None:
+async def test_generate_assistant_reply_dedupes_model_names(db_session: Any, chat_user: Any) -> None:
   """Duplicate provider names should be made unique."""
   conv = Conversation(user_id=chat_user.id, title="Dupes")
   db_session.add(conv)
@@ -228,7 +230,7 @@ async def test_generate_assistant_reply_dedupes_model_names(db_session, chat_use
 
 
 @pytest.mark.asyncio
-async def test_create_conversation_defaults_title(client: AsyncClient, chat_user) -> None:
+async def test_create_conversation_defaults_title(client: AsyncClient, chat_user: Any) -> None:
   """Missing title/message should default to 'New Chat'."""
   res = await client.post("/api/v1/conversations/", json={})
   assert res.status_code == 200
@@ -238,25 +240,54 @@ async def test_create_conversation_defaults_title(client: AsyncClient, chat_user
 
 
 @pytest.mark.asyncio
-async def test_update_conversation_not_found(client: AsyncClient, chat_user) -> None:
+async def test_update_conversation_not_found(client: AsyncClient, chat_user: Any) -> None:
+  """
+  Verify update conversation not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+      chat_user: Test parameter or fixture.
+  """
   res = await client.put(f"/api/v1/conversations/{uuid.uuid4()}", json={"title": "x"})
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_conversation_not_found(client: AsyncClient, chat_user) -> None:
+async def test_delete_conversation_not_found(client: AsyncClient, chat_user: Any) -> None:
+  """
+  Verify delete conversation not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+      chat_user: Test parameter or fixture.
+  """
   res = await client.delete(f"/api/v1/conversations/{uuid.uuid4()}")
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_messages_not_found(client: AsyncClient, chat_user) -> None:
+async def test_get_messages_not_found(client: AsyncClient, chat_user: Any) -> None:
+  """
+  Verify get messages not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+      chat_user: Test parameter or fixture.
+  """
   res = await client.get(f"/api/v1/conversations/{uuid.uuid4()}/messages")
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_messages_success(client: AsyncClient, chat_user, db_session) -> None:
+async def test_get_messages_success(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
+  """
+  Verify get messages success behavior.
+
+  Args:
+      client: Test parameter or fixture.
+      chat_user: Test parameter or fixture.
+      db_session: Test parameter or fixture.
+  """
   conv = Conversation(user_id=chat_user.id, title="Messages")
   db_session.add(conv)
   await db_session.commit()
@@ -273,13 +304,20 @@ async def test_get_messages_success(client: AsyncClient, chat_user, db_session) 
 
 
 @pytest.mark.asyncio
-async def test_send_message_not_found(client: AsyncClient, chat_user) -> None:
+async def test_send_message_not_found(client: AsyncClient, chat_user: Any) -> None:
+  """
+  Verify send message not found behavior.
+
+  Args:
+      client: Test parameter or fixture.
+      chat_user: Test parameter or fixture.
+  """
   res = await client.post(f"/api/v1/conversations/{uuid.uuid4()}/messages", json={"content": "hi"})
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user, db_session) -> None:
+async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
   """Voting should mark all candidates sharing the same sql_hash."""
   conv = Conversation(user_id=chat_user.id, title="Shared Hash")
   db_session.add(conv)
@@ -318,7 +356,7 @@ async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user, db_session) -> None:
+async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
   """Covers the line branch when a candidate is missing sql_hash and strictly uses fallback ID."""
   conv = Conversation(user_id=chat_user.id, title="No Hash")
   db_session.add(conv)
@@ -348,7 +386,7 @@ async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user, db_ses
 
 
 @pytest.mark.asyncio
-async def test_send_message_success(client: AsyncClient, chat_user, db_session) -> None:
+async def test_send_message_success(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
   """Sending a message should return an assistant reply."""
   conv = Conversation(user_id=chat_user.id, title="Chat")
   db_session.add(conv)
@@ -370,7 +408,7 @@ async def test_send_message_success(client: AsyncClient, chat_user, db_session) 
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user, db_session) -> None:
+async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
   """Covers conversation, message, and candidate not found branches."""
   # Conversation not found
   res_missing_conv = await client.post(
@@ -398,3 +436,62 @@ async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user, db
     f"/api/v1/conversations/{conv.id}/messages/{msg.id}/vote", json={"candidate_id": str(uuid.uuid4())}
   )
   assert res_missing_candidate.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_chat_conversation_creation_title_variants(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
+  """Verifies conversation title derivation across empty, short, long, and explicit title payloads."""
+  from app.core.security import create_access_token
+
+  headers = {"Authorization": f"Bearer {create_access_token(chat_user.id)}"}
+  conv = Conversation(user_id=chat_user.id, title="Test")
+  db_session.add(conv)
+  await db_session.commit()
+
+  msg_sys = Message(conversation_id=conv.id, role="system", content="sys")
+  msg_usr = Message(conversation_id=conv.id, role="user", content="usr")
+  db_session.add_all([msg_sys, msg_usr])
+  await db_session.commit()
+
+  res_list = [[ArenaResponse("m1", "m1-v", "SEL 1", 100, None)], []]
+
+  def se(*_args: Any, **_kwargs: Any) -> Any:
+    """
+    Verify se behavior.
+
+    Args:
+        _args: Test parameter or fixture.
+        _kwargs: Test parameter or fixture.
+    """
+    if res_list:
+      return res_list.pop(0)
+    return []
+
+  with patch("app.api.routers.chat.llm_client.generate_arena_competition", side_effect=se):
+    r0 = await client.post("/api/v1/chat/", json={"message": "Hi", "conversation_id": str(conv.id)}, headers=headers)
+    assert r0.status_code == 200
+
+    r1 = await client.post("/api/v1/conversations/", json={"title": "", "message": "First message"}, headers=headers)
+    assert r1.status_code == 200
+    assert r1.json()["title"] == "First message"
+
+    r2 = await client.post(
+      "/api/v1/conversations/",
+      json={
+        "title": "",
+        "message": "This is a long message that exceeds forty characters in length to test truncation.",
+      },
+      headers=headers,
+    )
+    assert r2.status_code == 200
+    assert r2.json()["title"].endswith("...")
+
+    r3 = await client.post(
+      "/api/v1/conversations/", json={"title": "Custom Title", "message": "Custom Message"}, headers=headers
+    )
+    assert r3.status_code == 200
+    assert r3.json()["title"] == "Custom Title"
+
+    r4 = await client.post("/api/v1/conversations/", json={"title": "Empty", "message": ""}, headers=headers)
+    assert r4.status_code == 200
+    assert r4.json()["title"] == "Empty"

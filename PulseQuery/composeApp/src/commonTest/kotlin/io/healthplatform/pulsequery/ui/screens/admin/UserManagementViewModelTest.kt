@@ -242,4 +242,142 @@ class UserManagementViewModelTest {
         assertNull(clearedRoleState.selectedRole)
         assertEquals(2, clearedRoleState.users.size)
     }
+
+    @Test
+    fun testAllBranchesInUpdateToggleAndErrorStates(): Unit = runBlocking {
+        val twoUsersJson = """
+            [
+                {"id":"u1","email":"carol@hospital.org","is_active":true,"is_admin":false,"role":"ANALYST"},
+                {"id":"u2","email":"dave@hospital.org","is_active":true,"is_admin":false,"role":"PHYSICIAN"}
+            ]
+        """.trimIndent()
+        val updatedU1Json = """{"id":"u1","email":"carol@hospital.org","is_active":false,"is_admin":true,"role":"ADMIN"}"""
+
+        var failMode: String? = null
+        var failMessage: String? = null
+        val engine = MockEngine { request ->
+            if (failMode != null) {
+                throw RuntimeException(failMessage)
+            }
+            when {
+                request.url.encodedPath.endsWith("role") -> respond(
+                    updatedU1Json,
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                request.url.encodedPath.endsWith("status") -> respond(
+                    updatedU1Json,
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                else -> respond(
+                    twoUsersJson,
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+        }
+        val client = configureClient(engine)
+        val explicitApi = io.healthplatform.pulsequery.api.apis.AdminUsersApi(
+            baseUrl = "http://localhost",
+            httpClient = client
+        )
+
+        val vm = UserManagementViewModel(scope = this, adminUsersApi = explicitApi)
+        withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Success }
+        }
+
+        // updateRole & toggleStatus with 2 users covers both true and false branches of `if (it.id == userId)`
+        vm.updateRole("u1", "ADMIN")
+        withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Success && it.users.first().role == "ADMIN" }
+        }
+        vm.toggleStatus("u1", false)
+        withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Success && !it.users.first().isActive }
+        }
+        vm.toggleStatus("u2", false)
+        kotlinx.coroutines.delay(50)
+
+        // updateRole failure with non-null message
+        failMode = "role"
+        failMessage = "Role update denied"
+        vm.updateRole("u1", "PHYSICIAN")
+        val roleErr1 = withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Error }
+        } as UserManagementUiState.Error
+        assertEquals("Role update denied", roleErr1.message)
+
+        // While in Error state, updateRole, toggleStatus, setSearchQuery, and setRoleFilter return early
+        vm.updateRole("u1", "ADMIN")
+        vm.toggleStatus("u1", true)
+        vm.setSearchQuery("carol")
+        vm.setRoleFilter("ADMIN")
+
+        // Reload success, then updateRole failure with null message
+        failMode = null
+        vm.loadUsers()
+        withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Success }
+        }
+        failMode = "role"
+        failMessage = null
+        vm.updateRole("u1", "PHYSICIAN")
+        val roleErr2 = withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Error }
+        } as UserManagementUiState.Error
+        assertEquals("Failed to update role", roleErr2.message)
+
+        // Reload success, then toggleStatus failure with non-null message
+        failMode = null
+        vm.loadUsers()
+        withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Success }
+        }
+        failMode = "status"
+        failMessage = "Status update denied"
+        vm.toggleStatus("u1", false)
+        val statusErr1 = withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Error }
+        } as UserManagementUiState.Error
+        assertEquals("Status update denied", statusErr1.message)
+
+        // Reload success, then toggleStatus failure with null message (using a dedicated client throwing RuntimeException(null))
+        val nullFailUserApi = io.healthplatform.pulsequery.api.apis.AdminUsersApi(
+            baseUrl = "http://localhost",
+            httpClient = HttpClient(MockEngine { req ->
+                if (req.url.encodedPath.endsWith("status")) {
+                    throw RuntimeException(null as String?)
+                }
+                respond(
+                    twoUsersJson,
+                    HttpStatusCode.OK,
+                    headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true; isLenient = true })
+                }
+            }
+        )
+        val vmNullStatus = UserManagementViewModel(scope = this, adminUsersApi = nullFailUserApi)
+        withTimeout(5000) {
+            vmNullStatus.state.first { it is UserManagementUiState.Success }
+        }
+        vmNullStatus.toggleStatus("u1", false)
+        val statusErr2 = withTimeout(5000) {
+            vmNullStatus.state.first { it is UserManagementUiState.Error }
+        } as UserManagementUiState.Error
+        assertEquals("Failed to toggle user status", statusErr2.message)
+
+        // Load users failure with null message
+        failMode = "load"
+        failMessage = null
+        vm.loadUsers()
+        val loadErrNull = withTimeout(5000) {
+            vm.state.first { it is UserManagementUiState.Error }
+        } as UserManagementUiState.Error
+        assertEquals("Failed to load users", loadErrNull.message)
+    }
 }

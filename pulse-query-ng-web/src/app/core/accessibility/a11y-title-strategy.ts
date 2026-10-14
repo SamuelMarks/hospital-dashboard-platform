@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Custom accessibility title strategy.
  */

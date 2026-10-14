@@ -1,6 +1,8 @@
+/**
+ * @fileoverview Layout container component for the conversational AI workspace,
+ * combining conversation history navigation, the active chat view, and the query cart.
+ */
 import { DATE_NOW } from '../core/time.token';
-
-/** @docs */
 import { Component, OnInit, inject, ViewChild, computed, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
@@ -149,36 +151,39 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
     `,
   ],
 })
-/** @docs */
 export class ChatLayoutComponent implements OnInit {
+  /** Provider function returning the current date/time. */
   private readonly dateNow = inject(DATE_NOW);
+  /** Centralized state store for chat conversations and messages. */
   public readonly store = inject(ChatStore);
+  /** Service managing the user's saved SQL query cart. */
   public readonly cart = inject(QueryCartService);
+  /** Material dialog service for confirmation and prompt modals. */
   private readonly dialog = inject(MatDialog);
+  /** Observer for responsive viewport breakpoints. */
   private readonly breakpointObserver = inject(BreakpointObserver);
 
+  /** Reference to the Material sidenav drawer hosting conversation history. */
   @ViewChild('drawer') drawer!: MatSidenav;
 
+  /** Signal indicating whether the viewport matches handset dimensions. */
   isHandset = toSignal(
     this.breakpointObserver.observe(Breakpoints.Handset).pipe(map((r) => r.matches)),
     { initialValue: false },
   );
 
+  /** Signal controlling whether the sidebar drawer is open on desktop viewports. */
   readonly sidebarOpen = signal(true);
 
+  /** Conversation history grouped into 'Today' and 'Previous' buckets. */
   readonly groupedHistory = computed(() => {
-    const list = this.store.conversations();
-    if (!list) return [];
-    const now = this.dateNow();
+    const list = this.store.conversations() ?? [];
+    const todayStr = this.dateNow().toDateString();
     const today: ConversationResponse[] = [],
       older: ConversationResponse[] = [];
     list.forEach((c) => {
       const d = new Date(c.updated_at);
-      const isToday =
-        d.getDate() === now.getDate() &&
-        d.getMonth() === now.getMonth() &&
-        d.getFullYear() === now.getFullYear();
-      if (isToday) today.push(c);
+      if (d.toDateString() === todayStr) today.push(c);
       else older.push(c);
     });
     const groups = [];
@@ -187,25 +192,38 @@ export class ChatLayoutComponent implements OnInit {
     return groups;
   });
 
-  ngOnInit() {
+  /** Loads the conversation history when the layout initializes. */
+  ngOnInit(): void {
     this.store.loadHistory();
   }
 
-  toggleSidebar() {
+  /** Toggles the visibility of the history sidebar drawer. */
+  toggleSidebar(): void {
     this.sidebarOpen.update((v) => !v);
   }
 
-  selectChat(id: string) {
+  /**
+   * Selects a conversation by ID and closes the drawer on mobile viewports.
+   *
+   * @param id - The unique identifier of the conversation to select.
+   */
+  selectChat(id: string): void {
     this.store.selectConversation(id);
     this.closeDrawer();
   }
 
-  newChat() {
+  /** Resets the active conversation to start a new chat session. */
+  newChat(): void {
     this.store.createNewChat();
     this.closeDrawer();
   }
 
-  renameChat(chat: ConversationResponse) {
+  /**
+   * Opens a prompt dialog to rename an existing conversation.
+   *
+   * @param chat - The conversation record to rename.
+   */
+  renameChat(chat: ConversationResponse): void {
     this.dialog
       .open(PromptDialogComponent, {
         data: {
@@ -222,7 +240,12 @@ export class ChatLayoutComponent implements OnInit {
       });
   }
 
-  deleteChat(chat: ConversationResponse) {
+  /**
+   * Opens a confirmation dialog and deletes the specified conversation if confirmed.
+   *
+   * @param chat - The conversation record to delete.
+   */
+  deleteChat(chat: ConversationResponse): void {
     this.dialog
       .open(ConfirmDialogComponent, {
         data: {
@@ -238,7 +261,8 @@ export class ChatLayoutComponent implements OnInit {
       });
   }
 
-  private closeDrawer() {
+  /** Closes the sidenav drawer when operating in overlay ('over') mode. */
+  private closeDrawer(): void {
     if (this.drawer?.mode === 'over') this.drawer.close();
   }
 }

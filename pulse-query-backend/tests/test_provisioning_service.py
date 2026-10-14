@@ -7,6 +7,8 @@ Verifies:
 3. Visualization heuristic logic.
 """
 
+from typing import Any
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
@@ -30,7 +32,7 @@ MOCK_TEMPLATES = [
 
 
 @pytest.mark.asyncio
-async def test_provision_new_user_creates_dashboard(db_session):
+async def test_provision_new_user_creates_dashboard(db_session: Any) -> None:
   """
   Test that a dashboard is created for the user.
   Uses the real db_session from conftest (in-memory SQLite/Postgres).
@@ -63,7 +65,7 @@ async def test_provision_new_user_creates_dashboard(db_session):
   assert count == 3  # Matches number of templates
 
 
-def test_provisioning_heuristic_logic():
+def test_provisioning_heuristic_logic() -> None:
   """
   Unit test for the visualization determination logic.
   Made synchronous as the method under test is synchronous.
@@ -91,7 +93,7 @@ def test_provisioning_heuristic_logic():
   assert svc._determine_visual_type(t5) == "bar_chart"
 
 
-def test_config_builder_injects_defaults():
+def test_config_builder_injects_defaults() -> None:
   """
   Test that parameters in templates are replaced by defaults in the generated widget config.
   Made synchronous as the method under test is synchronous.
@@ -111,7 +113,7 @@ def test_config_builder_injects_defaults():
   assert "{{unit}}" not in config["query"]
 
 
-def test_config_builder_injects_numeric_defaults():
+def test_config_builder_injects_numeric_defaults() -> None:
   """Numeric defaults should be injected without quoting."""
   svc = ProvisioningService()
 
@@ -127,7 +129,7 @@ def test_config_builder_injects_numeric_defaults():
 
 
 @pytest.mark.asyncio
-async def test_get_safe_dashboard_name_base_available():
+async def test_get_safe_dashboard_name_base_available() -> None:
   """If the base name is free, it should be returned as-is."""
   svc = ProvisioningService()
   db = MagicMock()
@@ -141,7 +143,7 @@ async def test_get_safe_dashboard_name_base_available():
 
 
 @pytest.mark.asyncio
-async def test_get_safe_dashboard_name_restored_fallback():
+async def test_get_safe_dashboard_name_restored_fallback() -> None:
   """If base exists, use (Restored) when available."""
   svc = ProvisioningService()
   db = MagicMock()
@@ -159,7 +161,7 @@ async def test_get_safe_dashboard_name_restored_fallback():
 
 
 @pytest.mark.asyncio
-async def test_get_safe_dashboard_name_increments_suffix():
+async def test_get_safe_dashboard_name_increments_suffix() -> None:
   """If restored names exist, increment the highest suffix."""
   svc = ProvisioningService()
   db = MagicMock()
@@ -183,7 +185,7 @@ async def test_get_safe_dashboard_name_increments_suffix():
 
 
 @pytest.mark.asyncio
-async def test_create_dashboard_from_templates_handles_empty_templates():
+async def test_create_dashboard_from_templates_handles_empty_templates() -> None:
   """Provisioning should return an empty dashboard if no templates exist."""
   svc = ProvisioningService()
   db = MagicMock()
@@ -202,7 +204,7 @@ async def test_create_dashboard_from_templates_handles_empty_templates():
 
 
 @pytest.mark.asyncio
-async def test_restore_defaults_calls_helpers(monkeypatch):
+async def test_restore_defaults_calls_helpers(monkeypatch: Any) -> None:
   """restore_defaults should orchestrate name resolution and dashboard creation."""
   svc = ProvisioningService()
   db = MagicMock()
@@ -214,3 +216,37 @@ async def test_restore_defaults_calls_helpers(monkeypatch):
 
   result = await svc.restore_defaults(db, user)
   assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_provisioning_edge_branches(db_session: Any) -> None:
+  """Verifies dashboard restoration suffix resolution and visual type heuristics on edge templates."""
+  user = User(id=uuid.uuid4(), email=f"prov_{uuid.uuid4()}@test.com", hashed_password="pw", is_active=True)
+  db_session.add(user)
+  await db_session.commit()
+
+  svc = ProvisioningService()
+  initial_name = await svc._get_safe_dashboard_name(db_session, user.id, "Base")
+  assert initial_name == "Base"
+  db_session.add(Dashboard(id=uuid.uuid4(), name="Base", owner_id=user.id))
+  db_session.add(Dashboard(id=uuid.uuid4(), name="Base (Restored)", owner_id=user.id))
+  db_session.add(Dashboard(id=uuid.uuid4(), name="Base (Restored 1)", owner_id=user.id))
+  db_session.add(Dashboard(id=uuid.uuid4(), name="Base (Restored abc)", owner_id=user.id))
+  await db_session.commit()
+  name = await svc._get_safe_dashboard_name(db_session, user.id, "Base")
+  assert name == "Base (Restored 2)"
+
+  t1 = WidgetTemplate(title="Rate", sql_template="SELECT rate FROM t GROUP BY rate")
+  assert svc._determine_visual_type(t1) == "table"
+  t2 = WidgetTemplate(title="Compare", sql_template="SELECT 1")
+  assert svc._determine_visual_type(t2) == "bar_chart"
+  t3 = WidgetTemplate(
+    title="T", sql_template="SELECT {{num}}", parameters_schema={"properties": {"num": {"default": "10"}}}
+  )
+  assert svc._build_config(t3, "table") == {"query": "SELECT 10"}
+  t4 = WidgetTemplate(
+    title="T2",
+    sql_template="SELECT {{num}} {{s}}",
+    parameters_schema={"properties": {"num": {"default": 10}, "s": {"default": "a"}, "no_default": {}}},
+  )
+  assert svc._build_config(t4, "table") == {"query": "SELECT 10 a"}

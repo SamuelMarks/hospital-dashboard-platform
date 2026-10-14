@@ -3,7 +3,6 @@ Internationalization and localization support for the application.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -41,7 +40,7 @@ _FALLBACK_MESSAGES = {
 class Translator:
   """Translator class to manage loading and retrieving localized messages."""
 
-  def __init__(self, locales_dir: Optional[str] = None):
+  def __init__(self, locales_dir: Optional[str] = None) -> None:
     """Initialize translator with optional directory."""
     self.messages: Dict[str, Dict[str, str]] = _FALLBACK_MESSAGES.copy()
     if locales_dir:

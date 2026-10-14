@@ -55,11 +55,13 @@ async def test_debug_static_files_serving(tmp_path: pytest.TempPathFactory) -> N
   index_file = dist_dir / "index.html"
   index_file.write_text("<!doctype html><html><body><h1>Pulse Test</h1></body></html>")
 
-  with patch.dict("os.environ", {"DEBUG": "1"}):
-    with patch.object(Path, "exists", return_value=True):
-      with patch("app.main.StaticFiles") as mock_static_files:
-        setup_static_files(dummy_app)
-        assert mock_static_files.called
+  with (
+    patch.dict("os.environ", {"DEBUG": "1"}),
+    patch.object(Path, "exists", return_value=True),
+    patch("app.main.StaticFiles") as mock_static_files,
+  ):
+    setup_static_files(dummy_app)
+    assert mock_static_files.called
 
 
 @pytest.mark.asyncio
@@ -71,11 +73,13 @@ async def test_debug_static_files_missing_dist() -> None:
   from app.main import setup_static_files
 
   dummy_app = FastAPI()
-  with patch.dict("os.environ", {"DEBUG": "1"}):
-    with patch.object(Path, "exists", return_value=False):
-      with patch("app.main.StaticFiles") as mock_static_files:
-        setup_static_files(dummy_app)
-        assert not mock_static_files.called
+  with (
+    patch.dict("os.environ", {"DEBUG": "1"}),
+    patch.object(Path, "exists", return_value=False),
+    patch("app.main.StaticFiles") as mock_static_files,
+  ):
+    setup_static_files(dummy_app)
+    assert not mock_static_files.called
 
 
 @pytest.mark.asyncio

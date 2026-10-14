@@ -1,12 +1,16 @@
+/**
+ * @fileoverview Unit tests for `SimulationStore`.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { SimulationStore } from './simulation.store';
-import { SimulationService } from '../api-client';
+import { ScenarioResult, SimulationService } from '../api-client';
 import { of, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 describe('SimulationStore', () => {
   let store: SimulationStore;
-  let mockApi: any;
+  let mockApi: { runSimulationApiV1SimulationRunPost: Mock };
 
   beforeEach(() => {
     mockApi = {
@@ -23,6 +27,8 @@ describe('SimulationStore', () => {
     expect(store.isSimulating()).toBe(false);
     expect(store.capacityParams().length).toBeGreaterThan(0);
     expect(store.demandSql()).toContain('SELECT');
+    expect(store.constraints()).toEqual([]);
+    expect(store.affinityOverrides()).toEqual([]);
   });
 
   it('should update demand sql', () => {
@@ -30,27 +36,61 @@ describe('SimulationStore', () => {
     expect(store.demandSql()).toBe('SELECT 1');
   });
 
-  it('should add capacity param', () => {
+  it('should add, update, and remove capacity params', () => {
     const initialLength = store.capacityParams().length;
     store.addCapacityParam();
     expect(store.capacityParams().length).toBe(initialLength + 1);
     expect(store.capacityParams()[initialLength]).toEqual({ unit: '', capacity: 0 });
-  });
 
-  it('should update capacity param', () => {
     store.updateCapacityParam(0, { unit: 'TestUnit', capacity: 99 });
     expect(store.capacityParams()[0]).toEqual({ unit: 'TestUnit', capacity: 99 });
-  });
 
-  it('should remove capacity param', () => {
-    const initialLength = store.capacityParams().length;
     store.removeCapacityParam(0);
-    expect(store.capacityParams().length).toBe(initialLength - 1);
+    expect(store.capacityParams().length).toBe(initialLength);
   });
 
-  it('should run simulation successfully', () => {
-    const mockResult = {
-      status: 'success',
+  it('should add, update, and remove constraints', () => {
+    store.addConstraint();
+    expect(store.constraints().length).toBe(1);
+    expect(store.constraints()[0]?.type).toBe('force_flow');
+
+    store.updateConstraint(0, {
+      type: 'force_flow',
+      service: 'Cardiology',
+      unit: 'ICU',
+      min: 3,
+      max: 8,
+    });
+    expect(store.constraints()[0]).toEqual({
+      type: 'force_flow',
+      service: 'Cardiology',
+      unit: 'ICU',
+      min: 3,
+      max: 8,
+    });
+
+    store.removeConstraint(0);
+    expect(store.constraints()).toEqual([]);
+  });
+
+  it('should add, update, and remove affinity overrides', () => {
+    store.addAffinityOverride();
+    expect(store.affinityOverrides().length).toBe(1);
+
+    store.updateAffinityOverride(0, { service: 'Cardiology', unit: 'ICU', score: 0.95 });
+    expect(store.affinityOverrides()[0]).toEqual({
+      service: 'Cardiology',
+      unit: 'ICU',
+      score: 0.95,
+    });
+
+    store.removeAffinityOverride(0);
+    expect(store.affinityOverrides()).toEqual([]);
+  });
+
+  it('should run simulation successfully with constraints and affinity overrides', () => {
+    const mockResult: ScenarioResult = {
+      status: 'Optimal',
       assignments: [
         { Service: 'Cardiology', Unit: 'ICU', Original_Count: 10, Patient_Count: 12, Delta: 2 },
       ],
@@ -59,8 +99,11 @@ describe('SimulationStore', () => {
 
     store.setDemandSql('SELECT mock');
     store.updateCapacityParam(0, { unit: 'ICU', capacity: 20 });
-    // empty unit should be ignored
     store.updateCapacityParam(1, { unit: '  ', capacity: 0 });
+    store.addConstraint({ type: 'force_flow', service: 'Cardiology', unit: 'ICU', min: 5 });
+    store.addAffinityOverride({ service: 'Cardiology', unit: 'ICU', score: 0.9 });
+    store.addAffinityOverride({ service: 'Cardiology', unit: 'MedSurg', score: 0.4 });
+    store.addAffinityOverride({ service: '  ', unit: 'ICU', score: 0.5 });
 
     store.runSimulation();
 
@@ -69,20 +112,36 @@ describe('SimulationStore', () => {
 
     const results = store.results();
     expect(results).toBeTruthy();
-    expect(results!.columns).toEqual([
+    expect(results?.columns).toEqual([
       'Service',
       'Unit',
       'Original_Count',
       'Patient_Count',
       'Delta',
     ]);
-    expect(results!.data.length).toBe(1);
-    expect(results!.data[0]['Service']).toBe('Cardiology');
-    expect(results!.data[0]['Delta']).toBe(2);
+    expect(results?.data.length).toBe(1);
+    expect(results?.data[0]?.['Service']).toBe('Cardiology');
+    expect(results?.data[0]?.['Delta']).toBe(2);
 
     expect(mockApi.runSimulationApiV1SimulationRunPost).toHaveBeenCalledWith({
       demand_source_sql: 'SELECT mock',
       capacity_parameters: expect.objectContaining({ ICU: 20 }),
+      constraints: [{ type: 'force_flow', service: 'Cardiology', unit: 'ICU', min: 5 }],
+      affinity_overrides: {
+        Cardiology: { ICU: 0.9, MedSurg: 0.4 },
+      },
+    });
+  });
+
+  it('should omit affinity_overrides when none are configured', () => {
+    const mockResult: ScenarioResult = { status: 'Optimal', assignments: [] };
+    mockApi.runSimulationApiV1SimulationRunPost.mockReturnValue(of(mockResult));
+
+    store.runSimulation();
+
+    expect(mockApi.runSimulationApiV1SimulationRunPost).toHaveBeenCalledWith({
+      demand_source_sql: store.demandSql(),
+      capacity_parameters: expect.any(Object),
       constraints: [],
     });
   });

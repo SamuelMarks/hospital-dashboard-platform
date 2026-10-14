@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Responsive Breakpoint Service.
  * Provides reactive signals for responsive design breakpoints.
@@ -143,7 +142,6 @@ export class BreakpointService implements OnDestroy {
    * @param size - The breakpoint size to check.
    * @returns True if the viewport matches the breakpoint.
    */
-
   matches(size: BreakpointSize): boolean {
     return this.currentBreakpoint() === size;
   }
@@ -154,7 +152,6 @@ export class BreakpointService implements OnDestroy {
    * @param size - The minimum breakpoint size.
    * @returns True if the viewport is at or above the breakpoint.
    */
-
   isAtLeast(size: BreakpointSize): boolean {
     const current = this._width();
     return current >= BREAKPOINTS[size];
@@ -166,14 +163,15 @@ export class BreakpointService implements OnDestroy {
    * @param size - The maximum breakpoint size.
    * @returns True if the viewport is below the breakpoint.
    */
-
   isBelow(size: BreakpointSize): boolean {
     const current = this._width();
     return current < BREAKPOINTS[size];
   }
 
-  /** Bound resize handler */
-  private boundUpdateDimensions = () => this.updateDimensions();
+  /** Bound resize handler. */
+  private boundUpdateDimensions = (): void => {
+    this.updateDimensions();
+  };
 
   /**
    * Initializes the service with current viewport dimensions.

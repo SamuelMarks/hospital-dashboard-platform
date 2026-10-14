@@ -1,7 +1,12 @@
-import { Component, ErrorHandler } from '@angular/core';
+import { Component, ErrorHandler, ViewContainerRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ErrorBoundaryDirective } from './error-boundary.directive';
+
+interface ErrorBoundaryPrivate {
+  vcr: ViewContainerRef;
+  renderContent: () => void;
+}
 
 @Component({
   imports: [ErrorBoundaryDirective],
@@ -30,13 +35,19 @@ describe('ErrorBoundaryDirective', () => {
     await TestBed.configureTestingModule({
       imports: [HostComponent],
       providers: [{ provide: ErrorHandler, useValue: mockHandler }],
-    })
-      .overrideDirective(ErrorBoundaryDirective, {
-        set: { inputs: ['appErrorBoundary'] },
-      })
-      .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(HostComponent);
+  });
+
+  it('should handle renderFallback gracefully when no fallback template is provided', () => {
+    fixture.detectChanges();
+    const boundaryNode = fixture.debugElement.queryAllNodes(
+      (node) => node.injector.get(ErrorBoundaryDirective, null) !== null,
+    )[0];
+    const boundary = boundaryNode.injector.get(ErrorBoundaryDirective);
+    boundary.appErrorBoundary = undefined;
+    expect(() => boundary.renderFallback(new Error('No tpl'))).not.toThrow();
   });
 
   it('should render content when no error', () => {
@@ -47,22 +58,26 @@ describe('ErrorBoundaryDirective', () => {
 
   it('should render fallback when content throws', () => {
     fixture.detectChanges();
-    const boundaryNode = fixture.debugElement.queryAllNodes((node) =>
-      (node as any).providerTokens?.includes(ErrorBoundaryDirective),
-    )[0] as any;
+    const boundaryNode = fixture.debugElement.queryAllNodes(
+      (node) => node.injector.get(ErrorBoundaryDirective, null) !== null,
+    )[0];
     if (!boundaryNode) {
       throw new Error('ErrorBoundaryDirective not found');
     }
-    const boundary = boundaryNode.injector.get(ErrorBoundaryDirective) as any;
+    const boundary = boundaryNode.injector.get(
+      ErrorBoundaryDirective,
+    ) as unknown as ErrorBoundaryPrivate;
     const originalCreate = boundary.vcr.createEmbeddedView.bind(boundary.vcr);
     let thrown = false;
-    boundary.vcr.createEmbeddedView = vi.fn((...args: any[]) => {
-      if (!thrown) {
-        thrown = true;
-        throw new Error('Boom');
-      }
-      return originalCreate(...args);
-    });
+    vi.spyOn(boundary.vcr, 'createEmbeddedView').mockImplementation(
+      (...args: Parameters<ViewContainerRef['createEmbeddedView']>) => {
+        if (!thrown) {
+          thrown = true;
+          throw new Error('Boom');
+        }
+        return originalCreate(...args);
+      },
+    );
     boundary.renderContent();
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('[data-testid="fallback"]'))).toBeTruthy();
@@ -73,9 +88,9 @@ describe('ErrorBoundaryDirective', () => {
 
   it('should retry and clear error', () => {
     fixture.detectChanges();
-    const boundaryNode = fixture.debugElement.queryAllNodes((node) =>
-      (node as any).providerTokens?.includes(ErrorBoundaryDirective),
-    )[0] as any;
+    const boundaryNode = fixture.debugElement.queryAllNodes(
+      (node) => node.injector.get(ErrorBoundaryDirective, null) !== null,
+    )[0];
     if (!boundaryNode) {
       throw new Error('ErrorBoundaryDirective not found');
     }

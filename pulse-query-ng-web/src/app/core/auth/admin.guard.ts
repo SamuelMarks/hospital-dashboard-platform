@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Route guard restricting navigation to administrative users.
+ */
+
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformServer } from '@angular/common';
@@ -6,7 +9,14 @@ import { AuthService } from './auth.service';
 import { map, take, Observable, filter } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
 
-/** @docs */
+/**
+ * Functional route guard that verifies whether the current user holds administrative privileges.
+ * Redirects non-admin users to the home route (`/`).
+ *
+ * @param route - Activated route snapshot being checked.
+ * @param state - Router state snapshot for the target navigation.
+ * @returns Boolean or observable emitting `true` if authorized, or a `UrlTree` redirecting to `/`.
+ */
 export const adminGuard: CanActivateFn = (
   route,
   state,

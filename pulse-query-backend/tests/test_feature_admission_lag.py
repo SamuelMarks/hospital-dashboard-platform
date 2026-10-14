@@ -7,7 +7,7 @@ the *First* appearance in the Census.
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import duckdb
 import pytest
@@ -17,6 +17,7 @@ DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.j
 
 @pytest.fixture
 def admission_lag_template() -> dict[str, Any]:
+  """Verify admission lag template behavior."""
   if not os.path.exists(DATA_FILE):
     pytest.fail(f"Templates file not found at {DATA_FILE}")
   with open(DATA_FILE, "r") as f:
@@ -26,6 +27,7 @@ def admission_lag_template() -> dict[str, Any]:
 
 @pytest.fixture
 def db_conn() -> duckdb.DuckDBPyConnection:
+  """Verify db conn behavior."""
   conn = duckdb.connect(":memory:")
 
   # ADDED: Visit_Type column required by SQL template

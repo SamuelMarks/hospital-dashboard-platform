@@ -118,7 +118,7 @@ describe('UserManagementComponent', () => {
     ).toHaveBeenCalledWith('u2', { is_active: true });
   });
 
-  it('should handle status update error with server detail', () => {
+  it('should handle status update error with server detail and fallback', () => {
     adminUsersServiceMock.updateUserStatusApiV1AdminUsersUserIdStatusPut.mockReturnValue(
       throwError(() => ({
         error: { detail: 'Administrators cannot suspend their own active account.' },
@@ -128,6 +128,12 @@ describe('UserManagementComponent', () => {
     expect(component.errorMessage()).toBe(
       'Administrators cannot suspend their own active account.',
     );
+
+    adminUsersServiceMock.updateUserStatusApiV1AdminUsersUserIdStatusPut.mockReturnValue(
+      throwError(() => ({})),
+    );
+    component.toggleUserStatus(mockUsers[0]);
+    expect(component.errorMessage()).toBe('Failed to update user status.');
   });
 
   it('should return appropriate CSS badge classes', () => {

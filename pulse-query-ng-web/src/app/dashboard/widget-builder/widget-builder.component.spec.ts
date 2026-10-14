@@ -11,8 +11,9 @@ import {
 } from '../../api-client';
 import { DashboardStore } from '../dashboard.store';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatStepper } from '@angular/material/stepper';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of, throwError, Subject } from 'rxjs';
+import { of, throwError, Subscription } from 'rxjs';
 import { signal } from '@angular/core';
 import { vi } from 'vitest';
 import { DynamicFormComponent } from '../template-wizard/dynamic-form.component';
@@ -22,16 +23,6 @@ import { TextEditorComponent } from '../../editors/text-editor.component';
 import { WidgetComponent } from '../../widget/widget.component';
 
 import { resolveComponentResourcesForTests } from '../../../test-utils/component-resources';
-
-// MOCK: @material/material-color-utilities
-vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xffffffff,
-  hexFromArgb: () => '#ffffff',
-  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
-  Scheme: class {},
-  Theme: class {},
-  __esModule: true,
-}));
 
 // Mocks
 const MOCK_TEMPLATE: TemplateResponse = {
@@ -54,11 +45,26 @@ describe('WidgetBuilderComponent', () => {
   let component: WidgetBuilderComponent;
   let fixture: ComponentFixture<WidgetBuilderComponent>;
 
-  let mockDashApi: any;
-  let mockExecApi: any;
-  let mockTplApi: any;
-  let mockDialogRef: any;
-  let mockStore: any;
+  let mockDashApi: {
+    createWidgetApiV1DashboardsDashboardIdWidgetsPost: ReturnType<typeof vi.fn>;
+    updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+    deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: ReturnType<typeof vi.fn>;
+  };
+  let mockExecApi: {
+    refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
+  };
+  let mockTplApi: {
+    listTemplatesApiV1TemplatesGet: ReturnType<typeof vi.fn>;
+  };
+  let mockDialogRef: {
+    close: ReturnType<typeof vi.fn>;
+    getState: ReturnType<typeof vi.fn>;
+  };
+  let mockStore: {
+    dataMap: ReturnType<typeof signal<Record<string, { columns?: string[] }>>>;
+    refreshWidget: ReturnType<typeof vi.fn>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     mockDashApi = {
@@ -151,13 +157,13 @@ describe('WidgetBuilderComponent', () => {
   it('ngOnDestroy should unsubscribe and handle draft cleanup logic if needed', () => {
     component.draftWidget.set(MOCK_DRAFT);
     mockDialogRef.getState.mockReturnValue(0);
-    const subSpy = vi.spyOn((component as any).sub, 'unsubscribe');
+    const subSpy = vi.spyOn((component as unknown as { sub: Subscription }).sub, 'unsubscribe');
     component.ngOnDestroy();
     expect(subSpy).toHaveBeenCalled();
   });
 
   it('ngOnDestroy should do nothing if no sub', () => {
-    (component as any).sub = undefined;
+    (component as unknown as { sub?: Subscription }).sub = undefined;
     expect(() => component.ngOnDestroy()).not.toThrow();
   });
 
@@ -260,7 +266,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('initializeDraft should handle template mode', () => {
-    const mockStepper = { next: vi.fn() } as any;
+    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
     component.activeMode.set('template');
     component.selectedTemplate.set(MOCK_TEMPLATE);
     vi.useFakeTimers();
@@ -332,14 +338,14 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('runTemplateQuery should do nothing if no draft or template', () => {
-    const mockStepper = { next: vi.fn() } as any;
+    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
     component.draftWidget.set(null);
     component.runTemplateQuery(mockStepper);
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
 
   it('runTemplateQuery should compile sql, execute update and call stepper next', () => {
-    const mockStepper = { next: vi.fn() } as any;
+    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
@@ -353,7 +359,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('runTemplateQuery should handle error', () => {
-    const mockStepper = { next: vi.fn() } as any;
+    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
@@ -365,7 +371,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('validateDataPresence should refresh widget and call next', () => {
-    const mockStepper = { next: vi.fn() } as any;
+    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
     component.draftWidget.set(MOCK_DRAFT);
     component.validateDataPresence(mockStepper);
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('draft-1');
@@ -373,7 +379,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('validateDataPresence should only call next if no draft', () => {
-    const mockStepper = { next: vi.fn() } as any;
+    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
     component.draftWidget.set(null);
     component.validateDataPresence(mockStepper);
     expect(mockStore.refreshWidget).not.toHaveBeenCalled();
@@ -476,9 +482,48 @@ describe('WidgetBuilderComponent', () => {
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
   });
 
-  it('asTableData should return table data object or default', () => {
+  it('asTableData should return normalized table data object or default', () => {
     expect(component.asTableData(null)).toEqual({ columns: [], data: [] });
-    expect(component.asTableData({ data: 1 })).toEqual({ data: 1 });
+    component.executionResult.set({ columns: ['c1'], data: [{ c1: 42 }] });
+    expect(component.previewTableData()).toEqual({ columns: ['c1'], data: [{ c1: 42 }] });
+    expect(component.asTableData({ columns: ['a'], data: [{ a: 1 }] })).toEqual({
+      columns: ['a'],
+      data: [{ a: 1 }],
+    });
+    expect(component.asTableData({})).toEqual({ columns: [], data: [] });
+  });
+
+  it('should compute showAxesConfig, isPie, availableColumns, and dataConfigured branches', () => {
+    component.draftWidget.set(null);
+    component.selectedTemplate.set(null);
+    expect(component.paramsSchema()).toEqual({});
+    expect(component.currentType()).toBe('SQL');
+    expect(component.showAxesConfig()).toBe(false);
+    expect(component.availableColumns()).toEqual([]);
+
+    component.selectedTemplate.set({
+      ...MOCK_TEMPLATE,
+      parameters_schema: { type: 'object' },
+    });
+    expect(component.paramsSchema()).toEqual({ type: 'object' });
+
+    component.draftWidget.set({ ...MOCK_DRAFT, type: 'TEXT', visualization: 'markdown' });
+    expect(component.currentType()).toBe('TEXT');
+    expect(component.showAxesConfig()).toBe(false);
+
+    component.draftWidget.set({ ...MOCK_DRAFT, type: 'SQL', visualization: 'pie' });
+    expect(component.showAxesConfig()).toBe(true);
+    expect(component.isPie()).toBe(true);
+    expect(component.availableColumns()).toEqual(['A', 'B']);
+
+    mockStore.dataMap.set({});
+    expect(component.availableColumns()).toEqual([]);
+
+    component.activeMode.set('template');
+    component.templateFormValid.set(false);
+    expect(component.dataConfigured()).toBe(false);
+    component.activeMode.set('custom');
+    expect(component.dataConfigured()).toBe(true);
   });
 
   it('executeDraft should handle no draftId', () => {

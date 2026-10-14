@@ -1,3 +1,7 @@
+"""Tests for mpax arena."""
+
+from typing import Any
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -11,7 +15,8 @@ BASE_URL = "http://testserver/api/v1/mpax_arena"
 
 
 @pytest.fixture
-def mock_user():
+def mock_user() -> Any:
+  """Verify mock user behavior."""
   user = MagicMock(spec=User)
   user.id = "user1"
   user.email = "test@example.com"
@@ -19,14 +24,22 @@ def mock_user():
 
 
 @pytest.fixture
-def mock_mpax_service():
+def mock_mpax_service() -> Any:
+  """Verify mock mpax service behavior."""
   with patch("app.api.routers.mpax_arena.mpax_arena_service.run_mpax_arena", new_callable=AsyncMock) as mock_run:
     mock_run.return_value = {"experiment_id": "test-exp", "mode": "judge", "candidates": []}
     yield mock_run
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_success(mock_user, mock_mpax_service):
+async def test_run_mpax_arena_success(mock_user: Any, mock_mpax_service: Any) -> None:
+  """
+  Verify run mpax arena success behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+      mock_mpax_service: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
@@ -38,7 +51,13 @@ async def test_run_mpax_arena_success(mock_user, mock_mpax_service):
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_empty_prompt(mock_user):
+async def test_run_mpax_arena_empty_prompt(mock_user: Any) -> None:
+  """
+  Verify run mpax arena empty prompt behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
@@ -50,7 +69,13 @@ async def test_run_mpax_arena_empty_prompt(mock_user):
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_empty_mode(mock_user):
+async def test_run_mpax_arena_empty_mode(mock_user: Any) -> None:
+  """
+  Verify run mpax arena empty mode behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
@@ -62,7 +87,14 @@ async def test_run_mpax_arena_empty_mode(mock_user):
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_value_error(mock_user, mock_mpax_service):
+async def test_run_mpax_arena_value_error(mock_user: Any, mock_mpax_service: Any) -> None:
+  """
+  Verify run mpax arena value error behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+      mock_mpax_service: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
   mock_mpax_service.side_effect = ValueError("Invalid mode")
 
@@ -75,7 +107,14 @@ async def test_run_mpax_arena_value_error(mock_user, mock_mpax_service):
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_internal_error(mock_user, mock_mpax_service):
+async def test_run_mpax_arena_internal_error(mock_user: Any, mock_mpax_service: Any) -> None:
+  """
+  Verify run mpax arena internal error behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+      mock_mpax_service: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
   mock_mpax_service.side_effect = Exception("Boom")
 
@@ -88,7 +127,13 @@ async def test_run_mpax_arena_internal_error(mock_user, mock_mpax_service):
 
 
 @pytest.mark.asyncio
-async def test_vote_mpax_arena_candidate_success(mock_user):
+async def test_vote_mpax_arena_candidate_success(mock_user: Any) -> None:
+  """
+  Verify vote mpax arena candidate success behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   with patch("app.api.routers.mpax_arena.mpax_arena_service.vote_candidate", new_callable=AsyncMock) as mock_vote:
@@ -108,7 +153,13 @@ async def test_vote_mpax_arena_candidate_success(mock_user):
 
 
 @pytest.mark.asyncio
-async def test_vote_mpax_arena_candidate_not_found(mock_user):
+async def test_vote_mpax_arena_candidate_not_found(mock_user: Any) -> None:
+  """
+  Verify vote mpax arena candidate not found behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   with patch("app.api.routers.mpax_arena.mpax_arena_service.vote_candidate", new_callable=AsyncMock) as mock_vote:
@@ -124,7 +175,13 @@ async def test_vote_mpax_arena_candidate_not_found(mock_user):
 
 
 @pytest.mark.asyncio
-async def test_vote_mpax_arena_candidate_internal_error(mock_user):
+async def test_vote_mpax_arena_candidate_internal_error(mock_user: Any) -> None:
+  """
+  Verify vote mpax arena candidate internal error behavior.
+
+  Args:
+      mock_user: Test parameter or fixture.
+  """
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   with patch("app.api.routers.mpax_arena.mpax_arena_service.vote_candidate", new_callable=AsyncMock) as mock_vote:

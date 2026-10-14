@@ -5,12 +5,12 @@ import { DashboardStore } from './dashboard.store';
 import { AskDataService } from '../global/ask-data.service';
 import { AuthService } from '../core/auth/auth.service';
 import { ThemeService } from '../core/theme/theme.service';
-import { DashboardsService } from '../api-client';
+import { DashboardsService, DashboardResponse } from '../api-client';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { signal } from '@angular/core';
+import { MatSnackBar, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
+import { signal, WritableSignal } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
+import { Router, NavigationEnd, ActivatedRoute, Event as RouterEvent } from '@angular/router';
 import { vi } from 'vitest';
 import { of, Subject } from 'rxjs';
 import { QueryCartService } from '../global/query-cart.service';
@@ -34,9 +34,21 @@ describe('ToolbarComponent', () => {
   let component: ToolbarComponent;
   let fixture: ComponentFixture<ToolbarComponent>;
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
-  let routerEvents$: Subject<any>;
-  let mockStore: any;
-  let mockRouter: any;
+  let routerEvents$: Subject<RouterEvent>;
+  let mockStore: {
+    dashboard: WritableSignal<Partial<DashboardResponse> | null>;
+    isLoading: WritableSignal<boolean>;
+    isEditMode: WritableSignal<boolean>;
+    refreshAll: ReturnType<typeof vi.fn>;
+    loadDashboard: ReturnType<typeof vi.fn>;
+    toggleEditMode: ReturnType<typeof vi.fn>;
+  };
+  let mockRouter: {
+    events: ReturnType<Subject<RouterEvent>['asObservable']>;
+    url: string;
+    navigate: ReturnType<typeof vi.fn>;
+    createUrlTree: ReturnType<typeof vi.fn>;
+  };
   let mockHttp: { get: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -121,7 +133,7 @@ describe('ToolbarComponent', () => {
     // Direct spy target ensures tracking regardless of DI abstraction scopes
     const snackSpy = vi.spyOn(component['snackBar'], 'open').mockReturnValue({
       onAction: () => of(undefined),
-    } as any);
+    } as unknown as MatSnackBarRef<TextOnlySnackBar>);
 
     // Act
     component.openCart();
@@ -190,7 +202,7 @@ describe('ToolbarComponent', () => {
     const input = document.createElement('input');
     input.value = '#00ff00';
 
-    component.onColorPickerChange({ target: input } as any);
+    component.onColorPickerChange({ target: input } as unknown as Event);
     expect(spy).toHaveBeenCalledWith('#00ff00');
   });
 
@@ -199,15 +211,17 @@ describe('ToolbarComponent', () => {
     const input = document.createElement('input');
     input.value = '';
 
-    component.onColorPickerChange({ target: input } as any);
+    component.onColorPickerChange({ target: input } as unknown as Event);
     expect(spy).not.toHaveBeenCalled();
   });
 
   it('should open widget builder dialog', () => {
     const dash = { id: 'd1' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = TestBed.inject(MatDialog).open as any;
-    dialogSpy.mockReturnValue({ afterClosed: () => of(true) });
+    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
+    dialogSpy.mockReturnValue({
+      afterClosed: () => of(true),
+    } as unknown as ReturnType<MatDialog['open']>);
 
     component.openWidgetBuilder();
 
@@ -218,8 +232,10 @@ describe('ToolbarComponent', () => {
   it('should open widget builder dialog but not load dashboard if false is returned', () => {
     const dash = { id: 'd1' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = TestBed.inject(MatDialog).open as any;
-    dialogSpy.mockReturnValue({ afterClosed: () => of(false) });
+    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
+    dialogSpy.mockReturnValue({
+      afterClosed: () => of(false),
+    } as unknown as ReturnType<MatDialog['open']>);
 
     component.openWidgetBuilder();
 
@@ -293,7 +309,7 @@ describe('ToolbarComponent', () => {
   it('should open share dialog when openShareDialog is called', () => {
     const dash = { id: 'd1', name: 'Clinical Ops' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = TestBed.inject(MatDialog).open as any;
+    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
 
     component.openShareDialog();
 
@@ -308,7 +324,7 @@ describe('ToolbarComponent', () => {
   it('should open theme dialog when openThemeDialog is called', () => {
     const dash = { id: 'd1', name: 'Clinical Ops' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = TestBed.inject(MatDialog).open as any;
+    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
 
     component.openThemeDialog();
 

@@ -1,3 +1,5 @@
+"""Tests for benchmarks api."""
+
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -9,18 +11,22 @@ BASE_URL = "http://testserver/api/v1/benchmarks"
 
 
 @pytest.mark.asyncio
-async def test_get_sql_benchmarks_success():
+async def test_get_sql_benchmarks_success() -> None:
+  """Verify get sql benchmarks success behavior."""
   mock_data = '[{"theme": "test"}]'
-  with patch("app.api.routers.benchmarks.Path.exists", return_value=True):
-    with patch("builtins.open", mock_open(read_data=mock_data)):
-      async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-        response = await client.get("/sql")
-        assert response.status_code == 200
-        assert response.json() == [{"theme": "test"}]
+  with (
+    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
+    patch("builtins.open", mock_open(read_data=mock_data)),
+  ):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.get("/sql")
+      assert response.status_code == 200
+      assert response.json() == [{"theme": "test"}]
 
 
 @pytest.mark.asyncio
-async def test_get_sql_benchmarks_not_found():
+async def test_get_sql_benchmarks_not_found() -> None:
+  """Verify get sql benchmarks not found behavior."""
   with patch("app.api.routers.benchmarks.Path.exists", return_value=False):
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
       response = await client.get("/sql")
@@ -29,28 +35,35 @@ async def test_get_sql_benchmarks_not_found():
 
 
 @pytest.mark.asyncio
-async def test_get_sql_benchmarks_read_error():
-  with patch("app.api.routers.benchmarks.Path.exists", return_value=True):
-    with patch("builtins.open", side_effect=Exception("Read error")):
-      async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-        response = await client.get("/sql")
-        assert response.status_code == 500
-        assert "Read error" in response.json()["detail"]
+async def test_get_sql_benchmarks_read_error() -> None:
+  """Verify get sql benchmarks read error behavior."""
+  with (
+    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
+    patch("builtins.open", side_effect=Exception("Read error")),
+  ):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.get("/sql")
+      assert response.status_code == 500
+      assert "Read error" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_success():
+async def test_get_mpax_benchmarks_success() -> None:
+  """Verify get mpax benchmarks success behavior."""
   mock_data = '[{"scenario": "test"}]'
-  with patch("app.api.routers.benchmarks.Path.exists", return_value=True):
-    with patch("builtins.open", mock_open(read_data=mock_data)):
-      async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-        response = await client.get("/mpax")
-        assert response.status_code == 200
-        assert response.json() == [{"scenario": "test"}]
+  with (
+    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
+    patch("builtins.open", mock_open(read_data=mock_data)),
+  ):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.get("/mpax")
+      assert response.status_code == 200
+      assert response.json() == [{"scenario": "test"}]
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_not_found():
+async def test_get_mpax_benchmarks_not_found() -> None:
+  """Verify get mpax benchmarks not found behavior."""
   with patch("app.api.routers.benchmarks.Path.exists", return_value=False):
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
       response = await client.get("/mpax")
@@ -59,17 +72,21 @@ async def test_get_mpax_benchmarks_not_found():
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_read_error():
-  with patch("app.api.routers.benchmarks.Path.exists", return_value=True):
-    with patch("builtins.open", side_effect=Exception("Read error")):
-      async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-        response = await client.get("/mpax")
-        assert response.status_code == 500
-        assert "Read error" in response.json()["detail"]
+async def test_get_mpax_benchmarks_read_error() -> None:
+  """Verify get mpax benchmarks read error behavior."""
+  with (
+    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
+    patch("builtins.open", side_effect=Exception("Read error")),
+  ):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+      response = await client.get("/mpax")
+      assert response.status_code == 500
+      assert "Read error" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_stream_benchmark_progress():
+async def test_stream_benchmark_progress() -> None:
+  """Verify stream benchmark progress behavior."""
   from app.api.routers.benchmarks import update_benchmark_progress
 
   update_benchmark_progress(

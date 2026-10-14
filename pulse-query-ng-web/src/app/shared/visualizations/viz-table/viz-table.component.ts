@@ -1,25 +1,38 @@
-/** @docs */
-// pulse-query-ng-web/src/app/shared/visualizations/viz-table/viz-table.component.ts
+/**
+ * @fileoverview Paginated Material data table visualization component with delta formatting and threshold highlighting.
+ */
+
 import { Component, input, computed, ViewChild, effect } from '@angular/core';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 
-/** @docs */
+/**
+ * Tabular dataset structure consumed by visualization components.
+ */
 export interface TableDataSet {
+  /** Ordered list of column header identifiers. */
   columns: string[];
+  /** Array of row objects keyed by column identifier. */
   data: Record<string, unknown>[];
 }
 
-/** @docs */
+/**
+ * Optional configuration for conditional cell highlighting in `VizTableComponent`.
+ */
 export interface TableConfig {
+  /** Numeric thresholds for warning and critical cell highlighting. */
   thresholds?: {
     warning?: number;
     critical?: number;
   };
+  /** Specific column name to evaluate against `thresholds`. */
   thresholdColumn?: string;
 }
 
-/** @docs */
+/**
+ * Renders a paginated Material table with automatic sign formatting for delta columns
+ * and threshold-based warning/critical cell styling.
+ */
 @Component({
   selector: 'viz-table',
   imports: [MatTableModule, MatPaginatorModule],
@@ -72,15 +85,21 @@ export interface TableConfig {
   ],
   templateUrl: './viz-table.component.html',
 })
-/** @docs */
 export class VizTableComponent {
+  /** Tabular dataset containing column names and row records to render. */
   readonly dataSet = input<TableDataSet | null | undefined>();
 
+  /** Optional threshold styling configuration for numeric alert columns. */
   readonly config = input<TableConfig | null>(null);
 
+  /** Material table data source managing row sorting and pagination. */
   dataSource = new MatTableDataSource<Record<string, unknown>>([]);
+  /** Reference to the Material paginator instance bound to `dataSource`. */
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
+  /**
+   * Registers a reactive effect that synchronizes incoming `dataSet` rows with `dataSource` and `paginator`.
+   */
   constructor() {
     effect(() => {
       const db = this.dataSet();
@@ -95,8 +114,17 @@ export class VizTableComponent {
     });
   }
 
+  /** Computed array of column identifiers to render in the table header and rows. */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
+  /**
+   * Formats a raw cell value for display, adding explicit `+` signs to positive delta columns
+   * and serializing nested objects as JSON.
+   *
+   * @param row - Data record representing the current table row.
+   * @param col - Column key whose value should be formatted.
+   * @returns Formatted display string for the table cell.
+   */
   getCellValue(row: Record<string, unknown>, col: string): string {
     const val = row[col];
     if (val === null || val === undefined) return '-';
@@ -107,6 +135,13 @@ export class VizTableComponent {
     return String(val);
   }
 
+  /**
+   * Computes space-delimited CSS classes for a table cell based on delta sign and configured alert thresholds.
+   *
+   * @param row - Data record representing the current table row.
+   * @param col - Column key being styled.
+   * @returns Space-separated CSS class string (`'val-pos'`, `'val-neg'`, `'cell-warn'`, `'cell-critical'`).
+   */
   getCellClass(row: Record<string, unknown>, col: string): string {
     let classes = '';
     const val = row[col];
@@ -130,11 +165,23 @@ export class VizTableComponent {
     return classes.trim();
   }
 
+  /**
+   * Checks whether a column name represents a directional change or net flow metric.
+   *
+   * @param col - Column identifier to inspect.
+   * @returns True if the column name indicates a delta, change, or net flow value.
+   */
   private isDeltaColumn(col: string): boolean {
     const lower = col.toLowerCase();
     return lower === 'delta' || lower.includes('change') || lower.includes('net_flow');
   }
 
+  /**
+   * Determines whether a column is eligible for threshold-based warning/critical highlighting.
+   *
+   * @param col - Column identifier to check.
+   * @returns True if the column matches `thresholdColumn` or contains a capacity/utilization keyword.
+   */
   private isAlertCandidate(col: string): boolean {
     const conf = this.config();
     if (conf?.thresholdColumn) return col === conf.thresholdColumn;

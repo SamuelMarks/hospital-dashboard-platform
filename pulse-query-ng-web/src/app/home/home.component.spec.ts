@@ -22,12 +22,45 @@ import { vi } from 'vitest';
 describe('HomeComponent', () => {
   let component: HomeComponent;
   let fixture: ComponentFixture<HomeComponent>;
-  let mockDashApi: any;
-  let mockDialog: any;
-  let mockSnackBar: any;
-  let mockAskDataService: any;
-  let mockThemeService: any;
-  let mockOnboardingService: any;
+  let mockDashApi: {
+    listDashboardsApiV1DashboardsGet: ReturnType<typeof vi.fn>;
+    updateDashboardApiV1DashboardsDashboardIdPut: ReturnType<typeof vi.fn>;
+    deleteDashboardApiV1DashboardsDashboardIdDelete: ReturnType<typeof vi.fn>;
+    cloneDashboardApiV1DashboardsDashboardIdClonePost: ReturnType<typeof vi.fn>;
+    restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost: ReturnType<typeof vi.fn>;
+  };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
+  let mockSnackBar: {
+    open: ReturnType<typeof vi.fn>;
+    _action$: Subject<void>;
+  };
+  let mockAskDataService: { open: ReturnType<typeof vi.fn> };
+  let mockThemeService: {
+    isDark: ReturnType<typeof signal<boolean>>;
+    mode: ReturnType<typeof signal<'light'>>;
+    seedColor: ReturnType<typeof signal<string>>;
+    isTvMode: ReturnType<typeof signal<boolean>>;
+    toggle: ReturnType<typeof vi.fn>;
+  };
+  let mockOnboardingService: {
+    isVisible: ReturnType<typeof signal<boolean>>;
+    isComplete: ReturnType<typeof signal<boolean>>;
+    currentStepIndex: ReturnType<typeof signal<number>>;
+    currentStep: ReturnType<
+      typeof signal<{ id: string; title: string; description: string; icon: string }>
+    >;
+    totalSteps: ReturnType<typeof signal<number>>;
+    hasNext: ReturnType<typeof signal<boolean>>;
+    hasPrev: ReturnType<typeof signal<boolean>>;
+    progress: ReturnType<typeof signal<number>>;
+    next: ReturnType<typeof vi.fn>;
+    prev: ReturnType<typeof vi.fn>;
+    skip: ReturnType<typeof vi.fn>;
+    complete: ReturnType<typeof vi.fn>;
+    start: ReturnType<typeof vi.fn>;
+    goToStep: ReturnType<typeof vi.fn>;
+    reset: ReturnType<typeof vi.fn>;
+  };
   let router: Router;
 
   const mockDashboardList: DashboardResponse[] = [

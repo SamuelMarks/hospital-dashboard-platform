@@ -1,5 +1,6 @@
-/** @docs */
-// pulse-query-ng-web/src/app/editors/text-editor.component.ts
+/**
+ * @fileoverview Markdown text editor component for configuring and saving TEXT dashboard widgets.
+ */
 import { Component, input, output, signal, linkedSignal, inject } from '@angular/core';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { DashboardsService, WidgetUpdate } from '../api-client';
@@ -9,7 +10,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
 
-/** @docs */
+/**
+ * Editor component for authoring and persisting markdown content in a TEXT widget.
+ */
 @Component({
   selector: 'app-text-editor',
   imports: [
@@ -57,27 +60,35 @@ import { finalize } from 'rxjs';
   ],
   templateUrl: './text-editor.component.html',
 })
-/** @docs */
 export class TextEditorComponent {
+  /** Backend dashboards API service. */
   private readonly dashboardsApi = inject(DashboardsService);
 
+  /** Parent dashboard ID containing the widget. */
   readonly dashboardId = input.required<string>();
 
+  /** Target widget ID being edited. */
   readonly widgetId = input.required<string>();
 
+  /** Initial markdown content loaded into the editor. */
   readonly initialContent = input<string>('');
 
+  /** Emits the updated markdown string after a successful save. */
   readonly contentChange = output<string>();
 
+  /** Whether a save request is currently in flight. */
   readonly isRunning = signal(false);
 
+  /** Reactive signal model synchronized with `initialContent`. */
   readonly formModel = linkedSignal(() => ({ content: this.initialContent() }));
 
+  /** Signal-based form instance enforcing required markdown content. */
   readonly form = form(this.formModel, (f) => {
     required(f.content);
   });
 
-  save() {
+  /** Persists the current markdown content to the backend widget configuration. */
+  save(): void {
     if (this.form().invalid()) return;
 
     this.isRunning.set(true);

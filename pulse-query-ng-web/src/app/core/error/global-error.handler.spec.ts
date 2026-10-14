@@ -14,7 +14,7 @@ describe('GlobalErrorHandler', () => {
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
 
   // Spy on console to keep test output clean from expected error logs
-  let consoleSpy: any;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -111,7 +111,7 @@ describe('GlobalErrorHandler', () => {
   });
 
   it('should invoke reload on snackbar action', () => {
-    const reloadSpy = vi.spyOn(handler as any, 'reloadApp');
+    const reloadSpy = vi.spyOn(handler as unknown as { reloadApp: () => void }, 'reloadApp');
     handler.handleError(new Error('Reload Test'));
     expect(reloadSpy).toHaveBeenCalled();
     reloadSpy.mockRestore();

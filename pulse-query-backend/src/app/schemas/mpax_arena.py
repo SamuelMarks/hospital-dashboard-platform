@@ -2,7 +2,7 @@
 Schemas for the MPAX vs LLM Arena integrations.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel
 

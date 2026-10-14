@@ -114,7 +114,7 @@ export class ShareDashboardDialog implements OnInit {
           this.shares.set(items);
           this.isLoading.set(false);
         },
-        error: (err) => {
+        error: (err: { error?: { detail?: string } }) => {
           this.isLoading.set(false);
           this.errorMessage.set(err?.error?.detail || 'Failed to load collaborators');
         },
@@ -150,7 +150,7 @@ export class ShareDashboardDialog implements OnInit {
             this.shares.set([...this.shares(), created]);
           }
         },
-        error: (err) => {
+        error: (err: { error?: { detail?: string } }) => {
           this.isSubmitting.set(false);
           this.errorMessage.set(err?.error?.detail || 'Failed to share dashboard');
         },
@@ -167,7 +167,7 @@ export class ShareDashboardDialog implements OnInit {
       next: () => {
         this.shares.set(this.shares().filter((s) => s.id !== shareId));
       },
-      error: (err) => {
+      error: (err: { error?: { detail?: string } }) => {
         this.errorMessage.set(err?.error?.detail || 'Failed to revoke share');
       },
     });

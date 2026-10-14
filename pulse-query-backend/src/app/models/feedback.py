@@ -8,7 +8,6 @@ competing outcomes (Candidates).
 
 import uuid
 from datetime import datetime
-from typing import List
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID

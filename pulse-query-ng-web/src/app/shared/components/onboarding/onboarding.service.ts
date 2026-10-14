@@ -1,10 +1,10 @@
-import { safeStorage } from '../../../core/storage.utils';
-/** @docs */
 /**
  * @fileoverview Onboarding Service.
  * Manages the onboarding wizard state and completion tracking.
  * Persists completion status to safeStorage so the wizard only shows once.
  */
+
+import { safeStorage } from '../../../core/storage.utils';
 
 import { Injectable, inject, PLATFORM_ID, signal, computed, Signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -34,7 +34,7 @@ export interface OnboardingStep {
 }
 
 /** All onboarding steps in order. */
-export const ONBOARDING_STEPS: OnboardingStep[] = [
+export const ONBOARDING_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
   {
     id: 'welcome',
     title: 'Welcome to Pulse Query',
@@ -116,7 +116,7 @@ export class OnboardingService {
    */
 
   readonly currentStep: Signal<OnboardingStep> = computed(
-    () => ONBOARDING_STEPS[this._currentStepIndex()],
+    () => ONBOARDING_STEPS[this._currentStepIndex()] as OnboardingStep,
   );
 
   /**

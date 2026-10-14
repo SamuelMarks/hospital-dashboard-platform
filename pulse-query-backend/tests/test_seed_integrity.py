@@ -9,7 +9,7 @@ are correctly represented in the persisted data structure.
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 

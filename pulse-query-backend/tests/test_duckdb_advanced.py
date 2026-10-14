@@ -7,12 +7,14 @@ Verifies the logic required for Theme 7:
 3. Correlation Aggregates.
 """
 
+from typing import Any
+
 import duckdb
 import pytest
 
 
 @pytest.fixture
-def db():
+def db() -> Any:
   """In-memory DB with specific test scenarios."""
   conn = duckdb.connect(":memory:")
 
@@ -36,7 +38,7 @@ def db():
   conn.close()
 
 
-def test_utilization_spikes_pattern(db):
+def test_utilization_spikes_pattern(db: Any) -> None:
   """
   Test finding 3 consecutive days > 1.0 using LEAD.
   """
@@ -60,7 +62,7 @@ def test_utilization_spikes_pattern(db):
   assert str(res[0][0]) == "2023-01-02"
 
 
-def test_turnover_lag_logic(db):
+def test_turnover_lag_logic(db: Any) -> None:
   """
   Test calculating time difference between row N and N+1.
   """
@@ -75,7 +77,7 @@ def test_turnover_lag_logic(db):
   assert res[0] == 120
 
 
-def test_correlation_function(db):
+def test_correlation_function(db: Any) -> None:
   """
   Test DuckDB native corr() function works as expected.
   """

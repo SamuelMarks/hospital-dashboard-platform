@@ -19,7 +19,7 @@ import io.ktor.client.statement.bodyAsText
  * @property mimeType Standard MIME type associated with the exported content.
  * @property errorMessage Error text if export failed.
  */
-data class DashboardExportResult(
+class DashboardExportResult(
     val success: Boolean,
     val format: String,
     val content: String = "",

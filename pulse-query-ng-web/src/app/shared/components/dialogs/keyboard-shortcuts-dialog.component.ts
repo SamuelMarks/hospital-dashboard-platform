@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Keyboard Shortcuts Help Dialog Component.
  * Displays all available keyboard shortcuts grouped by category.
@@ -36,6 +35,7 @@ import {
         <button
           mat-icon-button
           mat-dialog-close
+          i18n-aria-label
           aria-label="Close dialog"
           data-testid="close-button"
         >

@@ -1,0 +1,104 @@
+/**
+ * Editor ViewModel module orchestrating ad-hoc SQL query editing, preview execution,
+ * and staging queries to the global query cart.
+ */
+package io.healthplatform.pulsequery.ui.screens.editor
+
+import io.healthplatform.pulsequery.api.apis.AiApi
+import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
+import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
+import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.network.QueryCartRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+/**
+ * Immutable UI state for [io.healthplatform.pulsequery.ui.screens.EditorScreen].
+ *
+ * @property sqlQuery Current SQL query string in the editor buffer.
+ * @property result Latest [SQLExecutionResponse] returned by the preview execution endpoint, or null.
+ * @property isLoading Whether a SQL execution request is currently in flight.
+ * @property errorMessage User-visible error message if an execution call fails.
+ */
+data class EditorUiState(
+    val sqlQuery: String = "SELECT * FROM patient_admissions LIMIT 10;",
+    val result: SQLExecutionResponse? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null
+)
+
+/**
+ * ViewModel managing state and operations for the SQL Editor screen.
+ *
+ * @property scope Coroutine scope used for asynchronous API calls.
+ * @property aiApi Optional explicit [AiApi] client for executing ad-hoc SQL preview queries.
+ * @property queryCartRepository Repository for staging SQL queries to the cart.
+ */
+class EditorViewModel(
+    private val scope: CoroutineScope,
+    private val aiApi: AiApi? = null,
+    private val queryCartRepository: QueryCartRepository = AppContainer.queryCartRepository
+) {
+    private val currentAiApi: AiApi
+        get() = aiApi ?: AppContainer.aiApi
+
+    private val _state = MutableStateFlow(EditorUiState())
+
+    /** Reactive [StateFlow] of the current [EditorUiState]. */
+    val state: StateFlow<EditorUiState> = _state.asStateFlow()
+
+    /**
+     * Updates the current SQL query string in the editor.
+     *
+     * @param sql Updated SQL query string.
+     */
+    fun updateSqlQuery(sql: String) {
+        _state.update { it.copy(sqlQuery = sql) }
+    }
+
+    /**
+     * Executes the current [EditorUiState.sqlQuery] via [AiApi.executeSqlPreviewApiV1AiExecutePost].
+     *
+     * @param errorPrefix Prefix prepended to the failure message when an exception occurs.
+     */
+    fun executeSql(errorPrefix: String = "Execution failed: ") {
+        val currentSql = _state.value.sqlQuery
+        if (currentSql.isBlank()) return
+
+        scope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null, result = null) }
+            runCatching {
+                val req = SQLExecutionRequest(sql = currentSql, maxRows = 50)
+                currentAiApi.executeSqlPreviewApiV1AiExecutePost(req).body()
+            }.fold(
+                onSuccess = { res ->
+                    _state.update { it.copy(result = res, isLoading = false, errorMessage = null) }
+                },
+                onFailure = { e ->
+                    _state.update {
+                        it.copy(
+                            errorMessage = errorPrefix + (e.message ?: "Unknown error"),
+                            isLoading = false
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * Stages the current [EditorUiState.sqlQuery] to the global query cart if non-blank.
+     *
+     * @param title Descriptive title for the staged query.
+     */
+    fun stageToCart(title: String = "Editor Query") {
+        val currentSql = _state.value.sqlQuery
+        if (currentSql.isNotBlank()) {
+            queryCartRepository.addQuery(title, currentSql)
+        }
+    }
+}

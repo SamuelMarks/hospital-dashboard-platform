@@ -12,21 +12,21 @@ vi.mock('@material/material-color-utilities', () => ({
 }));
 
 vi.mock('@angular/platform-browser', async (importOriginal) => {
-  const mod = await importOriginal();
+  const mod = await importOriginal<typeof import('@angular/platform-browser')>();
   const { vi } = await import('vitest');
   return {
-    ...(mod as any),
+    ...mod,
     bootstrapApplication: vi.fn(),
     provideClientHydration: vi.fn(() => []),
   };
 });
 
 describe('main bootstrap', () => {
-  let bootstrapApplication: any;
+  let bootstrapApplication: ReturnType<typeof vi.fn>;
   beforeEach(async () => {
     vi.resetModules();
     const pb = await import('@angular/platform-browser');
-    bootstrapApplication = pb.bootstrapApplication as any;
+    bootstrapApplication = pb.bootstrapApplication as unknown as ReturnType<typeof vi.fn>;
     bootstrapApplication.mockReset();
   });
 

@@ -13,7 +13,7 @@ calculating results using the SQL templates defined in the system.
 
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 import duckdb
 import pytest

@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Filter Ribbon Component.
  *
@@ -107,7 +106,6 @@ import { DashboardStore } from './dashboard.store';
     `,
   ],
 })
-/** @docs */
 export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** Access to dashboard state (global params). */
   public readonly store = inject(DashboardStore);
@@ -165,7 +163,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
    * Handles changes to the department filter.
    * @param value The selected department.
    */
-  onDeptChange(value: string | null) {
+  onDeptChange(value: string | null): void {
     if (this.isSyncingFromRoute) return;
     this.updateFilter('dept', value);
   }
@@ -202,7 +200,12 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** updateFilter method. */
+  /**
+   * Updates a single query parameter filter in the router URL.
+   *
+   * @param key - The query parameter key to update.
+   * @param value - The new filter value or null to clear.
+   */
   private updateFilter(key: string, value: string | null): void {
     this.router.navigate([], {
       relativeTo: this.route,
@@ -211,8 +214,13 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** formatDate method. */
+  /**
+   * Formats a Date instance as an ISO YYYY-MM-DD date string.
+   *
+   * @param d - The Date instance to format.
+   * @returns Formatted YYYY-MM-DD string.
+   */
   private formatDate(d: Date): string {
-    return d.toISOString().split('T')[0];
+    return d.toISOString().slice(0, 10);
   }
 }

@@ -135,19 +135,45 @@ class NetworkClientTest {
     fun testCreateHttpClientWithRefreshCallbacks() = runTest {
         var refreshedAccess: String? = null
         var refreshedRefresh: String? = null
+        var activeToken: String? = "active-access"
+        var activeRefresh: String? = "active-refresh"
         val client = createHttpClient(
             baseUrl = "https://api.pulsequery.com",
             engine = MockEngine { respond("OK", HttpStatusCode.OK) },
-            refreshTokenProvider = { "active-refresh" },
+            refreshTokenProvider = { activeRefresh },
             onTokenRefreshed = { a, r ->
                 refreshedAccess = a
                 refreshedRefresh = r
             },
-            tokenProvider = { "active-access" }
+            tokenProvider = { activeToken }
         )
         assertNotNull(client)
         client.get("/test")
+        assertNull(refreshedAccess)
+
+        // When tokenProvider returns null and refreshTokenProvider returns non-null, onTokenRefreshed is invoked
+        activeToken = null
+        client.get("/test")
+        assertEquals("active-refresh", refreshedAccess)
+        assertEquals("active-refresh", refreshedRefresh)
+
+        // When refreshTokenProvider returns null, onTokenRefreshed is not invoked
+        refreshedAccess = null
+        activeRefresh = null
+        client.get("/test")
+        assertNull(refreshedAccess)
         client.close()
+
+        // When refreshTokenProvider is non-null but onTokenRefreshed is null
+        val clientNoCallback = createHttpClient(
+            baseUrl = "https://api.pulsequery.com",
+            engine = MockEngine { respond("OK", HttpStatusCode.OK) },
+            refreshTokenProvider = { "active-refresh" },
+            onTokenRefreshed = null,
+            tokenProvider = { null }
+        )
+        clientNoCallback.get("/test")
+        clientNoCallback.close()
     }
 
     @Test

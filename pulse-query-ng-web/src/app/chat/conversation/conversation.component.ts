@@ -1,4 +1,7 @@
-/** @docs */
+/**
+ * @fileoverview Conversation thread component rendering chat messages, multi-model
+ * arena candidate comparisons, inline SQL execution previews, and message composition.
+ */
 import { Component, inject, ViewChild, ElementRef, effect, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -232,7 +235,6 @@ import { ArenaSqlService } from '../arena-sql.service';
     `,
   ],
 })
-/** @docs */
 export class ConversationComponent {
   /** Access the chat store. */
   public readonly store = inject(ChatStore);
@@ -248,7 +250,7 @@ export class ConversationComponent {
   private readonly snackBar = inject(MatSnackBar);
 
   /** Reference to the scroll container. */
-  @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
+  @ViewChild('scrollContainer') private scrollContainer!: ElementRef<HTMLElement>;
   /** Input text model. */
   readonly inputText = signal('');
 
@@ -267,7 +269,11 @@ export class ConversationComponent {
     });
   }
 
-  /** Handles Enter key press. */
+  /**
+   * Handles Enter key press in the message composer.
+   *
+   * @param e - The keyboard event triggered on Enter.
+   */
   handleEnter(e: Event): void {
     const event = e as KeyboardEvent;
     if (event.shiftKey) return;
@@ -283,7 +289,12 @@ export class ConversationComponent {
     this.inputText.set('');
   }
 
-  /** Cleans message content removing SQL blocks. */
+  /**
+   * Cleans message content by removing embedded SQL fenced blocks when a separate SQL snippet exists.
+   *
+   * @param msg - The message response object to clean.
+   * @returns Cleaned markdown string without redundant SQL blocks.
+   */
   cleanContent(msg: MessageResponse): string {
     const content = msg.content || '';
     if (!content.trim() && !msg.sql_snippet) {
@@ -293,32 +304,50 @@ export class ConversationComponent {
     return content.replace(/```sql[\s\S]*?```/gi, '').trim();
   }
 
-  /** Cleans content string. */
+  /**
+   * Strips fenced SQL blocks from a raw text string.
+   *
+   * @param txt - Raw markdown string.
+   * @returns Cleaned string without fenced SQL blocks.
+   */
   cleanContentSimple(txt: string): string {
     return (txt || '').replace(/```sql[\s\S]*?```/gi, '').trim();
   }
 
-  /** Opens query in scratchpad. */
+  /**
+   * Opens the global scratchpad drawer to run a SQL query.
+   *
+   * @param sql - The SQL query string to inspect.
+   */
   runQuery(sql: string): void {
     this.scratchpadService.open();
   }
 
-  /** Saves query to cart. */
+  /**
+   * Saves a SQL query snippet to the user's query cart.
+   *
+   * @param sql - The SQL query string to add to the cart.
+   */
   saveToCart(sql: string): void {
     if (!sql) return;
     this.cart.add(sql);
     this.snackBar.open('Saved to Query Cart 🛒', 'OK', { duration: 2500 });
   }
 
-  /** Navigates to simulation with sql. */
+  /**
+   * Navigates to the scenario simulation view pre-populated with the given SQL query.
+   *
+   * @param sql - The SQL query string to simulate.
+   */
   simulateQuery(sql: string): void {
     if (!sql) return;
     this.router.navigate(['/simulation'], { queryParams: { sql } });
   }
 
   /**
-   * Runs a specific candidate's SQL query.
-   * Implements retry logic: Retry twice then fail.
+   * Runs a specific candidate's SQL query with automatic retry logic.
+   *
+   * @param candidate - The model candidate response containing the SQL snippet to execute.
    */
   runCandidateQuery(candidate: MessageCandidateResponse): void {
     const sql = (candidate.sql_snippet || '').trim();
@@ -348,10 +377,11 @@ export class ConversationComponent {
         error: (err: HttpErrorResponse) => {
           // Enhanced Error Extraction (Handles status 0/undefined detail)
           let msg = err?.message || 'Unknown error';
+          const errBody = err.error as { detail?: unknown } | null | undefined;
           if (err.status === 0) {
             msg = 'Network Error: Cannot reach server.';
-          } else if (err.error && err.error.detail) {
-            msg = String(err.error.detail);
+          } else if (errBody && errBody.detail) {
+            msg = String(errBody.detail);
           }
 
           this.candidateErrors.update((state) => ({ ...state, [id]: msg }));
@@ -364,34 +394,64 @@ export class ConversationComponent {
       });
   }
 
-  /** Runs all candidates in the message. */
+  /**
+   * Executes the SQL queries for all candidates in a message.
+   *
+   * @param msg - The assistant message containing candidate responses.
+   */
   runAllCandidates(msg: MessageResponse): void {
     if (!msg.candidates) return;
     msg.candidates.forEach((c) => this.runCandidateQuery(c));
   }
 
-  /** Counts duplicate SQL hashes for grouping. */
+  /**
+   * Counts how many candidates in the message share the same normalized SQL hash.
+   *
+   * @param msg - The parent assistant message.
+   * @param cand - The candidate whose SQL hash is being compared.
+   * @returns Number of candidates with matching SQL hashes.
+   */
   sqlGroupCount(msg: MessageResponse, cand: MessageCandidateResponse): number {
     if (!cand.sql_hash || !msg.candidates) return 0;
     return msg.candidates.filter((c) => c.sql_hash === cand.sql_hash).length;
   }
 
-  /** Checks loading state for a candidate. */
+  /**
+   * Checks whether a candidate query is currently executing.
+   *
+   * @param id - The candidate ID.
+   * @returns True if the candidate's query is currently loading.
+   */
   isCandidateLoading(id: string): boolean {
     return !!this.candidateLoading()[id];
   }
 
-  /** Gets candidate error message. */
+  /**
+   * Retrieves the execution error message for a candidate, if any.
+   *
+   * @param id - The candidate ID.
+   * @returns The error string or null.
+   */
   candidateError(id: string): string | null {
     return this.candidateErrors()[id] || null;
   }
 
-  /** Gets candidate result data. */
+  /**
+   * Retrieves the tabular execution result for a candidate, if available.
+   *
+   * @param id - The candidate ID.
+   * @returns The table dataset or null.
+   */
   candidateResult(id: string): TableDataSet | null {
     return this.candidateResults()[id] || null;
   }
 
-  /** Checks if message has unselected candidates. */
+  /**
+   * Checks if an assistant message has multiple candidates awaiting a user vote.
+   *
+   * @param msg - The message response to inspect.
+   * @returns True if the message has unselected candidates.
+   */
   hasPendingCandidates(msg: MessageResponse): boolean {
     if (msg.role !== 'assistant' || !msg.candidates || msg.candidates.length === 0) return false;
     const isPending = !msg.candidates.some((c) => c.is_selected);
@@ -401,12 +461,22 @@ export class ConversationComponent {
     return isPending;
   }
 
-  /** Checks if message has any SQL snippets in candidates. */
+  /**
+   * Checks if any candidate in the message includes a SQL snippet.
+   *
+   * @param msg - The message response to inspect.
+   * @returns True if at least one candidate has a SQL snippet.
+   */
   hasSqlCandidates(msg: MessageResponse): boolean {
     return !!msg.candidates?.some((c) => !!c.sql_snippet);
   }
 
-  /** Votes for a candidate. */
+  /**
+   * Submits a user vote selecting a preferred candidate for a message.
+   *
+   * @param msgId - The ID of the parent message.
+   * @param candId - The ID of the winning candidate.
+   */
   vote(msgId: string, candId: string): void {
     this.store.voteCandidate(msgId, candId);
   }

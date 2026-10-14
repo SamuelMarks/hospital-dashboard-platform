@@ -4,12 +4,33 @@
  */
 package io.healthplatform.pulsequery.ui.screens.editor
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.DashboardResponse
@@ -181,8 +202,8 @@ fun SaveQueryDialog(
                     )
                 }
 
-                if (errorMessage != null) {
-                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                errorMessage?.let { err ->
+                    Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
@@ -193,7 +214,8 @@ fun SaveQueryDialog(
                         errorMessage = "Title is required"
                         return@Button
                     }
-                    if (destination == SaveQueryDestination.DASHBOARD_WIDGET && selectedDashboardId == null) {
+                    val targetDashId = selectedDashboardId
+                    if (destination == SaveQueryDestination.DASHBOARD_WIDGET && targetDashId == null) {
                         errorMessage = "Target dashboard is required"
                         return@Button
                     }
@@ -202,14 +224,14 @@ fun SaveQueryDialog(
                         isSaving = true
                         errorMessage = null
                         runCatching {
-                            if (destination == SaveQueryDestination.DASHBOARD_WIDGET) {
+                            if (destination == SaveQueryDestination.DASHBOARD_WIDGET && targetDashId != null) {
                                 val widgetIn = WidgetIn.Sql(
                                     title = title.trim(),
                                     visualization = visualization,
                                     config = SqlConfig(query = sql)
                                 )
                                 AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
-                                    selectedDashboardId!!,
+                                    targetDashId,
                                     widgetIn
                                 )
                                 "Widget successfully added to dashboard"

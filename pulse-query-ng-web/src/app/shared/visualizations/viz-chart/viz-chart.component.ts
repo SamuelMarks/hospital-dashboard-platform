@@ -1,4 +1,8 @@
-/** @docs */
+/**
+ * @fileoverview Responsive bar and stacked-column chart visualization component
+ * with dynamic Material 3 theme palette integration and threshold reference lines.
+ */
+
 import { Component, input, computed, inject, effect, signal, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
@@ -8,13 +12,13 @@ import { ThemeService } from '../../../core/theme/theme.service';
  * Configuration for reference lines (e.g. thresholds).
  */
 export interface ChartReferenceLine {
-  /** y property. */
+  /** Y-axis value at which the horizontal reference line is drawn. */
   y: number;
-  /** label property. */
+  /** Optional text label rendered alongside the reference line. */
   label?: string;
-  /** color property. */
+  /** Optional CSS color string overriding the default reference line color. */
   color?: string;
-  /** style property. */
+  /** Optional stroke style for the reference line. */
   style?: 'solid' | 'dashed' | 'dotted';
 }
 
@@ -22,13 +26,13 @@ export interface ChartReferenceLine {
  * Configuration schema passed from parent widgets.
  */
 export interface ChartConfig {
-  /** xKey property. */
+  /** Column name mapped to the horizontal X-axis categories. */
   xKey?: string;
-  /** yKey property. */
+  /** Column name mapped to the vertical Y-axis numeric values. */
   yKey?: string;
-  /** stackBy property. */
+  /** Optional column name used to group bars into stacked segments. */
   stackBy?: string;
-  /** referenceLines property. */
+  /** Optional list of horizontal threshold reference lines rendered across the plot area. */
   referenceLines?: ChartReferenceLine[];
 }
 
@@ -36,7 +40,7 @@ export interface ChartConfig {
  * Internal representation for chart rendering logic.
  */
 interface ChartItem {
-  /** segments property. */
+  /** Stacked bar segments when `isStacked` is true. */
   segments?: {
     label: string;
     value: number;
@@ -44,17 +48,17 @@ interface ChartItem {
     heightPct: string;
     bottomPct: string;
   }[];
-  /** label property. */
+  /** Category label displayed on the X-axis. */
   label: string;
-  /** value property. */
+  /** Total numeric value represented by the bar. */
   value: number;
-  /** heightPct property. */
+  /** CSS height percentage string for non-stacked bars. */
   heightPct: string;
-  /** bottomPct property. */
+  /** CSS bottom offset percentage string relative to the zero baseline. */
   bottomPct: string;
-  /** isNegative property. */
+  /** Whether the bar represents a negative numeric value. */
   isNegative: boolean;
-  /** isStacked property. */
+  /** Whether the bar is composed of multiple stacked segments. */
   isStacked: boolean;
 }
 
@@ -186,30 +190,28 @@ interface ChartItem {
   ],
   templateUrl: './viz-chart.component.html',
 })
-/** @docs */
 export class VizChartComponent {
-  /** Data Set. */
-  /* istanbul ignore next */
+  /** Tabular dataset containing rows and columns to plot. */
   readonly dataSet = input.required<TableDataSet | null>();
-  /** Config. */
-  /* istanbul ignore next */
+  /** Optional chart axis and stacking configuration. */
   readonly config = input<ChartConfig>();
 
-  /** document property. */
+  /** Injected DOM document reference used to read computed CSS custom properties. */
   private readonly document = inject(DOCUMENT);
-  /** platformId property. */
+  /** Angular platform identifier used to guard browser-only DOM queries. */
   private readonly platformId = inject(PLATFORM_ID);
-  /** themeService property. */
+  /** Reactive theme service triggering palette updates when appearance changes. */
   private readonly themeService = inject(ThemeService);
 
   /**
    * Reactive Palette Signal.
    * Stores the resolved hex codes from CSS variables.
    */
-  /* istanbul ignore next */
   private readonly palette = signal<string[]>([]);
 
-  /** Creates a new VizChartComponent. */
+  /**
+   * Initializes the reactive theme effect to synchronize chart colors with DOM CSS variables.
+   */
   constructor() {
     // Reads CSS variables whenever theme changes
     effect(() => {
@@ -242,33 +244,38 @@ export class VizChartComponent {
 
   /**
    * Helper to safely access palette by index.
-   * @param {number} index - Index or -1 for negative color.
-   * @returns {string} Hex color.
+   *
+   * @param index - Zero-based series index, or `-1` for the negative value color.
+   * @returns Resolved hexadecimal color string.
    */
   getPalette(index: number): string {
     const colors = this.palette();
     if (colors.length === 0) return index === -1 ? '#ba1a1a' : '#1976d2';
-    if (index === -1) return colors[colors.length - 1];
-    return colors[index % (colors.length - 1)];
+    const targetIdx = index === -1 ? colors.length - 1 : index % (colors.length - 1);
+    return colors[targetIdx] as string;
   }
 
   /**
    * Determines X and Y keys for plotting.
    */
-  /* istanbul ignore next */
   readonly axisKeys = computed(() => {
     const ds = this.dataSet();
     const conf = this.config();
     if (!ds || !ds.data || ds.data.length === 0) return { x: '', y: '', stack: '' };
-    const cols = ds.columns || Object.keys(ds.data[0]);
+    const firstRow = ds.data[0] as Record<string, unknown>;
+    const cols = ds.columns || Object.keys(firstRow);
 
-    const x = conf?.xKey || cols.find((c) => typeof ds.data[0][c] === 'string') || cols[0];
+    const x =
+      conf?.xKey || cols.find((c) => typeof firstRow[c] === 'string') || (cols[0] as string);
     const y =
-      conf?.yKey || cols.find((c) => typeof ds.data[0][c] === 'number') || cols[1] || cols[0];
+      conf?.yKey ||
+      cols.find((c) => typeof firstRow[c] === 'number') ||
+      cols[1] ||
+      (cols[0] as string);
     let stack = conf?.stackBy || '';
 
     if (!conf?.stackBy && cols.length >= 3) {
-      const potentialStack = cols.find((c) => c !== x && typeof ds.data[0][c] === 'string');
+      const potentialStack = cols.find((c) => c !== x && typeof firstRow[c] === 'string');
       if (potentialStack) stack = potentialStack;
     }
 
@@ -278,7 +285,6 @@ export class VizChartComponent {
   /**
    * Computes the renderable data structure.
    */
-  /* istanbul ignore next */
   readonly processedData = computed<ChartItem[]>(() => {
     const ds = this.dataSet();
     const { x, y, stack } = this.axisKeys();
@@ -294,13 +300,22 @@ export class VizChartComponent {
     return this.processSimpleData(ds.data, x, y);
   });
 
-  /** getRefMax method. */
-  private getRefMax() {
+  /**
+   * Computes the maximum Y value across configured reference lines so the plot scale includes them.
+   *
+   * @returns Maximum reference line Y value, or `0` if none are configured.
+   */
+  private getRefMax(): number {
     return (this.config()?.referenceLines || []).reduce((acc, l) => Math.max(acc, l.y), 0);
   }
 
   /**
    * Processing Strategy for Standard Bar Charts.
+   *
+   * @param rows - Array of data records to transform into bar items.
+   * @param xKey - Column name providing category labels on the X-axis.
+   * @param yKey - Column name providing numeric heights on the Y-axis.
+   * @returns Array of normalized `ChartItem` entries for template rendering.
    */
   private processSimpleData(
     rows: Record<string, unknown>[],
@@ -336,6 +351,12 @@ export class VizChartComponent {
 
   /**
    * Processing Strategy for Stacked Bar Charts.
+   *
+   * @param rows - Array of data records to group and stack.
+   * @param xKey - Column name providing primary X-axis category groupings.
+   * @param yKey - Column name providing numeric segment magnitudes.
+   * @param stackKey - Column name providing sub-category series labels for stacking.
+   * @returns Array of stacked `ChartItem` objects with positioned segments.
    */
   private processStackedData(
     rows: Record<string, unknown>[],
@@ -368,8 +389,7 @@ export class VizChartComponent {
     });
     const scale = maxTotal || 1;
 
-    return Object.keys(groups).map((xLabel) => {
-      const stackArr = groups[xLabel];
+    return Object.entries(groups).map(([xLabel, stackArr]) => {
       let currentBottom = 0;
 
       const segments = stackArr.map((seg) => {

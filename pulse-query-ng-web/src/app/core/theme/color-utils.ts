@@ -1,4 +1,3 @@
-/** @docs */
 /**
  * @fileoverview Utilities for generating Material Design 3 (M3) Color Palettes.
  * Wraps @material/material-color-utilities to convert a single hex seed color
@@ -64,7 +63,7 @@ export function isValidHex(hex: string): boolean {
  * @returns {CssVariableMap} The mapping of token names to hex values.
  */
 function mapSchemeToCssVars(scheme: Scheme, isDark: boolean): CssVariableMap {
-  const toHex = (argb: number) => hexFromArgb(argb);
+  const toHex = (argb: number): string => hexFromArgb(argb);
 
   return {
     // Primary

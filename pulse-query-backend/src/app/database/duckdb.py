@@ -5,19 +5,62 @@ Provides a thin wrapper for read-write and read-only connections and a FastAPI
 dependency helper for OLAP access.
 """
 
+import asyncio
+import contextlib
 import logging
 import os
 import threading
 import time
-from collections.abc import Generator
-from typing import Any
+from collections.abc import Callable, Generator
+from typing import Any, TypeVar
 
 import duckdb
+import duckdb.sqltypes as sqltypes
 
 from app.core.config import settings
 from app.core.diagnostics import diagnostics_registry, format_duckdb_error_banner
+from app.services.mpax_bridge import mpax_bridge
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+
+def register_duckdb_udfs(conn: duckdb.DuckDBPyConnection) -> None:
+  """
+  Registers Python User-Defined Functions (UDFs) on a DuckDB connection if supported.
+
+  Because DuckDB Python UDFs are connection-scoped (unlike catalog SQL macros),
+  this helper ensures `OPTIMIZE_ASSIGNMENTS` is available on every connection.
+
+  Args:
+      conn (duckdb.DuckDBPyConnection): Active DuckDB connection or test double.
+  """
+  create_fn = getattr(conn, "create_function", None)
+  if callable(create_fn):
+    with contextlib.suppress(Exception):
+      create_fn(
+        "OPTIMIZE_ASSIGNMENTS",
+        mpax_bridge.solve_unit_assignment,
+        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR],
+        return_type=sqltypes.VARCHAR,
+        side_effects=True,
+      )
+
+
+async def run_in_duckdb_thread(func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+  """
+  Executes a synchronous DuckDB operation in a background worker thread via `asyncio.to_thread`.
+
+  Args:
+      func (Callable[..., T]): Synchronous callable performing DuckDB work.
+      *args (Any): Positional arguments forwarded to `func`.
+      **kwargs (Any): Keyword arguments forwarded to `func`.
+
+  Returns:
+      T: The return value of `func(*args, **kwargs)`.
+  """
+  return await asyncio.to_thread(func, *args, **kwargs)
 
 
 class DuckDBManager:
@@ -27,7 +70,7 @@ class DuckDBManager:
   Provides distinction between Read-Write (Ingestion) and Read-Only (Analytics) modes.
   """
 
-  def __init__(self, db_path: str):
+  def __init__(self, db_path: str) -> None:
     """
     Initialize the manager with a file path.
 
@@ -131,6 +174,7 @@ class DuckDBManager:
     """
     try:
       conn = duckdb.connect(database=self.db_path, read_only=False)
+      register_duckdb_udfs(conn)
       return conn
     except Exception as e:
       logger.error(f"Failed to connect to DuckDB at {self.db_path}: {e}")
@@ -162,6 +206,7 @@ class DuckDBManager:
           conn = duckdb.connect(database=":memory:", read_only=False, config={"enable_external_access": "false"})
         else:
           conn = duckdb.connect(database=self.db_path, read_only=True, config={"enable_external_access": "false"})
+        register_duckdb_udfs(conn)
         return conn
       except duckdb.IOException as e:
         if "lock" in str(e).lower() and attempt < max_retries - 1:
@@ -185,8 +230,26 @@ def get_olap_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   FastAPI Dependency.
   Yields a standard DuckDB connection and ensures it closes after the request.
   Useful for Admin operations or Schema introspection.
+
+  Yields:
+      duckdb.DuckDBPyConnection: Active Read-Write DuckDB connection.
   """
   conn = duckdb_manager.get_connection()
+  try:
+    yield conn
+  finally:
+    conn.close()
+
+
+def get_readonly_olap_db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
+  """
+  FastAPI Dependency.
+  Yields a sandboxed Read-Only DuckDB connection and ensures it closes after the request.
+
+  Yields:
+      duckdb.DuckDBPyConnection: Active Read-Only DuckDB connection.
+  """
+  conn = duckdb_manager.get_readonly_connection()
   try:
     yield conn
   finally:

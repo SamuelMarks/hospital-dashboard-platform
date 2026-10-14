@@ -1,6 +1,9 @@
+"""Alembic migration environment configuration."""
+
 import asyncio
 import os
 from logging.config import fileConfig
+from typing import Any
 
 from sqlalchemy import pool
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -28,11 +31,33 @@ target_metadata = Base.metadata
 if os.environ.get("USE_SQLITE_ALEMBIC") == "1":
 
   @compiles(JSONB, "sqlite")
-  def _compile_jsonb_sqlite(type_, compiler, **kw):
+  def _compile_jsonb_sqlite(type_: Any, compiler: Any, **kw: Any) -> str:
+    """
+    Compiles PostgreSQL JSONB columns to SQLite JSON type.
+
+    Args:
+        type_: SQLAlchemy column type instance.
+        compiler: SQLite type compiler instance.
+        kw: Additional compiler keyword arguments.
+
+    Returns:
+        str: SQLite column type string.
+    """
     return "JSON"
 
   @compiles(UUID, "sqlite")
-  def _compile_uuid_sqlite(type_, compiler, **kw):
+  def _compile_uuid_sqlite(type_: Any, compiler: Any, **kw: Any) -> str:
+    """
+    Compiles PostgreSQL UUID columns to SQLite TEXT type.
+
+    Args:
+        type_: SQLAlchemy column type instance.
+        compiler: SQLite type compiler instance.
+        kw: Additional compiler keyword arguments.
+
+    Returns:
+        str: SQLite column type string.
+    """
     return "TEXT"
 
 
@@ -55,6 +80,12 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+  """
+  Configures the Alembic context with an active connection and executes migrations.
+
+  Args:
+      connection: Active SQLAlchemy database connection.
+  """
   context.configure(connection=connection, target_metadata=target_metadata)
 
   with context.begin_transaction():
