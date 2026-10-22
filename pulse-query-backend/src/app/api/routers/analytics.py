@@ -7,7 +7,7 @@ Provides read-only analytics views over LLM outputs and user selections.
 import asyncio
 from datetime import UTC, datetime
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import String, cast, literal, null, select, union_all
@@ -17,7 +17,7 @@ from sqlalchemy.orm import aliased
 from app.api import deps
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
-from app.models.alert_rule import AlertRule, AlertSeverity
+from app.models.alert_rule import AlertRule
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.feedback import ExperimentLog
 from app.models.feedback import ModelCandidate as ExperimentCandidate
@@ -49,13 +49,19 @@ async def get_capacity_alerts(
   rules = rules_res.scalars().all()
 
   if not rules:
-    threshold_map = {
-      "Critical Care": (90.0, AlertSeverity.CRITICAL.value),
-      "General": (95.0, AlertSeverity.WARNING.value),
-      "Emergency": (85.0, AlertSeverity.WARNING.value),
+    threshold_map: dict[str, tuple[float, Literal["INFO", "WARNING", "CRITICAL"]]] = {
+      "Critical Care": (90.0, "CRITICAL"),
+      "General": (95.0, "WARNING"),
+      "Emergency": (85.0, "WARNING"),
     }
   else:
-    threshold_map = {r.unit_category: (r.threshold_percentage, r.severity) for r in rules}
+    threshold_map = {
+      r.unit_category: (
+        r.threshold_percentage,
+        "CRITICAL" if r.severity == "CRITICAL" else ("INFO" if r.severity == "INFO" else "WARNING"),
+      )
+      for r in rules
+    }
 
   alerts: list[BedCapacityAlert] = []
   now = datetime.now(UTC)

@@ -1,6 +1,6 @@
 alembic>=1.13.1
 asyncpg>=0.29.0
-duckdb>=0.10.0
+duckdb>=0.10.0,<1.5.0
 fastapi>=0.109.0
 httpx>=0.26.0
 mpax>=0.2.4

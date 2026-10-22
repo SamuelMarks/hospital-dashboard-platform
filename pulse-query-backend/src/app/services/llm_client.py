@@ -455,8 +455,7 @@ class LLMArenaClient:
         yield str(item)
         await asyncio.sleep(0.005)
     finally:
-      if not pump_task.done():
-        pump_task.cancel()
+      pump_task.cancel()
       with contextlib.suppress(asyncio.CancelledError, Exception):
         await pump_task
 

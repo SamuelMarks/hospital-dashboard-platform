@@ -46,7 +46,7 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "cd ../pulse-query-backend && uv run uvicorn app.main:app --port 8000",
+        "cd ../pulse-query-backend && uv run --active uvicorn app.main:app --port 8000",
       url: "http://127.0.0.1:8000/api/v1/openapi.json",
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,

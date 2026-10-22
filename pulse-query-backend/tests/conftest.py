@@ -6,7 +6,6 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import pydantic.root_model  # noqa: F401
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
@@ -139,7 +138,7 @@ async def init_db() -> AsyncGenerator[None, None]:
   Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(loop_scope="function")
 async def db_session(init_db: None) -> AsyncGenerator[AsyncSessionShim, None]:
   """
   Provides an isolated `AsyncSessionShim` database session per test.
@@ -160,7 +159,7 @@ async def db_session(init_db: None) -> AsyncGenerator[AsyncSessionShim, None]:
   await async_session.close()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(loop_scope="function")
 async def client(db_session: AsyncSessionShim) -> AsyncGenerator[AsyncClient, None]:
   """
   Provides an `httpx.AsyncClient` bound to the FastAPI app with `get_db` overridden.

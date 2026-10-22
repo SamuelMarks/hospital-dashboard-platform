@@ -3,6 +3,7 @@ package io.healthplatform.pulsequery.ui.screens
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.screens.simulation.SimulationViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -155,14 +156,19 @@ class SimulationScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testRunSimulationAndComparisonTableRendering() = runComposeUiTest {
+        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val vm = SimulationViewModel(scope = scope)
         setContent {
             MaterialTheme {
-                SimulationScreen(customScope = CoroutineScope(Dispatchers.Unconfined))
+                SimulationScreen(customScope = scope, viewModel = vm)
             }
         }
 
         // Click Run Simulation FAB
         onNodeWithContentDescription("Run Simulation").performClick()
+        waitUntil(timeoutMillis = 15000) {
+            vm.state.value.result != null
+        }
         waitForIdle()
 
         // Scroll to results
