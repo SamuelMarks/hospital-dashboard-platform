@@ -45,11 +45,31 @@ export interface ClinicalPalette {
  * Curated clinical color palettes optimized for hospital dashboards.
  */
 export const CLINICAL_PALETTES: ClinicalPalette[] = [
-  { name: 'Stanford Cardinal', hex: '#8C1515', description: 'Primary hospital brand' },
-  { name: 'Ocean Blue', hex: '#1565C0', description: 'Critical care & ICU telemetry' },
-  { name: 'Forest Health', hex: '#00796B', description: 'General medicine & surgery' },
-  { name: 'Amber Urgent', hex: '#EF6C00', description: 'Urgent care & triage alerts' },
-  { name: 'Royal Purple', hex: '#7B1FA2', description: 'Specialized inpatient units' },
+  {
+    name: $localize`Stanford Cardinal`,
+    hex: '#8C1515',
+    description: $localize`Primary hospital brand`,
+  },
+  {
+    name: $localize`Ocean Blue`,
+    hex: '#1565C0',
+    description: $localize`Critical care & ICU telemetry`,
+  },
+  {
+    name: $localize`Forest Health`,
+    hex: '#00796B',
+    description: $localize`General medicine & surgery`,
+  },
+  {
+    name: $localize`Amber Urgent`,
+    hex: '#EF6C00',
+    description: $localize`Urgent care & triage alerts`,
+  },
+  {
+    name: $localize`Royal Purple`,
+    hex: '#7B1FA2',
+    description: $localize`Specialized inpatient units`,
+  },
 ];
 
 /**
@@ -127,6 +147,16 @@ export class ThemeColorPickerDialogComponent {
   readonly isSaving = signal<boolean>(false);
 
   /**
+   * Returns a localized accessible label for a clinical palette option card.
+   *
+   * @param palette - The clinical palette option.
+   * @returns Localized ARIA label string.
+   */
+  getPaletteAriaLabel(palette: ClinicalPalette): string {
+    return $localize`Select ${palette.name}`;
+  }
+
+  /**
    * Selects a predefined palette item.
    *
    * @param palette Selected clinical palette definition.
@@ -165,13 +195,19 @@ export class ThemeColorPickerDialogComponent {
   applyTheme(): void {
     const color = this.selectedColor();
     if (!isValidHex(color)) {
-      this.snackBar.open('Please specify a valid 6-digit hex color code', 'Close', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        $localize`Please specify a valid 6-digit hex color code`,
+        $localize`Close`,
+        {
+          duration: 3000,
+        },
+      );
       return;
     }
     this.themeService.setSeedColor(color);
-    this.snackBar.open('Theme color applied successfully', 'OK', { duration: 2500 });
+    this.snackBar.open($localize`Theme color applied successfully`, $localize`OK`, {
+      duration: 2500,
+    });
     this.dialogRef.close({ applied: true, color });
   }
 
@@ -181,9 +217,13 @@ export class ThemeColorPickerDialogComponent {
   saveToDashboard(): void {
     const color = this.selectedColor();
     if (!isValidHex(color)) {
-      this.snackBar.open('Please specify a valid 6-digit hex color code', 'Close', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        $localize`Please specify a valid 6-digit hex color code`,
+        $localize`Close`,
+        {
+          duration: 3000,
+        },
+      );
       return;
     }
 
@@ -198,16 +238,20 @@ export class ThemeColorPickerDialogComponent {
         .subscribe({
           next: () => {
             this.isSaving.set(false);
-            this.snackBar.open('Dashboard theme color saved permanently', 'OK', {
+            this.snackBar.open($localize`Dashboard theme color saved permanently`, $localize`OK`, {
               duration: 3000,
             });
             this.dialogRef.close({ applied: true, saved: true, color });
           },
           error: () => {
             this.isSaving.set(false);
-            this.snackBar.open('Theme applied locally (dashboard sync failed)', 'OK', {
-              duration: 3000,
-            });
+            this.snackBar.open(
+              $localize`Theme applied locally (dashboard sync failed)`,
+              $localize`OK`,
+              {
+                duration: 3000,
+              },
+            );
             this.dialogRef.close({ applied: true, saved: false, color });
           },
         });

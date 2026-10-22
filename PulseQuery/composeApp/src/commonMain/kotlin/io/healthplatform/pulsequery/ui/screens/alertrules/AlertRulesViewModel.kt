@@ -9,6 +9,8 @@ import io.healthplatform.pulsequery.api.models.AlertRuleCreate
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
 import io.healthplatform.pulsequery.api.models.AlertSeverity
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,7 +60,7 @@ class AlertRulesViewModel(
     fun loadRules() {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().body()
             }.fold(
                 onSuccess = { list ->
@@ -68,7 +70,7 @@ class AlertRulesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.message ?: "Failed to load alert rules"
+                            errorMessage = e.messageOrDefault("Failed to load alert rules")
                         )
                     }
                 }
@@ -83,14 +85,14 @@ class AlertRulesViewModel(
      */
     fun deleteRule(ruleId: String) {
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentAlertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId)
             }.fold(
                 onSuccess = {
                     loadRules()
                 },
                 onFailure = { e ->
-                    _state.update { it.copy(errorMessage = e.message ?: "Failed to delete rule") }
+                    _state.update { it.copy(errorMessage = e.messageOrDefault("Failed to delete rule")) }
                 }
             )
         }
@@ -129,7 +131,7 @@ class AlertRulesViewModel(
 
         scope.launch {
             _state.update { it.copy(isSaving = true, dialogError = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentAlertRulesApi.createAlertRuleApiV1AnalyticsAlertRulesPost(
                     AlertRuleCreate(
                         unitCategory = unitCategory.trim(),
@@ -148,7 +150,7 @@ class AlertRulesViewModel(
                     _state.update {
                         it.copy(
                             isSaving = false,
-                            dialogError = e.message ?: "Creation failed"
+                            dialogError = e.messageOrDefault("Creation failed")
                         )
                     }
                 }
@@ -186,7 +188,7 @@ class AlertRulesViewModel(
 
         scope.launch {
             _state.update { it.copy(isSaving = true, dialogError = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentAlertRulesApi.updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(
                     ruleId = ruleId,
                     alertRuleUpdate = AlertRuleUpdate(
@@ -206,7 +208,7 @@ class AlertRulesViewModel(
                     _state.update {
                         it.copy(
                             isSaving = false,
-                            dialogError = e.message ?: "Update failed"
+                            dialogError = e.messageOrDefault("Update failed")
                         )
                     }
                 }

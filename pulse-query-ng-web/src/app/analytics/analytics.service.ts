@@ -2,7 +2,7 @@
  * @fileoverview Analytics API service delegating to the generated OpenAPI `AnalyticsService`.
  */
 
-import { inject, Injectable } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import {
   AnalyticsService as GeneratedAnalyticsService,
   LlmOutputAnalyticsRow,
@@ -17,7 +17,7 @@ export type LlmAnalyticsRow = LlmOutputAnalyticsRow;
 /**
  * Service providing typed access to LLM candidate telemetry and analytics endpoints.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AnalyticsService {
   /** Injected generated OpenAPI analytics service client. */
   private readonly api = inject(GeneratedAnalyticsService);

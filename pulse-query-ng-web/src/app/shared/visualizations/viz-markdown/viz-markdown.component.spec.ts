@@ -19,8 +19,12 @@ describe('VizMarkdownComponent', () => {
 
     fixture = TestBed.createComponent(VizMarkdownComponent);
     component = fixture.componentInstance;
-    contentSig = signal('');
-    (component as unknown as { content: WritableSignal<string> }).content = contentSig;
+    contentSig = {
+      set: (val: string) => {
+        fixture.componentRef.setInput('content', val);
+      },
+    } as unknown as WritableSignal<string>;
+    fixture.componentRef.setInput('content', '');
     fixture.detectChanges();
   });
 

@@ -1,5 +1,7 @@
 """Utility script for injecting Angular i18n attributes into HTML templates."""
 
+from __future__ import annotations
+
 import glob
 import os
 import re
@@ -41,8 +43,8 @@ def _pop_closing_tag(stack: list[tuple[str, bool]], tag_name: str) -> list[tuple
   Pops `stack` back to the most recent matching opening `tag_name`.
 
   Args:
-      stack: Active tag stack of `(tag_name, has_i18n)` tuples.
-      tag_name: Closing HTML tag name.
+      stack (list[tuple[str, bool]]): Active tag stack of `(tag_name, has_i18n)` tuples.
+      tag_name (str): Closing HTML tag name.
 
   Returns:
       list[tuple[str, bool]]: Updated tag stack.
@@ -58,13 +60,13 @@ def _transform_opening_tag(token: str, stack: list[tuple[str, bool]]) -> str:
   Transforms an opening HTML tag token, adding `i18n` when eligible and updating `stack`.
 
   Args:
-      token: Raw HTML opening tag token.
-      stack: Mutable tag stack of `(tag_name, has_i18n)` tuples.
+      token (str): Raw HTML opening tag token.
+      stack (list[tuple[str, bool]]): Mutable tag stack of `(tag_name, has_i18n)` tuples.
 
   Returns:
       str: Transformed HTML tag token.
   """
-  match = re.match(r'<([a-zA-Z0-9\-]+)(\s*(?:[^>]*?(?:"[^"]*"|\'[^\']*\'|[^>]*?)*)?)>', token, re.DOTALL)
+  match = re.match(r"""<([a-zA-Z0-9\-]+)(\s*(?:[^>]*?(?:"[^"]*"|'[^']*'|[^>]*?)*)?)>""", token, re.DOTALL)
   if not match:
     return token
 
@@ -87,7 +89,7 @@ def process_html(content: str) -> str:
   Adds `i18n` and `i18n-*` attributes to eligible HTML elements and attributes in `content`.
 
   Args:
-      content: Raw HTML template content string.
+      content (str): Raw HTML template content string.
 
   Returns:
       str: Updated HTML content with `i18n` markers.
@@ -96,7 +98,7 @@ def process_html(content: str) -> str:
     pattern = r"(?<!i18n-)(?<!\[)\b(" + attr + r')="([^"]*[a-zA-Z][^"]*)"'
     content = re.sub(pattern, r'i18n-\1 \1="\2"', content)
 
-  tokens = re.split(r'(</?[a-zA-Z0-9\-]+(?:>|\s[^>]*?(?:"[^"]*"|\'[^\']*\'|[^>]*?)*>))', content)
+  tokens = re.split(r"""(</?[a-zA-Z0-9\-]+(?:>|\s[^>]*?(?:"[^"]*"|'[^']*'|[^>]*?)*>))""", content)
   out: list[str] = []
   stack: list[tuple[str, bool]] = []
 
@@ -114,14 +116,23 @@ def process_html(content: str) -> str:
   return "".join(out)
 
 
-def main() -> None:
-  """Scans `src/app/**/*.html` and applies `process_html` in-place."""
-  target_dir = os.path.join(os.path.dirname(__file__), "src/app")
-  files = glob.glob(target_dir + "/**/*.html", recursive=True)
+def main(target_dir: str | None = None) -> int:
+  """
+  Scans `src/app/**/*.html` (or `target_dir`) and applies `process_html` in-place.
+
+  Args:
+      target_dir (str | None): Optional directory path override to scan for `.html` files.
+
+  Returns:
+      int: Number of HTML files updated.
+  """
+  resolved_dir = target_dir if target_dir is not None else os.path.join(os.path.dirname(__file__), "src/app")
+  files = glob.glob(resolved_dir + "/**/*.html", recursive=True)
+  updated_count = 0
   for f in files:
     if f.endswith("login.component.html"):
       continue
-    with open(f, "r", encoding="utf-8") as file:
+    with open(f, encoding="utf-8") as file:
       content = file.read()
 
     new_content = process_html(content)
@@ -130,7 +141,9 @@ def main() -> None:
       with open(f, "w", encoding="utf-8") as file:
         file.write(new_content)
       print(f"Updated: {f}")
+      updated_count += 1
+  return updated_count
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
   main()

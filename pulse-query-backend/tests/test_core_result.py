@@ -1,8 +1,11 @@
 """
-Unit tests for `app.core.result` (`Ok`, `Err`, `Result`, `ErrorCode`, `AppError`).
+Unit tests for `app.core.result` (`Ok`, `Err`, `Result`, `ErrorCode`, `AppError`, `unwrap_or_raise_http`).
 """
 
-from app.core.result import AppError, Err, ErrorCode, Ok, Result
+import pytest
+from fastapi import HTTPException
+
+from app.core.result import AppError, Err, ErrorCode, Ok, Result, unwrap_or_raise_http
 
 
 def test_ok_methods() -> None:
@@ -49,3 +52,23 @@ def test_err_methods() -> None:
   chained = res.and_then(lambda x: Ok(x + 5))
   assert isinstance(chained, Err)
   assert chained.error == err_obj
+
+
+def test_unwrap_or_raise_http() -> None:
+  """Verifies `unwrap_or_raise_http` returns value on `Ok` and raises `HTTPException` on `Err`."""
+  ok_res: Result[str, AppError] = Ok("healthy")
+  assert unwrap_or_raise_http(ok_res) == "healthy"
+
+  err_res: Result[str, AppError] = Err(
+    AppError(
+      code=ErrorCode.AUTH_INVALID_TOKEN,
+      message="Invalid credentials",
+      status_code=401,
+    )
+  )
+  with pytest.raises(HTTPException) as exc:
+    unwrap_or_raise_http(err_res, headers={"WWW-Authenticate": "Bearer"})
+
+  assert exc.value.status_code == 401
+  assert exc.value.detail == "Invalid credentials"
+  assert exc.value.headers == {"WWW-Authenticate": "Bearer"}

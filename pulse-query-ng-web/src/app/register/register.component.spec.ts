@@ -130,9 +130,11 @@ describe('RegisterComponent', () => {
   });
 
   it('should toggle password visibility', () => {
+    expect(component.passwordToggleLabel()).toBe('Show password');
     const initial = component.hidePassword();
     component.togglePasswordVisibility(new Event('click'));
     expect(component.hidePassword()).toBe(!initial);
+    expect(component.passwordToggleLabel()).toBe('Hide password');
   });
 
   it('should toggle password visibility from template button', () => {

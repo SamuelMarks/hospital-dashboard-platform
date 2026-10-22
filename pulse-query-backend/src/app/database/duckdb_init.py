@@ -11,6 +11,7 @@ without repeating complex mathematical formulas (e.g., Z-Scores or Window overla
 
 import contextlib
 import logging
+from typing import Protocol
 
 import duckdb
 import duckdb.sqltypes as sqltypes
@@ -21,7 +22,36 @@ from app.services.mpax_bridge import mpax_bridge
 logger = logging.getLogger(__name__)
 
 
-def create_hospital_macros(conn: duckdb.DuckDBPyConnection) -> None:
+class DuckDBMacroConnProtocol(Protocol):
+  """
+  Structural protocol for a DuckDB connection supporting macro `execute` and UDF `create_function`.
+  """
+
+  def execute(self, query: str) -> object:
+    """
+    Executes a SQL DDL/macro statement.
+
+    Args:
+        query (str): SQL statement string.
+
+    Returns:
+        object: Execution result or cursor.
+    """
+
+  def create_function(self, *args: object, **kwargs: object) -> object:
+    """
+    Registers a Python callable as a DuckDB scalar UDF.
+
+    Args:
+        *args (object): Positional UDF arguments.
+        **kwargs (object): Keyword UDF configuration arguments.
+
+    Returns:
+        object: Connection or registration handle.
+    """
+
+
+def create_hospital_macros(conn: DuckDBMacroConnProtocol | duckdb.DuckDBPyConnection) -> None:
   """
   Registers reusable SQL Macros and Python UDFs on the active DuckDB connection.
 

@@ -1,8 +1,8 @@
-<div class="message-list" #scrollContainer>
+<div class="message-list" role="log" aria-live="polite" #scrollContainer>
   <!-- Empty State -->
   @if (store.messages().length === 0 && !store.isGenerating()) {
     <div class="empty-state-wrapper">
-      <mat-icon i18n class="icon-hero">assistant</mat-icon>
+      <mat-icon aria-hidden="true" class="icon-hero">assistant</mat-icon>
       <h2 i18n>Data Assistant</h2>
       <p i18n>Ask questions about hospital census, throughput, or capacity.</p>
     </div>
@@ -16,11 +16,14 @@
           @if (hasPendingCandidates(msg)) {
             <div class="arena-header">
               <span i18n class="mat-label-small">
-                Compare {{ msg.candidates?.length }} Models
+                {msg.candidates?.length || 0, plural,
+                  =1 {Compare 1 Model}
+                  other {Compare {{ msg.candidates?.length }} Models}
+                }
               </span>
               @if (hasSqlCandidates(msg)) {
                 <button i18n mat-button color="accent" (click)="runAllCandidates(msg)">
-                  <mat-icon>play_arrow</mat-icon> Run All
+                  <mat-icon aria-hidden="true">play_arrow</mat-icon> Run All
                 </button>
               }
             </div>
@@ -29,19 +32,25 @@
               @for (cand of msg.candidates; track cand.id) {
                 <div class="candidate-item mat-elevation-z2">
                   <div class="candidate-meta">
-                    <span i18n class="model-tag">{{ cand.model_name }}</span>
+                    <span class="model-tag">{{ cand.model_name }}</span>
                     @if (sqlGroupCount(msg, cand) > 1) {
+                      @let otherCount = sqlGroupCount(msg, cand) - 1;
                       <span i18n class="group-badge">
-                        Matches {{ sqlGroupCount(msg, cand) - 1 }} others
+                        {otherCount, plural,
+                          =1 {Matches 1 other}
+                          other {Matches {{ otherCount }} others}
+                        }
                       </span>
                     }
                   </div>
 
                   <div class="candidate-body">
                     @if (candidateError(cand.id)) {
-                      <div class="error-container">
-                        <mat-icon i18n color="warn" class="icon-small">warning</mat-icon>
-                        <span i18n>{{ candidateError(cand.id) }}</span>
+                      <div class="error-container" role="alert">
+                        <mat-icon aria-hidden="true" color="warn" class="icon-small"
+                          >warning</mat-icon
+                        >
+                        <span>{{ candidateError(cand.id) }}</span>
                       </div>
                     }
 
@@ -120,9 +129,9 @@
   }
 
   @if (store.error(); as err) {
-    <div class="global-error-toast mat-elevation-z4">
-      <mat-icon i18n color="warn">error</mat-icon>
-      <span i18n>{{ err }}</span>
+    <div class="global-error-toast mat-elevation-z4" role="alert">
+      <mat-icon aria-hidden="true" color="warn">error</mat-icon>
+      <span>{{ err }}</span>
     </div>
   }
 </div>
@@ -148,6 +157,8 @@
   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
     <textarea
       matInput
+      i18n-aria-label
+      aria-label="Ask about hospital data"
       i18n-placeholder
       placeholder="Ask about hospital data..."
       #chatInput
@@ -160,7 +171,6 @@
       [disabled]="store.isGenerating()"
     ></textarea>
     <button
-      i18n
       mat-icon-button
       matSuffix
       color="primary"
@@ -169,7 +179,7 @@
       i18n-aria-label
       aria-label="Send Message"
     >
-      <mat-icon>send</mat-icon>
+      <mat-icon aria-hidden="true">send</mat-icon>
     </button>
   </mat-form-field>
 </div>

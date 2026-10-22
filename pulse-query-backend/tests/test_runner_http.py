@@ -3,27 +3,25 @@ Tests for the HTTP Runner Service.
 Verifies GET/POST functionality, header forwarding, error handling, and timeouts.
 """
 
+from typing import Any
+
+import httpx
 import pytest
 import respx
 from httpx import Response
 
-from app.services.runners.http import run_http_widget
+from app.services.runners.http import close_shared_http_client, get_shared_http_client, run_http_widget
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_success_get() -> None:
-  """
-  Test a successful GET request returning JSON data.
-  """
+  """Test a successful GET request returning JSON data."""
   target_url = "https://api.example.com/data"
   expected_data = {"value": 42}
 
-  # Mock the external service
   with respx.mock:
     respx.get(target_url).mock(return_value=Response(200, json=expected_data))
-
     config = {"url": target_url, "method": "GET"}
-
     result = await run_http_widget(config)
 
     assert result["status"] == 200
@@ -33,76 +31,57 @@ async def test_run_http_widget_success_get() -> None:
 
 @pytest.mark.asyncio
 async def test_run_http_widget_success_post_with_auth() -> None:
-  """
-  Test a POST request with body and forwarded auth token.
-  Verifies that the Authorization header is correctly injected.
-  """
+  """Test a POST request with body and forwarded auth token."""
   target_url = "https://api.example.com/update"
   token = "secret-token-123"
   req_body = {"key": "value"}
 
   with respx.mock:
-    # Setup mock to inspect the request headers
     route = respx.post(target_url).mock(return_value=Response(201, json={"created": True}))
-
     config = {"url": target_url, "method": "POST", "body": req_body}
-
     result = await run_http_widget(config, forward_auth_token=token)
 
     assert result["status"] == 201
     assert result["data"]["created"] is True
 
-    # Check actual request sent by httpx
     params = route.calls.last.request
     assert params.headers["Authorization"] == f"Bearer {token}"
-    # httpx dumps JSON compactly by default (no spaces)
     assert params.read().decode() == '{"key":"value"}'
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_missing_url() -> None:
-  """
-  Test that missing URL config returns an appropriate error immediately.
-  """
+  """Test that missing URL config returns an appropriate error immediately."""
   config = {"method": "GET"}
   result = await run_http_widget(config)
 
   assert result["status"] == 0
+  assert result["error"] is not None
   assert "Missing URL" in result["error"]
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_timeout() -> None:
-  """
-  Test proper handling of request timeouts.
-  """
+  """Test proper handling of generic runtime exceptions raised during dispatch."""
   target_url = "https://slow.api.com"
 
   with respx.mock:
-    # Simulate a generic TimeoutException via respx side effects suitable for httpx
     respx.get(target_url).mock(side_effect=TimeoutError("Simulated Timeout"))
-
     config = {"url": target_url, "timeout": 1.0}
-
     result = await run_http_widget(config)
 
-    # The service wraps exceptions.
     assert result["status"] in [0, 408, 500]
     assert result["error"] is not None
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_404_error() -> None:
-  """
-  Test handling of HTTP 4xx client errors.
-  """
+  """Test handling of HTTP 4xx client errors."""
   target_url = "https://api.example.com/missing"
 
   with respx.mock:
     respx.get(target_url).mock(return_value=Response(404, json={"detail": "Not Found"}))
-
     config = {"url": target_url}
-
     result = await run_http_widget(config)
 
     assert result["status"] == 404
@@ -113,16 +92,12 @@ async def test_run_http_widget_404_error() -> None:
 
 @pytest.mark.asyncio
 async def test_run_http_widget_non_json_response() -> None:
-  """
-  Test handling of valid HTTP responses that are not JSON.
-  """
+  """Test handling of valid HTTP responses that are not JSON."""
   target_url = "https://api.example.com/text"
 
   with respx.mock:
     respx.get(target_url).mock(return_value=Response(200, text="Plain Success"))
-
     config = {"url": target_url}
-
     result = await run_http_widget(config)
 
     assert result["status"] == 200
@@ -131,49 +106,42 @@ async def test_run_http_widget_non_json_response() -> None:
 
 @pytest.mark.asyncio
 async def test_run_http_widget_exception_safety() -> None:
-  """
-  Test that unexpected exceptions (e.g., config types) are caught safely.
-  """
-  # Passing an integer as URL will cause httpx to explode or validation logic to fail
-  config = {"url": 12345}
-
+  """Test that unexpected non-string URL types or dispatch exceptions are caught safely."""
+  config: dict[str, Any] = {"url": 12345}
   result = await run_http_widget(config)
 
   assert result["status"] == 500
+  assert result["error"] is not None
   assert "Unexpected error" in result["error"]
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_timeout_exception() -> None:
-  """Ensure httpx.TimeoutException is mapped to a 408 response."""
-  import httpx
-
+  """Ensure `httpx.TimeoutException` is mapped to a 408 response."""
   target_url = "https://api.example.com/slow"
 
   with respx.mock:
     req = httpx.Request("GET", target_url)
     respx.get(target_url).mock(side_effect=httpx.TimeoutException("timeout", request=req))
-
     result = await run_http_widget({"url": target_url, "timeout": 0.01})
 
     assert result["status"] == 408
+    assert result["error"] is not None
     assert "timed out" in result["error"].lower()
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_connection_error() -> None:
   """Ensure request errors are surfaced as connection errors."""
-  import httpx
-
   target_url = "https://api.example.com/down"
 
   with respx.mock:
     req = httpx.Request("GET", target_url)
     respx.get(target_url).mock(side_effect=httpx.RequestError("boom", request=req))
-
     result = await run_http_widget({"url": target_url})
 
     assert result["status"] == 0
+    assert result["error"] is not None
     assert "Connection error" in result["error"]
 
 
@@ -184,7 +152,6 @@ async def test_run_http_widget_respects_existing_auth_header() -> None:
 
   with respx.mock:
     route = respx.get(target_url).mock(return_value=Response(200, json={"ok": True}))
-
     config = {"url": target_url, "headers": {"Authorization": "Bearer existing"}}
     result = await run_http_widget(config, forward_auth_token="new-token")
 
@@ -199,7 +166,6 @@ async def test_run_http_widget_status_error_with_text_body() -> None:
 
   with respx.mock:
     respx.get(target_url).mock(return_value=Response(500, text="server down"))
-
     result = await run_http_widget({"url": target_url})
 
     assert result["status"] == 500
@@ -209,8 +175,6 @@ async def test_run_http_widget_status_error_with_text_body() -> None:
 @pytest.mark.asyncio
 async def test_shared_http_client_pooling_and_reuse() -> None:
   """Verifies `get_shared_http_client` reuses a pooled client and `close_shared_http_client` closes it."""
-  from app.services.runners.http import close_shared_http_client, get_shared_http_client
-
   await close_shared_http_client()
   c1 = get_shared_http_client()
   c2 = get_shared_http_client()
@@ -226,4 +190,4 @@ async def test_shared_http_client_pooling_and_reuse() -> None:
 
   await close_shared_http_client()
   assert c1.is_closed
-  await close_shared_http_client()  # Idempotent when already closed
+  await close_shared_http_client()

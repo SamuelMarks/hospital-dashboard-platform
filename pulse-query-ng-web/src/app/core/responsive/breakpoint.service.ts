@@ -5,7 +5,7 @@
  */
 
 import {
-  Injectable,
+  Service,
   inject,
   PLATFORM_ID,
   signal,
@@ -53,9 +53,7 @@ export type BreakpointSize = keyof typeof BREAKPOINTS;
  * }
  * ```
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class BreakpointService implements OnDestroy {
   /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
 

@@ -3,7 +3,7 @@
  * for active LLM benchmark evaluations.
  */
 
-import { Injectable, inject, NgZone, signal } from '@angular/core';
+import { Service, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 
 /**
@@ -27,13 +27,8 @@ export interface BenchmarkProgress {
 /**
  * Service managing EventSource connections to the benchmark progress stream.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class BenchmarkProgressService {
-  /** Angular NgZone for scheduling UI updates from SSE callbacks. */
-  private readonly ngZone = inject(NgZone);
-
   /** Active EventSource instance. */
   private eventSource: EventSource | null = null;
 
@@ -56,19 +51,15 @@ export class BenchmarkProgressService {
       es.onmessage = (event: MessageEvent<string>) => {
         try {
           const data = JSON.parse(event.data) as BenchmarkProgress;
-          this.ngZone.run(() => {
-            this.progress.set(data);
-            observer.next(data);
-          });
+          this.progress.set(data);
+          observer.next(data);
         } catch {
           // Ignore parse errors on keep-alive or heartbeat frames
         }
       };
 
       es.onerror = (err) => {
-        this.ngZone.run(() => {
-          observer.error(err);
-        });
+        observer.error(err);
       };
 
       return () => {

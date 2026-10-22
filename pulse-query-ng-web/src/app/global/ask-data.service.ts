@@ -1,15 +1,13 @@
 /**
  * @fileoverview Service managing the open/close visibility state of the global Ask Data sidebar.
  */
-import { Injectable, signal, computed } from '@angular/core';
+import { Service, signal } from '@angular/core';
 
 /**
  * Service to manage the visibility state of the Global "Ask Data" sidebar.
  * This acts as a bridge between the Toolbar (trigger) and the Sidebar Component (display).
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class AskDataService {
   /** Private mutable signal for open/close state. */
   private _isOpen = signal(false);

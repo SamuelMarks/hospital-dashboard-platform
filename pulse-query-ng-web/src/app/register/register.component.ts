@@ -1,7 +1,7 @@
 /**
  * @fileoverview User registration component providing account creation with password confirmation validation.
  */
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import {
   FormRoot,
   FormField,
@@ -110,6 +110,10 @@ export class RegisterComponent {
   readonly errorMessage = signal<string | null>(null);
   /** Whether password input characters are masked. */
   readonly hidePassword = signal(true);
+  /** Localized accessible label for the password visibility toggle button. */
+  readonly passwordToggleLabel = computed(() =>
+    this.hidePassword() ? $localize`Show password` : $localize`Hide password`,
+  );
 
   /** Signal model backing the registration form fields. */
   readonly formModel = signal({
@@ -120,18 +124,18 @@ export class RegisterComponent {
 
   /** Signal form instance enforcing email, password length, and password match validation. */
   readonly registerForm = form(this.formModel, (f) => {
-    required(f.email, { message: 'Email is required' });
-    email(f.email, { message: 'Please enter a valid email' });
+    required(f.email, { message: $localize`Email is required` });
+    email(f.email, { message: $localize`Please enter a valid email` });
 
-    required(f.password, { message: 'Password is required' });
-    minLength(f.password, 4, { message: 'Password must be at least 4 characters' });
+    required(f.password, { message: $localize`Password is required` });
+    minLength(f.password, 4, { message: $localize`Password must be at least 4 characters` });
 
-    required(f.confirmPassword, { message: 'Confirmation is required' });
+    required(f.confirmPassword, { message: $localize`Confirmation is required` });
 
     validate(f.confirmPassword, (ctx) => {
       if (!ctx.value() || !this.formModel().password) return null;
       if (ctx.value() !== this.formModel().password) {
-        return { kind: 'mismatch', message: 'Passwords do not match' };
+        return { kind: 'mismatch', message: $localize`Passwords do not match` };
       }
       return null;
     });
@@ -168,7 +172,7 @@ export class RegisterComponent {
       },
       error: (err: { error?: { detail?: string } }) => {
         this.isLoading.set(false);
-        const msg = err?.error?.detail || 'Registration failed. Please try again.';
+        const msg = err?.error?.detail || $localize`Registration failed. Please try again.`;
         this.errorMessage.set(msg);
       },
     });

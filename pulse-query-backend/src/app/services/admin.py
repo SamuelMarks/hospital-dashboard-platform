@@ -1,6 +1,6 @@
 """Service for managing admin configuration."""
 
-import contextlib
+import logging
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,9 +9,19 @@ from app.models.admin_setting import AdminSetting
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
 from app.services.llm_client import llm_client
 
+logger = logging.getLogger(__name__)
+
 
 async def get_admin_settings(db: AsyncSession) -> AdminSettingsResponse:
-  """Retrieves the current admin settings from the database."""
+  """
+  Retrieves the current admin settings from the database.
+
+  Args:
+      db (AsyncSession): Active database session.
+
+  Returns:
+      AdminSettingsResponse: Current `api_keys` and `visible_models` configuration.
+  """
   stmt = select(AdminSetting).where(AdminSetting.setting_key.in_(["api_keys", "visible_models"]))
   result = await db.execute(stmt)
   settings = result.scalars().all()
@@ -29,8 +39,16 @@ async def get_admin_settings(db: AsyncSession) -> AdminSettingsResponse:
 
 
 async def update_admin_settings(db: AsyncSession, request: AdminSettingsUpdateRequest) -> AdminSettingsResponse:
-  """Updates the admin settings in the database."""
-  # Handle api_keys
+  """
+  Updates the admin settings in the database and reloads the active LLM swarm.
+
+  Args:
+      db (AsyncSession): Active database session.
+      request (AdminSettingsUpdateRequest): Updated `api_keys` and `visible_models`.
+
+  Returns:
+      AdminSettingsResponse: Updated admin settings state.
+  """
   stmt = select(AdminSetting).where(AdminSetting.setting_key == "api_keys")
   result = await db.execute(stmt)
   api_keys_setting = result.scalar_one_or_none()
@@ -41,7 +59,6 @@ async def update_admin_settings(db: AsyncSession, request: AdminSettingsUpdateRe
     api_keys_setting = AdminSetting(setting_key="api_keys", setting_value=request.api_keys)
     db.add(api_keys_setting)
 
-  # Handle visible_models
   stmt = select(AdminSetting).where(AdminSetting.setting_key == "visible_models")
   result = await db.execute(stmt)
   visible_models_setting = result.scalar_one_or_none()
@@ -54,6 +71,8 @@ async def update_admin_settings(db: AsyncSession, request: AdminSettingsUpdateRe
 
   await db.commit()
   new_settings = await get_admin_settings(db)
-  with contextlib.suppress(Exception):
+  try:
     llm_client.reload_swarm(new_settings)
+  except Exception as exc:
+    logger.warning(f"Failed to reload LLM swarm after admin settings update: {exc}")
   return new_settings

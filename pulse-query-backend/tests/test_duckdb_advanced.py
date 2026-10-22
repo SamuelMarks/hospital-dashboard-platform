@@ -7,14 +7,13 @@ Verifies the logic required for Theme 7:
 3. Correlation Aggregates.
 """
 
-from typing import Any
-
+from collections.abc import Generator
 import duckdb
 import pytest
 
 
 @pytest.fixture
-def db() -> Any:
+def db() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   """In-memory DB with specific test scenarios."""
   conn = duckdb.connect(":memory:")
 
@@ -38,14 +37,14 @@ def db() -> Any:
   conn.close()
 
 
-def test_utilization_spikes_pattern(db: Any) -> None:
+def test_utilization_spikes_pattern(db: duckdb.DuckDBPyConnection) -> None:
   """
   Test finding 3 consecutive days > 1.0 using LEAD.
   """
   query = """
     WITH windows AS (
-      SELECT 
-        dt, 
+      SELECT
+        dt,
         rate,
         LEAD(rate, 1) OVER (ORDER BY dt) as next_1,
         LEAD(rate, 2) OVER (ORDER BY dt) as next_2
@@ -62,24 +61,26 @@ def test_utilization_spikes_pattern(db: Any) -> None:
   assert str(res[0][0]) == "2023-01-02"
 
 
-def test_turnover_lag_logic(db: Any) -> None:
+def test_turnover_lag_logic(db: duckdb.DuckDBPyConnection) -> None:
   """
   Test calculating time difference between row N and N+1.
   """
   query = """
-    SELECT 
+    SELECT
         date_diff('minute', TS, LEAD(TS) OVER (ORDER BY TS)) as gap
     FROM events
     LIMIT 1
     """
   res = db.execute(query).fetchone()
+  assert res is not None
   # 10:00 to 12:00 is 120 minutes
   assert res[0] == 120
 
 
-def test_correlation_function(db: Any) -> None:
+def test_correlation_function(db: duckdb.DuckDBPyConnection) -> None:
   """
   Test DuckDB native corr() function works as expected.
   """
   res = db.execute("SELECT corr(x, y) FROM corr_test").fetchone()
+  assert res is not None
   assert res[0] == 1.0

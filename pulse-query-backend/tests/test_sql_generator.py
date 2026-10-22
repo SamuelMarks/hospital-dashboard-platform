@@ -1,14 +1,12 @@
 """Tests for sql generator."""
 
-from typing import Any
-
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.models.feedback import ModelCandidate
+from app.models.feedback import ExperimentLog, ModelCandidate
 from app.services.llm_client import ArenaResponse
 from app.services.sql_generator import sql_generator
 
@@ -19,7 +17,7 @@ def test_sql_cleaning_logic() -> None:
   assert sql_generator._clean_sql_response(raw_1) == raw_1
 
   raw_2 = """```sql
-    SELECT count(*) FROM hospital_data; 
+    SELECT count(*) FROM hospital_data;
     ```"""
   cleaned_2 = sql_generator._clean_sql_response(raw_2)
   assert cleaned_2 == "SELECT count(*) FROM hospital_data;"
@@ -48,23 +46,23 @@ async def test_generation_flow_mocked() -> None:
   mock_db.execute = AsyncMock(return_value=mock_result)
 
   # Mock side-effects for persistence
-  added_objects = []
+  added_objects: list[ExperimentLog | ModelCandidate] = []
 
-  def side_effect_add(obj: Any) -> None:
+  def side_effect_add(obj: ExperimentLog | ModelCandidate) -> None:
     """
-    Verify side effect add behavior.
+    Appends `obj` to `added_objects` and initializes `is_selected` if None.
 
     Args:
-        obj: Test parameter or fixture.
+        obj (ExperimentLog | ModelCandidate): ORM object added to session.
     """
-    if hasattr(obj, "is_selected") and obj.is_selected is None:
+    if isinstance(obj, ModelCandidate) and obj.is_selected is None:
       obj.is_selected = False
     added_objects.append(obj)
 
   mock_db.add.side_effect = side_effect_add
 
   async def side_effect_persistence() -> None:
-    """Verify side effect persistence behavior."""
+    """Assigns UUIDs to pending objects in `added_objects`."""
     for obj in added_objects:
       if not getattr(obj, "id", None):
         obj.id = uuid.uuid4()
@@ -72,14 +70,15 @@ async def test_generation_flow_mocked() -> None:
   mock_db.flush = AsyncMock(side_effect=side_effect_persistence)
   mock_db.commit = AsyncMock(side_effect=side_effect_persistence)
 
-  async def mock_refresh(instance: Any, attribute_names: Any = None) -> None:
+  async def mock_refresh(instance: ExperimentLog, attribute_names: list[str] | None = None) -> None:
     """
-    Verify mock refresh behavior.
+    Populates `id`, `created_at`, and `candidates` on `instance`.
 
     Args:
-        instance: Test parameter or fixture.
-        attribute_names: Test parameter or fixture.
+        instance (ExperimentLog): ExperimentLog instance being refreshed.
+        attribute_names (list[str] | None): Optional attribute names.
     """
+    _ = attribute_names
     if not instance.id:
       instance.id = uuid.uuid4()
     if not hasattr(instance, "created_at") or not instance.created_at:

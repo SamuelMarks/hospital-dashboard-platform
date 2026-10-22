@@ -1,31 +1,39 @@
 """
-Additional tests for chat router edge cases.
+Additional tests for chat router edge cases and voting ownership/parentage security.
 """
 
-from typing import Any
-
-import uuid
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, patch
+import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.api.routers import chat as chat_router
+from app.core.security import create_access_token
+from app.main import app
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.user import User
 from app.services.llm_client import ArenaResponse
 
 
 @pytest.fixture
-async def chat_user(db_session: Any) -> Any:
-  """Create a user and override auth dependency."""
+async def chat_user(db_session: AsyncSession) -> AsyncGenerator[User, None]:
+  """
+  Creates a test user and overrides `get_current_user` for the duration of the test.
+
+  Args:
+      db_session (Any): Active test database session.
+
+  Yields:
+      User: Created test user instance.
+  """
   user = User(email=f"edge_{uuid.uuid4()}@example.com", hashed_password="pw", is_active=True)
   db_session.add(user)
   await db_session.commit()
   await db_session.refresh(user)
-
-  from app.main import app
 
   app.dependency_overrides[get_current_user] = lambda: user
   yield user
@@ -34,12 +42,22 @@ async def chat_user(db_session: Any) -> Any:
 
 def test_extract_and_validate_sql_empty_block() -> None:
   """Empty SQL blocks should return None."""
-  assert chat_router._extract_and_validate_sql("```sql\n\n```") is None
+  assert (
+    chat_router._extract_and_validate_sql("""```sql
+
+```""")
+    is None
+  )
 
 
 def test_extract_and_validate_sql_invalid_sql() -> None:
   """Invalid SQL should return None."""
-  assert chat_router._extract_and_validate_sql("```sql\nSELEC * FROM t\n```") is None
+  assert (
+    chat_router._extract_and_validate_sql("""```sql
+SELEC * FROM t
+```""")
+    is None
+  )
 
 
 def test_extract_and_validate_sql_no_match() -> None:
@@ -89,19 +107,39 @@ SELECT 1 AS test_val
 
 def test_extract_and_validate_sql_whitespace_blocks() -> None:
   """Whitespace-only code blocks should be skipped safely."""
-  assert chat_router._extract_and_validate_sql("```sql \n \t \n ```") is None
-  assert chat_router._extract_and_validate_sql("``` \n \t \n ```") is None
+  assert (
+    chat_router._extract_and_validate_sql("""```sql
+
+ ```""")
+    is None
+  )
+  assert (
+    chat_router._extract_and_validate_sql("""```
+
+ ```""")
+    is None
+  )
 
 
 def test_extract_and_validate_sql_column_only_blocks() -> None:
   """Blocks with only bare column identifiers should not be returned."""
-  assert chat_router._extract_and_validate_sql("```sql\njust_a_col\n```") is None
-  assert chat_router._extract_and_validate_sql("```\njust_a_col\n```") is None
+  assert (
+    chat_router._extract_and_validate_sql("""```sql
+just_a_col
+```""")
+    is None
+  )
+  assert (
+    chat_router._extract_and_validate_sql("""```
+just_a_col
+```""")
+    is None
+  )
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_with_target_models(db_session: Any, chat_user: Any) -> None:
-  """Tests behavior when specific target models are provided (covers line 140/150)."""
+async def test_generate_assistant_reply_with_target_models(db_session: AsyncSession, chat_user: User) -> None:
+  """Tests behavior when specific target models are provided."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
   await db_session.commit()
@@ -117,8 +155,8 @@ async def test_generate_assistant_reply_with_target_models(db_session: Any, chat
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_empty_response(db_session: Any, chat_user: Any) -> None:
-  """Tests behavior when ZERO models respond within the Arena (line 140 coverage)."""
+async def test_generate_assistant_reply_empty_response(db_session: AsyncSession, chat_user: User) -> None:
+  """Tests behavior when ZERO models respond within the Arena."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
   await db_session.commit()
@@ -134,8 +172,8 @@ async def test_generate_assistant_reply_empty_response(db_session: Any, chat_use
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_empty_content(db_session: Any, chat_user: Any) -> None:
-  """Tests fallback when an LLM successfully responds but leaves content empty string (line 160 coverage)."""
+async def test_generate_assistant_reply_empty_content(db_session: AsyncSession, chat_user: User) -> None:
+  """Tests fallback when an LLM successfully responds but leaves content empty string."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
   await db_session.commit()
@@ -151,7 +189,7 @@ async def test_generate_assistant_reply_empty_content(db_session: Any, chat_user
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_expands_candidates(db_session: Any, chat_user: Any) -> None:
+async def test_generate_assistant_reply_expands_candidates(db_session: AsyncSession, chat_user: User) -> None:
   """When fewer than 3 responses are returned, extras should be generated."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -180,7 +218,7 @@ async def test_generate_assistant_reply_expands_candidates(db_session: Any, chat
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_handles_exception(db_session: Any, chat_user: Any) -> None:
+async def test_generate_assistant_reply_handles_exception(db_session: AsyncSession, chat_user: User) -> None:
   """Exceptions during generation should return a fallback response."""
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -199,7 +237,7 @@ async def test_generate_assistant_reply_handles_exception(db_session: Any, chat_
 
 
 @pytest.mark.asyncio
-async def test_generate_assistant_reply_dedupes_model_names(db_session: Any, chat_user: Any) -> None:
+async def test_generate_assistant_reply_dedupes_model_names(db_session: AsyncSession, chat_user: User) -> None:
   """Duplicate provider names should be made unique."""
   conv = Conversation(user_id=chat_user.id, title="Dupes")
   db_session.add(conv)
@@ -230,8 +268,9 @@ async def test_generate_assistant_reply_dedupes_model_names(db_session: Any, cha
 
 
 @pytest.mark.asyncio
-async def test_create_conversation_defaults_title(client: AsyncClient, chat_user: Any) -> None:
+async def test_create_conversation_defaults_title(client: AsyncClient, chat_user: User) -> None:
   """Missing title/message should default to 'New Chat'."""
+  _ = chat_user
   res = await client.post("/api/v1/conversations/", json={})
   assert res.status_code == 200
   data = res.json()
@@ -240,54 +279,32 @@ async def test_create_conversation_defaults_title(client: AsyncClient, chat_user
 
 
 @pytest.mark.asyncio
-async def test_update_conversation_not_found(client: AsyncClient, chat_user: Any) -> None:
-  """
-  Verify update conversation not found behavior.
-
-  Args:
-      client: Test parameter or fixture.
-      chat_user: Test parameter or fixture.
-  """
+async def test_update_conversation_not_found(client: AsyncClient, chat_user: User) -> None:
+  """Verifies updating a non-existent conversation returns 404."""
+  _ = chat_user
   res = await client.put(f"/api/v1/conversations/{uuid.uuid4()}", json={"title": "x"})
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_conversation_not_found(client: AsyncClient, chat_user: Any) -> None:
-  """
-  Verify delete conversation not found behavior.
-
-  Args:
-      client: Test parameter or fixture.
-      chat_user: Test parameter or fixture.
-  """
+async def test_delete_conversation_not_found(client: AsyncClient, chat_user: User) -> None:
+  """Verifies deleting a non-existent conversation returns 404."""
+  _ = chat_user
   res = await client.delete(f"/api/v1/conversations/{uuid.uuid4()}")
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_messages_not_found(client: AsyncClient, chat_user: Any) -> None:
-  """
-  Verify get messages not found behavior.
-
-  Args:
-      client: Test parameter or fixture.
-      chat_user: Test parameter or fixture.
-  """
+async def test_get_messages_not_found(client: AsyncClient, chat_user: User) -> None:
+  """Verifies fetching messages for a non-existent conversation returns 404."""
+  _ = chat_user
   res = await client.get(f"/api/v1/conversations/{uuid.uuid4()}/messages")
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_messages_success(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
-  """
-  Verify get messages success behavior.
-
-  Args:
-      client: Test parameter or fixture.
-      chat_user: Test parameter or fixture.
-      db_session: Test parameter or fixture.
-  """
+async def test_get_messages_success(client: AsyncClient, chat_user: User, db_session: AsyncSession) -> None:
+  """Verifies fetching messages for an owned conversation returns ordered messages."""
   conv = Conversation(user_id=chat_user.id, title="Messages")
   db_session.add(conv)
   await db_session.commit()
@@ -304,20 +321,15 @@ async def test_get_messages_success(client: AsyncClient, chat_user: Any, db_sess
 
 
 @pytest.mark.asyncio
-async def test_send_message_not_found(client: AsyncClient, chat_user: Any) -> None:
-  """
-  Verify send message not found behavior.
-
-  Args:
-      client: Test parameter or fixture.
-      chat_user: Test parameter or fixture.
-  """
+async def test_send_message_not_found(client: AsyncClient, chat_user: User) -> None:
+  """Verifies sending a message to a non-existent conversation returns 404."""
+  _ = chat_user
   res = await client.post(f"/api/v1/conversations/{uuid.uuid4()}/messages", json={"content": "hi"})
   assert res.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
+async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user: User, db_session: AsyncSession) -> None:
   """Voting should mark all candidates sharing the same sql_hash."""
   conv = Conversation(user_id=chat_user.id, title="Shared Hash")
   db_session.add(conv)
@@ -356,8 +368,8 @@ async def test_vote_candidate_marks_same_sql_hash(client: AsyncClient, chat_user
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
-  """Covers the line branch when a candidate is missing sql_hash and strictly uses fallback ID."""
+async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user: User, db_session: AsyncSession) -> None:
+  """Covers the branch when a candidate is missing sql_hash and strictly uses fallback ID."""
   conv = Conversation(user_id=chat_user.id, title="No Hash")
   db_session.add(conv)
   await db_session.commit()
@@ -386,7 +398,50 @@ async def test_vote_candidate_no_sql_hash(client: AsyncClient, chat_user: Any, d
 
 
 @pytest.mark.asyncio
-async def test_send_message_success(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
+async def test_vote_candidate_rejects_cross_message_and_user_role_tampering(
+  client: AsyncClient, chat_user: User, db_session: AsyncSession
+) -> None:
+  """Verifies voting on a candidate from another message or on a user-role message returns 404 without mutating state."""
+  conv = Conversation(user_id=chat_user.id, title="Security Check")
+  db_session.add(conv)
+  await db_session.flush()
+
+  user_msg = Message(conversation_id=conv.id, role="user", content="Original User Question")
+  msg1 = Message(conversation_id=conv.id, role="assistant", content="Original Assistant 1")
+  msg2 = Message(conversation_id=conv.id, role="assistant", content="Original Assistant 2")
+  db_session.add_all([user_msg, msg1, msg2])
+  await db_session.flush()
+
+  cand_msg2 = MessageCandidate(
+    message_id=msg2.id,
+    model_name="M2",
+    content="Foreign Candidate Content",
+    sql_snippet="SELECT 999",
+    is_selected=False,
+  )
+  db_session.add(cand_msg2)
+  await db_session.commit()
+
+  # Attempt to vote on msg1 using cand_msg2 (belongs to msg2) -> must return 404
+  res_cross = await client.post(
+    f"/api/v1/conversations/{conv.id}/messages/{msg1.id}/vote",
+    json={"candidate_id": str(cand_msg2.id)},
+  )
+  assert res_cross.status_code == 404
+
+  await db_session.refresh(msg1)
+  assert msg1.content == "Original Assistant 1"
+
+  # Attempt to vote on user_msg (role == 'user') -> must return 404
+  res_user_role = await client.post(
+    f"/api/v1/conversations/{conv.id}/messages/{user_msg.id}/vote",
+    json={"candidate_id": str(cand_msg2.id)},
+  )
+  assert res_user_role.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_send_message_success(client: AsyncClient, chat_user: User, db_session: AsyncSession) -> None:
   """Sending a message should return an assistant reply."""
   conv = Conversation(user_id=chat_user.id, title="Chat")
   db_session.add(conv)
@@ -408,15 +463,13 @@ async def test_send_message_success(client: AsyncClient, chat_user: Any, db_sess
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
+async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: User, db_session: AsyncSession) -> None:
   """Covers conversation, message, and candidate not found branches."""
-  # Conversation not found
   res_missing_conv = await client.post(
     f"/api/v1/conversations/{uuid.uuid4()}/messages/{uuid.uuid4()}/vote", json={"candidate_id": str(uuid.uuid4())}
   )
   assert res_missing_conv.status_code == 404
 
-  # Message not found
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
   await db_session.commit()
@@ -426,7 +479,6 @@ async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: An
   )
   assert res_missing_msg.status_code == 404
 
-  # Candidate not found
   msg = Message(conversation_id=conv.id, role="assistant", content="Pending")
   db_session.add(msg)
   await db_session.commit()
@@ -439,10 +491,10 @@ async def test_vote_candidate_not_found_cases(client: AsyncClient, chat_user: An
 
 
 @pytest.mark.asyncio
-async def test_chat_conversation_creation_title_variants(client: AsyncClient, chat_user: Any, db_session: Any) -> None:
+async def test_chat_conversation_creation_title_variants(
+  client: AsyncClient, chat_user: User, db_session: AsyncSession
+) -> None:
   """Verifies conversation title derivation across empty, short, long, and explicit title payloads."""
-  from app.core.security import create_access_token
-
   headers = {"Authorization": f"Bearer {create_access_token(chat_user.id)}"}
   conv = Conversation(user_id=chat_user.id, title="Test")
   db_session.add(conv)
@@ -453,15 +505,18 @@ async def test_chat_conversation_creation_title_variants(client: AsyncClient, ch
   db_session.add_all([msg_sys, msg_usr])
   await db_session.commit()
 
-  res_list = [[ArenaResponse("m1", "m1-v", "SEL 1", 100, None)], []]
+  res_list: list[list[ArenaResponse]] = [[ArenaResponse("m1", "m1-v", "SEL 1", 100, None)], []]
 
-  def se(*_args: Any, **_kwargs: Any) -> Any:
+  def se(*_args: object, **_kwargs: object) -> list[ArenaResponse]:
     """
-    Verify se behavior.
+    Side-effect helper popping canned `ArenaResponse` lists for sequential calls.
 
     Args:
-        _args: Test parameter or fixture.
-        _kwargs: Test parameter or fixture.
+        *_args (object): Ignored positional arguments.
+        **_kwargs (object): Ignored keyword arguments.
+
+    Returns:
+        list[ArenaResponse]: Next canned response list or empty list.
     """
     if res_list:
       return res_list.pop(0)

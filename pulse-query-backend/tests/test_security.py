@@ -7,7 +7,7 @@ from app.core.config import settings
 
 
 def test_password_hashing() -> None:
-  """Verify password hashing behavior."""
+  """Verifies `get_password_hash` and `verify_password` accept valid passwords and reject mismatches."""
   password = "secret_password"
   hashed = security.get_password_hash(password)
 
@@ -17,7 +17,7 @@ def test_password_hashing() -> None:
 
 
 def test_get_access_token() -> None:
-  """Verify get access token behavior."""
+  """Verifies `create_access_token` encodes the `sub` and `exp` claims using `SECRET_KEY`."""
   email = "test@example.com"
   token = security.create_access_token(subject=email)
 

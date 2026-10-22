@@ -1,5 +1,5 @@
 <h2 mat-dialog-title class="flex items-center gap-2">
-  <mat-icon i18n style="color: var(--sys-primary)">palette</mat-icon>
+  <mat-icon aria-hidden="true" style="color: var(--sys-primary)">palette</mat-icon>
   <span i18n>Dashboard Theme Palette</span>
 </h2>
 
@@ -22,8 +22,10 @@
           (click)="selectPalette(pal)"
           role="button"
           tabindex="0"
+          [attr.aria-pressed]="selectedColor() === pal.hex"
           (keydown.enter)="selectPalette(pal)"
-          [attr.aria-label]="'Select ' + pal.name"
+          (keydown.space)="selectPalette(pal); $event.preventDefault()"
+          [attr.aria-label]="getPaletteAriaLabel(pal)"
         >
           <div class="color-swatch shadow-sm" [style.background-color]="pal.hex"></div>
           <div class="flex-1 min-w-0">

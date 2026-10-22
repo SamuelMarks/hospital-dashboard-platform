@@ -2,10 +2,10 @@
 Unit tests for backend startup diagnostics and configuration hygiene.
 """
 
-from typing import Any
-
-from unittest.mock import AsyncMock, MagicMock
 import os
+from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import duckdb
 import pytest
@@ -47,7 +47,7 @@ def test_diagnostics_registry_methods() -> None:
   assert reg.get_summary()["overall_status"] == "healthy"
 
   reg.add_warning("W1", "Warning 1")
-  reg.add_warning("W1", "Warning 1")  # Deduplication check
+  reg.add_warning("W1", "Warning 1")
   assert len(reg.warnings) == 1
   assert reg.get_summary()["overall_status"] == "degraded"
 
@@ -79,9 +79,11 @@ def test_format_error_banners() -> None:
 
 
 def test_check_configuration_hygiene() -> None:
-  """check_configuration_hygiene should flag insecure keys and missing LLM providers."""
+  """`check_configuration_hygiene` should flag insecure keys and missing LLM providers."""
 
   class _InsecureNoSwarm:
+    """Stub settings object with default insecure `SECRET_KEY` and empty `LLM_SWARM`."""
+
     SECRET_KEY = "CHANGEME_IN_PROD_SUPER_SECRET_KEY"
     LLM_SWARM: list[Any] = []
 
@@ -91,6 +93,8 @@ def test_check_configuration_hygiene() -> None:
   assert diagnostics_registry.llm_status["mock_mode"] is True
 
   class _CustomSettings:
+    """Stub settings object with custom production `SECRET_KEY` and populated `LLM_SWARM`."""
+
     SECRET_KEY = "a-very-secure-custom-key-for-production"
     LLM_SWARM = [{"provider": "openai", "name": "GPT-4o", "model": "gpt-4o"}]
 
@@ -100,24 +104,34 @@ def test_check_configuration_hygiene() -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_postgres_connection_success(monkeypatch: Any) -> None:
-  """validate_postgres_connection should record connected status on valid query."""
+async def test_validate_postgres_connection_success(monkeypatch: pytest.MonkeyPatch) -> None:
+  """`validate_postgres_connection` should record connected status on valid query."""
   dummy_conn = AsyncMock()
   dummy_conn.execute = AsyncMock()
 
   class _DummyContext:
-    async def __aenter__(self) -> Any:
-      """Verify aenter behavior."""
+    """Stub async context manager yielding `dummy_conn`."""
+
+    async def __aenter__(self) -> AsyncMock:
+      """
+      Enters context and returns `dummy_conn`.
+
+      Returns:
+          AsyncMock: Mock connection.
+      """
       return dummy_conn
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
       """
-      Verify aexit behavior.
+      Exits context without suppressing exceptions.
 
       Args:
-          exc_type: Test parameter or fixture.
-          exc: Test parameter or fixture.
-          tb: Test parameter or fixture.
+          exc_type (object): Exception type if raised.
+          exc (object): Exception instance if raised.
+          tb (object): Traceback if raised.
+
+      Returns:
+          bool: Always False.
       """
       return False
 
@@ -134,22 +148,32 @@ async def test_validate_postgres_connection_success(monkeypatch: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_validate_postgres_connection_failure(monkeypatch: Any) -> None:
-  """validate_postgres_connection should catch errors and raise when configured."""
+async def test_validate_postgres_connection_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+  """`validate_postgres_connection` should catch errors and raise when configured."""
 
   class _FailingContext:
+    """Stub async context manager that raises `ConnectionRefusedError` on enter."""
+
     async def __aenter__(self) -> None:
-      """Verify aenter behavior."""
+      """
+      Raises `ConnectionRefusedError`.
+
+      Raises:
+          ConnectionRefusedError: Always raised.
+      """
       raise ConnectionRefusedError("Connection refused by host")
 
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
       """
-      Verify aexit behavior.
+      Exits context without suppressing exceptions.
 
       Args:
-          exc_type: Test parameter or fixture.
-          exc: Test parameter or fixture.
-          tb: Test parameter or fixture.
+          exc_type (object): Exception type if raised.
+          exc (object): Exception instance if raised.
+          tb (object): Traceback if raised.
+
+      Returns:
+          bool: Always False.
       """
       return False
 
@@ -169,15 +193,15 @@ async def test_validate_postgres_connection_failure(monkeypatch: Any) -> None:
 
 
 def test_validate_duckdb_storage_memory_success() -> None:
-  """validate_duckdb_storage should inspect tables in memory database."""
+  """`validate_duckdb_storage` should inspect tables in memory database."""
   mgr = DuckDBManager(":memory:")
   res = mgr.validate_duckdb_storage()
   assert res["status"] == "ready"
   assert res["total_tables"] == 0
 
 
-def test_validate_duckdb_storage_with_tables(tmp_path: Any) -> None:
-  """validate_duckdb_storage should report tables and row counts."""
+def test_validate_duckdb_storage_with_tables(tmp_path: Path) -> None:
+  """`validate_duckdb_storage` should report tables and row counts."""
   db_file = str(tmp_path / "test_diag.duckdb")
   mgr = DuckDBManager(db_file)
   conn = mgr.get_connection()
@@ -190,17 +214,20 @@ def test_validate_duckdb_storage_with_tables(tmp_path: Any) -> None:
   assert res["tables"]["sample"] == 2
 
 
-def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch: Any) -> None:
-  """validate_duckdb_storage should report error when directory creation fails."""
+def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+  """`validate_duckdb_storage` should report error when directory creation fails."""
   mgr = DuckDBManager("/nonexistent_forbidden_dir_12345/data.duckdb")
 
-  def _failing_makedirs(_path: Any, **_kwargs: Any) -> None:
+  def _failing_makedirs(_path: object, **_kwargs: object) -> None:
     """
-    Verify failing makedirs behavior.
+    Simulates a `PermissionError` when creating parent directories.
 
     Args:
-        _path: Test parameter or fixture.
-        _kwargs: Test parameter or fixture.
+        _path (object): Target directory path.
+        **_kwargs (object): Keyword arguments.
+
+    Raises:
+        PermissionError: Always raised.
     """
     raise PermissionError("Access denied")
 
@@ -210,12 +237,20 @@ def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch: Any) -
   assert "Cannot create database parent directory" in res["error"]
 
 
-def test_validate_duckdb_storage_connection_exception(monkeypatch: Any) -> None:
-  """validate_duckdb_storage should catch connection or query errors."""
+def test_validate_duckdb_storage_connection_exception(monkeypatch: pytest.MonkeyPatch) -> None:
+  """`validate_duckdb_storage` should catch connection or query errors."""
   mgr = DuckDBManager(":memory:")
 
-  def _failing_get_conn() -> None:
-    """Verify failing get conn behavior."""
+  def _failing_get_conn() -> duckdb.DuckDBPyConnection:
+    """
+    Raises a simulated `duckdb.IOException`.
+
+    Returns:
+        duckdb.DuckDBPyConnection: Never returns.
+
+    Raises:
+        duckdb.IOException: Always raised.
+    """
     raise duckdb.IOException("File is locked by another process")
 
   monkeypatch.setattr(mgr, "get_connection", _failing_get_conn)
@@ -224,17 +259,25 @@ def test_validate_duckdb_storage_connection_exception(monkeypatch: Any) -> None:
   assert "File is locked" in res["error"]
 
 
-def test_validate_duckdb_storage_table_count_fallback(monkeypatch: Any) -> None:
-  """validate_duckdb_storage should handle table row count query exceptions gracefully."""
+def test_validate_duckdb_storage_table_count_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+  """`validate_duckdb_storage` should handle table row count query exceptions gracefully."""
   mgr = DuckDBManager(":memory:")
 
   class _MockConn:
-    def execute(self, query: str) -> Any:
+    """Stub connection that succeeds on `SHOW TABLES` and fails on `SELECT COUNT(*)`."""
+
+    def execute(self, query: str) -> MagicMock:
       """
-      Verify execute behavior.
+      Returns `('flaky',)` for `SHOW TABLES` and raises `RuntimeError` for count queries.
 
       Args:
-          query: Test parameter or fixture.
+          query (str): SQL query string.
+
+      Returns:
+          MagicMock: Mock cursor result.
+
+      Raises:
+          RuntimeError: On count query.
       """
       if "SHOW TABLES" in query:
         mock_res = MagicMock()
@@ -243,8 +286,7 @@ def test_validate_duckdb_storage_table_count_fallback(monkeypatch: Any) -> None:
       raise RuntimeError("Count failed")
 
     def close(self) -> None:
-      """Verify close behavior."""
-      pass
+      """No-op close hook."""
 
   monkeypatch.setattr(mgr, "get_connection", lambda: _MockConn())
 

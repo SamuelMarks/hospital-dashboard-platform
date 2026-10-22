@@ -70,10 +70,6 @@ describe('VizTableComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    if (component.dataSource.paginator === undefined) {
-      component.dataSource.paginator = component.paginator;
-    }
-
     expect(component.dataSource.paginator).toBeTruthy();
     expect(component.dataSource.paginator?.length).toBe(20);
   });
@@ -83,7 +79,7 @@ describe('VizTableComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    const paginator = component.paginator;
+    const paginator = component.paginator();
     dataSetSig.set(generateData(2));
     fixture.detectChanges();
 
@@ -91,10 +87,11 @@ describe('VizTableComponent', () => {
   });
 
   it('should skip paginator assignment when paginator is missing', () => {
-    component.paginator = undefined as unknown as MatPaginator;
+    vi.spyOn(component, 'paginator').mockReturnValue(undefined);
+    component.dataSource.paginator = null;
     dataSetSig.set(generateData(2));
     fixture.detectChanges();
-    expect(component.dataSource.paginator).toBeUndefined();
+    expect(component.dataSource.paginator).toBeNull();
   });
 
   it('should attach paginator when set manually', () => {
@@ -105,7 +102,7 @@ describe('VizTableComponent', () => {
       pageSize: 10,
       length: 0,
     } as unknown as MatPaginator;
-    component.paginator = mockPaginator;
+    vi.spyOn(component, 'paginator').mockReturnValue(mockPaginator);
     dataSetSig.set(generateData(1));
     fixture.detectChanges();
     expect(component.dataSource.paginator).toBe(mockPaginator);
@@ -177,5 +174,12 @@ describe('VizTableComponent', () => {
   it('should return empty classes when no thresholds apply', () => {
     const classes = component.getCellClass({ name: 'foo' }, 'name');
     expect(classes).toBe('');
+    expect(component.getCellAriaLabel({ name: 'foo' }, 'name')).toBeNull();
+  });
+
+  it('should return localized aria-label for warning and critical threshold cells', () => {
+    configSig.set({ thresholds: { warning: 80, critical: 90 } });
+    expect(component.getCellAriaLabel({ census: 85 }, 'census')).toBe('Warning: 85');
+    expect(component.getCellAriaLabel({ census: 95 }, 'census')).toBe('Critical: 95');
   });
 });

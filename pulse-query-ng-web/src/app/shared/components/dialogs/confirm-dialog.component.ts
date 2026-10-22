@@ -40,7 +40,7 @@ export interface ConfirmDialogData {
         [mat-dialog-close]="true"
         cdkFocusInitial
       >
-        {{ data.confirmJson || 'Confirm' }}
+        {{ data.confirmJson || defaultConfirmLabel }}
       </button>
     </mat-dialog-actions>
   `,
@@ -53,6 +53,8 @@ export interface ConfirmDialogData {
   ],
 })
 export class ConfirmDialogComponent {
+  /** Localized fallback label when `data.confirmJson` is omitted. */
+  readonly defaultConfirmLabel = $localize`Confirm`;
   /** Injected dialog configuration data specifying the title, message, and button styling. */
   public data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
   /** Reference to the active Material dialog instance. */

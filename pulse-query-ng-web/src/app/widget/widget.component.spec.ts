@@ -421,11 +421,24 @@ describe('WidgetComponent', () => {
     });
   });
 
-  it('should ignore simulate widget if TEMPLATE', () => {
+  it('should navigate to simulation with templateId if widget is TEMPLATE', () => {
     setInputSignal(component, 'widgetInput', {
       ...mockWidget,
       type: 'TEMPLATE',
       config: { template_id: 't1' },
+    });
+    fixture.detectChanges();
+    component.simulateWidget();
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/simulation'], {
+      queryParams: { templateId: 't1' },
+    });
+  });
+
+  it('should not navigate on simulateWidget if neither SQL query nor TEMPLATE id is present', () => {
+    setInputSignal(component, 'widgetInput', {
+      ...mockWidget,
+      type: 'HTTP',
+      config: {},
     });
     fixture.detectChanges();
     component.simulateWidget();
@@ -544,5 +557,8 @@ describe('WidgetComponent', () => {
     // Completely empty dataMap (res is undefined)
     dataMapSig.set({});
     component.exportWidgetData();
+    expect(component.typedDataAsMetric()).toBeUndefined();
+    expect(component.typedDataAsScalar()).toBeUndefined();
+    expect(component.markdownContent()).toBeUndefined();
   });
 });

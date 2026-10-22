@@ -4,7 +4,7 @@
  */
 
 import { DATE_NOW } from '../../core/time.token';
-import { Injectable, signal, computed, Signal, inject } from '@angular/core';
+import { Service, signal, computed, Signal, inject } from '@angular/core';
 
 /**
  * Command interface for undoable actions.
@@ -67,9 +67,7 @@ const MAX_HISTORY_SIZE = 50;
  * undoService.redo();
  * ```
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class UndoRedoService {
   /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);

@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 import logging
 from typing import Any
 
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+
 logger = logging.getLogger("diagnostics")
 
 
@@ -265,12 +267,12 @@ def format_missing_template_warning_banner(file_path: str) -> str:
   return "\n".join(lines)
 
 
-def check_configuration_hygiene(settings_obj: Any) -> list[str]:
+def check_configuration_hygiene(settings_obj: object) -> list[str]:
   """
   Validates application configuration for development defaults or missing critical keys.
 
   Args:
-      settings_obj (Any): Application settings object.
+      settings_obj (object): Application settings object.
 
   Returns:
       list[str]: List of identified warning messages.
@@ -310,3 +312,25 @@ def check_configuration_hygiene(settings_obj: Any) -> list[str]:
     diagnostics_registry.llm_status["mock_mode"] = False
 
   return warnings_found
+
+
+def check_configuration_hygiene_result(settings_obj: object) -> AppResult[list[str]]:
+  """
+  Validates application configuration and returns an explicit `AppResult[list[str]]`.
+
+  Args:
+      settings_obj (object): Application settings object.
+
+  Returns:
+      AppResult[list[str]]: `Ok(warnings)` if `SECRET_KEY` is non-empty, or `Err(AppError)` with `CONFIGURATION_ERROR`.
+  """
+  secret_key = str(getattr(settings_obj, "SECRET_KEY", "") or "").strip()
+  if not secret_key:
+    return Err(
+      AppError(
+        code=ErrorCode.CONFIGURATION_ERROR,
+        message="SECRET_KEY must not be empty.",
+        status_code=500,
+      )
+    )
+  return Ok(check_configuration_hygiene(settings_obj))

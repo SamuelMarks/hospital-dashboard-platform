@@ -5,18 +5,17 @@ Verifies refresh token issuance, rotation, replay detection, session revocation,
 and secure password reset flows.
 """
 
-from typing import Any
-
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
 
 
 @pytest.mark.asyncio
-async def test_auth_refresh_token_lifecycle(client: AsyncClient, db_session: Any) -> None:
+async def test_auth_refresh_token_lifecycle(client: AsyncClient, db_session: AsyncSession) -> None:
   """Test login issuing refresh token, token rotation, and replay rejection."""
   # 1. Register and login
   email = f"refresh_{uuid.uuid4().hex[:8]}@hospital.org"
@@ -94,6 +93,15 @@ async def test_auth_refresh_invalid_tokens(client: AsyncClient) -> None:
   assert res_no_sub.status_code == 401
   assert "invalid token payload" in res_no_sub.json()["detail"].lower()
 
+  # Case 4: Token with non-UUID 'sub'
+  token_bad_uuid = jwt.encode(
+    {"type": "refresh", "sub": "not-a-valid-uuid", "jti": "j2"},
+    settings.SECRET_KEY,
+    algorithm=settings.ALGORITHM,
+  )
+  res_bad_uuid = await client.post("/api/v1/auth/refresh", json={"refresh_token": token_bad_uuid})
+  assert res_bad_uuid.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_auth_revoke_edge_cases(client: AsyncClient) -> None:
@@ -119,7 +127,7 @@ async def test_auth_revoke_edge_cases(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_password_reset_flow(client: AsyncClient, db_session: Any) -> None:
+async def test_password_reset_flow(client: AsyncClient, db_session: AsyncSession) -> None:
   """Test forgot password token generation and password reset execution."""
   email = f"reset_{uuid.uuid4().hex[:8]}@hospital.org"
   password = "InitialPassword123!"

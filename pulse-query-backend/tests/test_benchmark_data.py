@@ -12,7 +12,8 @@ from typing import Any
 
 import pytest
 
-from app.services.runners.sql import SQLSecurityError, validate_query_ast
+from app.core.result import Err, Ok
+from app.services.runners.sql import SQLSecurityError, validate_query_ast, validate_query_ast_result
 
 # Path definition
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,8 @@ def benchmark_data() -> list[dict[str, Any]]:
     pytest.fail(f"Benchmark file missing at {DATA_FILE}")
 
   with open(DATA_FILE, "r", encoding="utf-8") as f:
-    return json.load(f)
+    data: list[dict[str, Any]] = json.load(f)
+    return data
 
 
 def test_meta_header_exists(benchmark_data: list[dict[str, Any]]) -> None:
@@ -72,14 +74,15 @@ def test_sql_syntax_validity(benchmark_data: list[dict[str, Any]]) -> None:
       assert "PROBABILITY" in sql or "probability_pct" in sql
 
     # 3. Syntax Check via SQLGlot (Application Service)
-    try:
-      validate_query_ast(sql)
-    except SQLSecurityError:
-      pytest.fail(f"Invalid SQL Syntax in Benchmark Data for theme: {theme}")
-    except Exception as e:
-      # We forgive read-only errors if they occur contextually, but parser errors are fatal
-      if "syntax" in str(e).lower():
-        pytest.fail(f"Syntax error in {theme}: {e}")
+    ast_result = validate_query_ast_result(sql)
+    assert isinstance(ast_result, Ok), f"Invalid SQL Syntax in Benchmark Data for theme '{theme}': {ast_result}"
+    validate_query_ast(sql)
+
+  # 4. Negative check ensuring validator genuinely rejects malformed SQL
+  bad_result = validate_query_ast_result("SELECT FROM WHERE ???")
+  assert isinstance(bad_result, Err)
+  with pytest.raises(SQLSecurityError):
+    validate_query_ast("SELECT FROM WHERE ???")
 
 
 def test_schema_concordance(benchmark_data: list[dict[str, Any]]) -> None:

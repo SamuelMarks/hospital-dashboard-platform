@@ -81,21 +81,24 @@ describe('AlertRulesComponent', () => {
   });
 
   it('should validate form fields', () => {
-    const form = component.ruleForm;
-    form.patchValue({ unit_category: '', threshold_percentage: 0 });
-    expect(form.invalid).toBe(true);
+    component.ruleFormModel.update((m) => ({
+      ...m,
+      unit_category: '',
+      threshold_percentage: 0,
+    }));
+    expect(component.ruleForm().invalid()).toBe(true);
 
     component.submitRule();
     expect(
       alertRulesServiceMock.createAlertRuleApiV1AnalyticsAlertRulesPost,
     ).not.toHaveBeenCalled();
 
-    form.patchValue({ threshold_percentage: 150 });
-    expect(form.get('threshold_percentage')?.hasError('max')).toBe(true);
+    component.ruleFormModel.update((m) => ({ ...m, threshold_percentage: 150 }));
+    expect(component.ruleForm.threshold_percentage().invalid()).toBe(true);
   });
 
   it('should create a new alert rule on valid submit', () => {
-    component.ruleForm.patchValue({
+    component.ruleFormModel.set({
       unit_category: 'Pediatrics',
       threshold_percentage: 75,
       severity: AlertSeverity.Info,
@@ -116,7 +119,7 @@ describe('AlertRulesComponent', () => {
       throwError(() => new Error('Server error')),
     );
 
-    component.ruleForm.patchValue({
+    component.ruleFormModel.set({
       unit_category: 'Pediatrics',
       threshold_percentage: 75,
       severity: AlertSeverity.Info,
@@ -135,12 +138,13 @@ describe('AlertRulesComponent', () => {
       is_active: undefined as unknown as boolean,
     });
     expect(component.editingRuleId()).toBe('rule-1');
-    expect(component.ruleForm.value.unit_category).toBe('ICU');
+    expect(component.ruleFormModel().unit_category).toBe('ICU');
 
-    component.ruleForm.patchValue({
+    component.ruleFormModel.update((m) => ({
+      ...m,
       threshold_percentage: 95,
       is_active: null as unknown as boolean,
-    });
+    }));
     component.submitRule();
 
     expect(
@@ -154,7 +158,7 @@ describe('AlertRulesComponent', () => {
     expect(component.editingRuleId()).toBeNull();
 
     // Also test create branch with is_active: null
-    component.ruleForm.patchValue({
+    component.ruleFormModel.set({
       unit_category: 'NICU',
       threshold_percentage: 80,
       severity: AlertSeverity.Info,
@@ -187,7 +191,7 @@ describe('AlertRulesComponent', () => {
 
     component.cancelEditing();
     expect(component.editingRuleId()).toBeNull();
-    expect(component.ruleForm.value.unit_category).toBe('');
+    expect(component.ruleFormModel().unit_category).toBe('');
   });
 
   it('should toggle rule active state', () => {

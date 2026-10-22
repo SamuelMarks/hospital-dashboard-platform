@@ -4,7 +4,6 @@
     <div class="flex gap-2">
       <!-- Copy -->
       <button
-        i18n
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="copy()"
@@ -13,12 +12,11 @@
         i18n-matTooltip
         matTooltip="Copy to Clipboard"
       >
-        <mat-icon style="font-size: 16px">content_copy</mat-icon>
+        <mat-icon aria-hidden="true" style="font-size: 16px">content_copy</mat-icon>
       </button>
 
       <!-- Cart Action -->
       <button
-        i18n
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="emitAddToCart()"
@@ -28,11 +26,10 @@
         matTooltip="Save to Query Cart"
         data-testid="btn-cart"
       >
-        <mat-icon style="font-size: 16px">shopping_cart</mat-icon>
+        <mat-icon aria-hidden="true" style="font-size: 16px">shopping_cart</mat-icon>
       </button>
 
       <button
-        i18n
         mat-icon-button
         class="scale-75 text-gray-400 hover:text-white"
         (click)="emitSimulate()"
@@ -41,7 +38,7 @@
         i18n-matTooltip
         matTooltip="Simulate Scenario"
       >
-        <mat-icon style="font-size: 16px">science</mat-icon>
+        <mat-icon aria-hidden="true" style="font-size: 16px">science</mat-icon>
       </button>
 
       <button
@@ -52,12 +49,15 @@
         (click)="emitRun()"
         [disabled]="!sql()"
       >
-        <mat-icon class="mr-1 text-xs" style="font-size: 14px; width: 14px; height: 14px"
+        <mat-icon
+          aria-hidden="true"
+          class="mr-1 text-xs"
+          style="font-size: 14px; width: 14px; height: 14px"
           >play_arrow</mat-icon
         >
         Run
       </button>
     </div>
   </div>
-  <div class="code-block" [innerHTML]="highlightedSql"></div>
+  <div class="code-block" [innerHTML]="highlightedSql()"></div>
 </div>

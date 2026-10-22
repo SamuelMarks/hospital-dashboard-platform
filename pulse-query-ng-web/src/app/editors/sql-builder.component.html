@@ -6,15 +6,18 @@
     (selectedIndexChange)="selectedTabIndex.set($event)"
     animationDuration="0ms"
   >
-    <mat-tab i18n label="Code Editor" i18n-label>
+    <mat-tab label="Code Editor" i18n-label>
       <div class="flex flex-col h-full p-4 gap-4 overflow-hidden">
         <!-- Error Banner -->
         @if (validationError()) {
           <div class="error-banner" data-testid="error-banner" role="alert">
-            <mat-icon class="icon-sm" style="font-size: 18px; width: 18px; height: 18px"
+            <mat-icon
+              aria-hidden="true"
+              class="icon-sm"
+              style="font-size: 18px; width: 18px; height: 18px"
               >cancel</mat-icon
             >
-            <div class="flex-1"><strong>Syntax Error:</strong> {{ validationError() }}</div>
+            <div class="flex-1"><strong i18n>Syntax Error:</strong> {{ validationError() }}</div>
             <button
               mat-icon-button
               class="icon-btn-micro"
@@ -22,7 +25,7 @@
               i18n-aria-label
               aria-label="Dismiss Error"
             >
-              <mat-icon style="font-size: 16px">close</mat-icon>
+              <mat-icon aria-hidden="true" style="font-size: 16px">close</mat-icon>
             </button>
           </div>
         }
@@ -43,7 +46,8 @@
             i18n-aria-label
             aria-label="Inject Global Filters"
           >
-            <mat-icon class="mr-1">data_object</mat-icon> Insert Param
+            <mat-icon aria-hidden="true" class="mr-1">data_object</mat-icon>
+            <span i18n>Insert Param</span>
           </button>
           <mat-menu #paramsMenu="matMenu">
             @for (key of availableParams(); track key) {
@@ -55,7 +59,7 @@
               </button>
             }
             @if (availableParams().length === 0) {
-              <div class="px-4 py-2 text-xs" style="color: var(--sys-text-secondary)">
+              <div i18n class="px-4 py-2 text-xs" style="color: var(--sys-text-secondary)">
                 No global params set
               </div>
             }
@@ -70,15 +74,15 @@
                 i18n-matTooltip
                 matTooltip="Save query to cart"
               >
-                <mat-icon class="mr-1">shopping_cart</mat-icon>
-                Save to Cart
+                <mat-icon aria-hidden="true" class="mr-1">shopping_cart</mat-icon>
+                <span i18n>Save to Cart</span>
               </button>
             }
             <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
               @if (isRunning()) {
                 <mat-spinner diameter="20" class="mr-2"></mat-spinner>
               }
-              Run Query
+              <span i18n>Run Query</span>
             </button>
           </div>
         </div>
@@ -90,6 +94,7 @@
               <viz-table [dataSet]="res" class="h-full block w-full"></viz-table>
             } @else if (isRunning()) {
               <div
+                i18n
                 class="flex items-center justify-center h-full"
                 style="color: var(--sys-text-secondary)"
               >
@@ -97,6 +102,7 @@
               </div>
             } @else {
               <div
+                i18n
                 class="flex items-center justify-center h-full"
                 style="color: var(--sys-text-secondary)"
               >
@@ -109,7 +115,7 @@
     </mat-tab>
 
     <!-- AI Tab: Implements the Conversation UI requirements -->
-    <mat-tab i18n label="AI Assistant" i18n-label>
+    <mat-tab label="AI Assistant" i18n-label>
       <div class="ai-wrapper">
         <app-conversation class="h-full"></app-conversation>
       </div>

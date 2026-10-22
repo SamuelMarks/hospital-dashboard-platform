@@ -1,7 +1,7 @@
 <div class="mb-6 flex justify-between items-center">
   <div>
     <h1 i18n class="text-2xl font-light mb-1">What-If Simulation</h1>
-    <p i18n class="text-gray-500">
+    <p i18n style="color: var(--sys-text-secondary)">
       Simulate patient flow and capacity constraints using the MPAX solver.
     </p>
   </div>
@@ -21,7 +21,7 @@
           class="mr-2"
         ></mat-progress-spinner>
       } @else {
-        <mat-icon>play_arrow</mat-icon>
+        <mat-icon aria-hidden="true">play_arrow</mat-icon>
       }
       Run Optimization
     </button>
@@ -30,8 +30,8 @@
 
 @if (store.error(); as err) {
   <div class="error-box error-banner" role="alert">
-    <mat-icon i18n class="mr-2 align-middle">error</mat-icon>
-    <span i18n>{{ err }}</span>
+    <mat-icon aria-hidden="true" class="mr-2 align-middle">error</mat-icon>
+    <span>{{ err }}</span>
   </div>
 }
 
@@ -39,7 +39,7 @@
   <!-- Left: Demand SQL -->
   <mat-card class="panel">
     <h3 i18n class="font-medium text-lg mb-4">Patient Demand (SQL)</h3>
-    <p i18n class="text-xs text-gray-500 mb-4">
+    <p i18n class="text-xs mb-4" style="color: var(--sys-text-secondary)">
       Query must return: <code>Service</code>, <code>Unit</code> (optional), and <code>Count</code>.
     </p>
 
@@ -59,7 +59,7 @@
     <div class="flex justify-between items-center mb-4">
       <h3 i18n class="font-medium text-lg">Unit Capacities</h3>
       <button i18n mat-button color="primary" (click)="addCapacity()">
-        <mat-icon>add</mat-icon> Add Unit
+        <mat-icon aria-hidden="true">add</mat-icon> Add Unit
       </button>
     </div>
 
@@ -86,7 +86,6 @@
           </mat-form-field>
 
           <button
-            i18n
             mat-icon-button
             i18n-aria-label
             aria-label="Remove"
@@ -95,13 +94,15 @@
             i18n-matTooltip
             matTooltip="Remove"
           >
-            <mat-icon>delete</mat-icon>
+            <mat-icon aria-hidden="true">delete</mat-icon>
           </button>
         </div>
       }
 
       @if (store.capacityParams().length === 0) {
-        <div i18n class="text-center text-gray-400 p-4">No capacity constraints defined.</div>
+        <div i18n class="text-center p-4" style="color: var(--sys-text-secondary)">
+          No capacity constraints defined.
+        </div>
       }
     </div>
   </mat-card>

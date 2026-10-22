@@ -15,6 +15,9 @@ import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetReorderItem
 import io.healthplatform.pulsequery.api.models.WidgetReorderRequest
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.core.undo.DashboardCommand
 import io.healthplatform.pulsequery.core.undo.UndoRedoManager
 import io.healthplatform.pulsequery.database.WidgetCacheStorage
@@ -145,7 +148,7 @@ class DashboardViewModel(
     fun loadDashboards(errorPrefix: String = "Failed to load dashboards: ") {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentDashboardsApi.listDashboardsApiV1DashboardsGet().body()
             }.fold(
                 onSuccess = { fetched -> onDashboardsLoaded(fetched) },
@@ -190,7 +193,7 @@ class DashboardViewModel(
             )
             _state.update { it.copy(isOfflineSnapshot = true, errorMessage = null, widgetDataMap = restored) }
         } else {
-            _state.update { it.copy(errorMessage = errorPrefix + (error.message ?: "Unknown error")) }
+            _state.update { it.copy(errorMessage = errorPrefix + error.messageOrDefault("Unknown error")) }
         }
     }
 
@@ -245,7 +248,7 @@ class DashboardViewModel(
         }
 
         val globalFilters = buildGlobalFilterPayload(_state.value)
-        runCatching {
+        runCatchingPulseAsync {
             currentExecutionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
                 dashboardId = dashboard.id,
                 requestBody = globalFilters
@@ -294,7 +297,7 @@ class DashboardViewModel(
             _state.update { it.copy(widgetDataMap = textMap + restored, isOfflineSnapshot = true) }
         } else {
             val errMap = executableWidgets.associate { w ->
-                w.id to WidgetRenderState(errorMessage = error.message ?: "Failed to load data")
+                w.id to WidgetRenderState(errorMessage = error.messageOrDefault("Failed to load data"))
             }
             _state.update { it.copy(widgetDataMap = textMap + errMap) }
         }
@@ -319,11 +322,11 @@ class DashboardViewModel(
     fun createDashboard(name: String, errorPrefix: String = "Failed to create dashboard: ") {
         if (name.isBlank()) return
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentDashboardsApi.createDashboardApiV1DashboardsPost(DashboardCreate(name = name))
             }.fold(
                 onSuccess = { loadDashboards() },
-                onFailure = { e -> _state.update { it.copy(errorMessage = errorPrefix + (e.message ?: "Unknown error")) } }
+                onFailure = { e -> _state.update { it.copy(errorMessage = errorPrefix + e.messageOrDefault("Unknown error")) } }
             )
         }
     }
@@ -336,14 +339,14 @@ class DashboardViewModel(
      */
     fun deleteDashboard(id: String, errorPrefix: String = "Failed to delete dashboard: ") {
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentDashboardsApi.deleteDashboardApiV1DashboardsDashboardIdDelete(id)
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(activeDashboard = null) }
                     loadDashboards()
                 },
-                onFailure = { e -> _state.update { it.copy(errorMessage = errorPrefix + (e.message ?: "Unknown error")) } }
+                onFailure = { e -> _state.update { it.copy(errorMessage = errorPrefix + e.messageOrDefault("Unknown error")) } }
             )
         }
     }
@@ -362,14 +365,14 @@ class DashboardViewModel(
             undoRedoManager.executeCommand(object : DashboardCommand {
                 override val description: String = "Delete Widget ${widget.title}"
 
-                override suspend fun execute(): Result<Unit> = runCatching {
+                override suspend fun execute(): Result<Unit> = runCatchingPulseAsync {
                     currentDashboardsApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(currentWidgetId)
                     loadDashboards()
                 }.onFailure { e ->
-                    _state.update { it.copy(errorMessage = errorPrefix + (e.message ?: "Unknown error")) }
+                    _state.update { it.copy(errorMessage = errorPrefix + e.messageOrDefault("Unknown error")) }
                 }
 
-                override suspend fun undo(): Result<Unit> = runCatching {
+                override suspend fun undo(): Result<Unit> = runCatchingPulseAsync {
                     val recreated = currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                         dashboardId = widget.dashboardId,
                         widgetIn = savedWidgetIn
@@ -406,7 +409,7 @@ class DashboardViewModel(
         currentWidgets.add(targetIndex, moved)
         _state.update { it.copy(activeDashboard = currentDb.copy(widgets = currentWidgets)) }
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 val req = WidgetReorderRequest(
                     items = currentWidgets.mapIndexed { idx, w -> WidgetReorderItem(id = w.id, order = idx) }
                 )

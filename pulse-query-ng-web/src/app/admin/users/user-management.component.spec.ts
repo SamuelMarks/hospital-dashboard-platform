@@ -78,9 +78,8 @@ describe('UserManagementComponent', () => {
   });
 
   it('should filter by search query and role', () => {
-    component.searchControl.setValue('nurse');
-    component.roleFilterControl.setValue('CHARGE_NURSE');
-    component.fetchUsers();
+    component.onSearchInput({ target: { value: 'nurse' } } as unknown as Event);
+    component.onRoleFilterChange('CHARGE_NURSE');
 
     expect(adminUsersServiceMock.listUsersApiV1AdminUsersGet).toHaveBeenCalledWith(
       50,

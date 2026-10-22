@@ -2,7 +2,8 @@
  * @fileoverview Single-scalar and correlation coefficient gauge visualization component.
  */
 
-import { Component, input, computed, Signal } from '@angular/core';
+import { Component, input, computed, Signal, inject, LOCALE_ID } from '@angular/core';
+import { formatNumber } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 
@@ -65,20 +66,22 @@ export interface ScalarData {
         color: var(--sys-text-secondary);
         text-align: center;
       }
-      ::ng-deep .gauge-pos .mdc-linear-progress__bar-inner {
-        border-color: var(--sys-success) !important;
+      .gauge-pos {
+        --mdc-linear-progress-active-indicator-color: var(--sys-success);
       }
-      ::ng-deep .gauge-neg .mdc-linear-progress__bar-inner {
-        border-color: var(--sys-error) !important;
+      .gauge-neg {
+        --mdc-linear-progress-active-indicator-color: var(--sys-error);
       }
-      ::ng-deep .gauge-neutral .mdc-linear-progress__bar-inner {
-        border-color: var(--sys-text-secondary) !important;
+      .gauge-neutral {
+        --mdc-linear-progress-active-indicator-color: var(--sys-text-secondary);
       }
     `,
   ],
   templateUrl: './viz-scalar.component.html',
 })
 export class VizScalarComponent {
+  /** Injected application locale identifier. */
+  private readonly localeId = inject(LOCALE_ID);
   /** Scalar or single-row tabular dataset to display. */
   readonly data = input<ScalarData | null>();
 
@@ -102,8 +105,8 @@ export class VizScalarComponent {
   readonly formattedValue = computed(() => {
     const v = this.value();
     if (v === null) return '-';
-    if (Math.abs(v) <= 1) return v.toFixed(2);
-    return v.toLocaleString();
+    if (Math.abs(v) <= 1) return formatNumber(v, this.localeId, '1.2-2');
+    return formatNumber(v, this.localeId);
   });
 
   /** Computed uppercase label derived from the dataset's primary column name. */
@@ -111,7 +114,7 @@ export class VizScalarComponent {
     const d = this.data();
     if (d?.columns && d.columns.length > 0)
       return d.columns.find((c: string) => c !== 'value') || (d.columns[0] as string);
-    return 'Result';
+    return $localize`Result`;
   });
 
   /** Computed flag indicating whether the scalar represents a correlation or probability in `[-1, 1]`. */
@@ -146,9 +149,9 @@ export class VizScalarComponent {
   readonly strengthLabel = computed(() => {
     const v = this.value() || 0;
     const abs = Math.abs(v);
-    if (abs < 0.3) return 'Weak / No Correlation';
-    if (abs < 0.7) return 'Moderate Correlation';
-    return 'Strong Correlation';
+    if (abs < 0.3) return $localize`Weak / No Correlation`;
+    if (abs < 0.7) return $localize`Moderate Correlation`;
+    return $localize`Strong Correlation`;
   });
 
   /** Computed CSS color variable matching the sign and strength of the correlation. */

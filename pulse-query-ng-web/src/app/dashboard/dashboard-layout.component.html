@@ -55,7 +55,13 @@
           >
             <!-- Drag Handle Overlay -->
             @if (store.isEditMode() && !isTvMode()) {
-              <div class="drag-handle-overlay" cdkDragHandle data-testid="drag-handle">
+              <div
+                class="drag-handle-overlay"
+                cdkDragHandle
+                i18n-aria-label
+                aria-label="Drag widget to reorder"
+                data-testid="drag-handle"
+              >
                 <mat-icon fontIcon="drag_indicator" aria-hidden="true"></mat-icon>
               </div>
             }
@@ -76,7 +82,14 @@
 
             <!-- Resize Handle -->
             @if (store.isEditMode() && !isTvMode()) {
-              <div class="resize-handle" (mousedown)="startResizing($event, widget)"></div>
+              <div
+                class="resize-handle"
+                role="separator"
+                tabindex="0"
+                i18n-aria-label
+                aria-label="Resize widget"
+                (mousedown)="startResizing($event, widget)"
+              ></div>
             }
           </div>
         }
@@ -108,8 +121,18 @@
 
 <!-- Focus / Zen Mode Overlay -->
 @if (store.focusedWidget(); as focused) {
-  <div class="focus-overlay" role="dialog" aria-modal="true" (click)="store.setFocusedWidget(null)">
-    <div class="focus-container mat-elevation-z24" (click)="$event.stopPropagation()">
+  <div
+    class="focus-overlay"
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+    appFocusTrap
+    [attr.aria-label]="focused.title"
+    (escape)="store.setFocusedWidget(null)"
+    (keydown.escape)="store.setFocusedWidget(null)"
+    (click)="onFocusOverlayClick($event)"
+  >
+    <div class="focus-container mat-elevation-z24">
       <app-widget
         [widget]="focused"
         class="h-full block"

@@ -2,21 +2,25 @@
 Tests for Network Security, SSRF Prevention, and DNS Rebinding Interception.
 """
 
-from typing import Any
-
 import ipaddress
 import socket
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
-from app.core.network_security import SafeAsyncHTTPTransport, is_ip_private_or_restricted, validate_safe_url
+from app.core.network_security import (
+  SafeAsyncHTTPTransport,
+  is_ip_private_or_restricted,
+  resolve_and_pin_safe_ip_result,
+  validate_safe_url,
+)
+from app.core.result import Err, Ok
 from app.services.runners.http import run_http_widget
 
 
 def test_is_ip_private_or_restricted_comprehensive() -> None:
-  """Test is_ip_private_or_restricted across IPv4, IPv6, mapped, and carrier NAT."""
+  """Test `is_ip_private_or_restricted` across IPv4, IPv6, mapped, 6to4, Teredo, NAT64, and carrier NAT."""
   # Loopback
   assert is_ip_private_or_restricted(ipaddress.ip_address("127.0.0.1"))
   assert is_ip_private_or_restricted(ipaddress.ip_address("::1"))
@@ -36,63 +40,78 @@ def test_is_ip_private_or_restricted_comprehensive() -> None:
   # IPv4-mapped IPv6
   assert is_ip_private_or_restricted(ipaddress.ip_address("::ffff:127.0.0.1"))
   assert is_ip_private_or_restricted(ipaddress.ip_address("::ffff:169.254.169.254"))
+  assert not is_ip_private_or_restricted(ipaddress.ip_address("::ffff:8.8.8.8"))
+
+  # 6to4 (2002::/16) embedding 127.0.0.1 (2002:7f00:0001::1) and 8.8.8.8 (2002:0808:0808::1)
+  assert is_ip_private_or_restricted(ipaddress.ip_address("2002:7f00:0001::1"))
+  assert not is_ip_private_or_restricted(ipaddress.ip_address("2002:0808:0808::1"))
+
+  # Teredo (2001::/32)
+  assert is_ip_private_or_restricted(ipaddress.ip_address("2001:0000:4136:e378:8000:63bf:3fff:fdd2"))
+  assert is_ip_private_or_restricted(ipaddress.ip_address("2001:0000:7f00:0001:0000:0000:f7f7:f7f7"))
+
+  # NAT64 (64:ff9b::/96) embedding 127.0.0.1 and 8.8.8.8
+  assert is_ip_private_or_restricted(ipaddress.ip_address("64:ff9b::127.0.0.1"))
+  assert not is_ip_private_or_restricted(ipaddress.ip_address("64:ff9b::8.8.8.8"))
 
   # Global / Public IP
   assert not is_ip_private_or_restricted(ipaddress.ip_address("8.8.8.8"))
   assert not is_ip_private_or_restricted(ipaddress.ip_address("93.184.216.34"))
+  assert not is_ip_private_or_restricted(ipaddress.ip_address("2606:4700:4700::1111"))
 
 
 def test_validate_safe_url_blocks_localhost_and_internal() -> None:
   """Test that local hostnames and loopback addresses are rejected."""
   is_safe, err = validate_safe_url("http://localhost:8080/api")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
   is_safe, err = validate_safe_url("http://127.0.0.1:5432")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
   is_safe, err = validate_safe_url("http://169.254.169.254/latest/meta-data")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
   is_safe, err = validate_safe_url("http://10.0.0.5/internal")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
   is_safe, err = validate_safe_url("http://192.168.1.1/admin")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
 
 def test_validate_safe_url_blocks_decimal_and_hex_ips() -> None:
   """Test that decimal integer and hex encoded IP hostnames are rejected when private, accepted when public."""
-  # 2130706433 is 127.0.0.1 (private)
   is_safe, err = validate_safe_url("http://2130706433/api")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
-  # 1568222498 is 93.184.216.34 (public)
   is_safe, err = validate_safe_url("http://1568222498/api")
   assert is_safe
   assert err is None
 
-  # Out of range decimal integer
   with patch("app.core.network_security.socket.getaddrinfo", side_effect=socket.gaierror):
     is_safe, err = validate_safe_url("http://99999999999999/api")
     assert is_safe
 
-  # 0x7f000001 is 127.0.0.1 (private)
   is_safe, err = validate_safe_url("http://0x7f000001/api")
   assert not is_safe
+  assert err is not None
   assert "prohibited" in err.lower()
 
-  # 0x5db8d822 is 93.184.216.34 (public)
   is_safe, err = validate_safe_url("http://0x5db8d822/api")
   assert is_safe
   assert err is None
 
-  # Invalid hex representation
   with patch("app.core.network_security.socket.getaddrinfo", side_effect=socket.gaierror):
     is_safe, err = validate_safe_url("http://0xinvalidhex/api")
     assert is_safe
@@ -102,10 +121,12 @@ def test_validate_safe_url_blocks_unsupported_schemes() -> None:
   """Test that non-HTTP/HTTPS schemes are blocked."""
   is_safe, err = validate_safe_url("file:///etc/passwd")
   assert not is_safe
+  assert err is not None
   assert "unsupported scheme" in err.lower()
 
   is_safe, err = validate_safe_url("ftp://example.com/file")
   assert not is_safe
+  assert err is not None
   assert "unsupported scheme" in err.lower()
 
 
@@ -114,6 +135,7 @@ def test_validate_safe_url_invalid_inputs() -> None:
   assert not validate_safe_url("")[0]
   assert not validate_safe_url(None)[0]
   assert not validate_safe_url("http://")[0]
+  assert isinstance(resolve_and_pin_safe_ip_result(""), Err)
 
 
 def test_validate_safe_url_public_ip() -> None:
@@ -123,27 +145,25 @@ def test_validate_safe_url_public_ip() -> None:
   assert err is None
 
 
-def test_validate_safe_url_dns_resolution(monkeypatch: Any) -> None:
+def test_validate_safe_url_dns_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
   """Test DNS resolution branches for public, private, and malformed IPs."""
-  # Case 1: Host resolves to private IP
   monkeypatch.setattr(
     "app.core.network_security.socket.getaddrinfo",
     lambda host, port: [(None, None, None, None, ("10.200.1.1", 80))],
   )
   is_safe, err = validate_safe_url("http://custom.internal.domain/api")
   assert not is_safe
+  assert err is not None
   assert "resolves to restricted ip" in err.lower()
 
-  # Case 2: Host resolves to valid public IP
   monkeypatch.setattr(
     "app.core.network_security.socket.getaddrinfo",
-    lambda host, port: [(None, None, None, None, ("93.184.216.34", 80))],
+    lambda host, port: [(None, None, None, None, ("93.184.216.34", 80)), (None, None, None, None, ("93.184.216.35", 80))],
   )
   is_safe, err = validate_safe_url("http://public.service.org/api")
   assert is_safe
   assert err is None
 
-  # Case 3: Resolution produces an invalid IP string (ValueError in ipaddress)
   monkeypatch.setattr(
     "app.core.network_security.socket.getaddrinfo",
     lambda host, port: [(None, None, None, None, ("not-an-ip", 80))],
@@ -152,8 +172,20 @@ def test_validate_safe_url_dns_resolution(monkeypatch: Any) -> None:
   assert is_safe
   assert err is None
 
+  # Strict DNS fails closed when resolution produces no valid IP or raises gaierror
+  strict_empty = resolve_and_pin_safe_ip_result("http://public.service.org/api", strict_dns=True)
+  assert isinstance(strict_empty, Err)
 
-def test_validate_safe_url_parse_exception(monkeypatch: Any) -> None:
+  monkeypatch.setattr(
+    "app.core.network_security.socket.getaddrinfo",
+    lambda host, port: (_ for _ in ()).throw(socket.gaierror("DNS failed")),
+  )
+  strict_err = resolve_and_pin_safe_ip_result("http://unresolvable.invalid/api", strict_dns=True)
+  assert isinstance(strict_err, Err)
+  assert "dns resolution failed" in strict_err.error.message.lower()
+
+
+def test_validate_safe_url_parse_exception(monkeypatch: pytest.MonkeyPatch) -> None:
   """Test handling when urlparse raises an exception."""
   monkeypatch.setattr(
     "app.core.network_security.urlparse",
@@ -161,6 +193,7 @@ def test_validate_safe_url_parse_exception(monkeypatch: Any) -> None:
   )
   is_safe, err = validate_safe_url("http://example.com")
   assert not is_safe
+  assert err is not None
   assert "malformed url" in err.lower()
 
 
@@ -182,17 +215,17 @@ async def test_run_http_widget_blocks_ssrf() -> None:
   config = {"url": "http://127.0.0.1:8000/api/v1/system/diagnostics"}
   res = await run_http_widget(config)
   assert res["status"] == 403
+  assert res["error"] is not None
   assert "Security restriction" in res["error"]
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_redirect_interception() -> None:
   """Test that SafeAsyncHTTPTransport intercepts redirects to restricted IP addresses."""
-  # Simulate initial request passing validation, but transport intercepting redirected target
   config = {"url": "http://legit.external.api/redirect"}
 
   with (
-    patch("app.services.runners.http.validate_safe_url", return_value=(True, None)),
+    patch("app.services.runners.http.validate_safe_url_result", return_value=Ok("http://legit.external.api/redirect")),
     patch.object(
       SafeAsyncHTTPTransport,
       "handle_async_request",
@@ -202,32 +235,45 @@ async def test_run_http_widget_redirect_interception() -> None:
     res = await run_http_widget(config)
 
   assert res["status"] == 0
+  assert res["error"] is not None
   assert "Security restriction" in res["error"]
 
 
 @pytest.mark.asyncio
-async def test_resolve_and_pin_safe_ip_and_transport_extension() -> None:
-  """Verifies `resolve_and_pin_safe_ip_result` resolves and pins safe IPs on the request extension."""
-  from unittest.mock import AsyncMock
-
-  from app.core.network_security import resolve_and_pin_safe_ip_result
-  from app.core.result import Err, Ok
-
+async def test_resolve_and_pin_safe_ip_and_transport_rewriting() -> None:
+  """Verifies `SafeAsyncHTTPTransport` pins the resolved IP, sets SNI/Host headers, and rewrites URL when configured."""
   with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 0))]):
     res_ok = resolve_and_pin_safe_ip_result("https://example.com/api")
     assert isinstance(res_ok, Ok)
     assert res_ok.value == "93.184.216.34"
 
-    transport = SafeAsyncHTTPTransport()
-    req = httpx.Request("GET", "https://example.com/api")
+    # 1. With pin_ip_rewrite=True, request URL host is rewritten to the resolved IP, Host header & SNI preserved
+    transport_pin = SafeAsyncHTTPTransport(pin_ip_rewrite=True)
+    req_https = httpx.Request("GET", "https://example.com/api")
+    # Remove default host header to test auto-insertion, then also test when host header is already present
+    req_https.headers.pop("host", None)
     with patch.object(
       httpx.AsyncHTTPTransport,
       "handle_async_request",
       new=AsyncMock(return_value=httpx.Response(200)),
     ):
-      resp = await transport.handle_async_request(req)
+      resp = await transport_pin.handle_async_request(req_https)
       assert resp.status_code == 200
-      assert req.extensions.get("pinned_safe_ip") == "93.184.216.34"
+      assert req_https.extensions.get("pinned_safe_ip") == "93.184.216.34"
+      assert req_https.extensions.get("sni_hostname") == b"example.com"
+      assert req_https.headers["host"] == "example.com"
+      assert req_https.url.host == "93.184.216.34"
+
+    # Also test HTTP scheme with existing Host header and pre-set sni_hostname
+    req_http = httpx.Request("GET", "http://example.com/api", headers={"Host": "custom.example.com"})
+    with patch.object(
+      httpx.AsyncHTTPTransport,
+      "handle_async_request",
+      new=AsyncMock(return_value=httpx.Response(200)),
+    ):
+      await transport_pin.handle_async_request(req_http)
+      assert req_http.headers["host"] == "custom.example.com"
+      assert req_http.url.host == "93.184.216.34"
 
   with patch("socket.getaddrinfo", return_value=[]):
     res_empty = resolve_and_pin_safe_ip_result("https://example.com/api")

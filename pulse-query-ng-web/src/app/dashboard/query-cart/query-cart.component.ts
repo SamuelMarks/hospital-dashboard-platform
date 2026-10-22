@@ -194,7 +194,11 @@ export class QueryCartComponent {
   clear(): void {
     this.dialog
       .open(ConfirmDialogComponent, {
-        data: { title: 'Clear Cart', message: 'Remove all saved queries?', isDestructive: true },
+        data: {
+          title: $localize`Clear Cart`,
+          message: $localize`Remove all saved queries?`,
+          isDestructive: true,
+        },
       })
       .afterClosed()
       .subscribe((res) => {
@@ -219,7 +223,11 @@ export class QueryCartComponent {
   rename(item: QueryCartItem): void {
     this.dialog
       .open(PromptDialogComponent, {
-        data: { title: 'Rename Query', value: item.title, label: 'Title' },
+        data: {
+          title: $localize`Rename Query`,
+          value: item.title,
+          label: $localize`Title`,
+        },
       })
       .afterClosed()
       .subscribe((res) => {
@@ -237,10 +245,13 @@ export class QueryCartComponent {
     if (!dashboardId) return;
     this.provisioning.addToDashboard(item, dashboardId).subscribe({
       next: () => {
-        this.snackBar.open(`Added query: ${item.title}`, 'OK', { duration: 3000 });
+        this.snackBar.open($localize`Added query: ${item.title}`, $localize`OK`, {
+          duration: 3000,
+        });
         this.store.loadDashboard(dashboardId);
       },
-      error: () => this.snackBar.open('Failed to add query to dashboard', 'Close'),
+      error: () =>
+        this.snackBar.open($localize`Failed to add query to dashboard`, $localize`Close`),
     });
   }
 

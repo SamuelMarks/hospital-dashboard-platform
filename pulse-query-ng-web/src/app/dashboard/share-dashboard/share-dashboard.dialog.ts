@@ -2,8 +2,7 @@
  * @fileoverview Dialog component enabling granular multi-user dashboard sharing and permission management.
  */
 
-import { Component, Inject, OnInit, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -47,7 +46,6 @@ export interface DashboardShareItem {
 @Component({
   selector: 'app-share-dashboard-dialog',
   imports: [
-    FormsModule,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -80,10 +78,10 @@ export class ShareDashboardDialog implements OnInit {
   /** Reference to the dialog instance. */
   private readonly dialogRef = inject(MatDialogRef<ShareDashboardDialog>);
 
-  /** Input email string for new collaborator. */
-  emailInput = '';
-  /** Input permission level for new collaborator. */
-  roleInput: 'VIEW' | 'EDIT' = 'VIEW';
+  /** Signal holding the input email string for a new collaborator. */
+  readonly emailInput = signal('');
+  /** Signal holding the input permission level for a new collaborator. */
+  readonly roleInput = signal<'VIEW' | 'EDIT'>('VIEW');
 
   /** List of currently active shares. */
   readonly shares = signal<DashboardShareItem[]>([]);
@@ -102,6 +100,15 @@ export class ShareDashboardDialog implements OnInit {
   }
 
   /**
+   * Updates the collaborator email signal from an input event.
+   *
+   * @param event - DOM input event from the email field.
+   */
+  onEmailInput(event: Event): void {
+    this.emailInput.set((event.target as HTMLInputElement).value);
+  }
+
+  /**
    * Fetches active shares from the backend API.
    */
   loadShares(): void {
@@ -116,7 +123,7 @@ export class ShareDashboardDialog implements OnInit {
         },
         error: (err: { error?: { detail?: string } }) => {
           this.isLoading.set(false);
-          this.errorMessage.set(err?.error?.detail || 'Failed to load collaborators');
+          this.errorMessage.set(err?.error?.detail || $localize`Failed to load collaborators`);
         },
       });
   }
@@ -125,14 +132,15 @@ export class ShareDashboardDialog implements OnInit {
    * Adds or updates a collaborator share by email.
    */
   addShare(): void {
-    if (!this.emailInput.trim()) return;
+    const email = this.emailInput().trim();
+    if (!email) return;
 
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
     const payload = {
-      user_email: this.emailInput.trim(),
-      permission_level: this.roleInput,
+      user_email: email,
+      permission_level: this.roleInput(),
     };
 
     this.http
@@ -140,7 +148,7 @@ export class ShareDashboardDialog implements OnInit {
       .subscribe({
         next: (created) => {
           this.isSubmitting.set(false);
-          this.emailInput = '';
+          this.emailInput.set('');
           const existingIndex = this.shares().findIndex((s) => s.user_id === created.user_id);
           if (existingIndex >= 0) {
             const updated = [...this.shares()];
@@ -152,7 +160,7 @@ export class ShareDashboardDialog implements OnInit {
         },
         error: (err: { error?: { detail?: string } }) => {
           this.isSubmitting.set(false);
-          this.errorMessage.set(err?.error?.detail || 'Failed to share dashboard');
+          this.errorMessage.set(err?.error?.detail || $localize`Failed to share dashboard`);
         },
       });
   }
@@ -168,7 +176,7 @@ export class ShareDashboardDialog implements OnInit {
         this.shares.set(this.shares().filter((s) => s.id !== shareId));
       },
       error: (err: { error?: { detail?: string } }) => {
-        this.errorMessage.set(err?.error?.detail || 'Failed to revoke share');
+        this.errorMessage.set(err?.error?.detail || $localize`Failed to revoke share`);
       },
     });
   }

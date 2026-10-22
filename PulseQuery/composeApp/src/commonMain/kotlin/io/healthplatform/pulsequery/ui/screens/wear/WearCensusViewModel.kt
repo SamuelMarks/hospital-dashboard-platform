@@ -6,6 +6,8 @@ package io.healthplatform.pulsequery.ui.screens.wear
 
 import io.healthplatform.pulsequery.api.apis.AlertRulesApi
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,7 +53,7 @@ class WearCensusViewModel(
     fun loadWearData() {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 val alertRes = currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet()
                 alertRes.body()
             }.fold(
@@ -68,7 +70,7 @@ class WearCensusViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.message ?: "Failed to load wearable census alerts"
+                            errorMessage = e.messageOrDefault("Failed to load wearable census alerts")
                         )
                     }
                 }

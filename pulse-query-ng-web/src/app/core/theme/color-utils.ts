@@ -92,7 +92,7 @@ function mapSchemeToCssVars(scheme: Scheme, isDark: boolean): CssVariableMap {
 
     // Extensions for Semantic Feedback
     // M3 doesn't auto-generate "Success" or "Warn", so we use accessible statics or map to slots.
-    '--sys-warn': '#ffa000',
+    '--sys-warn': isDark ? '#ffb74d' : '#b26a00',
     '--sys-success': isDark ? '#81c784' : '#2e7d32', // Green 300 (Dark) / Green 800 (Light)
 
     // Surface / Background

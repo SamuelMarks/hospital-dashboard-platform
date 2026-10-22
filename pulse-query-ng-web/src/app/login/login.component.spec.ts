@@ -118,9 +118,11 @@ describe('LoginComponent', () => {
 
   it('should toggle password visibility', () => {
     createComponent();
+    expect(component.passwordToggleLabel()).toBe('Show password');
     const initial = component.hidePassword();
     component.togglePasswordVisibility(new Event('click'));
     expect(component.hidePassword()).toBe(!initial);
+    expect(component.passwordToggleLabel()).toBe('Hide password');
   });
 
   it('should redirect if already authenticated on init', () => {

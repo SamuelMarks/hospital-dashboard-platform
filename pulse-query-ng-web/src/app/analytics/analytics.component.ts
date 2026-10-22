@@ -4,7 +4,6 @@
  */
 import { Component, inject, signal, computed, linkedSignal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
@@ -21,13 +20,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 
-/** Analytics component. */
+/** Read-only analytics dashboard component for exploring LLM Arena outputs and selection rates. */
 @Component({
   selector: 'app-analytics',
   imports: [
     DatePipe,
-    ReactiveFormsModule,
     RouterLink,
     MatCardModule,
     MatButtonModule,
@@ -266,7 +265,7 @@ export class AnalyticsComponent implements OnInit {
    * @returns The extracted string value.
    */
   getEventValue(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+    return extractEventInputValue(event);
   }
 
   /** Analytics API client. */
@@ -291,6 +290,9 @@ export class AnalyticsComponent implements OnInit {
   readonly sqlFilter = signal('all');
   /** Source filter value. */
   readonly sourceFilter = signal('all');
+
+  /** Localized tooltip fallback when a row has no SQL snippet. */
+  readonly noSqlTooltip = $localize`No SQL snippet`;
 
   /** Table column order. */
   readonly displayedColumns = ['query', 'sql', 'llm', 'source', 'user', 'score', 'time'];
@@ -407,7 +409,7 @@ export class AnalyticsComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error(err);
-          this.error.set('Failed to load analytics. Please try again.');
+          this.error.set($localize`Failed to load analytics. Please try again.`);
         },
       });
   }
@@ -438,7 +440,7 @@ export class AnalyticsComponent implements OnInit {
    * @returns Human-readable selection status label.
    */
   scoreLabel(row: LlmAnalyticsRow): string {
-    return row.is_selected ? 'Selected' : 'Not selected';
+    return row.is_selected ? $localize`Selected` : $localize`Not selected`;
   }
 
   /**
@@ -448,6 +450,6 @@ export class AnalyticsComponent implements OnInit {
    * @returns Human-readable arena source label.
    */
   sourceLabel(row: LlmAnalyticsRow): string {
-    return row.source === 'ai' ? 'AI Arena' : 'Chat Arena';
+    return row.source === 'ai' ? $localize`AI Arena` : $localize`Chat Arena`;
   }
 }

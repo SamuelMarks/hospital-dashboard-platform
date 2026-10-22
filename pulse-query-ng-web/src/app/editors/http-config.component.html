@@ -84,20 +84,19 @@
                   />
                 </mat-form-field>
                 <button
-                  i18n
                   mat-icon-button
                   color="warn"
                   (click)="removeItem('params', $index)"
                   i18n-aria-label
                   aria-label="Remove Parameter"
                 >
-                  <mat-icon>delete</mat-icon>
+                  <mat-icon aria-hidden="true">delete</mat-icon>
                 </button>
               </div>
             }
           </div>
           <button i18n mat-button color="primary" (click)="addItem('params')">
-            <mat-icon>add</mat-icon> Add Parameter
+            <mat-icon aria-hidden="true">add</mat-icon> Add Parameter
           </button>
         </mat-expansion-panel>
 
@@ -131,20 +130,19 @@
                   />
                 </mat-form-field>
                 <button
-                  i18n
                   mat-icon-button
                   color="warn"
                   (click)="removeItem('headers', $index)"
                   i18n-aria-label
                   aria-label="Remove Header"
                 >
-                  <mat-icon>delete</mat-icon>
+                  <mat-icon aria-hidden="true">delete</mat-icon>
                 </button>
               </div>
             }
           </div>
           <button i18n mat-button color="primary" (click)="addItem('headers')">
-            <mat-icon>add</mat-icon> Add Header
+            <mat-icon aria-hidden="true">add</mat-icon> Add Header
           </button>
         </mat-expansion-panel>
 

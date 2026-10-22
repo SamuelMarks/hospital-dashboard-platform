@@ -25,14 +25,16 @@ import kotlinx.serialization.json.Json
  * @param engine Optional [io.ktor.client.engine.HttpClientEngine] for test mocking.
  * @param refreshTokenProvider Optional lambda providing the current refresh token.
  * @param onTokenRefreshed Optional callback invoked when tokens are refreshed.
+ * @param logWriter Configurable callback for emitting HTTP client diagnostic log lines.
  * @param tokenProvider A lambda providing the current authentication token.
  * @return A fully configured [HttpClient] instance.
  */
 fun createHttpClient(
-    baseUrl: String = "https://api.pulsequery.com", // Will be overridden via DI / Environment
+    baseUrl: String = "https://api.pulsequery.com",
     engine: io.ktor.client.engine.HttpClientEngine? = null,
     refreshTokenProvider: (() -> String?)? = null,
     onTokenRefreshed: ((String, String?) -> Unit)? = null,
+    logWriter: (String) -> Unit = {},
     tokenProvider: () -> String?
 ): HttpClient {
     val config: io.ktor.client.HttpClientConfig<*>.() -> Unit = {
@@ -60,7 +62,7 @@ fun createHttpClient(
         install(Logging) {
             logger = object : Logger {
                 override fun log(message: String) {
-                    println("HttpClient: $message")
+                    logWriter("HttpClient: $message")
                 }
             }
             level = LogLevel.INFO
@@ -74,6 +76,7 @@ fun createHttpClient(
             } else {
                 refreshTokenProvider?.invoke()?.let { refreshToken ->
                     onTokenRefreshed?.invoke(refreshToken, refreshToken)
+                    header(HttpHeaders.Authorization, "Bearer $refreshToken")
                 }
             }
         }

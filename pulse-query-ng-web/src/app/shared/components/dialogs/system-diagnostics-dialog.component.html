@@ -1,0 +1,227 @@
+<div class="dialog-header">
+  <div class="header-title">
+    <mat-icon color="primary" aria-hidden="true">health_and_safety</mat-icon>
+    <h2 i18n mat-dialog-title>System Health &amp; Diagnostics</h2>
+  </div>
+  <button i18n-aria-label mat-icon-button mat-dialog-close aria-label="Close diagnostics dialog">
+    <mat-icon aria-hidden="true">close</mat-icon>
+  </button>
+</div>
+
+<mat-dialog-content class="dialog-content">
+  <!-- Status Summary Banner -->
+  <div
+    class="status-banner"
+    [class.banner-healthy]="status() === 'healthy'"
+    [class.banner-degraded]="status() === 'degraded'"
+    [class.banner-critical]="status() === 'critical' || status() === 'unreachable'"
+  >
+    <mat-icon aria-hidden="true">{{
+      status() === 'healthy' ? 'check_circle' : status() === 'degraded' ? 'warning' : 'error'
+    }}</mat-icon>
+    <div class="banner-text">
+      <strong i18n>Overall State: {{ status() | uppercase }}</strong>
+      <span>{{ getStatusDescription() }}</span>
+    </div>
+    <button mat-stroked-button color="primary" (click)="refresh()" [disabled]="isRefreshing()">
+      @if (!isRefreshing()) {
+        <mat-icon aria-hidden="true">refresh</mat-icon>
+      } @else {
+        <mat-spinner diameter="16"></mat-spinner>
+      }
+      <span i18n>Test Now</span>
+    </button>
+  </div>
+
+  <!-- Component Cards Grid -->
+  <div class="cards-grid">
+    <!-- PostgreSQL Card -->
+    <mat-card class="subsystem-card" appearance="outlined">
+      <mat-card-header>
+        <mat-icon
+          mat-card-avatar
+          aria-hidden="true"
+          [class.color-success]="pgStatus() === 'connected'"
+          [class.color-error]="pgStatus() !== 'connected'"
+        >
+          {{ pgStatus() === 'connected' ? 'dns' : 'portable_wifi_off' }}
+        </mat-icon>
+        <mat-card-title i18n>PostgreSQL</mat-card-title>
+        <mat-card-subtitle>
+          @if (pgStatus() === 'connected') {
+            <span i18n>Connected</span>
+          } @else {
+            <span i18n>Unavailable</span>
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (health()?.postgres?.latency_ms !== null) {
+          <p i18n>
+            Latency: <strong>{{ health()?.postgres?.latency_ms }} ms</strong>
+          </p>
+        }
+        @if (health()?.postgres?.error) {
+          <p class="error-msg">
+            {{ health()?.postgres?.error }}
+          </p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- DuckDB Analytics Card -->
+    <mat-card class="subsystem-card" appearance="outlined">
+      <mat-card-header>
+        <mat-icon
+          mat-card-avatar
+          aria-hidden="true"
+          [class.color-success]="duckStatus() === 'ready'"
+          [class.color-error]="duckStatus() !== 'ready'"
+        >
+          storage
+        </mat-icon>
+        <mat-card-title i18n>DuckDB OLAP</mat-card-title>
+        <mat-card-subtitle>
+          @if (duckStatus() === 'ready') {
+            <span i18n>Ready</span>
+          } @else {
+            <span i18n>Error</span>
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p i18n>
+          Tables:
+          <strong>{{ health()?.duckdb?.total_tables || 0 }}</strong>
+        </p>
+        @if (health()?.duckdb?.error) {
+          <p class="error-msg">
+            {{ health()?.duckdb?.error }}
+          </p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Clinical Datasets Card -->
+    <mat-card class="subsystem-card" appearance="outlined">
+      <mat-card-header>
+        <mat-icon
+          mat-card-avatar
+          aria-hidden="true"
+          [class.color-success]="hasDefaultData()"
+          [class.color-warning]="!hasDefaultData()"
+        >
+          folder_shared
+        </mat-icon>
+        <mat-card-title i18n>Clinical Data</mat-card-title>
+        <mat-card-subtitle>
+          @if (hasDefaultData()) {
+            <span i18n>Default CSV Loaded</span>
+          } @else {
+            <span i18n>Fallback Dataset</span>
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (health()?.data?.fallback_generated) {
+          <p class="warning-msg" i18n>Default hospital_data.csv missing; sample data generated.</p>
+        }
+        <button mat-button color="accent" (click)="reingestData()" [disabled]="isReingesting()">
+          <mat-icon aria-hidden="true">sync</mat-icon>
+          @if (isReingesting()) {
+            <span i18n>Ingesting...</span>
+          } @else {
+            <span i18n>Reload CSVs</span>
+          }
+        </button>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- LLM Swarm Card -->
+    <mat-card class="subsystem-card" appearance="outlined">
+      <mat-card-header>
+        <mat-icon
+          mat-card-avatar
+          aria-hidden="true"
+          [class.color-success]="!isMockLlm()"
+          [class.color-info]="isMockLlm()"
+        >
+          psychology
+        </mat-icon>
+        <mat-card-title i18n>AI / Text-to-SQL</mat-card-title>
+        <mat-card-subtitle>
+          @if (isMockLlm()) {
+            <span i18n>Mock AI Mode</span>
+          } @else {
+            <span i18n>Cloud LLM Ready</span>
+          }
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <p i18n>
+          Providers:
+          <strong>{{ health()?.llm?.providers_count || 0 }}</strong>
+        </p>
+        @if (isMockLlm()) {
+          <p class="info-msg" i18n>Using deterministic fallback generator.</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Active Warnings List -->
+  @if (warnings().length > 0) {
+    <div class="section">
+      <h3 i18n>Active System Warnings</h3>
+      <div class="warning-list">
+        @for (w of warnings(); track w.code + w.message) {
+          <div class="warning-item">
+            <mat-icon class="color-warning" aria-hidden="true">warning</mat-icon>
+            <div class="warning-details">
+              <strong>{{ w.code }}:</strong> {{ w.message }}
+              @if (w.remediation) {
+                <div class="remediation"><em i18n>Action:</em> {{ w.remediation }}</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <mat-divider></mat-divider>
+
+  <!-- Troubleshooting Guides -->
+  <div class="section">
+    <h3 i18n>Quick Remediation Commands</h3>
+    <div class="guide-list">
+      @for (step of troubleshootingGuides(); track step.title) {
+        <div class="guide-item">
+          <div class="guide-header">
+            <strong>{{ step.title }}</strong>
+            @if (step.command) {
+              <button
+                mat-icon-button
+                (click)="copyCommand(step.command)"
+                i18n-matTooltip
+                matTooltip="Copy command to clipboard"
+                i18n-aria-label
+                aria-label="Copy command"
+              >
+                <mat-icon aria-hidden="true">content_copy</mat-icon>
+              </button>
+            }
+          </div>
+          <p class="guide-desc">{{ step.description }}</p>
+          @if (step.command) {
+            <code class="command-box">{{ step.command }}</code>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button i18n mat-flat-button color="primary" mat-dialog-close>Close</button>
+</mat-dialog-actions>

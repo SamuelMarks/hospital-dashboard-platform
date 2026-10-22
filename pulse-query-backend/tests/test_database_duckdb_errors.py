@@ -2,8 +2,6 @@
 Tests for DuckDB manager error paths and dependency helper.
 """
 
-from typing import Any
-
 from unittest.mock import MagicMock
 
 import duckdb
@@ -19,16 +17,19 @@ from app.database.duckdb import (
 )
 
 
-def test_duckdb_manager_connection_errors(monkeypatch: Any) -> None:
+def test_duckdb_manager_connection_errors(monkeypatch: pytest.MonkeyPatch) -> None:
   """Ensure connection errors are surfaced for both read-write and read-only paths."""
 
-  def _raise(*args: Any, **kwargs: Any) -> None:
+  def _raise(*_args: object, **_kwargs: object) -> None:
     """
-    Verify raise behavior.
+    Simulates a DuckDB connection failure.
 
     Args:
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        *_args (object): Positional arguments.
+        **_kwargs (object): Keyword arguments.
+
+    Raises:
+        RuntimeError: Always raised.
     """
     raise RuntimeError("boom")
 
@@ -43,7 +44,7 @@ def test_duckdb_manager_connection_errors(monkeypatch: Any) -> None:
     manager.get_readonly_connection()
 
 
-def test_get_olap_db_yields_and_closes(monkeypatch: Any) -> None:
+def test_get_olap_db_yields_and_closes(monkeypatch: pytest.MonkeyPatch) -> None:
   """Validate the dependency yields a connection and closes it."""
   mock_conn = MagicMock()
   monkeypatch.setattr(duckdb_manager, "get_connection", lambda: mock_conn)
@@ -56,7 +57,7 @@ def test_get_olap_db_yields_and_closes(monkeypatch: Any) -> None:
   mock_conn.close.assert_called_once()
 
 
-def test_get_readonly_olap_db_yields_and_closes(monkeypatch: Any) -> None:
+def test_get_readonly_olap_db_yields_and_closes(monkeypatch: pytest.MonkeyPatch) -> None:
   """Validate the read-only dependency yields a connection and closes it."""
   mock_conn = MagicMock()
   monkeypatch.setattr(duckdb_manager, "get_readonly_connection", lambda: mock_conn)

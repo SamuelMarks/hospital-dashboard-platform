@@ -183,7 +183,8 @@ interface ChartItem {
         border: 1px solid var(--sys-text-secondary);
         pointer-events: none;
       }
-      .col-wrapper:hover .tooltip {
+      .col-wrapper:hover .tooltip,
+      .col-wrapper:focus-within .tooltip {
         visibility: visible;
       }
     `,

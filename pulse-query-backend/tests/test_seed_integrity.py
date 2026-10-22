@@ -59,7 +59,8 @@ def content_pack() -> list[dict[str, Any]]:
     pytest.fail(f"Content Pack JSON missing at: {DATA_FILE}")
 
   with open(DATA_FILE, "r", encoding="utf-8") as f:
-    return json.load(f)
+    data: list[dict[str, Any]] = json.load(f)
+    return data
 
 
 def test_full_catalog_presence(content_pack: list[dict[str, Any]]) -> None:

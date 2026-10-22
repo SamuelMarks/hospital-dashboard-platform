@@ -1,104 +1,91 @@
 """
 Tests for SQL Validation in Dashboard Router.
 
-Verifies that the API blocks invalid SQL syntax during widget creation/updates
-by running a 'Dry-Run'.
+Verifies that the API blocks invalid SQL syntax and multi-statement queries
+during widget creation and updates against real PostgreSQL/SQLite persistence and DuckDB `PREPARE`.
 """
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.database.postgres import get_db
+from app.core import security
 from app.main import app
+from app.models.dashboard import Dashboard, Widget
+from app.models.user import User
 
-# --- Success Case ---
+
+async def _seed_user_and_widget(db_session: AsyncSession) -> tuple[User, Dashboard, Widget]:
+  """
+  Seeds an authenticated user, dashboard, and SQL widget in `db_session`.
+
+  Args:
+      db_session (AsyncSession): Active test database session.
+
+  Returns:
+      tuple[User, Dashboard, Widget]: Tuple of `(user, dashboard, widget)`.
+  """
+  user = User(
+    email=f"val_{uuid.uuid4()}@hospital.org",
+    hashed_password=security.get_password_hash("StrongPass123!"),
+    is_active=True,
+  )
+  db_session.add(user)
+  await db_session.flush()
+
+  dash = Dashboard(name="Validation Board", owner_id=user.id)
+  db_session.add(dash)
+  await db_session.flush()
+
+  widget = Widget(
+    dashboard_id=dash.id,
+    title="Test Widget",
+    type="SQL",
+    visualization="table",
+    config={"query": "SELECT 1"},
+  )
+  db_session.add(widget)
+  await db_session.commit()
+  return user, dash, widget
 
 
 @pytest.mark.asyncio
-async def test_update_widget_valid_sql_dry_run() -> None:
-  """Test that a valid query passes validation and saves."""
-  mock_user = MagicMock()
-  mock_user.id = uuid.uuid4()
-
-  app.dependency_overrides[get_current_user] = lambda: mock_user
-
-  mock_session = AsyncMock()
-  mock_result = MagicMock()
-  mock_existing = MagicMock()
-
-  # Populate required fields to pass Response Model validation
-  mock_existing.type = "SQL"
-  mock_existing.id = uuid.uuid4()
-  mock_existing.dashboard_id = uuid.uuid4()
-  mock_existing.owner_id = mock_user.id
-  mock_existing.title = "Test Widget"
-  mock_existing.visualization = "table"
-  mock_existing.config = {"query": "SELECT 1"}
-
-  mock_result.scalars.return_value.first.return_value = mock_existing
-  mock_session.execute.return_value = mock_result
-
-  app.dependency_overrides[get_db] = lambda: mock_session
-
-  with patch("app.api.routers.dashboards.duckdb_manager") as mock_duck:
-    mock_conn = MagicMock()
-    mock_duck.get_readonly_connection.return_value = mock_conn
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-      res = await ac.put(
-        f"/api/v1/dashboards/widgets/{uuid.uuid4()}",
-        json={"config": {"query": "SELECT 1"}},
-      )
-
+async def test_update_widget_valid_sql_dry_run(client: AsyncClient, db_session: AsyncSession) -> None:
+  """Test that a valid query passes real DuckDB `PREPARE` validation and persists in the database."""
+  user, _, widget = await _seed_user_and_widget(db_session)
+  app.dependency_overrides[get_current_user] = lambda: user
+  try:
+    res = await client.put(
+      f"/api/v1/dashboards/widgets/{widget.id}",
+      json={"config": {"query": "SELECT COUNT(*) AS cnt FROM hospital_data"}},
+    )
     assert res.status_code == 200
-    mock_conn.execute.assert_any_call("PREPARE v AS SELECT 1")
-
-  app.dependency_overrides = {}
-
-
-# --- Failure Case ---
+    assert res.json()["config"]["query"] == "SELECT COUNT(*) AS cnt FROM hospital_data"
+  finally:
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.mark.asyncio
-async def test_update_widget_invalid_sql_returns_400() -> None:
-  """Test that an invalid query raises 400 Bad Request."""
-  mock_user = MagicMock()
-  mock_user.id = uuid.uuid4()
+async def test_update_widget_invalid_sql_returns_400(client: AsyncClient, db_session: AsyncSession) -> None:
+  """Test that an invalid SQL query or multi-statement query raises 400 Bad Request."""
+  user, _, widget = await _seed_user_and_widget(db_session)
+  app.dependency_overrides[get_current_user] = lambda: user
+  try:
+    res_syntax = await client.put(
+      f"/api/v1/dashboards/widgets/{widget.id}",
+      json={"config": {"query": "SELECT * FRO ("}},
+    )
+    assert res_syntax.status_code == 400
+    assert "Invalid SQL" in res_syntax.json()["detail"]
 
-  app.dependency_overrides[get_current_user] = lambda: mock_user
-
-  mock_session = AsyncMock()
-  mock_existing = MagicMock()
-  mock_existing.type = "SQL"
-  mock_existing.id = uuid.uuid4()
-  mock_existing.dashboard_id = uuid.uuid4()
-  mock_existing.owner_id = mock_user.id
-  mock_existing.title = "Test Widget"
-
-  mock_result = MagicMock()
-  mock_result.scalars.return_value.first.return_value = mock_existing
-  mock_session.execute.return_value = mock_result
-
-  app.dependency_overrides[get_db] = lambda: mock_session
-
-  with patch("app.api.routers.dashboards.duckdb_manager") as mock_duck:
-    mock_conn = MagicMock()
-    mock_conn.execute.side_effect = Exception("Parser Error: syntax error at or near 'FRO'")
-    mock_duck.get_readonly_connection.return_value = mock_conn
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-      res = await ac.put(
-        f"/api/v1/dashboards/widgets/{uuid.uuid4()}",
-        json={"config": {"query": "SELECT * FRO"}},
-      )
-
-    assert res.status_code == 400
-    data = res.json()
-    assert "Invalid SQL" in data["detail"]
-    assert "Parser Error" in data["detail"]
-
-  app.dependency_overrides = {}
+    res_multi = await client.put(
+      f"/api/v1/dashboards/widgets/{widget.id}",
+      json={"config": {"query": "SELECT 1; SELECT 2"}},
+    )
+    assert res_multi.status_code == 400
+    assert "Multiple SQL statements are not permitted" in res_multi.json()["detail"]
+  finally:
+    app.dependency_overrides.pop(get_current_user, None)

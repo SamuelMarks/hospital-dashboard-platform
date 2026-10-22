@@ -19,13 +19,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok, unwrap_or_raise_http
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.token import TokenPayload
 
 # 1. Define the OAuth2 Schemes
-# OAuth2 scheme with auto_error=False allowing fallback to URL query token for downloads
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
 oauth2_scheme_optional = oauth2_scheme
 
@@ -81,7 +80,7 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
   if not user.is_active:
     return Err(
       AppError(
-        code=ErrorCode.AUTHENTICATION_ERROR,
+        code=ErrorCode.AUTH_INACTIVE_USER,
         message="Inactive user",
         status_code=status.HTTP_400_BAD_REQUEST,
         details={"ws_reason": "Unauthorized: Inactive or non-existent user"},
@@ -89,6 +88,9 @@ async def resolve_user_from_token_result(token: str, db: AsyncSession) -> AppRes
     )
 
   return Ok(user)
+
+
+authenticate_bearer_token = resolve_user_from_token_result
 
 
 async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
@@ -106,14 +108,12 @@ async def _resolve_user_from_token(token: str, db: AsyncSession) -> User:
       HTTPException: 401 Unauthorized on invalid/expired token, 400 on inactive user.
   """
   res = await resolve_user_from_token_result(token, db)
-  if isinstance(res, Err):
-    headers = {"WWW-Authenticate": "Bearer"} if res.error.status_code == status.HTTP_401_UNAUTHORIZED else None
-    raise HTTPException(
-      status_code=res.error.status_code,
-      detail=res.error.message,
-      headers=headers,
-    )
-  return res.value
+  headers = (
+    {"WWW-Authenticate": "Bearer"}
+    if isinstance(res, Err) and res.error.status_code == status.HTTP_401_UNAUTHORIZED
+    else None
+  )
+  return unwrap_or_raise_http(res, headers=headers)
 
 
 async def get_current_user(
@@ -147,8 +147,32 @@ async def get_current_user(
   return await _resolve_user_from_token(active_token, db)
 
 
-# Alias for backwards compatibility
 get_current_user_from_header_or_query = get_current_user
+
+
+def check_user_role_result(current_user: User, allowed_roles: tuple[str, ...]) -> AppResult[User]:
+  """
+  Validates that `current_user` holds one of `allowed_roles` or super-admin privileges.
+
+  Args:
+      current_user (User): Authenticated user entity.
+      allowed_roles (tuple[str, ...]): Permitted role names.
+
+  Returns:
+      AppResult[User]: `Ok(current_user)` if authorized, else `Err(AppError)` with `AUTH_INSUFFICIENT_ROLE`.
+  """
+  if current_user.is_admin or current_user.role == "SUPER_ADMIN":
+    return Ok(current_user)
+
+  if current_user.role not in allowed_roles:
+    return Err(
+      AppError(
+        code=ErrorCode.AUTH_INSUFFICIENT_ROLE,
+        message="Insufficient role permissions for this hospital operation",
+        status_code=status.HTTP_403_FORBIDDEN,
+      )
+    )
+  return Ok(current_user)
 
 
 def require_role(*allowed_roles: str) -> Callable[..., Awaitable[User]]:
@@ -161,7 +185,7 @@ def require_role(*allowed_roles: str) -> Callable[..., Awaitable[User]]:
       *allowed_roles (str): Role names permitted to access the path operation.
 
   Returns:
-      Callable: Async dependency function accepting current_user and returning User.
+      Callable[..., Awaitable[User]]: Async dependency function accepting current_user and returning User.
   """
 
   async def role_checker(
@@ -179,14 +203,6 @@ def require_role(*allowed_roles: str) -> Callable[..., Awaitable[User]]:
     Raises:
         HTTPException: 403 Forbidden if user lacks required role.
     """
-    if current_user.is_admin or current_user.role == "SUPER_ADMIN":
-      return current_user
-
-    if current_user.role not in allowed_roles:
-      raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Insufficient role permissions for this hospital operation",
-      )
-    return current_user
+    return unwrap_or_raise_http(check_user_role_result(current_user, allowed_roles))
 
   return role_checker

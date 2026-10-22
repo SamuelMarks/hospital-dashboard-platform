@@ -2,9 +2,8 @@
 Tests for the template seeding service.
 """
 
-from typing import Any
-
 import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -15,41 +14,51 @@ from app.services.template_seeder import TemplateSeeder
 
 
 class _DummySessionContext:
-  def __init__(self, session: Any) -> None:
+  """Async context manager test double yielding a mock SQLAlchemy session."""
+
+  def __init__(self, session: MagicMock) -> None:
     """
-    Verify init behavior.
+    Initializes the context manager with a mock session.
 
     Args:
-        session: Test parameter or fixture.
+        session (MagicMock): Mock database session.
     """
     self._session = session
 
-  async def __aenter__(self) -> Any:
-    """Verify aenter behavior."""
+  async def __aenter__(self) -> MagicMock:
+    """
+    Enters the async context and returns the mock session.
+
+    Returns:
+        MagicMock: The wrapped mock session.
+    """
     return self._session
 
-  async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> Any:
+  async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
     """
-    Verify aexit behavior.
+    Exits the async context without suppressing exceptions.
 
     Args:
-        exc_type: Test parameter or fixture.
-        exc: Test parameter or fixture.
-        tb: Test parameter or fixture.
+        exc_type (object): Exception type if raised.
+        exc (object): Exception instance if raised.
+        tb (object): Traceback if raised.
+
+    Returns:
+        bool: Always False.
     """
     return False
 
 
 @pytest.mark.asyncio
-async def test_seed_defaults_skips_missing_file(monkeypatch: Any) -> None:
+async def test_seed_defaults_skips_missing_file(monkeypatch: pytest.MonkeyPatch) -> None:
   """Missing content pack should short-circuit without error."""
-  monkeypatch.setattr(template_seeder.os.path, "exists", lambda *_: False)
+  monkeypatch.setattr("app.services.template_seeder.os.path.exists", lambda *_: False)
 
   await TemplateSeeder.seed_defaults()
 
 
 @pytest.mark.asyncio
-async def test_seed_defaults_handles_invalid_json(monkeypatch: Any, tmp_path: Any) -> None:
+async def test_seed_defaults_handles_invalid_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """Invalid JSON should be caught and logged without raising."""
   bad_file = tmp_path / "bad.json"
   bad_file.write_text("{invalid", encoding="utf-8")
@@ -59,7 +68,7 @@ async def test_seed_defaults_handles_invalid_json(monkeypatch: Any, tmp_path: An
 
 
 @pytest.mark.asyncio
-async def test_seed_defaults_happy_path(monkeypatch: Any, tmp_path: Any) -> None:
+async def test_seed_defaults_happy_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """Valid JSON should invoke batch processing and commit."""
   seed_file = tmp_path / "templates.json"
   seed_file.write_text(
@@ -76,53 +85,58 @@ async def test_seed_defaults_happy_path(monkeypatch: Any, tmp_path: Any) -> None
 
   session = MagicMock()
   session.commit = AsyncMock()
+  mock_batch = AsyncMock()
 
   monkeypatch.setattr(template_seeder, "AsyncSessionLocal", lambda: _DummySessionContext(session))
-  monkeypatch.setattr(TemplateSeeder, "_process_batch", AsyncMock())
+  monkeypatch.setattr(TemplateSeeder, "_process_batch", mock_batch)
 
   await TemplateSeeder.seed_defaults()
 
-  TemplateSeeder._process_batch.assert_awaited_once()
+  mock_batch.assert_awaited_once()
   session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_seed_defaults_handles_unexpected_exception(monkeypatch: Any, tmp_path: Any) -> None:
+async def test_seed_defaults_handles_unexpected_exception(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """Unexpected exceptions should be caught and logged."""
   seed_file = tmp_path / "templates.json"
   seed_file.write_text("[]", encoding="utf-8")
 
   monkeypatch.setattr(template_seeder, "DATA_FILE", str(seed_file))
 
-  def _boom(*_args: Any, **_kwargs: Any) -> None:
+  def _boom(*_args: object, **_kwargs: object) -> None:
     """
-    Verify boom behavior.
+    Raises a simulated runtime error during JSON loading.
 
     Args:
-        _args: Test parameter or fixture.
-        _kwargs: Test parameter or fixture.
+        *_args (object): Positional arguments.
+        **_kwargs (object): Keyword arguments.
+
+    Raises:
+        RuntimeError: Always raised to test exception handling.
     """
     raise RuntimeError("boom")
 
-  monkeypatch.setattr(template_seeder.json, "load", _boom)
+  monkeypatch.setattr("app.services.template_seeder.json.load", _boom)
 
   await TemplateSeeder.seed_defaults()
 
 
 @pytest.mark.asyncio
-async def test_process_batch_calls_upsert(monkeypatch: Any) -> None:
+async def test_process_batch_calls_upsert(monkeypatch: pytest.MonkeyPatch) -> None:
   """Batch processing should invoke upsert for each item."""
   session = MagicMock()
   items = [
     {"title": "One", "sql_template": "SELECT 1", "category": "A"},
     {"title": "Two", "sql_template": "SELECT 2", "category": "B"},
   ]
+  mock_upsert = AsyncMock()
 
-  monkeypatch.setattr(TemplateSeeder, "_upsert_template", AsyncMock())
+  monkeypatch.setattr(TemplateSeeder, "_upsert_template", mock_upsert)
 
   await TemplateSeeder._process_batch(session, items)
 
-  assert TemplateSeeder._upsert_template.await_count == 2
+  assert mock_upsert.await_count == 2
 
 
 @pytest.mark.asyncio

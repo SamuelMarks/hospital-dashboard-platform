@@ -49,6 +49,24 @@ describe('CollaboratorPresenceComponent', () => {
     expect(component.getInitials('')).toBe('?');
   });
 
+  it('should format collaborator tooltip with and without explicit role', () => {
+    expect(
+      component.getCollaboratorTooltip({
+        user_id: 'u1',
+        email: 'doc@hospital.org',
+        role: 'ADMIN',
+        connected_at: '',
+      }),
+    ).toBe('doc@hospital.org (ADMIN)');
+    expect(
+      component.getCollaboratorTooltip({
+        user_id: 'u2',
+        email: 'nurse@hospital.org',
+        connected_at: '',
+      }),
+    ).toBe('nurse@hospital.org (Collaborator)');
+  });
+
   it('should render avatars when active collaborators exist', () => {
     isConnectedMock.set(true);
     activeCollaboratorsMock.set([

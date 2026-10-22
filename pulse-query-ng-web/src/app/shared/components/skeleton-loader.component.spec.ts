@@ -1,12 +1,19 @@
+/**
+ * @fileoverview Unit tests for SkeletonLoaderComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
 import { SkeletonLoaderComponent, SkeletonVariant } from './skeleton-loader.component';
 import { By } from '@angular/platform-browser';
 
 describe('SkeletonLoaderComponent', () => {
   let component: SkeletonLoaderComponent;
   let fixture: ComponentFixture<SkeletonLoaderComponent>;
-  let variantSig: WritableSignal<SkeletonVariant>;
+
+  const setVariant = (variant: SkeletonVariant): void => {
+    fixture.componentRef.setInput('variant', variant);
+    fixture.detectChanges();
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -15,9 +22,7 @@ describe('SkeletonLoaderComponent', () => {
 
     fixture = TestBed.createComponent(SkeletonLoaderComponent);
     component = fixture.componentInstance;
-    variantSig = signal<SkeletonVariant>('card');
-    (component as unknown as { variant: WritableSignal<SkeletonVariant> }).variant = variantSig;
-    fixture.detectChanges();
+    setVariant('card');
   });
 
   it('should create', () => {
@@ -25,15 +30,13 @@ describe('SkeletonLoaderComponent', () => {
   });
 
   it('should render generic card by default', () => {
-    variantSig.set('card');
-    fixture.detectChanges();
+    setVariant('card');
     const el = fixture.debugElement.query(By.css('.layout-card'));
     expect(el).toBeTruthy();
   });
 
   it('should render table variant', () => {
-    variantSig.set('table');
-    fixture.detectChanges();
+    setVariant('table');
 
     const tableLayout = fixture.debugElement.query(By.css('.layout-table'));
     expect(tableLayout).toBeTruthy();
@@ -42,22 +45,19 @@ describe('SkeletonLoaderComponent', () => {
   });
 
   it('should render metric variant', () => {
-    variantSig.set('metric');
-    fixture.detectChanges();
+    setVariant('metric');
     const el = fixture.debugElement.query(By.css('.metric-val'));
     expect(el).toBeTruthy();
   });
 
   it('should render chart variant', () => {
-    variantSig.set('chart');
-    fixture.detectChanges();
+    setVariant('chart');
     const el = fixture.debugElement.query(By.css('.layout-chart'));
     expect(el).toBeTruthy();
   });
 
   it('should render pie variant', () => {
-    variantSig.set('pie');
-    fixture.detectChanges();
+    setVariant('pie');
     const el = fixture.debugElement.query(By.css('.layout-pie'));
     expect(el).toBeTruthy();
   });

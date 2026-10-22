@@ -3,7 +3,7 @@
  */
 import { DATE_NOW } from '../core/time.token';
 import { safeStorage } from '../core/storage.utils';
-import { Injectable, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
+import { Service, computed, effect, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
 
@@ -12,18 +12,16 @@ import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
  *
  * Stores saved ad-hoc queries that can be dragged onto dashboards.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class QueryCartService {
   /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
-  /** platformId property. */
+  /** Angular platform identifier token used to guard browser-only storage operations. */
   private readonly platformId = inject(PLATFORM_ID);
-  /** storageKey property. */
+  /** LocalStorage key under which staged query cart items are serialized. */
   private readonly storageKey = 'pulse-query-cart-v1';
 
-  /** _items property. */
+  /** Internal writable signal holding the ordered list of staged query cart items. */
   private readonly _items = signal<QueryCartItem[]>([]);
 
   /** Read-only list of cart items. */
@@ -32,7 +30,7 @@ export class QueryCartService {
   /** Count of items in the cart. */
   readonly count = computed(() => this._items().length);
 
-  /** Creates a new QueryCartService. */
+  /** Hydrates staged queries from browser storage and registers an effect to persist updates. */
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadFromStorage();
@@ -113,7 +111,7 @@ export class QueryCartService {
    * @returns Generated unique query cart item identifier.
    */
   private createId(): string {
-    return `qc-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    return `qc-${this.dateNow().getTime()}-${Math.floor(Math.random() * 10000)}`;
   }
 
   /** Loads and validates saved query cart items from local storage. */

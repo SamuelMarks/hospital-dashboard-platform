@@ -75,8 +75,8 @@ describe('ShareDashboardDialog', () => {
     };
     mockHttp.post.mockReturnValue(of(newShare));
 
-    component.emailInput = 'doctor@hospital.org';
-    component.roleInput = 'EDIT';
+    component.onEmailInput({ target: { value: 'doctor@hospital.org' } } as unknown as Event);
+    component.roleInput.set('EDIT');
     component.addShare();
 
     expect(mockHttp.post).toHaveBeenCalledWith('/api/v1/dashboards/d1/shares', {
@@ -84,7 +84,7 @@ describe('ShareDashboardDialog', () => {
       permission_level: 'EDIT',
     });
     expect(component.shares().length).toBe(2);
-    expect(component.emailInput).toBe('');
+    expect(component.emailInput()).toBe('');
     expect(component.isSubmitting()).toBe(false);
   });
 
@@ -99,8 +99,8 @@ describe('ShareDashboardDialog', () => {
     };
     mockHttp.post.mockReturnValue(of(updatedShare));
 
-    component.emailInput = 'collab@hospital.org';
-    component.roleInput = 'EDIT';
+    component.emailInput.set('collab@hospital.org');
+    component.roleInput.set('EDIT');
     component.addShare();
 
     expect(component.shares().length).toBe(1);
@@ -108,14 +108,14 @@ describe('ShareDashboardDialog', () => {
   });
 
   it('should do nothing if emailInput is blank', () => {
-    component.emailInput = '   ';
+    component.emailInput.set('   ');
     component.addShare();
     expect(mockHttp.post).not.toHaveBeenCalled();
   });
 
   it('should handle error when addShare fails', () => {
     mockHttp.post.mockReturnValue(throwError(() => ({ error: { detail: 'User not found' } })));
-    component.emailInput = 'unknown@hospital.org';
+    component.emailInput.set('unknown@hospital.org');
     component.addShare();
 
     expect(component.isSubmitting()).toBe(false);
@@ -123,7 +123,7 @@ describe('ShareDashboardDialog', () => {
 
     // Fallback without detail
     mockHttp.post.mockReturnValue(throwError(() => ({})));
-    component.emailInput = 'unknown2@hospital.org';
+    component.emailInput.set('unknown2@hospital.org');
     component.addShare();
     expect(component.errorMessage()).toBe('Failed to share dashboard');
   });

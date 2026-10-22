@@ -7,6 +7,8 @@ package io.healthplatform.pulsequery.ui.screens.editor
 import io.healthplatform.pulsequery.api.apis.AiApi
 import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
 import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.QueryCartRepository
 import kotlinx.coroutines.CoroutineScope
@@ -71,7 +73,7 @@ class EditorViewModel(
 
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null, result = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 val req = SQLExecutionRequest(sql = currentSql, maxRows = 50)
                 currentAiApi.executeSqlPreviewApiV1AiExecutePost(req).body()
             }.fold(
@@ -81,7 +83,7 @@ class EditorViewModel(
                 onFailure = { e ->
                     _state.update {
                         it.copy(
-                            errorMessage = errorPrefix + (e.message ?: "Unknown error"),
+                            errorMessage = errorPrefix + e.messageOrDefault("Unknown error"),
                             isLoading = false
                         )
                     }

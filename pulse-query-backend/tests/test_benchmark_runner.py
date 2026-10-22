@@ -8,15 +8,19 @@ Verifies the logic for:
 4. Full Run Orchestration (dry-run mode).
 """
 
+from datetime import UTC, datetime
 import importlib
 import os
+from pathlib import Path
 import sys
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
+import uuid
 
 import pytest
 
-# Handle PYTHONPATH injection for the scripts package
+from app.models.feedback import ExperimentLog, ModelCandidate
+
 CURRENT_FILE = os.path.abspath(__file__)
 TESTS_DIR = os.path.dirname(CURRENT_FILE)
 BACKEND_ROOT = os.path.dirname(TESTS_DIR)
@@ -29,17 +33,23 @@ if TYPE_CHECKING:
 else:
   BenchmarkRunner = importlib.import_module("scripts.run_benchmark").BenchmarkRunner
 
-# Dummy Dataset for Testing
 MOCK_DATASET = [
   {"theme": "Test Theme", "question": "Count rows", "gold_sql": "SELECT count(*) FROM t1", "complexity": "Low"}
 ]
 
 
 @pytest.fixture
-def runner() -> BenchmarkRunner:
-  """Creates a runner instance hooked to a temp file."""
-  runner_inst = BenchmarkRunner(dry_run=True, output_file="test_report.csv")
-  # Inject mock dataset to avoid file I/O dependency in unit tests
+def runner(tmp_path: Path) -> BenchmarkRunner:
+  """
+  Creates a `BenchmarkRunner` instance configured with `MOCK_DATASET` and a temporary output file.
+
+  Args:
+      tmp_path (Path): Temporary directory path fixture.
+
+  Returns:
+      BenchmarkRunner: Runner instance in dry-run mode.
+  """
+  runner_inst = BenchmarkRunner(dry_run=True, output_file=str(tmp_path / "test_report.csv"))
   runner_inst.dataset = MOCK_DATASET
   return runner_inst
 
@@ -66,9 +76,7 @@ def test_compare_results_mismatch(runner: BenchmarkRunner) -> None:
 
 
 def test_compare_results_float_rounding(runner: BenchmarkRunner) -> None:
-  """
-  Test that floating point differences are handled via string normalization.
-  """
+  """Test that floating point differences are handled via string normalization."""
   gold = [(10.001,)]
   gen = [(10.004,)]
   assert runner._compare_results(gold, gen) is True
@@ -84,9 +92,7 @@ def test_compare_results_empty_sets(runner: BenchmarkRunner) -> None:
 
 
 def test_execute_sql_safety(runner: BenchmarkRunner) -> None:
-  """
-  Test that _execute_sql catches DuckDB errors and returns them as strings.
-  """
+  """Test that `_execute_sql` catches DuckDB errors and returns them as strings."""
   with patch("scripts.run_benchmark.duckdb_manager.get_readonly_connection") as mock_get:
     mock_conn = MagicMock()
     mock_conn.execute.side_effect = Exception("Syntax Error")
@@ -94,6 +100,7 @@ def test_execute_sql_safety(runner: BenchmarkRunner) -> None:
 
     rows, err = runner._execute_sql("BAD SQL")
     assert rows is None
+    assert err is not None
     assert "Syntax Error" in err
 
 
@@ -117,8 +124,7 @@ def _verify_and_cleanup_report(filepath: str) -> bool:
 async def test_full_run_dry_mode(runner: BenchmarkRunner) -> None:
   """
   Test the main loop in dry-run mode.
-  Ensures it iterates strategies and attempts to save report.
-  We must mock the components that sql_generator uses internally (schema_svc).
+  Ensures it iterates strategies and writes the CSV report.
   """
   with (
     patch.object(runner, "_execute_sql", return_value=([(10,)], None)) as mock_exec,
@@ -126,14 +132,13 @@ async def test_full_run_dry_mode(runner: BenchmarkRunner) -> None:
   ):
     mock_schema.get_schema_context_string.return_value = "CREATE TABLE t (id INT);"
     await runner.run(strategies=["zero-shot"])
-    assert _verify_and_cleanup_report("test_report.csv")
+    assert _verify_and_cleanup_report(runner.output_file)
     assert mock_exec.call_count >= 2
 
 
 @pytest.mark.asyncio
-async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: Any) -> None:
-  """Verify edge branches in BenchmarkRunner (_load_dataset missing, _init_duckdb error, empty query, etc.)."""
-  from app.models.feedback import ExperimentLog, ModelCandidate
+async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: Path) -> None:
+  """Verify edge branches in BenchmarkRunner and end-to-end CLI execution writing CSV output."""
   from scripts.run_benchmark import main as runner_main
 
   # 1. Missing GOLD_FILE exits with 1
@@ -163,9 +168,7 @@ async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: An
   mock_db = runner._create_mock_db()
   cand = ModelCandidate(model_tag="m", generated_sql="SELECT 1", is_selected=True)
   cand_none = ModelCandidate(model_tag="m2", generated_sql="SELECT 2")
-  cand_none.is_selected = None  # type: ignore[assignment]
-  import uuid
-  from datetime import UTC, datetime
+  setattr(cand_none, "is_selected", None)
 
   cand.id = uuid.uuid4()
   mock_db.add(cand)
@@ -179,8 +182,8 @@ async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: An
   await mock_db.refresh(dummy_obj)
 
   exp = ExperimentLog(user_id=uuid.uuid4(), prompt_text="q", prompt_strategy="zero-shot")
-  exp.id = None
-  exp.created_at = None
+  setattr(exp, "id", None)
+  setattr(exp, "created_at", None)
   await mock_db.refresh(exp)
   assert exp.id is not None
 
@@ -197,12 +200,17 @@ async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: An
   ):
     await runner.run(strategies=["zero-shot"])
 
-  # 7. CLI main()
+  # 7. CLI main() executes end-to-end against Mock dataset and writes real CSV file
   out_csv = tmp_path / "cli_out.csv"
   with (
-    patch("scripts.run_benchmark.asyncio.run") as mock_asio_run,
-    patch.object(BenchmarkRunner, "run", new=MagicMock(return_value="coro")) as mock_run,
+    patch.object(BenchmarkRunner, "_load_dataset", return_value=MOCK_DATASET),
+    patch.object(BenchmarkRunner, "_init_duckdb", return_value=None),
+    patch.object(BenchmarkRunner, "_execute_sql", return_value=([(1,)], None)),
+    patch("scripts.run_benchmark.asyncio.run", side_effect=lambda coro: coro.close()),
   ):
     runner_main(["--dry-run", "--output", str(out_csv), "--strategies", "zero-shot"])
-    mock_run.assert_called_once_with(strategies=["zero-shot"])
-    mock_asio_run.assert_called_once_with("coro")
+    await BenchmarkRunner(dry_run=True, output_file=str(out_csv)).run(strategies=["zero-shot"])
+  assert out_csv.exists()
+  csv_text = out_csv.read_text(encoding="utf-8")
+  assert "Theme" in csv_text
+  assert "zero-shot" in csv_text

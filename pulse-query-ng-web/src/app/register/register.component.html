@@ -11,8 +11,8 @@
   <mat-card-content>
     @if (errorMessage()) {
       <div class="error-box" role="alert" data-testid="error-alert">
-        <mat-icon i18n color="warn">error</mat-icon>
-        <span i18n>{{ errorMessage() }}</span>
+        <mat-icon aria-hidden="true" color="warn">error</mat-icon>
+        <span>{{ errorMessage() }}</span>
       </div>
     }
 
@@ -23,12 +23,13 @@
           matInput
           [formField]="registerForm.email"
           type="email"
+          autocomplete="email"
           i18n-placeholder
           placeholder="user@example.com"
           data-testid="input-email"
         />
         @for (err of registerForm.email().errors(); track err.kind) {
-          <mat-error i18n>{{ err.message }}</mat-error>
+          <mat-error>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
@@ -38,20 +39,23 @@
           matInput
           [formField]="registerForm.password"
           [type]="hidePassword() ? 'password' : 'text'"
+          autocomplete="new-password"
           data-testid="input-password"
         />
         <button
-          i18n
           mat-icon-button
           matSuffix
           type="button"
           (click)="togglePasswordVisibility($event)"
-          [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+          [attr.aria-label]="passwordToggleLabel()"
+          [attr.aria-pressed]="!hidePassword()"
         >
-          <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          <mat-icon aria-hidden="true">{{
+            hidePassword() ? 'visibility_off' : 'visibility'
+          }}</mat-icon>
         </button>
         @for (err of registerForm.password().errors(); track err.kind) {
-          <mat-error i18n>{{ err.message }}</mat-error>
+          <mat-error>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
@@ -61,15 +65,15 @@
           matInput
           [formField]="registerForm.confirmPassword"
           [type]="hidePassword() ? 'password' : 'text'"
+          autocomplete="new-password"
           data-testid="input-confirm-password"
         />
         @for (err of registerForm.confirmPassword().errors(); track err.kind) {
-          <mat-error i18n>{{ err.message }}</mat-error>
+          <mat-error>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
       <button
-        i18n
         mat-flat-button
         color="primary"
         type="submit"
@@ -78,9 +82,9 @@
         data-testid="submit-btn"
       >
         @if (isLoading()) {
-          Creating Account...
+          <span i18n>Creating Account...</span>
         } @else {
-          Register
+          <span i18n>Register</span>
         }
       </button>
     </form>

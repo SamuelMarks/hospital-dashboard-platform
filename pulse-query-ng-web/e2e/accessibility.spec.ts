@@ -34,25 +34,67 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
     await checkA11y(page, 'Login Page');
   });
 
+  test('Register Page should be accessible', async ({ page }) => {
+    await page.goto('/register');
+    await expect(page.locator('mat-card-title')).toBeVisible({ timeout: 15000 });
+    await checkA11y(page, 'Register Page');
+  });
+
   // 2. PROTECTED ROUTES
   test('Protected Views should be accessible', async ({ loggedInPage }) => {
     // FIX: Increase timeout significantly because AXE analysis is slow and we perform multiple scans + navigations in one test
-    test.setTimeout(90000);
+    test.setTimeout(120000);
 
-    // A. Home / Dashboard List
+    // A. Home / Dashboard List (Light & Dark Mode + Onboarding Overlay)
     await test.step('Home Page', async () => {
       await loggedInPage.goto('/');
 
-      // FIX: Increase specific timeout and use a more structural locator
-      // The header text "My Dashboards" is rendered immediately but might wait for hydration
-      // Using 30s timeout to allow for cold start of the Angular application
       await expect(loggedInPage.locator('app-home')).toBeVisible({ timeout: 30000 });
       await expect(loggedInPage.getByText('My Dashboards')).toBeVisible({ timeout: 15000 });
 
-      await checkA11y(loggedInPage, 'Home Page');
+      await checkA11y(loggedInPage, 'Home Page (Light Mode)');
+
+      // Toggle Dark Mode and re-verify
+      const themeToggle = loggedInPage.getByTestId('theme-toggle');
+      if (await themeToggle.isVisible()) {
+        await themeToggle.click();
+        await checkA11y(loggedInPage, 'Home Page (Dark Mode)');
+        await themeToggle.click();
+      }
     });
 
-    // B. Simulation Engine
+    // B. Analytics & Alert Rules Views
+    await test.step('Analytics & Alert Rules Pages', async () => {
+      await loggedInPage.goto('/analytics');
+      await expect(loggedInPage.locator('app-analytics')).toBeVisible({ timeout: 15000 });
+      await checkA11y(loggedInPage, 'Analytics Page');
+
+      await loggedInPage.goto('/analytics/alert-rules');
+      await expect(loggedInPage.locator('app-alert-rules')).toBeVisible({ timeout: 15000 });
+      await checkA11y(loggedInPage, 'Alert Rules Page');
+    });
+
+    // C. Benchmarks & MPAX Arena Views
+    await test.step('Benchmarks & MPAX Arena Pages', async () => {
+      await loggedInPage.goto('/benchmarks');
+      await expect(loggedInPage.locator('app-benchmarks')).toBeVisible({ timeout: 15000 });
+      await checkA11y(loggedInPage, 'Benchmarks Page');
+
+      await loggedInPage.goto('/mpax-arena');
+      await expect(loggedInPage.locator('app-mpax-arena')).toBeVisible({ timeout: 15000 });
+      await checkA11y(loggedInPage, 'MPAX Arena Page');
+    });
+
+    // D. Admin & User Management Views
+    await test.step('Admin & User Management Pages', async () => {
+      await loggedInPage.goto('/admin');
+      await checkA11y(loggedInPage, 'Admin Page');
+
+      await loggedInPage.goto('/admin/users');
+      await checkA11y(loggedInPage, 'User Management Page');
+    });
+
+    // E. Simulation Engine
     await test.step('Simulation Page', async () => {
       await loggedInPage.goto('/simulation');
       // Ensure the interactive element is ready

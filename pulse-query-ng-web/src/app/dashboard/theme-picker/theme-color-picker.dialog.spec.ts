@@ -70,6 +70,7 @@ describe('ThemeColorPickerDialogComponent', () => {
 
     expect(component.selectedColor()).toBe(target.hex);
     expect(component.customHex).toBe(target.hex);
+    expect(component.getPaletteAriaLabel(target)).toBe(`Select ${target.name}`);
   });
 
   it('should handle color picker input event', () => {

@@ -175,21 +175,33 @@ describe('ChatLayoutComponent', () => {
   });
 
   it('should select chat and close drawer if over', () => {
-    component.drawer = { mode: 'over', close: vi.fn() } as unknown as MatSidenav;
+    const closeOver = vi.fn();
+    vi.spyOn(component, 'drawer').mockReturnValue({
+      mode: 'over',
+      close: closeOver,
+    } as unknown as MatSidenav);
     component.selectChat('c2');
     expect(mockStore.selectConversation).toHaveBeenCalledWith('c2');
-    expect(component.drawer.close).toHaveBeenCalled();
+    expect(closeOver).toHaveBeenCalled();
 
     // test mode !== 'over'
-    component.drawer = { mode: 'side', close: vi.fn() } as unknown as MatSidenav;
+    const closeSide = vi.fn();
+    vi.spyOn(component, 'drawer').mockReturnValue({
+      mode: 'side',
+      close: closeSide,
+    } as unknown as MatSidenav);
     component.selectChat('c2');
-    expect(component.drawer.close).not.toHaveBeenCalled();
+    expect(closeSide).not.toHaveBeenCalled();
   });
 
   it('should new chat and close drawer if over', () => {
-    component.drawer = { mode: 'over', close: vi.fn() } as unknown as MatSidenav;
+    const closeOver = vi.fn();
+    vi.spyOn(component, 'drawer').mockReturnValue({
+      mode: 'over',
+      close: closeOver,
+    } as unknown as MatSidenav);
     component.newChat();
     expect(mockStore.createNewChat).toHaveBeenCalled();
-    expect(component.drawer.close).toHaveBeenCalled();
+    expect(closeOver).toHaveBeenCalled();
   });
 });

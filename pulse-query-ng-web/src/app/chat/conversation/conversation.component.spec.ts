@@ -427,17 +427,24 @@ describe('ConversationComponent', () => {
   describe('scrollToBottom', () => {
     it('should set scrollTop to scrollHeight if element exists', () => {
       vi.useFakeTimers();
-      component['scrollContainer'] = {
+      const mockEl = {
         nativeElement: { scrollTop: 0, scrollHeight: 100 } as unknown as HTMLElement,
       } as ElementRef<HTMLElement>;
+      vi.spyOn(
+        component as unknown as { scrollContainer: () => ElementRef<HTMLElement> | undefined },
+        'scrollContainer',
+      ).mockReturnValue(mockEl);
       component['scrollToBottom']();
       vi.advanceTimersByTime(50);
-      expect(component['scrollContainer'].nativeElement.scrollTop).toBe(100);
+      expect(mockEl.nativeElement.scrollTop).toBe(100);
       vi.useRealTimers();
     });
     it('should do nothing if scrollContainer is missing', () => {
       vi.useFakeTimers();
-      component['scrollContainer'] = null as unknown as ElementRef<HTMLElement>;
+      vi.spyOn(
+        component as unknown as { scrollContainer: () => ElementRef<HTMLElement> | undefined },
+        'scrollContainer',
+      ).mockReturnValue(undefined);
       component['scrollToBottom']();
       vi.advanceTimersByTime(50);
       // Shouldn't crash

@@ -4,82 +4,66 @@ Verifies query execution flow and error handling from the Database layer.
 """
 
 from typing import Any
-
 from unittest.mock import MagicMock
 
 import pytest
 
+from app.core.result import AppError, Err, ErrorCode
 from app.services.runners import sql as sql_runner
-from app.services.runners.sql import run_sql_widget
+from app.services.runners.sql import run_sql_widget, run_sql_widget_async
 
 
 def test_run_sql_widget_success() -> None:
-  """
-  Test a successful SQL SELECT query returning rows.
-  """
+  """Test a successful SQL SELECT query returning rows."""
   mock_cursor = MagicMock()
   mock_cursor.description = [("id", "string"), ("value", "int")]
   mock_cursor.fetchall.return_value = [("row1", 100), ("row2", 200)]
 
   config = {"query": "SELECT * FROM table"}
-
   result = run_sql_widget(mock_cursor, config)
 
-  # Verify Output
   assert result["error"] is None
   assert len(result["data"]) == 2
   assert result["data"][0] == {"id": "row1", "value": 100}
 
 
 def test_run_sql_widget_attempts_execution_on_drop() -> None:
-  """
-  Test that 'DROP TABLE' queries are attempted (executed) on the cursor.
-  The runner does not block them; the DB is expected to throw.
-  """
+  """Test that 'DROP TABLE' queries are attempted on the read-only cursor and DB errors are surfaced."""
   mock_cursor = MagicMock()
-  # We simulate the DB throwing an error because it's Read-Only
   mock_cursor.execute.side_effect = Exception("Catalog Error: Cannot drop table in read-only mode")
 
   config = {"query": "DROP TABLE critical_data;"}
-
   result = run_sql_widget(mock_cursor, config)
 
-  # Should have attempted execution
   mock_cursor.execute.assert_called()
-
-  # Error should come from the exception, not a pre-check
+  assert result["error"] is not None
   assert "Catalog Error" in result["error"]
 
 
 def test_run_sql_widget_attempts_execution_on_update() -> None:
-  """
-  Test that 'UPDATE' queries are attempted.
-  """
+  """Test that 'UPDATE' queries are attempted and read-only DB errors are surfaced."""
   mock_cursor = MagicMock()
   mock_cursor.execute.side_effect = Exception("Access Error: Cannot modify")
 
   config = {"query": "UPDATE stats SET val = 0"}
-
   result = run_sql_widget(mock_cursor, config)
 
   mock_cursor.execute.assert_called()
+  assert result["error"] is not None
   assert "Access Error" in result["error"]
 
 
 def test_run_sql_widget_allows_complex_selects() -> None:
-  """
-  Test that complex SELECT queries (CTEs, Joins) are allowed.
-  """
+  """Test that complex SELECT queries (CTEs, Joins) are allowed."""
   mock_cursor = MagicMock()
   mock_cursor.description = [("cnt", "int")]
   mock_cursor.fetchall.return_value = [(10,)]
 
-  valid_query = """ 
-    WITH data AS (SELECT * FROM t) 
+  valid_query = """
+    WITH data AS (SELECT * FROM t)
     SELECT count(*) as cnt FROM data
     """
   config = {"query": valid_query}
-
   result = run_sql_widget(mock_cursor, config)
 
   mock_cursor.execute.assert_called_with(valid_query.strip())
@@ -87,14 +71,11 @@ def test_run_sql_widget_allows_complex_selects() -> None:
 
 
 def test_run_sql_widget_execution_error() -> None:
-  """
-  Test that runtime errors during SQL execution are caught and returned formatted.
-  """
+  """Test that runtime errors during SQL execution are caught and returned formatted."""
   mock_cursor = MagicMock()
   mock_cursor.execute.side_effect = Exception("Database Locked")
 
   config = {"query": "SELECT * FROM locked_table"}
-
   result = run_sql_widget(mock_cursor, config)
 
   assert result["error"] is not None
@@ -105,7 +86,7 @@ def test_run_sql_widget_execution_error() -> None:
 def test_run_sql_widget_missing_query() -> None:
   """Ensure missing SQL returns an error payload."""
   mock_cursor = MagicMock()
-  config = {}
+  config: dict[str, Any] = {}
 
   result = run_sql_widget(mock_cursor, config)
 
@@ -119,7 +100,6 @@ def test_run_sql_widget_no_result_set() -> None:
   mock_cursor.description = None
 
   config = {"query": "SET some_setting = 1"}
-
   result = run_sql_widget(mock_cursor, config)
 
   assert result["error"] is None
@@ -127,10 +107,8 @@ def test_run_sql_widget_no_result_set() -> None:
   assert result["columns"] == []
 
 
-def test_run_sql_widget_continues_on_validation_warning(monkeypatch: Any) -> None:
-  """Validation errors should not prevent execution."""
-  from app.core.result import AppError, Err, ErrorCode
-
+def test_run_sql_widget_continues_on_validation_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+  """Validation warnings should not prevent execution."""
   mock_cursor = MagicMock()
   mock_cursor.description = [("id", "int")]
   mock_cursor.fetchall.return_value = [(1,)]
@@ -142,7 +120,6 @@ def test_run_sql_widget_continues_on_validation_warning(monkeypatch: Any) -> Non
   )
 
   result = run_sql_widget(mock_cursor, {"query": "SELECT 1"})
-
   assert result["error"] is None
 
 
@@ -161,8 +138,6 @@ def test_run_sql_widget_respects_max_rows() -> None:
 @pytest.mark.asyncio
 async def test_run_sql_widget_async_offloads_to_thread() -> None:
   """Verify `run_sql_widget_async` executes query in a background thread and returns result."""
-  from app.services.runners.sql import run_sql_widget_async
-
   mock_cursor = MagicMock()
   mock_cursor.description = [("col", "int")]
   mock_cursor.fetchall.return_value = [(99,)]

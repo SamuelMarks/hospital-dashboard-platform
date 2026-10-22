@@ -4,7 +4,7 @@
  * facilitating presence indicators, remote layout updates, and live widget refresh synchronization.
  */
 
-import { Injectable, InjectionToken, inject, signal, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { Service, InjectionToken, inject, signal, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subject } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
@@ -62,9 +62,7 @@ export interface CollaborationMessage {
 /**
  * Service managing real-time WebSocket connection to a specific dashboard.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class DashboardCollaborationService implements OnDestroy {
   /** Authentication service dependency. */
   private readonly authService = inject(AuthService);

@@ -5,11 +5,12 @@ Validates MockEmailService tracking, SmtpEmailService MIME construction,
 SMTP connection flows, error handling, and provider resolution.
 """
 
-from typing import Any
-
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.services.email import MockEmailService, SmtpEmailService, get_email_service
@@ -127,7 +128,7 @@ def test_get_email_service_provider_resolution() -> None:
 
 
 @pytest.mark.asyncio
-async def test_forgot_password_handles_email_service_exception(client: Any, db_session: Any) -> None:
+async def test_forgot_password_handles_email_service_exception(client: AsyncClient, db_session: AsyncSession) -> None:
   """Verifies forgot-password route handles email transmission failure gracefully without crashing."""
   import uuid
   from app.models.user import User

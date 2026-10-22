@@ -5,6 +5,7 @@ Exposes endpoints to retrieve the structure of the analytical database (DuckDB).
 Used primarily by the Frontend SQL Editor to provide schema-aware autocomplete/IntelliSense.
 """
 
+import asyncio
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -18,20 +19,19 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[TableInfo])
-def get_database_schema(current_user: Annotated[User, Depends(deps.get_current_user)]) -> list[TableInfo]:
+async def get_database_schema(current_user: Annotated[User, Depends(deps.get_current_user)]) -> list[TableInfo]:
   """
-  Retrieve the current OLAP database schema (Tables and Columns).
+  Retrieves the current OLAP database schema (Tables and Columns).
 
-  This endpoint introspects the active DuckDB connection.
-  It is synchronous to ensure FastAPI executes it in a threadpool, preventing
-  blocking of the main event loop during database I/O.
+  This endpoint introspects the active DuckDB connection in a background worker
+  thread via `asyncio.to_thread`, preventing blocking of the main event loop.
 
   Args:
-      current_user: Authenticated user (required for access).
+      current_user (User): Authenticated user (required for access).
 
   Returns:
-      List[TableInfo]: A structured list of tables and their column definitions.
+      list[TableInfo]: A structured list of tables and their column definitions.
   """
-  # schema_service.get_schema_json returns List[Dict], which is validated
-  # into List[TableInfo] to preserve strict typing guarantees.
-  return [TableInfo.model_validate(t) for t in schema_service.get_schema_json()]
+  _ = current_user
+  raw_tables = await asyncio.to_thread(schema_service.get_schema_json)
+  return [TableInfo.model_validate(t) for t in raw_tables]

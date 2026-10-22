@@ -1,7 +1,9 @@
 <div class="mpax-container">
   <div class="header">
     <h1 i18n class="text-2xl font-light mb-1">MPAX vs LLM Arena</h1>
-    <p i18n class="text-gray-500">Compare Mathematical Optimization vs Generative AI</p>
+    <p i18n style="color: var(--sys-text-secondary)">
+      Compare Mathematical Optimization vs Generative AI
+    </p>
   </div>
 
   <mat-card class="form-panel p-4 mb-6">
@@ -21,12 +23,7 @@
 
       <mat-form-field appearance="outline" class="w-64">
         <mat-label i18n>Evaluation Mode</mat-label>
-        <mat-select
-          [value]="mode()"
-          (selectionChange)="mode.set($event.value)"
-          i18n-aria-label
-          aria-label="Select option"
-        >
+        <mat-select [value]="mode()" (selectionChange)="mode.set($event.value)">
           <mat-option i18n value="judge">1. Ground Truth Judge</mat-option>
           <mat-option i18n value="translator">2. Translators</mat-option>
           <mat-option i18n value="constraints">3. Constraint Generation</mat-option>
@@ -55,7 +52,15 @@
   </mat-card>
 
   @if (error()) {
-    <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
+    <div
+      role="alert"
+      class="error-box p-4 mb-6 border-l-4 rounded"
+      style="
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        border-color: var(--sys-error);
+      "
+    >
       {{ error() }}
     </div>
   }
@@ -63,8 +68,15 @@
   @if (result(); as res) {
     <div class="results-grid">
       @if (res.ground_truth_mpax) {
-        <mat-card class="mpax-panel p-4 bg-blue-50 border-blue-200 border">
-          <h3 i18n class="font-bold text-blue-900 mb-2">MPAX Ground Truth</h3>
+        <mat-card
+          class="mpax-panel p-4 border"
+          style="
+            background-color: var(--sys-primary-container);
+            color: var(--sys-on-primary-container);
+            border-color: var(--sys-surface-border);
+          "
+        >
+          <h3 i18n class="font-bold mb-2">MPAX Ground Truth</h3>
           <pre class="text-xs overflow-auto">{{ res.ground_truth_mpax | json }}</pre>
         </mat-card>
       }
@@ -96,7 +108,10 @@
             </div>
 
             @if (cand.mpax_score !== null && cand.mpax_score !== undefined) {
-              <div class="mb-4 p-2 bg-gray-100 rounded">
+              <div
+                class="mb-4 p-2 rounded"
+                style="background-color: var(--sys-surface-variant); color: var(--sys-on-surface)"
+              >
                 <strong i18n>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
               </div>
             }
@@ -108,8 +123,16 @@
             <viz-markdown [content]="cand.content"></viz-markdown>
 
             @if (cand.mpax_result) {
-              <div class="mt-4 p-2 bg-gray-50 border rounded">
-                <h4 i18n class="font-bold text-xs text-gray-500 mb-1">Generated MPAX Result</h4>
+              <div
+                class="mt-4 p-2 border rounded"
+                style="
+                  background-color: var(--sys-surface-variant);
+                  border-color: var(--sys-surface-border);
+                "
+              >
+                <h4 i18n class="font-bold text-xs mb-1" style="color: var(--sys-text-secondary)">
+                  Generated MPAX Result
+                </h4>
                 <pre class="text-xs overflow-auto">{{ cand.mpax_result | json }}</pre>
               </div>
             }

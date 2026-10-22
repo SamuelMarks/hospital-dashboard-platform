@@ -15,6 +15,6 @@ export const simulationRoutes: Routes = [
   {
     path: '',
     loadComponent: () => import('./simulation.component').then((m) => m.SimulationComponent),
-    title: 'Workload Simulation - Pulse Query',
+    title: $localize`:@@routeTitleWorkloadSimulation:Workload Simulation - Pulse Query`,
   },
 ];

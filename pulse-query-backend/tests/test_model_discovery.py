@@ -5,8 +5,9 @@ Verifies that the configuration system and update scripts handle environment det
 """
 
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
+
+import pytest
 
 from scripts.update_models import (
   get_ollama_models,
@@ -84,7 +85,7 @@ def test_ollama_env_update(tmp_path: Path) -> None:
     assert 'OLLAMA_MODELS="m4|Four"' in missing_env.read_text()
 
 
-def test_inspect_cloud_keys_and_main(monkeypatch: Any, tmp_path: Path) -> None:
+def test_inspect_cloud_keys_and_main(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """Verify inspect_cloud_keys and main() branches with and without local models / cloud keys."""
   for k in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY", "XAI_API_KEY"):
     monkeypatch.delenv(k, raising=False)

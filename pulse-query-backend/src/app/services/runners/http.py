@@ -6,12 +6,13 @@ data from HTTP endpoints. It utilizes `httpx` for asynchronous non-blocking I/O,
 essential for loading multiple widgets simultaneously on a dashboard.
 """
 
+import json
 import logging
 from typing import Any
 
 import httpx
 
-from app.core.network_security import SafeAsyncHTTPTransport, validate_safe_url
+from app.core.network_security import SafeAsyncHTTPTransport, validate_safe_url_result
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.execution import HttpRunnerPayload, HttpRunnerResultDict
 
@@ -106,14 +107,14 @@ async def execute_http_result(
   Returns:
       AppResult[HttpRunnerPayload]: `Ok(HttpRunnerPayload)` on 2xx response, or `Err(AppError)` with status/details.
   """
-  url: Any = config.get("url", "")
+  raw_url: object = config.get("url", "")
   method: str = str(config.get("method", "GET")).upper()
   headers: dict[str, str] = dict(config.get("headers", {}))
   query_params: dict[str, str] = config.get("params", {})
   json_body: dict[str, Any] | None = config.get("body")
   timeout_sec: float = float(config.get("timeout", 10.0))
 
-  if not url:
+  if not raw_url:
     return Err(
       AppError(
         code=ErrorCode.VALIDATION_ERROR,
@@ -122,17 +123,25 @@ async def execute_http_result(
       )
     )
 
-  if isinstance(url, str):
-    is_safe, error_detail = validate_safe_url(url)
-    if not is_safe:
-      logger.warning(f"Blocked SSRF attempt to unsafe URL: {url} ({error_detail})")
-      return Err(
-        AppError(
-          code=ErrorCode.SSRF_BLOCKED,
-          message=f"Security restriction: {error_detail}",
-          status_code=403,
-        )
+  if not isinstance(raw_url, str):
+    return Err(
+      AppError(
+        code=ErrorCode.INTERNAL_ERROR,
+        message=f"Unexpected error: URL must be a string, got {type(raw_url).__name__}.",
+        status_code=500,
       )
+    )
+
+  url_check = validate_safe_url_result(raw_url)
+  if isinstance(url_check, Err):
+    logger.warning(f"Blocked SSRF attempt to unsafe URL: {raw_url} ({url_check.error.message})")
+    return Err(
+      AppError(
+        code=ErrorCode.SSRF_BLOCKED,
+        message=f"Security restriction: {url_check.error.message}",
+        status_code=403,
+      )
+    )
 
   if forward_auth_token and "Authorization" not in headers:
     headers["Authorization"] = f"Bearer {forward_auth_token}"
@@ -140,7 +149,7 @@ async def execute_http_result(
   try:
     response = await _dispatch_http_request(
       method=method,
-      url=url,
+      url=raw_url,
       headers=headers,
       query_params=query_params,
       json_body=json_body,
@@ -158,7 +167,7 @@ async def execute_http_result(
 
   except httpx.TimeoutException:
     error_msg = f"Request timed out after {timeout_sec} seconds."
-    logger.warning(f"HTTP Widget Timeout: {url}")
+    logger.warning(f"HTTP Widget Timeout: {raw_url}")
     return Err(
       AppError(
         code=ErrorCode.HTTP_EXECUTION_ERROR,
@@ -169,7 +178,7 @@ async def execute_http_result(
 
   except httpx.HTTPStatusError as e:
     error_msg = f"HTTP Error {e.response.status_code}: {e.response.reason_phrase}"
-    logger.error(f"HTTP Widget Status Error: {url} - {error_msg}")
+    logger.error(f"HTTP Widget Status Error: {raw_url} - {error_msg}")
     return Err(
       AppError(
         code=ErrorCode.HTTP_EXECUTION_ERROR,
@@ -181,7 +190,7 @@ async def execute_http_result(
 
   except httpx.RequestError as e:
     error_msg = f"Connection error: {e!s}"
-    logger.error(f"HTTP Widget Connection Error: {url} - {error_msg}")
+    logger.error(f"HTTP Widget Connection Error: {raw_url} - {error_msg}")
     return Err(
       AppError(
         code=ErrorCode.HTTP_EXECUTION_ERROR,
@@ -192,7 +201,7 @@ async def execute_http_result(
 
   except Exception as e:
     error_msg = f"Unexpected error: {e!s}"
-    logger.exception(f"HTTP Widget Validation Error: {url}")
+    logger.exception(f"HTTP Widget Validation Error: {raw_url}")
     return Err(
       AppError(
         code=ErrorCode.INTERNAL_ERROR,
@@ -212,20 +221,11 @@ async def run_http_widget(
 
   Args:
       config (dict[str, Any]): The configuration dictionary for the widget.
-          Expected keys:
-          - url (str): The target endpoint.
-          - method (str, optional): HTTP method (GET, POST, etc.). Defaults to 'GET'.
-          - headers (dict[str, str], optional): Custom headers.
-          - params (dict[str, str], optional): Query parameters.
-          - body (dict[str, Any], optional): JSON body for POST/PUT requests.
-          - timeout (float, optional): Request timeout in seconds. Defaults to 10.0.
-      forward_auth_token (str | None): If provided, adds an 'Authorization'
-          header with this token value to the request. This is useful for
-          calling internal protected services acting on behalf of the user.
+      forward_auth_token (str | None): Optional bearer token to forward when `Authorization` is not set.
       client (httpx.AsyncClient | None): Optional pooled `httpx.AsyncClient` to reuse.
 
   Returns:
-      HttpRunnerResultDict: A dictionary containing the result of the operation.
+      HttpRunnerResultDict: A dictionary containing `data`, `status`, and `error`.
   """
   res = await execute_http_result(config, forward_auth_token=forward_auth_token, client=client)
   if isinstance(res, Ok):
@@ -234,8 +234,6 @@ async def run_http_widget(
   error_data: Any = None
   raw_body = res.error.details.get("response_text")
   if raw_body is not None:
-    import json
-
     try:
       error_data = json.loads(raw_body)
     except ValueError:

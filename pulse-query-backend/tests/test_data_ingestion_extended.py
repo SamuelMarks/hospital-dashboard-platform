@@ -2,51 +2,71 @@
 Extended tests for the data ingestion service.
 """
 
+from pathlib import Path
 from typing import Any
 
-from pathlib import Path
-
 import duckdb
+import pytest
 
 from app.services import data_ingestion
 
 
 class _FakeResult:
-  def __init__(self, rows: Any) -> None:
+  """Stub DuckDB query result returning pre-configured row tuples."""
+
+  def __init__(self, rows: list[tuple[Any, ...]]) -> None:
     """
-    Verify init behavior.
+    Initializes the fake result with `rows`.
 
     Args:
-        rows: Test parameter or fixture.
+        rows (list[tuple[Any, ...]]): Sequence of result tuples.
     """
     self._rows = rows
 
-  def fetchall(self) -> Any:
-    """Verify fetchall behavior."""
+  def fetchall(self) -> list[tuple[Any, ...]]:
+    """
+    Returns all rows as a list.
+
+    Returns:
+        list[tuple[Any, ...]]: Stored row tuples.
+    """
     return list(self._rows)
 
-  def fetchone(self) -> Any:
-    """Verify fetchone behavior."""
+  def fetchone(self) -> tuple[Any, ...] | None:
+    """
+    Returns the first row tuple or None if empty.
+
+    Returns:
+        tuple[Any, ...] | None: First row tuple or None.
+    """
     return self._rows[0] if self._rows else None
 
 
 class _FakeConn:
-  def __init__(self, fail_on: Any = None) -> None:
+  """Stub DuckDB connection for simulating targeted SQL statement failures."""
+
+  def __init__(self, fail_on: set[str] | None = None) -> None:
     """
-    Verify init behavior.
+    Initializes the fake connection with substrings that trigger RuntimeError.
 
     Args:
-        fail_on: Test parameter or fixture.
+        fail_on (set[str] | None): Substrings that should raise `RuntimeError("boom")`.
     """
     self.fail_on = fail_on or set()
     self.closed = False
 
-  def execute(self, query: str) -> Any:
+  def execute(self, query: str) -> _FakeResult:
     """
-    Verify execute behavior.
+    Simulates SQL execution or raises `RuntimeError` when `query` matches `self.fail_on`.
 
     Args:
-        query: Test parameter or fixture.
+        query (str): SQL query string.
+
+    Returns:
+        _FakeResult: Stubbed query result.
+
+    Raises:
+        RuntimeError: When `query` contains any token in `self.fail_on`.
     """
     if any(token in query for token in self.fail_on):
       raise RuntimeError("boom")
@@ -57,21 +77,22 @@ class _FakeConn:
     return _FakeResult([])
 
   def close(self) -> None:
-    """Verify close behavior."""
+    """Marks the fake connection as closed."""
     self.closed = True
 
 
 def _write_minimal_csv(path: Path) -> None:
   """
-  Verify write minimal csv behavior.
+  Writes a minimal 1-row hospital CSV file to `path`.
 
   Args:
-      path: Test parameter or fixture.
+      path (Path): Target file path.
   """
-  path.write_text("Clinical_Service,Entry_Point\nCardio,ER\n", encoding="utf-8")
+  nl = chr(10)
+  path.write_text(f"Clinical_Service,Entry_Point{nl}Cardio,ER{nl}", encoding="utf-8")
 
 
-def test_generate_sample_data_creates_file(tmp_path: Any) -> None:
+def test_generate_sample_data_creates_file(tmp_path: Path) -> None:
   """Sample data generation should create a CSV with headers."""
   target = tmp_path / "sample.csv"
   data_ingestion.DataIngestionService.generate_sample_data(str(target), rows=2)
@@ -82,17 +103,20 @@ def test_generate_sample_data_creates_file(tmp_path: Any) -> None:
   assert "admission_date" in header
 
 
-def test_generate_sample_data_handles_io_error(monkeypatch: Any, tmp_path: Any) -> None:
+def test_generate_sample_data_handles_io_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """IO errors during sample generation should not raise."""
   target = tmp_path / "sample.csv"
 
-  def _boom(*args: Any, **kwargs: Any) -> None:
+  def _boom(*_args: object, **_kwargs: object) -> None:
     """
-    Verify boom behavior.
+    Simulates an `OSError` when opening a file for writing.
 
     Args:
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        *_args (object): Positional arguments.
+        **_kwargs (object): Keyword arguments.
+
+    Raises:
+        OSError: Always raised.
     """
     raise OSError("nope")
 
@@ -102,10 +126,11 @@ def test_generate_sample_data_handles_io_error(monkeypatch: Any, tmp_path: Any) 
   assert not target.exists()
 
 
-def test_ingest_all_csvs_generates_sample_and_ingests(monkeypatch: Any, tmp_path: Any) -> None:
-  """When no CSVs exist, ingestion should generate and process a default file."""
+def test_ingest_all_csvs_generates_sample_and_ingests(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+  """When no CSVs exist, ingestion should generate and process a default file into DuckDB."""
   data_dir = tmp_path / "data"
   default_csv = data_dir / "hospital_data.csv"
+  db_path = str(tmp_path / "sample_ingest.duckdb")
 
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
   monkeypatch.setattr(data_ingestion, "DEFAULT_CSV_PATH", str(default_csv))
@@ -113,12 +138,13 @@ def test_ingest_all_csvs_generates_sample_and_ingests(monkeypatch: Any, tmp_path
 
   def _fake_generate(filepath: str, rows: int = 1000) -> None:
     """
-    Verify fake generate behavior.
+    Creates a minimal valid CSV at `filepath`.
 
     Args:
-        filepath: Test parameter or fixture.
-        rows: Test parameter or fixture.
+        filepath (str): Target CSV path.
+        rows (int): Row count parameter.
     """
+    _ = rows
     Path(filepath).parent.mkdir(parents=True, exist_ok=True)
     _write_minimal_csv(Path(filepath))
 
@@ -129,16 +155,20 @@ def test_ingest_all_csvs_generates_sample_and_ingests(monkeypatch: Any, tmp_path
   )
 
   monkeypatch.setattr(
-    data_ingestion.duckdb_manager,
-    "get_connection",
-    lambda: duckdb.connect(":memory:"),
+    "app.services.data_ingestion.duckdb_manager.get_connection",
+    lambda: duckdb.connect(db_path),
   )
 
   data_ingestion.DataIngestionService.ingest_all_csvs()
   assert default_csv.exists()
+  check_conn = duckdb.connect(db_path)
+  row = check_conn.execute("SELECT COUNT(*) FROM hospital_data").fetchone()
+  assert row is not None
+  assert row[0] == 1
+  check_conn.close()
 
 
-def test_ingest_all_csvs_handles_file_error(monkeypatch: Any, tmp_path: Any) -> None:
+def test_ingest_all_csvs_handles_file_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """Per-file execution errors should be caught and logged."""
   data_dir = tmp_path / "data"
   data_dir.mkdir()
@@ -147,14 +177,14 @@ def test_ingest_all_csvs_handles_file_error(monkeypatch: Any, tmp_path: Any) -> 
 
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
 
-  fake_conn = _FakeConn(fail_on={"CREATE OR REPLACE TABLE bad"})
-  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: fake_conn)
+  fake_conn = _FakeConn(fail_on={'CREATE OR REPLACE TABLE "bad"'})
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.get_connection", lambda: fake_conn)
 
   data_ingestion.DataIngestionService.ingest_all_csvs()
   assert fake_conn.closed is True
 
 
-def test_ingest_all_csvs_handles_fatal_error(monkeypatch: Any, tmp_path: Any) -> None:
+def test_ingest_all_csvs_handles_fatal_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """Unexpected errors outside the per-file block should be handled."""
   data_dir = tmp_path / "data"
   data_dir.mkdir()
@@ -164,14 +194,17 @@ def test_ingest_all_csvs_handles_fatal_error(monkeypatch: Any, tmp_path: Any) ->
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
 
   fake_conn = _FakeConn()
-  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: fake_conn)
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.get_connection", lambda: fake_conn)
 
   def _boom(_filename: str) -> str:
     """
-    Verify boom behavior.
+    Raises a simulated `ValueError` during table name sanitization.
 
     Args:
-        _filename: Test parameter or fixture.
+        _filename (str): Input filename.
+
+    Raises:
+        ValueError: Always raised.
     """
     raise ValueError("boom")
 
@@ -181,7 +214,7 @@ def test_ingest_all_csvs_handles_fatal_error(monkeypatch: Any, tmp_path: Any) ->
   assert fake_conn.closed is True
 
 
-def test_generate_synthetic_sample_data_creates_file(tmp_path: Any) -> None:
+def test_generate_synthetic_sample_data_creates_file(tmp_path: Path) -> None:
   """Synthetic sample data generation should create a CSV with required columns."""
   target = tmp_path / "synthetic.csv"
   data_ingestion.DataIngestionService.generate_synthetic_sample_data(str(target), rows=5)
@@ -193,17 +226,20 @@ def test_generate_synthetic_sample_data_creates_file(tmp_path: Any) -> None:
   assert "Clinical_Service" in header
 
 
-def test_generate_synthetic_sample_data_handles_io_error(monkeypatch: Any, tmp_path: Any) -> None:
+def test_generate_synthetic_sample_data_handles_io_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
   """IO errors during synthetic sample generation should be caught safely."""
   target = tmp_path / "synthetic.csv"
 
-  def _boom(*args: Any, **kwargs: Any) -> None:
+  def _boom(*_args: object, **_kwargs: object) -> None:
     """
-    Verify boom behavior.
+    Simulates an `OSError` when opening the synthetic CSV for writing.
 
     Args:
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        *_args (object): Positional arguments.
+        **_kwargs (object): Keyword arguments.
+
+    Raises:
+        OSError: Always raised.
     """
     raise OSError("cannot write")
 
@@ -212,8 +248,8 @@ def test_generate_synthetic_sample_data_handles_io_error(monkeypatch: Any, tmp_p
   assert not target.exists()
 
 
-def test_ingest_all_csvs_creates_compatibility_alias_views(tmp_path: Any, monkeypatch: Any) -> None:
-  """Compatibility views should be created when one table exists and the other does not."""
+def test_ingest_all_csvs_creates_compatibility_alias_views(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Compatibility views and DuckDB indexes should be created and queryable when hospital_data.csv is ingested."""
   data_dir = tmp_path / "data"
   data_dir.mkdir()
   h_csv = data_dir / "hospital_data.csv"
@@ -221,17 +257,24 @@ def test_ingest_all_csvs_creates_compatibility_alias_views(tmp_path: Any, monkey
 
   db_path = str(tmp_path / "test_views.duckdb")
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
-  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: duckdb.connect(db_path))
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.get_connection", lambda: duckdb.connect(db_path))
 
   data_ingestion.DataIngestionService.ingest_all_csvs()
   check_conn = duckdb.connect(db_path)
   tables = [r[0].lower() for r in check_conn.execute("SHOW TABLES").fetchall()]
   assert "synthetic_hospital_data" in tables
+  alias_rows = check_conn.execute("SELECT Clinical_Service, Entry_Point FROM synthetic_hospital_data").fetchall()
+  assert alias_rows == [("Cardio", "ER")]
+  indexes = [r[0] for r in check_conn.execute("SELECT index_name FROM duckdb_indexes()").fetchall()]
+  assert "idx_hospital_data_service" in indexes
+  assert "idx_hospital_data_entry" in indexes
   check_conn.close()
 
 
-def test_ingest_all_csvs_creates_reverse_compatibility_alias_views(tmp_path: Any, monkeypatch: Any) -> None:
-  """Compatibility view hospital_data should be created when synthetic_hospital_data exists."""
+def test_ingest_all_csvs_creates_reverse_compatibility_alias_views(
+  tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+  """Compatibility view hospital_data should be created and queryable when synthetic_hospital_data exists."""
   data_dir = tmp_path / "data"
   data_dir.mkdir()
   s_csv = data_dir / "Synthetic_hospital_data.csv"
@@ -239,16 +282,18 @@ def test_ingest_all_csvs_creates_reverse_compatibility_alias_views(tmp_path: Any
 
   db_path = str(tmp_path / "test_rev_views.duckdb")
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
-  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: duckdb.connect(db_path))
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.get_connection", lambda: duckdb.connect(db_path))
 
   data_ingestion.DataIngestionService.ingest_all_csvs()
   check_conn = duckdb.connect(db_path)
   tables = [r[0].lower() for r in check_conn.execute("SHOW TABLES").fetchall()]
   assert "hospital_data" in tables
+  alias_rows = check_conn.execute("SELECT Clinical_Service, Entry_Point FROM hospital_data").fetchall()
+  assert alias_rows == [("Cardio", "ER")]
   check_conn.close()
 
 
-def test_ingest_all_csvs_handles_alias_view_error(tmp_path: Any, monkeypatch: Any) -> None:
+def test_ingest_all_csvs_handles_alias_view_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
   """Errors during compatibility view creation should be caught safely."""
   data_dir = tmp_path / "data"
   data_dir.mkdir()
@@ -258,30 +303,42 @@ def test_ingest_all_csvs_handles_alias_view_error(tmp_path: Any, monkeypatch: An
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
 
   class _ViewFailingConn(_FakeConn):
-    def execute(self, query: str) -> Any:
+    """Stub connection that raises on `SHOW TABLES`."""
+
+    def execute(self, query: str) -> _FakeResult:
       """
-      Verify execute behavior.
+      Raises `RuntimeError` on `SHOW TABLES`, delegating other queries to `super()`.
 
       Args:
-          query: Test parameter or fixture.
+          query (str): SQL query string.
+
+      Returns:
+          _FakeResult: Stubbed result.
       """
       if "SHOW TABLES" in query:
         raise RuntimeError("cannot show tables")
       return super().execute(query)
 
   fake_conn = _ViewFailingConn()
-  monkeypatch.setattr(data_ingestion.duckdb_manager, "get_connection", lambda: fake_conn)
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.get_connection", lambda: fake_conn)
   data_ingestion.DataIngestionService.ingest_all_csvs()
   assert fake_conn.closed is True
 
 
-def test_data_ingestion_table_without_indexed_columns(tmp_path: Any, monkeypatch: Any) -> None:
-  """Verifies ingestion of CSV files that do not contain Clinical_Service or Entry_Point columns."""
+def test_data_ingestion_table_without_indexed_columns(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verifies ingestion of CSV files without Clinical_Service/Entry_Point columns into a real DuckDB table."""
   data_dir = tmp_path / "data_plain"
   data_dir.mkdir()
   plain_csv = data_dir / "tbl.csv"
-  plain_csv.write_text("id,value\n1,10\n2,20\n", encoding="utf-8")
+  nl = chr(10)
+  plain_csv.write_text(f"id,value{nl}1,10{nl}2,20{nl}", encoding="utf-8")
 
+  db_path = str(tmp_path / "plain_tbl.duckdb")
   monkeypatch.setattr(data_ingestion, "DATA_DIR", str(data_dir))
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.get_connection", lambda: duckdb.connect(db_path))
   data_ingestion.DataIngestionService.ingest_all_csvs()
-  assert plain_csv.exists()
+
+  check_conn = duckdb.connect(db_path)
+  agg_row = check_conn.execute("SELECT COUNT(*), SUM(value) FROM tbl").fetchone()
+  assert agg_row == (2, 30)
+  check_conn.close()

@@ -7,14 +7,14 @@
     <!-- Disable animation for E2E speed/stability -->
     <mat-stepper [linear]="true" #stepper class="h-full" animationDuration="0ms">
       <!-- STEP 1: Selection -->
-      <mat-step i18n>
-        <ng-template matStepLabel>Select Template</ng-template>
+      <mat-step>
+        <ng-template matStepLabel i18n>Select Template</ng-template>
 
         <div class="step-content pt-4" style="background-color: var(--sys-background)">
           <form [formRoot]="selectionForm">
             <mat-radio-group [formField]="selectionForm.mode" class="flex gap-6 mb-4">
-              <mat-radio-button value="predefined">Marketplace</mat-radio-button>
-              <mat-radio-button value="custom">Custom SQL</mat-radio-button>
+              <mat-radio-button i18n value="predefined">Marketplace</mat-radio-button>
+              <mat-radio-button i18n value="custom">Custom SQL</mat-radio-button>
             </mat-radio-group>
           </form>
 
@@ -23,7 +23,8 @@
             <div class="marketplace-container flex flex-col gap-4">
               <!-- Filters -->
               <mat-form-field appearance="outline" density="compact" subscriptSizing="dynamic">
-                <mat-icon matPrefix>search</mat-icon>
+                <mat-label i18n>Search templates</mat-label>
+                <mat-icon matPrefix aria-hidden="true">search</mat-icon>
                 <input
                   matInput
                   i18n-placeholder
@@ -32,15 +33,19 @@
                 />
               </mat-form-field>
 
-              <mat-chip-set class="mb-2">
+              <mat-chip-listbox
+                class="mb-2"
+                i18n-aria-label
+                aria-label="Filter templates by category"
+              >
                 @for (cat of categories(); track cat) {
-                  <mat-chip
-                    [highlighted]="selectedCategory() === cat"
+                  <mat-chip-option
+                    [selected]="selectedCategory() === cat"
                     (click)="toggleCategory(cat)"
-                    >{{ cat }}</mat-chip
+                    >{{ cat }}</mat-chip-option
                   >
                 }
-              </mat-chip-set>
+              </mat-chip-listbox>
 
               @if (loadingTemplates()) {
                 <mat-spinner diameter="40" class="self-center"></mat-spinner>
@@ -58,10 +63,13 @@
                 @for (t of templates(); track t.id) {
                   <mat-card
                     class="template-card mb-2"
-                    [class.selected-card]="selectedTemplateId() === t.id"
-                    (click)="selectTemplate(t)"
+                    role="button"
                     tabindex="0"
+                    [class.selected-card]="selectedTemplateId() === t.id"
+                    [attr.aria-pressed]="selectedTemplateId() === t.id"
+                    (click)="selectTemplate(t)"
                     (keydown.enter)="selectTemplate(t)"
+                    (keydown.space)="selectTemplate(t); $event.preventDefault()"
                   >
                     <mat-card-header>
                       <mat-card-title
@@ -74,7 +82,7 @@
                       }}</mat-card-subtitle>
                     </mat-card-header>
                     <mat-card-content
-                      class="mt-2 text-xs text-gray-600 line-clamp-3"
+                      class="mt-2 text-xs line-clamp-3"
                       style="color: var(--sys-text-secondary)"
                     >
                       {{ t.description }}
@@ -88,10 +96,15 @@
           <!-- Custom -->
           @if (formModel().mode === 'custom') {
             <div class="flex flex-col gap-2 mt-4">
-              <label class="text-sm font-medium" style="color: var(--sys-text-primary)"
+              <label
+                i18n
+                for="wizard-custom-sql"
+                class="text-sm font-medium"
+                style="color: var(--sys-text-primary)"
                 >Custom Logic (SQL)</label
               >
               <textarea
+                id="wizard-custom-sql"
                 matInput
                 [formField]="selectionForm.rawSql"
                 class="sql-preview h-64 border p-2 font-mono text-sm rounded"
@@ -110,14 +123,15 @@
       </mat-step>
 
       <!-- STEP 2: Parameters -->
-      <mat-step i18n [completed]="paramsValid()">
-        <ng-template matStepLabel>Configure Parameters</ng-template>
+      <mat-step [completed]="paramsValid()">
+        <ng-template matStepLabel i18n>Configure Parameters</ng-template>
         <div
           class="step-content pt-4 h-96 overflow-y-auto"
           style="background-color: var(--sys-background)"
         >
           <p
-            class="text-sm text-gray-600 p-3 rounded border mb-6"
+            i18n
+            class="text-sm p-3 rounded border mb-6"
             style="
               background-color: var(--sys-primary-container);
               color: var(--sys-on-primary-container);
@@ -135,14 +149,18 @@
       </mat-step>
 
       <!-- STEP 3: Preview -->
-      <mat-step i18n>
-        <ng-template matStepLabel>Preview & Save</ng-template>
+      <mat-step>
+        <ng-template matStepLabel i18n>Preview & Save</ng-template>
         <div
           class="step-content pt-4 h-full flex flex-col"
           style="background-color: var(--sys-background)"
         >
           <div class="flex flex-col gap-2 mb-4">
-            <label class="text-sm font-bold" style="color: var(--sys-text-primary)"
+            <label
+              i18n
+              for="wizard-generated-sql"
+              class="text-sm font-bold"
+              style="color: var(--sys-text-primary)"
               >Generated Query</label
             >
             <div
@@ -154,10 +172,13 @@
                 [innerHTML]="highlightedSql()"
               ></div>
               <textarea
+                id="wizard-generated-sql"
                 class="raw-input absolute inset-0 w-full h-full p-4"
                 readonly
                 [value]="finalSql()"
                 (scroll)="syncScroll($event)"
+                i18n-aria-label
+                aria-label="Generated SQL query preview"
               ></textarea>
             </div>
           </div>
@@ -172,8 +193,8 @@
           >
             @if (isRunning()) {
               <div
-                class="absolute inset-0 z-10 flex items-center justify-center bg-white/80"
-                style="background-color: rgba(var(--sys-surface), 0.8)"
+                class="absolute inset-0 z-10 flex items-center justify-center"
+                style="background-color: color-mix(in srgb, var(--sys-surface) 80%, transparent)"
               >
                 <mat-spinner diameter="32"></mat-spinner>
               </div>
@@ -181,14 +202,18 @@
 
             @if (executionResult(); as res) {
               @if (res.error) {
-                <div class="p-4 flex items-center justify-center" style="color: var(--sys-error)">
-                  <mat-icon>error</mat-icon> {{ res.error }}
+                <div
+                  role="alert"
+                  class="p-4 flex items-center justify-center"
+                  style="color: var(--sys-error)"
+                >
+                  <mat-icon aria-hidden="true">error</mat-icon> {{ res.error }}
                 </div>
               } @else {
                 @defer {
                   <viz-table [dataSet]="asTableData(res)" class="h-full block w-full"></viz-table>
                 } @loading {
-                  <span>Loading Table...</span>
+                  <span i18n>Loading Table...</span>
                 }
               }
             }

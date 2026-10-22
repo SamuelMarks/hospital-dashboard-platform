@@ -11,12 +11,10 @@ import {
   ViewContainerRef,
   inject,
   ErrorHandler,
-  OnDestroy,
   OnInit,
-  Input,
+  input,
 } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
-import { Subscription } from 'rxjs';
 
 /**
  * Context for the Fallback Template.
@@ -53,7 +51,7 @@ export interface ErrorBoundaryContext {
 @Directive({
   selector: '[appErrorBoundary]',
 })
-export class ErrorBoundaryDirective implements OnInit, OnDestroy {
+export class ErrorBoundaryDirective implements OnInit {
   /** View container reference used to mount either the primary template or the fallback view. */
   private readonly vcr = inject(ViewContainerRef);
   /** Primary structural template reference wrapped by the error boundary. */
@@ -61,13 +59,10 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
   /** Global error handler instance used to reset global error state on retry. */
   private readonly globalHandler = inject(ErrorHandler) as GlobalErrorHandler;
 
-  /** Optional subscription to error streams cleaned up on directive destruction. */
-  private sub?: Subscription;
-
   /**
    * The Fallback Template to render when an error state is active.
    */
-  @Input() appErrorBoundary: TemplateRef<ErrorBoundaryContext> | undefined = undefined;
+  readonly appErrorBoundary = input<TemplateRef<ErrorBoundaryContext> | undefined>(undefined);
 
   /**
    * Initializes the view.
@@ -75,14 +70,6 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
    */
   ngOnInit(): void {
     this.renderContent();
-  }
-
-  /**
-   * Cleanup method.
-   * Unsubscribes from error streams.
-   */
-  ngOnDestroy(): void {
-    this.sub?.unsubscribe();
   }
 
   /**
@@ -107,7 +94,7 @@ export class ErrorBoundaryDirective implements OnInit, OnDestroy {
    */
   public renderFallback(error: unknown): void {
     this.vcr.clear();
-    const fallbackTemplate = this.appErrorBoundary;
+    const fallbackTemplate = this.appErrorBoundary();
     if (fallbackTemplate) {
       this.vcr.createEmbeddedView(fallbackTemplate, {
         $implicit: error,

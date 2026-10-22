@@ -5,14 +5,15 @@ Verifies the streaming lifecycle across both `/api/v1/chat/stream/{conversation_
 and `/api/v1/conversations/stream/{conversation_id}` endpoints.
 """
 
+from collections.abc import AsyncGenerator, Generator
 import json
 import uuid
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.models.chat import Conversation, Message
@@ -22,7 +23,7 @@ from app.services.llm_client import ArenaResponse, LLMArenaClient
 
 
 @pytest.fixture
-async def mock_user_auth(db_session: Any) -> Any:
+async def mock_user_auth(db_session: AsyncSession) -> AsyncGenerator[User, None]:
   """
   Creates a persisted user and overrides the current_user dependency.
   """
@@ -158,7 +159,7 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
   assert text_tokens == ["COUNT(*) "]
 
   # 2b. Test async iterable stream (__aiter__)
-  async def async_chunk_generator() -> Any:
+  async def async_chunk_generator() -> AsyncGenerator[MagicMock, None]:
     """Yield mock stream chunks asynchronously."""
     yield chunk1
     yield chunk_empty
@@ -169,7 +170,7 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
   assert async_tokens == ["SELECT ", "1;"]
 
   # 2c. Test generator raising exception during stream pump
-  def faulty_generator() -> Any:
+  def faulty_generator() -> Generator[MagicMock, None, None]:
     """Yield one chunk then raise RuntimeError."""
     yield chunk1
     raise RuntimeError("Pump generator crashed")
@@ -217,7 +218,9 @@ async def test_llm_client_stream_tokens_client_stream_and_fallback() -> None:
 
 
 @pytest.mark.asyncio
-async def test_chat_sse_stream_endpoint_success(client: AsyncClient, mock_user_auth: Any, db_session: Any) -> None:
+async def test_chat_sse_stream_endpoint_success(
+  client: AsyncClient, mock_user_auth: User, db_session: AsyncSession
+) -> None:
   """
   Verifies full Server-Sent Events stream lifecycle for a conversation.
   """
@@ -279,7 +282,7 @@ async def test_chat_sse_stream_endpoint_success(client: AsyncClient, mock_user_a
 
 @pytest.mark.asyncio
 async def test_chat_sse_stream_endpoint_conversations_alias(
-  client: AsyncClient, mock_user_auth: Any, db_session: Any
+  client: AsyncClient, mock_user_auth: User, db_session: AsyncSession
 ) -> None:
   """
   Verifies that the `/api/v1/conversations/stream/{id}` alias operates equivalently.
@@ -294,7 +297,7 @@ async def test_chat_sse_stream_endpoint_conversations_alias(
 
 
 @pytest.mark.asyncio
-async def test_chat_sse_stream_not_found(client: AsyncClient, mock_user_auth: Any) -> None:
+async def test_chat_sse_stream_not_found(client: AsyncClient, mock_user_auth: User) -> None:
   """
   Verifies 404 response when streaming for a non-existent conversation.
   """

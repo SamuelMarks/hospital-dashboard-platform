@@ -3,7 +3,6 @@
  * data source configuration and visualization column mappings.
  */
 import { Component, computed, Signal, inject, signal } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 
 // Material Imports
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -11,7 +10,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatExpansionModule } from '@angular/material/expansion';
 
 import { WidgetResponse, DashboardsService, WidgetUpdate, DashboardResponse } from '../api-client';
 import { DashboardStore } from './dashboard.store';
@@ -22,9 +20,9 @@ import { HttpConfigComponent } from '../editors/http-config.component';
  * Data interface for the Dialog Injection.
  */
 export interface WidgetEditorData {
-  /** dashboardId property. */
+  /** Unique identifier of the dashboard hosting the widget being edited. */
   dashboardId: string;
-  /** widget property. */
+  /** Existing widget entity whose configuration is being edited. */
   widget: WidgetResponse;
 }
 
@@ -40,13 +38,11 @@ export interface WidgetEditorData {
 @Component({
   selector: 'app-widget-editor-dialog',
   imports: [
-    ReactiveFormsModule,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
     MatFormFieldModule,
-    MatExpansionModule,
     SqlBuilderComponent,
     HttpConfigComponent,
   ],
@@ -69,8 +65,9 @@ export interface WidgetEditorData {
         max-height: 80vh;
       }
       .viz-settings-panel {
-        border-top: 1px solid #e0e0e0;
-        background-color: #f5f5f5;
+        border-top: 1px solid var(--sys-surface-border);
+        background-color: var(--sys-surface-variant);
+        color: var(--sys-on-surface);
         padding: 16px;
       }
       .settings-grid {
@@ -86,9 +83,9 @@ export interface WidgetEditorData {
 export class WidgetEditorDialog {
   /** Data. */
   readonly data = inject<WidgetEditorData>(MAT_DIALOG_DATA);
-  /** dialogRef property. */
+  /** Reference to the active Material dialog instance hosting this editor. */
   private readonly dialogRef = inject(MatDialogRef<WidgetEditorDialog>);
-  /** dashboardsApi property. */
+  /** Generated OpenAPI client for persisting widget configuration updates. */
   private readonly dashboardsApi = inject(DashboardsService);
 
   /** Access existing data to populate column dropdowns. */
@@ -100,7 +97,7 @@ export class WidgetEditorDialog {
   /** Y Key. */
   readonly yKey = signal<string | null>(null);
 
-  /** Creates a new WidgetEditorDialog. */
+  /** Initializes axis mapping signals (`xKey`, `yKey`) from the existing widget configuration. */
   constructor() {
     // Initialize form from existing config
     const conf = this.widget.config || {};

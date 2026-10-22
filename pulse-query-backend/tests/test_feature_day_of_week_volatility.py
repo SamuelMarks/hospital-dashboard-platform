@@ -5,6 +5,7 @@ Verifies the SQL logic for calculating the Standard Deviation (STDDEV)
 of daily census counts to identify units with unpredictable staffing needs.
 """
 
+from collections.abc import Generator
 import json
 import os
 from typing import Any
@@ -25,17 +26,17 @@ def volatility_template() -> dict[str, Any]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data = json.load(f)
+    data: list[dict[str, Any]] = json.load(f)
 
   # Find the specific template by title
   template = next((t for t in data if t["title"] == "Day-of-Week Volatility"), None)
   if not template:
     pytest.fail("Day-of-Week Volatility template not found in initial_templates.json")
-  return template
+  return dict(template)
 
 
 @pytest.fixture
-def db_conn() -> duckdb.DuckDBPyConnection:
+def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   """
   Creates an in-memory DuckDB instance seeded with contrasting volatility patterns.
   """

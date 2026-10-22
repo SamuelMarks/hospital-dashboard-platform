@@ -5,6 +5,8 @@
 package io.healthplatform.pulsequery.ui.screens.benchmarks
 
 import io.healthplatform.pulsequery.api.apis.BenchmarksApi
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,7 +117,7 @@ class BenchmarksViewModel(
      */
     suspend fun performLoadBenchmarks() {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        runCatching {
+        runCatchingPulseAsync {
             val sqlRaw = currentBenchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().body()
             val mpaxRaw = currentBenchmarksApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet().body()
             val sqlItems = sqlRaw.map { parseSqlBenchmarkItem(it) }
@@ -136,13 +138,19 @@ class BenchmarksViewModel(
                 _state.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = e.message ?: "Failed to load benchmarks"
+                        errorMessage = e.messageOrDefault("Failed to load benchmarks")
                     )
                 }
             }
         )
     }
 
+    /**
+     * Parses a raw SQL benchmark map entry into a typed [SqlBenchmarkItem].
+     *
+     * @param elemMap Raw benchmark JSON map entry.
+     * @return Parsed [SqlBenchmarkItem].
+     */
     private fun parseSqlBenchmarkItem(elemMap: Map<String, *>): SqlBenchmarkItem {
         return SqlBenchmarkItem(
             theme = extractField(elemMap, "theme") ?: "General",
@@ -154,6 +162,12 @@ class BenchmarksViewModel(
         )
     }
 
+    /**
+     * Parses a raw MPAX benchmark map entry into a typed [MpaxBenchmarkItem].
+     *
+     * @param elemMap Raw MPAX benchmark JSON map entry.
+     * @return Parsed [MpaxBenchmarkItem].
+     */
     private fun parseMpaxBenchmarkItem(elemMap: Map<String, *>): MpaxBenchmarkItem {
         return MpaxBenchmarkItem(
             title = extractField(elemMap, "title") ?: "Optimization Scenario",

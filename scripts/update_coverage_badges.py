@@ -4,12 +4,12 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterable
 import ast
 import json
+from pathlib import Path
 import re
 import subprocess
-from pathlib import Path
-from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "pulse-query-backend"
@@ -51,7 +51,13 @@ def scan_for_coverage_bypasses() -> list[str]:
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
-  """Run a command and surface errors with context."""
+  """
+  Runs a subprocess command and logs non-zero exit codes.
+
+  Args:
+      cmd (list[str]): Command and argument tokens.
+      cwd (Path | None): Optional working directory path.
+  """
   print(f"+ {' '.join(cmd)}")
   try:
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
@@ -60,7 +66,15 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
 
 
 def format_percent(value: float) -> str:
-  """Format a percentage with minimal noise for badges."""
+  """
+  Formats a percentage value with minimal decimal noise for badges.
+
+  Args:
+      value (float): Raw coverage percentage.
+
+  Returns:
+      str: Formatted percentage string.
+  """
   rounded = round(value, 1)
   if abs(rounded - round(rounded)) < 0.05:
     return str(int(round(rounded)))
@@ -68,7 +82,15 @@ def format_percent(value: float) -> str:
 
 
 def badge_color(value: float) -> str:
-  """Map coverage percentage to a shields.io color."""
+  """
+  Maps a coverage percentage to a shields.io badge color name.
+
+  Args:
+      value (float): Coverage percentage (0-100).
+
+  Returns:
+      str: Shields.io color identifier.
+  """
   if value >= 100:
     return "brightgreen"
   if value >= 95:
@@ -83,24 +105,52 @@ def badge_color(value: float) -> str:
 
 
 def badge_url(label: str, value: float) -> str:
-  """Build a shields.io badge URL for a coverage percentage."""
+  """
+  Builds a shields.io badge URL for a coverage percentage.
+
+  Args:
+      label (str): Badge label text.
+      value (float): Coverage percentage value.
+
+  Returns:
+      str: Full shields.io badge URL.
+  """
   percent_str = format_percent(value)
   encoded_value = f"{percent_str}%25"
   return f"https://img.shields.io/badge/{label}-{encoded_value}-{badge_color(value)}"
 
 
 def read_percent(value: object) -> float:
-  """Normalize coverage percent values into a float."""
-  if value is None:
-    raise CoverageError("Missing coverage percent in JSON report.")
+  """
+  Normalizes a raw JSON coverage percentage value into a `float`.
+
+  Args:
+      value (object): Raw JSON value (`str`, `int`, `float`, or `None`).
+
+  Returns:
+      float: Parsed percentage value.
+
+  Raises:
+      CoverageError: If `value` is `None` or not convertible to `float`.
+  """
+  if isinstance(value, (int, float)):
+    return float(value)
   if isinstance(value, str):
     cleaned = value.strip().rstrip("%")
     return float(cleaned)
-  return float(value)
+  raise CoverageError("Missing coverage percent in JSON report.")
 
 
 def compute_test_coverage() -> float:
-  """Run pytest with JSON coverage output and return percent covered."""
+  """
+  Runs pytest with JSON coverage output and returns the total percentage covered.
+
+  Returns:
+      float: Total line/branch coverage percentage reported by pytest.
+
+  Raises:
+      CoverageError: If `coverage.json` was not produced or lacks coverage totals.
+  """
   coverage_dir = BACKEND / "coverage"
   coverage_dir.mkdir(exist_ok=True)
   coverage_json = coverage_dir / "coverage.json"
@@ -131,9 +181,9 @@ def _check_class_docs(path: Path, node: ast.ClassDef, missing: list[str]) -> tup
   Counts total and documented items for a class definition and its public methods.
 
   Args:
-      path: Source file path.
-      node: AST `ClassDef` node.
-      missing: Mutable list collecting missing docstring identifiers.
+      path (Path): Source file path.
+      node (ast.ClassDef): AST `ClassDef` node.
+      missing (list[str]): Mutable list collecting missing docstring identifiers.
 
   Returns:
       tuple[int, int]: `(total_count, documented_count)` for this class.
@@ -160,7 +210,12 @@ def _check_class_docs(path: Path, node: ast.ClassDef, missing: list[str]) -> tup
 
 
 def compute_doc_coverage() -> tuple[float, list[str]]:
-  """Compute docstring coverage using interrogate-equivalent rules."""
+  """
+  Computes docstring coverage across `APP_ROOT` using interrogate-equivalent AST rules.
+
+  Returns:
+      tuple[float, list[str]]: `(coverage_percent, missing_identifiers)`.
+  """
   total = 0
   documented = 0
   missing: list[str] = []
@@ -194,7 +249,17 @@ def compute_doc_coverage() -> tuple[float, list[str]]:
 
 
 def replace_badge(text: str, alt_text: str, url: str) -> tuple[str, bool]:
-  """Replace a badge URL by its alt text."""
+  """
+  Replaces an existing Markdown badge URL matching `alt_text`.
+
+  Args:
+      text (str): Full Markdown document content.
+      alt_text (str): Badge alt-text identifier.
+      url (str): Replacement badge image URL.
+
+  Returns:
+      tuple[str, bool]: `(updated_text, was_replaced)`.
+  """
   pattern = rf"!\[{re.escape(alt_text)}\]\([^)]*\)"
   replacement = f"![{alt_text}]({url})"
   if re.search(pattern, text):
@@ -203,7 +268,16 @@ def replace_badge(text: str, alt_text: str, url: str) -> tuple[str, bool]:
 
 
 def insert_badges(text: str, badges: Iterable[str]) -> str:
-  """Insert new badges after the existing badge block near the top."""
+  """
+  Inserts new Markdown badges after the existing badge block near the top of `text`.
+
+  Args:
+      text (str): Full Markdown document content.
+      badges (Iterable[str]): Badge Markdown strings to insert.
+
+  Returns:
+      str: Updated Markdown document content.
+  """
   lines = text.splitlines()
   insert_at = None
   for idx, line in enumerate(lines[:10]):
@@ -213,15 +287,25 @@ def insert_badges(text: str, badges: Iterable[str]) -> str:
     if insert_at is not None and line.strip() == "":
       break
   badge_line = " ".join(badges)
+  nl = chr(10)
   if insert_at is None:
     lines.insert(2, badge_line)
   else:
     lines.insert(insert_at + 1, badge_line)
-  return "\n".join(lines) + "\n"
+  return nl.join(lines) + nl
 
 
 def update_readme(test_percent: float, doc_percent: float) -> bool:
-  """Update README badges and return True when changes were made."""
+  """
+  Updates `README.md` coverage badges and returns `True` when changes were written.
+
+  Args:
+      test_percent (float): Test coverage percentage.
+      doc_percent (float): Documentation coverage percentage.
+
+  Returns:
+      bool: `True` if `README.md` was modified, else `False`.
+  """
   original = README.read_text(encoding="utf-8")
   text = original
 
@@ -238,7 +322,7 @@ def update_readme(test_percent: float, doc_percent: float) -> bool:
     missing_badges.append(f"![{DOC_BADGE_ALT}]({doc_url})")
 
   if missing_badges:
-    text = insert_badges(text.rstrip("\n"), missing_badges)
+    text = insert_badges(text.rstrip(chr(10)), missing_badges)
 
   if text != original:
     README.write_text(text, encoding="utf-8")
@@ -246,16 +330,22 @@ def update_readme(test_percent: float, doc_percent: float) -> bool:
   return False
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
   """
   CLI entry point computing test and docstring coverage and updating `README.md` badges.
 
+  Args:
+      argv (list[str] | None): Optional CLI argument list override for testing.
+
   Returns:
       int: Process exit code (`0` on success).
+
+  Raises:
+      CoverageError: If any coverage metric is below 100% or bypass comments exist.
   """
   parser = argparse.ArgumentParser(description="Update coverage badges and enforce 100% coverage.")
   parser.add_argument("--stage", action="store_true", help="Stage README updates with git add.")
-  args = parser.parse_args()
+  args = parser.parse_args(argv)
 
   test_percent = compute_test_coverage()
   doc_percent, missing_docs = compute_doc_coverage()
@@ -289,7 +379,7 @@ def main() -> int:
   return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
   try:
     raise SystemExit(main())
   except CoverageError as exc:

@@ -10,7 +10,7 @@ import {
   BrowserDynamicTestingModule,
   platformBrowserDynamicTesting,
 } from '@angular/platform-browser-dynamic/testing';
-import { ComponentRef } from '@angular/core';
+import { ComponentRef, Input, Output, ViewChild } from '@angular/core';
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { ResourceLoader } from '@angular/compiler';
 import { mkdirSync } from 'fs';
@@ -135,7 +135,80 @@ TestBed.compileComponents = async () => {
   return originalCompileComponents();
 };
 
-// --- Signal input compatibility for JIT tests ---
+// --- Signal input/output/viewChild compatibility for JIT tests ---
+const PROP_METADATA_KEY = '__prop__metadata__';
+const SIGNAL_PROP_CACHE = Symbol('SIGNAL_PROP_CACHE');
+
+Object.defineProperty(Function.prototype, 'propMetadata', {
+  configurable: true,
+  get() {
+    if (typeof this !== 'function' || this === Function.prototype || this === Object) {
+      return undefined;
+    }
+    const self = this as unknown as Record<string | symbol, unknown>;
+    if (Object.prototype.hasOwnProperty.call(self, SIGNAL_PROP_CACHE)) {
+      return self[SIGNAL_PROP_CACHE];
+    }
+
+    const baseMeta = (
+      Object.prototype.hasOwnProperty.call(self, PROP_METADATA_KEY)
+        ? { ...(self[PROP_METADATA_KEY] as Record<string, unknown[]>) }
+        : {}
+    ) as Record<string, unknown[]>;
+
+    const src = Function.prototype.toString.call(this);
+    // Match `prop = ...input(...)`, `this.prop = ...input(...)`, or `(0,__vite_ssr_import_0__.input)(...)`
+    const inputRegex =
+      /(?:this\.|__publicField\(\s*this\s*,\s*['"]|\b)(\w+)['"]?\s*(?:,|=)[^;\n]*?\binput\)?(?:\.required\)?)?\s*\(([^;\n]*)/gm;
+    let match: RegExpExecArray | null;
+    while ((match = inputRegex.exec(src)) !== null) {
+      const propName = match[1];
+      const args = match[2] || '';
+      const aliasMatch = /alias\s*:\s*['"]([^'"]+)['"]/.exec(args);
+      if (propName && !baseMeta[propName]) {
+        baseMeta[propName] = [
+          new Input({
+            isSignal: true,
+            alias: aliasMatch?.[1],
+          } as Parameters<typeof Input>[0]),
+        ];
+      }
+    }
+
+    // Match `prop = ...output(...)`
+    const outputRegex =
+      /(?:this\.|__publicField\(\s*this\s*,\s*['"]|\b)(\w+)['"]?\s*(?:,|=)[^;\n]*?\boutput\)?\s*\(([^;\n]*)/gm;
+    while ((match = outputRegex.exec(src)) !== null) {
+      const propName = match[1];
+      const args = match[2] || '';
+      const aliasMatch = /alias\s*:\s*['"]([^'"]+)['"]/.exec(args);
+      if (propName && !baseMeta[propName]) {
+        baseMeta[propName] = [new Output(aliasMatch?.[1])];
+      }
+    }
+
+    // Match `prop = ...viewChild(...)` / `viewChild.required(...)` with string locator
+    const viewChildRegex =
+      /(?:this\.|__publicField\(\s*this\s*,\s*['"]|\b)(\w+)['"]?\s*(?:,|=)[^;\n]*?\bviewChild\)?(?:\.required\)?)?\s*\(\s*['"]([^'"]+)['"]/gm;
+    while ((match = viewChildRegex.exec(src)) !== null) {
+      const propName = match[1];
+      const selector = match[2];
+      if (propName && selector && !baseMeta[propName]) {
+        baseMeta[propName] = [
+          new ViewChild(selector, { isSignal: true } as Parameters<typeof ViewChild>[1]),
+        ];
+      }
+    }
+
+    const result = Object.keys(baseMeta).length > 0 ? baseMeta : undefined;
+    Object.defineProperty(self, SIGNAL_PROP_CACHE, {
+      value: result,
+      configurable: true,
+    });
+    return result;
+  },
+});
+
 // Angular's JIT compiler does not understand `input()` metadata, so `setInput`
 // throws for signal inputs. Patch setInput to fall back to writing via the
 // internal signal node when available.

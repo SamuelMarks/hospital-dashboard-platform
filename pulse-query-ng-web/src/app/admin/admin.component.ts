@@ -2,7 +2,7 @@
  * @fileoverview Administrative configuration component for managing LLM API keys,
  * model visibility, and database/dataset diagnostics.
  */
-import { Component, OnInit, inject, signal, DestroyRef } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
 import { form, FormRoot, FormField } from '@angular/forms/signals';
 import { AdminService, AiService, ModelInfo } from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
@@ -15,101 +15,20 @@ import { forkJoin } from 'rxjs';
 @Component({
   selector: 'app-admin',
   imports: [FormRoot, FormField],
-
-  template: `
-    @if (settingsLoaded()) {
-      <div class="admin-container">
-        <h2 i18n>Admin Configuration</h2>
-
-        <form [formRoot]="adminForm" (submit)="saveSettings()">
-          <div class="section">
-            <h3 i18n>API Keys</h3>
-            <div class="key-item">
-              <label i18n for="openai-key">OpenAI API Key</label>
-              <input
-                id="openai-key"
-                type="password"
-                [formField]="adminForm.openai"
-                placeholder="sk-..."
-                i18n-placeholder
-                autocomplete="off"
-              />
-            </div>
-            <div class="key-item">
-              <label i18n for="anthropic-key">Anthropic API Key</label>
-              <input
-                id="anthropic-key"
-                type="password"
-                [formField]="adminForm.anthropic"
-                placeholder="sk-..."
-                i18n-placeholder
-                autocomplete="off"
-              />
-            </div>
-          </div>
-
-          <div class="section">
-            <h3 i18n id="visible-models-title">Visible Models</h3>
-            <p i18n id="visible-models-desc">
-              Select which models are shown to users in the Ad-hoc query interface.
-            </p>
-            <fieldset aria-labelledby="visible-models-title" aria-describedby="visible-models-desc">
-              <legend i18n class="sr-only">Available Models</legend>
-              <div>
-                @for (modelVal of adminForm.models; track trackByFn($index)) {
-                  <div class="model-item">
-                    <label [for]="'model-' + $index">
-                      <input [id]="'model-' + $index" type="checkbox" [formField]="modelVal" />
-                      {{ availableModels()[$index]?.name }} ({{ availableModels()[$index]?.id }})
-                    </label>
-                  </div>
-                }
-              </div>
-            </fieldset>
-          </div>
-
-          <div class="section">
-            <h3 i18n>Database &amp; Analytics Diagnostics</h3>
-            <p i18n>
-              Live operational status of PostgreSQL, DuckDB, and ingested hospital datasets.
-            </p>
-            <div class="diag-summary">
-              <div class="diag-item" i18n><strong>PostgreSQL:</strong> {{ pgStatus() }}</div>
-              <div class="diag-item" i18n><strong>DuckDB OLAP:</strong> {{ duckStatus() }}</div>
-              <div class="diag-item" i18n>
-                <strong>Hospital Data:</strong> {{ dataStatusText() }}
-              </div>
-            </div>
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button i18n type="button" (click)="openDiagnostics()">Open Diagnostics</button>
-              <button i18n type="button" (click)="reingestData()">Re-ingest CSVs</button>
-            </div>
-          </div>
-
-          <button i18n type="submit" [disabled]="adminForm().invalid() || isSaving()">
-            Save Configuration
-          </button>
-
-          @if (message()) {
-            <div class="message" role="alert" aria-live="polite">{{ message() }}</div>
-          }
-        </form>
-      </div>
-    } @else {
-      <div i18n class="loading" aria-live="polite">Loading settings...</div>
-    }
-  `,
+  templateUrl: './admin.component.html',
   styles: [
     `
       .admin-container {
         padding: 20px;
         max-width: 600px;
         margin: 0 auto;
+        color: var(--sys-on-surface);
       }
       .section {
         margin-bottom: 2rem;
         padding: 1rem;
-        border: 1px solid #ccc;
+        border: 1px solid var(--sys-surface-border);
+        background-color: var(--sys-surface);
         border-radius: 8px;
       }
       .key-item {
@@ -120,16 +39,18 @@ import { forkJoin } from 'rxjs';
       .key-item label {
         font-weight: 600;
         margin-bottom: 0.5rem;
-        color: #333;
+        color: var(--sys-on-surface);
       }
       .key-item input {
         padding: 0.5rem;
         font-size: 1rem;
-        border: 1px solid #ccc;
+        border: 1px solid var(--sys-outline);
+        background-color: var(--sys-background);
+        color: var(--sys-on-surface);
         border-radius: 4px;
       }
       .key-item input:focus {
-        outline: 2px solid #0056b3;
+        outline: 2px solid var(--sys-primary);
         outline-offset: 2px;
       }
       .model-item {
@@ -140,35 +61,36 @@ import { forkJoin } from 'rxjs';
         align-items: center;
         gap: 0.5rem;
         cursor: pointer;
-        color: #333;
+        color: var(--sys-on-surface);
       }
       button {
         padding: 0.75rem 1.5rem;
         font-size: 1rem;
         cursor: pointer;
-        background-color: #0056b3;
-        color: white;
+        background-color: var(--sys-primary);
+        color: var(--sys-on-primary);
         border: none;
         border-radius: 4px;
         font-weight: 600;
-        transition: background-color 0.2s;
+        transition: opacity 0.2s;
       }
       button:hover {
-        background-color: #004494;
+        opacity: 0.92;
       }
       button:focus-visible {
-        outline: 2px solid #0056b3;
+        outline: 2px solid var(--sys-primary);
         outline-offset: 2px;
       }
       button:disabled {
-        background-color: #ccc;
+        background-color: var(--sys-surface-variant);
+        color: var(--sys-text-secondary);
         cursor: not-allowed;
       }
       .message {
         margin-top: 1rem;
-        color: #0f5132;
-        background-color: #d1e7dd;
-        border: 1px solid #badbcc;
+        color: var(--sys-on-primary-container);
+        background-color: var(--sys-primary-container);
+        border: 1px solid var(--sys-primary);
         padding: 1rem;
         border-radius: 4px;
         font-weight: 600;
@@ -187,15 +109,15 @@ import { forkJoin } from 'rxjs';
       .loading {
         padding: 20px;
         text-align: center;
-        color: #555;
+        color: var(--sys-text-secondary);
       }
       h2,
       h3 {
-        color: #222;
+        color: var(--sys-on-surface);
         margin-top: 0;
       }
       p {
-        color: #555;
+        color: var(--sys-text-secondary);
       }
       fieldset {
         border: none;
@@ -232,36 +154,26 @@ export class AdminComponent implements OnInit {
   });
 
   /** Signal-based form instance bound to `formModel`. */
-  adminForm = form(this.formModel, (f) => {});
+  adminForm = form(this.formModel);
 
-  /**
-   * Returns the current PostgreSQL connection status label.
-   *
-   * @returns Current PostgreSQL status label.
-   */
-  pgStatus(): string {
-    return this.connectionService.healthData()?.postgres?.status || 'Unknown';
-  }
+  /** Computed signal returning the current PostgreSQL connection status label. */
+  readonly pgStatus = computed(
+    () => this.connectionService.healthData()?.postgres?.status || $localize`Unknown`,
+  );
 
-  /**
-   * Returns the current DuckDB OLAP engine status label.
-   *
-   * @returns Current DuckDB status label.
-   */
-  duckStatus(): string {
-    return this.connectionService.healthData()?.duckdb?.status || 'Unknown';
-  }
+  /** Computed signal returning the current DuckDB OLAP engine status label. */
+  readonly duckStatus = computed(
+    () => this.connectionService.healthData()?.duckdb?.status || $localize`Unknown`,
+  );
 
-  /**
-   * Returns a human-readable description of the hospital dataset status.
-   *
-   * @returns Human-readable dataset status description.
-   */
-  dataStatusText(): string {
+  /** Computed signal returning a human-readable description of the hospital dataset status. */
+  readonly dataStatusText = computed(() => {
     const data = this.connectionService.healthData()?.data;
-    if (!data) return 'Checking...';
-    return data.has_default_data ? 'Default CSV Present' : 'Synthetic Fallback Active';
-  }
+    if (!data) return $localize`Checking...`;
+    return data.has_default_data
+      ? $localize`Default CSV Present`
+      : $localize`Synthetic Fallback Active`;
+  });
 
   /** Opens the system connection diagnostics modal dialog. */
   openDiagnostics(): void {
@@ -272,26 +184,16 @@ export class AdminComponent implements OnInit {
   reingestData(): void {
     this.connectionService.triggerReingest().subscribe({
       next: (res) => {
-        this.message.set(res.message || 'Data re-ingested successfully!');
+        this.message.set(res.message || $localize`Data re-ingested successfully!`);
         const timer = setTimeout(() => this.message.set(''), 3000);
         this.destroyRef.onDestroy(() => clearTimeout(timer));
       },
       error: () => {
-        this.message.set('Failed to re-ingest CSV data.');
+        this.message.set($localize`Failed to re-ingest CSV data.`);
         const timer = setTimeout(() => this.message.set(''), 3000);
         this.destroyRef.onDestroy(() => clearTimeout(timer));
       },
     });
-  }
-
-  /**
-   * TrackBy function for rendering model checkboxes by index.
-   *
-   * @param index - The index of the item in the list.
-   * @returns The item index.
-   */
-  trackByFn(index: number): number {
-    return index;
   }
 
   /** Loads current admin settings and available models on component initialization. */
@@ -342,14 +244,14 @@ export class AdminComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.message.set('Settings saved successfully!');
+          this.message.set($localize`Settings saved successfully!`);
           this.isSaving.set(false);
           const timer = setTimeout(() => this.message.set(''), 3000);
           this.destroyRef.onDestroy(() => clearTimeout(timer));
         },
         error: () => {
           this.isSaving.set(false);
-          this.message.set('Error saving settings.');
+          this.message.set($localize`Error saving settings.`);
         },
       });
   }

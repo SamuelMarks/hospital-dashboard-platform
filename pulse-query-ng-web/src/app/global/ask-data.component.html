@@ -3,7 +3,10 @@
   class="ask-data-toolbar border-b px-6 mat-elevation-z1 relative z-10 w-full"
   style="background: var(--sys-surface); color: var(--sys-text-primary)"
 >
-  <mat-icon i18n class="mr-3 text-primary icon-medium scale-110" style="color: var(--sys-primary)"
+  <mat-icon
+    aria-hidden="true"
+    class="mr-3 text-primary icon-medium scale-110"
+    style="color: var(--sys-primary)"
     >smart_toy</mat-icon
   >
   <div class="flex flex-col leading-tight">
@@ -16,12 +19,11 @@
     >
   </div>
 
-  <span i18n class="flex-grow"></span>
+  <span class="flex-grow"></span>
 
   <!-- Controls -->
   <div class="flex items-center gap-3">
     <button
-      i18n
       mat-stroked-button
       class="cart-btn"
       [class.active]="cartCount() > 0"
@@ -30,22 +32,23 @@
       i18n-aria-label
       aria-label="Cart Button"
     >
-      <mat-icon class="icon-small text-lg mr-1">{{
+      <mat-icon aria-hidden="true" class="icon-small text-lg mr-1">{{
         cartCount() > 0 ? 'shopping_cart_checkout' : 'shopping_cart'
       }}</mat-icon>
-      <span class="font-medium">{{ cartCount() }} Saved</span>
+      <span i18n class="font-medium">
+        {cartCount(), plural, =1 {1 Saved} other {{{ cartCount() }} Saved}}
+      </span>
     </button>
 
     <button
-      i18n
       mat-icon-button
       i18n-aria-label
-      aria-label="action"
+      aria-label="Close Ask Data sidebar"
       (click)="vis.close()"
       data-testid="close-btn"
       class="ml-2 close-btn"
     >
-      <mat-icon>close</mat-icon>
+      <mat-icon aria-hidden="true">close</mat-icon>
     </button>
   </div>
 </mat-toolbar>
@@ -67,9 +70,11 @@
 
   <!-- Error State -->
   @if (contextError(); as err) {
-    <div class="center-overlay" data-testid="error-state">
-      <mat-icon i18n class="text-4xl mb-2" style="color: var(--sys-error)">error_outline</mat-icon>
-      <p i18n class="text-sm px-8 text-center" style="color: var(--sys-text-primary)">{{ err }}</p>
+    <div class="center-overlay" role="alert" data-testid="error-state">
+      <mat-icon aria-hidden="true" class="text-4xl mb-2" style="color: var(--sys-error)"
+        >error_outline</mat-icon
+      >
+      <p class="text-sm px-8 text-center" style="color: var(--sys-text-primary)">{{ err }}</p>
       <button i18n mat-stroked-button color="primary" class="mt-4" (click)="vis.close()">
         Close
       </button>

@@ -3,15 +3,13 @@
  * `{{parameter}}` placeholders into SQL templates, and inferring default visualization types.
  */
 
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { TemplateResponse } from '../api-client';
 
 /**
  * Stateless helper service shared by `TemplateWizardComponent` and `ProvisioningService`.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class TemplateConfigurationService {
   /**
    * Returns `true` when a JSON Schema object defines at least one property in `properties`.

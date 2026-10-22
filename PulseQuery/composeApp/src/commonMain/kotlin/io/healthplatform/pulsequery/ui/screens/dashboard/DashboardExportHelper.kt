@@ -1,32 +1,32 @@
 /**
- * Dashboard Export Helper module providing cross-platform file export actions.
+ * Dashboard Export Helper module providing cross-platform file export actions
+ * returning typed [Result] and [PulseQueryError] instances.
  */
 package io.healthplatform.pulsequery.ui.screens.dashboard
 
+import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.call.body
 import io.ktor.client.statement.bodyAsText
 
 /**
- * Result returned from a dashboard export operation.
+ * Immutable artifact payload returned from a successful dashboard export operation.
  *
- * @property success True if export payload was successfully retrieved.
  * @property format Target file format ("json", "csv", or "pdf").
  * @property content Raw text content of the exported dashboard.
  * @property bytes Raw binary bytes for binary exports like PDF.
  * @property filename Recommended filename for saving the exported artifact.
  * @property mimeType Standard MIME type associated with the exported content.
- * @property errorMessage Error text if export failed.
  */
-class DashboardExportResult(
-    val success: Boolean,
+class DashboardExportArtifact(
     val format: String,
     val content: String = "",
     val bytes: ByteArray = ByteArray(0),
     val filename: String = "",
-    val mimeType: String = "application/json",
-    val errorMessage: String? = null
+    val mimeType: String = "application/json"
 )
 
 /**
@@ -35,24 +35,25 @@ class DashboardExportResult(
 object DashboardExportHelper {
 
     /**
-     * Fetches the exported dashboard data from the backend API.
+     * Fetches the exported dashboard data from the backend API wrapped in a [Result].
      *
      * @param dashboardId The UUID of the dashboard to export.
      * @param format Export format: "json" or "csv".
-     * @return [DashboardExportResult] containing exported content and metadata.
+     * @param dashboardsApi Optional [DashboardsApi] override (defaults to [AppContainer.dashboardsApi]).
+     * @return [Result] containing [DashboardExportArtifact] on success or [PulseQueryError] on failure.
      */
     suspend fun exportDashboard(
         dashboardId: String,
-        format: String = "json"
-    ): DashboardExportResult {
-        return runCatching {
-            val response = AppContainer.dashboardsApi
+        format: String = "json",
+        dashboardsApi: DashboardsApi = AppContainer.dashboardsApi
+    ): Result<DashboardExportArtifact> {
+        return runCatchingPulseAsync {
+            val response = dashboardsApi
                 .exportDashboardApiV1DashboardsDashboardIdExportGet(dashboardId, format)
             if (!response.success) {
-                return@runCatching DashboardExportResult(
-                    success = false,
-                    format = format,
-                    errorMessage = "Export failed with HTTP ${response.status}"
+                throw PulseQueryError.fromHttpStatus(
+                    response.status,
+                    "Export failed with HTTP ${response.status}"
                 )
             }
             val content = response.response.bodyAsText()
@@ -61,57 +62,44 @@ object DashboardExportHelper {
             val mime = if (isCsv) "text/csv" else "application/json"
             val filename = "dashboard-$dashboardId.$extension"
 
-            DashboardExportResult(
-                success = true,
+            DashboardExportArtifact(
                 format = format,
                 content = content,
                 bytes = content.encodeToByteArray(),
                 filename = filename,
                 mimeType = mime
             )
-        }.getOrElse { e ->
-            DashboardExportResult(
-                success = false,
-                format = format,
-                errorMessage = e.message ?: "Failed to export dashboard"
-            )
         }
     }
 
     /**
-     * Fetches the exported dashboard clinical PDF report from the backend API.
+     * Fetches the exported dashboard clinical PDF report from the backend API wrapped in a [Result].
      *
      * @param dashboardId The UUID of the dashboard to export as a formatted clinical PDF.
-     * @return [DashboardExportResult] containing binary PDF bytes and metadata.
+     * @param dashboardsApi Optional [DashboardsApi] override (defaults to [AppContainer.dashboardsApi]).
+     * @return [Result] containing binary [DashboardExportArtifact] on success or [PulseQueryError] on failure.
      */
     suspend fun exportDashboardPdf(
-        dashboardId: String
-    ): DashboardExportResult {
-        return runCatching {
-            val response = AppContainer.dashboardsApi
+        dashboardId: String,
+        dashboardsApi: DashboardsApi = AppContainer.dashboardsApi
+    ): Result<DashboardExportArtifact> {
+        return runCatchingPulseAsync {
+            val response = dashboardsApi
                 .exportDashboardPdfApiV1DashboardsDashboardIdExportPdfGet(dashboardId)
             if (!response.success) {
-                return@runCatching DashboardExportResult(
-                    success = false,
-                    format = "pdf",
-                    errorMessage = "PDF export failed with HTTP ${response.status}"
+                throw PulseQueryError.fromHttpStatus(
+                    response.status,
+                    "PDF export failed with HTTP ${response.status}"
                 )
             }
             val bytes = response.response.body<ByteArray>()
             val filename = "clinical-report-$dashboardId.pdf"
 
-            DashboardExportResult(
-                success = true,
+            DashboardExportArtifact(
                 format = "pdf",
                 bytes = bytes,
                 filename = filename,
                 mimeType = "application/pdf"
-            )
-        }.getOrElse { e ->
-            DashboardExportResult(
-                success = false,
-                format = "pdf",
-                errorMessage = e.message ?: "Failed to export dashboard PDF"
             )
         }
     }
@@ -120,11 +108,11 @@ object DashboardExportHelper {
      * Persists or stages exported content into the local application storage.
      *
      * @param filename Target filename.
-     * @param content Raw string data.
-     * @return [Result] indicating success or failure.
+     * @param content Exported payload string.
+     * @return [Result] of [Unit] on success, or a [PulseQueryError.Storage.WriteFailure] on failure.
      */
     fun saveExportedFile(filename: String, content: String): Result<Unit> {
-        return runCatching {
+        return runCatchingPulse {
             AppContainer.keyValueStorage?.save("export_$filename", content)
             Unit
         }.recoverCatching { error ->

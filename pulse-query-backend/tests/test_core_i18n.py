@@ -1,13 +1,12 @@
 """Tests for core i18n."""
 
-from typing import Any
+from pathlib import Path
 
 from app.core.i18n import Translator, get_translated_message
 
 
 def test_translator_fallback() -> None:
-  # Test valid language
-  """Verify translator fallback behavior."""
+  """Verifies `get_translated_message` and `Translator.get_message` across valid, fallback, and malformed locales."""
   msg = get_translated_message("en-US", "error.invalid_credentials")
   assert msg == "Incorrect email or password"
 
@@ -139,12 +138,12 @@ def test_translator_fallback() -> None:
   assert msg == "missing.key2"
 
 
-def test_load_locales(tmp_path: Any) -> None:
+def test_load_locales(tmp_path: Path) -> None:
   """
-  Verify load locales behavior.
+  Verifies `Translator.load_locales` loads valid JSON files and handles missing or corrupted files safely.
 
   Args:
-      tmp_path: Test parameter or fixture.
+      tmp_path (Path): Temporary directory path fixture.
   """
   import json
 

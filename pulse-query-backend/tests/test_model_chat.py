@@ -16,10 +16,13 @@ from app.models.user import User
 @pytest.fixture
 async def chat_user(db_session: AsyncSession) -> User:
   """
-  Verify chat user behavior.
+  Creates and persists a user for chat model relationship tests.
 
   Args:
-      db_session: Test parameter or fixture.
+      db_session (AsyncSession): Active test database session.
+
+  Returns:
+      User: Persisted user instance.
   """
   user = User(email=f"chat_{uuid.uuid4()}@example.com", hashed_password="pw", is_active=True)
   db_session.add(user)
@@ -53,6 +56,7 @@ async def test_candidates_relationship(db_session: AsyncSession, chat_user: User
     select(Message).where(Message.id == msg.id).options(selectinload(Message.candidates))
   )
   m = reloaded_msg.scalars().first()
+  assert m is not None
 
   assert len(m.candidates) == 2
   names = {c.model_name for c in m.candidates}

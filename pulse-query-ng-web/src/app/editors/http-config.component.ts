@@ -2,7 +2,7 @@
  * @fileoverview HTTP widget configuration editor component supporting custom methods,
  * URLs, query parameters, headers, JSON body validation, and live test execution.
  */
-import { Component, input, output, inject, signal, linkedSignal, effect } from '@angular/core';
+import { Component, input, output, inject, signal, linkedSignal } from '@angular/core';
 import { JsonPipe } from '@angular/common';
 import {
   FormRoot,
@@ -182,14 +182,11 @@ export class HttpConfigComponent {
       try {
         JSON.parse(value);
         return null;
-      } catch (e) {
-        return { kind: 'invalidJson', message: 'Invalid JSON format' };
+      } catch {
+        return { kind: 'invalidJson', message: $localize`Invalid JSON format` };
       }
     });
   });
-
-  /** Initializes the component. */
-  constructor() {}
 
   /**
    * Checks if a form field is invalid.

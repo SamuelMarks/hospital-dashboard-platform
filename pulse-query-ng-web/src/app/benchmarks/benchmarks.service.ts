@@ -2,7 +2,7 @@
  * @fileoverview Benchmarks service delegating to the generated OpenAPI `BenchmarksService`.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { BenchmarksService as GeneratedBenchmarksService } from '../api-client';
 import { Observable } from 'rxjs';
 
@@ -45,9 +45,7 @@ export interface MpaxBenchmark {
 /**
  * Service providing typed access to SQL and MPAX benchmark datasets via the generated OpenAPI client.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class BenchmarksService {
   /** Injected generated OpenAPI benchmarks service. */
   private readonly api = inject(GeneratedBenchmarksService);

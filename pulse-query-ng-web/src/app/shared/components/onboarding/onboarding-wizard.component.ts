@@ -4,13 +4,14 @@
  * Displayed as an overlay dialog on first visit.
  */
 
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
+import { FocusTrapDirective } from '../../../core/accessibility/focus-trap.directive';
 
 /**
  * Onboarding Wizard Component.
@@ -31,110 +32,14 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
  */
 @Component({
   selector: 'app-onboarding-wizard',
-  imports: [MatButtonModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
-
-  template: `
-    <div
-      class="overlay"
-      role="dialog"
-      aria-modal="true"
-      [attr.aria-label]="
-        'Onboarding step ' + (onboarding.currentStepIndex() + 1) + ' of ' + onboarding.totalSteps()
-      "
-    >
-      <div class="wizard-card" data-testid="onboarding-wizard">
-        <!-- Header -->
-        <div class="wizard-header">
-          <span i18n class="step-counter" aria-live="polite">
-            Step {{ onboarding.currentStepIndex() + 1 }} of {{ onboarding.totalSteps() }}
-          </span>
-          <button
-            mat-icon-button
-            (click)="skip()"
-            i18n-matTooltip
-            matTooltip="Skip onboarding"
-            i18n-aria-label
-            aria-label="Skip onboarding"
-            data-testid="skip-button"
-          >
-            <mat-icon i18n>close</mat-icon>
-          </button>
-        </div>
-
-        <!-- Progress Bar -->
-        <mat-progress-bar
-          mode="determinate"
-          [value]="onboarding.progress()"
-          i18n-aria-label
-          aria-label="Onboarding progress"
-        />
-
-        <!-- Step Content -->
-        <div class="wizard-body">
-          <div class="step-icon" aria-hidden="true">
-            <mat-icon>{{ onboarding.currentStep().icon }}</mat-icon>
-          </div>
-
-          <h2 class="step-title">{{ onboarding.currentStep().title }}</h2>
-          <p class="step-description">{{ onboarding.currentStep().description }}</p>
-        </div>
-
-        <!-- Step Dots -->
-        <div class="step-dots" role="tablist" i18n-aria-label aria-label="Onboarding steps">
-          @for (step of steps; track step.id; let i = $index) {
-            <button
-              class="dot"
-              [class.active]="i === onboarding.currentStepIndex()"
-              (click)="onboarding.goToStep(i)"
-              role="tab"
-              [attr.aria-selected]="i === onboarding.currentStepIndex()"
-              [attr.aria-label]="'Go to step ' + (i + 1) + ': ' + step.title"
-              [attr.data-testid]="'step-dot-' + i"
-            ></button>
-          }
-        </div>
-
-        <!-- Actions -->
-        <div class="wizard-actions">
-          <button
-            mat-button
-            (click)="prev()"
-            [disabled]="!onboarding.hasPrev()"
-            i18n-aria-label
-            aria-label="Previous step"
-            data-testid="prev-button"
-          >
-            <mat-icon i18n>arrow_back</mat-icon>
-            <span i18n>Back</span>
-          </button>
-
-          <div class="action-right">
-            @if (onboarding.currentStep().actionLabel && onboarding.currentStep().actionRoute) {
-              <button
-                mat-stroked-button
-                color="primary"
-                (click)="navigateToAction()"
-                [attr.data-testid]="'action-button'"
-              >
-                {{ onboarding.currentStep().actionLabel }}
-              </button>
-            }
-
-            <button
-              mat-flat-button
-              color="primary"
-              (click)="next()"
-              [attr.aria-label]="onboarding.hasNext() ? 'Next step' : 'Finish onboarding'"
-              data-testid="next-button"
-            >
-              {{ onboarding.hasNext() ? 'Next' : 'Get Started' }}
-              <mat-icon>{{ onboarding.hasNext() ? 'arrow_forward' : 'check' }}</mat-icon>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatTooltipModule,
+    FocusTrapDirective,
+  ],
+  templateUrl: './onboarding-wizard.component.html',
   styles: [
     `
       .overlay {
@@ -226,26 +131,27 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
       .step-dots {
         display: flex;
         justify-content: center;
-        gap: 8px;
+        gap: 4px;
         padding: 0 32px 8px;
       }
 
       .dot {
-        width: 8px;
-        height: 8px;
+        width: 24px;
+        height: 24px;
+        padding: 8px;
+        background-clip: content-box;
         border-radius: 50%;
-        background: var(--sys-outline-variant);
+        background-color: var(--sys-outline-variant);
         border: none;
-        padding: 0;
         cursor: pointer;
         transition:
-          background 0.2s,
+          background-color 0.2s,
           transform 0.2s;
       }
 
       .dot.active {
-        background: var(--sys-primary);
-        transform: scale(1.3);
+        background-color: var(--sys-primary);
+        transform: scale(1.2);
       }
 
       .dot:focus-visible {
@@ -291,15 +197,41 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
   ],
 })
 export class OnboardingWizardComponent {
-  /** Onboarding service. */
+  /** State service managing onboarding wizard visibility and step progression. */
   readonly onboarding = inject(OnboardingService);
-  /** Router service. */
+  /** Angular router service used to navigate to target feature routes during guided tours. */
   private readonly router = inject(Router);
 
   /**
    * All onboarding steps (for dot navigation).
    */
   readonly steps = ONBOARDING_STEPS;
+
+  /**
+   * Computed accessible label for the onboarding dialog overlay.
+   */
+  readonly dialogAriaLabel = computed(
+    () =>
+      $localize`Onboarding step ${this.onboarding.currentStepIndex() + 1} of ${this.onboarding.totalSteps()}`,
+  );
+
+  /**
+   * Computed accessible label for the primary next/finish action button.
+   */
+  readonly nextButtonAriaLabel = computed(() =>
+    this.onboarding.hasNext() ? $localize`Next step` : $localize`Finish onboarding`,
+  );
+
+  /**
+   * Formats a localized accessible label for a step indicator dot button.
+   *
+   * @param index - Zero-based step index.
+   * @param title - Localized step title.
+   * @returns Localized accessible label string.
+   */
+  getStepDotAriaLabel(index: number, title: string): string {
+    return $localize`Go to step ${index + 1}\: ${title}`;
+  }
 
   /**
    * Advances to the next step.

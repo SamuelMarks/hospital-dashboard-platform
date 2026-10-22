@@ -4,7 +4,7 @@
 
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser, isPlatformServer } from '@angular/common';
+import { isPlatformServer } from '@angular/common';
 import { AuthService } from './auth.service';
 
 /**
@@ -19,11 +19,11 @@ import { AuthService } from './auth.service';
  *    b. Check `hasStoredToken()` (Persistence fallback for F5 Refresh).
  * 3. **Fallback**: Redirect to `/login` with `returnUrl` parameter.
  *
- * @param {import('@angular/router').ActivatedRouteSnapshot} route - The activated route snapshot.
+ * @param {import('@angular/router').ActivatedRouteSnapshot} _route - The activated route snapshot.
  * @param {import('@angular/router').RouterStateSnapshot} state - The router state snapshot.
  * @returns {boolean | UrlTree} true if allowed, or a UrlTree redirecting to login.
  */
-export const authGuard: CanActivateFn = (route, state): boolean | UrlTree => {
+export const authGuard: CanActivateFn = (_route, state): boolean | UrlTree => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const platformId = inject(PLATFORM_ID);

@@ -12,6 +12,7 @@ import {
   ScenarioResult,
   ScenarioRunRequest,
 } from '../api-client';
+import { extractApiErrorMessage } from '../core/error.utils';
 import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.component';
 
 /**
@@ -238,8 +239,8 @@ export class SimulationStore {
         this.results.set({ columns, data });
         this.isSimulating.set(false);
       },
-      error: (err: { error?: { detail?: string }; message?: string }) => {
-        this.error.set(err.error?.detail || err.message || 'Simulation failed');
+      error: (err: unknown) => {
+        this.error.set(extractApiErrorMessage(err, $localize`Simulation failed`));
         this.isSimulating.set(false);
       },
     });

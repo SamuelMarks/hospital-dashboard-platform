@@ -12,7 +12,7 @@
 import { DATE_NOW } from '../core/time.token';
 import { safeStorage } from '../core/storage.utils';
 import { extractApiErrorMessage } from '../core/error.utils';
-import { signal, computed, inject, OnDestroy, Injectable } from '@angular/core';
+import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, retry } from 'rxjs/operators';
 
@@ -27,19 +27,19 @@ import {
   ModelInfo,
 } from '../api-client';
 
-/** Chat State interface. */
+/** Reactive state shape for the conversational AI assistant store. */
 export interface ChatState {
-  /** conversations property. */
+  /** Ordered list of user conversation threads. */
   conversations: ConversationResponse[];
-  /** activeConversationId property. */
+  /** Identifier of the currently selected conversation thread, or null when none is active. */
   activeConversationId: string | null;
-  /** messages property. */
+  /** Chronological message history for the active conversation. */
   messages: MessageResponse[];
-  /** isLoadingList property. */
+  /** Whether conversation list or thread history is currently loading. */
   isLoadingList: boolean;
-  /** isGenerating property. */
+  /** Whether an assistant response is currently being generated. */
   isGenerating: boolean;
-  /** error property. */
+  /** Latest user-facing error message, or null when healthy. */
   error: string | null;
 
   /** Available models for selection. */
@@ -67,18 +67,18 @@ const initialState: ChatState = {
   isStreaming: false,
 };
 
-/** Chat store. */
-@Injectable({ providedIn: 'root' })
+/** Centralized reactive state store managing chat conversations, multi-model arena candidates, and SSE streaming. */
+@Service()
 export class ChatStore implements OnDestroy {
   /** Date now token. */
   private readonly dateNow = inject(DATE_NOW);
-  /** chatApi property. */
+  /** Generated OpenAPI client for conversation and message endpoints. */
   private readonly chatApi = inject(ChatService);
-  /** aiApi property. */
+  /** Generated OpenAPI client for AI model discovery endpoints. */
   private readonly aiApi = inject(AiService);
-  /** _state property. */
+  /** Internal writable signal holding the complete chat store state. */
   private readonly _state = signal<ChatState>(initialState);
-  /** destroy$ property. */
+  /** Subject emitting when the store is destroyed to cancel active subscriptions. */
   private readonly destroy$ = new Subject<void>();
 
   /** State. */
@@ -105,7 +105,7 @@ export class ChatStore implements OnDestroy {
   /** Live streaming token text. */
   readonly streamingMessageContent = computed(() => this._state().streamingMessageContent);
 
-  /** Ng On Destroy. */
+  /** Completes active RxJS streams when the store is destroyed. */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
@@ -193,7 +193,7 @@ export class ChatStore implements OnDestroy {
     this.patch({ isGenerating: true, error: null });
 
     const tempUserMsg: MessageResponse = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${this.dateNow().getTime()}`,
       conversation_id: currentId || 'temp',
       role: 'user',
       content: content,
@@ -264,7 +264,7 @@ export class ChatStore implements OnDestroy {
     this.patch({ isStreaming: true, streamingMessageContent: '', error: null });
     const url = `/api/v1/chat/stream/${conversationId}${modelId ? `?model_id=${encodeURIComponent(modelId)}` : ''}`;
     try {
-      const token = safeStorage.getItem('token');
+      const token = safeStorage.getItem('pulse_auth_token');
       const headers: Record<string, string> = {
         Accept: 'text/event-stream',
       };
@@ -307,7 +307,7 @@ export class ChatStore implements OnDestroy {
                 this.patch({ streamingMessageContent: current + data.token });
               } else if (data.event === 'done') {
                 const finalMsg: MessageResponse = {
-                  id: data.message_id || `msg-${Date.now()}`,
+                  id: data.message_id || `msg-${this.dateNow().getTime()}`,
                   conversation_id: conversationId,
                   role: 'assistant',
                   content: data.content || this._state().streamingMessageContent || '',
@@ -342,8 +342,6 @@ export class ChatStore implements OnDestroy {
    * @param candidateId - The ID of the chosen candidate response.
    */
   voteCandidate(messageId: string, candidateId: string): void {
-    console.log('[ChatStore] Voting for candidate', candidateId, 'in message', messageId);
-
     const activeId = this.activeConversationId();
     if (!activeId) return;
 
@@ -460,6 +458,6 @@ export class ChatStore implements OnDestroy {
    */
   private handleError(e: unknown): void {
     console.error('[ChatStore] API Error:', e);
-    this.patch({ error: extractApiErrorMessage(e, 'Error') });
+    this.patch({ error: extractApiErrorMessage(e, $localize`Error`) });
   }
 }

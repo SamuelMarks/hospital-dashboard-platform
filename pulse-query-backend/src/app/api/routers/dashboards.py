@@ -1,27 +1,24 @@
 """
 Dashboards API Router.
 
-Handles CRUD operations for Dashboards and Widgets.
-Allows users to create, list, update, and delete their analytics workspaces.
-Also provides the ability to restore the default content pack and clone existing dashboards.
+Handles CRUD operations for Dashboards, Widgets, Collaborator Shares, and Exports
+by delegating domain logic to `DashboardService`.
 """
 
 import asyncio
-import copy
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api import deps
 from app.core.i18n import get_translated_message
-from app.core.result import Err
+from app.core.result import unwrap_or_raise_http
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
-from app.models.dashboard import Dashboard, DashboardShare, Widget
+from app.models.dashboard import Dashboard, Widget
 from app.models.user import User
 from app.schemas.dashboard import (
   DashboardCreate,
@@ -31,17 +28,11 @@ from app.schemas.dashboard import (
   WidgetReorderRequest,
   WidgetResponse,
 )
-from app.schemas.widget import (
-  WidgetCreate,
-  WidgetUpdate,
-)
+from app.schemas.widget import WidgetCreate, WidgetUpdate
 from app.services.dashboard_service import dashboard_service
-from app.services.provisioning import provisioning_service
 from app.services.runners.sql import run_sql_widget
 
 router = APIRouter()
-
-# --- Validation and Access Control Helpers ---
 
 
 async def get_dashboard_with_access(
@@ -59,13 +50,10 @@ async def get_dashboard_with_access(
       current_user (User): Requesting user.
       db (AsyncSession): Database session.
       required_level (str): Minimum required permission ('VIEW', 'EDIT', 'OWNER').
-      accept_language (Optional[str]): Language preference.
+      accept_language (str | None): Language preference.
 
   Returns:
       tuple[Dashboard, str]: The dashboard and the resolved permission level ('OWNER', 'EDIT', 'VIEW').
-
-  Raises:
-      HTTPException: 404 if not found, 403 if permission denied.
   """
   res = await dashboard_service.get_dashboard_with_access_result(
     dashboard_id=dashboard_id,
@@ -74,9 +62,7 @@ async def get_dashboard_with_access(
     required_level=required_level,
     accept_language=accept_language,
   )
-  if isinstance(res, Err):
-    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
-  return res.value
+  return unwrap_or_raise_http(res)
 
 
 _get_dashboard_with_access = get_dashboard_with_access
@@ -85,26 +71,17 @@ _get_dashboard_with_access = get_dashboard_with_access
 def _validate_sql_query(query: str, accept_language: str | None = None) -> None:
   """
   Performs a 'Dry Run' of the SQL query using DuckDB's PREPARE statement.
-  This checks for syntax errors and schema validity (table existence) without
-  executing the query or returning data.
 
   Args:
       query (str): The raw SQL string.
       accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.
-
-  Raises:
-      HTTPException: If the SQL is invalid (400 Bad Request).
   """
   res = dashboard_service.validate_sql_query_result(
     query,
     accept_language=accept_language,
     conn_factory=duckdb_manager.get_readonly_connection,
   )
-  if isinstance(res, Err):
-    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
-
-
-# --- Dashboards ---
+  unwrap_or_raise_http(res)
 
 
 @router.get("/", response_model=list[DashboardResponse])
@@ -113,26 +90,17 @@ async def list_dashboards(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> list[Dashboard]:
-  """List all dashboards owned by or shared with the current user."""
-  owned_stmt = select(Dashboard).where(Dashboard.owner_id == current_user.id).options(selectinload(Dashboard.widgets))
-  owned_res = await db.execute(owned_stmt)
-  owned_dashboards = list(owned_res.scalars().all())
-  for d in owned_dashboards:
-    d.permission_level = "OWNER"
+  """
+  Lists all dashboards owned by or shared with the current user.
 
-  shared_stmt = (
-    select(Dashboard, DashboardShare.permission_level)
-    .join(DashboardShare, Dashboard.id == DashboardShare.dashboard_id)
-    .where(DashboardShare.user_id == current_user.id)
-    .options(selectinload(Dashboard.widgets))
-  )
-  shared_res = await db.execute(shared_stmt)
-  shared_dashboards = []
-  for d, perm in shared_res.all():
-    d.permission_level = perm
-    shared_dashboards.append(d)
+  Args:
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
 
-  return owned_dashboards + shared_dashboards
+  Returns:
+      list[Dashboard]: List of accessible dashboards.
+  """
+  return await dashboard_service.list_user_dashboards(current_user, db)
 
 
 @router.post("/", response_model=DashboardResponse)
@@ -141,19 +109,19 @@ async def create_dashboard(
   current_user: Annotated[User, Depends(deps.get_current_user)],
   db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Dashboard:
-  """Create a new empty dashboard."""
-  new_dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
-  db.add(new_dashboard)
-  await db.commit()
+  """
+  Creates a new empty dashboard.
 
-  result = await db.execute(
-    select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
-  )
-  dashboard = result.scalars().first()
-  if not dashboard:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard not found")
-  dashboard.permission_level = "OWNER"
-  return dashboard
+  Args:
+      dashboard_in (DashboardCreate): Dashboard creation payload.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+
+  Returns:
+      Dashboard: Newly created dashboard.
+  """
+  res = await dashboard_service.create_dashboard_result(dashboard_in, current_user, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.post("/{dashboard_id}/clone", response_model=DashboardResponse)
@@ -165,52 +133,21 @@ async def clone_dashboard(
 ) -> Dashboard:
   """
   Creates a deep copy of an existing dashboard and all its widgets.
-  The new dashboard will have the name "Copy of {original_name}".
 
   Args:
       dashboard_id (UUID): The ID of the dashboard to clone.
-      current_user (User): Authenticated user (must have access to the dashboard).
+      current_user (User): Authenticated user.
       db (AsyncSession): Database session.
-      accept_language (Optional[str]): Language preference header.
+      accept_language (str | None): Language preference header.
 
   Returns:
-      DashboardResponse: The newly created dashboard populated with cloned widgets.
+      Dashboard: Newly cloned dashboard.
   """
-  # 1. Fetch Source with Access Check
   source_dashboard, _ = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
-
-  # 2. Create Destination Dashboard
-  new_dashboard = Dashboard(name=f"Copy of {source_dashboard.name}", owner_id=current_user.id)
-  db.add(new_dashboard)
-  # Flush to generate ID for widget foreign keys
-  await db.flush()
-
-  # 3. Clone Widgets (Deep Copy of Config)
-  # We use copy.deepcopy on the config dictionary to ensure no shared references
-  # between the old and new widget if the config is mutable in memory.
-  for widget in source_dashboard.widgets:
-    new_widget = Widget(
-      dashboard_id=new_dashboard.id,
-      title=widget.title,
-      type=widget.type,
-      visualization=widget.visualization,
-      config=copy.deepcopy(widget.config) if widget.config else {},
-    )
-    db.add(new_widget)
-
-  await db.commit()
-
-  # 4. Return full object (Reload to get new widgets)
-  result = await db.execute(
-    select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
-  )
-  dashboard = result.scalars().first()
-  if not dashboard:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cloned dashboard could not be loaded")
-  dashboard.permission_level = "OWNER"
-  return dashboard
+  res = await dashboard_service.clone_dashboard_result(source_dashboard, current_user, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.post("/restore-defaults", response_model=DashboardResponse)
@@ -220,20 +157,16 @@ async def restore_default_dashboard(
 ) -> Dashboard:
   """
   Re-creates the standard 'Hospital Command Center' dashboard.
-  If the dashboard already exists, creates a copy with a suffix to prevent data loss.
-  Populates the dashboard with all currently active templates in the registry.
-  """
-  dashboard = await provisioning_service.restore_defaults(db, current_user)
-  await db.commit()
 
-  result = await db.execute(
-    select(Dashboard).where(Dashboard.id == dashboard.id).options(selectinload(Dashboard.widgets))
-  )
-  dash = result.scalars().first()
-  if not dash:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Default dashboard could not be restored")
-  dash.permission_level = "OWNER"
-  return dash
+  Args:
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+
+  Returns:
+      Dashboard: Restored default dashboard.
+  """
+  res = await dashboard_service.restore_default_dashboard_result(current_user, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.get("/{dashboard_id}", response_model=DashboardResponse)
@@ -243,7 +176,18 @@ async def get_dashboard(
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> Dashboard:
-  """Get a specific dashboard details."""
+  """
+  Gets details for a specific dashboard.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+
+  Returns:
+      Dashboard: Authorized dashboard model.
+  """
   dashboard, perm = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
@@ -259,7 +203,19 @@ async def update_dashboard(
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> Dashboard:
-  """Rename a dashboard."""
+  """
+  Renames an existing dashboard.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      dashboard_update (DashboardCreate): Updated name payload.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+
+  Returns:
+      Dashboard: Updated dashboard model.
+  """
   dashboard, perm = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
@@ -276,15 +232,20 @@ async def delete_dashboard(
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> None:
-  """Delete dashboard (and cascades to widgets and shares). Only owner can delete."""
+  """
+  Deletes a dashboard (cascading to widgets and shares). Only the owner can delete.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      current_user (User): Authenticated owner.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+  """
   dashboard, _ = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
   )
   await db.delete(dashboard)
   await db.commit()
-
-
-# --- Widgets ---
 
 
 @router.post("/{dashboard_id}/widgets", response_model=WidgetResponse)
@@ -295,15 +256,24 @@ async def create_widget(
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> Widget:
-  """Add a widget to the dashboard with Dry-Run Validation."""
+  """
+  Adds a widget to the dashboard with dry-run SQL validation.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      widget_in (WidgetCreate): Polymorphic widget creation payload.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+
+  Returns:
+      Widget: Created widget model.
+  """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language)
 
-  # 2. SQL Validation
   if widget_in.type == "SQL":
-    query = widget_in.config.query
-    _validate_sql_query(query, accept_language or current_user.language_preference)
+    _validate_sql_query(widget_in.config.query, accept_language or current_user.language_preference)
 
-  # 3. Creation
   widget = Widget(
     dashboard_id=dashboard_id,
     title=widget_in.title,
@@ -324,7 +294,19 @@ async def update_widget(
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> Widget:
-  """Update widget configuration (e.g., resize, change query) with Dry-Run."""
+  """
+  Updates widget configuration (e.g., resize, change query) with dry-run SQL validation.
+
+  Args:
+      widget_id (UUID): Target widget ID.
+      widget_in (WidgetUpdate): Partial widget update payload.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+
+  Returns:
+      Widget: Updated widget model.
+  """
   result = await db.execute(select(Widget).where(Widget.id == widget_id))
   widget = result.scalars().first()
   if not widget:
@@ -337,15 +319,9 @@ async def update_widget(
     widget.dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
 
-  updating_sql = False
   if widget.type == "SQL" and widget_in.config and "query" in widget_in.config:
-    updating_sql = True
+    _validate_sql_query(str(widget_in.config["query"]), accept_language or current_user.language_preference)
 
-  if updating_sql and widget_in.config:
-    current_query = widget_in.config["query"]  # New Query
-    _validate_sql_query(current_query, accept_language or current_user.language_preference)
-
-  # Update fields
   update_data = widget_in.model_dump(exclude_unset=True)
   for key, value in update_data.items():
     setattr(widget, key, value)
@@ -361,7 +337,15 @@ async def delete_widget(
   db: Annotated[AsyncSession, Depends(get_db)],
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> None:
-  """Delete a widget from a dashboard."""
+  """
+  Deletes a widget from a dashboard.
+
+  Args:
+      widget_id (UUID): Target widget ID.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+  """
   result = await db.execute(select(Widget).where(Widget.id == widget_id))
   widget = result.scalars().first()
   if not widget:
@@ -387,34 +371,20 @@ async def reorder_widgets(
   accept_language: str | None = Header(None, alias="Accept-Language"),
 ) -> dict[str, int]:
   """
-  Bulk update widget positions and groups.
-  Used for Drag-and-Drop persistence.
+  Bulk updates widget positions and groups for drag-and-drop persistence.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      request (WidgetReorderRequest): Bulk reorder items.
+      current_user (User): Authenticated user.
+      db (AsyncSession): Active database session.
+      accept_language (str | None): Language preference header.
+
+  Returns:
+      dict[str, int]: Count of updated widgets.
   """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language)
-
-  # 2. Fetch all widgets in this dashboard
-  result = await db.execute(select(Widget).where(Widget.dashboard_id == dashboard_id))
-  widgets_db = {w.id: w for w in result.scalars().all()}
-
-  # 3. Apply updates
-  updated_count = 0
-  for item in request.items:
-    if item.id in widgets_db:
-      widget = widgets_db[item.id]
-
-      # We must modify the config dictionary carefully.
-      # SQLAlchemy creates a new dict reference if we modify in place for JSONB tracking usually,
-      # but explicit assignment is safer.
-      new_config = widget.config.copy()
-      new_config["order"] = item.order
-      if item.group is not None:
-        new_config["group"] = item.group
-
-      widget.config = new_config
-      updated_count += 1
-
-  await db.commit()
-  return {"updated": updated_count}
+  return await dashboard_service.reorder_widgets(dashboard_id, request, db)
 
 
 @router.get("/{dashboard_id}/export")
@@ -433,7 +403,7 @@ async def export_dashboard(
       current_user (User): Authenticated user requesting export.
       db (AsyncSession): Database session.
       format (str): Export format ('json' or 'csv').
-      accept_language (Optional[str]): Language preference header.
+      accept_language (str | None): Language preference header.
 
   Returns:
       Response: File download stream with appropriate media type.
@@ -473,14 +443,11 @@ async def export_widget(
       widget_id (UUID): Target widget ID within the dashboard.
       current_user (User): Authenticated user requesting export.
       db (AsyncSession): PostgreSQL async database session.
-      format (str): Export format ('json' or 'csv'). Defaults to 'json'.
-      accept_language (Optional[str]): Language preference header.
+      format (str): Export format ('json' or 'csv').
+      accept_language (str | None): Language preference header.
 
   Returns:
       Response: Streaming file download with appropriate MIME type and Content-Disposition.
-
-  Raises:
-      HTTPException: 404 if dashboard or widget not found or access denied.
   """
   dashboard, _ = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
@@ -519,7 +486,7 @@ async def export_dashboard_pdf(
       dashboard_id (UUID): Target dashboard ID.
       current_user (User): Authenticated user requesting export.
       db (AsyncSession): Database session.
-      accept_language (Optional[str]): Language preference header.
+      accept_language (str | None): Language preference header.
 
   Returns:
       Response: Binary stream formatted as an application/pdf document.
@@ -542,9 +509,6 @@ async def export_dashboard_pdf(
   )
 
 
-# --- Sharing ---
-
-
 @router.post("/{dashboard_id}/shares", response_model=DashboardShareResponse)
 async def share_dashboard(
   dashboard_id: UUID,
@@ -561,55 +525,16 @@ async def share_dashboard(
       share_in (DashboardShareCreate): Email and permission level ('VIEW' or 'EDIT').
       current_user (User): Authenticated user (must be owner).
       db (AsyncSession): Database session.
-      accept_language (Optional[str]): Language preference header.
+      accept_language (str | None): Language preference header.
 
   Returns:
       DashboardShareResponse: Details of created or updated share.
   """
-  dashboard, _ = await _get_dashboard_with_access(
+  await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
   )
-
-  # Look up target user
-  user_stmt = select(User).where(User.email == share_in.user_email)
-  target_user = (await db.execute(user_stmt)).scalars().first()
-  if not target_user:
-    raise HTTPException(status_code=404, detail="Target user not found")
-
-  if target_user.id == current_user.id:
-    raise HTTPException(status_code=400, detail="Cannot share dashboard with yourself")
-
-  perm = share_in.permission_level.upper()
-  if perm not in ("VIEW", "EDIT"):
-    raise HTTPException(status_code=400, detail="Permission level must be VIEW or EDIT")
-
-  # Upsert share
-  existing_stmt = select(DashboardShare).where(
-    and_(DashboardShare.dashboard_id == dashboard_id, DashboardShare.user_id == target_user.id)
-  )
-  existing = (await db.execute(existing_stmt)).scalars().first()
-
-  if existing:
-    existing.permission_level = perm
-    share = existing
-  else:
-    share = DashboardShare(
-      dashboard_id=dashboard_id,
-      user_id=target_user.id,
-      permission_level=perm,
-    )
-    db.add(share)
-
-  await db.commit()
-  await db.refresh(share)
-
-  return DashboardShareResponse(
-    id=share.id,
-    dashboard_id=share.dashboard_id,
-    user_id=target_user.id,
-    user_email=target_user.email,
-    permission_level=share.permission_level,
-  )
+  res = await dashboard_service.share_dashboard_result(dashboard_id, share_in, current_user, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.get("/{dashboard_id}/shares", response_model=list[DashboardShareResponse])
@@ -626,31 +551,13 @@ async def list_dashboard_shares(
       dashboard_id (UUID): Target dashboard ID.
       current_user (User): Authenticated user with access.
       db (AsyncSession): Database session.
-      accept_language (Optional[str]): Language preference header.
+      accept_language (str | None): Language preference header.
 
   Returns:
-      List[DashboardShareResponse]: List of active shares.
+      list[DashboardShareResponse]: List of active shares.
   """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language)
-
-  stmt = (
-    select(DashboardShare, User.email)
-    .join(User, DashboardShare.user_id == User.id)
-    .where(DashboardShare.dashboard_id == dashboard_id)
-  )
-  res = await db.execute(stmt)
-  shares_list = []
-  for share, email in res.all():
-    shares_list.append(
-      DashboardShareResponse(
-        id=share.id,
-        dashboard_id=share.dashboard_id,
-        user_id=share.user_id,
-        user_email=email,
-        permission_level=share.permission_level,
-      )
-    )
-  return shares_list
+  return await dashboard_service.list_dashboard_shares(dashboard_id, db)
 
 
 @router.delete("/{dashboard_id}/shares/{share_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -669,16 +576,10 @@ async def delete_dashboard_share(
       share_id (UUID): Specific share record ID to delete.
       current_user (User): Authenticated owner.
       db (AsyncSession): Database session.
-      accept_language (Optional[str]): Language preference header.
+      accept_language (str | None): Language preference header.
   """
   await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
   )
-
-  stmt = select(DashboardShare).where(and_(DashboardShare.id == share_id, DashboardShare.dashboard_id == dashboard_id))
-  share = (await db.execute(stmt)).scalars().first()
-  if not share:
-    raise HTTPException(status_code=404, detail="Share not found")
-
-  await db.delete(share)
-  await db.commit()
+  res = await dashboard_service.delete_dashboard_share_result(dashboard_id, share_id, db)
+  unwrap_or_raise_http(res)

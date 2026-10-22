@@ -6,14 +6,18 @@ feature. It provides a stateful conversation history between the User and the
 AI Agent, allowing context retention and SQL snippet tracking.
 """
 
-import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+
+if TYPE_CHECKING:
+  from app.models.user import User
 
 
 class Conversation(Base):
@@ -26,7 +30,7 @@ class Conversation(Base):
       title (str): A human-readable summary of the chat (e.g., "ICU Trends").
       created_at (datetime): Timestamp when the chat started.
       updated_at (datetime): Timestamp of the last activity (used for sorting).
-      messages (List[Message]): One-to-Many relationship with individual messages.
+      messages (list[Message]): One-to-Many relationship with individual messages.
   """
 
   __tablename__ = "conversations"
@@ -44,11 +48,10 @@ class Conversation(Base):
   )
 
   # Relationships
-  # Cascade delete-orphan ensures that if a Conversation is deleted, all its messages are wiped.
   messages: Mapped[list["Message"]] = relationship(
     "Message", back_populates="conversation", cascade="all, delete-orphan", lazy="selectin"
   )
-  user = relationship("app.models.user.User")
+  user: Mapped["User"] = relationship("app.models.user.User")
 
   def __repr__(self) -> str:
     """Return distinct string representation."""
@@ -64,10 +67,10 @@ class Message(Base):
       conversation_id (uuid.UUID): Link to the parent Conversation.
       role (str): The entity speaking. 'user' or 'assistant'.
       content (str): The natural language text content.
-      sql_snippet (Optional[str]): If the assistant generated SQL, it is stored
+      sql_snippet (str | None): If the assistant generated SQL, it is stored
           separately here for easy extraction and execution by the UI.
       created_at (datetime): Message timestamp.
-      candidates (List[MessageCandidate]): Alternative responses for Arena voting.
+      candidates (list[MessageCandidate]): Alternative responses for Arena voting.
   """
 
   __tablename__ = "messages"

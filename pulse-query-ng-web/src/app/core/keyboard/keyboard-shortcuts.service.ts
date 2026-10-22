@@ -5,7 +5,7 @@
  */
 
 import {
-  Injectable,
+  Service,
   inject,
   PLATFORM_ID,
   signal,
@@ -64,9 +64,7 @@ export interface KeyboardShortcut {
  * - Help dialog with all available shortcuts
  * - Prevention of conflicts with browser shortcuts
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class KeyboardShortcutsService implements OnDestroy {
   /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
   /** Injected DOCUMENT. */ private readonly document = inject(DOCUMENT);
@@ -189,7 +187,7 @@ export class KeyboardShortcutsService implements OnDestroy {
     // Navigation shortcuts
     this.register({
       id: 'nav-home',
-      description: 'Go to home',
+      description: $localize`Go to home`,
       keys: 'alt+h',
       category: 'navigation',
       handler: () => this.router.navigate(['/']),
@@ -197,7 +195,7 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     this.register({
       id: 'nav-chat',
-      description: 'Open chat',
+      description: $localize`Open chat`,
       keys: 'alt+c',
       category: 'navigation',
       handler: () => this.router.navigate(['/chat']),
@@ -205,7 +203,7 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     this.register({
       id: 'nav-analytics',
-      description: 'Go to analytics',
+      description: $localize`Go to analytics`,
       keys: 'alt+a',
       category: 'navigation',
       handler: () => this.router.navigate(['/analytics']),
@@ -213,7 +211,7 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     this.register({
       id: 'nav-simulation',
-      description: 'Go to simulation',
+      description: $localize`Go to simulation`,
       keys: 'alt+s',
       category: 'navigation',
       handler: () => this.router.navigate(['/simulation']),
@@ -222,7 +220,7 @@ export class KeyboardShortcutsService implements OnDestroy {
     // View shortcuts
     this.register({
       id: 'view-theme',
-      description: 'Toggle dark mode',
+      description: $localize`Toggle dark mode`,
       keys: 'alt+t',
       category: 'view',
       handler: () => this.themeService.toggle(),
@@ -231,7 +229,7 @@ export class KeyboardShortcutsService implements OnDestroy {
     // Help shortcuts
     this.register({
       id: 'help-shortcuts',
-      description: 'Show keyboard shortcuts',
+      description: $localize`Show keyboard shortcuts`,
       keys: '?',
       category: 'actions',
       handler: () => this.showHelp(),
@@ -239,7 +237,7 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     this.register({
       id: 'help-shortcuts-alt',
-      description: 'Show keyboard shortcuts (alternative)',
+      description: $localize`Show keyboard shortcuts (alternative)`,
       keys: 'mod+/',
       category: 'actions',
       handler: () => this.showHelp(),
@@ -248,7 +246,7 @@ export class KeyboardShortcutsService implements OnDestroy {
     // Undo/Redo shortcuts
     this.register({
       id: 'undo',
-      description: 'Undo last action',
+      description: $localize`Undo last action`,
       keys: 'mod+z',
       category: 'editing',
       handler: () => {
@@ -258,7 +256,7 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     this.register({
       id: 'redo',
-      description: 'Redo last action',
+      description: $localize`Redo last action`,
       keys: 'mod+shift+z',
       category: 'editing',
       handler: () => {

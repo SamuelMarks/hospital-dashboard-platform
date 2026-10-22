@@ -1,39 +1,55 @@
 """
 Dashboard Service Module.
 
-Encapsulates dashboard access control, SQL syntax validation, and
-JSON/CSV/PDF analytical report export orchestration.
+Encapsulates dashboard CRUD, widget lifecycle management, multi-user sharing,
+access control, SQL syntax validation, and JSON/CSV/PDF analytical report export orchestration.
 """
 
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
+import copy
 import csv
+from datetime import UTC, datetime
 import io
 import json
-from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+import duckdb
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+import sqlglot
 
 from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import duckdb_manager
 from app.models.dashboard import Dashboard, DashboardShare, Widget
 from app.models.user import User
+from app.schemas.dashboard import (
+  DashboardCreate,
+  DashboardShareCreate,
+  DashboardShareResponse,
+  WidgetReorderRequest,
+)
+from app.schemas.execution import SqlRunnerResultDict
 from app.services.pdf_export import generate_clinical_pdf_report
-from app.services.runners.sql import run_sql_widget
+from app.services.provisioning import provisioning_service
+from app.services.runners.sql import DuckDBCursorProtocol, run_sql_widget
+from app.services.sql_utils import process_global_filters
+
+ConnFactoryCallable = Callable[[], duckdb.DuckDBPyConnection]
+SqlRunnerCallable = Callable[[DuckDBCursorProtocol, dict[str, Any]], SqlRunnerResultDict | dict[str, Any]]
 
 
-def sanitize_csv_value(val: Any) -> str:
+def sanitize_csv_value(val: object) -> str:
   """
   Sanitizes cell values against CSV formula injection by prefixing with a single quote.
 
   Args:
-      val (Any): Raw cell value to format.
+      val (object): Raw cell value to format.
 
   Returns:
       str: Formula-safe string representation.
@@ -59,7 +75,8 @@ def sanitize_filename_title(title: str) -> str:
 
 class DashboardService:
   """
-  Domain service handling dashboard access control, SQL validation, and exports.
+  Domain service handling dashboard CRUD, widget mutations, sharing, access control,
+  SQL validation, and analytical exports.
   """
 
   async def get_dashboard_with_access_result(
@@ -135,15 +152,15 @@ class DashboardService:
     self,
     query: str,
     accept_language: str | None = None,
-    conn_factory: Any = None,
+    conn_factory: ConnFactoryCallable | None = None,
   ) -> AppResult[bool]:
     """
-    Validates a SQL query via DuckDB `PREPARE`, returning an explicit `AppResult[bool]`.
+    Validates a SQL query via AST statement count check and DuckDB `PREPARE`.
 
     Args:
         query (str): Raw SQL string to validate.
         accept_language (str | None): Optional HTTP `Accept-Language` header.
-        conn_factory (Any): Optional connection factory override.
+        conn_factory (ConnFactoryCallable | None): Optional connection factory override.
 
     Returns:
         AppResult[bool]: `Ok(True)` if valid or empty, else `Err(AppError)` with localized message.
@@ -151,14 +168,29 @@ class DashboardService:
     if not query or not query.strip():
       return Ok(True)
 
+    clean_query = query.strip()
+    try:
+      statements = [s for s in sqlglot.parse(clean_query, read="duckdb") if s is not None]
+      if len(statements) > 1:
+        msg = get_translated_message(accept_language, "error.invalid_sql", "Invalid SQL Query")
+        return Err(
+          AppError(
+            code=ErrorCode.SQL_VALIDATION_ERROR,
+            message=f"{msg}: Multiple SQL statements are not permitted.",
+            status_code=400,
+          )
+        )
+    except sqlglot.errors.ParseError:
+      pass
+
     factory = conn_factory if conn_factory is not None else duckdb_manager.get_readonly_connection
     conn = factory()
     try:
-      conn.execute(f"PREPARE v AS {query}")
+      conn.execute(f"PREPARE v AS {clean_query}")
       conn.execute("DEALLOCATE v")
       return Ok(True)
     except Exception as e:
-      error_msg = str(e).split("\n")[0]
+      error_msg = str(e).split(chr(10))[0]
       msg = get_translated_message(accept_language, "error.invalid_sql", "Invalid SQL Query")
       return Err(
         AppError(
@@ -170,12 +202,327 @@ class DashboardService:
     finally:
       conn.close()
 
+  async def list_user_dashboards(self, current_user: User, db: AsyncSession) -> list[Dashboard]:
+    """
+    Lists all dashboards owned by or shared with `current_user`.
+
+    Args:
+        current_user (User): Authenticated user.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        list[Dashboard]: Owned and shared dashboards with `permission_level` populated.
+    """
+    owned_stmt = select(Dashboard).where(Dashboard.owner_id == current_user.id).options(selectinload(Dashboard.widgets))
+    owned_res = await db.execute(owned_stmt)
+    owned_dashboards = list(owned_res.scalars().all())
+    for d in owned_dashboards:
+      d.permission_level = "OWNER"
+
+    shared_stmt = (
+      select(Dashboard, DashboardShare.permission_level)
+      .join(DashboardShare, Dashboard.id == DashboardShare.dashboard_id)
+      .where(DashboardShare.user_id == current_user.id)
+      .options(selectinload(Dashboard.widgets))
+    )
+    shared_res = await db.execute(shared_stmt)
+    shared_dashboards: list[Dashboard] = []
+    for d, perm in shared_res.all():
+      d.permission_level = perm
+      shared_dashboards.append(d)
+
+    return owned_dashboards + shared_dashboards
+
+  async def create_dashboard_result(
+    self,
+    dashboard_in: DashboardCreate,
+    current_user: User,
+    db: AsyncSession,
+  ) -> AppResult[Dashboard]:
+    """
+    Creates a new empty dashboard owned by `current_user`.
+
+    Args:
+        dashboard_in (DashboardCreate): Creation payload containing `name`.
+        current_user (User): Authenticated owner.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[Dashboard]: `Ok(Dashboard)` or `Err(AppError)` if reload fails.
+    """
+    new_dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
+    db.add(new_dashboard)
+    await db.commit()
+
+    result = await db.execute(
+      select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
+    )
+    dashboard = result.scalars().first()
+    if not dashboard:
+      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Dashboard not found", status_code=404))
+    dashboard.permission_level = "OWNER"
+    return Ok(dashboard)
+
+  async def clone_dashboard_result(
+    self,
+    source_dashboard: Dashboard,
+    current_user: User,
+    db: AsyncSession,
+  ) -> AppResult[Dashboard]:
+    """
+    Creates a deep copy of `source_dashboard` and all its widgets for `current_user`.
+
+    Args:
+        source_dashboard (Dashboard): Authorized source dashboard with widgets.
+        current_user (User): Authenticated user receiving the clone.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[Dashboard]: `Ok(Dashboard)` or `Err(AppError)` if reload fails.
+    """
+    new_dashboard = Dashboard(name=f"Copy of {source_dashboard.name}", owner_id=current_user.id)
+    db.add(new_dashboard)
+    await db.flush()
+
+    for widget in source_dashboard.widgets:
+      new_widget = Widget(
+        dashboard_id=new_dashboard.id,
+        title=widget.title,
+        type=widget.type,
+        visualization=widget.visualization,
+        config=copy.deepcopy(widget.config) if widget.config else {},
+      )
+      db.add(new_widget)
+
+    await db.commit()
+
+    result = await db.execute(
+      select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
+    )
+    dashboard = result.scalars().first()
+    if not dashboard:
+      return Err(
+        AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Cloned dashboard could not be loaded", status_code=404)
+      )
+    dashboard.permission_level = "OWNER"
+    return Ok(dashboard)
+
+  async def restore_default_dashboard_result(
+    self,
+    current_user: User,
+    db: AsyncSession,
+  ) -> AppResult[Dashboard]:
+    """
+    Restores the default 'Hospital Command Center' dashboard for `current_user`.
+
+    Args:
+        current_user (User): Authenticated user.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[Dashboard]: `Ok(Dashboard)` or `Err(AppError)` if reload fails.
+    """
+    dashboard = await provisioning_service.restore_defaults(db, current_user)
+    await db.commit()
+
+    result = await db.execute(
+      select(Dashboard).where(Dashboard.id == dashboard.id).options(selectinload(Dashboard.widgets))
+    )
+    dash = result.scalars().first()
+    if not dash:
+      return Err(
+        AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Default dashboard could not be restored", status_code=404)
+      )
+    dash.permission_level = "OWNER"
+    return Ok(dash)
+
+  async def reorder_widgets(
+    self,
+    dashboard_id: UUID,
+    request: WidgetReorderRequest,
+    db: AsyncSession,
+  ) -> dict[str, int]:
+    """
+    Bulk updates widget order and group positions within `dashboard_id`.
+
+    Args:
+        dashboard_id (UUID): Target dashboard UUID.
+        request (WidgetReorderRequest): Reorder items payload.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        dict[str, int]: Dictionary containing `{"updated": updated_count}`.
+    """
+    result = await db.execute(select(Widget).where(Widget.dashboard_id == dashboard_id))
+    widgets_db = {w.id: w for w in result.scalars().all()}
+
+    updated_count = 0
+    for item in request.items:
+      if item.id in widgets_db:
+        widget = widgets_db[item.id]
+        new_config = widget.config.copy()
+        new_config["order"] = item.order
+        if item.group is not None:
+          new_config["group"] = item.group
+        widget.config = new_config
+        updated_count += 1
+
+    await db.commit()
+    return {"updated": updated_count}
+
+  async def share_dashboard_result(
+    self,
+    dashboard_id: UUID,
+    share_in: DashboardShareCreate,
+    current_user: User,
+    db: AsyncSession,
+  ) -> AppResult[DashboardShareResponse]:
+    """
+    Grants or updates a collaborator share on `dashboard_id`.
+
+    Args:
+        dashboard_id (UUID): Target dashboard UUID.
+        share_in (DashboardShareCreate): Target user email and permission level.
+        current_user (User): Authenticated dashboard owner.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[DashboardShareResponse]: `Ok(DashboardShareResponse)` or `Err(AppError)`.
+    """
+    user_stmt = select(User).where(User.email == share_in.user_email)
+    target_user = (await db.execute(user_stmt)).scalars().first()
+    if not target_user:
+      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Target user not found", status_code=404))
+
+    if target_user.id == current_user.id:
+      return Err(
+        AppError(code=ErrorCode.SHARE_SELF_FORBIDDEN, message="Cannot share dashboard with yourself", status_code=400)
+      )
+
+    perm = share_in.permission_level.upper()
+    if perm not in ("VIEW", "EDIT"):
+      return Err(
+        AppError(
+          code=ErrorCode.SHARE_INVALID_PERMISSION,
+          message="Permission level must be VIEW or EDIT",
+          status_code=400,
+        )
+      )
+
+    existing_stmt = select(DashboardShare).where(
+      and_(DashboardShare.dashboard_id == dashboard_id, DashboardShare.user_id == target_user.id)
+    )
+    existing = (await db.execute(existing_stmt)).scalars().first()
+
+    if existing:
+      existing.permission_level = perm
+      share = existing
+    else:
+      share = DashboardShare(
+        dashboard_id=dashboard_id,
+        user_id=target_user.id,
+        permission_level=perm,
+      )
+      db.add(share)
+
+    await db.commit()
+    await db.refresh(share)
+
+    return Ok(
+      DashboardShareResponse(
+        id=share.id,
+        dashboard_id=share.dashboard_id,
+        user_id=target_user.id,
+        user_email=target_user.email,
+        permission_level=share.permission_level,
+      )
+    )
+
+  async def list_dashboard_shares(
+    self,
+    dashboard_id: UUID,
+    db: AsyncSession,
+  ) -> list[DashboardShareResponse]:
+    """
+    Lists all active shares on `dashboard_id`.
+
+    Args:
+        dashboard_id (UUID): Target dashboard UUID.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        list[DashboardShareResponse]: List of active collaborator shares.
+    """
+    stmt = (
+      select(DashboardShare, User.email)
+      .join(User, DashboardShare.user_id == User.id)
+      .where(DashboardShare.dashboard_id == dashboard_id)
+    )
+    res = await db.execute(stmt)
+    return [
+      DashboardShareResponse(
+        id=share.id,
+        dashboard_id=share.dashboard_id,
+        user_id=share.user_id,
+        user_email=email,
+        permission_level=share.permission_level,
+      )
+      for share, email in res.all()
+    ]
+
+  async def delete_dashboard_share_result(
+    self,
+    dashboard_id: UUID,
+    share_id: UUID,
+    db: AsyncSession,
+  ) -> AppResult[bool]:
+    """
+    Revokes a collaborator share from `dashboard_id`.
+
+    Args:
+        dashboard_id (UUID): Target dashboard UUID.
+        share_id (UUID): Share record UUID to revoke.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[bool]: `Ok(True)` if deleted, or `Err(AppError)` if not found.
+    """
+    stmt = select(DashboardShare).where(and_(DashboardShare.id == share_id, DashboardShare.dashboard_id == dashboard_id))
+    share = (await db.execute(stmt)).scalars().first()
+    if not share:
+      return Err(AppError(code=ErrorCode.SHARE_NOT_FOUND, message="Share not found", status_code=404))
+
+    await db.delete(share)
+    await db.commit()
+    return Ok(True)
+
+  def _prepare_sql_run_config(
+    self,
+    config: dict[str, Any],
+    global_params: dict[str, Any] | None = None,
+  ) -> dict[str, Any]:
+    """
+    Clones a SQL widget config dictionary and injects global filter placeholders.
+
+    Args:
+        config (dict[str, Any]): Raw widget config dictionary.
+        global_params (dict[str, Any] | None): Optional global filter parameters.
+
+    Returns:
+        dict[str, Any]: Config copy with `query` interpolated.
+    """
+    run_config = dict(config or {})
+    if "query" in run_config and isinstance(run_config["query"], str):
+      run_config["query"] = process_global_filters(run_config["query"], global_params or {})
+    return run_config
+
   def build_dashboard_export_content(
     self,
     dashboard: Dashboard,
     export_format: str,
-    conn_factory: Any = None,
-    sql_runner_fn: Any = run_sql_widget,
+    conn_factory: ConnFactoryCallable | None = None,
+    sql_runner_fn: SqlRunnerCallable = run_sql_widget,
+    global_params: dict[str, Any] | None = None,
   ) -> tuple[str, str, str]:
     """
     Executes SQL widgets and formats a full dashboard export in JSON or CSV format.
@@ -183,8 +530,9 @@ class DashboardService:
     Args:
         dashboard (Dashboard): Authorized dashboard instance with widgets.
         export_format (str): Target export format (`'json'` or `'csv'`).
-        conn_factory (Any): Optional connection factory override.
-        sql_runner_fn (Any): Optional SQL runner function override.
+        conn_factory (ConnFactoryCallable | None): Optional connection factory override.
+        sql_runner_fn (SqlRunnerCallable): Optional SQL runner function override.
+        global_params (dict[str, Any] | None): Optional global filter parameters.
 
     Returns:
         tuple[str, str, str]: Tuple of `(content_str, media_type, filename)`.
@@ -205,7 +553,8 @@ class DashboardService:
         for widget in dashboard.widgets:
           data_records: list[dict[str, Any]] = []
           if widget.type == "SQL":
-            res = sql_runner_fn(cursor, widget.config)
+            run_cfg = self._prepare_sql_run_config(widget.config, global_params)
+            res = sql_runner_fn(cursor, run_cfg)
             data_records = res.get("data", [])
 
           export_payload["widgets"].append(
@@ -233,7 +582,8 @@ class DashboardService:
       for widget in dashboard.widgets:
         writer.writerow([f"## Widget: {widget.title} ({widget.type})"])
         if widget.type == "SQL":
-          res = sql_runner_fn(cursor, widget.config)
+          run_cfg = self._prepare_sql_run_config(widget.config, global_params)
+          res = sql_runner_fn(cursor, run_cfg)
           records = res.get("data", [])
           if records and isinstance(records, list):
             headers = list(records[0].keys())
@@ -255,8 +605,9 @@ class DashboardService:
     dashboard: Dashboard,
     widget: Widget,
     export_format: str,
-    conn_factory: Any = None,
-    sql_runner_fn: Any = run_sql_widget,
+    conn_factory: ConnFactoryCallable | None = None,
+    sql_runner_fn: SqlRunnerCallable = run_sql_widget,
+    global_params: dict[str, Any] | None = None,
   ) -> tuple[str, str, str]:
     """
     Executes a single widget query and formats its export payload in JSON or CSV format.
@@ -265,8 +616,9 @@ class DashboardService:
         dashboard (Dashboard): Parent dashboard model.
         widget (Widget): Target widget model to export.
         export_format (str): Target export format (`'json'` or `'csv'`).
-        conn_factory (Any): Optional connection factory override.
-        sql_runner_fn (Any): Optional SQL runner function override.
+        conn_factory (ConnFactoryCallable | None): Optional connection factory override.
+        sql_runner_fn (SqlRunnerCallable): Optional SQL runner function override.
+        global_params (dict[str, Any] | None): Optional global filter parameters.
 
     Returns:
         tuple[str, str, str]: Tuple of `(content_str, media_type, filename)`.
@@ -278,7 +630,8 @@ class DashboardService:
       conn = factory()
       try:
         cursor = conn.cursor()
-        res = sql_runner_fn(cursor, widget.config)
+        run_cfg = self._prepare_sql_run_config(widget.config, global_params)
+        res = sql_runner_fn(cursor, run_cfg)
         data_records = res.get("data", [])
       finally:
         conn.close()
@@ -317,8 +670,9 @@ class DashboardService:
     self,
     dashboard: Dashboard,
     author_email: str,
-    conn_factory: Any = None,
-    sql_runner_fn: Any = run_sql_widget,
+    conn_factory: ConnFactoryCallable | None = None,
+    sql_runner_fn: SqlRunnerCallable = run_sql_widget,
+    global_params: dict[str, Any] | None = None,
   ) -> tuple[bytes, str]:
     """
     Asynchronously executes dashboard widget queries and renders a clinical PDF report.
@@ -326,14 +680,18 @@ class DashboardService:
     Args:
         dashboard (Dashboard): Authorized dashboard instance with widgets.
         author_email (str): Email of the exporting user.
-        conn_factory (Any): Optional connection factory override.
-        sql_runner_fn (Any): Optional SQL runner function override.
+        conn_factory (ConnFactoryCallable | None): Optional connection factory override.
+        sql_runner_fn (SqlRunnerCallable): Optional SQL runner function override.
+        global_params (dict[str, Any] | None): Optional global filter parameters.
 
     Returns:
         tuple[bytes, str]: Tuple of `(pdf_bytes, filename)`.
     """
     safe_title = sanitize_filename_title(dashboard.name)
-    widget_snapshots = [{"title": w.title, "type": w.type, "config": dict(w.config or {})} for w in dashboard.widgets]
+    widget_snapshots: list[dict[str, Any]] = [
+      {"title": w.title, "type": w.type, "config": self._prepare_sql_run_config(w.config, global_params)}
+      for w in dashboard.widgets
+    ]
 
     def _build_pdf_sync() -> bytes:
       """

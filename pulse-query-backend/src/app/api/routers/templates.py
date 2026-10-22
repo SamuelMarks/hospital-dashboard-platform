@@ -1,20 +1,18 @@
 """
 Templates API Router.
 
-This module exposes the CRUD endpoints for managing the Widget Template Registry.
-Updated to support server-side searching and limiting to efficiently handle
-large catalogs of analytics questions.
+Exposes CRUD and instantiation endpoints for the Widget Template Registry
+by delegating domain logic to `TemplateService`.
 """
 
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
-from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.core.result import AppResult, unwrap_or_raise_http
 from app.database.postgres import get_db
 from app.models.template import WidgetTemplate
 from app.models.user import User
@@ -25,8 +23,7 @@ from app.schemas.template import (
   TemplateResponse,
   TemplateUpdate,
 )
-from app.services.provisioning import provisioning_service
-from app.services.sql_utils import interpolate_template_parameters
+from app.services.template_service import template_service
 
 router = APIRouter()
 
@@ -44,39 +41,17 @@ async def list_templates(
 
   Args:
       db (AsyncSession): Database session dependency.
-      category (Optional[str]): Filter templates by category name.
-      search (Optional[str]): Case-insensitive search term for title or description.
+      category (str | None): Filter templates by category name.
+      search (str | None): Case-insensitive search term for title or description.
       limit (int): Maximum number of records to return.
       current_user (User): Authenticated user dependency.
 
   Returns:
-      List[WidgetTemplate]: Filtered list of templates.
+      list[WidgetTemplate]: Filtered list of templates.
   """
-  query = select(WidgetTemplate)
-
-  # Apply Category Filter
-  if category:
-    query = query.where(WidgetTemplate.category == category)
-
-  # Apply Text Search
-  if search:
-    term = search.strip()
-    pattern = f"%{term}%"
-
-    # Search against Title and Description using case-insensitive ILIKE
-    # OR logic automatically handles NULL values in description
-    query = query.where(
-      or_(
-        WidgetTemplate.title.ilike(pattern),
-        WidgetTemplate.description.ilike(pattern),
-      )
-    )
-
-  # Apply Limit / Sort
-  query = query.order_by(WidgetTemplate.title).limit(limit)
-
-  result = await db.execute(query)
-  return list(result.scalars().all())
+  _ = current_user
+  res = await template_service.list_templates_result(db=db, category=category, search=search, limit=limit)
+  return unwrap_or_raise_http(res)
 
 
 @router.post("/", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
@@ -96,16 +71,9 @@ async def create_template(
   Returns:
       WidgetTemplate: The persisted template object.
   """
-  template = WidgetTemplate(
-    title=template_in.title,
-    description=template_in.description,
-    sql_template=template_in.sql_template,
-    category=template_in.category,
-    parameters_schema=template_in.parameters_schema,
-  )
-  db.add(template)
-  await db.commit()
-  return template
+  _ = current_user
+  res = await template_service.create_template_result(template_in, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.get("/{template_id}", response_model=TemplateResponse)
@@ -128,11 +96,9 @@ async def get_template(
   Raises:
       HTTPException: 404 if not found.
   """
-  result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
-  template = result.scalars().first()
-  if not template:
-    raise HTTPException(status_code=404, detail="Template not found")
-  return template
+  _ = current_user
+  res = await template_service.get_template_result(template_id, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
@@ -157,18 +123,9 @@ async def update_template(
   Raises:
       HTTPException: 404 if not found.
   """
-  result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
-  template = result.scalars().first()
-  if not template:
-    raise HTTPException(status_code=404, detail="Template not found")
-
-  update_data = template_in.model_dump(exclude_unset=True)
-
-  for key, value in update_data.items():
-    setattr(template, key, value)
-
-  await db.commit()
-  return template
+  _ = current_user
+  res = await template_service.update_template_result(template_id, template_in, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -188,13 +145,9 @@ async def delete_template(
   Raises:
       HTTPException: 404 if not found.
   """
-  result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
-  template = result.scalars().first()
-  if not template:
-    raise HTTPException(status_code=404, detail="Template not found")
-
-  await db.delete(template)
-  await db.commit()
+  _ = current_user
+  res = await template_service.delete_template_result(template_id, db)
+  unwrap_or_raise_http(res)
 
 
 async def instantiate_template_result(
@@ -203,7 +156,7 @@ async def instantiate_template_result(
   db: AsyncSession,
 ) -> AppResult[TemplateInstantiateResponse]:
   """
-  Resolves a `WidgetTemplate` by ID, interpolates its SQL parameters, and returns an `AppResult`.
+  Delegates template instantiation to `template_service.instantiate_template_result`.
 
   Args:
       template_id (UUID): Unique identifier of the template to instantiate.
@@ -213,33 +166,7 @@ async def instantiate_template_result(
   Returns:
       AppResult[TemplateInstantiateResponse]: `Ok(TemplateInstantiateResponse)` or `Err(AppError)` if not found.
   """
-  result = await db.execute(select(WidgetTemplate).where(WidgetTemplate.id == template_id))
-  template = result.scalars().first()
-  if not template:
-    return Err(
-      AppError(
-        code=ErrorCode.RESOURCE_NOT_FOUND,
-        message="Template not found",
-        status_code=status.HTTP_404_NOT_FOUND,
-      )
-    )
-
-  schema_dict = template.parameters_schema if isinstance(template.parameters_schema, dict) else None
-  query_str = interpolate_template_parameters(
-    template.sql_template,
-    parameters_schema=schema_dict,
-    param_overrides=payload.parameters,
-  )
-  viz_type = provisioning_service._determine_visual_type(template)
-
-  return Ok(
-    TemplateInstantiateResponse(
-      template_id=template.id,
-      title=template.title,
-      visualization=viz_type,
-      query=query_str,
-    )
-  )
+  return await template_service.instantiate_template_result(template_id, payload, db)
 
 
 @router.post("/{template_id}/instantiate", response_model=TemplateInstantiateResponse)
@@ -265,7 +192,6 @@ async def instantiate_template(
   Raises:
       HTTPException: 404 if the template does not exist.
   """
+  _ = current_user
   res = await instantiate_template_result(template_id, payload, db)
-  if isinstance(res, Err):
-    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
-  return res.value
+  return unwrap_or_raise_http(res)

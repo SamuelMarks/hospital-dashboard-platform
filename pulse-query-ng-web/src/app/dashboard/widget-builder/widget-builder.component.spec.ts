@@ -195,6 +195,7 @@ describe('WidgetBuilderComponent', () => {
     expect(component.selectedTemplate()).toEqual(MOCK_TEMPLATE);
     expect(component.activeMode()).toBe('template');
     expect(component.selectedCustomType()).toBeNull();
+    expect(component.getTemplateAriaLabel(MOCK_TEMPLATE)).toBe('Select template: Admissions');
   });
 
   it('selectCustomType should set custom mode and select type', () => {

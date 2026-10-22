@@ -9,6 +9,8 @@ import io.healthplatform.pulsequery.api.apis.SimulationApi
 import io.healthplatform.pulsequery.api.models.ScenarioConstraint
 import io.healthplatform.pulsequery.api.models.ScenarioResult
 import io.healthplatform.pulsequery.api.models.ScenarioRunRequest
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -101,7 +103,7 @@ class SimulationViewModel(
      */
     fun loadSchemaTables() {
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentSchemaApi.getDatabaseSchemaApiV1SchemaGet().body()
             }.onSuccess { tables ->
                 if (tables.isNotEmpty()) {
@@ -206,7 +208,7 @@ class SimulationViewModel(
         val snapshot = _state.value
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null, result = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 val req = ScenarioRunRequest(
                     demandSourceSql = snapshot.sqlQuery,
                     capacityParameters = mapOf(
@@ -224,7 +226,7 @@ class SimulationViewModel(
                 onFailure = { e ->
                     _state.update {
                         it.copy(
-                            errorMessage = e.message ?: fallbackError,
+                            errorMessage = e.messageOrDefault(fallbackError),
                             isLoading = false
                         )
                     }

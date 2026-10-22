@@ -7,6 +7,7 @@ import { inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { catchError, throwError } from 'rxjs';
 import { ConnectionStatusService } from '../health/connection-status.service';
+import { DATE_NOW } from '../time.token';
 
 /** Timestamp of the last network unreachable toast to prevent spamming. */
 let lastNetworkToastTime = 0;
@@ -29,27 +30,29 @@ let lastNetworkToastTime = 0;
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const snackBar = inject(MatSnackBar);
   const connectionService = inject(ConnectionStatusService);
+  const dateNow = inject(DATE_NOW);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       // Skip 401s; Auth mechanism handles redirection/refresh logic.
       if (error.status !== 401) {
-        let message = 'An unexpected error occurred.';
-        let action = 'Close';
+        const troubleshootAction = $localize`Troubleshoot`;
+        let message = $localize`An unexpected error occurred.`;
+        let action = $localize`Close`;
 
         if (error.status === 0) {
           connectionService.markBackendUnreachable();
-          message = 'Cannot reach Pulse Query Backend server. Please verify the API is running.';
-          action = 'Troubleshoot';
+          message = $localize`Cannot reach Pulse Query Backend server. Please verify the API is running.`;
+          action = troubleshootAction;
 
-          const now = Date.now();
+          const now = dateNow().getTime();
           if (now - lastNetworkToastTime < 3000) {
             return throwError(() => error);
           }
           lastNetworkToastTime = now;
         } else if (error.status === 503) {
-          message = 'Database service unavailable. Backend database may be misconfigured.';
-          action = 'Troubleshoot';
+          message = $localize`Database service unavailable. Backend database may be misconfigured.`;
+          action = troubleshootAction;
         } else if (error.error && typeof error.error === 'object') {
           // Type safety check for dynamic backend response objects
           const errObj = error.error as Record<string, unknown>;
@@ -60,7 +63,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             }
           } else if (errObj['detail']) {
             message = Array.isArray(errObj['detail'])
-              ? 'Validation Error: Check input fields.'
+              ? $localize`Validation Error: Check input fields.`
               : String(errObj['detail']);
           }
         } else if (error.message) {
@@ -70,14 +73,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
         // Dispatch UI Notification
         const ref = snackBar.open(message, action, {
-          duration: action === 'Troubleshoot' ? 7000 : 5000,
+          duration: action === troubleshootAction ? 7000 : 5000,
           horizontalPosition: 'end',
           verticalPosition: 'bottom',
           politeness: 'assertive',
           panelClass: ['snackbar-error'],
         });
 
-        if (action === 'Troubleshoot') {
+        if (action === troubleshootAction) {
           ref.onAction().subscribe(() => {
             connectionService.openDiagnosticsDialog();
           });

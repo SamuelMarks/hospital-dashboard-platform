@@ -2,7 +2,7 @@
  * @fileoverview Syntax-highlighted SQL code block component with actions to run,
  * copy, simulate, or save the query to the cart.
  */
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -79,8 +79,8 @@ export class SqlSnippetComponent {
   /** Emits the SQL string when the user launches the simulation view. */
   readonly simulate = output<string>();
 
-  /** Returns HTML-escaped SQL string with syntax highlighting span tags. */
-  get highlightedSql(): string {
+  /** Computed signal returning HTML-escaped SQL string with syntax highlighting span tags. */
+  readonly highlightedSql = computed((): string => {
     let code = this.sql() || '';
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     code = code.replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>');
@@ -98,7 +98,7 @@ export class SqlSnippetComponent {
     );
 
     return code;
-  }
+  });
 
   /** Emits the `run` output event if a SQL snippet is present. */
   emitRun(): void {

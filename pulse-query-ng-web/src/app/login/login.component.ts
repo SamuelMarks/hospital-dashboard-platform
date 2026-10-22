@@ -1,7 +1,7 @@
 /**
  * @fileoverview User login component providing email/password authentication via Signal Forms.
  */
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { FormRoot, FormField, form, required, email, minLength } from '@angular/forms/signals';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 
@@ -106,6 +106,10 @@ export class LoginComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   /** Whether the password input characters are masked. */
   readonly hidePassword = signal(true);
+  /** Localized accessible label for the password visibility toggle button. */
+  readonly passwordToggleLabel = computed(() =>
+    this.hidePassword() ? $localize`Show password` : $localize`Hide password`,
+  );
 
   /** Signal model backing the login form fields. */
   readonly formModel = signal({
@@ -115,11 +119,11 @@ export class LoginComponent implements OnInit {
 
   /** Signal form instance with email and password validation rules. */
   readonly loginForm = form(this.formModel, (f) => {
-    required(f.email, { message: 'Email is required' });
-    email(f.email, { message: 'Please enter a valid email address' });
+    required(f.email, { message: $localize`Email is required` });
+    email(f.email, { message: $localize`Please enter a valid email address` });
 
-    required(f.password, { message: 'Password is required' });
-    minLength(f.password, 4, { message: 'Password must be at least 4 characters' });
+    required(f.password, { message: $localize`Password is required` });
+    minLength(f.password, 4, { message: $localize`Password must be at least 4 characters` });
   });
 
   /** Redirects already authenticated users away from the login screen. */

@@ -18,8 +18,8 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
   template: `
     <!-- Offline Banner -->
     @if (!isOnline()) {
-      <div class="health-banner banner-offline" role="alert" aria-live="assertive">
-        <mat-icon i18n class="banner-icon">wifi_off</mat-icon>
+      <div class="health-banner banner-offline" role="alert">
+        <mat-icon aria-hidden="true" class="banner-icon">wifi_off</mat-icon>
         <div class="banner-text" i18n>
           <strong>No Internet Connection:</strong> You are currently working offline.
         </div>
@@ -28,8 +28,8 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
 
     <!-- Backend Inaccessible Banner -->
     @if (isOnline() && !isBackendReachable()) {
-      <div class="health-banner banner-unreachable" role="alert" aria-live="assertive">
-        <mat-icon i18n class="banner-icon">cloud_off</mat-icon>
+      <div class="health-banner banner-unreachable" role="alert">
+        <mat-icon aria-hidden="true" class="banner-icon">cloud_off</mat-icon>
         <div class="banner-text" i18n>
           <strong>Backend Inaccessible:</strong> Cannot connect to Pulse Query Server.
           @if (countdown() > 0) {
@@ -53,8 +53,8 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
 
     <!-- Database Misconfiguration Banner -->
     @if (isOnline() && isBackendReachable() && status() === 'critical') {
-      <div class="health-banner banner-critical" role="alert" aria-live="polite">
-        <mat-icon i18n class="banner-icon">dns</mat-icon>
+      <div class="health-banner banner-critical" role="alert">
+        <mat-icon aria-hidden="true" class="banner-icon">dns</mat-icon>
         <div class="banner-text" i18n>
           <strong>Database Misconfiguration:</strong> Backend database service (PostgreSQL / DuckDB)
           is unreachable or reporting critical errors.
@@ -69,8 +69,8 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
 
     <!-- Degraded Data / Missing Dataset Banner -->
     @if (isOnline() && isBackendReachable() && status() === 'degraded' && !isDismissed()) {
-      <div class="health-banner banner-degraded" role="alert" aria-live="polite">
-        <mat-icon i18n class="banner-icon">warning</mat-icon>
+      <div class="health-banner banner-degraded" role="status" aria-live="polite">
+        <mat-icon aria-hidden="true" class="banner-icon">warning</mat-icon>
         <div class="banner-text" i18n>
           <strong>System Notice:</strong> Initial hospital dataset is missing or using synthetic
           fallback data.
@@ -83,7 +83,7 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
             i18n-aria-label
             aria-label="Dismiss warning banner"
           >
-            <mat-icon i18n>close</mat-icon>
+            <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         </div>
       </div>

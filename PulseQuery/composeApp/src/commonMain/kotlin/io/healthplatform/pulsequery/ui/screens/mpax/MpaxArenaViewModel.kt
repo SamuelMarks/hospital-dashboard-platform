@@ -7,6 +7,8 @@ package io.healthplatform.pulsequery.ui.screens.mpax
 import io.healthplatform.pulsequery.api.apis.MpaxArenaApi
 import io.healthplatform.pulsequery.api.models.MpaxArenaCandidate
 import io.healthplatform.pulsequery.api.models.MpaxArenaRequest
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +91,7 @@ class MpaxArenaViewModel(
         if (current.prompt.isBlank()) return
         scope.launch {
             _state.update { it.copy(isRunning = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 val req = MpaxArenaRequest(
                     prompt = current.prompt,
                     mode = current.selectedMode
@@ -110,7 +112,7 @@ class MpaxArenaViewModel(
                     _state.update {
                         it.copy(
                             isRunning = false,
-                            errorMessage = e.message ?: "Failed to execute MPAX Arena evaluation"
+                            errorMessage = e.messageOrDefault("Failed to execute MPAX Arena evaluation")
                         )
                     }
                 }
@@ -127,7 +129,7 @@ class MpaxArenaViewModel(
         val expId = _state.value.experimentId ?: return
         scope.launch {
             _state.update { it.copy(isVoting = true) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentMpaxArenaApi.voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(
                     runId = expId,
                     candidateId = candidateId
@@ -146,7 +148,7 @@ class MpaxArenaViewModel(
                     _state.update {
                         it.copy(
                             isVoting = false,
-                            errorMessage = e.message ?: "Failed to record candidate vote"
+                            errorMessage = e.messageOrDefault("Failed to record candidate vote")
                         )
                     }
                 }

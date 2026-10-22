@@ -4,16 +4,8 @@
  * Ensures WCAG 2.1 AA compliance for keyboard navigation.
  */
 
-import {
-  Directive,
-  ElementRef,
-  inject,
-  OnInit,
-  OnDestroy,
-  Input,
-  Output,
-  EventEmitter,
-} from '@angular/core';
+import { Directive, ElementRef, inject, OnInit, OnDestroy, input, output } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 
 /**
  * Focus Trap Directive.
@@ -32,42 +24,44 @@ import {
  */
 @Directive({
   selector: '[appFocusTrap]',
+  host: {
+    '(keydown)': 'handleKeydown($event)',
+  },
 })
 export class FocusTrapDirective implements OnInit, OnDestroy {
-  /** Element ref. */ private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** Element ref. */
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** Injected DOM document reference. */
+  private readonly document = inject(DOCUMENT);
 
   /**
    * Whether to automatically focus the first focusable element on init.
    */
-  @Input() autoFocus = true;
+  readonly autoFocus = input(true);
 
   /**
    * Emits when the Escape key is pressed.
    */
-  @Output() readonly escape = new EventEmitter<void>();
+  readonly escape = output<void>();
 
-  /** Previous active element. */ private previousActiveElement: HTMLElement | null = null;
-  /** Bound keydown handler. */ private boundKeydownHandler = this.handleKeydown.bind(this);
+  /** Previous active element. */
+  private previousActiveElement: HTMLElement | null = null;
 
   /**
    * Lifecycle hook: Initialize focus trap.
    */
   ngOnInit(): void {
-    this.previousActiveElement = document.activeElement as HTMLElement;
+    this.previousActiveElement = this.document.activeElement as HTMLElement;
 
-    if (this.autoFocus) {
+    if (this.autoFocus()) {
       this.focusFirstElement();
     }
-
-    this.elementRef.nativeElement.addEventListener('keydown', this.boundKeydownHandler);
   }
 
   /**
    * Lifecycle hook: Cleanup and restore focus.
    */
   ngOnDestroy(): void {
-    this.elementRef.nativeElement.removeEventListener('keydown', this.boundKeydownHandler);
-
     if (this.previousActiveElement) {
       this.previousActiveElement.focus();
     }
@@ -78,7 +72,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
    *
    * @param event - The keyboard event.
    */
-  private handleKeydown(event: KeyboardEvent): void {
+  handleKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       this.escape.emit();
       return;
@@ -95,7 +89,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
     }
 
     const lastElement = focusableElements.reduce((_, el) => el, firstElement);
-    const activeElement = document.activeElement;
+    const activeElement = this.document.activeElement;
 
     if (event.shiftKey) {
       // Shift + Tab: Move focus backward
@@ -139,12 +133,13 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
     ].join(', ');
 
     const nodes = this.elementRef.nativeElement.querySelectorAll(selector);
+    const view = this.document.defaultView;
     return Array.from(nodes as NodeListOf<HTMLElement>).filter((el: HTMLElement) => {
       return (
         el.offsetWidth > 0 &&
         el.offsetHeight > 0 &&
         !el.hasAttribute('hidden') &&
-        window.getComputedStyle(el).visibility !== 'hidden'
+        view?.getComputedStyle(el).visibility !== 'hidden'
       );
     });
   }

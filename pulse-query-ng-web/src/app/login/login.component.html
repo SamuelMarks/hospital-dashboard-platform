@@ -13,7 +13,7 @@
     <!-- Error Alert -->
     @if (errorMessage()) {
       <div class="error-box" role="alert" data-testid="error-alert">
-        <mat-icon color="warn" i18n>error</mat-icon>
+        <mat-icon aria-hidden="true" color="warn">error</mat-icon>
         <span>{{ errorMessage() }}</span>
       </div>
     }
@@ -26,12 +26,13 @@
           matInput
           [formField]="loginForm.email"
           type="email"
+          autocomplete="email"
           placeholder="doctor@hospital.com"
           i18n-placeholder
           data-testid="input-email"
         />
         @for (err of loginForm.email().errors(); track err.kind) {
-          <mat-error i18n>{{ err.message }}</mat-error>
+          <mat-error>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 
@@ -42,6 +43,7 @@
           matInput
           [formField]="loginForm.password"
           [type]="hidePassword() ? 'password' : 'text'"
+          autocomplete="current-password"
           data-testid="input-password"
         />
         <button
@@ -49,13 +51,15 @@
           matSuffix
           type="button"
           (click)="togglePasswordVisibility($event)"
-          [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+          [attr.aria-label]="passwordToggleLabel()"
           [attr.aria-pressed]="!hidePassword()"
         >
-          <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          <mat-icon aria-hidden="true">{{
+            hidePassword() ? 'visibility_off' : 'visibility'
+          }}</mat-icon>
         </button>
         @for (err of loginForm.password().errors(); track err.kind) {
-          <mat-error i18n>{{ err.message }}</mat-error>
+          <mat-error>{{ err.message }}</mat-error>
         }
       </mat-form-field>
 

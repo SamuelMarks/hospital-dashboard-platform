@@ -5,6 +5,7 @@ Verifies that the Python-to-SQL bridge functions are correctly registered
 and callable via standard SQL queries using the DuckDB Python API.
 """
 
+from collections.abc import Generator
 import json
 
 import duckdb
@@ -14,7 +15,7 @@ from app.database.duckdb_init import create_hospital_macros
 
 
 @pytest.fixture
-def db_conn() -> duckdb.DuckDBPyConnection:
+def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   """
   Fixture providing an in-memory DuckDB connection
   populated with registered macros and UDFs.

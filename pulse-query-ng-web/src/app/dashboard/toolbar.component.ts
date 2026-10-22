@@ -2,7 +2,8 @@
  * @fileoverview Top application toolbar component providing global navigation,
  * dashboard editing controls, theme customization, export actions, and user session management.
  */
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter, map } from 'rxjs/operators';
@@ -30,8 +31,9 @@ import { ShareDashboardDialog } from './share-dashboard/share-dashboard.dialog';
 import { CollaboratorPresenceComponent } from './collaborator-presence/collaborator-presence.component';
 import { UndoRedoButtonsComponent } from '../shared/components/undo-redo-buttons.component';
 import { ThemeColorPickerDialogComponent } from './theme-picker/theme-color-picker.dialog';
+import { triggerBlobDownload } from '../shared/utils/csv-export.utils';
 
-/** Toolbar Component. */
+/** Top application toolbar component hosting dashboard controls, exports, and user actions. */
 @Component({
   selector: 'app-toolbar',
   imports: [
@@ -72,11 +74,38 @@ export class ToolbarComponent {
   private readonly snackBar = inject(MatSnackBar);
   /** HTTP client for downloading dashboard export blobs. */
   private readonly http = inject(HttpClient);
+  /** Injected DOM document reference. */
+  private readonly document = inject(DOCUMENT);
 
   /** Reactive count of queries currently stored in the query cart. */
   readonly cartCount = this.cart.count;
   /** Preset Material 3 seed hex colors available in the theme menu. */
   readonly presetColors = ['#1565c0', '#7b1fa2', '#00796b', '#c62828', '#ef6c00'];
+
+  /** Map of preset hex colors to human-readable localized color names. */
+  private readonly presetColorNames: Record<string, string> = {
+    '#1565c0': $localize`Ocean Blue`,
+    '#7b1fa2': $localize`Royal Purple`,
+    '#00796b': $localize`Forest Health`,
+    '#c62828': $localize`Crimson Red`,
+    '#ef6c00': $localize`Amber Urgent`,
+  };
+
+  /** Computed localized aria-label for the dashboard refresh button. */
+  readonly refreshAriaLabel = computed(() =>
+    this.store.isLoading() ? $localize`Refreshing Data` : $localize`Refresh Dashboard`,
+  );
+
+  /**
+   * Formats a localized accessible label for a theme preset color swatch button.
+   *
+   * @param color - Hexadecimal color string.
+   * @returns Localized accessible label string.
+   */
+  getColorAriaLabel(color: string): string {
+    const label = this.presetColorNames[color.toLowerCase()] || color;
+    return $localize`Set theme color to ${label}`;
+  }
 
   /** Signal indicating whether the current route is an active dashboard view. */
   readonly isDashboardRoute = toSignal(
@@ -104,7 +133,9 @@ export class ToolbarComponent {
     } else {
       // Hint to user if they try to access cart from non-editor screens
       this.snackBar
-        .open('Open a dashboard to place items from the cart.', 'Go to Home', { duration: 4000 })
+        .open($localize`Open a dashboard to place items from the cart.`, $localize`Go to Home`, {
+          duration: 4000,
+        })
         .onAction()
         .subscribe(() => this.router.navigate(['/']));
     }
@@ -156,7 +187,7 @@ export class ToolbarComponent {
     this.dialog.open(ThemeColorPickerDialogComponent, {
       data: {
         dashboardId: currentDash?.id || '',
-        dashboardName: currentDash?.name || 'Dashboard',
+        dashboardName: currentDash?.name || $localize`Dashboard`,
         currentColor: this.themeService.seedColor(),
       },
       width: '480px',
@@ -184,19 +215,16 @@ export class ToolbarComponent {
 
     this.http.get(url, { responseType: 'blob' }).subscribe({
       next: (blob: Blob) => {
-        const objectUrl = window.URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = objectUrl;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        window.URL.revokeObjectURL(objectUrl);
+        triggerBlobDownload(this.document, blob, filename, true);
       },
       error: () => {
-        this.snackBar.open('Failed to export dashboard. Please try again.', 'Dismiss', {
-          duration: 4000,
-        });
+        this.snackBar.open(
+          $localize`Failed to export dashboard. Please try again.`,
+          $localize`Dismiss`,
+          {
+            duration: 4000,
+          },
+        );
       },
     });
   }

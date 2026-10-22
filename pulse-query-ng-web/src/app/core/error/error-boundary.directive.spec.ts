@@ -46,7 +46,7 @@ describe('ErrorBoundaryDirective', () => {
       (node) => node.injector.get(ErrorBoundaryDirective, null) !== null,
     )[0];
     const boundary = boundaryNode.injector.get(ErrorBoundaryDirective);
-    boundary.appErrorBoundary = undefined;
+    vi.spyOn(boundary, 'appErrorBoundary').mockReturnValue(undefined);
     expect(() => boundary.renderFallback(new Error('No tpl'))).not.toThrow();
   });
 

@@ -2,14 +2,14 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserCreate(BaseModel):
   """Payload for registering a new user."""
 
   email: EmailStr
-  password: str
+  password: str = Field(min_length=1, max_length=128)
   language_preference: str = "en"
 
 

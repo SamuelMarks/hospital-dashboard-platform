@@ -1,13 +1,13 @@
-<div class="wrapper">
+<div class="wrapper" role="figure" i18n-aria-label aria-label="Bar chart visualization">
   <div class="header">
-    <span i18n>{{ axisKeys().y }}</span>
-    <span i18n>{{ axisKeys().x }}</span>
+    <span>{{ axisKeys().y }}</span>
+    <span>{{ axisKeys().x }}</span>
   </div>
 
   <div class="plot-area">
     <div class="bars-container">
       @for (item of processedData(); track item.label) {
-        <div class="col-wrapper">
+        <div class="col-wrapper" tabindex="0" [attr.aria-label]="item.label + ': ' + item.value">
           @if (item.isStacked && item.segments) {
             @for (seg of item.segments; track seg.label) {
               <div

@@ -1,0 +1,106 @@
+<div
+  class="overlay"
+  role="dialog"
+  aria-modal="true"
+  appFocusTrap
+  (escape)="skip()"
+  [attr.aria-label]="dialogAriaLabel()"
+>
+  <div class="wizard-card" data-testid="onboarding-wizard">
+    <!-- Header -->
+    <div class="wizard-header">
+      <span i18n class="step-counter" aria-live="polite">
+        Step {{ onboarding.currentStepIndex() + 1 }} of {{ onboarding.totalSteps() }}
+      </span>
+      <button
+        mat-icon-button
+        (click)="skip()"
+        i18n-matTooltip
+        matTooltip="Skip onboarding"
+        i18n-aria-label
+        aria-label="Skip onboarding"
+        data-testid="skip-button"
+      >
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Progress Bar -->
+    <mat-progress-bar
+      mode="determinate"
+      [value]="onboarding.progress()"
+      i18n-aria-label
+      aria-label="Onboarding progress"
+    />
+
+    <!-- Step Content -->
+    <div class="wizard-body">
+      <div class="step-icon" aria-hidden="true">
+        <mat-icon>{{ onboarding.currentStep().icon }}</mat-icon>
+      </div>
+
+      <h2 class="step-title">{{ onboarding.currentStep().title }}</h2>
+      <p class="step-description">{{ onboarding.currentStep().description }}</p>
+    </div>
+
+    <!-- Step Dots -->
+    <div class="step-dots" role="tablist" i18n-aria-label aria-label="Onboarding steps">
+      @for (step of steps; track step.id; let i = $index) {
+        <button
+          class="dot"
+          [class.active]="i === onboarding.currentStepIndex()"
+          (click)="onboarding.goToStep(i)"
+          role="tab"
+          [attr.aria-selected]="i === onboarding.currentStepIndex()"
+          [attr.aria-label]="getStepDotAriaLabel(i, step.title)"
+          [attr.data-testid]="'step-dot-' + i"
+        ></button>
+      }
+    </div>
+
+    <!-- Actions -->
+    <div class="wizard-actions">
+      <button
+        mat-button
+        (click)="prev()"
+        [disabled]="!onboarding.hasPrev()"
+        i18n-aria-label
+        aria-label="Previous step"
+        data-testid="prev-button"
+      >
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        <span i18n>Back</span>
+      </button>
+
+      <div class="action-right">
+        @if (onboarding.currentStep().actionLabel && onboarding.currentStep().actionRoute) {
+          <button
+            mat-stroked-button
+            color="primary"
+            (click)="navigateToAction()"
+            [attr.data-testid]="'action-button'"
+          >
+            {{ onboarding.currentStep().actionLabel }}
+          </button>
+        }
+
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="next()"
+          [attr.aria-label]="nextButtonAriaLabel()"
+          data-testid="next-button"
+        >
+          @if (onboarding.hasNext()) {
+            <span i18n>Next</span>
+          } @else {
+            <span i18n>Get Started</span>
+          }
+          <mat-icon aria-hidden="true">{{
+            onboarding.hasNext() ? 'arrow_forward' : 'check'
+          }}</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

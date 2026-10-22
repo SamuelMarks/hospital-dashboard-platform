@@ -6,9 +6,10 @@ Verifies:
 2. Read-Only enforcement at the database level.
 """
 
-from typing import Any
-
+from collections.abc import Generator
 import os
+from pathlib import Path
+from unittest.mock import MagicMock
 
 import duckdb
 import pytest
@@ -20,7 +21,7 @@ TEST_DB_PATH = "test_safety.duckdb"
 
 
 @pytest.fixture(scope="module")
-def db_manager() -> Any:
+def db_manager() -> Generator[DuckDBManager, None, None]:
   """Create a manager and seed a table."""
   manager = DuckDBManager(TEST_DB_PATH)
 
@@ -37,7 +38,7 @@ def db_manager() -> Any:
     os.remove(TEST_DB_PATH)
 
 
-def test_manager_get_readonly_connection(db_manager: Any) -> None:
+def test_manager_get_readonly_connection(db_manager: DuckDBManager) -> None:
   """
   Test that the readonly connection creates a real DuckDB connection.
   """
@@ -46,17 +47,18 @@ def test_manager_get_readonly_connection(db_manager: Any) -> None:
   conn.close()
 
 
-def test_cleanup_and_isolation(db_manager: Any) -> None:
+def test_cleanup_and_isolation(db_manager: DuckDBManager) -> None:
   """
   Ensure reading works fine.
   """
   conn = db_manager.get_readonly_connection()
   res = conn.execute("SELECT count(*) FROM protective_test").fetchone()
+  assert res is not None
   assert res[0] == 2
   conn.close()
 
 
-def test_write_operation_on_readonly_connection_fails(db_manager: Any) -> None:
+def test_write_operation_on_readonly_connection_fails(db_manager: DuckDBManager) -> None:
   """
   Verify that an INSERT statement fails when using the read-only connection,
   raising a DuckDB-specific error (usually Catalog Error or Access Error).
@@ -74,38 +76,42 @@ def test_write_operation_on_readonly_connection_fails(db_manager: Any) -> None:
   conn.close()
 
 
-def test_readonly_connection_retries_on_lock(monkeypatch: Any) -> None:
+def test_readonly_connection_retries_on_lock(monkeypatch: pytest.MonkeyPatch) -> None:
   """Test that transient lock error triggers retry and succeeds on subsequent attempt."""
   manager = DuckDBManager("dummy.duckdb")
   attempts = 0
 
-  def _fake_connect(*args: Any, **kwargs: Any) -> Any:
+  def _fake_connect(*_args: object, **_kwargs: object) -> MagicMock:
     """
-    Verify fake connect behavior.
+    Simulates transient lock on first connect attempt and returns `fake_conn` on retry.
 
     Args:
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        *_args (object): Positional arguments.
+        **_kwargs (object): Keyword arguments.
+
+    Returns:
+        MagicMock: Mock DuckDB connection.
     """
     nonlocal attempts
     attempts += 1
     if attempts == 1:
       raise duckdb.IOException("Could not set lock on file")
-    return "fake_conn"
+    return fake_conn
 
+  fake_conn = MagicMock(spec=duckdb.DuckDBPyConnection)
   monkeypatch.setattr(duckdb, "connect", _fake_connect)
   conn = manager.get_readonly_connection(max_retries=3)
-  assert conn == "fake_conn"
+  assert conn is fake_conn
   assert attempts == 2
 
 
-def test_readonly_connection_exhausts_retries_on_persistent_lock(monkeypatch: Any) -> None:
+def test_readonly_connection_exhausts_retries_on_persistent_lock(monkeypatch: pytest.MonkeyPatch) -> None:
   """Test that persistent lock error eventually raises IOException."""
   manager = DuckDBManager("dummy.duckdb")
   monkeypatch.setattr(
     duckdb,
     "connect",
-    lambda *args, **kwargs: (_ for _ in ()).throw(duckdb.IOException("Could not set lock on file")),
+    lambda *_args, **_kwargs: (_ for _ in ()).throw(duckdb.IOException("Could not set lock on file")),
   )
 
   with pytest.raises(duckdb.IOException) as exc:
@@ -124,7 +130,7 @@ def test_readonly_connection_zero_retries() -> None:
 
 
 @pytest.mark.asyncio
-async def test_duckdb_udf_available_across_multiple_readonly_connections_and_threads(tmp_path: Any) -> None:
+async def test_duckdb_udf_available_across_multiple_readonly_connections_and_threads(tmp_path: Path) -> None:
   """Verifies `OPTIMIZE_ASSIGNMENTS` UDF is registered on every read-only connection and works concurrently."""
   import asyncio
   import json
@@ -137,14 +143,15 @@ async def test_duckdb_udf_available_across_multiple_readonly_connections_and_thr
   rw_conn.close()
 
   def _query_udf() -> list[dict[str, object]]:
-    """Verify query udf behavior."""
+    """Opens a read-only connection, invokes `OPTIMIZE_ASSIGNMENTS`, and returns parsed JSON rows."""
     ro_conn = manager.get_readonly_connection()
     try:
       row = ro_conn.execute(
         "SELECT OPTIMIZE_ASSIGNMENTS('{\"Cardio\": 5}', '{\"ICU\": 10}', '{\"Cardio\": {\"ICU\": 1.0}}', '[]')"
       ).fetchone()
       assert row is not None
-      return json.loads(row[0])
+      parsed: list[dict[str, object]] = json.loads(row[0])
+      return parsed
     finally:
       ro_conn.close()
 

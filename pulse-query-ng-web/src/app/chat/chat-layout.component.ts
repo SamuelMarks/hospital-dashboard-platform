@@ -3,11 +3,10 @@
  * combining conversation history navigation, the active chat view, and the query cart.
  */
 import { DATE_NOW } from '../core/time.token';
-import { Component, OnInit, inject, ViewChild, computed, signal } from '@angular/core';
+import { Component, OnInit, inject, viewChild, computed, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
-import { ScrollingModule } from '@angular/cdk/scrolling';
-import { map, shareReplay } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,7 +26,7 @@ import { QueryCartService } from '../global/query-cart.service';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
-/** Chat Layout component. */
+/** Layout container component hosting conversation history, active chat thread, and query cart drawer. */
 @Component({
   selector: 'app-chat-layout',
   imports: [
@@ -36,7 +35,6 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
     MatIconModule,
     MatListModule,
     MatToolbarModule,
-    ScrollingModule,
     MatProgressSpinnerModule,
     MatMenuModule,
     MatTabsModule,
@@ -68,11 +66,6 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
         height: 100%;
         display: flex;
         flex-direction: column;
-      }
-      /* Fix MatTabs Flex growth */
-      ::ng-deep .sidebar-tabs .mat-mdc-tab-body-wrapper {
-        flex-grow: 1;
-        height: 100%;
       }
       .tab-column {
         height: 100%;
@@ -123,12 +116,19 @@ import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dia
         display: flex;
         align-items: center;
         min-width: 0;
+        background: transparent;
+        border: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
       }
       .action-btn {
-        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.15s ease;
       }
-      .nav-item-container:hover .action-btn {
-        visibility: visible;
+      .nav-item-container:hover .action-btn,
+      .nav-item-container:focus-within .action-btn {
+        opacity: 1;
       }
       .truncate {
         overflow: hidden;
@@ -164,7 +164,7 @@ export class ChatLayoutComponent implements OnInit {
   private readonly breakpointObserver = inject(BreakpointObserver);
 
   /** Reference to the Material sidenav drawer hosting conversation history. */
-  @ViewChild('drawer') drawer!: MatSidenav;
+  readonly drawer = viewChild<MatSidenav>('drawer');
 
   /** Signal indicating whether the viewport matches handset dimensions. */
   isHandset = toSignal(
@@ -187,8 +187,8 @@ export class ChatLayoutComponent implements OnInit {
       else older.push(c);
     });
     const groups = [];
-    if (today.length) groups.push({ label: 'Today', items: today });
-    if (older.length) groups.push({ label: 'Previous', items: older });
+    if (today.length) groups.push({ label: $localize`Today`, items: today });
+    if (older.length) groups.push({ label: $localize`Previous`, items: older });
     return groups;
   });
 
@@ -219,6 +219,16 @@ export class ChatLayoutComponent implements OnInit {
   }
 
   /**
+   * Returns a localized accessible label for the conversation options menu button.
+   *
+   * @param chat - The conversation item.
+   * @returns Localized ARIA label string.
+   */
+  getOptionsAriaLabel(chat: ConversationResponse): string {
+    return $localize`Conversation options for ${chat.title}`;
+  }
+
+  /**
    * Opens a prompt dialog to rename an existing conversation.
    *
    * @param chat - The conversation record to rename.
@@ -227,9 +237,9 @@ export class ChatLayoutComponent implements OnInit {
     this.dialog
       .open(PromptDialogComponent, {
         data: {
-          title: 'Rename Conversation',
+          title: $localize`Rename Conversation`,
           value: chat.title || '',
-          label: 'Topic Title',
+          label: $localize`Topic Title`,
         },
       })
       .afterClosed()
@@ -249,10 +259,10 @@ export class ChatLayoutComponent implements OnInit {
     this.dialog
       .open(ConfirmDialogComponent, {
         data: {
-          title: 'Delete Chat',
-          message: `Permanently delete "${chat.title}"?`,
+          title: $localize`Delete Chat`,
+          message: $localize`Permanently delete "${chat.title}"?`,
           isDestructive: true,
-          confirmJson: 'Delete',
+          confirmJson: $localize`Delete`,
         },
       })
       .afterClosed()
@@ -263,6 +273,7 @@ export class ChatLayoutComponent implements OnInit {
 
   /** Closes the sidenav drawer when operating in overlay ('over') mode. */
   private closeDrawer(): void {
-    if (this.drawer?.mode === 'over') this.drawer.close();
+    const drawer = this.drawer();
+    if (drawer?.mode === 'over') drawer.close();
   }
 }

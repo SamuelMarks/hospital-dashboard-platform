@@ -2,7 +2,7 @@
  * @fileoverview Paginated Material data table visualization component with delta formatting and threshold highlighting.
  */
 
-import { Component, input, computed, ViewChild, effect } from '@angular/core';
+import { Component, input, computed, viewChild, effect } from '@angular/core';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 
@@ -73,13 +73,19 @@ export interface TableConfig {
         font-weight: 500;
       }
       .cell-warn {
-        color: var(--sys-warn, #ffa000);
+        color: var(--sys-warn, #b26a00);
         font-weight: bold;
+      }
+      .cell-warn::before {
+        content: '! ';
       }
       .cell-critical {
         color: var(--sys-error, #d32f2f);
         font-weight: 900;
         background-color: rgba(211, 47, 47, 0.05);
+      }
+      .cell-critical::before {
+        content: '⚠ ';
       }
     `,
   ],
@@ -95,7 +101,7 @@ export class VizTableComponent {
   /** Material table data source managing row sorting and pagination. */
   dataSource = new MatTableDataSource<Record<string, unknown>>([]);
   /** Reference to the Material paginator instance bound to `dataSource`. */
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  readonly paginator = viewChild<MatPaginator>('paginator');
 
   /**
    * Registers a reactive effect that synchronizes incoming `dataSet` rows with `dataSource` and `paginator`.
@@ -103,10 +109,11 @@ export class VizTableComponent {
   constructor() {
     effect(() => {
       const db = this.dataSet();
+      const paginator = this.paginator();
       if (db?.data) {
         this.dataSource.data = db.data;
-        if (this.paginator) {
-          this.dataSource.paginator = this.paginator;
+        if (paginator) {
+          this.dataSource.paginator = paginator;
         }
       } else {
         this.dataSource.data = [];
@@ -163,6 +170,26 @@ export class VizTableComponent {
       }
     }
     return classes.trim();
+  }
+
+  /**
+   * Computes an accessible label for cells with warning or critical threshold states
+   * so severity is not conveyed by color alone (WCAG 1.4.1).
+   *
+   * @param row - Data record representing the current table row.
+   * @param col - Column key being evaluated.
+   * @returns Localized ARIA label when a threshold is breached, or `null` otherwise.
+   */
+  getCellAriaLabel(row: Record<string, unknown>, col: string): string | null {
+    const classes = this.getCellClass(row, col);
+    const val = this.getCellValue(row, col);
+    if (classes.includes('cell-critical')) {
+      return $localize`Critical: ${val}`;
+    }
+    if (classes.includes('cell-warn')) {
+      return $localize`Warning: ${val}`;
+    }
+    return null;
   }
 
   /**

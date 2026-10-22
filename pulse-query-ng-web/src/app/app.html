@@ -1,3 +1,4 @@
+<a i18n class="skip-link" href="#main-content">Skip to main content</a>
 <mat-sidenav-container class="h-full-container" autosize>
   <!-- Side Drawer (Right aligned) -->
   <mat-sidenav
@@ -26,7 +27,7 @@
     <app-system-health-banner></app-system-health-banner>
 
     <!-- Page Content -->
-    <div class="page-container">
+    <div id="main-content" class="page-container">
       <router-outlet></router-outlet>
     </div>
   </mat-sidenav-content>

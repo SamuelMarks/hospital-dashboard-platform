@@ -55,7 +55,7 @@ async def test_refresh_dashboard_text_widget_short_circuit() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_text_returns_stub() -> None:
-  """Verify refresh widget text returns stub behavior."""
+  """Verifies single-widget refresh on a TEXT widget returns a `{status: 'success', data: None}` stub."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -87,7 +87,7 @@ async def test_refresh_widget_text_returns_stub() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_not_found_returns_404() -> None:
-  """Verify refresh widget not found returns 404 behavior."""
+  """Verifies single-widget refresh returns 404 when the widget does not exist on the dashboard."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -146,7 +146,7 @@ async def test_refresh_widget_cache_hit_short_circuit() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_http_runs_request() -> None:
-  """Verify refresh widget http runs request behavior."""
+  """Verifies single-widget refresh dispatches `run_http_widget` for HTTP widgets."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -179,7 +179,7 @@ async def test_refresh_widget_http_runs_request() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_sql_exception_returns_error() -> None:
-  """Verify refresh widget sql exception returns error behavior."""
+  """Verifies single-widget refresh catches DuckDB connection exceptions and returns an error dict."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -212,7 +212,7 @@ async def test_refresh_widget_sql_exception_returns_error() -> None:
 
 @pytest.mark.asyncio
 async def test_refresh_widget_unknown_type_returns_error() -> None:
-  """Verify refresh widget unknown type returns error behavior."""
+  """Verifies single-widget refresh returns an `'Unknown widget type'` error for unrecognized widget types."""
   widget_id = uuid.uuid4()
   dashboard_id = uuid.uuid4()
 
@@ -279,20 +279,24 @@ async def test_refresh_dashboard_sql_batch_error_sets_internal_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_execution_multi_widget_branches(client: AsyncClient, db_session: Any) -> None:
+async def test_execution_multi_widget_branches(client: AsyncClient, db_session: object) -> None:
   """Verifies batch refresh across multiple HTTP and SQL widgets with mixed success, error, and exceptions."""
+  from tests.conftest import AsyncSessionShim
+
   from app.core.security import create_access_token
   from app.models.dashboard import Dashboard, Widget
   from app.models.user import User
 
+  assert isinstance(db_session, AsyncSessionShim)
+  session = db_session
   user = User(id=uuid.uuid4(), email=f"exec_m_{uuid.uuid4()}@test.com", hashed_password="x", is_active=True)
-  db_session.add(user)
-  await db_session.commit()
+  session.add(user)
+  await session.commit()
   headers = {"Authorization": f"Bearer {create_access_token(user.id)}"}
 
   dash = Dashboard(id=uuid.uuid4(), name="multi_exec_d", owner_id=user.id)
-  db_session.add(dash)
-  await db_session.flush()
+  session.add(dash)
+  await session.flush()
 
   w_http_1 = Widget(
     id=uuid.uuid4(), dashboard_id=dash.id, title="h1", type="HTTP", visualization="table", config={"url": "http1"}
@@ -309,28 +313,34 @@ async def test_execution_multi_widget_branches(client: AsyncClient, db_session: 
   w_sql_3 = Widget(
     id=uuid.uuid4(), dashboard_id=dash.id, title="s3", type="SQL", visualization="table", config={"query": "q3"}
   )
-  db_session.add_all([w_http_1, w_http_2, w_sql_1, w_sql_2, w_sql_3])
-  await db_session.commit()
+  session.add_all([w_http_1, w_http_2, w_sql_1, w_sql_2, w_sql_3])
+  await session.commit()
 
-  async def mock_http_impl(cfg: Any, **_kwargs: Any) -> Any:
+  async def mock_http_impl(cfg: dict[str, Any], **_kwargs: object) -> dict[str, Any]:
     """
-    Verify mock http impl behavior.
+    Simulates HTTP widget execution returning an error for `http1` and success for `http2`.
 
     Args:
-        cfg: Test parameter or fixture.
-        _kwargs: Test parameter or fixture.
+        cfg (dict[str, Any]): Widget config dictionary.
+        **_kwargs (object): Additional keyword arguments.
+
+    Returns:
+        dict[str, Any]: Simulated HTTP widget response.
     """
     if cfg.get("url") == "http1":
       return {"error": "HTTP Error"}
     return {"status": "ok", "data": [1]}
 
-  def mock_sql_impl(_cursor: Any, cfg: Any) -> Any:
+  def mock_sql_impl(_cursor: object, cfg: dict[str, Any]) -> dict[str, Any]:
     """
-    Verify mock sql impl behavior.
+    Simulates SQL widget execution returning an error for `q1`, data for `q2`, and raising on `q3`.
 
     Args:
-        _cursor: Test parameter or fixture.
-        cfg: Test parameter or fixture.
+        _cursor (object): DuckDB cursor.
+        cfg (dict[str, Any]): Widget config dictionary.
+
+    Returns:
+        dict[str, Any]: Simulated SQL widget response.
     """
     q = cfg.get("query")
     if q == "q1":

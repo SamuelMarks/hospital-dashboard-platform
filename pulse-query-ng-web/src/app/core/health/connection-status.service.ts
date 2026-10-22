@@ -3,8 +3,9 @@
  * and system health diagnostic state.
  */
 
+import { DOCUMENT } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, inject, Service, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { catchError, Observable, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -154,20 +155,22 @@ export interface ReingestResponse {
 /**
  * Global service managing backend reachability, database diagnostics, and health alerts.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ConnectionStatusService {
   /** Injected HTTP client. */
   private readonly http = inject(HttpClient);
-  /** Injected MatDialog service. */
+  /** Material dialog service used to launch the system diagnostics modal. */
   private readonly dialog = inject(MatDialog);
+  /** Injected DOM document reference. */
+  private readonly document = inject(DOCUMENT);
+  /** Injected DestroyRef for cleaning up window event listeners and timers. */
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Internal timer handle for reconnect countdown. */
   private countdownTimer: ReturnType<typeof setInterval> | null = null;
 
   /** Signal indicating if the browser has network access. */
-  readonly isOnline = signal<boolean>(navigator.onLine);
+  readonly isOnline = signal<boolean>((this.document.defaultView as Window).navigator.onLine);
 
   /** Signal indicating if the PulseQuery backend is reachable. */
   readonly isBackendReachable = signal<boolean>(true);
@@ -197,16 +200,24 @@ export class ConnectionStatusService {
   private readonly baseUrl = environment.apiUrl;
 
   /**
-   * Initializes browser online/offline listeners.
+   * Initializes browser online/offline listeners and registers cleanup on destroy.
    */
   constructor() {
-    window.addEventListener('online', () => {
+    const win = this.document.defaultView as Window;
+    const onOnline = (): void => {
       this.isOnline.set(true);
       this.checkHealth().subscribe();
-    });
-    window.addEventListener('offline', () => {
+    };
+    const onOffline = (): void => {
       this.isOnline.set(false);
       this.overallStatus.set('unreachable');
+    };
+    win.addEventListener('online', onOnline);
+    win.addEventListener('offline', onOffline);
+    this.destroyRef.onDestroy(() => {
+      win.removeEventListener('online', onOnline);
+      win.removeEventListener('offline', onOffline);
+      this.cancelRetryCountdown();
     });
   }
 

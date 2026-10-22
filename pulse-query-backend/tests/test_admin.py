@@ -1,7 +1,5 @@
 """Tests for admin."""
 
-from typing import Any
-
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
@@ -12,13 +10,12 @@ from app.models.user import User
 
 @pytest.mark.asyncio
 async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) -> None:
-  # 1. Register a normal user
   """
-  Verify admin endpoints behavior.
+  Verifies `/api/v1/admin/settings` enforces admin RBAC and persists API keys and visible models.
 
   Args:
-      client: Test parameter or fixture.
-      db_session: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
+      db_session (AsyncSession): Active test database session.
   """
   await client.post("/api/v1/auth/register", json={"email": "normal@example.com", "password": "pass"})
   res = await client.post("/api/v1/auth/login", data={"username": "normal@example.com", "password": "pass"})
@@ -66,7 +63,7 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) ->
 
 
 def test_admin_setting_repr() -> None:
-  """Verify admin setting repr behavior."""
+  """Verifies `AdminSetting.__repr__` includes the `setting_key`."""
   from app.models.admin_setting import AdminSetting
 
   setting = AdminSetting(setting_key="test_key", setting_value="test_val")
@@ -74,7 +71,7 @@ def test_admin_setting_repr() -> None:
 
 
 def test_llm_client_reload_swarm() -> None:
-  """Verify llm client reload swarm behavior."""
+  """Verifies `llm_client.reload_swarm` reloads combatants with and without `AdminSettingsResponse`."""
   from app.schemas.admin import AdminSettingsResponse
   from app.services.llm_client import llm_client
 
@@ -86,25 +83,25 @@ def test_llm_client_reload_swarm() -> None:
 
 
 @pytest.mark.asyncio
-async def test_admin_settings_unknown_key_and_reload_error(db_session: AsyncSession, monkeypatch: Any) -> None:
+async def test_admin_settings_unknown_key_and_reload_error(
+  db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
   """
-  Verify admin settings unknown key and reload error behavior.
+  Verifies `update_admin_settings` succeeds and logs a warning even when `reload_swarm` raises.
 
   Args:
-      db_session: Test parameter or fixture.
-      monkeypatch: Test parameter or fixture.
+      db_session (AsyncSession): Active test database session.
+      monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch fixture.
   """
   from app.schemas.admin import AdminSettingsUpdateRequest
   from app.services.admin import get_admin_settings, update_admin_settings
-  import app.services.admin as admin_module
 
   settings_res = await get_admin_settings(db_session)
   assert isinstance(settings_res.api_keys, dict)
 
   # Mock reload_swarm to raise exception
   monkeypatch.setattr(
-    admin_module.llm_client,
-    "reload_swarm",
+    "app.services.admin.llm_client.reload_swarm",
     lambda _: (_ for _ in ()).throw(RuntimeError("reload failed")),
   )
   # Update should succeed gracefully despite reload error

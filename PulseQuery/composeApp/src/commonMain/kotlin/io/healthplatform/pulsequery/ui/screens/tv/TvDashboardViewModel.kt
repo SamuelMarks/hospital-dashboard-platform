@@ -6,6 +6,8 @@ package io.healthplatform.pulsequery.ui.screens.tv
 
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.models.DashboardResponse
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,7 +53,7 @@ class TvDashboardViewModel(
     fun loadDashboard() {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 val res = currentDashboardsApi.listDashboardsApiV1DashboardsGet()
                 res.body().firstOrNull()
             }.fold(
@@ -68,7 +70,7 @@ class TvDashboardViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.message ?: "Failed to load TV dashboard"
+                            errorMessage = e.messageOrDefault("Failed to load TV dashboard")
                         )
                     }
                 }

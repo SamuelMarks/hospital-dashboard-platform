@@ -8,8 +8,6 @@ Verifies the 'refresh_dashboard' endpoint logic:
 - Verifies ownership security.
 """
 
-from typing import Any
-
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -28,7 +26,7 @@ MOCK_HTTP_WIDGET_ID = uuid.uuid4()
 
 
 @pytest.fixture
-def mock_dashboard_data() -> Any:
+def mock_dashboard_data() -> MagicMock:
   """
   Creates a mock Dashboard object with one SQL widget and one HTTP widget.
   """
@@ -53,7 +51,7 @@ def mock_dashboard_data() -> Any:
 
 
 @pytest.mark.asyncio
-async def test_refresh_dashboard_success(mock_dashboard_data: Any) -> None:
+async def test_refresh_dashboard_success(mock_dashboard_data: MagicMock) -> None:
   """
   Test the happy path execution of a dashboard with mixed widgets.
   """
@@ -153,7 +151,7 @@ async def test_refresh_dashboard_not_found() -> None:
 
 
 @pytest.mark.asyncio
-async def test_refresh_dashboard_unknown_widget_type(mock_dashboard_data: Any) -> None:
+async def test_refresh_dashboard_unknown_widget_type(mock_dashboard_data: MagicMock) -> None:
   """
   Test that unknown widget types are handled gracefully without crashing.
   """

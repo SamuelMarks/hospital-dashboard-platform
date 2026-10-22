@@ -4,7 +4,7 @@
  */
 
 import { safeStorage } from '../storage.utils';
-import { Injectable, signal, computed, inject, PLATFORM_ID, Signal, effect } from '@angular/core';
+import { Service, signal, computed, inject, PLATFORM_ID, Signal, effect } from '@angular/core';
 import { isPlatformBrowser, DOCUMENT } from '@angular/common';
 import { generateThemeVariables, CssVariableMap } from './color-utils';
 
@@ -22,9 +22,7 @@ const STORAGE_KEY_SEED = 'pulse_theme_seed';
  * Service managing the application's visual theme, dark/light mode state,
  * dynamic CSS variable injection, and TV kiosk mode.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ThemeService {
   /** Angular platform token used to guard DOM and storage access during SSR. */
   private readonly platformId = inject(PLATFORM_ID);

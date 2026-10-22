@@ -2,7 +2,7 @@
  * @fileoverview Service for persisting and restoring offline dashboard snapshots in `localStorage`.
  */
 
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { DashboardResponse } from '../api-client';
 import { safeStorage } from '../core/storage.utils';
 import { WidgetExecutionPayload } from './dashboard.models';
@@ -25,9 +25,7 @@ const CACHE_KEY_PREFIX = 'pulse_dashboard_snapshot_';
 /**
  * Service encapsulating local storage serialization and retrieval for offline dashboard mode.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class DashboardOfflineCacheService {
   /**
    * Saves a dashboard and its execution data map to `localStorage`.

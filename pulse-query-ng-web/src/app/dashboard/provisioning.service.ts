@@ -5,7 +5,7 @@
  * to `TemplateConfigurationService` and persists the resulting widget via `DashboardsService`.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
   DashboardsService,
@@ -29,9 +29,7 @@ export interface GridPosition {
 /**
  * Service responsible for instantiating Widgets from Templates using default parameters.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ProvisioningService {
   /** Generated OpenAPI dashboards service client. */
   private readonly dashboardApi = inject(DashboardsService);

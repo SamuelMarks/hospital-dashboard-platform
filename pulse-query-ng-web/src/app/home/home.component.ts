@@ -113,6 +113,14 @@ import { OnboardingService } from '../shared/components/onboarding/onboarding.se
         margin-left: auto;
         color: var(--sys-text-secondary);
       }
+      .card-title-link {
+        color: inherit;
+        text-decoration: none;
+      }
+      .card-title-link:hover,
+      .card-title-link:focus-visible {
+        text-decoration: underline;
+      }
       .empty-state {
         grid-column: 1 / -1;
         text-align: center;
@@ -166,6 +174,25 @@ export class HomeComponent implements OnInit {
     this.loadDashboards();
   }
 
+  /**
+   * Navigates to the specified dashboard view.
+   *
+   * @param dashboardId - Target dashboard identifier.
+   */
+  openDashboard(dashboardId: string): void {
+    this.router.navigate(['/dashboard', dashboardId]);
+  }
+
+  /**
+   * Returns a localized accessible label for a dashboard card's options menu button.
+   *
+   * @param dash - The dashboard record.
+   * @returns Localized ARIA label string.
+   */
+  getDashboardOptionsAriaLabel(dash: DashboardResponse): string {
+    return $localize`Options for ${dash.name}`;
+  }
+
   /** Fetches the list of dashboards from the backend API. */
   loadDashboards(): void {
     this.isLoading.set(true);
@@ -177,7 +204,7 @@ export class HomeComponent implements OnInit {
         error: (err) => {
           console.error(err);
           this.snackBar
-            .open('Failed to load dashboards', 'Retry', { duration: 5000 })
+            .open($localize`Failed to load dashboards`, $localize`Retry`, { duration: 5000 })
             .onAction()
             .subscribe(() => this.loadDashboards());
         },
@@ -208,11 +235,13 @@ export class HomeComponent implements OnInit {
         next: (newDash) => {
           this.dashboards.update((curr) => [newDash, ...curr]);
           this.router.navigate(['/dashboard', newDash.id]);
-          this.snackBar.open('Default dashboard created.', 'Close', { duration: 3000 });
+          this.snackBar.open($localize`Default dashboard created.`, $localize`Close`, {
+            duration: 3000,
+          });
         },
         error: (err) => {
           console.error(err);
-          this.snackBar.open('Failed to restore defaults.', 'Close');
+          this.snackBar.open($localize`Failed to restore defaults.`, $localize`Close`);
         },
       });
   }
@@ -225,7 +254,11 @@ export class HomeComponent implements OnInit {
   renameDashboard(dash: DashboardResponse): void {
     this.dialog
       .open(PromptDialogComponent, {
-        data: { title: 'Rename Dashboard', value: dash.name, label: 'Name' },
+        data: {
+          title: $localize`Rename Dashboard`,
+          value: dash.name,
+          label: $localize`Name`,
+        },
       })
       .afterClosed()
       .subscribe((newName: string | undefined) => {
@@ -242,7 +275,9 @@ export class HomeComponent implements OnInit {
                 this.dashboards.update((items) =>
                   items.map((d) => (d.id === dash.id ? { ...d, name: originalName } : d)),
                 );
-                this.snackBar.open(`Rename failed. Reverted.`, 'Close', { duration: 5000 });
+                this.snackBar.open($localize`Rename failed. Reverted.`, $localize`Close`, {
+                  duration: 5000,
+                });
               },
             });
         }
@@ -258,11 +293,13 @@ export class HomeComponent implements OnInit {
     this.dashboardsApi.cloneDashboardApiV1DashboardsDashboardIdClonePost(dash.id).subscribe({
       next: (clonedDash) => {
         this.dashboards.update((curr) => [...curr, clonedDash]);
-        this.snackBar.open(`Cloned "${dash.name}" successfully`, 'Close', { duration: 3000 });
+        this.snackBar.open($localize`Cloned "${dash.name}" successfully`, $localize`Close`, {
+          duration: 3000,
+        });
       },
       error: (err) => {
         console.error(err);
-        this.snackBar.open(`Failed to clone.`, 'Close', { duration: 5000 });
+        this.snackBar.open($localize`Failed to clone.`, $localize`Close`, { duration: 5000 });
       },
     });
   }
@@ -276,8 +313,8 @@ export class HomeComponent implements OnInit {
     this.dialog
       .open(ConfirmDialogComponent, {
         data: {
-          title: 'Delete Dashboard',
-          message: `Permanently delete "${dash.name}"?`,
+          title: $localize`Delete Dashboard`,
+          message: $localize`Permanently delete "${dash.name}"?`,
           isDestructive: true,
         },
       })
@@ -290,7 +327,9 @@ export class HomeComponent implements OnInit {
             error: (err) => {
               console.error(err);
               this.dashboards.set(originalList);
-              this.snackBar.open(`Failed to delete. Restored item.`, 'Close', { duration: 5000 });
+              this.snackBar.open($localize`Failed to delete. Restored item.`, $localize`Close`, {
+                duration: 5000,
+              });
             },
           });
         }

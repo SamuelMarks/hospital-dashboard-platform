@@ -36,7 +36,8 @@ def templates() -> list[dict[str, Any]]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    return json.load(f)
+    data: list[dict[str, Any]] = json.load(f)
+    return data
 
 
 @pytest.fixture
@@ -52,13 +53,13 @@ def clinical_db() -> duckdb.DuckDBPyConnection:
   create_hospital_macros(conn)
 
   # Schema required for both templates
-  conn.execute(""" 
-        CREATE TABLE synthetic_hospital_data ( 
-            Location VARCHAR, 
-            Clinical_Service VARCHAR, 
-            Admit_DT TIMESTAMP, 
-            Discharge_DT TIMESTAMP 
-        ) 
+  conn.execute("""
+        CREATE TABLE synthetic_hospital_data (
+            Location VARCHAR,
+            Clinical_Service VARCHAR,
+            Admit_DT TIMESTAMP,
+            Discharge_DT TIMESTAMP
+        )
     """)
   return conn
 
@@ -105,6 +106,7 @@ def test_conditional_overstay_risk_logic(clinical_db: duckdb.DuckDBPyConnection,
 
   # 4. Execute
   result = clinical_db.execute(sql).fetchone()
+  assert result is not None
   percentage = result[0]
 
   # 5. Assert
@@ -155,6 +157,7 @@ def test_nicu_cliff_logic(clinical_db: duckdb.DuckDBPyConnection, templates: lis
 
   # 3. Execute (No handlebars in this template)
   result = clinical_db.execute(sql).fetchone()
+  assert result is not None
   percentage = result[0]
 
   # 4. Assert

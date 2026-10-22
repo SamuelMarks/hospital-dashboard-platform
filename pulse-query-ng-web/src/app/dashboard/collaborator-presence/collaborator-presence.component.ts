@@ -6,8 +6,6 @@
 
 import { Component, inject } from '@angular/core';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 
 import {
   DashboardCollaborationService,
@@ -19,7 +17,7 @@ import {
  */
 @Component({
   selector: 'app-collaborator-presence',
-  imports: [MatTooltipModule, MatIconModule, MatChipsModule],
+  imports: [MatTooltipModule],
   template: `
     <div
       class="collaborator-presence-container collaborator-presence collaborators"
@@ -28,8 +26,12 @@ import {
       @if (collaboratorService.isConnected()) {
         <span
           class="live-dot"
+          role="status"
+          tabindex="0"
           matTooltip="Real-time collaboration active"
           i18n-matTooltip
+          aria-label="Real-time collaboration active"
+          i18n-aria-label
           data-testid="live-indicator"
         ></span>
       }
@@ -38,7 +40,9 @@ import {
         @for (user of collaboratorService.activeCollaborators(); track user.user_id) {
           <div
             class="user-avatar"
-            [matTooltip]="user.email + ' (' + (user.role || 'Collaborator') + ')'"
+            tabindex="0"
+            [matTooltip]="getCollaboratorTooltip(user)"
+            [attr.aria-label]="getCollaboratorTooltip(user)"
             data-testid="collaborator-avatar"
           >
             {{ getInitials(user.email) }}
@@ -91,6 +95,17 @@ import {
 export class CollaboratorPresenceComponent {
   /** Injected collaboration service managing peer metadata. */
   readonly collaboratorService = inject(DashboardCollaborationService);
+
+  /**
+   * Formats a localized accessible tooltip label for a collaborator avatar.
+   *
+   * @param user The collaborator profile to describe.
+   * @returns Localized tooltip string with email and role.
+   */
+  getCollaboratorTooltip(user: CollaboratorProfile): string {
+    const roleLabel = user.role || $localize`Collaborator`;
+    return $localize`${user.email} (${roleLabel})`;
+  }
 
   /**
    * Generates initials from user email address.

@@ -2,7 +2,9 @@
 
 <mat-dialog-content>
   <form [formRoot]="createForm" (submit)="submit()">
-    <p i18n class="text-sm text-gray-500 mb-4">Enter a name for your new analytics workspace.</p>
+    <p i18n class="text-sm mb-4" style="color: var(--sys-text-secondary)">
+      Enter a name for your new analytics workspace.
+    </p>
 
     <mat-form-field appearance="outline" class="w-full">
       <mat-label i18n>Dashboard Name</mat-label>
@@ -19,7 +21,7 @@
     </mat-form-field>
 
     @if (error()) {
-      <div class="text-red-600 text-sm mb-2" data-testid="error-msg">
+      <div role="alert" class="text-red-600 text-sm mb-2" data-testid="error-msg">
         {{ error() }}
       </div>
     }
@@ -29,7 +31,6 @@
 <mat-dialog-actions align="end">
   <button i18n mat-button mat-dialog-close>Cancel</button>
   <button
-    i18n
     mat-flat-button
     color="primary"
     (click)="submit()"
@@ -37,9 +38,9 @@
     data-testid="btn-submit"
   >
     @if (isSubmitting()) {
-      Creating...
+      <span i18n>Creating...</span>
     } @else {
-      Create
+      <span i18n>Create</span>
     }
   </button>
 </mat-dialog-actions>

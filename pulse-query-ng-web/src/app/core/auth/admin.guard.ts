@@ -13,13 +13,13 @@ import { toObservable } from '@angular/core/rxjs-interop';
  * Functional route guard that verifies whether the current user holds administrative privileges.
  * Redirects non-admin users to the home route (`/`).
  *
- * @param route - Activated route snapshot being checked.
- * @param state - Router state snapshot for the target navigation.
+ * @param _route - Activated route snapshot being checked.
+ * @param _state - Router state snapshot for the target navigation.
  * @returns Boolean or observable emitting `true` if authorized, or a `UrlTree` redirecting to `/`.
  */
 export const adminGuard: CanActivateFn = (
-  route,
-  state,
+  _route,
+  _state,
 ): Observable<boolean | UrlTree> | boolean => {
   const authService = inject(AuthService);
   const router = inject(Router);

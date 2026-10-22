@@ -19,12 +19,11 @@ import {
   model,
   OnInit,
   computed,
-  ViewChild,
+  viewChild,
   ElementRef,
   AfterViewInit,
   OnDestroy,
 } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
@@ -32,7 +31,6 @@ import { finalize } from 'rxjs/operators';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, basicSetup } from 'codemirror';
 import { sql, PostgreSQL } from '@codemirror/lang-sql';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { keymap } from '@codemirror/view';
 import { defaultKeymap } from '@codemirror/commands';
 
@@ -53,11 +51,10 @@ import {
 import { ConversationComponent } from '../chat/conversation/conversation.component';
 import { ChatStore } from '../chat/chat.store';
 
-/** Sql Builder component. */
+/** Interactive CodeMirror SQL editor and AI assistant builder component for authoring widget queries. */
 @Component({
   selector: 'app-sql-builder',
   imports: [
-    ReactiveFormsModule,
     MatTabsModule,
     MatButtonModule,
     MatIconModule,
@@ -122,11 +119,11 @@ import { ChatStore } from '../chat/chat.store';
         min-height: 0;
       }
       .error-banner {
-        background-color: #fce4ec;
-        color: #c62828;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
         padding: 8px 12px;
         font-size: 13px;
-        border-left: 4px solid #c62828;
+        border-left: 4px solid var(--sys-error);
         margin-bottom: 8px;
         display: flex;
         align-items: flex-start;
@@ -142,13 +139,13 @@ import { ChatStore } from '../chat/chat.store';
   templateUrl: './sql-builder.component.html',
 })
 export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
-  /** boardsApi property. */
+  /** Generated OpenAPI client for updating widget SQL configurations on the backend. */
   private readonly boardsApi = inject(DashboardsService);
-  /** executionApi property. */
+  /** Generated OpenAPI client for executing ad-hoc SQL preview queries. */
   private readonly executionApi = inject(ExecutionService);
-  /** schemaApi property. */
+  /** Generated OpenAPI client for fetching DuckDB table and column metadata for autocomplete. */
   private readonly schemaApi = inject(SchemaService);
-  /** store property. */
+  /** Centralized reactive state store for the active hospital dashboard. */
   private readonly store = inject(DashboardStore);
 
   /** Dashboard Id. */
@@ -188,13 +185,13 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // CodeMirror References
   /** Editor Host. */
-  @ViewChild('editorHost') editorHost!: ElementRef<HTMLDivElement>;
-  /** editorView property. */
+  readonly editorHost = viewChild<ElementRef<HTMLDivElement>>('editorHost');
+  /** Active CodeMirror 6 EditorView instance mounted inside `editorHost`. */
   private editorView?: EditorView;
-  /** languageConf property. */
+  /** CodeMirror compartment managing dynamic SQL dialect and schema completion extensions. */
   private languageConf = new Compartment();
 
-  /** Ng On Init. */
+  /** Seeds `currentSql` and `selectedTabIndex` from the component's initial input bindings. */
   ngOnInit(): void {
     if (this.initialSql()) this.currentSql.set(this.initialSql());
     // Initialize tab selection from input
@@ -207,7 +204,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadSchemaForAutocomplete();
   }
 
-  /** Ng On Destroy. */
+  /** Destroys the active CodeMirror 6 `EditorView` instance when the component is torn down. */
   ngOnDestroy(): void {
     if (this.editorView) {
       this.editorView.destroy();
@@ -216,7 +213,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** initEditor method. */
   private initEditor(): void {
-    if (!this.editorHost) return;
+    const host = this.editorHost();
+    if (!host) return;
 
     // Initial state setup with default SQL language
     const startState = EditorState.create({
@@ -303,7 +301,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.editorView = new EditorView({
       state: startState,
-      parent: this.editorHost.nativeElement,
+      parent: host.nativeElement,
     });
   }
 
@@ -396,12 +394,12 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
                   this.latestResult.set(result as TableDataSet);
                 }
               },
-              error: () => this.validationError.set('Network execution failed.'),
+              error: () => this.validationError.set($localize`Network execution failed.`),
             });
         },
         error: (err: HttpErrorResponse) => {
           this.isRunning.set(false);
-          let msg = 'Failed to save query.';
+          let msg = $localize`Failed to save query.`;
           const errBody = err.error as { detail?: unknown } | null | undefined;
           if (errBody && errBody.detail) msg = String(errBody.detail);
           this.validationError.set(msg);

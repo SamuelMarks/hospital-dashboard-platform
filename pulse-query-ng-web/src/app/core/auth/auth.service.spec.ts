@@ -76,7 +76,20 @@ describe('AuthService', () => {
 
       expect(safeStorage.getItem('pulse_auth_token')).toBe('abc-123');
       expect(service.currentUser()).toEqual(mockUser);
+      expect(service.preferredLanguage()).toBe('en');
+      expect(document.documentElement.lang).toBe('en');
       expect(service.isAuthenticated()).toBe(true);
+    });
+
+    it('should fall back to en when user has no language_preference', () => {
+      mockApiClient.loginAccessTokenApiV1AuthLoginPost.mockReturnValue(of(mockToken));
+      mockApiClient.readUsersMeApiV1AuthMeGet.mockReturnValue(
+        of({ ...mockUser, language_preference: undefined }),
+      );
+
+      service.login({ email: 'u', password: 'p' }).subscribe();
+      expect(service.preferredLanguage()).toBe('en');
+      expect(document.documentElement.lang).toBe('en');
     });
 
     it('should propagate error on failure', () =>

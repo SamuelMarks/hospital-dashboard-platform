@@ -5,7 +5,6 @@
  */
 
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
@@ -29,7 +28,6 @@ import { UserResponse } from '../../api-client/model/user-response';
 @Component({
   selector: 'app-user-management',
   imports: [
-    ReactiveFormsModule,
     RouterLink,
     MatCardModule,
     MatButtonModule,
@@ -121,11 +119,11 @@ export class UserManagementComponent implements OnInit {
   /** Signal holding any active error notification message. */
   readonly errorMessage = signal<string | null>(null);
 
-  /** Search input control for filtering users by email. */
-  readonly searchControl = new FormControl<string>('');
+  /** Search query signal for filtering users by email. */
+  readonly searchQuery = signal<string>('');
 
-  /** Role filter control for isolating specific clinical roles. */
-  readonly roleFilterControl = new FormControl<string>('');
+  /** Role filter signal for isolating specific clinical roles. */
+  readonly roleFilter = signal<string>('');
 
   /** Displayed columns in the users Material table. */
   readonly displayedColumns: string[] = [
@@ -154,14 +152,33 @@ export class UserManagementComponent implements OnInit {
   }
 
   /**
+   * Updates the search query signal from the input element event.
+   *
+   * @param event - DOM input event from the search input.
+   */
+  onSearchInput(event: Event): void {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  /**
+   * Updates the role filter signal and reloads the user list.
+   *
+   * @param role - Selected clinical role filter string.
+   */
+  onRoleFilterChange(role: string): void {
+    this.roleFilter.set(role);
+    this.fetchUsers();
+  }
+
+  /**
    * Fetches user accounts from the administrative API applying active filters.
    */
   fetchUsers(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    const searchVal = this.searchControl.value?.trim() || undefined;
-    const roleVal = this.roleFilterControl.value || undefined;
+    const searchVal = this.searchQuery().trim() || undefined;
+    const roleVal = this.roleFilter() || undefined;
 
     this.adminUsersService.listUsersApiV1AdminUsersGet(50, 0, roleVal, searchVal).subscribe({
       next: (userList) => {
@@ -169,7 +186,7 @@ export class UserManagementComponent implements OnInit {
         this.isLoading.set(false);
       },
       error: () => {
-        this.errorMessage.set('Failed to load user list.');
+        this.errorMessage.set($localize`Failed to load user list.`);
         this.isLoading.set(false);
       },
     });
@@ -188,7 +205,7 @@ export class UserManagementComponent implements OnInit {
       .updateUserRoleApiV1AdminUsersUserIdRolePut(user.id, { role: newRole })
       .subscribe({
         next: () => this.fetchUsers(),
-        error: () => this.errorMessage.set(`Failed to update role for ${user.email}.`),
+        error: () => this.errorMessage.set($localize`Failed to update role for ${user.email}.`),
       });
   }
 
@@ -205,7 +222,7 @@ export class UserManagementComponent implements OnInit {
       .subscribe({
         next: () => this.fetchUsers(),
         error: (err: { error?: { detail?: string } }) => {
-          const detail = err?.error?.detail || 'Failed to update user status.';
+          const detail = err?.error?.detail || $localize`Failed to update user status.`;
           this.errorMessage.set(detail);
         },
       });

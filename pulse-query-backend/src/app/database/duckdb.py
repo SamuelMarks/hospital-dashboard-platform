@@ -6,24 +6,68 @@ dependency helper for OLAP access.
 """
 
 import asyncio
+from collections.abc import Callable, Generator
 import contextlib
 import logging
 import os
 import threading
 import time
-from collections.abc import Callable, Generator
-from typing import Any, TypeVar
+from typing import Any, ParamSpec, Protocol, TypeVar
 
 import duckdb
 import duckdb.sqltypes as sqltypes
 
 from app.core.config import settings
 from app.core.diagnostics import diagnostics_registry, format_duckdb_error_banner
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.services.mpax_bridge import mpax_bridge
 
 logger = logging.getLogger(__name__)
 
+P = ParamSpec("P")
 T = TypeVar("T")
+
+
+class DuckDBFetchableProtocol(Protocol):
+  """
+  Structural protocol representing a DuckDB query result supporting `fetchall` and `fetchone`.
+  """
+
+  def fetchall(self) -> list[tuple[Any, ...]]:
+    """
+    Fetches all rows from the query result.
+
+    Returns:
+        list[tuple[Any, ...]]: List of row tuples.
+    """
+
+  def fetchone(self) -> tuple[Any, ...] | None:
+    """
+    Fetches the next row from the query result.
+
+    Returns:
+        tuple[Any, ...] | None: Single row tuple or None.
+    """
+
+
+class DuckDBConnectionProtocol(Protocol):
+  """
+  Structural protocol representing a DuckDB connection object or test double.
+  """
+
+  def execute(self, query: str) -> DuckDBFetchableProtocol:
+    """
+    Executes a SQL query string and returns a cursor/result object.
+
+    Args:
+        query (str): SQL query string to execute.
+
+    Returns:
+        DuckDBFetchableProtocol: Cursor or query result object supporting `fetchall()` / `fetchone()`.
+    """
+
+  def close(self) -> None:
+    """Closes the database connection."""
 
 
 def register_duckdb_udfs(conn: duckdb.DuckDBPyConnection) -> None:
@@ -48,14 +92,14 @@ def register_duckdb_udfs(conn: duckdb.DuckDBPyConnection) -> None:
       )
 
 
-async def run_in_duckdb_thread(func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+async def run_in_duckdb_thread(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
   """
   Executes a synchronous DuckDB operation in a background worker thread via `asyncio.to_thread`.
 
   Args:
-      func (Callable[..., T]): Synchronous callable performing DuckDB work.
-      *args (Any): Positional arguments forwarded to `func`.
-      **kwargs (Any): Keyword arguments forwarded to `func`.
+      func (Callable[P, T]): Synchronous callable performing DuckDB work.
+      *args (P.args): Positional arguments forwarded to `func`.
+      **kwargs (P.kwargs): Keyword arguments forwarded to `func`.
 
   Returns:
       T: The return value of `func(*args, **kwargs)`.
@@ -88,6 +132,7 @@ class DuckDBManager:
     Returns:
         dict[str, Any]: Diagnostic dictionary with DuckDB status, tables, and total rows.
     """
+    nl = chr(10)
     if self.db_path != ":memory:":
       parent_dir = os.path.dirname(os.path.abspath(self.db_path))
       if parent_dir and not os.path.exists(parent_dir):
@@ -96,7 +141,7 @@ class DuckDBManager:
         except OSError as e:
           error_str = f"Cannot create database parent directory '{parent_dir}': {e}"
           banner = format_duckdb_error_banner(self.db_path, error_str)
-          logger.error("\n" + banner)
+          logger.error(f"{nl}{banner}")
           diagnostics_registry.duckdb_status = {
             "status": "error",
             "path": self.db_path,
@@ -118,10 +163,11 @@ class DuckDBManager:
         raw_tables = conn.execute("SHOW TABLES").fetchall()
         tables_map: dict[str, int] = {}
         for row in raw_tables:
-          table_name = row[0]
+          table_name = str(row[0])
+          safe_table = table_name.replace('"', '""')
           try:
-            count_res = conn.execute(f"SELECT COUNT(*) FROM {table_name}").fetchone()
-            tables_map[table_name] = count_res[0] if count_res else 0
+            count_res = conn.execute(f'SELECT COUNT(*) FROM "{safe_table}"').fetchone()
+            tables_map[table_name] = int(count_res[0]) if count_res else 0
           except Exception:
             tables_map[table_name] = -1
 
@@ -145,7 +191,7 @@ class DuckDBManager:
     except Exception as e:
       error_str = str(e)
       banner = format_duckdb_error_banner(self.db_path, error_str)
-      logger.error("\n" + banner)
+      logger.error(f"{nl}{banner}")
       diagnostics_registry.duckdb_status = {
         "status": "error",
         "path": self.db_path,
@@ -160,6 +206,25 @@ class DuckDBManager:
         remediation="Check if another process has locked the DuckDB file or if the database is corrupted.",
       )
       return diagnostics_registry.duckdb_status
+
+  def validate_duckdb_storage_result(self) -> AppResult[dict[str, Any]]:
+    """
+    Validates DuckDB storage health and returns an explicit `AppResult` wrapping the status dictionary.
+
+    Returns:
+        AppResult[dict[str, Any]]: `Ok(status)` when ready, or `Err(AppError)` with `DUCKDB_STORAGE_ERROR`.
+    """
+    status_dict = self.validate_duckdb_storage()
+    if status_dict.get("status") == "error":
+      return Err(
+        AppError(
+          code=ErrorCode.DUCKDB_STORAGE_ERROR,
+          message=str(status_dict.get("error") or "DuckDB storage error"),
+          status_code=503,
+          details=status_dict,
+        )
+      )
+    return Ok(status_dict)
 
   def get_connection(self) -> duckdb.DuckDBPyConnection:
     """
@@ -185,11 +250,6 @@ class DuckDBManager:
     Opens a restricted Read-Only connection with retry logic for transient file locks.
     Used exclusively for Analytics Execution (User SQL Widgets).
 
-    Configuration:
-    - `read_only=True`: Prevents DML (INSERT/UPDATE/DELETE) and DDL (DROP/ALTER) operations
-      at the engine level.
-    - `enable_external_access=false`: Sandboxes filesystem access.
-
     Args:
         max_retries (int): Maximum retry attempts for transient file lock contention.
 
@@ -201,7 +261,6 @@ class DuckDBManager:
     """
     for attempt in range(max_retries):
       try:
-        # Enforce read-only mode and sandbox filesystem access
         if self.db_path == ":memory:":
           conn = duckdb.connect(database=":memory:", read_only=False, config={"enable_external_access": "false"})
         else:

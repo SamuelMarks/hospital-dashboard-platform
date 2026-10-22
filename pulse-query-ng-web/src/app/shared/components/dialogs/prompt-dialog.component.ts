@@ -3,7 +3,6 @@
  */
 
 import { Component, signal, inject } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -28,13 +27,7 @@ export interface PromptDialogData {
  */
 @Component({
   selector: 'app-prompt-dialog',
-  imports: [
-    ReactiveFormsModule,
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-  ],
+  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
 
   template: `
     <h2 mat-dialog-title>{{ data.title }}</h2>
@@ -43,7 +36,7 @@ export interface PromptDialogData {
         <p class="mb-4 text-sm text-secondary">{{ data.message }}</p>
       }
       <mat-form-field appearance="outline" class="w-full">
-        <mat-label>{{ data.label || 'Value' }}</mat-label>
+        <mat-label>{{ data.label || defaultLabel }}</mat-label>
         <input
           matInput
           [value]="value()"
@@ -72,6 +65,9 @@ export interface PromptDialogData {
   ],
 })
 export class PromptDialogComponent {
+  /** Localized fallback label when `data.label` is omitted. */
+  readonly defaultLabel = $localize`Value`;
+
   /**
    * Extracts the current string value from a native DOM input event.
    *

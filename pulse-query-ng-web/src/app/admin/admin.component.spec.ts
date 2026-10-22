@@ -238,12 +238,10 @@ describe('AdminComponent', () => {
       expect(val.anthropic).toBe('');
     });
 
-    it('should call trackBy correctly', () => {
-      // this gives functions coverage for track function in template
+    it('should render model items correctly', () => {
       fixture.detectChanges();
       const div = fixture.nativeElement.querySelector('.model-item');
       expect(div).toBeTruthy();
-      expect(component.trackByFn(0)).toBe(0);
     });
 
     // explicitly call functions required to hit 100% test coverage

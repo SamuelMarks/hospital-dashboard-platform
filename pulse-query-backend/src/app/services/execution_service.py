@@ -8,8 +8,8 @@ LRU result caching, HTTP/SQL runner orchestration, and DuckDB cursor management.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import logging
-from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
@@ -20,12 +20,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import duckdb_manager
 from app.models.dashboard import Dashboard, Widget
-from app.services.cache_service import cache_service
+from app.schemas.execution import HttpRunnerResultDict, SqlRunnerResultDict
+from app.services.cache_service import ResultCacheService, cache_service
 from app.services.runners.http import run_http_widget
-from app.services.runners.sql import run_sql_widget
+from app.services.runners.sql import DuckDBCursorProtocol, run_sql_widget
 from app.services.sql_generator import sql_generator
 
 logger = logging.getLogger(__name__)
+
+SqlRunnerCallable = Callable[[DuckDBCursorProtocol, dict[str, Any]], SqlRunnerResultDict | dict[str, Any]]
+HttpRunnerCallable = Callable[..., Awaitable[HttpRunnerResultDict | dict[str, Any]]]
 
 
 class ExecutionService:
@@ -51,9 +55,9 @@ class ExecutionService:
     self,
     widgets_info: list[tuple[Widget, dict[str, Any], str]],
     results_map: dict[UUID, Any],
-    sql_runner_fn: Callable[[Any, dict[str, Any]], Any] = run_sql_widget,
+    sql_runner_fn: SqlRunnerCallable = run_sql_widget,
     conn_factory: Callable[[], duckdb.DuckDBPyConnection] = duckdb_manager.get_readonly_connection,
-    cache_svc: Any = cache_service,
+    cache_svc: ResultCacheService[Any] = cache_service,
   ) -> None:
     """
     Executes a batch of SQL widgets over a shared DuckDB connection and updates `results_map`.
@@ -61,9 +65,9 @@ class ExecutionService:
     Args:
         widgets_info (list[tuple[Widget, dict[str, Any], str]]): Tuples of `(Widget, InjectedConfig, CacheKey)`.
         results_map (dict[UUID, Any]): Mutable dictionary populated with execution results.
-        sql_runner_fn (Callable[[Any, dict[str, Any]], Any]): SQL runner function.
+        sql_runner_fn (SqlRunnerCallable): SQL runner function.
         conn_factory (Callable[[], duckdb.DuckDBPyConnection]): Connection factory returning a DuckDB connection.
-        cache_svc (Any): Result cache service instance.
+        cache_svc (ResultCacheService[Any]): Result cache service instance.
     """
     active_conn: duckdb.DuckDBPyConnection | None = None
     try:
@@ -91,7 +95,7 @@ class ExecutionService:
     dashboard: Dashboard,
     global_params: dict[str, Any],
     results_map: dict[UUID, Any],
-    cache_svc: Any,
+    cache_svc: ResultCacheService[Any],
   ) -> tuple[list[tuple[Widget, dict[str, Any], str]], list[tuple[Widget, dict[str, Any], str]]]:
     """
     Partitions dashboard widgets into cached results, SQL batch queue, and HTTP batch queue.
@@ -100,7 +104,7 @@ class ExecutionService:
         dashboard (Dashboard): Dashboard with loaded `widgets`.
         global_params (dict[str, Any]): Global filter parameters.
         results_map (dict[UUID, Any]): Output map populated with TEXT and cache-hit results.
-        cache_svc (Any): Result cache service instance.
+        cache_svc (ResultCacheService[Any]): Result cache service instance.
 
     Returns:
         tuple[list[tuple[Widget, dict[str, Any], str]], list[tuple[Widget, dict[str, Any], str]]]:
@@ -116,7 +120,7 @@ class ExecutionService:
 
       run_config = widget.config.copy()
       if widget.type == "SQL":
-        raw_sql = run_config.get("query", "")
+        raw_sql = str(run_config.get("query", ""))
         run_config["query"] = sql_generator.process_global_filters(raw_sql, global_params)
 
       cache_key = cache_svc.generate_key(widget.type, run_config)
@@ -138,10 +142,10 @@ class ExecutionService:
     dashboard: Dashboard,
     global_params: dict[str, Any],
     authorization: str | None = None,
-    http_runner_fn: Callable[..., Any] = run_http_widget,
-    sql_runner_fn: Callable[[Any, dict[str, Any]], Any] = run_sql_widget,
+    http_runner_fn: HttpRunnerCallable = run_http_widget,
+    sql_runner_fn: SqlRunnerCallable = run_sql_widget,
     conn_factory: Callable[[], duckdb.DuckDBPyConnection] = duckdb_manager.get_readonly_connection,
-    cache_svc: Any = cache_service,
+    cache_svc: ResultCacheService[Any] = cache_service,
   ) -> dict[UUID, Any]:
     """
     Refreshes all widgets belonging to `dashboard` with global filter injection and caching.
@@ -150,10 +154,10 @@ class ExecutionService:
         dashboard (Dashboard): Authorized dashboard instance with loaded `widgets`.
         global_params (dict[str, Any]): Global filter parameters to inject into SQL queries.
         authorization (str | None): Optional HTTP `Authorization` header for token forwarding.
-        http_runner_fn (Callable[..., Any]): HTTP widget runner callable.
-        sql_runner_fn (Callable[[Any, dict[str, Any]], Any]): SQL widget runner callable.
+        http_runner_fn (HttpRunnerCallable): HTTP widget runner callable.
+        sql_runner_fn (SqlRunnerCallable): SQL widget runner callable.
         conn_factory (Callable[[], duckdb.DuckDBPyConnection]): Connection factory returning a DuckDB connection.
-        cache_svc (Any): Result cache service instance.
+        cache_svc (ResultCacheService[Any]): Result cache service instance.
 
     Returns:
         dict[UUID, Any]: Map of widget UUID to execution payload.
@@ -175,15 +179,44 @@ class ExecutionService:
           cache_svc.set(cache_key, res)
 
     if sql_widgets_to_run:
-      self.execute_sql_batch(
+      await asyncio.to_thread(
+        self.execute_sql_batch,
         sql_widgets_to_run,
         results_map,
-        sql_runner_fn=sql_runner_fn,
-        conn_factory=conn_factory,
-        cache_svc=cache_svc,
+        sql_runner_fn,
+        conn_factory,
+        cache_svc,
       )
 
     return results_map
+
+  def _execute_single_sql_sync(
+    self,
+    run_config: dict[str, Any],
+    sql_runner_fn: SqlRunnerCallable,
+    conn_factory: Callable[[], duckdb.DuckDBPyConnection],
+  ) -> dict[str, Any]:
+    """
+    Synchronously executes a single SQL widget in a worker thread.
+
+    Args:
+        run_config (dict[str, Any]): Injected widget configuration dictionary.
+        sql_runner_fn (SqlRunnerCallable): SQL runner callable.
+        conn_factory (Callable[[], duckdb.DuckDBPyConnection]): DuckDB connection factory.
+
+    Returns:
+        dict[str, Any]: Query execution result dictionary.
+    """
+    active_conn: duckdb.DuckDBPyConnection | None = None
+    try:
+      active_conn = conn_factory()
+      cursor = active_conn.cursor()
+      return dict(sql_runner_fn(cursor, run_config))
+    except Exception as e:
+      return {"error": str(e)}
+    finally:
+      if active_conn is not None:
+        active_conn.close()
 
   async def refresh_single_widget_result(
     self,
@@ -192,10 +225,11 @@ class ExecutionService:
     db: AsyncSession,
     authorization: str | None = None,
     force_refresh: bool = False,
-    http_runner_fn: Callable[..., Any] = run_http_widget,
-    sql_runner_fn: Callable[[Any, dict[str, Any]], Any] = run_sql_widget,
+    global_params: dict[str, Any] | None = None,
+    http_runner_fn: HttpRunnerCallable = run_http_widget,
+    sql_runner_fn: SqlRunnerCallable = run_sql_widget,
     conn_factory: Callable[[], duckdb.DuckDBPyConnection] = duckdb_manager.get_readonly_connection,
-    cache_svc: Any = cache_service,
+    cache_svc: ResultCacheService[Any] = cache_service,
   ) -> AppResult[dict[UUID, Any]]:
     """
     Refreshes a single widget belonging to `dashboard`, returning an explicit `AppResult`.
@@ -206,10 +240,11 @@ class ExecutionService:
         db (AsyncSession): Active PostgreSQL session.
         authorization (str | None): Optional HTTP `Authorization` header.
         force_refresh (bool): Whether to bypass the result cache.
-        http_runner_fn (Callable[..., Any]): HTTP widget runner callable.
-        sql_runner_fn (Callable[[Any, dict[str, Any]], dict[str, Any]]): SQL widget runner callable.
+        global_params (dict[str, Any] | None): Optional global filter parameters for SQL widgets.
+        http_runner_fn (HttpRunnerCallable): HTTP widget runner callable.
+        sql_runner_fn (SqlRunnerCallable): SQL widget runner callable.
         conn_factory (Callable[[], duckdb.DuckDBPyConnection]): Connection factory returning a DuckDB connection.
-        cache_svc (Any): Result cache service instance.
+        cache_svc (ResultCacheService[Any]): Result cache service instance.
 
     Returns:
         AppResult[dict[UUID, Any]]: `Ok({widget_id: payload})` or `Err(AppError)` if widget not found.
@@ -231,6 +266,10 @@ class ExecutionService:
 
     forward_token = self.extract_token(authorization)
     run_config = widget.config.copy()
+    if widget.type == "SQL":
+      raw_sql = str(run_config.get("query", ""))
+      run_config["query"] = sql_generator.process_global_filters(raw_sql, global_params or {})
+
     cache_key = cache_svc.generate_key(widget.type, run_config)
 
     if not force_refresh:
@@ -238,21 +277,10 @@ class ExecutionService:
       if cached:
         return Ok({widget.id: cached})
 
-    res: dict[str, Any] = {"error": "Execution failed"}
-
     if widget.type == "SQL":
-      active_conn: duckdb.DuckDBPyConnection | None = None
-      try:
-        active_conn = conn_factory()
-        cursor = active_conn.cursor()
-        res = sql_runner_fn(cursor, run_config)
-      except Exception as e:
-        res = {"error": str(e)}
-      finally:
-        if active_conn is not None:
-          active_conn.close()
+      res = await asyncio.to_thread(self._execute_single_sql_sync, run_config, sql_runner_fn, conn_factory)
     elif widget.type == "HTTP":
-      res = await http_runner_fn(run_config, forward_auth_token=forward_token)
+      res = dict(await http_runner_fn(run_config, forward_auth_token=forward_token))
     else:
       res = {"error": f"Unknown widget type: {widget.type}"}
 

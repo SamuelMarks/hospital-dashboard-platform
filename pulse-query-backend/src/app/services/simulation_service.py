@@ -11,8 +11,10 @@ Unlike standard widget execution, this service performs a multi-step process:
 """
 
 import asyncio
+from collections.abc import Sequence
 import json
 import logging
+from typing import Any
 
 import duckdb
 
@@ -23,7 +25,7 @@ from app.schemas.simulation import (
   ScenarioRunRequest,
   SimulationAssignment,
 )
-from app.services.mpax_bridge import mpax_bridge
+from app.services.mpax_bridge import MpaxAssignmentItem, mpax_bridge
 
 logger = logging.getLogger("simulation_service")
 
@@ -36,53 +38,6 @@ class SimulationService:
   """
   Service for running transient "What-If" optimization scenarios.
   """
-
-  def run_scenario(
-    self,
-    request: ScenarioRunRequest,
-    olap_conn: duckdb.DuckDBPyConnection | None = None,
-  ) -> ScenarioResult:
-    """
-    Executes a simulation based on the provided configuration.
-
-    The process includes a "Virtual Overflow" safety net. If demand exceeds
-    capacity, the optimization will not fail but will allocate patients
-    to an "Overflow" unit, which will appear in the assignments list.
-
-    Args:
-        request (ScenarioRunRequest): The scenario definition.
-        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
-
-    Returns:
-        ScenarioResult: The optimal allocation of patients to beds including differentials.
-    """
-    logger.info("Starting Simulation Scenario Run")
-
-    # 1. Fetch Demand Data from DuckDB
-    # Returns the JSON for the solver AND a baseline map for diffing
-    demand_json, current_state = self._fetch_demand_payload(
-      request.demand_source_sql,
-      olap_conn=olap_conn,
-    )
-
-    # 2. Serialize Parameters for Bridge
-    capacity_json = json.dumps(request.capacity_parameters)
-    constraints_json = json.dumps([c.model_dump() for c in request.constraints])
-    affinity_json = json.dumps(request.affinity_overrides)
-
-    # 3. Run Optimization
-    # This calls the JAX/MPAX solver via the bridge
-    raw_result = mpax_bridge.solve_unit_assignment(
-      demand_json=demand_json,
-      capacity_json=capacity_json,
-      affinity_json=affinity_json,
-      constraints_json=constraints_json,
-    )
-
-    # 4. Parse Result & Calculate Delta
-    parsed_assignments = self._parse_and_diff_result(raw_result, current_state)
-
-    return ScenarioResult(assignments=parsed_assignments, status="success")
 
   def run_scenario_result(
     self,
@@ -99,16 +54,59 @@ class SimulationService:
     Returns:
         AppResult[ScenarioResult]: `Ok(ScenarioResult)` on success, or `Err(AppError)` on failure.
     """
+    logger.info("Starting Simulation Scenario Run")
     try:
-      if olap_conn is not None:
-        return Ok(self.run_scenario(request, olap_conn=olap_conn))
-      return Ok(self.run_scenario(request))
+      demand_json, current_state = self._fetch_demand_payload(
+        request.demand_source_sql,
+        olap_conn=olap_conn,
+      )
+      capacity_json = json.dumps(request.capacity_parameters)
+      constraints_json = json.dumps([c.model_dump() for c in request.constraints])
+      affinity_json = json.dumps(request.affinity_overrides)
+
+      solver_res = mpax_bridge.solve_unit_assignment_result(
+        demand_json=demand_json,
+        capacity_json=capacity_json,
+        affinity_json=affinity_json,
+        constraints_json=constraints_json,
+      )
+      if isinstance(solver_res, Err):
+        return solver_res
+
+      parsed_assignments = self._diff_assignments(solver_res.value, current_state)
+      return Ok(ScenarioResult(assignments=parsed_assignments, status="success"))
     except SimulationInfeasibleError as e:
       return Err(AppError(code=ErrorCode.SIMULATION_INFEASIBLE, message=str(e), status_code=422))
     except ValueError as e:
       return Err(AppError(code=ErrorCode.SIMULATION_INVALID_DATA, message=str(e), status_code=400))
     except Exception as e:
       return Err(AppError(code=ErrorCode.INTERNAL_ERROR, message=f"Simulation Failed: {e!s}", status_code=500))
+
+  def run_scenario(
+    self,
+    request: ScenarioRunRequest,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+  ) -> ScenarioResult:
+    """
+    Executes a simulation based on the provided configuration, unwrapping `run_scenario_result`.
+
+    Args:
+        request (ScenarioRunRequest): The scenario definition.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
+
+    Returns:
+        ScenarioResult: The optimal allocation of patients to beds including differentials.
+
+    Raises:
+        SimulationInfeasibleError: When constraints are mathematically infeasible.
+        ValueError: When demand SQL or solver inputs are invalid.
+    """
+    res = self.run_scenario_result(request, olap_conn=olap_conn)
+    if isinstance(res, Ok):
+      return res.value
+    if res.error.code == ErrorCode.SIMULATION_INFEASIBLE:
+      raise SimulationInfeasibleError(res.error.message)
+    raise ValueError(res.error.message)
 
   async def run_scenario_async(
     self,
@@ -135,18 +133,15 @@ class SimulationService:
     """
     Executes the SQL query and prepares data for both the Solver and the Diff engine.
 
-    Supports two SQL formats:
-    1. 2 Columns: (Service, Count) -> Baseline assumes 0 distribution.
-    2. 3 Columns: (Service, Unit, Count) -> Baseline built from this distribution.
-
     Args:
         query (str): The SQL query string to run against DuckDB.
         olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
 
     Returns:
-        Tuple containing:
-        - str: JSON string for solver: `{"Service": TotalCount}`
-        - dict: Baseline Map: `{(Service, Unit): Count}`
+        tuple[str, dict[tuple[str, str], float]]: Tuple of `(demand_json_str, current_state_map)`.
+
+    Raises:
+        ValueError: If executing the demand query fails.
     """
     try:
       owns_conn = olap_conn is None
@@ -163,22 +158,14 @@ class SimulationService:
 
       for row in rows:
         if len(row) == 2:
-          # Format: Service, Count
           service = str(row[0])
           count = float(row[1])
           demand_totals[service] = demand_totals.get(service, 0.0) + count
-          # We don't know the unit, so current_state remains empty for this row
-
         elif len(row) >= 3:
-          # Format: Service, Unit, Count
           service = str(row[0])
           unit = str(row[1])
           count = float(row[2])
-
-          # Aggregate for solver
           demand_totals[service] = demand_totals.get(service, 0.0) + count
-
-          # Store specific location for diffing
           key = (service, unit)
           current_state[key] = current_state.get(key, 0.0) + count
 
@@ -188,23 +175,75 @@ class SimulationService:
       logger.error(f"Error fetching simulation demand: {e}")
       raise ValueError(f"Failed to execute demand query: {e!s}") from e
 
+  def _diff_assignments(
+    self,
+    items: Sequence[MpaxAssignmentItem | dict[str, Any]],
+    current_state: dict[tuple[str, str], float],
+  ) -> list[SimulationAssignment]:
+    """
+    Computes `SimulationAssignment` items and eviction deltas from solved allocations.
+
+    Args:
+        items (Sequence[MpaxAssignmentItem | dict[str, Any]]): Solved service-to-unit allocations.
+        current_state (dict[tuple[str, str], float]): Baseline `(Service, Unit) -> OriginalCount` map.
+
+    Returns:
+        list[SimulationAssignment]: Allocation list including positive, zero, and eviction deltas.
+    """
+    result_list: list[SimulationAssignment] = []
+    processed_keys: set[tuple[str, str]] = set()
+
+    for item in items:
+      service = str(item.get("Service", ""))
+      unit = str(item.get("Unit", ""))
+      new_count = float(item.get("Patient_Count", 0))
+
+      key = (service, unit)
+      processed_keys.add(key)
+
+      original = current_state.get(key, 0.0)
+      delta = new_count - original
+
+      result_list.append(
+        SimulationAssignment(
+          Service=service,
+          Unit=unit,
+          Patient_Count=new_count,
+          Original_Count=original,
+          Delta=delta,
+        )
+      )
+
+    for (svc, unit), old_count in current_state.items():
+      if (svc, unit) not in processed_keys and old_count > 0.1:
+        result_list.append(
+          SimulationAssignment(
+            Service=svc,
+            Unit=unit,
+            Patient_Count=0.0,
+            Original_Count=old_count,
+            Delta=-1.0 * old_count,
+          )
+        )
+
+    return result_list
+
   def _parse_and_diff_result(
     self, raw_json: str, current_state: dict[tuple[str, str], float]
   ) -> list[SimulationAssignment]:
     """
-    Converts MPAX JSON into Pydantic models and injects Delta values.
-
-    Logic:
-    - Iterates over Solver assignments (New State).
-    - Compares against `current_state` (Old State) to calculate `Delta`.
-    - Adds implicit "Negative Delta" rows for patients moved completely OUT of a unit.
+    Parses a raw solver JSON string and delegates to `_diff_assignments`.
 
     Args:
         raw_json (str): JSON string from solver.
-        current_state (Dict): Map of `(Service, Unit) -> OriginalCount`.
+        current_state (dict[tuple[str, str], float]): Map of `(Service, Unit) -> OriginalCount`.
 
     Returns:
-        List[SimulationAssignment]: List of allocation results with change metrics.
+        list[SimulationAssignment]: List of allocation results with change metrics.
+
+    Raises:
+        SimulationInfeasibleError: When the solver JSON contains an infeasibility error.
+        ValueError: When the solver JSON is malformed or contains a data error.
     """
     try:
       data = json.loads(raw_json)
@@ -213,50 +252,7 @@ class SimulationService:
         if "infeasible" in err_msg.lower() or "exceeds" in err_msg.lower():
           raise SimulationInfeasibleError(err_msg)
         raise ValueError(err_msg)
-
-      result_list = []
-
-      # Process solver outputs
-      processed_keys = set()
-
-      for item in data:
-        service = item.get("Service")
-        unit = item.get("Unit")
-        new_count = float(item.get("Patient_Count", 0))
-
-        key = (service, unit)
-        processed_keys.add(key)
-
-        original = current_state.get(key, 0.0)
-        delta = new_count - original
-
-        result_list.append(
-          SimulationAssignment(
-            Service=service,
-            Unit=unit,
-            Patient_Count=new_count,
-            Original_Count=original,
-            Delta=delta,
-          )
-        )
-
-      # Detect "Evictions":
-      # If a unit/service pair existed in Current State but is NOT in Solver Output,
-      # it means the count went to 0 (solver filtered it). We must document this removal.
-      for (svc, unit), old_count in current_state.items():
-        if (svc, unit) not in processed_keys and old_count > 0.1:
-          result_list.append(
-            SimulationAssignment(
-              Service=svc,
-              Unit=unit,
-              Patient_Count=0.0,
-              Original_Count=old_count,
-              Delta=-1.0 * old_count,
-            )
-          )
-
-      return result_list
-
+      return self._diff_assignments(data, current_state)
     except SimulationInfeasibleError:
       raise
     except Exception as e:

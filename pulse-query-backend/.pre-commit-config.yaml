@@ -1,0 +1,49 @@
+files: ^pulse-query-backend/
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: ["--maxkb=5000"]
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: bash -c "cd pulse-query-backend && uv run ruff check src scripts tests alembic"
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: ruff-format
+        name: ruff format
+        entry: bash -c "cd pulse-query-backend && uv run ruff format --check src scripts tests alembic"
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy
+        entry: bash -c "cd pulse-query-backend && uv run mypy src scripts tests"
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: interrogate
+        name: interrogate
+        entry: bash -c "cd pulse-query-backend && uv run interrogate -c pyproject.toml src scripts tests alembic"
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: bash -c "cd pulse-query-backend && uv run pytest -q"
+        language: system
+        types: [python]
+        pass_filenames: false

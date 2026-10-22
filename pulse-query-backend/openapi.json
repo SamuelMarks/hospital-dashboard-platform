@@ -10,17 +10,35 @@
       "post": {
         "tags": ["auth"],
         "summary": "Register User",
-        "description": "Register a new user in the system.\n\nSteps:\n1. Verify email uniqueness.\n2. Create User record.\n3. Flush session (to generate User ID).\n4. Call Provisioning Service to create default dashboard/widgets.\n5. Commit transaction.\n\nArgs:\n    user_in (UserCreate): The payload containing email and password.\n    db (AsyncSession): Database session.\n\nReturns:\n    User: The newly created user object.\n\nRaises:\n    HTTPException: If email already exists.",
+        "description": "Registers a new user in the system and provisions their default dashboard.\n\nArgs:\n    user_in (UserCreate): The payload containing email and password.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.\n\nReturns:\n    User: The newly created user object.\n\nRaises:\n    HTTPException: If email already exists.",
         "operationId": "register_user_api_v1_auth_register_post",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -50,13 +68,71 @@
       "post": {
         "tags": ["auth"],
         "summary": "Login Access Token",
-        "description": "OAuth2 compatible token login, get an access token for future requests.\n\nArgs:\n    form_data (OAuth2PasswordRequestForm): Login credentials (username=email).\n    db (AsyncSession): Database session.\n\nReturns:\n    Token: Access token and type.",
+        "description": "OAuth2 compatible token login, issuing an access and refresh token pair.\n\nArgs:\n    form_data (OAuth2PasswordRequestForm): Login credentials (username=email).\n    db (AsyncSession): Database session.\n    accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.\n\nReturns:\n    Token: Access and refresh tokens.\n\nRaises:\n    HTTPException: 400 on invalid credentials or inactive user.",
         "operationId": "login_access_token_api_v1_auth_login_post",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/x-www-form-urlencoded": {
               "schema": {
                 "$ref": "#/components/schemas/Body_login_access_token_api_v1_auth_login_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Refresh Access Token",
+        "description": "Rotates refresh token and issues a new access and refresh token pair.\n\nArgs:\n    payload (RefreshTokenRequest): Active refresh token.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    Token: New rotated access and refresh tokens.\n\nRaises:\n    HTTPException: 401 if refresh token is invalid, expired, or revoked.",
+        "operationId": "refresh_access_token_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
               }
             }
           },
@@ -86,12 +162,150 @@
         }
       }
     },
+    "/api/v1/auth/revoke": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Revoke Session",
+        "description": "Revokes an active refresh token session.\n\nArgs:\n    payload (RefreshTokenRequest): Refresh token to revoke.\n    db (AsyncSession): PostgreSQL async database session.",
+        "operationId": "revoke_session_api_v1_auth_revoke_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot-password": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Forgot Password",
+        "description": "Generates a secure password reset token and dispatches reset instructions.\n\nArgs:\n    payload (ForgotPasswordRequest): Email address of requesting user.\n    db (AsyncSession): PostgreSQL async database session.\n    email_service (EmailNotificationService): Transactional email service dependency.\n\nReturns:\n    PasswordResetResponse: Confirmation message (reset token omitted from response).",
+        "operationId": "forgot_password_api_v1_auth_forgot_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Reset Password",
+        "description": "Resets user account password and revokes existing sessions.\n\nArgs:\n    payload (ResetPasswordRequest): Reset token and new password.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    PasswordResetResponse: Success confirmation message.\n\nRaises:\n    HTTPException: 400 if reset token is invalid or expired.\n    HTTPException: 404 if the user cannot be located.",
+        "operationId": "reset_password_api_v1_auth_reset_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "tags": ["auth"],
         "summary": "Read Users Me",
-        "description": "Fetch the current logged in user profile.",
+        "description": "Fetches the current logged in user profile.\n\nArgs:\n    current_user (User): Authenticated user.\n\nReturns:\n    User: Current user model instance.",
         "operationId": "read_users_me_api_v1_auth_me_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -102,57 +316,176 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/dashboards": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboards",
+        "description": "Lists all dashboards owned by or shared with the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Dashboard]: List of accessible dashboards.",
+        "operationId": "list_dashboards_api_v1_dashboards_get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
-      }
-    },
-    "/api/v1/dashboards/": {
-      "get": {
-        "tags": ["dashboards"],
-        "summary": "List Dashboards",
-        "description": "List all dashboards owned by the current user.",
-        "operationId": "list_dashboards_api_v1_dashboards__get",
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/DashboardResponse"
                   },
-                  "type": "array",
-                  "title": "Response List Dashboards Api V1 Dashboards  Get"
+                  "title": "Response List Dashboards Api V1 Dashboards Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/dashboards/": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboards",
+        "description": "Lists all dashboards owned by or shared with the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Dashboard]: List of accessible dashboards.",
+        "operationId": "list_dashboards_api_v1_dashboards__get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardResponse"
+                  },
+                  "title": "Response List Dashboards Api V1 Dashboards  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
         "tags": ["dashboards"],
         "summary": "Create Dashboard",
-        "description": "Create a new empty dashboard.",
+        "description": "Creates a new empty dashboard.\n\nArgs:\n    dashboard_in (DashboardCreate): Dashboard creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Dashboard: Newly created dashboard.",
         "operationId": "create_dashboard_api_v1_dashboards__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DashboardCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -175,19 +508,14 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/dashboards/{dashboard_id}/clone": {
       "post": {
         "tags": ["dashboards"],
         "summary": "Clone Dashboard",
-        "description": "Creates a deep copy of an existing dashboard and all its widgets.\nThe new dashboard will have the name \"Copy of {original_name}\".\n\nArgs:\n    dashboard_id (UUID): The ID of the dashboard to clone.\n    current_user (User): Authenticated user (must own the dashboard).\n    db (AsyncSession): Database session.\n\nReturns:\n    DashboardResponse: The newly created dashboard populated with cloned widgets.",
+        "description": "Creates a deep copy of an existing dashboard and all its widgets.\n\nArgs:\n    dashboard_id (UUID): The ID of the dashboard to clone.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Dashboard: Newly cloned dashboard.",
         "operationId": "clone_dashboard_api_v1_dashboards__dashboard_id__clone_post",
         "security": [
           {
@@ -203,6 +531,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -234,8 +596,33 @@
       "post": {
         "tags": ["dashboards"],
         "summary": "Restore Default Dashboard",
-        "description": "Re-creates the standard 'Hospital Command Center' dashboard.\nIf the dashboard already exists, creates a copy with a suffix to prevent data loss.\nPopulates the dashboard with all currently active templates in the registry.",
+        "description": "Re-creates the standard 'Hospital Command Center' dashboard.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Dashboard: Restored default dashboard.",
         "operationId": "restore_default_dashboard_api_v1_dashboards_restore_defaults_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -246,20 +633,25 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/dashboards/{dashboard_id}": {
       "get": {
         "tags": ["dashboards"],
         "summary": "Get Dashboard",
-        "description": "Get a specific dashboard details.",
+        "description": "Gets details for a specific dashboard.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Dashboard: Authorized dashboard model.",
         "operationId": "get_dashboard_api_v1_dashboards__dashboard_id__get",
         "security": [
           {
@@ -275,6 +667,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -304,7 +730,7 @@
       "put": {
         "tags": ["dashboards"],
         "summary": "Update Dashboard",
-        "description": "Rename a dashboard.",
+        "description": "Renames an existing dashboard.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    dashboard_update (DashboardCreate): Updated name payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Dashboard: Updated dashboard model.",
         "operationId": "update_dashboard_api_v1_dashboards__dashboard_id__put",
         "security": [
           {
@@ -320,6 +746,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -359,7 +819,7 @@
       "delete": {
         "tags": ["dashboards"],
         "summary": "Delete Dashboard",
-        "description": "Delete dashboard (and cascades to widgets).",
+        "description": "Deletes a dashboard (cascading to widgets and shares). Only the owner can delete.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated owner.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.",
         "operationId": "delete_dashboard_api_v1_dashboards__dashboard_id__delete",
         "security": [
           {
@@ -375,6 +835,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -399,7 +893,7 @@
       "post": {
         "tags": ["dashboards"],
         "summary": "Create Widget",
-        "description": "Add a widget to the dashboard with Dry-Run Validation.",
+        "description": "Adds a widget to the dashboard with dry-run SQL validation.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_in (WidgetCreate): Polymorphic widget creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Widget: Created widget model.",
         "operationId": "create_widget_api_v1_dashboards__dashboard_id__widgets_post",
         "security": [
           {
@@ -415,6 +909,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -475,7 +1003,7 @@
       "put": {
         "tags": ["dashboards"],
         "summary": "Update Widget",
-        "description": "Update widget configuration (e.g., resize, change query) with Dry-Run.",
+        "description": "Updates widget configuration (e.g., resize, change query) with dry-run SQL validation.\n\nArgs:\n    widget_id (UUID): Target widget ID.\n    widget_in (WidgetUpdate): Partial widget update payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Widget: Updated widget model.",
         "operationId": "update_widget_api_v1_dashboards_widgets__widget_id__put",
         "security": [
           {
@@ -491,6 +1019,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Widget Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -530,7 +1092,7 @@
       "delete": {
         "tags": ["dashboards"],
         "summary": "Delete Widget",
-        "description": "Delete a widget owned by the current user.",
+        "description": "Deletes a widget from a dashboard.\n\nArgs:\n    widget_id (UUID): Target widget ID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.",
         "operationId": "delete_widget_api_v1_dashboards_widgets__widget_id__delete",
         "security": [
           {
@@ -546,6 +1108,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Widget Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -570,7 +1166,7 @@
       "post": {
         "tags": ["dashboards"],
         "summary": "Reorder Widgets",
-        "description": "Bulk update widget positions and groups.\nUsed for Drag-and-Drop persistence.",
+        "description": "Bulk updates widget positions and groups for drag-and-drop persistence.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    request (WidgetReorderRequest): Bulk reorder items.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    dict[str, int]: Count of updated widgets.",
         "operationId": "reorder_widgets_api_v1_dashboards__dashboard_id__reorder_post",
         "security": [
           {
@@ -586,6 +1182,40 @@
               "type": "string",
               "format": "uuid",
               "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -606,7 +1236,9 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
                   "title": "Response Reorder Widgets Api V1 Dashboards  Dashboard Id  Reorder Post"
                 }
               }
@@ -625,11 +1257,538 @@
         }
       }
     },
+    "/api/v1/dashboards/{dashboard_id}/export": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Export Dashboard",
+        "description": "Exports dashboard layout, configuration, and data snapshot in JSON or CSV format.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user requesting export.\n    db (AsyncSession): Database session.\n    format (str): Export format ('json' or 'csv').\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Response: File download stream with appropriate media type.",
+        "operationId": "export_dashboard_api_v1_dashboards__dashboard_id__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/export": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Export Widget",
+        "description": "Exports an individual widget configuration and its analytical data snapshot.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_id (UUID): Target widget ID within the dashboard.\n    current_user (User): Authenticated user requesting export.\n    db (AsyncSession): PostgreSQL async database session.\n    format (str): Export format ('json' or 'csv').\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Response: Streaming file download with appropriate MIME type and Content-Disposition.",
+        "operationId": "export_widget_api_v1_dashboards__dashboard_id__widgets__widget_id__export_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "widget_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Widget Id"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(json|csv)$",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/export/pdf": {
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "Export Dashboard Pdf",
+        "description": "Exports dashboard layout, clinical metadata, and data snapshot formatted as a PDF report.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user requesting export.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    Response: Binary stream formatted as an application/pdf document.",
+        "operationId": "export_dashboard_pdf_api_v1_dashboards__dashboard_id__export_pdf_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/shares": {
+      "post": {
+        "tags": ["dashboards"],
+        "summary": "Share Dashboard",
+        "description": "Shares a dashboard with another user by email. Only the dashboard owner can share.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    share_in (DashboardShareCreate): Email and permission level ('VIEW' or 'EDIT').\n    current_user (User): Authenticated user (must be owner).\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    DashboardShareResponse: Details of created or updated share.",
+        "operationId": "share_dashboard_api_v1_dashboards__dashboard_id__shares_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardShareCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardShareResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["dashboards"],
+        "summary": "List Dashboard Shares",
+        "description": "Lists all active shares on a dashboard. Accessible to owners and collaborators.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    current_user (User): Authenticated user with access.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.\n\nReturns:\n    list[DashboardShareResponse]: List of active shares.",
+        "operationId": "list_dashboard_shares_api_v1_dashboards__dashboard_id__shares_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DashboardShareResponse"
+                  },
+                  "title": "Response List Dashboard Shares Api V1 Dashboards  Dashboard Id  Shares Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboards/{dashboard_id}/shares/{share_id}": {
+      "delete": {
+        "tags": ["dashboards"],
+        "summary": "Delete Dashboard Share",
+        "description": "Revokes a dashboard share. Only the dashboard owner can revoke shares.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    share_id (UUID): Specific share record ID to delete.\n    current_user (User): Authenticated owner.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.",
+        "operationId": "delete_dashboard_share_api_v1_dashboards__dashboard_id__shares__share_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dashboard_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Dashboard Id"
+            }
+          },
+          {
+            "name": "share_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Share Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/dashboards/{dashboard_id}/refresh": {
       "post": {
         "tags": ["execution"],
         "summary": "Refresh Dashboard",
-        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects global_params into SQL queries before execution.",
+        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects `global_params` into SQL queries before execution.\n\nArgs:\n    dashboard_id (UUID): ID of the target dashboard to refresh.\n    current_user (User): Authenticated user requesting the refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Authorization header for token forwarding.\n    accept_language (str | None): Preferred response language header.\n    global_params (dict[str, Any]): Global filter parameters for queries.\n\nReturns:\n    dict[UUID, Any]: Map of widget UUID to execution results.",
         "operationId": "refresh_dashboard_api_v1_dashboards__dashboard_id__refresh_post",
         "security": [
           {
@@ -648,6 +1807,24 @@
             }
           },
           {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -661,6 +1838,22 @@
                 }
               ],
               "title": "Authorization"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
             }
           }
         ],
@@ -709,7 +1902,7 @@
       "post": {
         "tags": ["execution"],
         "summary": "Refresh Widget",
-        "description": "Refreshes data for a SINGLE widget.\nSupports ?force_refresh=true to bypass cache.",
+        "description": "Refreshes data for a SINGLE widget.\nSupports `?force_refresh=true` to bypass cache and optional `global_params` body.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_id (UUID): Target widget ID within the dashboard.\n    current_user (User): Authenticated user requesting refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Optional authorization header for forwarding.\n    accept_language (str | None): Preferred response language header.\n    force_refresh (bool): Whether to bypass query cache.\n    global_params (dict[str, Any] | None): Optional global filter parameters.\n\nReturns:\n    dict[UUID, Any]: Dictionary mapping widget ID to query execution payload.",
         "operationId": "refresh_widget_api_v1_dashboards__dashboard_id__widgets__widget_id__refresh_post",
         "security": [
           {
@@ -748,6 +1941,24 @@
             }
           },
           {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
             "name": "authorization",
             "in": "header",
             "required": false,
@@ -762,8 +1973,42 @@
               ],
               "title": "Authorization"
             }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Global Params"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -797,7 +2042,7 @@
       "get": {
         "tags": ["ai"],
         "summary": "List Available Models",
-        "description": "Returns the list of currently configured LLMs available for the Arena.",
+        "description": "Returns the list of currently configured LLMs available for the Arena.\n\nArgs:\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n    show_all (bool): Whether to bypass admin model visibility filtering.\n\nReturns:\n    list[ModelInfo]: List of configured LLM combatants.",
         "operationId": "list_available_models_api_v1_ai_models_get",
         "security": [
           {
@@ -814,6 +2059,24 @@
               "default": false,
               "title": "Show All"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -848,17 +2111,42 @@
       "post": {
         "tags": ["ai"],
         "summary": "Generate Sql Comparison",
-        "description": "Generates SQL usage the Multi-LLM Arena.\n\nThis endpoint:\n1. Broadcasts the prompt to all configured LLMs.\n2. Persists the results as an Experiment.\n3. Returns a list of candidates so the frontend can display a comparison view.\n\nArgs:\n    request (SQLGenerationRequest): The prompt payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session for logging.\n\nReturns:\n    ExperimentResponse: Object containing experiment ID and list of candidate SQLs.",
+        "description": "Generates SQL using the Multi-LLM Arena.\n\nArgs:\n    request (SQLGenerationRequest): The prompt payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Database session for logging.\n\nReturns:\n    ExperimentResponse: Object containing experiment ID and list of candidate SQLs.",
         "operationId": "generate_sql_comparison_api_v1_ai_generate_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SQLGenerationRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -881,29 +2169,134 @@
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/ai/experiments/{experiment_id}/candidates/{candidate_id}/vote": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Vote Experiment Candidate",
+        "description": "Records a user vote and optional execution telemetry for an Arena `ModelCandidate`.\n\nArgs:\n    experiment_id (UUID): Target experiment UUID.\n    candidate_id (UUID): Winning candidate UUID.\n    payload (FeedbackUpdate): Selection flag and optional execution telemetry.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n\nReturns:\n    ExperimentResponse: Updated experiment state with selected candidate reflected.",
+        "operationId": "vote_experiment_candidate_api_v1_ai_experiments__experiment_id__candidates__candidate_id__vote_post",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "experiment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Experiment Id"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/ai/execute": {
       "post": {
         "tags": ["ai"],
         "summary": "Execute Sql Preview",
-        "description": "Executes SQL (read-only) and returns a small preview result.\nIntended for Arena candidate comparison in the UI.",
+        "description": "Executes SQL (read-only) and returns a small preview result.\nIntended for Arena candidate comparison in the UI.\n\nArgs:\n    request (SQLExecutionRequest): SQL query and optional global filter parameters.\n    current_user (User): Authenticated user session.\n    olap_conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.\n\nReturns:\n    SQLExecutionResponse: Tabular rows, column names, or error details.",
         "operationId": "execute_sql_preview_api_v1_ai_execute_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SQLExecutionRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -926,12 +2319,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/templates/": {
@@ -995,6 +2383,24 @@
               "title": "Limit"
             },
             "description": "Max records to return"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1032,6 +2438,26 @@
         "security": [
           {
             "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1089,6 +2515,24 @@
               "format": "uuid",
               "title": "Template Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1134,6 +2578,24 @@
               "format": "uuid",
               "title": "Template Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1189,6 +2651,24 @@
               "format": "uuid",
               "title": "Template Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1208,21 +2688,121 @@
         }
       }
     },
+    "/api/v1/templates/{template_id}/instantiate": {
+      "post": {
+        "tags": ["templates"],
+        "summary": "Instantiate Template",
+        "description": "Instantiates a widget template on the backend by substituting schema defaults\nand user-supplied parameter values into `sql_template`.\n\nArgs:\n    template_id (UUID): Unique identifier of the template to instantiate.\n    payload (TemplateInstantiateRequest): User-supplied parameter values.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user session.\n\nReturns:\n    TemplateInstantiateResponse: Rendered SQL query, title, and recommended visualization.\n\nRaises:\n    HTTPException: 404 if the template does not exist.",
+        "operationId": "instantiate_template_api_v1_templates__template_id__instantiate_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Template Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateInstantiateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateInstantiateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/simulation/run": {
       "post": {
         "tags": ["simulation"],
         "summary": "Run Simulation",
-        "description": "Executes an optimization scenario.\n\nThis endpoint takes a snapshot of demand (defined by SQL) and applies\nuser-defined capacity and constraints to solve the bed allocation problem.\n\nArgs:\n    request: Configuration containing SQL source and capacity map.\n    current_user: Authenticated user.\n\nReturns:\n    ScenarioResult: The calculated assignments.",
+        "description": "Executes an optimization scenario.\n\nThis endpoint takes a snapshot of demand (defined by SQL) and applies\nuser-defined capacity and constraints to solve the bed allocation problem.\n\nArgs:\n    request (ScenarioRunRequest): Configuration containing SQL source and capacity map.\n    current_user (User): Authenticated user.\n\nReturns:\n    ScenarioResult: The calculated assignments.",
         "operationId": "run_simulation_api_v1_simulation_run_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ScenarioRunRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1245,48 +2825,73 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/schema/": {
       "get": {
         "tags": ["schema"],
         "summary": "Get Database Schema",
-        "description": "Retrieve the current OLAP database schema (Tables and Columns).\n\nThis endpoint introspects the active DuckDB connection.\nIt is synchronous to ensure FastAPI executes it in a threadpool, preventing\nblocking of the main event loop during database I/O.\n\nArgs:\n    current_user: Authenticated user (required for access).\n\nReturns:\n    List[TableInfo]: A structured list of tables and their column definitions.",
+        "description": "Retrieves the current OLAP database schema (Tables and Columns).\n\nThis endpoint introspects the active DuckDB connection in a background worker\nthread via `asyncio.to_thread`, preventing blocking of the main event loop.\n\nArgs:\n    current_user (User): Authenticated user (required for access).\n\nReturns:\n    list[TableInfo]: A structured list of tables and their column definitions.",
         "operationId": "get_database_schema_api_v1_schema__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/TableInfo"
                   },
-                  "type": "array",
                   "title": "Response Get Database Schema Api V1 Schema  Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/conversations/": {
       "get": {
         "tags": ["chat"],
         "summary": "List Conversations",
-        "description": "List recent conversations for the current user.",
+        "description": "Lists recent conversations for the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    limit (int): Maximum number of conversations to return.\n    offset (int): Pagination offset.\n\nReturns:\n    list[Conversation]: Ordered list of conversations.",
         "operationId": "list_conversations_api_v1_conversations__get",
         "security": [
           {
@@ -1313,6 +2918,24 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1345,11 +2968,31 @@
       "post": {
         "tags": ["chat"],
         "summary": "Create Conversation",
-        "description": "Create a new conversation and optionally seed the first message.",
+        "description": "Creates a new conversation and optionally seeds the first message.\n\nArgs:\n    payload (ConversationCreate): Conversation creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Created conversation with messages and candidates.",
         "operationId": "create_conversation_api_v1_conversations__post",
         "security": [
           {
             "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1390,7 +3033,7 @@
       "put": {
         "tags": ["chat"],
         "summary": "Update Conversation",
-        "description": "Update the title for an existing conversation.",
+        "description": "Updates the title for an existing conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (ConversationUpdate): Title update payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Updated conversation model.",
         "operationId": "update_conversation_api_v1_conversations__conversation_id__put",
         "security": [
           {
@@ -1407,6 +3050,24 @@
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1445,7 +3106,7 @@
       "delete": {
         "tags": ["chat"],
         "summary": "Delete Conversation",
-        "description": "Delete a conversation and its messages.",
+        "description": "Deletes a conversation and its messages.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.",
         "operationId": "delete_conversation_api_v1_conversations__conversation_id__delete",
         "security": [
           {
@@ -1462,6 +3123,24 @@
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1485,7 +3164,7 @@
       "get": {
         "tags": ["chat"],
         "summary": "Get Messages",
-        "description": "Return the ordered message history for a conversation.",
+        "description": "Returns the ordered message history for a conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Message]: Ordered messages with candidates.",
         "operationId": "get_messages_api_v1_conversations__conversation_id__messages_get",
         "security": [
           {
@@ -1502,6 +3181,24 @@
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1534,7 +3231,7 @@
       "post": {
         "tags": ["chat"],
         "summary": "Send Message",
-        "description": "Append a user message and generate assistant candidates.",
+        "description": "Appends a user message and generates assistant candidates.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (MessageCreate): User message payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Generated assistant message with candidates.",
         "operationId": "send_message_api_v1_conversations__conversation_id__messages_post",
         "security": [
           {
@@ -1551,6 +3248,24 @@
               "format": "uuid",
               "title": "Conversation Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1591,7 +3306,7 @@
       "post": {
         "tags": ["chat"],
         "summary": "Vote Candidate",
-        "description": "Records a user's vote for a specific generated candidate.\n\nThis selects the chosen candidate by its ID (or matching SQL hash), sets its `is_selected`\nflag to True, and promotes its text and SQL contents to the parent Message object.",
+        "description": "Records a user's vote for a specific generated candidate.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    message_id (UUID): Target assistant message UUID.\n    payload (MessageVoteRequest): Winning candidate UUID payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Updated parent assistant message with selected candidate promoted.",
         "operationId": "vote_candidate_api_v1_conversations__conversation_id__messages__message_id__vote_post",
         "security": [
           {
@@ -1618,6 +3333,24 @@
               "format": "uuid",
               "title": "Message Id"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "requestBody": {
@@ -1654,11 +3387,728 @@
         }
       }
     },
+    "/api/v1/conversations/stream/{conversation_id}": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Stream Conversation Tokens",
+        "description": "Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.\n\nArgs:\n    conversation_id (UUID): The conversation ID context.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user owning the conversation.\n    model_id (str | None): Targeted model ID.\n\nReturns:\n    StreamingResponse: Text/event-stream containing incremental tokens.",
+        "operationId": "stream_conversation_tokens_api_v1_conversations_stream__conversation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "List Conversations",
+        "description": "Lists recent conversations for the current user.\n\nArgs:\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n    limit (int): Maximum number of conversations to return.\n    offset (int): Pagination offset.\n\nReturns:\n    list[Conversation]: Ordered list of conversations.",
+        "operationId": "list_conversations_api_v1_chat__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
+                  },
+                  "title": "Response List Conversations Api V1 Chat  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["chat"],
+        "summary": "Create Conversation",
+        "description": "Creates a new conversation and optionally seeds the first message.\n\nArgs:\n    payload (ConversationCreate): Conversation creation payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Created conversation with messages and candidates.",
+        "operationId": "create_conversation_api_v1_chat__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{conversation_id}": {
+      "put": {
+        "tags": ["chat"],
+        "summary": "Update Conversation",
+        "description": "Updates the title for an existing conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (ConversationUpdate): Title update payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Conversation: Updated conversation model.",
+        "operationId": "update_conversation_api_v1_chat__conversation_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["chat"],
+        "summary": "Delete Conversation",
+        "description": "Deletes a conversation and its messages.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.",
+        "operationId": "delete_conversation_api_v1_chat__conversation_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{conversation_id}/messages": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Get Messages",
+        "description": "Returns the ordered message history for a conversation.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    list[Message]: Ordered messages with candidates.",
+        "operationId": "get_messages_api_v1_chat__conversation_id__messages_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  },
+                  "title": "Response Get Messages Api V1 Chat  Conversation Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["chat"],
+        "summary": "Send Message",
+        "description": "Appends a user message and generates assistant candidates.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    payload (MessageCreate): User message payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Generated assistant message with candidates.",
+        "operationId": "send_message_api_v1_chat__conversation_id__messages_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/{conversation_id}/messages/{message_id}/vote": {
+      "post": {
+        "tags": ["chat"],
+        "summary": "Vote Candidate",
+        "description": "Records a user's vote for a specific generated candidate.\n\nArgs:\n    conversation_id (UUID): Target conversation UUID.\n    message_id (UUID): Target assistant message UUID.\n    payload (MessageVoteRequest): Winning candidate UUID payload.\n    current_user (User): Authenticated user.\n    db (AsyncSession): Active database session.\n\nReturns:\n    Message: Updated parent assistant message with selected candidate promoted.",
+        "operationId": "vote_candidate_api_v1_chat__conversation_id__messages__message_id__vote_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Message Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageVoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chat/stream/{conversation_id}": {
+      "get": {
+        "tags": ["chat"],
+        "summary": "Stream Conversation Tokens",
+        "description": "Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.\n\nArgs:\n    conversation_id (UUID): The conversation ID context.\n    db (AsyncSession): Database session.\n    current_user (User): Authenticated user owning the conversation.\n    model_id (str | None): Targeted model ID.\n\nReturns:\n    StreamingResponse: Text/event-stream containing incremental tokens.",
+        "operationId": "stream_conversation_tokens_api_v1_chat_stream__conversation_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/alerts": {
+      "get": {
+        "tags": ["analytics"],
+        "summary": "Get Capacity Alerts",
+        "description": "Evaluates real-time DuckDB hospital census against configured AlertRules.\n\nArgs:\n    current_user (User): Authenticated user requesting alerts.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    list[BedCapacityAlert]: List of active capacity alerts exceeding configured thresholds.",
+        "operationId": "get_capacity_alerts_api_v1_analytics_alerts_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BedCapacityAlert"
+                  },
+                  "title": "Response Get Capacity Alerts Api V1 Analytics Alerts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/analytics/llm": {
       "get": {
         "tags": ["analytics"],
         "summary": "List Llm Outputs",
-        "description": "Returns a flattened view of chat arena candidates, including:\n- user query (nearest prior user message)\n- LLM candidate output and SQL snippet\n- user selection (is_selected)",
+        "description": "Returns a flattened, database-paginated (`UNION ALL`) view of chat, AI, and MPAX Arena candidates.\n\nArgs:\n    current_user (User): Authenticated user requesting LLM telemetry.\n    db (AsyncSession): Active transactional database session.\n    limit (int): Maximum number of combined rows to return.\n    offset (int): Number of rows to skip before returning results.\n\nReturns:\n    list[LlmOutputAnalyticsRow]: Combined and chronologically sorted LLM candidate telemetry rows.",
         "operationId": "list_llm_outputs_api_v1_analytics_llm_get",
         "security": [
           {
@@ -1685,6 +4135,24 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
           }
         ],
         "responses": {
@@ -1715,12 +4183,491 @@
         }
       }
     },
+    "/api/v1/analytics/alert-rules/": {
+      "get": {
+        "tags": ["alert-rules"],
+        "summary": "List Alert Rules",
+        "description": "Lists all configured hospital capacity alert rules.\n\nArgs:\n    current_user (User): Authenticated requesting user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    list[AlertRule]: List of active and inactive alert rules.",
+        "operationId": "list_alert_rules_api_v1_analytics_alert_rules__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertRuleResponse"
+                  },
+                  "title": "Response List Alert Rules Api V1 Analytics Alert Rules  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["alert-rules"],
+        "summary": "Create Alert Rule",
+        "description": "Creates a new clinical alert rule with configured unit and occupancy threshold.\n\nArgs:\n    request (AlertRuleCreate): Creation payload with category, threshold, and severity.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The newly created and persisted alert rule.",
+        "operationId": "create_alert_rule_api_v1_analytics_alert_rules__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertRuleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/alert-rules": {
+      "get": {
+        "tags": ["alert-rules"],
+        "summary": "List Alert Rules",
+        "description": "Lists all configured hospital capacity alert rules.\n\nArgs:\n    current_user (User): Authenticated requesting user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    list[AlertRule]: List of active and inactive alert rules.",
+        "operationId": "list_alert_rules_api_v1_analytics_alert_rules_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlertRuleResponse"
+                  },
+                  "title": "Response List Alert Rules Api V1 Analytics Alert Rules Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["alert-rules"],
+        "summary": "Create Alert Rule",
+        "description": "Creates a new clinical alert rule with configured unit and occupancy threshold.\n\nArgs:\n    request (AlertRuleCreate): Creation payload with category, threshold, and severity.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The newly created and persisted alert rule.",
+        "operationId": "create_alert_rule_api_v1_analytics_alert_rules_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertRuleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/alert-rules/{rule_id}": {
+      "get": {
+        "tags": ["alert-rules"],
+        "summary": "Get Alert Rule",
+        "description": "Retrieves a single clinical alert rule by its UUID.\n\nArgs:\n    rule_id (UUID): Unique alert rule identifier.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The requested alert rule entity.\n\nRaises:\n    HTTPException: 404 if the rule does not exist.",
+        "operationId": "get_alert_rule_api_v1_analytics_alert_rules__rule_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["alert-rules"],
+        "summary": "Update Alert Rule",
+        "description": "Updates an existing clinical alert rule with partial attribute modifications.\n\nArgs:\n    rule_id (UUID): Unique alert rule identifier.\n    request (AlertRuleUpdate): Attributes to update.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nReturns:\n    AlertRule: The updated alert rule entity.\n\nRaises:\n    HTTPException: 404 if the rule does not exist.",
+        "operationId": "update_alert_rule_api_v1_analytics_alert_rules__rule_id__put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertRuleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertRuleResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["alert-rules"],
+        "summary": "Delete Alert Rule",
+        "description": "Deletes an existing clinical alert rule by UUID.\n\nArgs:\n    rule_id (UUID): Unique alert rule identifier to remove.\n    current_user (User): Authenticated user.\n    db (AsyncSession): PostgreSQL async database session.\n\nRaises:\n    HTTPException: 404 if the rule does not exist.",
+        "operationId": "delete_alert_rule_api_v1_analytics_alert_rules__rule_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Rule Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/settings": {
       "get": {
         "tags": ["admin"],
         "summary": "Read Admin Settings",
         "description": "Get system-wide admin settings like API keys and visible models.",
         "operationId": "read_admin_settings_api_v1_admin_settings_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1731,28 +4678,74 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ]
+        }
       },
       "put": {
         "tags": ["admin"],
         "summary": "Write Admin Settings",
         "description": "Update system-wide admin settings like API keys and visible models.",
         "operationId": "write_admin_settings_api_v1_admin_settings_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AdminSettingsUpdateRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1775,12 +4768,906 @@
               }
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/admin/users/": {
+      "get": {
+        "tags": ["admin-users"],
+        "summary": "List Users",
+        "description": "Lists hospital platform users with optional role filtering and email search.\n\nArgs:\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n    limit (int): Pagination batch size limit (1 - 200). Defaults to 50.\n    offset (int): Pagination record offset. Defaults to 0.\n    role (str | None): Optional clinical role filter. Defaults to None.\n    search (str | None): Optional email search substring. Defaults to None.\n\nReturns:\n    list[User]: Filtered list of registered user profiles.",
+        "operationId": "list_users_api_v1_admin_users__get",
         "security": [
           {
             "OAuth2PasswordBearer": []
           }
-        ]
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  },
+                  "title": "Response List Users Api V1 Admin Users  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": ["admin-users"],
+        "summary": "List Users",
+        "description": "Lists hospital platform users with optional role filtering and email search.\n\nArgs:\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n    limit (int): Pagination batch size limit (1 - 200). Defaults to 50.\n    offset (int): Pagination record offset. Defaults to 0.\n    role (str | None): Optional clinical role filter. Defaults to None.\n    search (str | None): Optional email search substring. Defaults to None.\n\nReturns:\n    list[User]: Filtered list of registered user profiles.",
+        "operationId": "list_users_api_v1_admin_users_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  },
+                  "title": "Response List Users Api V1 Admin Users Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/role": {
+      "put": {
+        "tags": ["admin-users"],
+        "summary": "Update User Role",
+        "description": "Updates the clinical or administrative role assignment for a target user.\n\nArgs:\n    user_id (UUID): Target user identifier.\n    payload (UserRoleUpdate): Desired new clinical role string.\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n\nReturns:\n    User: The updated user profile entity.\n\nRaises:\n    HTTPException: 400 if the role is invalid, 404 if the user is not found.",
+        "operationId": "update_user_role_api_v1_admin_users__user_id__role_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRoleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/{user_id}/status": {
+      "put": {
+        "tags": ["admin-users"],
+        "summary": "Update User Status",
+        "description": "Activates or suspends a hospital user platform account.\n\nPrevents administrators from suspending their own active account.\n\nArgs:\n    user_id (UUID): Target user identifier.\n    payload (UserStatusUpdate): New active flag state.\n    db (AsyncSession): PostgreSQL async database session.\n    current_user (User): Requesting administrator user.\n\nReturns:\n    User: The updated user profile entity.\n\nRaises:\n    HTTPException: 400 if administrator attempts self-suspension, 404 if not found.",
+        "operationId": "update_user_status_api_v1_admin_users__user_id__status_put",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserStatusUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mpax_arena/run": {
+      "post": {
+        "tags": ["mpax_arena"],
+        "summary": "Run Mpax Arena Mode",
+        "description": "Executes an MPAX Arena evaluation mode.\nModes: judge, translator, constraints, sql_vs_mpax, critic.",
+        "operationId": "run_mpax_arena_mode_api_v1_mpax_arena_run_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MpaxArenaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MpaxArenaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/mpax_arena/runs/{run_id}/candidates/{candidate_id}/vote": {
+      "post": {
+        "tags": ["mpax_arena"],
+        "summary": "Vote Mpax Arena Candidate",
+        "description": "Records a winning vote for an LLM candidate in an MPAX Arena run.\n\nArgs:\n    run_id (str): UUID string identifying the MPAX Arena experiment.\n    candidate_id (str): UUID string identifying the candidate voted for.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active transactional database session.\n\nReturns:\n    MpaxArenaResponse: Updated experiment results with is_selected true for winning candidate.\n\nRaises:\n    HTTPException: 404 if run or candidate not found, 500 on server failure.",
+        "operationId": "vote_mpax_arena_candidate_api_v1_mpax_arena_runs__run_id__candidates__candidate_id__vote_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "candidate_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Candidate Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MpaxArenaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/sql": {
+      "get": {
+        "tags": ["benchmarks"],
+        "summary": "Get Sql Benchmarks",
+        "description": "Returns the gold standard text-to-SQL benchmarks.\n\nReturns:\n    list[dict[str, Any]]: Parsed benchmark list from benchmark_gold.json.\n\nRaises:\n    HTTPException: 404 if file missing, 500 if reading or JSON parsing fails.",
+        "operationId": "get_sql_benchmarks_api_v1_benchmarks_sql_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Sql Benchmarks Api V1 Benchmarks Sql Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/mpax": {
+      "get": {
+        "tags": ["benchmarks"],
+        "summary": "Get Mpax Benchmarks",
+        "description": "Returns the generated MPAX what-if scenarios.\n\nReturns:\n    list[dict[str, Any]]: Parsed MPAX benchmark scenario items.\n\nRaises:\n    HTTPException: 404 if file missing, 500 if reading or JSON parsing fails.",
+        "operationId": "get_mpax_benchmarks_api_v1_benchmarks_mpax_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Get Mpax Benchmarks Api V1 Benchmarks Mpax Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/benchmarks/progress": {
+      "post": {
+        "tags": ["benchmarks"],
+        "summary": "Post Benchmark Progress",
+        "description": "Updates the benchmark progress telemetry state (Admin only).\n\nArgs:\n    payload (BenchmarkProgressUpdateRequest): Telemetry progress fields.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    dict[str, Any]: Updated telemetry state snapshot.",
+        "operationId": "post_benchmark_progress_api_v1_benchmarks_progress_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkProgressUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Post Benchmark Progress Api V1 Benchmarks Progress Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["benchmarks"],
+        "summary": "Stream Benchmark Progress",
+        "description": "Server-Sent Events (SSE) endpoint providing real-time telemetry on active benchmark runs.\n\nReturns:\n    StreamingResponse: SSE stream emitting live benchmark progress events.",
+        "operationId": "stream_benchmark_progress_api_v1_benchmarks_progress_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/health": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Check aggregate system health and database readiness",
+        "description": "Queries live health states for PostgreSQL, DuckDB, data ingestion, and LLM configuration.\n\nArgs:\n    strict (bool): Whether to return HTTP 503 on critical errors.\n\nReturns:\n    SystemHealthResponse: Consolidated system health model.\n\nRaises:\n    HTTPException: If strict is True and overall_status is critical.",
+        "operationId": "get_system_health_api_v1_system_health_get",
+        "parameters": [
+          {
+            "name": "strict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "If true, returns HTTP 503 when critical components (PostgreSQL/DuckDB) are failing.",
+              "default": false,
+              "title": "Strict"
+            },
+            "description": "If true, returns HTTP 503 when critical components (PostgreSQL/DuckDB) are failing."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemHealthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/diagnostics": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Detailed system diagnostics and troubleshooting guides",
+        "description": "Provides in-depth diagnostics, environment checks, and actionable troubleshooting guides.\nRequires an authenticated user session.\n\nArgs:\n    current_user (User): The authenticated user making the request.\n\nReturns:\n    SystemDiagnosticsResponse: Detailed diagnostic summary with copyable fix commands.",
+        "operationId": "get_system_diagnostics_api_v1_system_diagnostics_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemDiagnosticsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/reingest": {
+      "post": {
+        "tags": ["system"],
+        "summary": "Trigger manual CSV re-ingestion into DuckDB",
+        "description": "Forces reload of all CSV datasets from the data folder into DuckDB tables.\nRequires administrative privileges.\n\nArgs:\n    current_user (User): The authenticated administrative user.\n\nReturns:\n    ReingestResponse: ReingestResponse with updated table row counts.",
+        "operationId": "trigger_reingest_api_v1_system_reingest_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReingestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/": {
@@ -1828,7 +5715,8 @@
         },
         "type": "object",
         "required": ["api_keys", "visible_models"],
-        "title": "AdminSettingsResponse"
+        "title": "AdminSettingsResponse",
+        "description": "Response schema containing the currently configured admin settings."
       },
       "AdminSettingsUpdateRequest": {
         "properties": {
@@ -1849,7 +5737,239 @@
         },
         "type": "object",
         "required": ["api_keys", "visible_models"],
-        "title": "AdminSettingsUpdateRequest"
+        "title": "AdminSettingsUpdateRequest",
+        "description": "Request schema for updating admin settings."
+      },
+      "AlertRuleCreate": {
+        "properties": {
+          "unit_category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Category",
+            "description": "Unit or department category"
+          },
+          "threshold_percentage": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Threshold Percentage",
+            "description": "Trigger occupancy percentage"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity",
+            "description": "Alert severity level",
+            "default": "WARNING"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Active status flag",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": ["unit_category", "threshold_percentage"],
+        "title": "AlertRuleCreate",
+        "description": "Payload for creating a new clinical alert rule."
+      },
+      "AlertRuleResponse": {
+        "properties": {
+          "unit_category": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Unit Category",
+            "description": "Unit or department category"
+          },
+          "threshold_percentage": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Threshold Percentage",
+            "description": "Trigger occupancy percentage"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity",
+            "description": "Alert severity level",
+            "default": "WARNING"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "description": "Active status flag",
+            "default": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit_category",
+          "threshold_percentage",
+          "id",
+          "created_at"
+        ],
+        "title": "AlertRuleResponse",
+        "description": "Response model representing a persisted clinical alert rule.\n\nAttributes:\n    id (UUID): Unique rule identifier.\n    created_at (datetime): Rule registration timestamp."
+      },
+      "AlertRuleUpdate": {
+        "properties": {
+          "unit_category": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Category"
+          },
+          "threshold_percentage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold Percentage"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertSeverity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "title": "AlertRuleUpdate",
+        "description": "Payload for updating an existing clinical alert rule with partial attributes.\n\nAttributes:\n    unit_category (str | None): Updated unit or department category.\n    threshold_percentage (float | None): Updated trigger percentage.\n    severity (AlertSeverity | None): Updated severity classification.\n    is_active (bool | None): Updated active evaluation flag."
+      },
+      "AlertSeverity": {
+        "type": "string",
+        "enum": ["INFO", "WARNING", "CRITICAL"],
+        "title": "AlertSeverity",
+        "description": "Severity classification for bed occupancy alerts."
+      },
+      "BedCapacityAlert": {
+        "properties": {
+          "unit_category": {
+            "type": "string",
+            "title": "Unit Category"
+          },
+          "current_census": {
+            "type": "integer",
+            "title": "Current Census"
+          },
+          "max_capacity": {
+            "type": "integer",
+            "title": "Max Capacity"
+          },
+          "occupancy_percentage": {
+            "type": "number",
+            "title": "Occupancy Percentage"
+          },
+          "threshold_percentage": {
+            "type": "number",
+            "title": "Threshold Percentage"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["INFO", "WARNING", "CRITICAL"],
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unit_category",
+          "current_census",
+          "max_capacity",
+          "occupancy_percentage",
+          "threshold_percentage",
+          "severity",
+          "message",
+          "timestamp"
+        ],
+        "title": "BedCapacityAlert",
+        "description": "Real-time capacity alert triggered when unit occupancy exceeds safe thresholds."
+      },
+      "BenchmarkProgressUpdateRequest": {
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "completed": {
+            "type": "integer",
+            "title": "Completed"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "current_model": {
+            "type": "string",
+            "title": "Current Model"
+          },
+          "current_status": {
+            "type": "string",
+            "title": "Current Status"
+          },
+          "eta_seconds": {
+            "type": "integer",
+            "title": "Eta Seconds",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "active",
+          "completed",
+          "total",
+          "current_model",
+          "current_status"
+        ],
+        "title": "BenchmarkProgressUpdateRequest",
+        "description": "Request payload for updating active benchmark execution progress telemetry."
       },
       "Body_login_access_token_api_v1_auth_login_post": {
         "properties": {
@@ -1947,6 +6067,21 @@
             ],
             "title": "Message",
             "description": "Initial message to kickstart the chat."
+          },
+          "target_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Models",
+            "description": "Optional list of model IDs to query."
           }
         },
         "type": "object",
@@ -2081,6 +6216,11 @@
             "format": "uuid",
             "title": "Owner Id"
           },
+          "permission_level": {
+            "type": "string",
+            "title": "Permission Level",
+            "default": "OWNER"
+          },
           "widgets": {
             "items": {
               "$ref": "#/components/schemas/WidgetResponse"
@@ -2093,7 +6233,179 @@
         "type": "object",
         "required": ["name", "id", "owner_id"],
         "title": "DashboardResponse",
-        "description": "API Response model for a Dashboard.\nIncludes the nested list of Widgets."
+        "description": "API Response model for a Dashboard.\nIncludes the nested list of Widgets and permission level."
+      },
+      "DashboardShareCreate": {
+        "properties": {
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "permission_level": {
+            "type": "string",
+            "title": "Permission Level",
+            "default": "VIEW"
+          }
+        },
+        "type": "object",
+        "required": ["user_email"],
+        "title": "DashboardShareCreate",
+        "description": "Payload for sharing a dashboard with another user by email."
+      },
+      "DashboardShareResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "dashboard_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Dashboard Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "user_email": {
+            "type": "string",
+            "title": "User Email"
+          },
+          "permission_level": {
+            "type": "string",
+            "title": "Permission Level"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "dashboard_id",
+          "user_id",
+          "user_email",
+          "permission_level"
+        ],
+        "title": "DashboardShareResponse",
+        "description": "API Response model for an active dashboard share."
+      },
+      "DataHealthSchema": {
+        "properties": {
+          "has_default_data": {
+            "type": "boolean",
+            "title": "Has Default Data",
+            "description": "True if default hospital_data.csv was found."
+          },
+          "fallback_generated": {
+            "type": "boolean",
+            "title": "Fallback Generated",
+            "description": "True if synthetic fallback sample data was generated."
+          },
+          "missing_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Files",
+            "description": "List of expected files not found."
+          },
+          "row_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Row Counts",
+            "description": "Row count per ingested dataset."
+          }
+        },
+        "type": "object",
+        "required": ["has_default_data", "fallback_generated"],
+        "title": "DataHealthSchema",
+        "description": "Schema for clinical dataset health and availability."
+      },
+      "DiagnosticWarningSchema": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "Unique code identifying the warning category."
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable warning message."
+          },
+          "severity": {
+            "type": "string",
+            "title": "Severity",
+            "description": "Severity classification (e.g., info, warning, critical)."
+          },
+          "remediation": {
+            "type": "string",
+            "title": "Remediation",
+            "description": "Recommended troubleshooting action."
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO timestamp when warning was recorded."
+          }
+        },
+        "type": "object",
+        "required": ["code", "message", "severity", "remediation", "timestamp"],
+        "title": "DiagnosticWarningSchema",
+        "description": "Schema for diagnostic warning items."
+      },
+      "DuckDbHealthSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Storage and query engine status (e.g. ready, error)."
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "Database file path."
+          },
+          "tables": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Tables",
+            "description": "Map of table names to row counts."
+          },
+          "total_tables": {
+            "type": "integer",
+            "title": "Total Tables",
+            "description": "Total number of registered analytics tables.",
+            "default": 0
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if storage validation failed."
+          }
+        },
+        "type": "object",
+        "required": ["status"],
+        "title": "DuckDbHealthSchema",
+        "description": "Schema for DuckDB analytics engine status."
       },
       "ExperimentResponse": {
         "properties": {
@@ -2141,6 +6453,52 @@
         "required": ["prompt_text", "id", "user_id", "created_at"],
         "title": "ExperimentResponse",
         "description": "Return schema containing the UUID and list of anonymous candidates."
+      },
+      "FeedbackUpdate": {
+        "properties": {
+          "is_selected": {
+            "type": "boolean",
+            "title": "Is Selected",
+            "default": true
+          },
+          "execution_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Success"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "title": "FeedbackUpdate",
+        "description": "Payload for the frontend to report a user's choice and optional execution telemetry."
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "type": "object",
+        "required": ["email"],
+        "title": "ForgotPasswordRequest",
+        "description": "Payload requesting a time-bound password reset token."
       },
       "HTTPValidationError": {
         "properties": {
@@ -2263,11 +6621,37 @@
         "title": "HttpConfig",
         "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (Dict[str, str]): Custom request headers.\n    params (Dict[str, str]): URL Query parameters.\n    body (Optional[Any]): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (Optional[str]): key path for X-Axis/Labels.\n    yKey (Optional[str]): key path for Y-Axis/Values."
       },
+      "LlmHealthSchema": {
+        "properties": {
+          "providers_count": {
+            "type": "integer",
+            "title": "Providers Count",
+            "description": "Number of configured LLM providers."
+          },
+          "mock_mode": {
+            "type": "boolean",
+            "title": "Mock Mode",
+            "description": "True if running in mock/fallback AI mode."
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "List of active model display names."
+          }
+        },
+        "type": "object",
+        "required": ["providers_count", "mock_mode"],
+        "title": "LlmHealthSchema",
+        "description": "Schema for LLM swarm configuration and readiness."
+      },
       "LlmOutputAnalyticsRow": {
         "properties": {
           "source": {
             "type": "string",
-            "enum": ["chat", "ai"],
+            "enum": ["chat", "ai", "mpax_arena"],
             "title": "Source"
           },
           "candidate_id": {
@@ -2388,7 +6772,7 @@
           "created_at"
         ],
         "title": "LlmOutputAnalyticsRow",
-        "description": "Flattened analytics row for LLM candidate outputs."
+        "description": "Flattened analytics row representing a single LLM candidate response."
       },
       "MessageCandidateResponse": {
         "properties": {
@@ -2572,6 +6956,28 @@
           "is_selected": {
             "type": "boolean",
             "title": "Is Selected"
+          },
+          "execution_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Execution Success"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
           }
         },
         "type": "object",
@@ -2608,6 +7014,264 @@
         "required": ["id", "name", "provider", "is_local"],
         "title": "ModelInfo",
         "description": "Information about a configured LLM in the Arena."
+      },
+      "MpaxArenaCandidate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "is_selected": {
+            "type": "boolean",
+            "title": "Is Selected",
+            "default": false
+          },
+          "mpax_result": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpax Result"
+          },
+          "mpax_score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mpax Score"
+          },
+          "sql_snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sql Snippet"
+          }
+        },
+        "type": "object",
+        "required": ["id", "model_name", "content"],
+        "title": "MpaxArenaCandidate",
+        "description": "Individual LLM candidate result in an MPAX Arena experiment."
+      },
+      "MpaxArenaRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "demand_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demand Sql",
+            "default": "SELECT department as Service, department as Unit, COUNT(*) as Count FROM hospital_data GROUP BY department;"
+          },
+          "base_capacity": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Capacity"
+          }
+        },
+        "type": "object",
+        "required": ["prompt", "mode"],
+        "title": "MpaxArenaRequest",
+        "description": "Request payload for executing an MPAX vs LLM comparison."
+      },
+      "MpaxArenaResponse": {
+        "properties": {
+          "experiment_id": {
+            "type": "string",
+            "title": "Experiment Id"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "ground_truth_mpax": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ground Truth Mpax"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/MpaxArenaCandidate"
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "type": "object",
+        "required": ["experiment_id", "mode", "candidates"],
+        "title": "MpaxArenaResponse",
+        "description": "Response returned after executing an MPAX Arena scenario."
+      },
+      "PasswordResetResponse": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "reset_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reset Token"
+          }
+        },
+        "type": "object",
+        "required": ["message"],
+        "title": "PasswordResetResponse",
+        "description": "Status confirmation after password reset or email dispatch."
+      },
+      "PostgresHealthSchema": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Connection status (e.g. connected, error, unknown)."
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms",
+            "description": "Response latency in milliseconds."
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details",
+            "description": "Diagnostic details or host information."
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Error message if connection failed."
+          }
+        },
+        "type": "object",
+        "required": ["status"],
+        "title": "PostgresHealthSchema",
+        "description": "Schema for PostgreSQL status."
+      },
+      "RefreshTokenRequest": {
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "title": "Refresh Token"
+          }
+        },
+        "type": "object",
+        "required": ["refresh_token"],
+        "title": "RefreshTokenRequest",
+        "description": "Payload requesting rotation of an active refresh token."
+      },
+      "ReingestResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "True if re-ingestion completed without fatal errors."
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Status message describing the result."
+          },
+          "tables": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Tables",
+            "description": "Updated table row counts."
+          }
+        },
+        "type": "object",
+        "required": ["success", "message"],
+        "title": "ReingestResponse",
+        "description": "Schema for dataset re-ingestion operation result."
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "new_password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": ["token", "new_password"],
+        "title": "ResetPasswordRequest",
+        "description": "Payload supplying reset token and the replacement password."
       },
       "SQLExecutionRequest": {
         "properties": {
@@ -2898,6 +7562,86 @@
         "title": "SqlConfig",
         "description": "Configuration schema for SQL-type widgets.\nEnforces the presence of a SQL query string.\n\nAttributes:\n    query (str): The raw SQL query to execute.\n    xKey (Optional[str]): Column name to mapping for X-Axis/Labels.\n    yKey (Optional[str]): Column name to mapping for Y-Axis/Values."
       },
+      "SystemDiagnosticsResponse": {
+        "properties": {
+          "health": {
+            "$ref": "#/components/schemas/SystemHealthResponse",
+            "description": "Current system health summary."
+          },
+          "environment_checks": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Environment Checks",
+            "description": "Environment variables and runtime parameters."
+          },
+          "troubleshooting_guides": {
+            "items": {
+              "$ref": "#/components/schemas/TroubleshootingStep"
+            },
+            "type": "array",
+            "title": "Troubleshooting Guides",
+            "description": "Curated troubleshooting steps."
+          }
+        },
+        "type": "object",
+        "required": ["health", "environment_checks"],
+        "title": "SystemDiagnosticsResponse",
+        "description": "Schema for comprehensive system diagnostics and troubleshooting guides."
+      },
+      "SystemHealthResponse": {
+        "properties": {
+          "overall_status": {
+            "type": "string",
+            "title": "Overall Status",
+            "description": "Overall health status: healthy, degraded, or critical."
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "description": "ISO timestamp of health assessment."
+          },
+          "postgres": {
+            "$ref": "#/components/schemas/PostgresHealthSchema",
+            "description": "Relational database health."
+          },
+          "duckdb": {
+            "$ref": "#/components/schemas/DuckDbHealthSchema",
+            "description": "OLAP analytics database health."
+          },
+          "data": {
+            "$ref": "#/components/schemas/DataHealthSchema",
+            "description": "Data readiness and ingestion health."
+          },
+          "templates": {
+            "$ref": "#/components/schemas/TemplateHealthSchema",
+            "description": "Template registry health."
+          },
+          "llm": {
+            "$ref": "#/components/schemas/LlmHealthSchema",
+            "description": "LLM provider configuration health."
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticWarningSchema"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "description": "Active diagnostic warnings."
+          }
+        },
+        "type": "object",
+        "required": [
+          "overall_status",
+          "timestamp",
+          "postgres",
+          "duckdb",
+          "data",
+          "templates",
+          "llm"
+        ],
+        "title": "SystemHealthResponse",
+        "description": "Schema for aggregated system health response."
+      },
       "TableInfo": {
         "properties": {
           "table_name": {
@@ -2957,6 +7701,67 @@
         "required": ["title", "sql_template", "category"],
         "title": "TemplateCreate",
         "description": "Payload for creating a new template.\nInherits validation from TemplateBase."
+      },
+      "TemplateHealthSchema": {
+        "properties": {
+          "templates_loaded": {
+            "type": "integer",
+            "title": "Templates Loaded",
+            "description": "Number of widget templates seeded into database."
+          },
+          "has_templates": {
+            "type": "boolean",
+            "title": "Has Templates",
+            "description": "True if one or more templates are available."
+          },
+          "missing_file": {
+            "type": "boolean",
+            "title": "Missing File",
+            "description": "True if initial_templates.json was missing."
+          }
+        },
+        "type": "object",
+        "required": ["templates_loaded", "has_templates", "missing_file"],
+        "title": "TemplateHealthSchema",
+        "description": "Schema for template seeder pack health."
+      },
+      "TemplateInstantiateRequest": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Parameters",
+            "description": "Runtime parameter values keyed by placeholder name."
+          }
+        },
+        "type": "object",
+        "title": "TemplateInstantiateRequest",
+        "description": "Request payload for instantiating a SQL template with user-supplied parameters.\n\nAttributes:\n    parameters (dict[str, Any]): Runtime parameter key-value overrides to inject."
+      },
+      "TemplateInstantiateResponse": {
+        "properties": {
+          "template_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Template Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "visualization": {
+            "type": "string",
+            "title": "Visualization"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          }
+        },
+        "type": "object",
+        "required": ["template_id", "title", "visualization", "query"],
+        "title": "TemplateInstantiateResponse",
+        "description": "Response payload returned after interpolating a SQL template on the backend.\n\nAttributes:\n    template_id (UUID): Identifier of the source template.\n    title (str): Default title of the template.\n    visualization (str): Recommended visualization type (`metric`, `bar_chart`, `pie`, `table`).\n    query (str): Interpolated, SQL-injection-safe DuckDB query string."
       },
       "TemplateResponse": {
         "properties": {
@@ -3117,13 +7922,60 @@
           },
           "token_type": {
             "type": "string",
-            "title": "Token Type"
+            "title": "Token Type",
+            "default": "bearer"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In",
+            "default": 3600
           }
         },
         "type": "object",
-        "required": ["access_token", "token_type"],
+        "required": ["access_token"],
         "title": "Token",
-        "description": "OAuth2 access token response payload."
+        "description": "OAuth2 access and refresh token response payload."
+      },
+      "TroubleshootingStep": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Step title or action description."
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command",
+            "description": "Copyable terminal command."
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Contextual explanation for why this step resolves the issue."
+          }
+        },
+        "type": "object",
+        "required": ["title", "description"],
+        "title": "TroubleshootingStep",
+        "description": "Schema for a copyable troubleshooting remediation step."
       },
       "UserCreate": {
         "properties": {
@@ -3134,7 +7986,14 @@
           },
           "password": {
             "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
             "title": "Password"
+          },
+          "language_preference": {
+            "type": "string",
+            "title": "Language Preference",
+            "default": "en"
           }
         },
         "type": "object",
@@ -3161,12 +8020,51 @@
           "is_admin": {
             "type": "boolean",
             "title": "Is Admin"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "DATA_ANALYST"
+          },
+          "language_preference": {
+            "type": "string",
+            "title": "Language Preference"
           }
         },
         "type": "object",
-        "required": ["id", "email", "is_active", "is_admin"],
+        "required": [
+          "id",
+          "email",
+          "is_active",
+          "is_admin",
+          "language_preference"
+        ],
         "title": "UserResponse",
         "description": "Public representation of a user returned by the API."
+      },
+      "UserRoleUpdate": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": ["role"],
+        "title": "UserRoleUpdate",
+        "description": "Payload for updating a user's clinical role."
+      },
+      "UserStatusUpdate": {
+        "properties": {
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": ["is_active"],
+        "title": "UserStatusUpdate",
+        "description": "Payload for modifying user active account status."
       },
       "ValidationError": {
         "properties": {

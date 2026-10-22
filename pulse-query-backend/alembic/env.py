@@ -1,67 +1,24 @@
 """Alembic migration environment configuration."""
 
 import asyncio
-import os
 from logging.config import fileConfig
-from typing import Any
 
 from sqlalchemy import pool
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-from sqlalchemy.ext.compiler import compiles
 
 from alembic import context
-
-# 1. Import Config and Base
 from app.core.config import settings
-from app.database.postgres import Base
-
-# 2. Import Models required for Metadata detection
-# This is crucial for 'autogenerate' AND for identifying tables in migration scripts
+from app.database.postgres import Base, register_sqlite_type_compilers
 
 config = context.config
 
 if config.config_file_name is not None:
   fileConfig(config.config_file_name)
 
-# 3. Connect Base Metadata
 target_metadata = Base.metadata
+register_sqlite_type_compilers()
 
-if os.environ.get("USE_SQLITE_ALEMBIC") == "1":
-
-  @compiles(JSONB, "sqlite")
-  def _compile_jsonb_sqlite(type_: Any, compiler: Any, **kw: Any) -> str:
-    """
-    Compiles PostgreSQL JSONB columns to SQLite JSON type.
-
-    Args:
-        type_: SQLAlchemy column type instance.
-        compiler: SQLite type compiler instance.
-        kw: Additional compiler keyword arguments.
-
-    Returns:
-        str: SQLite column type string.
-    """
-    return "JSON"
-
-  @compiles(UUID, "sqlite")
-  def _compile_uuid_sqlite(type_: Any, compiler: Any, **kw: Any) -> str:
-    """
-    Compiles PostgreSQL UUID columns to SQLite TEXT type.
-
-    Args:
-        type_: SQLAlchemy column type instance.
-        compiler: SQLite type compiler instance.
-        kw: Additional compiler keyword arguments.
-
-    Returns:
-        str: SQLite column type string.
-    """
-    return "TEXT"
-
-
-# Overwrite URL from settings
 config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI)
 
 
@@ -84,7 +41,7 @@ def do_run_migrations(connection: Connection) -> None:
   Configures the Alembic context with an active connection and executes migrations.
 
   Args:
-      connection: Active SQLAlchemy database connection.
+      connection (Connection): Active SQLAlchemy database connection.
   """
   context.configure(connection=connection, target_metadata=target_metadata)
 
@@ -93,7 +50,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-  """In this scenario we need to create an Engine and associate a connection with the context."""
+  """Creates an async SQLAlchemy engine and executes online Alembic migrations."""
   connectable = async_engine_from_config(
     config.get_section(config.config_ini_section, {}),
     prefix="sqlalchemy.",

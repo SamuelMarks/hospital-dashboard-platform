@@ -129,6 +129,7 @@ async def test_feedback_selection_update(db_session: AsyncSession, seed_user: Us
   query = select(ModelCandidate).where(ModelCandidate.id == candidate.id)
   result = await db_session.execute(query)
   target = result.scalars().first()
+  assert target is not None
 
   assert target.is_selected is False  # default
 
@@ -139,6 +140,7 @@ async def test_feedback_selection_update(db_session: AsyncSession, seed_user: Us
   # 3. Verify Persistence
   result_final = await db_session.execute(query)
   target_final = result_final.scalars().first()
+  assert target_final is not None
   assert target_final.is_selected is True
   assert target_final.execution_success is True
 

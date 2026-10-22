@@ -24,13 +24,13 @@ export const routes: Routes = [
     path: 'login',
     canActivate: [guestGuard],
     loadComponent: () => import('./login/login.component').then((m) => m.LoginComponent),
-    title: 'Login - Pulse Query',
+    title: $localize`:@@routeTitleLogin:Login - Pulse Query`,
   },
   {
     path: 'register',
     canActivate: [guestGuard, registrationGuard],
     loadComponent: () => import('./register/register.component').then((m) => m.RegisterComponent),
-    title: 'Register - Pulse Query',
+    title: $localize`:@@routeTitleRegister:Register - Pulse Query`,
   },
 
   // --- Protected Routes ---
@@ -38,27 +38,27 @@ export const routes: Routes = [
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./home/home.component').then((m) => m.HomeComponent),
-    title: 'Home - Pulse Query',
+    title: $localize`:@@routeTitleHome:Home - Pulse Query`,
   },
   {
     path: 'admin',
     canActivate: [authGuard, adminGuard],
     loadComponent: () => import('./admin/admin.component').then((m) => m.AdminComponent),
-    title: 'Admin - Pulse Query',
+    title: $localize`:@@routeTitleAdmin:Admin - Pulse Query`,
   },
   {
     path: 'admin/users',
     canActivate: [authGuard, adminGuard],
     loadComponent: () =>
       import('./admin/users/user-management.component').then((m) => m.UserManagementComponent),
-    title: 'User Management - Pulse Query',
+    title: $localize`:@@routeTitleUserManagement:User Management - Pulse Query`,
   },
   {
     path: 'dashboard/:id',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./dashboard/dashboard-layout.component').then((m) => m.DashboardLayoutComponent),
-    title: 'Dashboard - Pulse Query',
+    title: $localize`:@@routeTitleDashboard:Dashboard - Pulse Query`,
   },
 
   // --- Ad-Hoc Chat Interface ---
@@ -66,7 +66,7 @@ export const routes: Routes = [
     path: 'chat',
     canActivate: [authGuard],
     loadComponent: () => import('./chat/chat-layout.component').then((m) => m.ChatLayoutComponent),
-    title: 'Ad-Hoc Analysis - Pulse Query',
+    title: $localize`:@@routeTitleChat:Ad-Hoc Analysis - Pulse Query`,
   },
 
   // --- LLM Analytics ---
@@ -75,14 +75,14 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./analytics/analytics.component').then((m) => m.AnalyticsComponent),
-    title: 'Analytics - Pulse Query',
+    title: $localize`:@@routeTitleAnalytics:Analytics - Pulse Query`,
   },
   {
     path: 'analytics/alert-rules',
     canActivate: [authGuard],
     loadComponent: () =>
       import('./analytics/alert-rules/alert-rules.component').then((m) => m.AlertRulesComponent),
-    title: 'Alert Rules - Pulse Query',
+    title: $localize`:@@routeTitleAlertRules:Alert Rules - Pulse Query`,
   },
 
   {
@@ -90,7 +90,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./mpax-arena/mpax-arena.component').then((m) => m.MpaxArenaComponent),
-    title: 'MPAX Arena - Pulse Query',
+    title: $localize`:@@routeTitleMpaxArena:MPAX Arena - Pulse Query`,
   },
 
   // --- Benchmarks ---
@@ -99,7 +99,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () =>
       import('./benchmarks/benchmarks.component').then((m) => m.BenchmarksComponent),
-    title: 'Benchmarks - Pulse Query',
+    title: $localize`:@@routeTitleBenchmarks:Benchmarks - Pulse Query`,
   },
 
   // --- Feature Modules (Lazy Loaded) ---
@@ -107,7 +107,7 @@ export const routes: Routes = [
     path: 'simulation',
     canActivate: [authGuard],
     loadChildren: () => import('./simulation/simulation.routes').then((m) => m.simulationRoutes),
-    title: 'Simulation - Pulse Query',
+    title: $localize`:@@routeTitleSimulation:Simulation - Pulse Query`,
   },
 
   // --- Fallback ---

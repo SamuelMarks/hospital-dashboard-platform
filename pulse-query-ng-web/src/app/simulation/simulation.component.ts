@@ -3,8 +3,8 @@
  * unit capacities, hard flow constraints, and clinical affinity overrides.
  */
 
-import { Component, inject, OnInit } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
@@ -16,6 +16,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { SimulationStore } from './simulation.store';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 
 /**
@@ -24,7 +25,6 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 @Component({
   selector: 'app-simulation',
   imports: [
-    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -88,6 +88,8 @@ export class SimulationComponent implements OnInit {
 
   /** Current activated route used to inspect initial `sql` query parameters. */
   private readonly route = inject(ActivatedRoute);
+  /** DestroyRef for cleaning up route query parameter subscriptions. */
+  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Extracts the string value from a DOM `input` or `textarea` event target.
@@ -96,14 +98,14 @@ export class SimulationComponent implements OnInit {
    * @returns String value of the input element.
    */
   getEventValue(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+    return extractEventInputValue(event);
   }
 
   /**
    * Initializes demand SQL from the URL `sql` query parameter if provided.
    */
   ngOnInit(): void {
-    this.route.queryParams.subscribe((params) => {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const sqlParam: unknown = params['sql'];
       if (typeof sqlParam === 'string' && sqlParam) {
         this.store.setDemandSql(sqlParam);

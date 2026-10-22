@@ -175,12 +175,12 @@ class BenchmarkRunner:
     mock_db = MagicMock()
     db_store: list[Any] = []
 
-    def mock_add(obj: Any) -> None:
+    def mock_add(obj: object) -> None:
       """
       Appends an ORM object to the in-memory mock session store.
 
       Args:
-          obj (Any): ORM instance to store.
+          obj (object): ORM instance to store.
       """
       db_store.append(obj)
 
@@ -199,17 +199,17 @@ class BenchmarkRunner:
     mock_db.flush = AsyncMock(side_effect=mock_flush)
     mock_db.commit = AsyncMock(side_effect=mock_flush)
 
-    async def mock_refresh(instance: Any) -> None:
+    async def mock_refresh(instance: ExperimentLog | ModelCandidate) -> None:
       """
       Populates `id`, `created_at`, and `candidates` relationship on `instance`.
 
       Args:
-          instance (Any): ORM model instance being refreshed.
+          instance (ExperimentLog | ModelCandidate): ORM model instance being refreshed.
       """
       if not instance.id:
         instance.id = uuid.uuid4()
       if not getattr(instance, "created_at", None):
-        instance.created_at = datetime.now(UTC)
+        setattr(instance, "created_at", datetime.now(UTC))
 
       if isinstance(instance, ExperimentLog):
         instance.candidates = [

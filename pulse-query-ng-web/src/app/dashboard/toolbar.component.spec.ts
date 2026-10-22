@@ -351,4 +351,13 @@ describe('ToolbarComponent', () => {
       }),
     );
   });
+
+  it('should compute refreshAriaLabel and format getColorAriaLabel', () => {
+    mockStore.isLoading.set(false);
+    expect(component.refreshAriaLabel()).toBe('Refresh Dashboard');
+    mockStore.isLoading.set(true);
+    expect(component.refreshAriaLabel()).toBe('Refreshing Data');
+    expect(component.getColorAriaLabel('#1565c0')).toBe('Set theme color to Ocean Blue');
+    expect(component.getColorAriaLabel('#123456')).toBe('Set theme color to #123456');
+  });
 });

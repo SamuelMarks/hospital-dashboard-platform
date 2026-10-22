@@ -6,7 +6,7 @@
 
 import { safeStorage } from '../../../core/storage.utils';
 
-import { Injectable, inject, PLATFORM_ID, signal, computed, Signal } from '@angular/core';
+import { Service, inject, PLATFORM_ID, signal, computed, Signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 /** Storage key for onboarding completion flag. */
@@ -37,43 +37,38 @@ export interface OnboardingStep {
 export const ONBOARDING_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
   {
     id: 'welcome',
-    title: 'Welcome to Pulse Query',
-    description:
-      'Your hospital analytics platform for real-time operational insights, capacity planning, and AI-assisted data exploration.',
+    title: $localize`Welcome to Pulse Query`,
+    description: $localize`Your hospital analytics platform for real-time operational insights, capacity planning, and AI-assisted data exploration.`,
     icon: 'local_hospital',
   },
   {
     id: 'dashboards',
-    title: 'Dynamic Dashboards',
-    description:
-      'Build responsive dashboards with drag-and-drop widgets. Each widget can display SQL query results, charts, metrics, or external data.',
+    title: $localize`Dynamic Dashboards`,
+    description: $localize`Build responsive dashboards with drag-and-drop widgets. Each widget can display SQL query results, charts, metrics, or external data.`,
     icon: 'dashboard',
-    actionLabel: 'Create Dashboard',
+    actionLabel: $localize`Create Dashboard`,
     actionRoute: '/',
   },
   {
     id: 'ai-assistant',
-    title: 'AI Assistant',
-    description:
-      'Ask questions in plain English and let the AI generate SQL queries for you. Compare multiple model outputs and select the best one.',
+    title: $localize`AI Assistant`,
+    description: $localize`Ask questions in plain English and let the AI generate SQL queries for you. Compare multiple model outputs and select the best one.`,
     icon: 'smart_toy',
-    actionLabel: 'Try Ask AI',
+    actionLabel: $localize`Try Ask AI`,
     actionRoute: '/chat',
   },
   {
     id: 'simulation',
-    title: 'Simulation & Optimization',
-    description:
-      'Run what-if scenarios to optimize bed allocation, staffing levels, and resource distribution using mathematical solvers.',
+    title: $localize`Simulation & Optimization`,
+    description: $localize`Run what-if scenarios to optimize bed allocation, staffing levels, and resource distribution using mathematical solvers.`,
     icon: 'science',
-    actionLabel: 'Open Simulation',
+    actionLabel: $localize`Open Simulation`,
     actionRoute: '/simulation',
   },
   {
     id: 'shortcuts',
-    title: 'Keyboard Shortcuts',
-    description:
-      'Power users can navigate quickly with keyboard shortcuts. Press ? at any time to see all available shortcuts.',
+    title: $localize`Keyboard Shortcuts`,
+    description: $localize`Power users can navigate quickly with keyboard shortcuts. Press ? at any time to see all available shortcuts.`,
     icon: 'keyboard',
   },
 ];
@@ -86,9 +81,7 @@ export const ONBOARDING_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
  * - Tracks which steps have been completed
  * - Persists completion state across sessions
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class OnboardingService {
   /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
 

@@ -5,6 +5,7 @@ Verifies the SQL logic for identifying hours of day where admissions significant
 outpace discharges for specific clinical services.
 """
 
+from collections.abc import Generator
 import json
 import os
 from typing import Any
@@ -27,17 +28,17 @@ def bottleneck_template() -> dict[str, Any]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data = json.load(f)
+    data: list[dict[str, Any]] = json.load(f)
 
   # Find the specific template by title
   template = next((t for t in data if t["title"] == "Bottleneck Analysis"), None)
   if not template:
     pytest.fail("Bottleneck Analysis template not found in initial_templates.json")
-  return template
+  return dict(template)
 
 
 @pytest.fixture
-def db_conn() -> duckdb.DuckDBPyConnection:
+def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   """
   Creates an in-memory DuckDB instance seeded with specific flow patterns
   to test bottleneck logic.
@@ -48,12 +49,12 @@ def db_conn() -> duckdb.DuckDBPyConnection:
   create_hospital_macros(conn)
 
   # Schema
-  conn.execute(""" 
-        CREATE TABLE synthetic_hospital_data ( 
-            Clinical_Service VARCHAR, 
-            Admit_DT TIMESTAMP, 
+  conn.execute("""
+        CREATE TABLE synthetic_hospital_data (
+            Clinical_Service VARCHAR,
+            Admit_DT TIMESTAMP,
             Discharge_DT TIMESTAMP
-        ) 
+        )
     """)
 
   # --- Seeding Strategy ---

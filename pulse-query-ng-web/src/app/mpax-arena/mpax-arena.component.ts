@@ -5,8 +5,6 @@
 
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { JsonPipe } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MpaxArenaService, MpaxArenaResponse } from '../api-client';
+import { extractApiErrorMessage } from '../core/error.utils';
 import { finalize } from 'rxjs/operators';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
@@ -29,7 +28,6 @@ import { ActivatedRoute } from '@angular/router';
   selector: 'app-mpax-arena',
   imports: [
     JsonPipe,
-    ReactiveFormsModule,
     MatCardModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -62,7 +60,7 @@ export class MpaxArenaComponent implements OnInit {
 
   /** Active clinical scenario prompt submitted to the competition. */
   readonly prompt = signal<string>(
-    'We have 15 incoming Cardiac patients and 10 MedSurg beds, 2 ICU beds. Where should they go to minimize overflow?',
+    $localize`We have 15 incoming Cardiac patients and 10 MedSurg beds, 2 ICU beds. Where should they go to minimize overflow?`,
   );
 
   /** Selected evaluation mode for the arena execution. */
@@ -113,7 +111,7 @@ export class MpaxArenaComponent implements OnInit {
       .subscribe({
         next: (updated: MpaxArenaResponse) => this.result.set(updated),
         error: (err: unknown) => {
-          this.error.set(this.extractError(err, 'Voting failed'));
+          this.error.set(extractApiErrorMessage(err, $localize`Voting failed`));
         },
       });
   }
@@ -135,31 +133,8 @@ export class MpaxArenaComponent implements OnInit {
       .subscribe({
         next: (res: MpaxArenaResponse) => this.result.set(res),
         error: (err: unknown) => {
-          this.error.set(this.extractError(err, 'Arena failed'));
+          this.error.set(extractApiErrorMessage(err, $localize`Arena failed`));
         },
       });
-  }
-
-  /**
-   * Extracts clean error diagnostics from an HTTP or runtime exception.
-   *
-   * @param err Unknown caught exception object.
-   * @param fallback Default text message to present if error details cannot be parsed.
-   * @returns Formatted error string for display.
-   */
-  private extractError(err: unknown, fallback: string): string {
-    if (err && typeof err === 'object') {
-      const httpErr = err as HttpErrorResponse;
-      if (httpErr.error && typeof httpErr.error === 'object' && 'detail' in httpErr.error) {
-        return String((httpErr.error as Record<string, unknown>)['detail']);
-      }
-      if ('message' in err && typeof (err as { message: unknown }).message === 'string') {
-        const msg = (err as { message: string }).message;
-        if (msg.trim().length > 0) {
-          return msg;
-        }
-      }
-    }
-    return fallback;
   }
 }

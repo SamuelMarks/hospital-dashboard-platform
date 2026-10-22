@@ -1,12 +1,12 @@
 """
-Security utilities for password hashing and JWT creation.
+Security utilities for password hashing, token hashing, and JWT creation.
 
 Centralizes auth-related helpers used by API routers and dependencies.
 """
 
-import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+import hashlib
+import uuid
 
 from jose import jwt
 from passlib.context import CryptContext
@@ -18,22 +18,52 @@ pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-  """Verifies a plain password against the stored hash."""
+  """
+  Verifies a plain password against the stored hash.
+
+  Args:
+      plain_password (str): Plaintext candidate password.
+      hashed_password (str): Stored password hash.
+
+  Returns:
+      bool: True if the password matches the hash, False otherwise.
+  """
   return bool(pwd_context.verify(plain_password, hashed_password))
 
 
 def get_password_hash(password: str) -> str:
-  """Hashes a password for storage."""
+  """
+  Hashes a password for storage using Argon2/bcrypt.
+
+  Args:
+      password (str): Plaintext password string.
+
+  Returns:
+      str: Cryptographic password hash string.
+  """
   return str(pwd_context.hash(password))
 
 
-def create_access_token(subject: str | Any, expires_delta: timedelta | None = None) -> str:
+def hash_token_jti(jti: str) -> str:
+  """
+  Computes a deterministic SHA-256 hex digest of a JWT `jti` claim for persistent storage.
+
+  Args:
+      jti (str): Raw JWT identifier (`jti` claim).
+
+  Returns:
+      str: 64-character lowercase hexadecimal SHA-256 hash.
+  """
+  return hashlib.sha256(jti.encode("utf-8")).hexdigest()
+
+
+def create_access_token(subject: str | uuid.UUID, expires_delta: timedelta | None = None) -> str:
   """
   Creates a JWT access token.
   'sub' is a standard claim for the subject (usually user ID or email).
 
   Args:
-      subject (str | Any): Target subject identifier.
+      subject (str | uuid.UUID): Target subject identifier.
       expires_delta (timedelta | None): Custom expiration duration.
 
   Returns:
@@ -48,12 +78,12 @@ def create_access_token(subject: str | Any, expires_delta: timedelta | None = No
   return str(jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM))
 
 
-def create_refresh_token(subject: str | Any, expires_delta: timedelta | None = None) -> str:
+def create_refresh_token(subject: str | uuid.UUID, expires_delta: timedelta | None = None) -> str:
   """
   Creates a JWT refresh token with extended validity for session rotation.
 
   Args:
-      subject (str | Any): Target subject identifier (user ID).
+      subject (str | uuid.UUID): Target subject identifier (user ID).
       expires_delta (timedelta | None): Custom expiration duration. Defaults to 7 days.
 
   Returns:

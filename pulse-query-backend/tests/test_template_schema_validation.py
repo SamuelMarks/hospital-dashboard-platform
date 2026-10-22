@@ -43,7 +43,7 @@ def test_template_default_schema() -> None:
 def test_template_required_fields_validation() -> None:
   """Test that missing core fields raises Error."""
   with pytest.raises(ValidationError) as exc:
-    TemplateBase(title="No SQL", category="Error")
+    TemplateBase.model_validate({"title": "No SQL", "category": "Error"})
 
   assert "sql_template" in str(exc.value)
 

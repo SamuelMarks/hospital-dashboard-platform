@@ -4,7 +4,7 @@
  */
 
 import { UpperCasePipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
@@ -12,7 +12,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   ConnectionStatusService,
@@ -36,221 +36,7 @@ import {
     MatProgressSpinnerModule,
     MatTooltipModule,
   ],
-  template: `
-    <div class="dialog-header">
-      <div class="header-title">
-        <mat-icon i18n color="primary">health_and_safety</mat-icon>
-        <h2 i18n mat-dialog-title>System Health &amp; Diagnostics</h2>
-      </div>
-      <button
-        i18n-aria-label
-        mat-icon-button
-        mat-dialog-close
-        aria-label="Close diagnostics dialog"
-      >
-        <mat-icon i18n>close</mat-icon>
-      </button>
-    </div>
-
-    <mat-dialog-content class="dialog-content">
-      <!-- Status Summary Banner -->
-      <div
-        class="status-banner"
-        [class.banner-healthy]="status() === 'healthy'"
-        [class.banner-degraded]="status() === 'degraded'"
-        [class.banner-critical]="status() === 'critical' || status() === 'unreachable'"
-      >
-        <mat-icon>{{
-          status() === 'healthy' ? 'check_circle' : status() === 'degraded' ? 'warning' : 'error'
-        }}</mat-icon>
-        <div class="banner-text" i18n>
-          <strong>Overall State: {{ status() | uppercase }}</strong>
-          <span>{{ getStatusDescription() }}</span>
-        </div>
-        <button mat-stroked-button color="primary" (click)="refresh()" [disabled]="isRefreshing()">
-          @if (!isRefreshing()) {
-            <mat-icon i18n>refresh</mat-icon>
-          } @else {
-            <mat-spinner diameter="16"></mat-spinner>
-          }
-          <span i18n>Test Now</span>
-        </button>
-      </div>
-
-      <!-- Component Cards Grid -->
-      <div class="cards-grid">
-        <!-- PostgreSQL Card -->
-        <mat-card class="subsystem-card" appearance="outlined">
-          <mat-card-header>
-            <mat-icon
-              mat-card-avatar
-              [class.color-success]="pgStatus() === 'connected'"
-              [class.color-error]="pgStatus() !== 'connected'"
-            >
-              {{ pgStatus() === 'connected' ? 'dns' : 'portable_wifi_off' }}
-            </mat-icon>
-            <mat-card-title i18n>PostgreSQL</mat-card-title>
-            <mat-card-subtitle i18n>{{
-              pgStatus() === 'connected' ? 'Connected' : 'Unavailable'
-            }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            @if (health()?.postgres?.latency_ms !== null) {
-              <p i18n>
-                Latency: <strong>{{ health()?.postgres?.latency_ms }} ms</strong>
-              </p>
-            }
-            @if (health()?.postgres?.error) {
-              <p class="error-msg" i18n>
-                {{ health()?.postgres?.error }}
-              </p>
-            }
-          </mat-card-content>
-        </mat-card>
-
-        <!-- DuckDB Analytics Card -->
-        <mat-card class="subsystem-card" appearance="outlined">
-          <mat-card-header>
-            <mat-icon
-              i18n
-              mat-card-avatar
-              [class.color-success]="duckStatus() === 'ready'"
-              [class.color-error]="duckStatus() !== 'ready'"
-            >
-              storage
-            </mat-icon>
-            <mat-card-title i18n>DuckDB OLAP</mat-card-title>
-            <mat-card-subtitle i18n>{{
-              duckStatus() === 'ready' ? 'Ready' : 'Error'
-            }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <p i18n>
-              Tables:
-              <strong>{{ health()?.duckdb?.total_tables || 0 }}</strong>
-            </p>
-            @if (health()?.duckdb?.error) {
-              <p class="error-msg" i18n>
-                {{ health()?.duckdb?.error }}
-              </p>
-            }
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Clinical Datasets Card -->
-        <mat-card class="subsystem-card" appearance="outlined">
-          <mat-card-header>
-            <mat-icon
-              i18n
-              mat-card-avatar
-              [class.color-success]="hasDefaultData()"
-              [class.color-warning]="!hasDefaultData()"
-            >
-              folder_shared
-            </mat-icon>
-            <mat-card-title i18n>Clinical Data</mat-card-title>
-            <mat-card-subtitle i18n>{{
-              hasDefaultData() ? 'Default CSV Loaded' : 'Fallback Dataset'
-            }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            @if (health()?.data?.fallback_generated) {
-              <p class="warning-msg" i18n>
-                Default hospital_data.csv missing; sample data generated.
-              </p>
-            }
-            <button mat-button color="accent" (click)="reingestData()" [disabled]="isReingesting()">
-              <mat-icon i18n>sync</mat-icon>
-              <span i18n>{{ isReingesting() ? 'Ingesting...' : 'Reload CSVs' }}</span>
-            </button>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- LLM Swarm Card -->
-        <mat-card class="subsystem-card" appearance="outlined">
-          <mat-card-header>
-            <mat-icon
-              i18n
-              mat-card-avatar
-              [class.color-success]="!isMockLlm()"
-              [class.color-info]="isMockLlm()"
-            >
-              psychology
-            </mat-icon>
-            <mat-card-title i18n>AI / Text-to-SQL</mat-card-title>
-            <mat-card-subtitle i18n>{{
-              isMockLlm() ? 'Mock AI Mode' : 'Cloud LLM Ready'
-            }}</mat-card-subtitle>
-          </mat-card-header>
-          <mat-card-content>
-            <p i18n>
-              Providers:
-              <strong>{{ health()?.llm?.providers_count || 0 }}</strong>
-            </p>
-            @if (isMockLlm()) {
-              <p class="info-msg" i18n>Using deterministic fallback generator.</p>
-            }
-          </mat-card-content>
-        </mat-card>
-      </div>
-
-      <!-- Active Warnings List -->
-      @if (warnings().length > 0) {
-        <div class="section">
-          <h3 i18n>Active System Warnings</h3>
-          <div class="warning-list">
-            @for (w of warnings(); track w.code + w.message) {
-              <div class="warning-item">
-                <mat-icon i18n class="color-warning">warning</mat-icon>
-                <div class="warning-details" i18n>
-                  <strong>{{ w.code }}:</strong> {{ w.message }}
-                  @if (w.remediation) {
-                    <div class="remediation"><em>Action:</em> {{ w.remediation }}</div>
-                  }
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      }
-
-      <mat-divider></mat-divider>
-
-      <!-- Troubleshooting Guides -->
-      <div class="section">
-        <h3 i18n>Quick Remediation Commands</h3>
-        <div class="guide-list">
-          @for (step of troubleshootingGuides(); track step.title) {
-            <div class="guide-item">
-              <div class="guide-header">
-                <strong i18n>{{ step.title }}</strong>
-                @if (step.command) {
-                  <button
-                    mat-icon-button
-                    (click)="copyCommand(step.command)"
-                    i18n-matTooltip
-                    matTooltip="Copy command to clipboard"
-                    i18n-aria-label
-                    aria-label="Copy command"
-                  >
-                    <mat-icon i18n>content_copy</mat-icon>
-                  </button>
-                }
-              </div>
-              <p class="guide-desc" i18n>{{ step.description }}</p>
-              @if (step.command) {
-                <code class="command-box">{{ step.command }}</code>
-              }
-            </div>
-          }
-        </div>
-      </div>
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button i18n mat-flat-button color="primary" mat-dialog-close>Close</button>
-    </mat-dialog-actions>
-  `,
+  templateUrl: './system-diagnostics-dialog.component.html',
   styles: [
     `
       .dialog-header {
@@ -280,19 +66,19 @@ import {
         border: 1px solid transparent;
       }
       .banner-healthy {
-        background: rgba(46, 125, 50, 0.1);
-        border-color: #2e7d32;
-        color: #1b5e20;
+        background: color-mix(in srgb, var(--sys-success, #2e7d32) 15%, var(--sys-surface));
+        border-color: var(--sys-success, #2e7d32);
+        color: var(--sys-on-surface);
       }
       .banner-degraded {
-        background: rgba(237, 108, 2, 0.1);
-        border-color: #ed6c02;
-        color: #e65100;
+        background: color-mix(in srgb, var(--sys-warn, #ed6c02) 15%, var(--sys-surface));
+        border-color: var(--sys-warn, #ed6c02);
+        color: var(--sys-on-surface);
       }
       .banner-critical {
-        background: rgba(211, 47, 47, 0.1);
-        border-color: #d32f2f;
-        color: #c62828;
+        background: var(--sys-error-container);
+        border-color: var(--sys-error);
+        color: var(--sys-on-error-container);
       }
       .banner-text {
         flex: 1;
@@ -308,27 +94,27 @@ import {
         padding: 0.5rem;
       }
       .color-success {
-        color: #2e7d32;
+        color: var(--sys-success, #2e7d32);
       }
       .color-warning {
-        color: #ed6c02;
+        color: var(--sys-warn, #ed6c02);
       }
       .color-error {
-        color: #d32f2f;
+        color: var(--sys-error);
       }
       .color-info {
-        color: #0288d1;
+        color: var(--sys-primary);
       }
       .error-msg {
-        color: #d32f2f;
+        color: var(--sys-error);
         font-size: 0.8rem;
       }
       .warning-msg {
-        color: #ed6c02;
+        color: var(--sys-warn, #ed6c02);
         font-size: 0.8rem;
       }
       .info-msg {
-        color: #555;
+        color: var(--sys-text-secondary);
         font-size: 0.8rem;
       }
       .section {
@@ -348,17 +134,18 @@ import {
         display: flex;
         align-items: flex-start;
         gap: 0.5rem;
-        background: #fff8e1;
+        background: var(--sys-surface-variant);
+        color: var(--sys-on-surface);
         padding: 0.5rem 0.75rem;
         border-radius: 4px;
-        border-left: 4px solid #ffb300;
+        border-left: 4px solid var(--sys-warn, #ffb300);
       }
       .warning-details {
         font-size: 0.85rem;
       }
       .remediation {
         margin-top: 0.25rem;
-        color: #555;
+        color: var(--sys-text-secondary);
       }
       .guide-list {
         display: flex;
@@ -366,7 +153,8 @@ import {
         gap: 0.75rem;
       }
       .guide-item {
-        background: #f5f5f5;
+        background: var(--sys-surface-variant);
+        color: var(--sys-on-surface);
         padding: 0.75rem;
         border-radius: 6px;
       }
@@ -377,7 +165,7 @@ import {
       }
       .guide-desc {
         font-size: 0.85rem;
-        color: #666;
+        color: var(--sys-text-secondary);
         margin: 0.25rem 0;
       }
       .command-box {
@@ -441,7 +229,7 @@ export class SystemDiagnosticsDialogComponent implements OnInit {
     this.connectionService.checkHealth().subscribe(() => {
       this.isRefreshing.set(false);
       this.fetchDiagnostics();
-      this.snackBar.open('Health status refreshed.', 'Dismiss', {
+      this.snackBar.open($localize`Health status refreshed.`, $localize`Dismiss`, {
         duration: 2500,
       });
     });
@@ -455,13 +243,17 @@ export class SystemDiagnosticsDialogComponent implements OnInit {
     this.connectionService.triggerReingest().subscribe({
       next: (res) => {
         this.isReingesting.set(false);
-        this.snackBar.open(res.message || 'Dataset re-ingestion completed.', 'OK', {
-          duration: 3000,
-        });
+        this.snackBar.open(
+          res.message || $localize`Dataset re-ingestion completed.`,
+          $localize`OK`,
+          {
+            duration: 3000,
+          },
+        );
       },
       error: () => {
         this.isReingesting.set(false);
-        this.snackBar.open('Dataset re-ingestion failed.', 'Dismiss', {
+        this.snackBar.open($localize`Dataset re-ingestion failed.`, $localize`Dismiss`, {
           duration: 3000,
         });
       },
@@ -476,7 +268,7 @@ export class SystemDiagnosticsDialogComponent implements OnInit {
   copyCommand(command: string): void {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(command).then(() => {
-        this.snackBar.open('Command copied to clipboard!', undefined, {
+        this.snackBar.open($localize`Command copied to clipboard!`, undefined, {
           duration: 2000,
         });
       });
@@ -484,51 +276,43 @@ export class SystemDiagnosticsDialogComponent implements OnInit {
   }
 
   /**
-   * Returns PostgreSQL status string.
-   *
-   * @returns Connection status string.
+   * Computed signal returning PostgreSQL status string.
    */
-  pgStatus(): string {
+  readonly pgStatus = computed((): string => {
     return this.health()?.postgres?.status || 'unknown';
-  }
+  });
 
   /**
-   * Returns DuckDB status string.
-   *
-   * @returns Storage status string.
+   * Computed signal returning DuckDB status string.
    */
-  duckStatus(): string {
+  readonly duckStatus = computed((): string => {
     return this.health()?.duckdb?.status || 'unknown';
-  }
+  });
 
   /**
-   * Returns true if default hospital clinical data is available.
-   *
-   * @returns Boolean indicating default dataset presence.
+   * Computed signal returning true if default hospital clinical data is available.
    */
-  hasDefaultData(): boolean {
+  readonly hasDefaultData = computed((): boolean => {
     return this.health()?.data?.has_default_data ?? true;
-  }
+  });
 
   /**
-   * Returns true if LLM operates in mock/fallback mode.
-   *
-   * @returns Boolean indicating mock LLM status.
+   * Computed signal returning true if LLM operates in mock/fallback mode.
    */
-  isMockLlm(): boolean {
+  readonly isMockLlm = computed((): boolean => {
     return this.health()?.llm?.mock_mode ?? true;
-  }
+  });
 
   /**
-   * Returns human-readable description for current overall status.
-   *
-   * @returns Description text.
+   * Computed signal returning human-readable description for current overall status.
    */
-  getStatusDescription(): string {
+  readonly getStatusDescription = computed((): string => {
     const s = this.status();
-    if (s === 'healthy') return 'All services and databases operational.';
-    if (s === 'degraded') return 'Some non-fatal warnings or missing default datasets detected.';
-    if (s === 'unreachable') return 'Pulse Query backend is not responding to network requests.';
-    return 'Critical database or configuration failure detected.';
-  }
+    if (s === 'healthy') return $localize`All services and databases operational.`;
+    if (s === 'degraded')
+      return $localize`Some non-fatal warnings or missing default datasets detected.`;
+    if (s === 'unreachable')
+      return $localize`Pulse Query backend is not responding to network requests.`;
+    return $localize`Critical database or configuration failure detected.`;
+  });
 }

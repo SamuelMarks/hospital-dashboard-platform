@@ -163,18 +163,29 @@ test.describe("Dashboard Management & Layout", () => {
     // Playwright has known flakiness with Angular CDK DragDrop grids.
     // We bypass the synthetic mouse events to directly invoke the component's drop logic
     // to verify the state update and backend persistence.
+    const reorderPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes("/reorder") && res.request().method() === "POST",
+    );
     await page.evaluate(() => {
+      interface WindowWithNg extends Window {
+        ng?: {
+          getComponent: (element: Element) => {
+            store: { updateWidgetOrder: (prev: number, curr: number) => void };
+          } | null;
+        };
+      }
       const el = document.querySelector("app-dashboard-layout");
-      if (el) {
-        // @ts-ignore
-        const component = window.ng.getComponent(el);
+      const win = window as WindowWithNg;
+      if (el && win.ng) {
+        const component = win.ng.getComponent(el);
         if (component) {
           component.store.updateWidgetOrder(0, 1);
         }
       }
     });
 
-    await page.waitForTimeout(1000); // Wait for API response
+    await reorderPromise;
 
     // Save changes
     await page.locator('[data-testid="toggle-edit-mode"]').click();

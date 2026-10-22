@@ -13,11 +13,11 @@ import { environment } from '../../../environments/environment';
  * 1. Checks `environment.registrationEnabled`.
  * 2. If false, redirects to the Login page.
  *
- * @param {import('@angular/router').ActivatedRouteSnapshot} route - The activated route snapshot.
- * @param {import('@angular/router').RouterStateSnapshot} state - The router state snapshot.
+ * @param {import('@angular/router').ActivatedRouteSnapshot} _route - The activated route snapshot.
+ * @param {import('@angular/router').RouterStateSnapshot} _state - The router state snapshot.
  * @returns {boolean | UrlTree} true if allowed, or a UrlTree redirecting to login.
  */
-export const registrationGuard: CanActivateFn = (route, state): boolean | UrlTree => {
+export const registrationGuard: CanActivateFn = (_route, _state): boolean | UrlTree => {
   const router = inject(Router);
 
   if (environment.registrationEnabled) {

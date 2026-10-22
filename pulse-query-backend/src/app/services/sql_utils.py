@@ -1,8 +1,9 @@
 """
-SQL normalization and hashing helpers.
+SQL normalization, parameter interpolation, global filter injection, and hashing helpers.
 
 Provides a stable fingerprint for generated SQL so we can identify
-identical queries across different LLMs for analytics and UI grouping.
+identical queries across different LLMs for analytics and UI grouping,
+as well as SQL-injection-safe placeholder substitution.
 """
 
 import hashlib
@@ -12,6 +13,85 @@ from typing import Any
 import sqlglot
 
 _DEF_DIALECT = "duckdb"
+
+
+def sanitize_string_literal(value: object) -> str:
+  """
+  Sanitizes a string literal for safe SQL query injection by escaping single quotes.
+
+  Args:
+      value (object): The raw input value.
+
+  Returns:
+      str: Escaped string safe for SQL interpolation.
+  """
+  if value is None:
+    return ""
+  return str(value).replace("'", "''")
+
+
+def sanitize_date_literal(value: object, fallback: str = "") -> str:
+  """
+  Validates and sanitizes a date or timestamp input against ISO formatting.
+
+  Args:
+      value (object): The raw date input value.
+      fallback (str): The default value to return if validation fails.
+
+  Returns:
+      str: Sanitized date literal string.
+  """
+  if not value:
+    return fallback
+  str_val = str(value).strip()
+  if re.match(r"^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}:\d{2})?$", str_val):
+    return str_val.replace("'", "''")
+  return fallback
+
+
+def process_global_filters(sql: str, global_params: dict[str, Any] | None = None) -> str:
+  """
+  Injects global dashboard filter values into SQL placeholders safely.
+  Allows a single query to be reused across different departments/dates.
+
+  Args:
+      sql (str): The SQL template containing `{{global_*}}` handlebars.
+      global_params (dict[str, Any] | None): User selection (e.g., `{"dept": "Cardiology"}`).
+
+  Returns:
+      str: The executable SQL with values injected.
+  """
+  params = global_params or {}
+  processed_sql = sql
+  service_raw = params.get("dept")
+
+  if "{{global_service}}" in processed_sql:
+    if service_raw:
+      safe_service = sanitize_string_literal(service_raw)
+      injection = f"AND Clinical_Service = '{safe_service}'"
+    else:
+      injection = ""
+    processed_sql = processed_sql.replace("{{global_service}}", injection)
+
+  start_date_raw = params.get("start_date")
+  end_date_raw = params.get("end_date")
+
+  safe_start = sanitize_date_literal(start_date_raw, "")
+  safe_end = sanitize_date_literal(end_date_raw, "")
+
+  if "{{global_date_range}}" in processed_sql:
+    injection = f"AND Midnight_Census_DateTime BETWEEN '{safe_start}' AND '{safe_end}'" if safe_start and safe_end else ""
+    processed_sql = processed_sql.replace("{{global_date_range}}", injection)
+
+  if "{{global_start_date}}" in processed_sql:
+    val = sanitize_date_literal(start_date_raw, "2023-01-01")
+    processed_sql = processed_sql.replace("{{global_start_date}}", val)
+
+  if "{{global_end_date}}" in processed_sql:
+    val = sanitize_date_literal(end_date_raw, "2023-12-31")
+    processed_sql = processed_sql.replace("{{global_end_date}}", val)
+
+  return processed_sql
 
 
 def extract_sql_from_markdown(text: str) -> str:
@@ -86,11 +166,12 @@ def _skip_line_comment(sql: str, start_idx: int) -> tuple[str, int]:
   Returns:
       tuple[str, int]: Replacement whitespace/newline token and next index.
   """
+  nl = chr(10)
   n = len(sql)
   i = start_idx + 2
-  while i < n and sql[i] != "\n":
+  while i < n and sql[i] != nl:
     i += 1
-  token = "\n" if i < n and sql[i] == "\n" else " "
+  token = nl if i < n and sql[i] == nl else " "
   return token, i + 1
 
 
@@ -170,8 +251,12 @@ def normalize_sql(sql: str, dialect: str = _DEF_DIALECT) -> str:
   """
   Normalize SQL into a canonical string for comparison.
 
-  Tries to parse and re-emit SQL via sqlglot. Falls back to
-  whitespace normalization if parsing fails.
+  Args:
+      sql (str): Raw SQL query string.
+      dialect (str): Target SQL dialect for parsing/formatting.
+
+  Returns:
+      str: Normalized canonical SQL string.
   """
   cleaned = (sql or "").strip().rstrip(";")
   cleaned = _strip_sql_comments(cleaned)
@@ -182,13 +267,19 @@ def normalize_sql(sql: str, dialect: str = _DEF_DIALECT) -> str:
     parsed = sqlglot.parse_one(cleaned, read=dialect)
     return str(parsed.sql(dialect=dialect, pretty=False))
   except Exception:
-    # Fallback: collapse whitespace and lowercase for rough equivalence.
     return re.sub(r"\s+", " ", cleaned).strip().lower()
 
 
 def sql_fingerprint(sql: str, dialect: str = _DEF_DIALECT) -> str | None:
   """
-  Return a stable hash for the normalized SQL.
+  Return a stable SHA-256 hash for the normalized SQL.
+
+  Args:
+      sql (str): Raw SQL query string.
+      dialect (str): Target SQL dialect for normalization.
+
+  Returns:
+      str | None: Hex SHA-256 digest, or None if the normalized query is empty.
   """
   normalized = normalize_sql(sql, dialect=dialect)
   if not normalized:

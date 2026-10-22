@@ -20,6 +20,7 @@ import {
 import { provideHttpClient, withInterceptors, withFetch } from '@angular/common/http';
 import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { MatPaginatorIntl } from '@angular/material/paginator';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
@@ -58,6 +59,33 @@ export function apiConfigFactory(): Configuration {
     // Credentials (e.g. cookies) can be enabled here if switching away from Bearer tokens
     withCredentials: false,
   });
+}
+
+/**
+ * Factory function to create a localized `MatPaginatorIntl` instance using `$localize`.
+ *
+ * @returns Localized `MatPaginatorIntl` instance for Material data tables.
+ */
+export function createLocalizedPaginatorIntl(): MatPaginatorIntl {
+  const intl = new MatPaginatorIntl();
+  intl.itemsPerPageLabel = $localize`Items per page:`;
+  intl.nextPageLabel = $localize`Next page`;
+  intl.previousPageLabel = $localize`Previous page`;
+  intl.firstPageLabel = $localize`First page`;
+  intl.lastPageLabel = $localize`Last page`;
+  intl.getRangeLabel = (page: number, pageSize: number, length: number): string => {
+    if (length === 0 || pageSize === 0) {
+      return $localize`0 of ${length}`;
+    }
+    const normalizedLength = Math.max(length, 0);
+    const startIndex = page * pageSize;
+    const endIndex =
+      startIndex < normalizedLength
+        ? Math.min(startIndex + pageSize, normalizedLength)
+        : startIndex + pageSize;
+    return $localize`${startIndex + 1} – ${endIndex} of ${normalizedLength}`;
+  };
+  return intl;
 }
 
 /**
@@ -119,6 +147,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: Configuration,
       useFactory: apiConfigFactory,
+    },
+    // 3. Localized Material Paginator labels
+    {
+      provide: MatPaginatorIntl,
+      useFactory: createLocalizedPaginatorIntl,
     },
   ],
 };

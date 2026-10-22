@@ -250,7 +250,7 @@ describe('SqlBuilderComponent', () => {
   it('should no-op initEditor without host', () => {
     const priv = component as unknown as SqlBuilderPrivate;
     const prev = priv.editorView;
-    priv.editorHost = null;
+    vi.spyOn(component, 'editorHost').mockReturnValue(undefined);
     priv.initEditor();
     expect(priv.editorView).toBe(prev);
   });
@@ -258,7 +258,7 @@ describe('SqlBuilderComponent', () => {
   it('should initialize editor when host is available', () => {
     const host = document.createElement('div');
     const priv = component as unknown as SqlBuilderPrivate;
-    priv.editorHost = { nativeElement: host };
+    vi.spyOn(component, 'editorHost').mockReturnValue({ nativeElement: host });
     const createSpy = vi.spyOn(EditorState, 'create');
     priv.initEditor();
     expect(priv.editorView).toBeTruthy();

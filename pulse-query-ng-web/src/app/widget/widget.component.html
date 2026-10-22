@@ -3,34 +3,34 @@
   <!-- Header -->
   <div class="widget-header-row">
     <div class="title-area">
-      <span i18n class="title-text" [title]="widgetInput().title">
+      <span class="title-text" [title]="widgetInput().title">
         {{ widgetInput().title }}
       </span>
       <!-- Use Standard Chip with minimal styling -->
       <mat-chip-set>
-        <mat-chip i18n class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
+        <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
       </mat-chip-set>
     </div>
 
     <div class="action-group">
       <!-- Focus / Fullscreen -->
       <button
-        i18n
         mat-icon-button
-        i18n-aria-label
-        aria-label="action"
+        [attr.aria-label]="focusLabel()"
+        [attr.aria-pressed]="isFocused()"
         class="icon-btn-compact"
         (click)="toggleFocus()"
-        [matTooltip]="isFocused() ? 'Minimize' : 'Full Screen'"
+        [matTooltip]="focusLabel()"
         style="color: var(--sys-secondary)"
       >
-        <mat-icon>{{ isFocused() ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
+        <mat-icon aria-hidden="true">{{
+          isFocused() ? 'close_fullscreen' : 'open_in_full'
+        }}</mat-icon>
       </button>
 
       <!-- Simulate Action -->
       @if (widgetInput().type === 'SQL') {
         <button
-          i18n
           mat-icon-button
           i18n-aria-label
           aria-label="Simulate Scenario"
@@ -40,13 +40,12 @@
           matTooltip="Simulate Scenario"
           style="color: var(--sys-secondary)"
         >
-          <mat-icon>science</mat-icon>
+          <mat-icon aria-hidden="true">science</mat-icon>
         </button>
       }
 
       <!-- Export Widget Data Action -->
       <button
-        i18n
         mat-icon-button
         i18n-aria-label
         aria-label="Export Data"
@@ -57,13 +56,12 @@
         data-testid="btn-export-widget"
         style="color: var(--sys-secondary)"
       >
-        <mat-icon>download</mat-icon>
+        <mat-icon aria-hidden="true">download</mat-icon>
       </button>
 
       <!-- Edit Mode Actions -->
       @if (isEditMode()) {
         <button
-          i18n
           mat-icon-button
           i18n-aria-label
           aria-label="Duplicate"
@@ -74,10 +72,9 @@
           data-testid="btn-duplicate"
           style="color: var(--sys-secondary)"
         >
-          <mat-icon>content_copy</mat-icon>
+          <mat-icon aria-hidden="true">content_copy</mat-icon>
         </button>
         <button
-          i18n
           mat-icon-button
           i18n-aria-label
           aria-label="Edit"
@@ -88,10 +85,9 @@
           data-testid="btn-edit"
           style="color: var(--sys-secondary)"
         >
-          <mat-icon>edit</mat-icon>
+          <mat-icon aria-hidden="true">edit</mat-icon>
         </button>
         <button
-          i18n
           mat-icon-button
           i18n-aria-label
           aria-label="Delete"
@@ -102,14 +98,13 @@
           data-testid="btn-delete"
           style="color: var(--sys-error)"
         >
-          <mat-icon>delete</mat-icon>
+          <mat-icon aria-hidden="true">delete</mat-icon>
         </button>
       }
 
       <!-- Refresh Button -->
       @if (widgetInput().type !== 'TEXT') {
         <button
-          i18n
           mat-icon-button
           i18n-aria-label
           aria-label="Refresh"
@@ -120,7 +115,7 @@
           matTooltip="Refresh"
           style="color: var(--sys-primary)"
         >
-          <mat-icon [class.animate-spin]="isLoadingLocal()">refresh</mat-icon>
+          <mat-icon aria-hidden="true" [class.animate-spin]="isLoadingLocal()">refresh</mat-icon>
         </button>
       }
     </div>
@@ -130,20 +125,25 @@
   <mat-card-content>
     <!-- Error State -->
     @if (errorMessage(); as error) {
-      <div class="center-overlay p-4" data-testid="error-state" style="color: var(--sys-error)">
+      <div
+        class="center-overlay p-4"
+        role="alert"
+        data-testid="error-state"
+        style="color: var(--sys-error)"
+      >
         @if (isMissingTableError()) {
-          <mat-icon i18n class="text-4xl mb-2">table_rows</mat-icon>
+          <mat-icon aria-hidden="true" class="text-4xl mb-2">table_rows</mat-icon>
           <strong i18n class="text-sm font-semibold mb-1">Dataset Not Found</strong>
           <span i18n class="text-xs text-center mb-3"
             >The analytics table referenced in this query is missing or not yet ingested.</span
           >
         } @else if (isDbUnavailableError()) {
-          <mat-icon i18n class="text-4xl mb-2">storage</mat-icon>
+          <mat-icon aria-hidden="true" class="text-4xl mb-2">storage</mat-icon>
           <strong i18n class="text-sm font-semibold mb-1">Database Storage Error</strong>
-          <span i18n class="text-xs text-center mb-3">{{ error }}</span>
+          <span class="text-xs text-center mb-3">{{ error }}</span>
         } @else {
-          <mat-icon i18n class="text-4xl mb-2">warning</mat-icon>
-          <span i18n class="text-sm font-medium text-center mb-3">{{ error }}</span>
+          <mat-icon aria-hidden="true" class="text-4xl mb-2">warning</mat-icon>
+          <span class="text-sm font-medium text-center mb-3">{{ error }}</span>
         }
 
         <div class="flex gap-2 items-center flex-wrap justify-center">
@@ -154,7 +154,7 @@
             (click)="manualRefresh()"
             data-testid="btn-retry-widget"
           >
-            <mat-icon>refresh</mat-icon> Retry
+            <mat-icon aria-hidden="true">refresh</mat-icon> Retry
           </button>
           <button
             i18n
@@ -163,7 +163,7 @@
             (click)="openDiagnostics()"
             data-testid="btn-diagnostics-widget"
           >
-            <mat-icon>build</mat-icon> Diagnostics
+            <mat-icon aria-hidden="true">build</mat-icon> Diagnostics
           </button>
           @if (isEditMode()) {
             <button
@@ -194,10 +194,10 @@
           }
           <!-- Fix: Removed titleOverride to allow metric viz to display actual data column name (e.g. 'Value') instead of repeating widget title -->
           @case ('metric') {
-            <viz-metric [data]="$any(rawResult())" [config]="widgetInput().config"></viz-metric>
+            <viz-metric [data]="typedDataAsMetric()" [config]="widgetInput().config"></viz-metric>
           }
           @case ('scalar') {
-            <viz-scalar [data]="$any(rawResult())"></viz-scalar>
+            <viz-scalar [data]="typedDataAsScalar()"></viz-scalar>
           }
           @case ('bar_chart') {
             <viz-chart [dataSet]="typedDataAsTable()" [config]="chartConfig()"></viz-chart>
@@ -212,7 +212,7 @@
             <viz-heatmap [dataSet]="typedDataAsTable()"></viz-heatmap>
           }
           @case ('markdown') {
-            <viz-markdown [content]="widgetInput().config['content']"></viz-markdown>
+            <viz-markdown [content]="markdownContent()"></viz-markdown>
           }
           @default {
             <div i18n class="center-overlay" style="color: var(--sys-text-secondary)">
@@ -227,13 +227,13 @@
 
 <!-- Error Boundary Fallback Template -->
 <ng-template #safeModeTpl let-error let-retry="retry">
-  <div class="safe-mode-container">
+  <div class="safe-mode-container" role="alert">
     <div class="safe-mode-title">
-      <mat-icon i18n>bug_report</mat-icon> <span i18n>Widget Crashed</span>
+      <mat-icon aria-hidden="true">bug_report</mat-icon> <span i18n>Widget Crashed</span>
     </div>
     <div class="safe-mode-desc">
       <span i18n>Error rendering visualization.</span><br />
-      <span i18n class="font-mono text-xs">{{ error?.message || error }}</span>
+      <span class="font-mono text-xs">{{ error?.message || error }}</span>
     </div>
     <div class="flex gap-2">
       <button i18n mat-stroked-button (click)="retry()" class="border-white text-white">

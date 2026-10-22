@@ -2,13 +2,13 @@
 Tests for Analytics API Router.
 """
 
-from typing import Any
-
+from collections.abc import AsyncGenerator
 import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.models.chat import Conversation, Message, MessageCandidate
@@ -19,7 +19,7 @@ ANALYTICS_URL = "/api/v1/analytics/llm"
 
 
 @pytest.fixture
-async def analytics_user(db_session: Any) -> Any:
+async def analytics_user(db_session: AsyncSession) -> AsyncGenerator[User, None]:
   """Create a user and override auth dependency."""
   user = User(email=f"analytics_{uuid.uuid4()}@example.com", hashed_password="pw", is_active=True)
   db_session.add(user)
@@ -34,7 +34,9 @@ async def analytics_user(db_session: Any) -> Any:
 
 
 @pytest.mark.asyncio
-async def test_analytics_llm_combines_chat_and_ai(client: AsyncClient, analytics_user: Any, db_session: Any) -> None:
+async def test_analytics_llm_combines_chat_and_ai(
+  client: AsyncClient, analytics_user: User, db_session: AsyncSession
+) -> None:
   """Ensure analytics endpoint returns chat and AI experiment rows."""
   now = datetime.now(UTC)
 
@@ -111,9 +113,10 @@ async def test_analytics_llm_combines_chat_and_ai(client: AsyncClient, analytics
 
 @pytest.mark.asyncio
 async def test_get_capacity_alerts_with_configured_rules(
-  client: AsyncClient, analytics_user: Any, db_session: Any
+  client: AsyncClient, analytics_user: User, db_session: AsyncSession
 ) -> None:
   """Test capacity alerts endpoint with custom AlertRules and DuckDB mock."""
+  _ = analytics_user
   from unittest.mock import MagicMock, patch
   from app.models.alert_rule import AlertRule
 
@@ -145,7 +148,7 @@ async def test_get_capacity_alerts_with_configured_rules(
 
 
 @pytest.mark.asyncio
-async def test_get_capacity_alerts_fallback_and_duckdb_exception(client: AsyncClient, analytics_user: Any) -> None:
+async def test_get_capacity_alerts_fallback_and_duckdb_exception(client: AsyncClient, analytics_user: User) -> None:
   """Test capacity alerts fallback rules and graceful exception handling when DuckDB is inaccessible."""
   from unittest.mock import patch
 

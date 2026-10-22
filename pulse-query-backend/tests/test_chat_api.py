@@ -8,13 +8,12 @@ Verifies the end-to-end flow of the messaging system including:
 4. Renaming and Deleting conversations.
 """
 
-from typing import Any
-
 import uuid
 from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.models.chat import Conversation, Message, MessageCandidate
@@ -26,7 +25,7 @@ CONVERSATIONS_URL = "/api/v1/conversations"
 
 
 @pytest.fixture
-async def mock_user_auth(db_session: Any) -> Any:
+async def mock_user_auth(db_session: AsyncSession) -> User:
   """
   Dependency override fixture.
   Creates a PERSISTED user and overrides the `get_current_user` dependency.
@@ -44,7 +43,7 @@ async def mock_user_auth(db_session: Any) -> Any:
 
 
 @pytest.mark.asyncio
-async def test_create_conversation_candidates_flow(client: AsyncClient, mock_user_auth: Any) -> None:
+async def test_create_conversation_candidates_flow(client: AsyncClient, mock_user_auth: User) -> None:
   """
   Test that creating a conversation triggers generation of 3 candidates.
   """
@@ -70,7 +69,7 @@ async def test_create_conversation_candidates_flow(client: AsyncClient, mock_use
 
 
 @pytest.mark.asyncio
-async def test_create_conversation_with_target_models(client: AsyncClient, mock_user_auth: Any) -> None:
+async def test_create_conversation_with_target_models(client: AsyncClient, mock_user_auth: User) -> None:
   """
   Verify that target_models provided on conversation creation are passed to generate_arena_competition.
   """
@@ -93,7 +92,7 @@ async def test_create_conversation_with_target_models(client: AsyncClient, mock_
 
 
 @pytest.mark.asyncio
-async def test_generation_stops_on_total_failure(client: AsyncClient, mock_user_auth: Any) -> None:
+async def test_generation_stops_on_total_failure(client: AsyncClient, mock_user_auth: User) -> None:
   """
   Test the Circuit Breaker logic:
   If all models fail initially, do NOT retry/expand.
@@ -119,7 +118,7 @@ async def test_generation_stops_on_total_failure(client: AsyncClient, mock_user_
 
 
 @pytest.mark.asyncio
-async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth: Any, db_session: Any) -> None:
+async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth: User, db_session: AsyncSession) -> None:
   """
   Test that voting selects a candidate and promotes its content.
   Also verifies the returned object has eager loaded candidates.
@@ -162,7 +161,9 @@ async def test_vote_candidate_flow(client: AsyncClient, mock_user_auth: Any, db_
 
 
 @pytest.mark.asyncio
-async def test_rename_and_delete_conversation(client: AsyncClient, mock_user_auth: Any, db_session: Any) -> None:
+async def test_rename_and_delete_conversation(
+  client: AsyncClient, mock_user_auth: User, db_session: AsyncSession
+) -> None:
   """
   Test renaming and deleting a conversation.
   """

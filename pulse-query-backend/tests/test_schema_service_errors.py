@@ -4,111 +4,170 @@ Tests for schema service error handling.
 
 from typing import Any
 
+from app.database.duckdb import DuckDBFetchableProtocol
 from app.services.schema import SchemaService
 
 
 class _FailingConn:
-  def execute(self, *_args: Any, **_kwargs: Any) -> None:
+  """Stub DuckDB connection that raises `RuntimeError` on `execute`."""
+
+  def execute(self, _query: str) -> DuckDBFetchableProtocol:
     """
-    Verify execute behavior.
+    Raises `RuntimeError("boom")` on every query.
 
     Args:
-        _args: Test parameter or fixture.
-        _kwargs: Test parameter or fixture.
+        _query (str): SQL query string.
+
+    Returns:
+        DuckDBFetchableProtocol: Never returns.
+
+    Raises:
+        RuntimeError: Always raised.
     """
     raise RuntimeError("boom")
 
   def close(self) -> None:
-    """Verify close behavior."""
-    pass
+    """No-op close hook."""
 
 
 class _FailingManager:
-  def get_readonly_connection(self) -> Any:
-    """Verify get readonly connection behavior."""
+  """Stub DuckDB manager returning `_FailingConn`."""
+
+  def get_readonly_connection(self) -> _FailingConn:
+    """
+    Returns a `_FailingConn` instance.
+
+    Returns:
+        _FailingConn: Failing connection stub.
+    """
     return _FailingConn()
 
 
-class _EmptySchemaConn:
-  def execute(self, query: str) -> Any:
+class _EmptyResult:
+  """Stub DuckDB query result returning an empty list."""
+
+  def fetchall(self) -> list[tuple[Any, ...]]:
     """
-    Verify execute behavior.
+    Returns an empty list of rows.
+
+    Returns:
+        list[tuple[Any, ...]]: Empty list.
+    """
+    return []
+
+  def fetchone(self) -> tuple[Any, ...] | None:
+    """
+    Returns None for an empty result set.
+
+    Returns:
+        tuple[Any, ...] | None: Always None.
+    """
+    return None
+
+
+class _EmptySchemaConn:
+  """Stub DuckDB connection returning zero tables."""
+
+  def execute(self, _query: str) -> _EmptyResult:
+    """
+    Returns an `_EmptyResult` for any query.
 
     Args:
-        query: Test parameter or fixture.
+        _query (str): SQL query string.
+
+    Returns:
+        _EmptyResult: Empty query result stub.
     """
-
-    class _Result:
-      def fetchall(self_inner: Any) -> Any:
-        """
-        Verify fetchall behavior.
-
-        Args:
-            self_inner: Test parameter or fixture.
-        """
-        return []
-
-    return _Result()
+    return _EmptyResult()
 
   def close(self) -> None:
-    """Verify close behavior."""
-    pass
+    """No-op close hook."""
 
 
 class _EmptySchemaManager:
-  def get_readonly_connection(self) -> Any:
-    """Verify get readonly connection behavior."""
+  """Stub DuckDB manager returning `_EmptySchemaConn`."""
+
+  def get_readonly_connection(self) -> _EmptySchemaConn:
+    """
+    Returns an `_EmptySchemaConn` instance.
+
+    Returns:
+        _EmptySchemaConn: Empty schema connection stub.
+    """
     return _EmptySchemaConn()
 
 
-class _SchemaConn:
-  def __init__(self) -> None:
-    """Verify init behavior."""
-    self.closed = False
+class _RowsResult:
+  """Stub DuckDB query result returning pre-configured row tuples."""
 
-  def execute(self, query: str) -> Any:
+  def __init__(self, rows: list[tuple[Any, ...]]) -> None:
     """
-    Verify execute behavior.
+    Initializes the result stub with `rows`.
 
     Args:
-        query: Test parameter or fixture.
+        rows (list[tuple[Any, ...]]): List of row tuples.
     """
+    self._rows = rows
 
-    class _Result:
-      def __init__(self, rows: Any) -> None:
-        """
-        Verify init behavior.
+  def fetchall(self) -> list[tuple[Any, ...]]:
+    """
+    Returns a copy of `self._rows`.
 
-        Args:
-            rows: Test parameter or fixture.
-        """
-        self._rows = rows
+    Returns:
+        list[tuple[Any, ...]]: Stored row tuples.
+    """
+    return list(self._rows)
 
-      def fetchall(self_inner: Any) -> Any:
-        """
-        Verify fetchall behavior.
+  def fetchone(self) -> tuple[Any, ...] | None:
+    """
+    Returns the first row tuple or None.
 
-        Args:
-            self_inner: Test parameter or fixture.
-        """
-        return list(self_inner._rows)
+    Returns:
+        tuple[Any, ...] | None: First row tuple or None.
+    """
+    return self._rows[0] if self._rows else None
 
+
+class _SchemaConn:
+  """Stub DuckDB connection returning a single `patients` table and two columns."""
+
+  def __init__(self) -> None:
+    """Initializes `self.closed` to False."""
+    self.closed = False
+
+  def execute(self, query: str) -> _RowsResult:
+    """
+    Returns table list for `SHOW TABLES` and column tuples for `DESCRIBE`.
+
+    Args:
+        query (str): SQL query string.
+
+    Returns:
+        _RowsResult: Stubbed rows result.
+    """
     if query.strip().upper().startswith("SHOW TABLES"):
-      return _Result([("patients",)])
-    return _Result([("id", "INTEGER"), ("name", "VARCHAR")])
+      return _RowsResult([("patients",)])
+    return _RowsResult([("id", "INTEGER"), ("name", "VARCHAR")])
 
   def close(self) -> None:
-    """Verify close behavior."""
+    """Marks `self.closed = True`."""
     self.closed = True
 
 
 class _SchemaManager:
+  """Stub DuckDB manager returning `_SchemaConn`."""
+
   def __init__(self) -> None:
-    """Verify init behavior."""
+    """Initializes `self.conn` with a `_SchemaConn` instance."""
     self.conn = _SchemaConn()
 
-  def get_readonly_connection(self) -> Any:
-    """Verify get readonly connection behavior."""
+  def get_readonly_connection(self) -> _SchemaConn:
+    """
+    Returns `self.conn`.
+
+    Returns:
+        _SchemaConn: Active schema connection stub.
+    """
     return self.conn
 
 
@@ -131,7 +190,7 @@ def test_schema_context_handles_no_tables() -> None:
 
 
 def test_schema_json_returns_table_metadata() -> None:
-  """get_schema_json should return structured table metadata."""
+  """`get_schema_json` should return structured table metadata."""
   svc = SchemaService()
   manager = _SchemaManager()
   svc.manager = manager

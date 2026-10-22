@@ -47,7 +47,7 @@ import { QueryCartService } from './query-cart.service';
         display: flex;
         flex-direction: column;
         height: 100%;
-        background-color: white;
+        background-color: var(--sys-surface);
         width: 100%;
       }
       .content-area {
@@ -65,7 +65,7 @@ import { QueryCartService } from './query-cart.service';
         align-items: center;
         justify-content: center;
         text-align: center;
-        background: rgba(255, 255, 255, 0.9);
+        background: color-mix(in srgb, var(--sys-surface) 90%, transparent);
         z-index: 10;
         padding: 24px;
       }
@@ -183,7 +183,7 @@ export class AskDataComponent implements OnDestroy {
           this.createDashboard();
         }
       },
-      error: (err) => this.handleError('Failed to check existing scratchpads.', err),
+      error: (err) => this.handleError($localize`Failed to check existing scratchpads.`, err),
     });
   }
 
@@ -192,7 +192,7 @@ export class AskDataComponent implements OnDestroy {
     const scratchDash: DashboardCreate = { name: this.SCRATCHPAD_NAME };
     this.dashboardsApi.createDashboardApiV1DashboardsPost(scratchDash).subscribe({
       next: (dash) => this.ensureWidget(dash.id, []),
-      error: (err) => this.handleError('Failed to initialize scratchpad dashboard.', err),
+      error: (err) => this.handleError($localize`Failed to initialize scratchpad dashboard.`, err),
     });
   }
 
@@ -217,7 +217,7 @@ export class AskDataComponent implements OnDestroy {
         })
         .subscribe({
           next: (widget) => this.setContext(dashboardId, widget.id),
-          error: (err) => this.handleError('Failed to create scratchpad widget.', err),
+          error: (err) => this.handleError($localize`Failed to create scratchpad widget.`, err),
         });
     }
   }
@@ -252,8 +252,12 @@ export class AskDataComponent implements OnDestroy {
    */
   handleSaveToCart(sql: string): void {
     this.cart.add(sql);
-    this.snackBar.open('Query saved to Cart. Open dashboard editor to use.', 'OK', {
-      duration: 3000,
-    });
+    this.snackBar.open(
+      $localize`Query saved to Cart. Open dashboard editor to use.`,
+      $localize`OK`,
+      {
+        duration: 3000,
+      },
+    );
   }
 }

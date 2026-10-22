@@ -5,6 +5,8 @@ package io.healthplatform.pulsequery.ui.screens.analytics
 
 import io.healthplatform.pulsequery.api.apis.AnalyticsApi
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +54,7 @@ class AnalyticsViewModel(
     fun loadAnalytics(fallbackError: String = "Unknown error") {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).body()
             }.fold(
                 onSuccess = { rows ->
@@ -62,7 +64,7 @@ class AnalyticsViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.message ?: fallbackError
+                            errorMessage = e.messageOrDefault(fallbackError)
                         )
                     }
                 }

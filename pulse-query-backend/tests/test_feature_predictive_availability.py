@@ -5,6 +5,7 @@ Verifies the SQL logic for calculating the probability of future bed availabilit
 based on current utilization conditions using a self-join pattern.
 """
 
+from collections.abc import Generator
 import json
 import os
 from typing import Any
@@ -27,17 +28,17 @@ def predictive_template() -> dict[str, Any]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data = json.load(f)
+    data: list[dict[str, Any]] = json.load(f)
 
   # Find the specific template by title
   template = next((t for t in data if t["title"] == "Predictive Availability"), None)
   if not template:
     pytest.fail("Predictive Availability template not found in initial_templates.json")
-  return template
+  return dict(template)
 
 
 @pytest.fixture
-def db_conn() -> duckdb.DuckDBPyConnection:
+def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   """
   Creates an in-memory DuckDB instance seeded with a pattern specifically
   designed to test the conditional probability logic.
@@ -48,11 +49,11 @@ def db_conn() -> duckdb.DuckDBPyConnection:
   create_hospital_macros(conn)
 
   # Schema: Just enough columns for the query
-  conn.execute(""" 
-        CREATE TABLE synthetic_hospital_data ( 
-            Location VARCHAR, 
+  conn.execute("""
+        CREATE TABLE synthetic_hospital_data (
+            Location VARCHAR,
             Midnight_Census_DateTime TIMESTAMP
-        ) 
+        )
     """)
 
   # --- Seeding Strategy ---
@@ -112,6 +113,7 @@ def test_predictive_availability_logic(db_conn: duckdb.DuckDBPyConnection, predi
   print(f"\nEXECUTING SQL:\n{sql}")
 
   result = db_conn.execute(sql).fetchone()
+  assert result is not None
 
   prob_pct = result[0]
   sample_size = result[1]
@@ -137,6 +139,7 @@ def test_predictive_no_data_safety(db_conn: duckdb.DuckDBPyConnection, predictiv
   )
 
   result = db_conn.execute(sql).fetchone()
+  assert result is not None
 
   prob_pct = result[0]
   sample_size = result[1]

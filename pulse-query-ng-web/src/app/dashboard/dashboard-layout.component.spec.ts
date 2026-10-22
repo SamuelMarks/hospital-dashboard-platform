@@ -52,6 +52,7 @@ describe('DashboardLayoutComponent', () => {
     setGlobalParams: ReturnType<typeof vi.fn>;
     updateWidgetOrder: ReturnType<typeof vi.fn>;
     setLoading: ReturnType<typeof vi.fn>;
+    setFocusedWidget: ReturnType<typeof vi.fn>;
     optimisticRemoveWidget: ReturnType<typeof vi.fn>;
     optimisticRestoreWidget: ReturnType<typeof vi.fn>;
   };
@@ -88,6 +89,7 @@ describe('DashboardLayoutComponent', () => {
       setGlobalParams: vi.fn(),
       updateWidgetOrder: vi.fn(),
       setLoading: vi.fn(),
+      setFocusedWidget: vi.fn(),
       optimisticRemoveWidget: vi.fn(),
       optimisticRestoreWidget: vi.fn(),
     };
@@ -508,5 +510,23 @@ describe('DashboardLayoutComponent', () => {
 
     expect(mockStore.optimisticRemoveWidget).toHaveBeenCalledWith('w1');
     expect(mockStore.optimisticRestoreWidget).toHaveBeenCalledWith(expect.any(Object));
+  });
+
+  it('should close focus overlay when clicking directly on the backdrop', () => {
+    const component = setup();
+    const overlayEl = document.createElement('div');
+    const childEl = document.createElement('div');
+
+    component.onFocusOverlayClick({
+      target: childEl,
+      currentTarget: overlayEl,
+    } as unknown as MouseEvent);
+    expect(mockStore.setFocusedWidget).not.toHaveBeenCalled();
+
+    component.onFocusOverlayClick({
+      target: overlayEl,
+      currentTarget: overlayEl,
+    } as unknown as MouseEvent);
+    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null);
   });
 });

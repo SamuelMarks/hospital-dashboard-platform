@@ -103,6 +103,16 @@ describe('AppRoutes', () => {
     expect(component).toBeTruthy();
   });
 
+  it('should define the admin/users and analytics/alert-rules routes', async () => {
+    const adminUsersRoute = routes.find((r) => r.path === 'admin/users');
+    expect(adminUsersRoute).toBeDefined();
+    expect(await adminUsersRoute?.loadComponent!()).toBeTruthy();
+
+    const alertRulesRoute = routes.find((r) => r.path === 'analytics/alert-rules');
+    expect(alertRulesRoute).toBeDefined();
+    expect(await alertRulesRoute?.loadComponent!()).toBeTruthy();
+  });
+
   it('should redirect unknown paths to root', () => {
     const route = routes.find((r) => r.path === '**');
     expect(route).toBeDefined();

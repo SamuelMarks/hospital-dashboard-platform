@@ -1,9 +1,15 @@
+/**
+ * User Management ViewModel module orchestrating privileged user directory listing,
+ * clinical role assignment updates, and account activation/suspension.
+ */
 package io.healthplatform.pulsequery.ui.screens.admin
 
 import io.healthplatform.pulsequery.api.apis.AdminUsersApi
 import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.api.models.UserRoleUpdate
 import io.healthplatform.pulsequery.api.models.UserStatusUpdate
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,7 +76,7 @@ class UserManagementViewModel(
     fun loadUsers() {
         _state.value = UserManagementUiState.Loading
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 val response = currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100)
                 response.body()
             }.fold(
@@ -83,7 +89,7 @@ class UserManagementViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.message ?: "Failed to load users")
+                    _state.value = UserManagementUiState.Error(e.messageOrDefault("Failed to load users"))
                 }
             )
         }
@@ -98,7 +104,7 @@ class UserManagementViewModel(
     fun updateRole(userId: String, newRole: String) {
         val current = _state.value as? UserManagementUiState.Success ?: return
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 val response = currentAdminUsersApi.updateUserRoleApiV1AdminUsersUserIdRolePut(
                     userId = userId,
                     userRoleUpdate = UserRoleUpdate(role = newRole)
@@ -113,7 +119,7 @@ class UserManagementViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.message ?: "Failed to update role")
+                    _state.value = UserManagementUiState.Error(e.messageOrDefault("Failed to update role"))
                 }
             )
         }
@@ -128,7 +134,7 @@ class UserManagementViewModel(
     fun toggleStatus(userId: String, newStatus: Boolean) {
         val current = _state.value as? UserManagementUiState.Success ?: return
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 val response = currentAdminUsersApi.updateUserStatusApiV1AdminUsersUserIdStatusPut(
                     userId = userId,
                     userStatusUpdate = UserStatusUpdate(isActive = newStatus)
@@ -143,7 +149,7 @@ class UserManagementViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.message ?: "Failed to toggle user status")
+                    _state.value = UserManagementUiState.Error(e.messageOrDefault("Failed to toggle user status"))
                 }
             )
         }

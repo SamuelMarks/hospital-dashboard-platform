@@ -8,12 +8,16 @@ Covers:
 4. `scripts/seed_templates.py`
 """
 
+from collections.abc import Coroutine
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.template import WidgetTemplate
 from scripts import extract_openapi as extract_openapi_mod
 from scripts import generate_mpax_benchmarks as gen_mpax_mod
 from scripts import ingest as ingest_mod
@@ -29,7 +33,6 @@ def test_extract_openapi_and_main(tmp_path: Path) -> None:
   assert "openapi" in data
   assert "paths" in data
 
-  # Also test when output_dir is empty string (relative filename in cwd)
   plain_file = tmp_path / "plain.json"
   with patch("scripts.extract_openapi.os.path.dirname", return_value=""):
     extract_openapi_mod.extract_openapi(str(plain_file))
@@ -49,7 +52,6 @@ def test_generate_mpax_benchmarks_and_main(tmp_path: Path) -> None:
   assert written_path == custom_out
   assert len(json.loads(custom_out.read_text(encoding="utf-8"))) == 5
 
-  # Default out_file path branch
   with (
     patch.object(Path, "mkdir"),
     patch("builtins.open", MagicMock()),
@@ -61,21 +63,32 @@ def test_generate_mpax_benchmarks_and_main(tmp_path: Path) -> None:
 
 def test_ingest_script_main() -> None:
   """Verify manual ingestion CLI wrapper handles success and error exit."""
-  with patch.object(ingest_mod.data_ingestion_service, "ingest_all_csvs") as mock_ingest:
+  with patch("scripts.ingest.data_ingestion_service.ingest_all_csvs") as mock_ingest:
     ingest_mod.main()
     mock_ingest.assert_called_once()
 
-  with patch.object(ingest_mod.data_ingestion_service, "ingest_all_csvs", side_effect=RuntimeError("disk full")):
+  with patch("scripts.ingest.data_ingestion_service.ingest_all_csvs", side_effect=RuntimeError("disk full")):
     with pytest.raises(SystemExit) as exc:
       ingest_mod.main()
     assert exc.value.code == 1
 
 
 @pytest.mark.asyncio
-async def test_seed_templates_script(tmp_path: Path) -> None:
-  """Verify seed_templates script file reading, upsert branches, error handling, and main()."""
+async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -> None:
+  """Verify `seed_templates` script persists and updates real `WidgetTemplate` records."""
   missing_path = str(tmp_path / "missing.json")
   assert seed_templates_mod._read_templates_disk(missing_path) is None
+
+  # Pre-insert an existing template to verify update behavior
+  existing_tmpl = WidgetTemplate(
+    title="Existing Template",
+    description="Old desc",
+    sql_template="SELECT 0",
+    category="Legacy",
+    parameters_schema={},
+  )
+  db_session.add(existing_tmpl)
+  await db_session.commit()
 
   valid_file = tmp_path / "templates.json"
   valid_file.write_text(
@@ -109,30 +122,39 @@ async def test_seed_templates_script(tmp_path: Path) -> None:
   with patch.object(seed_templates_mod, "DATA_FILE", str(bad_json_file)):
     await seed_templates_mod.seed_templates()
 
-  # 3. Successful seed with both existing and new templates
-  existing_obj = MagicMock()
-  res_existing = MagicMock()
-  res_existing.scalars.return_value.first.return_value = existing_obj
-
-  res_new = MagicMock()
-  res_new.scalars.return_value.first.return_value = None
-
-  mock_session = AsyncMock()
-  mock_session.execute = AsyncMock(side_effect=[res_existing, res_new])
-  mock_session.add = MagicMock()
-
-  mock_session_cm = MagicMock()
-  mock_session_cm.__aenter__ = AsyncMock(return_value=mock_session)
-  mock_session_cm.__aexit__ = AsyncMock(return_value=False)
+  # 3. Successful seed against real test DB session
+  session_cm = MagicMock()
+  session_cm.__aenter__ = AsyncMock(return_value=db_session)
+  session_cm.__aexit__ = AsyncMock(return_value=False)
 
   with (
     patch.object(seed_templates_mod, "DATA_FILE", str(valid_file)),
-    patch.object(seed_templates_mod, "AsyncSessionLocal", return_value=mock_session_cm),
+    patch.object(seed_templates_mod, "AsyncSessionLocal", return_value=session_cm),
   ):
     await seed_templates_mod.seed_templates()
-    assert existing_obj.description == "Updated desc"
-    mock_session.add.assert_called_once()
-    mock_session.commit.assert_awaited_once()
+
+  # Verify actual DB state
+  rows = (await db_session.execute(select(WidgetTemplate))).scalars().all()
+  by_title = {r.title: r for r in rows}
+  assert "Existing Template" in by_title
+  assert by_title["Existing Template"].description == "Updated desc"
+  assert by_title["Existing Template"].sql_template == "SELECT 1"
+  assert "New Template" in by_title
+  assert by_title["New Template"].sql_template == "SELECT 2"
+
+  # Also test direct upsert_template wrapper
+  await seed_templates_mod.upsert_template(
+    db_session,
+    {"title": "Direct Wrapper Template", "description": "Direct", "sql_template": "SELECT 3", "category": "Ops"},
+  )
+  await db_session.commit()
+  direct_row = (
+    (await db_session.execute(select(WidgetTemplate).where(WidgetTemplate.title == "Direct Wrapper Template")))
+    .scalars()
+    .first()
+  )
+  assert direct_row is not None
+  assert direct_row.sql_template == "SELECT 3"
 
   # 4. Database error rollback branch
   mock_err_session = AsyncMock()
@@ -148,10 +170,28 @@ async def test_seed_templates_script(tmp_path: Path) -> None:
     await seed_templates_mod.seed_templates()
     mock_err_session.rollback.assert_awaited_once()
 
-  # 5. CLI main()
+  # 5. CLI main() executes seed_templates coroutine
+  ran_main = False
+
+  async def _fake_seed() -> None:
+    """Marks `ran_main` True when invoked by `asyncio.run` inside `main()`."""
+    nonlocal ran_main
+    ran_main = True
+
+  def _close_coro(coro: Coroutine[object, object, None]) -> None:
+    """
+    Closes the coroutine passed to `asyncio.run` and records invocation.
+
+    Args:
+        coro (Coroutine[object, object, None]): Coroutine object.
+    """
+    nonlocal ran_main
+    coro.close()
+    ran_main = True
+
   with (
-    patch("scripts.seed_templates.asyncio.run") as mock_asio_run,
-    patch("scripts.seed_templates.seed_templates", new=MagicMock(return_value="coro")),
+    patch.object(seed_templates_mod, "seed_templates", side_effect=_fake_seed),
+    patch("scripts.seed_templates.asyncio.run", side_effect=_close_coro),
   ):
     seed_templates_mod.main()
-    mock_asio_run.assert_called_once_with("coro")
+    assert ran_main is True

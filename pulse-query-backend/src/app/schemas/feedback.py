@@ -42,18 +42,21 @@ class ModelCandidateResponse(ModelCandidateBase):
 
   id: UUID
   experiment_id: UUID
-  # is_selected is initially False
   is_selected: bool
+  execution_success: bool | None = None
+  error_message: str | None = None
 
   model_config = ConfigDict(from_attributes=True)
 
 
 class FeedbackUpdate(BaseModel):
   """
-  Payload for the frontend to report a user's choice.
+  Payload for the frontend to report a user's choice and optional execution telemetry.
   """
 
   is_selected: bool = True
+  execution_success: bool | None = None
+  error_message: str | None = None
 
 
 class ExperimentBase(BaseModel):

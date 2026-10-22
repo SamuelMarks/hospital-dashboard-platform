@@ -31,7 +31,7 @@ def verify_admin_key(provided_key: str | None, expected_key: str | None) -> AppR
   if not provided_key or not expected_key:
     return Err(
       AppError(
-        code=ErrorCode.AUTHORIZATION_ERROR,
+        code=ErrorCode.ADMIN_INVALID_SECRET,
         message="Admin privileges required.",
         status_code=status.HTTP_403_FORBIDDEN,
       )
@@ -39,7 +39,7 @@ def verify_admin_key(provided_key: str | None, expected_key: str | None) -> AppR
   if not secrets.compare_digest(provided_key.encode("utf-8"), expected_key.encode("utf-8")):
     return Err(
       AppError(
-        code=ErrorCode.AUTHORIZATION_ERROR,
+        code=ErrorCode.ADMIN_INVALID_SECRET,
         message="Admin privileges required.",
         status_code=status.HTTP_403_FORBIDDEN,
       )

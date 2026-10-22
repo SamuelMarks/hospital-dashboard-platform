@@ -13,7 +13,11 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 @Component({
   selector: 'app-skeleton-loader',
   imports: [],
-
+  host: {
+    role: 'status',
+    'aria-busy': 'true',
+    '[attr.aria-label]': 'ariaLabel',
+  },
   styles: [
     `
       :host {
@@ -44,6 +48,11 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
           rgba(255, 255, 255, 0)
         );
         animation: shimmer 1.5s infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton-box::after {
+          animation: none;
+        }
       }
       @keyframes shimmer {
         100% {
@@ -123,4 +132,6 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
 export class SkeletonLoaderComponent {
   /** Layout shape variant to display while widget data is loading. */
   readonly variant = input<SkeletonVariant>('card');
+  /** Localized accessible label for the loading status region. */
+  readonly ariaLabel = $localize`Loading content`;
 }

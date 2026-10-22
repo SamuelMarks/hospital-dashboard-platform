@@ -1,5 +1,5 @@
 """
-Unit and integration tests for MPAX Arena persistence and candidate voting.
+Unit and integration tests for MPAX Arena persistence, ownership enforcement, and candidate voting.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -8,6 +8,7 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import security
 from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
 from app.models.user import User
 from app.schemas.mpax_arena import MpaxArenaCandidate, MpaxArenaRequest, MpaxArenaResponse
@@ -81,6 +82,7 @@ async def test_vote_candidate_success() -> None:
   mock_db.commit = AsyncMock()
 
   mock_user = MagicMock(spec=User)
+  mock_user.id = run_record.user_id
 
   res = await mpax_arena_service.vote_candidate(str(run_id), str(cand1_id), mock_db, mock_user)
 
@@ -92,6 +94,33 @@ async def test_vote_candidate_success() -> None:
   assert cand1.is_winner is True
   assert cand2.is_winner is False
   mock_db.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_vote_candidate_blocks_cross_user_tampering(db_session: AsyncSession) -> None:
+  """Verifies User B cannot vote on User A's `MpaxArenaRun` in the database."""
+  user_a = User(
+    email=f"owner_a_{uuid.uuid4()}@hospital.org",
+    hashed_password=security.get_password_hash("StrongPass123!"),
+    is_active=True,
+  )
+  user_b = User(
+    email=f"intruder_b_{uuid.uuid4()}@hospital.org",
+    hashed_password=security.get_password_hash("StrongPass123!"),
+    is_active=True,
+  )
+  db_session.add_all([user_a, user_b])
+  await db_session.flush()
+
+  run_id = uuid.uuid4()
+  cand_id = uuid.uuid4()
+  run = MpaxArenaRun(id=run_id, user_id=user_a.id, prompt="ICU", mode="judge")
+  cand = MpaxArenaCandidateRecord(id=cand_id, run_id=run_id, model_name="m1", content="c1", is_winner=False)
+  db_session.add_all([run, cand])
+  await db_session.commit()
+
+  with pytest.raises(ValueError, match="MPAX Arena run not found"):
+    await mpax_arena_service.vote_candidate(str(run_id), str(cand_id), db_session, user_b)
 
 
 @pytest.mark.asyncio
@@ -147,9 +176,15 @@ async def test_vote_candidate_not_in_run() -> None:
   mock_scalar_result.scalars.return_value.first.return_value = run_record
   mock_db.execute = AsyncMock(return_value=mock_scalar_result)
   mock_user = MagicMock(spec=User)
+  mock_user.id = run_record.user_id
 
   with pytest.raises(ValueError, match="Candidate not found in this MPAX Arena run"):
     await mpax_arena_service.vote_candidate(str(run_id), str(other_cand_id), mock_db, mock_user)
+
+  # Also verify unexpected DB exception during vote_candidate raises RuntimeError
+  mock_db.execute = AsyncMock(side_effect=RuntimeError("DB connection lost"))
+  with pytest.raises(RuntimeError, match="MPAX Arena voting failed: DB connection lost"):
+    await mpax_arena_service.vote_candidate(str(run_id), str(cand1_id), mock_db, mock_user)
 
 
 @pytest.mark.asyncio

@@ -506,9 +506,9 @@ describe('ChatStore', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(mockStream, { status: 200 }));
 
-      safeStorage.setItem('token', 'mock_token');
+      safeStorage.setItem('pulse_auth_token', 'mock_token');
       await store.streamResponse('c1', 'model-xyz');
-      safeStorage.removeItem('token');
+      safeStorage.removeItem('pulse_auth_token');
 
       expect(store.isStreaming()).toBe(false);
       expect(store.messages().length).toBe(1);

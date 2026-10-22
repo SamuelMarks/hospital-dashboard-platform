@@ -3,7 +3,7 @@
  * Provides UI controls for undo and redo operations.
  */
 
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -35,7 +35,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
         aria-label="Undo"
         data-testid="undo-button"
       >
-        <mat-icon i18n>undo</mat-icon>
+        <mat-icon aria-hidden="true">undo</mat-icon>
       </button>
 
       <button
@@ -47,7 +47,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
         aria-label="Redo"
         data-testid="redo-button"
       >
-        <mat-icon i18n>redo</mat-icon>
+        <mat-icon aria-hidden="true">redo</mat-icon>
       </button>
     </div>
   `,
@@ -74,30 +74,26 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
   ],
 })
 export class UndoRedoButtonsComponent {
-  /** Undo redo service. */
+  /** Command history service providing undo/redo availability signals and execution methods. */
   readonly undoRedoService = inject(UndoRedoService);
 
   /**
-   * Generates tooltip text for undo button.
-   *
-   * @returns Tooltip text with keyboard shortcut.
+   * Computed signal generating tooltip text for the undo button.
    */
-  undoTooltip(): string {
+  readonly undoTooltip = computed((): string => {
     const description = this.undoRedoService.nextUndoDescription();
-    const base = 'Undo (Ctrl+Z)';
+    const base = $localize`Undo (Ctrl+Z)`;
     return description ? `${base}: ${description}` : base;
-  }
+  });
 
   /**
-   * Generates tooltip text for redo button.
-   *
-   * @returns Tooltip text with keyboard shortcut.
+   * Computed signal generating tooltip text for the redo button.
    */
-  redoTooltip(): string {
+  readonly redoTooltip = computed((): string => {
     const description = this.undoRedoService.nextRedoDescription();
-    const base = 'Redo (Ctrl+Shift+Z)';
+    const base = $localize`Redo (Ctrl+Shift+Z)`;
     return description ? `${base}: ${description}` : base;
-  }
+  });
 
   /**
    * Triggers undo operation.

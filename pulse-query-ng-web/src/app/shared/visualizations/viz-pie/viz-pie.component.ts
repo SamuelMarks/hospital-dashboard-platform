@@ -33,7 +33,7 @@ interface PieSlice {
   percentage: number;
 }
 
-/** Viz Pie component. */
+/** Accessible SVG pie chart visualization component with dynamic Material 3 palette theming. */
 @Component({
   selector: 'viz-pie',
   imports: [],
@@ -183,7 +183,7 @@ export class VizPieComponent {
   /** Accessibility Label. */
   readonly accessibilityLabel = computed(() => {
     const s = this.slices();
-    return `Pie chart with ${s.length} slices. Use tab to navigate legendary items for details.`;
+    return $localize`Pie chart with ${s.length} slices. Use tab to navigate legend items for details.`;
   });
 
   /** Slices. */

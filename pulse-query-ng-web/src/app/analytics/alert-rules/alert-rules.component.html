@@ -7,44 +7,55 @@
       </p>
     </div>
     <a i18n mat-button routerLink="/analytics" data-testid="back-to-analytics-btn">
-      <mat-icon>arrow_back</mat-icon>
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
       Back to Analytics
     </a>
   </div>
 
   <!-- Loading State -->
   @if (isLoading()) {
-    <mat-progress-bar mode="indeterminate" data-testid="loading-bar"></mat-progress-bar>
+    <mat-progress-bar
+      mode="indeterminate"
+      i18n-aria-label
+      aria-label="Loading alert rules"
+      data-testid="loading-bar"
+    ></mat-progress-bar>
   }
 
   <!-- Error Notification -->
   @if (errorMessage()) {
-    <div class="error-banner" data-testid="error-message">
-      <mat-icon i18n>error_outline</mat-icon>
-      <span i18n>{{ errorMessage() }}</span>
+    <div class="error-banner" role="alert" data-testid="error-message">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ errorMessage() }}</span>
     </div>
   }
 
   <!-- Create / Edit Form Card -->
   <mat-card class="form-card">
     <mat-card-header>
-      <mat-card-title i18n>
-        {{ editingRuleId() ? 'Edit Alert Rule' : 'Create New Capacity Alert Rule' }}
+      <mat-card-title>
+        @if (editingRuleId()) {
+          <span i18n>Edit Alert Rule</span>
+        } @else {
+          <span i18n>Create New Capacity Alert Rule</span>
+        }
       </mat-card-title>
     </mat-card-header>
     <mat-card-content>
-      <form [formGroup]="ruleForm" (ngSubmit)="submitRule()" class="rule-form">
+      <form [formRoot]="ruleForm" (submit)="submitRule()" class="rule-form">
         <mat-form-field appearance="outline">
           <mat-label i18n>Unit Category</mat-label>
           <input
             matInput
-            formControlName="unit_category"
+            [formField]="ruleForm.unit_category"
             i18n-placeholder
             placeholder="e.g. Intensive Care Unit"
             data-testid="unit-category-input"
           />
-          @if (ruleForm.get('unit_category')?.hasError('required')) {
-            <mat-error i18n>Unit category is required.</mat-error>
+          @if (ruleForm.unit_category().invalid() && ruleForm.unit_category().touched()) {
+            @for (err of ruleForm.unit_category().errors(); track err.kind) {
+              <mat-error>{{ err.message }}</mat-error>
+            }
           }
         </mat-form-field>
 
@@ -53,46 +64,45 @@
           <input
             matInput
             type="number"
-            min="1"
-            max="100"
-            formControlName="threshold_percentage"
+            [formField]="ruleForm.threshold_percentage"
             data-testid="threshold-input"
           />
-          @if (ruleForm.get('threshold_percentage')?.hasError('required')) {
-            <mat-error i18n>Threshold is required.</mat-error>
-          }
           @if (
-            ruleForm.get('threshold_percentage')?.hasError('min') ||
-            ruleForm.get('threshold_percentage')?.hasError('max')
+            ruleForm.threshold_percentage().invalid() && ruleForm.threshold_percentage().touched()
           ) {
-            <mat-error i18n>Threshold must be between 1% and 100%.</mat-error>
+            @for (err of ruleForm.threshold_percentage().errors(); track err.kind) {
+              <mat-error>{{ err.message }}</mat-error>
+            }
           }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label i18n>Severity</mat-label>
-          <mat-select formControlName="severity" data-testid="severity-select">
+          <mat-select [formField]="ruleForm.severity" data-testid="severity-select">
             @for (opt of severityOptions; track opt) {
-              <mat-option i18n [value]="opt">{{ opt }}</mat-option>
+              <mat-option [value]="opt">{{ opt }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
 
-        <mat-slide-toggle i18n formControlName="is_active" data-testid="active-toggle">
+        <mat-slide-toggle i18n [formField]="ruleForm.is_active" data-testid="active-toggle">
           Active
         </mat-slide-toggle>
 
         <div class="form-actions">
           <button
-            i18n
             mat-flat-button
             color="primary"
             type="submit"
-            [disabled]="ruleForm.invalid || isLoading()"
+            [disabled]="ruleForm().invalid() || isLoading()"
             data-testid="submit-rule-btn"
           >
-            <mat-icon>{{ editingRuleId() ? 'save' : 'add' }}</mat-icon>
-            {{ editingRuleId() ? 'Save Changes' : 'Add Rule' }}
+            <mat-icon aria-hidden="true">{{ editingRuleId() ? 'save' : 'add' }}</mat-icon>
+            @if (editingRuleId()) {
+              <span i18n>Save Changes</span>
+            } @else {
+              <span i18n>Add Rule</span>
+            }
           </button>
           @if (editingRuleId()) {
             <button
@@ -116,12 +126,14 @@
       mat-table
       [dataSource]="alertRules()"
       class="mat-elevation-z0"
+      i18n-aria-label
+      aria-label="Clinical capacity alert rules"
       data-testid="alert-rules-table"
     >
       <!-- Unit Category Column -->
       <ng-container matColumnDef="unit_category">
         <th i18n mat-header-cell *matHeaderCellDef>Unit Category</th>
-        <td i18n mat-cell *matCellDef="let rule" data-testid="unit-category-cell">
+        <td mat-cell *matCellDef="let rule" data-testid="unit-category-cell">
           <strong>{{ rule.unit_category }}</strong>
         </td>
       </ng-container>
@@ -129,12 +141,14 @@
       <!-- Threshold Percentage Column -->
       <ng-container matColumnDef="threshold_percentage">
         <th i18n mat-header-cell *matHeaderCellDef>Occupancy Threshold</th>
-        <td i18n mat-cell *matCellDef="let rule" class="progress-cell" data-testid="threshold-cell">
+        <td mat-cell *matCellDef="let rule" class="progress-cell" data-testid="threshold-cell">
           <div style="display: flex; align-items: center; gap: 8px">
             <span>{{ rule.threshold_percentage }}%</span>
             <mat-progress-bar
               mode="determinate"
               [value]="rule.threshold_percentage"
+              i18n-aria-label
+              aria-label="Occupancy threshold percentage"
               style="width: 80px"
             ></mat-progress-bar>
           </div>
@@ -144,7 +158,7 @@
       <!-- Severity Column -->
       <ng-container matColumnDef="severity">
         <th i18n mat-header-cell *matHeaderCellDef>Severity</th>
-        <td i18n mat-cell *matCellDef="let rule" data-testid="severity-cell">
+        <td mat-cell *matCellDef="let rule" data-testid="severity-cell">
           <span class="severity-chip" [class]="getSeverityClass(rule.severity)">
             {{ rule.severity }}
           </span>
@@ -154,10 +168,12 @@
       <!-- Active Status Column -->
       <ng-container matColumnDef="is_active">
         <th i18n mat-header-cell *matHeaderCellDef>Active</th>
-        <td i18n mat-cell *matCellDef="let rule" data-testid="status-cell">
+        <td mat-cell *matCellDef="let rule" data-testid="status-cell">
           <mat-slide-toggle
             [checked]="rule.is_active"
             (change)="toggleRuleActive(rule)"
+            i18n-aria-label
+            aria-label="Toggle alert rule active state"
             data-testid="row-toggle"
           >
           </mat-slide-toggle>
@@ -167,7 +183,7 @@
       <!-- Created At Column -->
       <ng-container matColumnDef="created_at">
         <th i18n mat-header-cell *matHeaderCellDef>Registered</th>
-        <td i18n mat-cell *matCellDef="let rule" data-testid="created-at-cell">
+        <td mat-cell *matCellDef="let rule" data-testid="created-at-cell">
           {{ rule.created_at | date: 'shortDate' }}
         </td>
       </ng-container>
@@ -175,16 +191,18 @@
       <!-- Actions Column -->
       <ng-container matColumnDef="actions">
         <th i18n mat-header-cell *matHeaderCellDef>Actions</th>
-        <td i18n mat-cell *matCellDef="let rule" class="actions-cell">
+        <td mat-cell *matCellDef="let rule" class="actions-cell">
           <button
             mat-icon-button
             color="primary"
             (click)="startEditing(rule)"
             i18n-matTooltip
             matTooltip="Edit Rule"
+            i18n-aria-label
+            aria-label="Edit Rule"
             data-testid="edit-rule-btn"
           >
-            <mat-icon>edit</mat-icon>
+            <mat-icon aria-hidden="true">edit</mat-icon>
           </button>
           <button
             mat-icon-button
@@ -192,9 +210,11 @@
             (click)="deleteRule(rule.id)"
             i18n-matTooltip
             matTooltip="Delete Rule"
+            i18n-aria-label
+            aria-label="Delete Rule"
             data-testid="delete-rule-btn"
           >
-            <mat-icon>delete</mat-icon>
+            <mat-icon aria-hidden="true">delete</mat-icon>
           </button>
         </td>
       </ng-container>

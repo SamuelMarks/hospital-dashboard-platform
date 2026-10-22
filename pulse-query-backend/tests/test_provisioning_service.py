@@ -7,13 +7,12 @@ Verifies:
 3. Visualization heuristic logic.
 """
 
-from typing import Any
-
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dashboard import Dashboard, Widget
 from app.models.template import WidgetTemplate
@@ -32,7 +31,7 @@ MOCK_TEMPLATES = [
 
 
 @pytest.mark.asyncio
-async def test_provision_new_user_creates_dashboard(db_session: Any) -> None:
+async def test_provision_new_user_creates_dashboard(db_session: AsyncSession) -> None:
   """
   Test that a dashboard is created for the user.
   Uses the real db_session from conftest (in-memory SQLite/Postgres).
@@ -204,7 +203,7 @@ async def test_create_dashboard_from_templates_handles_empty_templates() -> None
 
 
 @pytest.mark.asyncio
-async def test_restore_defaults_calls_helpers(monkeypatch: Any) -> None:
+async def test_restore_defaults_calls_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
   """restore_defaults should orchestrate name resolution and dashboard creation."""
   svc = ProvisioningService()
   db = MagicMock()
@@ -219,7 +218,7 @@ async def test_restore_defaults_calls_helpers(monkeypatch: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_provisioning_edge_branches(db_session: Any) -> None:
+async def test_provisioning_edge_branches(db_session: AsyncSession) -> None:
   """Verifies dashboard restoration suffix resolution and visual type heuristics on edge templates."""
   user = User(id=uuid.uuid4(), email=f"prov_{uuid.uuid4()}@test.com", hashed_password="pw", is_active=True)
   db_session.add(user)

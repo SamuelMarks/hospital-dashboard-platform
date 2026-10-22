@@ -16,7 +16,7 @@ import { HttpErrorResponse } from '@angular/common/http';
  */
 export function extractApiErrorMessage(
   err: unknown,
-  fallback = 'An unexpected error occurred',
+  fallback = $localize`An unexpected error occurred`,
 ): string {
   if (err instanceof HttpErrorResponse) {
     const detail = (err.error as { detail?: unknown } | null | undefined)?.detail;

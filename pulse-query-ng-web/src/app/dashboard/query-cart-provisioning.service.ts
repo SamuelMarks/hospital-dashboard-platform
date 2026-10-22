@@ -1,7 +1,7 @@
 /**
  * @fileoverview Service for provisioning persisted dashboard SQL widgets from Query Cart items.
  */
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { DashboardsService, WidgetCreateSql, WidgetResponse } from '../api-client';
 import { DashboardStore } from './dashboard.store';
@@ -12,15 +12,13 @@ import { QueryCartService } from '../global/query-cart.service';
  * Creates dashboard widgets from Query Cart items.
  * Orchestrates the conversion of ad-hoc SQL into persisted widgets.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class QueryCartProvisioningService {
-  /** dashboardsApi property. */
+  /** Generated OpenAPI client for creating dashboard widgets on the backend. */
   private readonly dashboardsApi = inject(DashboardsService);
-  /** store property. */
+  /** Centralized reactive state store for the active dashboard. */
   private readonly store = inject(DashboardStore);
-  /** cart property. */
+  /** Service managing staged SQL queries in the user's query cart. */
   private readonly cart = inject(QueryCartService);
 
   /**

@@ -13,7 +13,6 @@ from unittest.mock import mock_open
 
 import pytest
 
-import app.services.prompt_engineering.few_shot_rag as rag_module
 from app.services.prompt_engineering.few_shot_rag import (
   FewShotRAGStrategy,
   TemplateRetriever,
@@ -99,18 +98,21 @@ def test_strategy_fallback_no_matches() -> None:
   assert "No similar examples found" in user_content
 
 
-def test_retriever_loads_empty_when_file_missing(monkeypatch: Any) -> None:
+def test_retriever_loads_empty_when_file_missing(monkeypatch: pytest.MonkeyPatch) -> None:
   """Missing template file should yield empty list."""
-  monkeypatch.setattr(rag_module.os.path, "exists", lambda *_: False)
+  monkeypatch.setattr("app.services.prompt_engineering.few_shot_rag.os.path.exists", lambda *_: False)
   retriever = TemplateRetriever()
   assert retriever.templates == []
 
 
-def test_retriever_loads_empty_on_json_error(monkeypatch: Any) -> None:
+def test_retriever_loads_empty_on_json_error(monkeypatch: pytest.MonkeyPatch) -> None:
   """JSON errors should be swallowed and return empty list."""
-  monkeypatch.setattr(rag_module.os.path, "exists", lambda *_: True)
+  monkeypatch.setattr("app.services.prompt_engineering.few_shot_rag.os.path.exists", lambda *_: True)
   monkeypatch.setattr(builtins, "open", mock_open(read_data="[]"))
-  monkeypatch.setattr(rag_module.json, "load", lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad")))
+  monkeypatch.setattr(
+    "app.services.prompt_engineering.few_shot_rag.json.load",
+    lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad")),
+  )
 
   retriever = TemplateRetriever()
   assert retriever.templates == []

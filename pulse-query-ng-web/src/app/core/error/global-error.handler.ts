@@ -4,7 +4,7 @@
  * and present a unified UI notification via Material SnackBar.
  */
 
-import { ErrorHandler, Injectable, Injector, inject } from '@angular/core';
+import { ErrorHandler, Service, Injector, inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpErrorResponse } from '@angular/common/http';
 import { BehaviorSubject } from 'rxjs';
@@ -18,9 +18,7 @@ import { BehaviorSubject } from 'rxjs';
  * - Filters specific "Recoverable" messages vs "Fatal" ones.
  * - Removed `NgZone` usage as the application is now Zoneless.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class GlobalErrorHandler implements ErrorHandler {
   /** Angular dependency injector used to lazily resolve `MatSnackBar` without cyclic dependency issues. */
   private readonly injector = inject(Injector);
@@ -59,7 +57,7 @@ export class GlobalErrorHandler implements ErrorHandler {
 
     // In a Zoneless environment, we can trigger UI updates directly without NgZone.run()
     snackBar
-      .open(`Application Error: ${message}`, 'Reload', {
+      .open($localize`Application Error: ${message}`, $localize`Reload`, {
         duration: 8000,
         // Accessibility: 'assertive' ensures screen readers announce the crash immediately.
         politeness: 'assertive',
@@ -97,6 +95,6 @@ export class GlobalErrorHandler implements ErrorHandler {
     // Handle Promise rejections
     if (error && typeof error === 'object' && 'rejection' in error)
       return this.extractMessage((error as Record<string, unknown>)['rejection']);
-    return 'Unknown runtime exception';
+    return $localize`Unknown runtime exception`;
   }
 }

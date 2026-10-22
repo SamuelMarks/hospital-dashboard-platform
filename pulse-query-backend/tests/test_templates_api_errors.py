@@ -10,10 +10,13 @@ from httpx import AsyncClient
 
 async def _auth_headers(client: AsyncClient) -> dict[str, str]:
   """
-  Verify auth headers behavior.
+  Registers and logs in a unique test user and returns Authorization headers.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
+
+  Returns:
+      dict[str, str]: Dictionary containing the `Authorization: Bearer <token>` header.
   """
   email = f"tmpl_err_{uuid.uuid4()}@example.com"
   pwd = "pw"
@@ -25,10 +28,10 @@ async def _auth_headers(client: AsyncClient) -> dict[str, str]:
 @pytest.mark.asyncio
 async def test_get_template_not_found(client: AsyncClient) -> None:
   """
-  Verify get template not found behavior.
+  Verifies `GET /templates/{id}` returns 404 when the template does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.get(f"/api/v1/templates/{uuid.uuid4()}", headers=headers)
@@ -38,10 +41,10 @@ async def test_get_template_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_update_template_not_found(client: AsyncClient) -> None:
   """
-  Verify update template not found behavior.
+  Verifies `PUT /templates/{id}` returns 404 when the template does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.put(
@@ -55,10 +58,10 @@ async def test_update_template_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_delete_template_not_found(client: AsyncClient) -> None:
   """
-  Verify delete template not found behavior.
+  Verifies `DELETE /templates/{id}` returns 404 when the template does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.delete(f"/api/v1/templates/{uuid.uuid4()}", headers=headers)
@@ -68,10 +71,10 @@ async def test_delete_template_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_template_crud_success(client: AsyncClient) -> None:
   """
-  Verify template crud success behavior.
+  Verifies the create, read, update, and delete lifecycle for a `WidgetTemplate`.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
 

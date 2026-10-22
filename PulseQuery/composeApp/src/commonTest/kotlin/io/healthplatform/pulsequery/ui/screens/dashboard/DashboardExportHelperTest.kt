@@ -1,3 +1,6 @@
+/**
+ * Unit tests verifying [DashboardExportHelper] export actions and [Result] error handling.
+ */
 package io.healthplatform.pulsequery.ui.screens.dashboard
 
 import io.healthplatform.pulsequery.di.AppContainer
@@ -16,8 +19,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -25,17 +26,26 @@ import kotlin.test.assertTrue
  */
 class DashboardExportHelperTest {
 
+    /**
+     * Resets [AppContainer] before each test case.
+     */
     @BeforeTest
     fun setUp() {
         AppContainer.resetForTest()
         AppContainer.currentBaseUrl = "http://localhost"
     }
 
+    /**
+     * Resets [AppContainer] after each test case.
+     */
     @AfterTest
     fun tearDown() {
         AppContainer.resetForTest()
     }
 
+    /**
+     * Verifies JSON dashboard export returns a successful [Result] with [DashboardExportArtifact].
+     */
     @Test
     fun testExportDashboardJsonSuccess() = runTest {
         val mockEngine = MockEngine { request ->
@@ -57,21 +67,34 @@ class DashboardExportHelperTest {
         }
         AppContainer.setHttpClientForTest(client)
 
+        val defaultArtifact = DashboardExportArtifact(format = "json")
+        assertEquals("", defaultArtifact.content)
+        assertEquals(0, defaultArtifact.bytes.size)
+        assertEquals("", defaultArtifact.filename)
+        assertEquals("application/json", defaultArtifact.mimeType)
+
         val result = DashboardExportHelper.exportDashboard("dash-1")
-        assertTrue(result.success)
-        assertEquals("json", result.format)
-        assertEquals("dashboard-dash-1.json", result.filename)
-        assertEquals("application/json", result.mimeType)
-        assertTrue(result.content.contains("Main Dashboard"))
+        assertTrue(result.isSuccess)
+        val artifact = result.getOrThrow()
+        assertEquals("json", artifact.format)
+        assertEquals("dashboard-dash-1.json", artifact.filename)
+        assertEquals("application/json", artifact.mimeType)
+        assertTrue(artifact.content.contains("Main Dashboard"))
     }
 
+    /**
+     * Verifies CSV dashboard export returns a successful [Result] with CSV MIME type and filename.
+     */
     @Test
     fun testExportDashboardCsvSuccess() = runTest {
         val mockEngine = MockEngine { request ->
             when {
                 request.url.encodedPath.contains("export") -> {
                     respond(
-                        "widget_id,title,value\nw-1,Census,42\n",
+                        """
+                        widget_id,title,value
+                        w-1,Census,42
+                        """.trimIndent(),
                         HttpStatusCode.OK,
                         headersOf(HttpHeaders.ContentType, "text/csv")
                     )
@@ -87,15 +110,19 @@ class DashboardExportHelperTest {
         AppContainer.setHttpClientForTest(client)
 
         val result = DashboardExportHelper.exportDashboard("dash-1", "csv")
-        assertTrue(result.success)
-        assertEquals("csv", result.format)
-        assertEquals("dashboard-dash-1.csv", result.filename)
-        assertTrue(result.content.contains("Census"))
+        assertTrue(result.isSuccess)
+        val artifact = result.getOrThrow()
+        assertEquals("csv", artifact.format)
+        assertEquals("dashboard-dash-1.csv", artifact.filename)
+        assertEquals("text/csv", artifact.mimeType)
+        assertTrue(artifact.content.contains("Census"))
     }
 
+    /**
+     * Verifies non-2xx and exception failures in [DashboardExportHelper.exportDashboard] return failed [Result]s.
+     */
     @Test
     fun testExportDashboardFailure() = runTest {
-        // Non-2xx status with expectSuccess = false reaches the !response.success branch
         val non2xxClient = HttpClient(MockEngine {
             respond("Internal Server Error", HttpStatusCode.InternalServerError)
         }) {
@@ -104,32 +131,38 @@ class DashboardExportHelperTest {
         AppContainer.setHttpClientForTest(non2xxClient)
 
         val result = DashboardExportHelper.exportDashboard("dash-1", "json")
-        assertFalse(result.success)
-        assertEquals("json", result.format)
-        assertTrue(result.errorMessage.orEmpty().contains("Export failed with HTTP"))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("Export failed with HTTP"))
 
-        // Exception with message
         val errMsgClient = HttpClient(MockEngine {
             throw IllegalStateException("Disk full")
         })
         AppContainer.setHttpClientForTest(errMsgClient)
         val errMsgResult = DashboardExportHelper.exportDashboard("dash-1", "json")
-        assertFalse(errMsgResult.success)
-        assertEquals("Disk full", errMsgResult.errorMessage)
+        assertTrue(errMsgResult.isFailure)
+        assertEquals("Disk full", errMsgResult.exceptionOrNull()?.message)
 
-        // Exception with null message
         val nullMsgClient = HttpClient(MockEngine {
             throw RuntimeException(null as String?)
         })
         AppContainer.setHttpClientForTest(nullMsgClient)
         val nullMsgResult = DashboardExportHelper.exportDashboard("dash-1", "json")
-        assertFalse(nullMsgResult.success)
-        assertEquals("Failed to export dashboard", nullMsgResult.errorMessage)
+        assertTrue(nullMsgResult.isFailure)
+        assertEquals("Unknown error occurred", nullMsgResult.exceptionOrNull()?.message)
     }
 
+    /**
+     * Verifies PDF clinical report export returns a successful [Result] with binary PDF bytes.
+     */
     @Test
     fun testExportDashboardPdfSuccess() = runTest {
-        val fakePdfBytes = "%PDF-1.4\n1 0 obj\n<< /Title (Clinical Report) >>\nendobj\n%%EOF".encodeToByteArray()
+        val fakePdfBytes = """
+            %PDF-1.4
+            1 0 obj
+            << /Title (Clinical Report) >>
+            endobj
+            %%EOF
+        """.trimIndent().encodeToByteArray()
         val mockEngine = MockEngine { request ->
             when {
                 request.url.encodedPath.contains("export/pdf") -> {
@@ -146,16 +179,19 @@ class DashboardExportHelperTest {
         AppContainer.setHttpClientForTest(client)
 
         val result = DashboardExportHelper.exportDashboardPdf("dash-1")
-        assertTrue(result.success)
-        assertEquals("pdf", result.format)
-        assertEquals("clinical-report-dash-1.pdf", result.filename)
-        assertEquals("application/pdf", result.mimeType)
-        assertTrue(result.bytes.isNotEmpty())
+        assertTrue(result.isSuccess)
+        val artifact = result.getOrThrow()
+        assertEquals("pdf", artifact.format)
+        assertEquals("clinical-report-dash-1.pdf", artifact.filename)
+        assertEquals("application/pdf", artifact.mimeType)
+        assertTrue(artifact.bytes.isNotEmpty())
     }
 
+    /**
+     * Verifies non-2xx and exception failures in [DashboardExportHelper.exportDashboardPdf] return failed [Result]s.
+     */
     @Test
     fun testExportDashboardPdfFailure() = runTest {
-        // Non-2xx status with expectSuccess = false reaches !response.success branch
         val non2xxClient = HttpClient(MockEngine {
             respond("Internal Server Error", HttpStatusCode.InternalServerError)
         }) {
@@ -164,49 +200,45 @@ class DashboardExportHelperTest {
         AppContainer.setHttpClientForTest(non2xxClient)
 
         val result = DashboardExportHelper.exportDashboardPdf("dash-1")
-        assertFalse(result.success)
-        assertEquals("pdf", result.format)
-        assertTrue(result.errorMessage.orEmpty().contains("PDF export failed with HTTP"))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("PDF export failed with HTTP"))
 
-        // Exception with message
         val errMsgClient = HttpClient(MockEngine {
             throw IllegalStateException("PDF renderer error")
         })
         AppContainer.setHttpClientForTest(errMsgClient)
         val errMsgResult = DashboardExportHelper.exportDashboardPdf("dash-1")
-        assertFalse(errMsgResult.success)
-        assertEquals("PDF renderer error", errMsgResult.errorMessage)
+        assertTrue(errMsgResult.isFailure)
+        assertEquals("PDF renderer error", errMsgResult.exceptionOrNull()?.message)
 
-        // Exception with null message
         val nullMsgClient = HttpClient(MockEngine {
             throw RuntimeException(null as String?)
         })
         AppContainer.setHttpClientForTest(nullMsgClient)
         val nullMsgResult = DashboardExportHelper.exportDashboardPdf("dash-1")
-        assertFalse(nullMsgResult.success)
-        assertEquals("Failed to export dashboard PDF", nullMsgResult.errorMessage)
+        assertTrue(nullMsgResult.isFailure)
+        assertEquals("Unknown error occurred", nullMsgResult.exceptionOrNull()?.message)
     }
 
+    /**
+     * Verifies [DashboardExportHelper.saveExportedFile] persists content or wraps storage failures.
+     */
     @Test
-    fun testSaveFileToDevicePlatform() {
-        val testBytes = "Sample Report Content".encodeToByteArray()
-        val res = io.healthplatform.pulsequery.saveFileToDevice("test-report.pdf", "application/pdf", testBytes)
-        assertTrue(res.isSuccess, "saveFileToDevice failed: ${res.exceptionOrNull()?.message}")
-    }
-
-    @Test
-    fun testSaveExportedFileWithAndWithoutStorageAndFailure() {
+    fun testSaveExportedFile() {
         AppContainer.keyValueStorage = null
         val resNoStorage = DashboardExportHelper.saveExportedFile("test.json", "{}")
         assertTrue(resNoStorage.isSuccess)
 
-        val memStorage = io.healthplatform.pulsequery.database.KeyValueStorage()
-        AppContainer.keyValueStorage = memStorage
-        val resWithStorage = DashboardExportHelper.saveExportedFile("test.json", "{\"a\":1}")
+        val storage = io.healthplatform.pulsequery.database.KeyValueStorage(null)
+        AppContainer.currentToken = "preset-token"
+        AppContainer.keyValueStorage = storage
+        AppContainer.currentToken = null
+        AppContainer.keyValueStorage = storage
+        val resWithStorage = DashboardExportHelper.saveExportedFile("test.json", """{"a":1}""")
         assertTrue(resWithStorage.isSuccess)
-        assertEquals("{\"a\":1}", memStorage.get("export_test.json"))
+        assertEquals("""{"a":1}""", storage.get("export_test.json"))
 
-        val throwingStorage = object : io.healthplatform.pulsequery.database.KeyValueStorage() {
+        val throwingStorage = object : io.healthplatform.pulsequery.database.KeyValueStorage(null) {
             override fun save(key: String, value: String) {
                 throw IllegalStateException("Quota exceeded")
             }

@@ -45,9 +45,9 @@ test.describe("Offline & Reconnection Edge Cases", () => {
     // Navigate directly to known dashboard
     await page.goto(`/dashboard/${dashboardId}`);
     await page.waitForSelector("app-dashboard-layout", { timeout: 10000 });
-
-    // Make sure we are fully loaded
-    await page.waitForTimeout(1000);
+    await expect(page.locator('button[data-testid="btn-refresh"]')).toBeVisible(
+      { timeout: 10000 },
+    );
 
     // Mock offline state by intercepting all API requests and aborting them
     await page.route("**/api/v1/**", (route) =>

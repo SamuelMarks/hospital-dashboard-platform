@@ -46,8 +46,8 @@ export class DashboardCreateDialog {
 
   /** Signal Form Tree. */
   readonly createForm = form(this.formModel, (f) => {
-    required(f.name, { message: 'Name is required' });
-    minLength(f.name, 3, { message: 'Name must be at least 3 characters' });
+    required(f.name, { message: $localize`Name is required` });
+    minLength(f.name, 3, { message: $localize`Name must be at least 3 characters` });
   });
 
   /**
@@ -74,7 +74,7 @@ export class DashboardCreateDialog {
         },
         error: (err) => {
           console.error(err);
-          this.error.set('Failed to create dashboard. Please try again.');
+          this.error.set($localize`Failed to create dashboard. Please try again.`);
         },
       });
   }

@@ -8,7 +8,8 @@
  * - **TV Mode**: Listens for `?mode=tv` to enable Kiosk state.
  */
 
-import { Component, inject, OnInit, LOCALE_ID } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, LOCALE_ID } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterOutlet, ActivatedRoute } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { DOCUMENT } from '@angular/common';
@@ -48,6 +49,22 @@ import { SystemHealthBannerComponent } from './shared/components/system-health-b
         display: block;
         height: 100vh;
         overflow: hidden;
+      }
+      .skip-link {
+        position: absolute;
+        left: -9999px;
+        top: 8px;
+        z-index: 2000;
+        padding: 8px 16px;
+        background-color: var(--sys-primary);
+        color: var(--sys-on-primary);
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      .skip-link:focus,
+      .skip-link:focus-visible {
+        left: 8px;
       }
       /* Container fills viewport and adapts to theme background */
       .h-full-container {
@@ -102,6 +119,8 @@ export class App implements OnInit {
   private readonly document = inject(DOCUMENT);
   /** Active Angular locale identifier applied to the document root element. */
   private readonly localeId = inject(LOCALE_ID);
+  /** DestroyRef for cleaning up route query parameter subscriptions. */
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Initializes document language, triggers a system health check, and subscribes to TV mode query parameters. */
   ngOnInit(): void {
@@ -111,7 +130,7 @@ export class App implements OnInit {
     this.connectionService.checkHealth().subscribe();
 
     // Global listener for Kiosk Mode parameter
-    this.route.queryParams.subscribe((params) => {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       if (params['mode'] === 'tv') {
         this.themeService.setTvMode(true);
       }

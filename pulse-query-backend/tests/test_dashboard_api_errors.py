@@ -2,22 +2,25 @@
 Error-path coverage for dashboard router.
 """
 
-from typing import Any
-
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import Executable
 
 from app.api.routers.dashboards import _validate_sql_query
 
 
 async def _auth_headers(client: AsyncClient) -> dict[str, str]:
   """
-  Verify auth headers behavior.
+  Registers and logs in a unique test user and returns Authorization headers.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
+
+  Returns:
+      dict[str, str]: Dictionary containing the `Authorization: Bearer <token>` header.
   """
   email = f"dash_err_{uuid.uuid4()}@example.com"
   pwd = "pw"
@@ -34,10 +37,10 @@ def test_validate_sql_query_empty() -> None:
 @pytest.mark.asyncio
 async def test_clone_dashboard_not_found(client: AsyncClient) -> None:
   """
-  Verify clone dashboard not found behavior.
+  Verifies `POST /dashboards/{id}/clone` returns 404 when the source dashboard does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.post(f"/api/v1/dashboards/{uuid.uuid4()}/clone", headers=headers)
@@ -47,10 +50,10 @@ async def test_clone_dashboard_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_get_dashboard_not_found(client: AsyncClient) -> None:
   """
-  Verify get dashboard not found behavior.
+  Verifies `GET /dashboards/{id}` returns 404 when the dashboard does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.get(f"/api/v1/dashboards/{uuid.uuid4()}", headers=headers)
@@ -60,10 +63,10 @@ async def test_get_dashboard_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_update_dashboard_not_found(client: AsyncClient) -> None:
   """
-  Verify update dashboard not found behavior.
+  Verifies `PUT /dashboards/{id}` returns 404 when the dashboard does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.put(f"/api/v1/dashboards/{uuid.uuid4()}", json={"name": "X"}, headers=headers)
@@ -73,10 +76,10 @@ async def test_update_dashboard_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_delete_dashboard_not_found(client: AsyncClient) -> None:
   """
-  Verify delete dashboard not found behavior.
+  Verifies `DELETE /dashboards/{id}` returns 404 when the dashboard does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.delete(f"/api/v1/dashboards/{uuid.uuid4()}", headers=headers)
@@ -86,10 +89,10 @@ async def test_delete_dashboard_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_create_widget_dashboard_not_found(client: AsyncClient) -> None:
   """
-  Verify create widget dashboard not found behavior.
+  Verifies `POST /dashboards/{id}/widgets` returns 404 when the parent dashboard does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   payload = {"title": "W", "type": "SQL", "visualization": "t", "config": {"query": "SELECT 1"}}
@@ -100,10 +103,10 @@ async def test_create_widget_dashboard_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_update_widget_not_found(client: AsyncClient) -> None:
   """
-  Verify update widget not found behavior.
+  Verifies `PUT /dashboards/widgets/{id}` returns 404 when the widget does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.put(
@@ -117,10 +120,10 @@ async def test_update_widget_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_delete_widget_not_found(client: AsyncClient) -> None:
   """
-  Verify delete widget not found behavior.
+  Verifies `DELETE /dashboards/widgets/{id}` returns 404 when the widget does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.delete(f"/api/v1/dashboards/widgets/{uuid.uuid4()}", headers=headers)
@@ -130,10 +133,10 @@ async def test_delete_widget_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_reorder_dashboard_not_found(client: AsyncClient) -> None:
   """
-  Verify reorder dashboard not found behavior.
+  Verifies `POST /dashboards/{id}/reorder` returns 404 when the dashboard does not exist.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   res = await client.post(f"/api/v1/dashboards/{uuid.uuid4()}/reorder", json={"items": []}, headers=headers)
@@ -143,10 +146,10 @@ async def test_reorder_dashboard_not_found(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_update_dashboard_success(client: AsyncClient) -> None:
   """
-  Verify update dashboard success behavior.
+  Verifies `PUT /dashboards/{id}` renames an owned dashboard and returns 200.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   create = await client.post("/api/v1/dashboards/", json={"name": "Old"}, headers=headers)
@@ -160,10 +163,10 @@ async def test_update_dashboard_success(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_delete_dashboard_success(client: AsyncClient) -> None:
   """
-  Verify delete dashboard success behavior.
+  Verifies `DELETE /dashboards/{id}` deletes an owned dashboard and returns 204.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   create = await client.post("/api/v1/dashboards/", json={"name": "Temp"}, headers=headers)
@@ -176,10 +179,10 @@ async def test_delete_dashboard_success(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_delete_widget_success(client: AsyncClient) -> None:
   """
-  Verify delete widget success behavior.
+  Verifies `DELETE /dashboards/widgets/{id}` deletes an existing widget and returns 204.
 
   Args:
-      client: Test parameter or fixture.
+      client (AsyncClient): Active ASGI HTTP test client.
   """
   headers = await _auth_headers(client)
   create_dash = await client.post("/api/v1/dashboards/", json={"name": "W"}, headers=headers)
@@ -206,17 +209,19 @@ async def test_create_dashboard_scalars_none(client: AsyncClient) -> None:
   headers = await _auth_headers(client)
   orig_execute = conftest.AsyncSessionShim.execute
 
-  async def mock_execute(self: Any, *args: Any, **kwargs: Any) -> Any:
+  async def mock_execute(self: conftest.AsyncSessionShim, statement: Executable) -> object:
     """
-    Verify mock execute behavior.
+    Intercepts dashboard select queries to simulate None return after commit.
 
     Args:
-        self: Session instance.
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        self (conftest.AsyncSessionShim): Session instance.
+        statement (Executable): SQLAlchemy statement.
+
+    Returns:
+        object: Mocked or original execution result.
     """
-    res = await orig_execute(self, *args, **kwargs)
-    stmt_str = str(args[0]) if args else ""
+    res = await orig_execute(self, statement)
+    stmt_str = str(statement)
     if "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
       mock_res = MagicMock()
       mock_res.scalars.return_value.first.return_value = None
@@ -244,18 +249,20 @@ async def test_clone_dashboard_scalars_none(client: AsyncClient) -> None:
   clone_call = False
   dash_queries = 0
 
-  async def mock_execute(self: Any, *args: Any, **kwargs: Any) -> Any:
+  async def mock_execute(self: conftest.AsyncSessionShim, statement: Executable) -> object:
     """
-    Verify mock execute behavior.
+    Intercepts the second dashboard select query during clone to simulate None return.
 
     Args:
-        self: Session instance.
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        self (conftest.AsyncSessionShim): Session instance.
+        statement (Executable): SQLAlchemy statement.
+
+    Returns:
+        object: Mocked or original execution result.
     """
     nonlocal dash_queries
-    res = await orig_execute(self, *args, **kwargs)
-    stmt_str = str(args[0]) if args else ""
+    res = await orig_execute(self, statement)
+    stmt_str = str(statement)
     if clone_call and "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
       dash_queries += 1
       # First dashboard query in clone_dashboard is _get_dashboard_with_access, second is reload
@@ -282,17 +289,19 @@ async def test_restore_default_dashboard_scalars_none(client: AsyncClient) -> No
   headers = await _auth_headers(client)
   orig_execute = conftest.AsyncSessionShim.execute
 
-  async def mock_execute(self: Any, *args: Any, **kwargs: Any) -> Any:
+  async def mock_execute(self: conftest.AsyncSessionShim, statement: Executable) -> object:
     """
-    Verify mock execute behavior.
+    Intercepts dashboard select queries during restore-defaults to simulate None return.
 
     Args:
-        self: Session instance.
-        args: Test parameter or fixture.
-        kwargs: Test parameter or fixture.
+        self (conftest.AsyncSessionShim): Session instance.
+        statement (Executable): SQLAlchemy statement.
+
+    Returns:
+        object: Mocked or original execution result.
     """
-    res = await orig_execute(self, *args, **kwargs)
-    stmt_str = str(args[0]) if args else ""
+    res = await orig_execute(self, statement)
+    stmt_str = str(statement)
     if "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
       mock_res = MagicMock()
       mock_res.scalars.return_value.first.return_value = None
@@ -306,7 +315,7 @@ async def test_restore_default_dashboard_scalars_none(client: AsyncClient) -> No
 
 
 @pytest.mark.asyncio
-async def test_dashboards_widget_update_and_reorder_branches(client: AsyncClient, db_session: Any) -> None:
+async def test_dashboards_widget_update_and_reorder_branches(client: AsyncClient, db_session: AsyncSession) -> None:
   """Verifies HTTP/SQL widget creation, updates with/without SQL query, and reorder with/without group."""
   from app.core.security import create_access_token
   from app.models.dashboard import Dashboard, Widget

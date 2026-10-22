@@ -16,11 +16,11 @@ import { AuthService } from './auth.service';
  *
  * This is the inverse logic of {@link authGuard}.
  *
- * @param {import('@angular/router').ActivatedRouteSnapshot} route - The activated route snapshot.
- * @param {import('@angular/router').RouterStateSnapshot} state - The router state snapshot.
+ * @param {import('@angular/router').ActivatedRouteSnapshot} _route - The activated route snapshot.
+ * @param {import('@angular/router').RouterStateSnapshot} _state - The router state snapshot.
  * @returns {boolean | UrlTree} true if access is allowed, or a UrlTree redirecting to Home.
  */
-export const guestGuard: CanActivateFn = (route, state): boolean | UrlTree => {
+export const guestGuard: CanActivateFn = (_route, _state): boolean | UrlTree => {
   const authService = inject(AuthService);
   const router = inject(Router);
 

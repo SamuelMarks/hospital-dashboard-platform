@@ -3,13 +3,12 @@ Tests for Authentication API.
 Updated to verify that dashboard provisioning occurs during registration.
 """
 
-from typing import Any
-
 import uuid
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
 from app.models.dashboard import Dashboard
@@ -20,7 +19,7 @@ from app.models.user import User
 
 
 @pytest.mark.asyncio
-async def test_register_flow_provisions_dashboard(client: AsyncClient, db_session: Any) -> None:
+async def test_register_flow_provisions_dashboard(client: AsyncClient, db_session: AsyncSession) -> None:
   """
   Test that registration creates a user AND triggers provisioning.
   """
@@ -94,7 +93,7 @@ async def test_login_flow(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_login_failure(client: AsyncClient, db_session: Any) -> None:
+async def test_login_failure(client: AsyncClient, db_session: AsyncSession) -> None:
   """
   Test invalid credentials.
   """
@@ -116,7 +115,7 @@ async def test_login_failure(client: AsyncClient, db_session: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_login_inactive_user(client: AsyncClient, db_session: Any) -> None:
+async def test_login_inactive_user(client: AsyncClient, db_session: AsyncSession) -> None:
   """
   Test login failure when user is inactive.
   """

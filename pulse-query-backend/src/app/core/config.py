@@ -5,8 +5,9 @@ Loads settings from environment variables and provides computed properties
 used across the backend (database URLs, LLM swarm configuration, etc.).
 """
 
+import os
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,6 +19,29 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # .parents[3] = backend  <-- The distinct root where .env lives
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 ENV_PATH = BACKEND_ROOT / ".env"
+
+
+class SwarmConfigDict(TypedDict):
+  """
+  Typed dictionary representing a normalized LLM provider entry in `Settings.LLM_SWARM`.
+
+  Attributes:
+      provider (str): Provider slug (`openai`, `gemini`, `mistral`, `anthropic`).
+      model (str): Model identifier string.
+      api_key (str | None): Configured API key or None.
+      api_base (str | None): Optional custom API base URL.
+      name (str): Human-friendly display label for the Arena UI.
+      model_name (str): Target model identifier passed to completion calls.
+      is_local (bool): True if hosted on a local inference endpoint.
+  """
+
+  provider: str
+  model: str
+  api_key: str | None
+  api_base: str | None
+  name: str
+  model_name: str
+  is_local: bool
 
 
 # Provider-specific display name rules mapped by (provider_or_none, substring_match) -> display_name
@@ -127,7 +151,12 @@ class Settings(BaseSettings):
 
   @property
   def parsed_cors_origins(self) -> list[str]:
-    """Returns validated list of permitted CORS origin strings."""
+    """
+    Returns validated list of permitted CORS origin strings.
+
+    Returns:
+        list[str]: Trimmed list of allowed origin URLs.
+    """
     if isinstance(self.BACKEND_CORS_ORIGINS, str):
       return [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
     return [str(origin).strip() for origin in self.BACKEND_CORS_ORIGINS if str(origin).strip()]
@@ -174,49 +203,19 @@ class Settings(BaseSettings):
 
   @property
   def SQLALCHEMY_DATABASE_URI(self) -> str:
-    """Constructs the async PostgreSQL connection string from environment variables."""
-    import os
+    """
+    Constructs the async PostgreSQL (or SQLite test override) connection string.
 
+    Returns:
+        str: SQLAlchemy async database URI.
+    """
     if os.environ.get("USE_SQLITE_ALEMBIC") == "1":
-      from sqlalchemy.ext.compiler import compiles
-      from sqlalchemy.dialects.postgresql import JSONB, UUID
-
-      @compiles(JSONB, "sqlite")
-      def _compile_jsonb_sqlite(type_: Any, compiler: Any, **kw: Any) -> str:
-        """
-        Compiles PostgreSQL JSONB columns to SQLite JSON type.
-
-        Args:
-            type_ (Any): SQLAlchemy column type instance.
-            compiler (Any): SQLite type compiler instance.
-            **kw (Any): Additional compiler keyword arguments.
-
-        Returns:
-            str: SQLite column type string `"JSON"`.
-        """
-        return "JSON"
-
-      @compiles(UUID, "sqlite")
-      def _compile_uuid_sqlite(type_: Any, compiler: Any, **kw: Any) -> str:
-        """
-        Compiles PostgreSQL UUID columns to SQLite TEXT type.
-
-        Args:
-            type_ (Any): SQLAlchemy column type instance.
-            compiler (Any): SQLite type compiler instance.
-            **kw (Any): Additional compiler keyword arguments.
-
-        Returns:
-            str: SQLite column type string `"TEXT"`.
-        """
-        return "TEXT"
-
       return "sqlite+aiosqlite:///e2e_test.db"
     return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
   def _append_swarm_group(
     self,
-    swarm: list[dict[str, Any]],
+    swarm: list[SwarmConfigDict],
     provider: str,
     models: list[tuple[str, str]],
     api_key: str | None,
@@ -227,7 +226,7 @@ class Settings(BaseSettings):
     Appends normalized model configuration dictionaries to the active `swarm` list.
 
     Args:
-        swarm (list[dict[str, Any]]): Target swarm list to mutate.
+        swarm (list[SwarmConfigDict]): Target swarm list to mutate.
         provider (str): Provider identifier string.
         models (list[tuple[str, str]]): List of `(model_id, display_label)` pairs.
         api_key (str | None): Provider API key if applicable.
@@ -249,12 +248,15 @@ class Settings(BaseSettings):
       )
 
   @property
-  def LLM_SWARM(self) -> list[dict[str, Any]]:
+  def LLM_SWARM(self) -> list[SwarmConfigDict]:
     """
     Compiles the configuration for all active LLM providers.
     Parses definitions for local execution and cloud APIs, standardizing tags for the Arena.
+
+    Returns:
+        list[SwarmConfigDict]: List of active LLM provider configurations.
     """
-    swarm: list[dict[str, Any]] = []
+    swarm: list[SwarmConfigDict] = []
 
     provider_specs: list[tuple[bool, str, str, list[str], str | None, str | None, bool]] = [
       (

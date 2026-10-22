@@ -2,48 +2,47 @@
 Additional tests for SQL generator edge cases.
 """
 
-from typing import Any
-
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.models.feedback import ModelCandidate
+from app.models.feedback import ExperimentLog, ModelCandidate
 from app.services.sql_generator import sql_generator
 
 
-def _make_db() -> Any:
-  """Verify make db behavior."""
+def _make_db() -> MagicMock:
+  """Creates a mock `AsyncSession` capturing added `ExperimentLog` and `ModelCandidate` objects."""
   db = MagicMock()
-  added = []
+  added: list[ExperimentLog | ModelCandidate] = []
 
-  def add_side_effect(obj: Any) -> None:
+  def add_side_effect(obj: ExperimentLog | ModelCandidate) -> None:
     """
-    Verify add side effect behavior.
+    Appends `obj` to `added`.
 
     Args:
-        obj: Test parameter or fixture.
+        obj (ExperimentLog | ModelCandidate): ORM object added to session.
     """
     added.append(obj)
 
   db.add.side_effect = add_side_effect
 
   async def _assign_ids() -> None:
-    """Verify assign ids behavior."""
+    """Assigns UUIDs to objects in `added`."""
     for obj in added:
       if getattr(obj, "id", None) is None:
         obj.id = uuid.uuid4()
 
-  async def _refresh(obj: Any, attribute_names: Any = None) -> None:
+  async def _refresh(obj: ExperimentLog, attribute_names: list[str] | None = None) -> None:
     """
-    Verify refresh behavior.
+    Populates `id`, `created_at`, and `candidates` on `obj`.
 
     Args:
-        obj: Test parameter or fixture.
-        attribute_names: Test parameter or fixture.
+        obj (ExperimentLog): ExperimentLog instance being refreshed.
+        attribute_names (list[str] | None): Optional attribute names.
     """
+    _ = attribute_names
     if getattr(obj, "id", None) is None:
       obj.id = uuid.uuid4()
     if getattr(obj, "created_at", None) is None:

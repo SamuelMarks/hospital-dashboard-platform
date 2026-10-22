@@ -1,28 +1,39 @@
 <div class="benchmarks-container">
   <div class="header">
     <h1 i18n class="text-2xl font-light mb-1">Benchmark Datasets</h1>
-    <p i18n class="text-gray-500">
+    <p i18n style="color: var(--sys-text-secondary)">
       Explore the gold standard scenarios used to evaluate Arena performance.
     </p>
   </div>
 
   @if (error()) {
-    <div class="error-box p-4 mb-6 bg-red-100 text-red-800 border-l-4 border-red-500 rounded">
-      <mat-icon i18n class="align-middle mr-2">error</mat-icon>
+    <div
+      role="alert"
+      class="error-box p-4 mb-6 border-l-4 rounded"
+      style="
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        border-color: var(--sys-error);
+      "
+    >
+      <mat-icon aria-hidden="true" class="align-middle mr-2">error</mat-icon>
       {{ error() }}
     </div>
   }
 
   @if (progress()?.active) {
-    <mat-card class="progress-card p-4 mb-6 shadow-sm bg-blue-50/70">
+    <mat-card
+      class="progress-card p-4 mb-6 shadow-sm"
+      style="background-color: var(--sys-primary-container); color: var(--sys-on-primary-container)"
+    >
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2">
-          <mat-icon i18n class="text-blue-600">refresh</mat-icon>
-          <strong i18n class="text-sm font-semibold text-blue-900">
+          <mat-icon aria-hidden="true" style="color: var(--sys-primary)">refresh</mat-icon>
+          <strong i18n class="text-sm font-semibold">
             Active Benchmark Run: {{ progress()?.current_model }}
           </strong>
         </div>
-        <span class="text-xs font-mono text-gray-600">
+        <span class="text-xs font-mono" style="color: var(--sys-text-secondary)">
           {{ progress()?.completed }} / {{ progress()?.total }} ({{ progressPercent() }}%)
         </span>
       </div>
@@ -30,8 +41,10 @@
         mode="determinate"
         [value]="progressPercent()"
         class="mb-2"
+        i18n-aria-label
+        aria-label="Benchmark execution progress"
       ></mat-progress-bar>
-      <div class="flex justify-between text-xs text-gray-500">
+      <div class="flex justify-between text-xs" style="color: var(--sys-text-secondary)">
         <span i18n>Status: {{ progress()?.status }}</span>
         @if ((progress()?.eta_seconds || 0) > 0) {
           <span i18n>Est. Time Remaining: {{ progress()?.eta_seconds }}s</span>
@@ -46,23 +59,38 @@
     </div>
   } @else {
     <mat-tab-group animationDuration="0ms">
-      <mat-tab label="Text-to-SQL ({{ sqlCount() }})">
+      <mat-tab i18n-label label="Text-to-SQL ({{ sqlCount() }})">
         <div class="tab-content pt-4">
           <div class="grid grid-cols-1 gap-6">
             @for (item of sqlBenchmarks(); track item.question) {
               @if (item.question) {
-                <mat-card class="p-4 border border-gray-200">
+                <mat-card
+                  class="p-4 border"
+                  style="
+                    background-color: var(--sys-surface);
+                    border-color: var(--sys-surface-border);
+                  "
+                >
                   <div class="flex justify-between items-start mb-2">
-                    <h3 class="font-bold text-lg text-blue-900">{{ item.theme }}</h3>
+                    <h3 class="font-bold text-lg" style="color: var(--sys-primary)">
+                      {{ item.theme }}
+                    </h3>
                     <span
-                      class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600"
+                      class="px-2 py-1 text-xs font-bold rounded-full"
+                      style="
+                        background-color: var(--sys-surface-variant);
+                        color: var(--sys-on-surface-variant);
+                      "
                       >{{ item.complexity }}</span
                     >
                   </div>
-                  <p class="mb-4 text-gray-800">{{ item.question }}</p>
+                  <p class="mb-4" style="color: var(--sys-text-primary)">{{ item.question }}</p>
 
                   <div class="mb-2">
-                    <strong i18n class="text-xs text-gray-500 uppercase tracking-wider"
+                    <strong
+                      i18n
+                      class="text-xs uppercase tracking-wider"
+                      style="color: var(--sys-text-secondary)"
                       >Gold SQL</strong
                     >
                   </div>
@@ -74,28 +102,50 @@
         </div>
       </mat-tab>
 
-      <mat-tab label="MPAX Optimization ({{ mpaxCount() }})">
+      <mat-tab i18n-label label="MPAX Optimization ({{ mpaxCount() }})">
         <div class="tab-content pt-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             @for (item of mpaxBenchmarks(); track item.id) {
               <mat-card
-                class="p-4 border border-gray-200 flex flex-col cursor-pointer hover:border-blue-300 transition-colors"
+                class="p-4 border flex flex-col cursor-pointer transition-colors"
+                style="
+                  background-color: var(--sys-surface);
+                  border-color: var(--sys-surface-border);
+                "
+                tabindex="0"
+                role="button"
                 (click)="simulateMpax(item)"
+                (keydown.enter)="simulateMpax(item)"
+                (keydown.space)="simulateMpax(item); $event.preventDefault()"
               >
                 <div class="flex justify-between items-start mb-2">
-                  <h3 class="font-bold text-blue-900 text-sm truncate pr-2" [title]="item.theme">
+                  <h3
+                    class="font-bold text-sm truncate pr-2"
+                    style="color: var(--sys-primary)"
+                    [title]="item.theme"
+                  >
                     {{ item.theme }}
                   </h3>
                   <span
-                    class="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 flex-shrink-0"
+                    class="px-2 py-1 text-xs font-bold rounded-full flex-shrink-0"
+                    style="
+                      background-color: var(--sys-surface-variant);
+                      color: var(--sys-on-surface-variant);
+                    "
                     >{{ item.complexity }}</span
                   >
                 </div>
 
-                <p class="text-sm text-gray-800 mb-4 flex-grow">{{ item.prompt }}</p>
+                <p class="text-sm mb-4 flex-grow" style="color: var(--sys-text-primary)">
+                  {{ item.prompt }}
+                </p>
 
                 <div
-                  class="grid grid-cols-2 gap-2 text-xs text-gray-600 mt-auto bg-gray-50 p-2 rounded"
+                  class="grid grid-cols-2 gap-2 text-xs mt-auto p-2 rounded"
+                  style="
+                    background-color: var(--sys-surface-variant);
+                    color: var(--sys-on-surface-variant);
+                  "
                 >
                   <div i18n>
                     <strong>Demand:</strong>

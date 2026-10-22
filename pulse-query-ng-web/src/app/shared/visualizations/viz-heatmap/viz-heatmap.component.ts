@@ -53,7 +53,8 @@ export interface HeatmapMatrix {
         border-radius: 2px;
         transition: border 0.1s;
       }
-      .cell:hover {
+      .cell:hover,
+      .cell:focus-visible {
         border: 1px solid var(--sys-on-surface);
         z-index: 10;
       }
@@ -132,6 +133,6 @@ export class VizHeatmapComponent {
    */
   getCellTooltip(m: HeatmapMatrix, x: string, y: string): string {
     const val = m.dataMap.get(`${x}:${y}`) || 0;
-    return `${y} @ Hour ${x}: ${val}`;
+    return $localize`${y} @ Hour ${x}\: ${val}`;
   }
 }

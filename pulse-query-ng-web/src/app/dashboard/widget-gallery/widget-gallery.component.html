@@ -1,12 +1,14 @@
 <div class="header">
   <h3 i18n class="text-lg font-medium mb-4 flex items-center gap-2">
-    <mat-icon>library_add</mat-icon> Widget Gallery
+    <mat-icon aria-hidden="true">library_add</mat-icon> Widget Gallery
   </h3>
 
   <mat-form-field appearance="outline" density="compact" class="w-full">
-    <mat-icon i18n matPrefix>search</mat-icon>
+    <mat-icon aria-hidden="true" matPrefix>search</mat-icon>
     <input
       matInput
+      i18n-aria-label
+      aria-label="Filter widgets"
       i18n-placeholder
       placeholder="Search metrics..."
       [value]="searchQuery()"
@@ -32,19 +34,23 @@
       @for (t of group.items; track t.id) {
         <div class="template-card" cdkDrag [cdkDragData]="t">
           <div class="font-medium text-sm text-primary mb-1">{{ t.title }}</div>
-          <div class="text-xs text-gray-500 line-clamp-2">{{ t.description }}</div>
+          <div class="text-xs line-clamp-2" style="color: var(--sys-text-secondary)">
+            {{ t.description }}
+          </div>
 
           <!-- Drag Preview -->
           <div *cdkDragPreview class="template-card mat-elevation-z4">
             <div class="font-medium text-sm text-primary">{{ t.title }}</div>
-            <div i18n class="text-xs text-gray-500">Drop to add</div>
+            <div i18n class="text-xs" style="color: var(--sys-text-secondary)">Drop to add</div>
           </div>
         </div>
       }
     }
 
     @if (filteredTemplates().length === 0 && !loading()) {
-      <div i18n class="text-center text-gray-500 text-sm mt-8 italic">No templates found</div>
+      <div i18n class="text-center text-sm mt-8 italic" style="color: var(--sys-text-secondary)">
+        No templates found
+      </div>
     }
   </div>
 </div>

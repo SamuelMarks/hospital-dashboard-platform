@@ -6,7 +6,8 @@
  * - Removed `ReactiveFormsModule`.
  */
 
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, LOCALE_ID } from '@angular/core';
+import { formatDate } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { FormRoot, FormField, form } from '@angular/forms/signals';
@@ -98,23 +99,20 @@ import { DashboardStore } from './dashboard.store';
         min-width: 240px;
         font-size: 13px;
       }
-
-      /* Override internal spacing for compactness in toolbar */
-      ::ng-deep .mat-mdc-form-field-flex {
-        align-items: center !important;
-      }
     `,
   ],
 })
 export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** Access to dashboard state (global params). */
   public readonly store = inject(DashboardStore);
-  /** router property. */
+  /** Angular router used to persist global filter parameters in URL query strings. */
   private readonly router = inject(Router);
-  /** route property. */
+  /** Activated route used to read initial filter query parameters from the URL. */
   private readonly route = inject(ActivatedRoute);
+  /** Active application locale identifier. */
+  private readonly localeId = inject(LOCALE_ID);
 
-  /** destroy$ property. */
+  /** Subject emitting on component destruction to tear down route query parameter subscriptions. */
   private readonly destroy$ = new Subject<void>();
 
   /** Form model containing the current filter values. */
@@ -125,12 +123,12 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   });
 
   /** The form control for the ribbon. */
-  readonly ribbonForm = form(this.formModel, (f) => {});
+  readonly ribbonForm = form(this.formModel);
 
   /** Flag to prevent emit loops while syncing from route */
   private isSyncingFromRoute = false;
 
-  /** Ng On Init. */
+  /** Synchronizes global department and date range filter controls from route query parameters. */
   ngOnInit(): void {
     // Sync from Route to Form
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -168,7 +166,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
     this.updateFilter('dept', value);
   }
 
-  /** Ng On Destroy. */
+  /** Completes the destruction subject to clean up route query parameter subscriptions. */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
@@ -215,12 +213,12 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Formats a Date instance as an ISO YYYY-MM-DD date string.
+   * Formats a Date instance as an ISO YYYY-MM-DD date string using Angular's locale-aware formatter.
    *
    * @param d - The Date instance to format.
    * @returns Formatted YYYY-MM-DD string.
    */
   private formatDate(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    return formatDate(d, 'yyyy-MM-dd', this.localeId, 'UTC');
   }
 }

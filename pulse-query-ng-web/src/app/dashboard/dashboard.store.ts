@@ -7,7 +7,7 @@
  */
 
 import { DATE_NOW } from '../core/time.token';
-import { signal, computed, inject, OnDestroy, Injectable } from '@angular/core';
+import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subject, of, timer, Subscription } from 'rxjs';
 import { switchMap, catchError, takeUntil, tap, filter, finalize } from 'rxjs/operators';
@@ -77,7 +77,7 @@ const DEFAULT_REFRESH_RATE = 300_000;
 /**
  * Signal-based store orchestrating dashboard CRUD, widget execution, undo/redo, and offline caching.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DashboardStore implements OnDestroy {
   /** Injected clock factory returning the current `Date`. */
   private readonly dateNow = inject(DATE_NOW);
@@ -305,28 +305,28 @@ export class DashboardStore implements OnDestroy {
     let payload: WidgetIn;
     if (source.type === 'HTTP') {
       payload = {
-        title: `Copy of ${source.title}`,
+        title: $localize`Copy of ${source.title}`,
         type: 'HTTP',
         visualization: source.visualization,
         config: newConfig as unknown as WidgetCreateHttp['config'],
       };
     } else if (source.type === 'TEXT') {
       payload = {
-        title: `Copy of ${source.title}`,
+        title: $localize`Copy of ${source.title}`,
         type: 'TEXT',
         visualization: 'markdown',
         config: newConfig as unknown as WidgetCreateText['config'],
       };
     } else {
       payload = {
-        title: `Copy of ${source.title}`,
+        title: $localize`Copy of ${source.title}`,
         type: 'SQL',
         visualization: source.visualization,
         config: newConfig as unknown as WidgetCreateSql['config'],
       };
     }
 
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-${this.dateNow().getTime()}`;
     const tempWidget: WidgetResponse = {
       id: tempId,
       dashboard_id: dash.id,
@@ -559,7 +559,7 @@ export class DashboardStore implements OnDestroy {
    * @param e - Caught error value.
    */
   private handleError(e: unknown): void {
-    const msg = extractApiErrorMessage(e, 'An unexpected error occurred');
+    const msg = extractApiErrorMessage(e, $localize`An unexpected error occurred`);
     this.patch({ error: msg });
   }
 }

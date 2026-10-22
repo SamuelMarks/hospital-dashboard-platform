@@ -2,7 +2,7 @@
  * @fileoverview Arena SQL execution client delegating to the generated OpenAPI `AiService`.
  */
 
-import { inject, Injectable } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { AiService, SQLExecutionRequest, SQLExecutionResponse } from '../api-client';
 import { Observable } from 'rxjs';
 
@@ -19,7 +19,7 @@ export type SqlExecutionResponse = SQLExecutionResponse;
 /**
  * Service wrapper delegating read-only SQL preview execution to `AiService`.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ArenaSqlService {
   /** Injected generated OpenAPI AI service client. */
   private readonly aiApi = inject(AiService);

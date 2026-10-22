@@ -5,12 +5,11 @@ Verifies ownership and role enforcement (OWNER, EDIT, VIEW) across dashboard rea
 updates, widget manipulations, exports, and share management.
 """
 
-from typing import Any
-
 import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.models.dashboard import Dashboard, Widget
@@ -18,7 +17,7 @@ from app.models.user import User
 
 
 @pytest.fixture
-async def sharing_users(db_session: Any) -> Any:
+async def sharing_users(db_session: AsyncSession) -> dict[str, User]:
   """
   Creates an owner, an editor, a viewer, and an unauthorized user for testing.
   """
@@ -44,7 +43,9 @@ def set_active_user(user: User) -> None:
 
 
 @pytest.mark.asyncio
-async def test_dashboard_sharing_lifecycle(client: AsyncClient, sharing_users: Any, db_session: Any) -> None:
+async def test_dashboard_sharing_lifecycle(
+  client: AsyncClient, sharing_users: dict[str, User], db_session: AsyncSession
+) -> None:
   """
   Tests complete sharing lifecycle: owner grants VIEW/EDIT, checks access, and revokes.
   """
@@ -189,7 +190,9 @@ async def test_dashboard_sharing_lifecycle(client: AsyncClient, sharing_users: A
 
 
 @pytest.mark.asyncio
-async def test_sharing_validation_errors(client: AsyncClient, sharing_users: Any, db_session: Any) -> None:
+async def test_sharing_validation_errors(
+  client: AsyncClient, sharing_users: dict[str, User], db_session: AsyncSession
+) -> None:
   """
   Verifies input validation: sharing with self, unknown user, and invalid permission level.
   """
@@ -233,7 +236,9 @@ async def test_sharing_validation_errors(client: AsyncClient, sharing_users: Any
 
 
 @pytest.mark.asyncio
-async def test_shared_dashboard_execution(client: AsyncClient, sharing_users: Any, db_session: Any) -> None:
+async def test_shared_dashboard_execution(
+  client: AsyncClient, sharing_users: dict[str, User], db_session: AsyncSession
+) -> None:
   """
   Verifies that shared users with VIEW or EDIT permissions can refresh dashboards and widgets,
   while unauthorized users receive 404 Not Found.

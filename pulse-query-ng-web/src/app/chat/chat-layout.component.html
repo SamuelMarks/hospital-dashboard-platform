@@ -9,15 +9,17 @@
     <!-- Use Tabs to switch between History and Cart -->
     <mat-tab-group class="sidebar-tabs" animationDuration="0ms">
       <!-- TAB 1: HISTORY -->
-      <mat-tab i18n>
+      <mat-tab>
         <ng-template mat-tab-label>
-          <mat-icon class="mr-2 icon-sm">history</mat-icon> History
+          <mat-icon aria-hidden="true" class="mr-2 icon-sm">history</mat-icon>
+          <span i18n>History</span>
         </ng-template>
 
         <div class="tab-column">
           <div class="history-header">
             <button mat-stroked-button color="primary" class="w-full" (click)="newChat()">
-              <mat-icon>add</mat-icon> New Chat
+              <mat-icon aria-hidden="true">add</mat-icon>
+              <span i18n>New Chat</span>
             </button>
           </div>
 
@@ -27,35 +29,42 @@
 
           <div class="history-list" role="list">
             @for (group of groupedHistory(); track group.label) {
-              <div class="group-label">{{ group.label }}</div>
+              <div class="group-label" role="listitem">{{ group.label }}</div>
               @for (chat of group.items; track chat.id) {
                 <div
                   class="nav-item-container"
+                  role="listitem"
                   [class.active]="store.activeConversationId() === chat.id"
                 >
-                  <div class="nav-content" (click)="selectChat(chat.id)">
-                    <mat-icon class="mr-2 text-sm">chat_bubble_outline</mat-icon>
+                  <button
+                    type="button"
+                    class="nav-content"
+                    [attr.aria-current]="store.activeConversationId() === chat.id ? 'page' : null"
+                    (click)="selectChat(chat.id)"
+                  >
+                    <mat-icon aria-hidden="true" class="mr-2 text-sm">chat_bubble_outline</mat-icon>
                     <span class="truncate text-sm">{{ chat.title }}</span>
-                  </div>
+                  </button>
 
                   <!-- Context Menu Button -->
                   <button
                     mat-icon-button
-                    i18n-aria-label
-                    aria-label="action"
+                    [attr.aria-label]="getOptionsAriaLabel(chat)"
                     class="action-btn scale-75"
                     [matMenuTriggerFor]="menu"
                     (click)="$event.stopPropagation()"
                   >
-                    <mat-icon>more_vert</mat-icon>
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
                   </button>
 
                   <mat-menu #menu="matMenu">
                     <button mat-menu-item (click)="renameChat(chat)">
-                      <mat-icon>edit</mat-icon> Rename
+                      <mat-icon aria-hidden="true">edit</mat-icon>
+                      <span i18n>Rename</span>
                     </button>
                     <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
-                      <mat-icon color="warn">delete</mat-icon> Delete
+                      <mat-icon aria-hidden="true" color="warn">delete</mat-icon>
+                      <span i18n>Delete</span>
                     </button>
                   </mat-menu>
                 </div>
@@ -66,10 +75,10 @@
       </mat-tab>
 
       <!-- TAB 2: QUERY CART -->
-      <mat-tab i18n>
+      <mat-tab>
         <ng-template mat-tab-label>
-          <mat-icon class="mr-2 icon-sm">shopping_cart</mat-icon>
-          Cart
+          <mat-icon aria-hidden="true" class="mr-2 icon-sm">shopping_cart</mat-icon>
+          <span i18n>Cart</span>
           @if (cart.count() > 0) {
             <span class="badgex">{{ cart.count() }}</span>
           }
@@ -83,11 +92,17 @@
     </mat-tab-group>
   </mat-sidenav>
 
-  <mat-sidenav-content role="main" class="relative flex flex-col h-full overflow-hidden">
+  <mat-sidenav-content class="chat-main relative flex flex-col h-full overflow-hidden">
     @if (isHandset()) {
       <mat-toolbar color="primary" class="flex-none">
-        <button i18n mat-icon-button i18n-aria-label aria-label="action" (click)="drawer.toggle()">
-          <mat-icon>menu</mat-icon>
+        <button
+          mat-icon-button
+          i18n-aria-label
+          aria-label="Toggle conversation history sidebar"
+          [attr.aria-expanded]="drawer.opened"
+          (click)="drawer.toggle()"
+        >
+          <mat-icon aria-hidden="true">menu</mat-icon>
         </button>
         <span i18n>Assistant</span>
       </mat-toolbar>
@@ -96,17 +111,19 @@
     <!-- Desktop Toggle Button -->
     @if (!isHandset()) {
       <button
-        i18n
         mat-icon-button
         i18n-aria-label
-        aria-label="Toggle Sidebar"
+        aria-label="Toggle conversation history sidebar"
+        [attr.aria-expanded]="sidebarOpen()"
         class="absolute left-2 top-2 z-10 bg-surface shadow-sm border border-border opacity-50 hover:opacity-100 transition-opacity"
         (click)="toggleSidebar()"
         i18n-matTooltip
         matTooltip="Toggle Sidebar"
         style="background: var(--sys-surface); border-color: var(--sys-surface-border)"
       >
-        <mat-icon>{{ sidebarOpen() ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+        <mat-icon aria-hidden="true">{{
+          sidebarOpen() ? 'chevron_left' : 'chevron_right'
+        }}</mat-icon>
       </button>
     }
 

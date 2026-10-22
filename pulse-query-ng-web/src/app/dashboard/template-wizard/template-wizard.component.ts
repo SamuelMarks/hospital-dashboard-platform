@@ -8,7 +8,7 @@
  * 4. Persist the new widget on the target dashboard only when the user confirms "Add Widget".
  */
 
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { finalize, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { Subject, Subscription } from 'rxjs';
@@ -129,16 +129,6 @@ export interface WizardData {
         z-index: 1;
         pointer-events: none;
       }
-      ::ng-deep .kwd {
-        color: #569cd6;
-        font-weight: bold;
-      }
-      ::ng-deep .str {
-        color: #ce9178;
-      }
-      ::ng-deep .num {
-        color: #b5cea8;
-      }
     `,
   ],
 })
@@ -247,17 +237,15 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Checks whether step 1 has a valid template or custom SQL selection.
-   *
-   * @returns `true` if the user can advance from step 1.
+   * Computed signal indicating whether step 1 has a valid template or custom SQL selection.
    */
-  selectionValid(): boolean {
+  readonly selectionValid = computed((): boolean => {
     const val = this.formModel();
     if (val.mode === 'predefined') {
       return Boolean(val.templateId);
     }
     return Boolean(val.rawSql && val.rawSql.trim().length > 0);
-  }
+  });
 
   /**
    * Fetches marketplace templates filtered by `selectedCategory()` and optional `searchTerm`.
@@ -383,7 +371,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
           });
         },
         error: () => {
-          this.executionResult.set({ error: 'Failed to execute query' });
+          this.executionResult.set({ error: $localize`Failed to execute query` });
         },
       });
   }
@@ -397,7 +385,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    let title = 'Custom SQL Widget';
+    let title = $localize`Custom SQL Widget`;
     let visualization = 'table';
     if (this.formModel().mode === 'predefined') {
       const selected = this.templates().find((x) => x.id === this.formModel().templateId);
@@ -441,11 +429,9 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Produces syntax-highlighted HTML for the preview SQL query.
-   *
-   * @returns Sanitized HTML containing keyword, string, and numeric token spans.
+   * Computed signal producing syntax-highlighted HTML for the preview SQL query.
    */
-  highlightedSql(): SafeHtml {
+  readonly highlightedSql = computed((): SafeHtml => {
     let code = this.finalSql() || '';
     code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const keywords =
@@ -454,7 +440,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
     code = code.replace(/'([^']*)'/g, `<span class="str">'$1'</span>`);
     code = code.replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
     return this.sanitizer.bypassSecurityTrustHtml(code + '<br>');
-  }
+  });
 
   /**
    * Synchronizes scroll offsets between the transparent textarea and the syntax-highlight layer.

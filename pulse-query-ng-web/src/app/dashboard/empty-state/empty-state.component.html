@@ -14,12 +14,15 @@
     (click)="openWizard()"
     tabindex="0"
     (keydown.enter)="openWizard()"
+    (keydown.space)="openWizard(); $event.preventDefault()"
     role="button"
     i18n-aria-label
     aria-label="Start with a Template"
   >
     <div class="card-content-wrapper">
-      <div class="card-icon-bg icon-wizard"><mat-icon i18n>library_add</mat-icon></div>
+      <div class="card-icon-bg icon-wizard">
+        <mat-icon aria-hidden="true">library_add</mat-icon>
+      </div>
       <h3 i18n class="card-title">Start with a Template</h3>
       <p i18n class="card-desc">
         Browse pre-built metrics like "Admission Lag" or "Utilization Spikes".
@@ -36,12 +39,13 @@
     (click)="openAi()"
     tabindex="0"
     (keydown.enter)="openAi()"
+    (keydown.space)="openAi(); $event.preventDefault()"
     role="button"
     i18n-aria-label
     aria-label="Ask AI a Question"
   >
     <div class="card-content-wrapper">
-      <div class="card-icon-bg icon-ai"><mat-icon i18n>smart_toy</mat-icon></div>
+      <div class="card-icon-bg icon-ai"><mat-icon aria-hidden="true">smart_toy</mat-icon></div>
       <h3 i18n class="card-title">Ask AI a Question</h3>
       <p i18n class="card-desc">
         Describe what you want to see. AI will generate the SQL and visualization.
@@ -58,19 +62,25 @@
     class="action-card"
     (click)="!store.isLoading() && loadSamples()"
     tabindex="0"
-    (keydown.enter)="loadSamples()"
+    (keydown.enter)="!store.isLoading() && loadSamples()"
+    (keydown.space)="!store.isLoading() && loadSamples(); $event.preventDefault()"
     role="button"
+    [attr.aria-disabled]="store.isLoading()"
     i18n-aria-label
     aria-label="Load Sample Data"
   >
     <div class="card-content-wrapper">
-      <div class="card-icon-bg icon-seed"><mat-icon i18n>restore</mat-icon></div>
+      <div class="card-icon-bg icon-seed"><mat-icon aria-hidden="true">restore</mat-icon></div>
       <h3 i18n class="card-title">Load Sample Data</h3>
       <p i18n class="card-desc">
         Instantly populate this dashboard with standard "Hospital Command Center" content.
       </p>
       <div class="card-action">
-        <span i18n class="fake-button">{{ store.isLoading() ? 'Loading...' : 'Auto-Fill' }}</span>
+        @if (store.isLoading()) {
+          <span i18n class="fake-button">Loading...</span>
+        } @else {
+          <span i18n class="fake-button">Auto-Fill</span>
+        }
       </div>
     </div>
   </mat-card>

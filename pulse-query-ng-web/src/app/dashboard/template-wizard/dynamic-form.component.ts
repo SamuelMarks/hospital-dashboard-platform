@@ -10,7 +10,18 @@
  * - Validation (required, min, max)
  */
 
-import { Component, input, output, OnChanges, SimpleChanges, inject, signal } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+  inject,
+  signal,
+  LOCALE_ID,
+} from '@angular/core';
+import { formatDate } from '@angular/common';
 import {
   ReactiveFormsModule,
   FormGroup,
@@ -18,6 +29,7 @@ import {
   Validators,
   ValidatorFn,
 } from '@angular/forms';
+import { Subscription } from 'rxjs';
 
 // Material Imports
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,31 +45,31 @@ import { provideNativeDateAdapter } from '@angular/material/core';
  * Typings for Supported JSON Schema Features.
  */
 interface JsonSchemaProperty {
-  /** type property. */
+  /** Primitive JSON Schema data type for the form control. */
   type: 'string' | 'number' | 'integer' | 'boolean';
-  /** title property. */
+  /** Human-readable label displayed above the form field. */
   title?: string;
-  /** description property. */
+  /** Help text or tooltip describing the parameter's clinical purpose. */
   description?: string;
-  /** enum property. */
+  /** Allowed enumeration values rendered as a select dropdown. */
   enum?: string[] | number[];
-  /** format property. */
+  /** Semantic string format hint such as date, date-time, or email. */
   format?: 'date' | 'date-time' | 'email';
-  /** default property. */
+  /** Default value pre-populated when initializing the control. */
   default?: string | number | boolean;
-  /** minimum property. */
+  /** Minimum inclusive numeric value constraint. */
   minimum?: number;
-  /** maximum property. */
+  /** Maximum inclusive numeric value constraint. */
   maximum?: number;
 }
 
-/** Json Schema interface. */
+/** Root JSON Schema object describing a widget template's configurable parameters. */
 interface JsonSchema {
-  /** type property. */
+  /** Root schema structural type (typically 'object'). */
   type: string;
-  /** required property. */
+  /** Array of property keys that require non-empty user values. */
   required?: string[];
-  /** properties property. */
+  /** Map of parameter keys to their JSON Schema property definitions. */
   properties?: Record<string, JsonSchemaProperty>;
 }
 
@@ -118,7 +130,12 @@ interface JsonSchema {
     `,
   ],
 })
-export class DynamicFormComponent implements OnChanges {
+export class DynamicFormComponent implements OnChanges, OnDestroy {
+  /** Injected application locale identifier. */
+  private readonly localeId = inject(LOCALE_ID);
+  /** Active subscription to `form.valueChanges`, cleaned up on rebuild and destroy. */
+  private valueChangesSub = new Subscription();
+
   /** valid JSON Schema Object (subset). */
   readonly jsonSchema = input<Record<string, unknown>>({});
 
@@ -144,9 +161,18 @@ export class DynamicFormComponent implements OnChanges {
   }
 
   /**
+   * Unsubscribes from reactive form value changes when the component is destroyed.
+   */
+  ngOnDestroy(): void {
+    this.valueChangesSub.unsubscribe();
+  }
+
+  /**
    * Reconstructs the Form Group controls based on new Schema input.
    */
   private rebuildForm(): void {
+    this.valueChangesSub.unsubscribe();
+
     // 1. Clear existing
     Object.keys(this.form.controls).forEach((k) => this.form.removeControl(k));
 
@@ -181,7 +207,7 @@ export class DynamicFormComponent implements OnChanges {
     this.fieldKeys.set(Object.keys(props));
 
     // Subscribe to changes
-    this.form.valueChanges.subscribe((val) => {
+    this.valueChangesSub = this.form.valueChanges.subscribe((val) => {
       // Emit status
       this.statusChange.emit(this.form.valid ? 'VALID' : 'INVALID');
 
@@ -231,15 +257,13 @@ export class DynamicFormComponent implements OnChanges {
    */
   private cleanValues(raw: Record<string, unknown>): Record<string, unknown> {
     const result = { ...raw };
-    const schema = this.jsonSchema() as unknown as JsonSchema | null;
-    const props = schema?.properties || {};
 
     Object.keys(result).forEach((key) => {
-      const prop = props[key];
+      const prop = this.getProperty(key);
       const val = result[key];
 
       if (prop?.format === 'date' && val instanceof Date) {
-        result[key] = val.toISOString().split('T')[0];
+        result[key] = formatDate(val, 'yyyy-MM-dd', this.localeId, 'UTC');
       }
     });
     return result;

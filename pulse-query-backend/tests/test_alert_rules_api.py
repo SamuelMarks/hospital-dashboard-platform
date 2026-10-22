@@ -9,8 +9,7 @@ Verifies full CRUD lifecycle for hospital capacity alerting thresholds:
 - Deleting rules and handling 404 edge cases
 """
 
-from typing import Any
-
+from collections.abc import Generator
 import uuid
 from unittest.mock import MagicMock
 
@@ -25,7 +24,7 @@ BASE_URL = "/api/v1/analytics/alert-rules"
 
 
 @pytest.fixture
-def mock_auth_user() -> Any:
+def mock_auth_user() -> Generator[MagicMock, None, None]:
   """Provides a mock authenticated user overriding get_current_user."""
   user = MagicMock(spec=User)
   user.id = uuid.uuid4()
@@ -41,7 +40,7 @@ def mock_auth_user() -> Any:
 
 
 @pytest.mark.asyncio
-async def test_alert_rules_crud_lifecycle(client: AsyncClient, mock_auth_user: Any) -> None:
+async def test_alert_rules_crud_lifecycle(client: AsyncClient, mock_auth_user: MagicMock) -> None:
   """Test full create, read, update, list, and delete lifecycle of an AlertRule."""
   # 1. Initially empty or existing rules
   res_list = await client.get(BASE_URL)
@@ -104,8 +103,9 @@ async def test_alert_rules_crud_lifecycle(client: AsyncClient, mock_auth_user: A
 
 
 @pytest.mark.asyncio
-async def test_alert_rules_validation_errors(client: AsyncClient, mock_auth_user: Any) -> None:
+async def test_alert_rules_validation_errors(client: AsyncClient, mock_auth_user: MagicMock) -> None:
   """Test validation constraints on alert rule creation."""
+  _ = mock_auth_user
   # Threshold > 100
   res_over = await client.post(
     BASE_URL,
@@ -141,7 +141,7 @@ async def test_alert_rules_validation_errors(client: AsyncClient, mock_auth_user
 
 
 @pytest.mark.asyncio
-async def test_alert_rules_not_found_branches(client: AsyncClient, mock_auth_user: Any) -> None:
+async def test_alert_rules_not_found_branches(client: AsyncClient, mock_auth_user: MagicMock) -> None:
   """Test 404 error responses for non-existent alert rule operations."""
   non_existent_id = uuid.uuid4()
   # Get non-existent

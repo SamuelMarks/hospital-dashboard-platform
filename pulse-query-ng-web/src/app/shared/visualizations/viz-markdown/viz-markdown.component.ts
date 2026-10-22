@@ -24,54 +24,6 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
         font-size: 14px;
         line-height: 1.5;
       }
-      .md-content ::ng-deep h1 {
-        font-size: 1.5em;
-        font-weight: bold;
-        margin-bottom: 0.5em;
-        border-bottom: 1px solid var(--sys-surface-border);
-        padding-bottom: 4px;
-      }
-      .md-content ::ng-deep h2 {
-        font-size: 1.25em;
-        font-weight: bold;
-        margin-bottom: 0.5em;
-      }
-      .md-content ::ng-deep h3 {
-        font-size: 1.1em;
-        font-weight: bold;
-        margin-bottom: 0.5em;
-      }
-      .md-content ::ng-deep p {
-        margin-bottom: 1em;
-      }
-      .md-content ::ng-deep ul {
-        list-style-type: disc;
-        padding-left: 20px;
-        margin-bottom: 1em;
-      }
-      .md-content ::ng-deep ol {
-        list-style-type: decimal;
-        padding-left: 20px;
-        margin-bottom: 1em;
-      }
-      .md-content ::ng-deep blockquote {
-        border-left: 4px solid var(--sys-surface-border);
-        padding-left: 12px;
-        margin-left: 0;
-        color: var(--sys-text-secondary);
-      }
-      .md-content ::ng-deep code {
-        background-color: var(--sys-hover);
-        padding: 2px 4px;
-        border-radius: 4px;
-        font-family: monospace;
-      }
-      .md-content ::ng-deep strong {
-        font-weight: bold;
-      }
-      .md-content ::ng-deep em {
-        font-style: italic;
-      }
     `,
   ],
   templateUrl: './viz-markdown.component.html',

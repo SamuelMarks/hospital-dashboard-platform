@@ -1,7 +1,7 @@
 """
 Analytics Schemas.
 
-Defines DTOs for analytics views over LLM candidate output.
+Defines DTOs for analytics views over LLM candidate output and bed capacity alerts.
 """
 
 from datetime import datetime
@@ -13,10 +13,10 @@ from pydantic import BaseModel, ConfigDict
 
 class LlmOutputAnalyticsRow(BaseModel):
   """
-  Flattened analytics row for LLM candidate outputs.
+  Flattened analytics row representing a single LLM candidate response.
   """
 
-  source: Literal["chat", "ai"]
+  source: Literal["chat", "ai", "mpax_arena"]
   candidate_id: UUID
   assistant_message_id: UUID | None = None
   conversation_id: UUID | None = None
@@ -36,7 +36,7 @@ class LlmOutputAnalyticsRow(BaseModel):
 
 class BedCapacityAlert(BaseModel):
   """
-  Real-time hospital unit capacity alert payload.
+  Real-time capacity alert triggered when unit occupancy exceeds safe thresholds.
   """
 
   unit_category: str

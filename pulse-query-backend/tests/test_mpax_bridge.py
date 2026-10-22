@@ -8,20 +8,19 @@ Verifies the Linear Programming formulation logic, specifically focusing on:
 4. **Robustness/Overflow handling** (Surge Scenarios).
 """
 
-from typing import Any
-
 import json
+from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 import app.services.mpax_bridge as mpax_module
+from app.core.result import Err, ErrorCode, Ok
 from app.services.mpax_bridge import mpax_bridge
 
 
 def test_basic_assignment_feasibility() -> None:
-  """
-  Test standard assignment where Demand < Capacity.
-  """
+  """Test standard assignment where Demand < Capacity."""
   demand = json.dumps({"ServiceA": 10.0})
   capacity = json.dumps({"Unit1": 20.0})
   affinity = json.dumps({"ServiceA": {"Unit1": 1.0}})
@@ -38,8 +37,7 @@ def test_basic_assignment_feasibility() -> None:
 def test_surge_overflow_handling() -> None:
   """
   Test a "Surge" scenario where Demand > Total Capacity.
-  Demand: 100 Patients.
-  Capacity: 10 Beds.
+  Demand: 100 Patients. Capacity: 10 Beds.
   Expectation: 10 Beds filled, 90 assigned to 'Overflow'.
   """
   demand = json.dumps({"ServiceSurge": 100.0})
@@ -49,25 +47,19 @@ def test_surge_overflow_handling() -> None:
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
   data = json.loads(result)
 
-  # We expect 2 entries: UnitSmall (10), Overflow (90)
   assert len(data) == 2
 
-  # Verify Overflow
   overflow_item = next((i for i in data if i["Unit"] == "Overflow"), None)
   assert overflow_item is not None
   assert overflow_item["Patient_Count"] == 90.0
 
-  # Verify Real Unit is capped
   real_item = next((i for i in data if i["Unit"] == "UnitSmall"), None)
   assert real_item is not None
   assert real_item["Patient_Count"] == 10.0
 
 
 def test_overflow_not_used_when_capacity_exists() -> None:
-  """
-  Test that the Overflow unit is NOT used when sufficient capacity exists,
-  confirming the high cost penalty works correctly.
-  """
+  """Test that the Overflow unit is NOT used when sufficient capacity exists."""
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({"Unit1": 10.0})
   affinity = json.dumps({"ServiceA": {"Unit1": 1.0}})
@@ -75,20 +67,15 @@ def test_overflow_not_used_when_capacity_exists() -> None:
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
   data = json.loads(result)
 
-  # Expect allocation only to Unit1
   units_used = [d["Unit"] for d in data]
   assert "Unit1" in units_used
   assert "Overflow" not in units_used
 
 
 def test_affinity_based_optimization() -> None:
-  """
-  Test that patients are routed to the unit with higher affinity
-  when multiple units have capacity.
-  """
+  """Test that patients are routed to the unit with higher affinity when multiple units have capacity."""
   demand = json.dumps({"ServiceA": 10.0})
   capacity = json.dumps({"Unit1": 10.0, "Unit2": 10.0})
-  # Unit1 is perfect fit (1.0), Unit2 is poor fit (0.1)
   affinity = json.dumps({"ServiceA": {"Unit1": 1.0, "Unit2": 0.1}})
 
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
@@ -101,14 +88,10 @@ def test_affinity_based_optimization() -> None:
 
 
 def test_hard_constraint_enforcement() -> None:
-  """
-  Test explicit 'force_flow' constraints overriding natural affinity.
-  """
+  """Test explicit `force_flow` constraints overriding natural affinity."""
   demand = json.dumps({"ServiceA": 10.0})
   capacity = json.dumps({"Unit1": 10.0, "Unit2": 10.0})
   affinity = json.dumps({"ServiceA": {"Unit1": 1.0, "Unit2": 0.1}})
-
-  # Force 5 patients to Unit2 (Low affinity)
   constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Unit2", "min": 5.0}])
 
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
@@ -120,9 +103,7 @@ def test_hard_constraint_enforcement() -> None:
 
 
 def test_bad_input_handling() -> None:
-  """
-  Test that malformed JSON strings result in a clean error JSON return.
-  """
+  """Test that malformed JSON strings result in a clean error JSON return."""
   result = mpax_bridge.solve_unit_assignment("{bad_json...", "{}", "{}")
   data = json.loads(result)
 
@@ -132,54 +113,55 @@ def test_bad_input_handling() -> None:
 
 
 def test_empty_input_handling() -> None:
-  """
-  Test behavior with empty configuration.
-  """
+  """Test behavior with empty configuration."""
   result = mpax_bridge.solve_unit_assignment("{}", "{}", "{}")
   data = json.loads(result)
   assert isinstance(data, list)
   assert len(data) == 0
 
 
-def test_overflow_only_when_no_capacity_units(monkeypatch: Any) -> None:
-  """
-  If no real capacity units exist but demand does, Overflow should carry the load.
-  This covers the G_rows empty-but-nonzero variables branch.
-  """
+def test_overflow_only_when_no_capacity_units(monkeypatch: pytest.MonkeyPatch) -> None:
+  """If no real capacity units exist but demand does, Overflow should carry the load."""
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({})
   affinity = json.dumps({})
 
   class _DummyResult:
-    def __init__(self, sol: Any) -> None:
+    """Stub solver result holding a fixed primal solution vector."""
+
+    def __init__(self, sol: list[float]) -> None:
       """
-      Verify init behavior.
+      Initializes the dummy result with `sol`.
 
       Args:
-          sol: Test parameter or fixture.
+          sol (list[float]): Primal solution vector.
       """
       self.primal_solution = sol
 
   class _DummySolver:
-    def __init__(self, sol: Any) -> None:
+    """Stub LP solver returning a `_DummyResult`."""
+
+    def __init__(self, sol: list[float]) -> None:
       """
-      Verify init behavior.
+      Initializes the dummy solver with `sol`.
 
       Args:
-          sol: Test parameter or fixture.
+          sol (list[float]): Primal solution vector.
       """
       self._sol = sol
 
-    def optimize(self, _lp: Any) -> Any:
+    def optimize(self, _lp: object) -> _DummyResult:
       """
-      Verify optimize behavior.
+      Returns a `_DummyResult` wrapping `self._sol`.
 
       Args:
-          _lp: Test parameter or fixture.
+          _lp (object): Ignored LP problem instance.
+
+      Returns:
+          _DummyResult: Stubbed optimization result.
       """
       return _DummyResult(self._sol)
 
-  # Avoid long-running optimization for this edge-case branch.
   monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummySolver([5.0]))
 
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity)
@@ -190,46 +172,49 @@ def test_overflow_only_when_no_capacity_units(monkeypatch: Any) -> None:
   assert data[0]["Patient_Count"] == pytest.approx(5.0)
 
 
-def test_hard_constraint_max_enforced(monkeypatch: Any) -> None:
-  """
-  Explicit max constraints should cap allocations for a unit.
-  """
+def test_hard_constraint_max_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
+  """Explicit max constraints should cap allocations for a unit."""
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({"Unit1": 10.0, "Unit2": 10.0})
   affinity = json.dumps({"ServiceA": {"Unit1": 1.0, "Unit2": 1.0}})
-
   constraints = json.dumps([{"type": "force_flow", "service": "ServiceA", "unit": "Unit1", "max": 2.0}])
 
   class _DummyResult:
-    def __init__(self, sol: Any) -> None:
+    """Stub solver result holding a fixed primal solution vector."""
+
+    def __init__(self, sol: list[float]) -> None:
       """
-      Verify init behavior.
+      Initializes the dummy result with `sol`.
 
       Args:
-          sol: Test parameter or fixture.
+          sol (list[float]): Primal solution vector.
       """
       self.primal_solution = sol
 
   class _DummySolver:
-    def __init__(self, sol: Any) -> None:
+    """Stub LP solver returning a `_DummyResult`."""
+
+    def __init__(self, sol: list[float]) -> None:
       """
-      Verify init behavior.
+      Initializes the dummy solver with `sol`.
 
       Args:
-          sol: Test parameter or fixture.
+          sol (list[float]): Primal solution vector.
       """
       self._sol = sol
 
-    def optimize(self, _lp: Any) -> Any:
+    def optimize(self, _lp: object) -> _DummyResult:
       """
-      Verify optimize behavior.
+      Returns a `_DummyResult` wrapping `self._sol`.
 
       Args:
-          _lp: Test parameter or fixture.
+          _lp (object): Ignored LP problem instance.
+
+      Returns:
+          _DummyResult: Stubbed optimization result.
       """
       return _DummyResult(self._sol)
 
-  # Solution order: Unit1, Unit2, Overflow (single service).
   monkeypatch.setattr(mpax_module, "r2HPDHG", lambda **_kwargs: _DummySolver([2.0, 3.0, 0.0]))
 
   result = mpax_bridge.solve_unit_assignment(demand, capacity, affinity, constraints)
@@ -267,22 +252,29 @@ def test_infeasible_min_exceeds_demand_constraint() -> None:
   assert "exceeds total service demand" in data["error"].lower()
 
 
-def test_solver_none_primal_solution(monkeypatch: Any) -> None:
+def test_solver_none_primal_solution(monkeypatch: pytest.MonkeyPatch) -> None:
   """Test handling when solver returns None primal solution."""
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({"Unit1": 10.0})
   affinity = json.dumps({})
 
   class _DummyNoneResult:
+    """Stub solver result with `primal_solution = None`."""
+
     primal_solution = None
 
   class _DummyNoneSolver:
-    def optimize(self, _lp: Any) -> Any:
+    """Stub solver returning `_DummyNoneResult`."""
+
+    def optimize(self, _lp: object) -> _DummyNoneResult:
       """
-      Verify optimize behavior.
+      Returns `_DummyNoneResult`.
 
       Args:
-          _lp: Test parameter or fixture.
+          _lp (object): Ignored LP problem instance.
+
+      Returns:
+          _DummyNoneResult: Stubbed None result.
       """
       return _DummyNoneResult()
 
@@ -293,24 +285,29 @@ def test_solver_none_primal_solution(monkeypatch: Any) -> None:
   assert "mathematically infeasible or failed to converge" in data["error"].lower()
 
 
-def test_solver_nan_primal_solution(monkeypatch: Any) -> None:
+def test_solver_nan_primal_solution(monkeypatch: pytest.MonkeyPatch) -> None:
   """Test handling when solver returns NaN primal solution."""
-  import numpy as np
-
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({"Unit1": 10.0})
   affinity = json.dumps({})
 
   class _DummyNaNResult:
+    """Stub solver result containing `np.nan` in `primal_solution`."""
+
     primal_solution = [np.nan, 2.0]
 
   class _DummyNaNSolver:
-    def optimize(self, _lp: Any) -> Any:
+    """Stub solver returning `_DummyNaNResult`."""
+
+    def optimize(self, _lp: object) -> _DummyNaNResult:
       """
-      Verify optimize behavior.
+      Returns `_DummyNaNResult`.
 
       Args:
-          _lp: Test parameter or fixture.
+          _lp (object): Ignored LP problem instance.
+
+      Returns:
+          _DummyNaNResult: Stubbed NaN result.
       """
       return _DummyNaNResult()
 
@@ -360,7 +357,7 @@ def test_cumulative_constraints_exceeding_unit_capacity() -> None:
 
 
 def test_force_flow_to_overflow_unit() -> None:
-  """Test force_flow targeting the special 'Overflow' unit."""
+  """Test `force_flow` targeting the special 'Overflow' unit."""
   demand = json.dumps({"ServiceA": 5.0})
   capacity = json.dumps({"Unit1": 10.0})
   affinity = json.dumps({})
@@ -386,8 +383,6 @@ def test_negative_unit_capacity_rejected() -> None:
 @pytest.mark.asyncio
 async def test_solve_unit_assignment_result_and_async() -> None:
   """Verify `solve_unit_assignment_result` and `solve_unit_assignment_async` return Ok and Err results."""
-  from app.core.result import Err, ErrorCode, Ok
-
   demand = json.dumps({"ServiceA": 4.0})
   capacity = json.dumps({"Unit1": 10.0})
   affinity = json.dumps({"ServiceA": {"Unit1": 1.0}})
@@ -407,8 +402,6 @@ async def test_solve_unit_assignment_result_and_async() -> None:
 
 def test_mpax_other_constraint_and_missing_service_branches() -> None:
   """Verifies non-force_flow constraints and force_flow rules referencing non-existent services."""
-  from unittest.mock import patch
-
   with patch.object(mpax_bridge, "_get_var_index", return_value=0):
     raw_res = mpax_bridge.solve_unit_assignment(
       '{"A": 10}',

@@ -6,7 +6,7 @@
 
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormRoot, FormField, form, required, min, max, maxLength } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
@@ -29,13 +29,28 @@ import { AlertRuleUpdate } from '../../api-client/model/alert-rule-update';
 import { AlertSeverity } from '../../api-client/model/alert-severity';
 
 /**
+ * Signal form model shape for creating and updating clinical alert rules.
+ */
+export interface AlertRuleFormModel {
+  /** Clinical department or unit category name. */
+  unit_category: string;
+  /** Occupancy percentage threshold (1-100). */
+  threshold_percentage: number;
+  /** Alert severity tier. */
+  severity: AlertSeverity;
+  /** Whether the alert rule is active. */
+  is_active: boolean;
+}
+
+/**
  * Component for administering clinical capacity and occupancy alert rules.
  */
 @Component({
   selector: 'app-alert-rules',
   imports: [
     DatePipe,
-    ReactiveFormsModule,
+    FormRoot,
+    FormField,
     RouterLink,
     MatCardModule,
     MatButtonModule,
@@ -130,8 +145,6 @@ import { AlertSeverity } from '../../api-client/model/alert-severity';
 export class AlertRulesComponent implements OnInit {
   /** Alert rules backend API client service. */
   private readonly alertRulesService = inject(AlertRulesService);
-  /** Form builder instance for reactive form construction. */
-  private readonly fb = inject(FormBuilder);
 
   /** Signal containing the list of configured alert rules. */
   readonly alertRules = signal<AlertRuleResponse[]>([]);
@@ -162,12 +175,26 @@ export class AlertRulesComponent implements OnInit {
     AlertSeverity.Critical,
   ];
 
-  /** Reactive form group for creating and editing alert rules. */
-  readonly ruleForm: FormGroup = this.fb.group({
-    unit_category: ['', [Validators.required, Validators.maxLength(100)]],
-    threshold_percentage: [85, [Validators.required, Validators.min(1), Validators.max(100)]],
-    severity: [AlertSeverity.Warning, [Validators.required]],
-    is_active: [true],
+  /** Backing signal model for creating and editing alert rules. */
+  readonly ruleFormModel = signal<AlertRuleFormModel>({
+    unit_category: '',
+    threshold_percentage: 85,
+    severity: AlertSeverity.Warning,
+    is_active: true,
+  });
+
+  /** Signal form instance with validation rules for alert rule creation and editing. */
+  readonly ruleForm = form(this.ruleFormModel, (f) => {
+    required(f.unit_category, { message: $localize`Unit category is required.` });
+    maxLength(f.unit_category, 100);
+    required(f.threshold_percentage, { message: $localize`Threshold is required.` });
+    min(f.threshold_percentage, 1, {
+      message: $localize`Threshold must be between 1% and 100%.`,
+    });
+    max(f.threshold_percentage, 100, {
+      message: $localize`Threshold must be between 1% and 100%.`,
+    });
+    required(f.severity);
   });
 
   /**
@@ -188,8 +215,8 @@ export class AlertRulesComponent implements OnInit {
         this.alertRules.set(rules);
         this.isLoading.set(false);
       },
-      error: (err) => {
-        this.errorMessage.set('Failed to load alert rules.');
+      error: () => {
+        this.errorMessage.set($localize`Failed to load alert rules.`);
         this.isLoading.set(false);
       },
     });
@@ -199,17 +226,11 @@ export class AlertRulesComponent implements OnInit {
    * Submits the active form to either create a new rule or update an existing one.
    */
   submitRule(): void {
-    if (this.ruleForm.invalid) {
-      this.ruleForm.markAllAsTouched();
+    if (this.ruleForm().invalid()) {
       return;
     }
 
-    const formValues = this.ruleForm.value as {
-      unit_category: string;
-      threshold_percentage: number | string;
-      severity: AlertSeverity;
-      is_active?: boolean | null;
-    };
+    const formValues = this.ruleFormModel();
     const editingId = this.editingRuleId();
 
     this.isLoading.set(true);
@@ -231,7 +252,7 @@ export class AlertRulesComponent implements OnInit {
             this.fetchRules();
           },
           error: () => {
-            this.errorMessage.set('Failed to update alert rule.');
+            this.errorMessage.set($localize`Failed to update alert rule.`);
             this.isLoading.set(false);
           },
         });
@@ -245,7 +266,7 @@ export class AlertRulesComponent implements OnInit {
 
       this.alertRulesService.createAlertRuleApiV1AnalyticsAlertRulesPost(createPayload).subscribe({
         next: () => {
-          this.ruleForm.reset({
+          this.ruleFormModel.set({
             unit_category: '',
             threshold_percentage: 85,
             severity: AlertSeverity.Warning,
@@ -254,7 +275,7 @@ export class AlertRulesComponent implements OnInit {
           this.fetchRules();
         },
         error: () => {
-          this.errorMessage.set('Failed to create alert rule.');
+          this.errorMessage.set($localize`Failed to create alert rule.`);
           this.isLoading.set(false);
         },
       });
@@ -268,7 +289,7 @@ export class AlertRulesComponent implements OnInit {
    */
   startEditing(rule: AlertRuleResponse): void {
     this.editingRuleId.set(rule.id);
-    this.ruleForm.patchValue({
+    this.ruleFormModel.set({
       unit_category: rule.unit_category,
       threshold_percentage: rule.threshold_percentage,
       severity: rule.severity ?? AlertSeverity.Warning,
@@ -281,7 +302,7 @@ export class AlertRulesComponent implements OnInit {
    */
   cancelEditing(): void {
     this.editingRuleId.set(null);
-    this.ruleForm.reset({
+    this.ruleFormModel.set({
       unit_category: '',
       threshold_percentage: 85,
       severity: AlertSeverity.Warning,
@@ -302,7 +323,7 @@ export class AlertRulesComponent implements OnInit {
       })
       .subscribe({
         next: () => this.fetchRules(),
-        error: () => this.errorMessage.set('Failed to update rule status.'),
+        error: () => this.errorMessage.set($localize`Failed to update rule status.`),
       });
   }
 
@@ -316,7 +337,7 @@ export class AlertRulesComponent implements OnInit {
     this.alertRulesService.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId).subscribe({
       next: () => this.fetchRules(),
       error: () => {
-        this.errorMessage.set('Failed to delete alert rule.');
+        this.errorMessage.set($localize`Failed to delete alert rule.`);
         this.isLoading.set(false);
       },
     });

@@ -4,7 +4,12 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { appConfig, initializeAuth, apiConfigFactory } from './app.config';
+import {
+  appConfig,
+  initializeAuth,
+  apiConfigFactory,
+  createLocalizedPaginatorIntl,
+} from './app.config';
 import { BASE_PATH, Configuration } from './api-client';
 import { environment } from '../environments/environment';
 import { AuthService } from './core/auth/auth.service';
@@ -85,5 +90,15 @@ describe('AppConfig', () => {
         provider.provide === BASE_PATH,
     );
     expect(hasBasePath).toBe(true);
+  });
+
+  it('should create localized MatPaginatorIntl with range formatting', () => {
+    const intl = createLocalizedPaginatorIntl();
+    expect(intl.itemsPerPageLabel).toBe('Items per page:');
+    expect(intl.getRangeLabel(0, 10, 0)).toBe('0 of 0');
+    expect(intl.getRangeLabel(0, 0, 10)).toBe('0 of 10');
+    expect(intl.getRangeLabel(0, 10, 25)).toBe('1 – 10 of 25');
+    expect(intl.getRangeLabel(2, 10, 25)).toBe('21 – 25 of 25');
+    expect(intl.getRangeLabel(3, 10, 25)).toBe('31 – 40 of 25');
   });
 });

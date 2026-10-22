@@ -6,6 +6,8 @@ package io.healthplatform.pulsequery.ui.screens.admin
 
 import io.healthplatform.pulsequery.api.apis.AdminApi
 import io.healthplatform.pulsequery.api.models.AdminSettingsUpdateRequest
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -63,7 +65,7 @@ class AdminViewModel(
     fun loadSettings(errorPrefix: String = "Failed to load admin settings: ") {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().body()
             }.fold(
                 onSuccess = { settings ->
@@ -80,7 +82,7 @@ class AdminViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = errorPrefix + (e.message ?: "Unknown error")
+                            errorMessage = errorPrefix + e.messageOrDefault("Unknown error")
                         )
                     }
                 }
@@ -156,7 +158,7 @@ class AdminViewModel(
         val snapshot = _state.value
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 val updateReq = AdminSettingsUpdateRequest(
                     apiKeys = snapshot.apiKeys,
                     visibleModels = snapshot.visibleModels
@@ -171,7 +173,7 @@ class AdminViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = errorPrefix + (e.message ?: "Unknown error")
+                            errorMessage = errorPrefix + e.messageOrDefault("Unknown error")
                         )
                     }
                 }

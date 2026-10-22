@@ -4,6 +4,7 @@
  * safe-mode error recovery, and widget toolbar actions.
  */
 import { Component, input, output, inject, computed } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
@@ -26,12 +27,62 @@ import {
   VizTableComponent,
   TableDataSet,
 } from '../shared/visualizations/viz-table/viz-table.component';
-import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
-import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
+import {
+  VizMetricComponent,
+  MetricData,
+} from '../shared/visualizations/viz-metric/viz-metric.component';
+import {
+  VizChartComponent,
+  ChartConfig,
+} from '../shared/visualizations/viz-chart/viz-chart.component';
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
-import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
+import {
+  VizScalarComponent,
+  ScalarData,
+} from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
+import { serializeTableToCsv, triggerBlobDownload } from '../shared/utils/csv-export.utils';
+
+/**
+ * Narrowing adapter converting a raw execution result dictionary to `TableDataSet`.
+ *
+ * @param raw - Raw execution result dictionary or null/undefined.
+ * @returns Typed `TableDataSet` representation.
+ */
+function toTableDataSet(raw: Record<string, unknown> | null | undefined): TableDataSet {
+  return raw as never as TableDataSet;
+}
+
+/**
+ * Narrowing adapter converting a raw execution result dictionary to `MetricData | null`.
+ *
+ * @param raw - Raw execution result dictionary or null/undefined.
+ * @returns Typed `MetricData | null` representation.
+ */
+function toMetricData(raw: Record<string, unknown> | null | undefined): MetricData | null {
+  return raw as never as MetricData | null;
+}
+
+/**
+ * Narrowing adapter converting a raw execution result dictionary to `ScalarData | null`.
+ *
+ * @param raw - Raw execution result dictionary or null/undefined.
+ * @returns Typed `ScalarData | null` representation.
+ */
+function toScalarData(raw: Record<string, unknown> | null | undefined): ScalarData | null {
+  return raw as never as ScalarData | null;
+}
+
+/**
+ * Narrowing adapter converting a widget configuration dictionary to `ChartConfig`.
+ *
+ * @param config - Raw widget configuration dictionary.
+ * @returns Typed `ChartConfig` representation.
+ */
+function toChartConfig(config: Record<string, unknown>): ChartConfig {
+  return config as never as ChartConfig;
+}
 
 /**
  * Renders a single dashboard widget card with dynamic visualization switching and error recovery.
@@ -172,7 +223,7 @@ import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: rgba(255, 255, 255, 0.85);
+        background: color-mix(in srgb, var(--sys-surface) 85%, transparent);
         backdrop-filter: blur(2px);
         z-index: 10;
       }
@@ -230,6 +281,8 @@ export class WidgetComponent {
   private readonly dialog = inject(MatDialog);
   /** Angular router for navigating to the scenario simulator. */
   private readonly router = inject(Router);
+  /** Injected DOM document reference. */
+  private readonly document = inject(DOCUMENT);
   /** Service monitoring backend and database connection health. */
   readonly connectionService = inject(ConnectionStatusService);
 
@@ -252,6 +305,10 @@ export class WidgetComponent {
   readonly isEditMode = this.store.isEditMode;
   /** Whether this widget currently holds keyboard/selection focus in the dashboard store. */
   readonly isFocused = computed(() => this.store.focusedWidgetId() === this.widgetInput().id);
+  /** Computed localized label for the focus/fullscreen toggle button. */
+  readonly focusLabel = computed(() =>
+    this.isFocused() ? $localize`Minimize` : $localize`Full Screen`,
+  );
 
   /** Execution error message extracted from the widget's latest result payload, if any. */
   readonly errorMessage = computed(() => {
@@ -291,10 +348,16 @@ export class WidgetComponent {
     return 'card';
   });
 
-  /** Execution result cast as a `TableDataSet` for tabular and chart visualizations. */
-  readonly typedDataAsTable = computed(() => this.rawResult() as unknown as TableDataSet);
+  /** Execution result typed as a `TableDataSet` for tabular and chart visualizations. */
+  readonly typedDataAsTable = computed(() => toTableDataSet(this.rawResult()));
+  /** Execution result typed as `MetricData` for KPI metric visualizations. */
+  readonly typedDataAsMetric = computed(() => toMetricData(this.rawResult()));
+  /** Execution result typed as `ScalarData` for scalar gauge visualizations. */
+  readonly typedDataAsScalar = computed(() => toScalarData(this.rawResult()));
   /** Visualization configuration dictionary extracted from the widget model. */
-  readonly chartConfig = computed(() => this.widgetInput().config as never);
+  readonly chartConfig = computed(() => toChartConfig(this.widgetInput().config));
+  /** Markdown content string extracted from the widget configuration. */
+  readonly markdownContent = computed(() => this.widgetInput().config['content'] as string);
 
   /** Triggers an immediate data refresh for this widget. */
   manualRefresh(): void {
@@ -306,15 +369,17 @@ export class WidgetComponent {
     this.connectionService.openDiagnosticsDialog();
   }
 
-  /** Navigates to the scenario simulation page pre-populated with this widget's SQL query. */
+  /** Navigates to the scenario simulation page pre-populated with this widget's SQL query or template ID. */
   simulateWidget(): void {
     const widget = this.widgetInput();
     if (widget.type === 'SQL' && widget.config['query']) {
       this.router.navigate(['/simulation'], {
         queryParams: { sql: String(widget.config['query']) },
       });
-    } else if (widget.type === 'TEMPLATE') {
-      // We could add template to sql logic here, but simply pass widgetId if we want
+    } else if (widget.type === 'TEMPLATE' && widget.config['template_id']) {
+      this.router.navigate(['/simulation'], {
+        queryParams: { templateId: String(widget.config['template_id']) },
+      });
     }
   }
 
@@ -357,10 +422,10 @@ export class WidgetComponent {
     this.dialog
       .open(ConfirmDialogComponent, {
         data: {
-          title: 'Reset Widget',
-          message: 'This will reset configuration to defaults. Continue?',
+          title: $localize`Reset Widget`,
+          message: $localize`This will reset configuration to defaults. Continue?`,
           isDestructive: true,
-          confirmJson: 'Reset',
+          confirmJson: $localize`Reset`,
         },
       })
       .afterClosed()
@@ -383,33 +448,12 @@ export class WidgetComponent {
    */
   exportWidgetData(): void {
     const res = this.rawResult();
-    let raw: Record<string, unknown>[] = [];
-    if (res && Array.isArray(res['data'])) {
-      raw = res['data'] as Record<string, unknown>[];
-    }
-    const [firstRow] = raw;
-    if (!firstRow) return;
-    const keys = Object.keys(firstRow);
-    const csvRows = [
-      keys.join(','),
-      ...raw.map((row) =>
-        keys
-          .map((k) => {
-            const val = row[k] !== undefined && row[k] !== null ? String(row[k]) : '';
-            if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-              return `"${val.replace(/"/g, '""')}"`;
-            }
-            return val;
-          })
-          .join(','),
-      ),
-    ];
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${this.widgetInput().title || 'widget'}_export.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const raw = res && Array.isArray(res['data']) ? (res['data'] as Record<string, unknown>[]) : [];
+    const csvContent = serializeTableToCsv(raw);
+    if (!csvContent) return;
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const filename = `${this.widgetInput().title || 'widget'}_export.csv`;
+    triggerBlobDownload(this.document, blob, filename, false);
   }
 }

@@ -3,7 +3,6 @@
  * analytical templates that can be dragged onto a dashboard.
  */
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,7 +21,6 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
 @Component({
   selector: 'app-widget-gallery',
   imports: [
-    ReactiveFormsModule,
     DragDropModule,
     MatCardModule,
     MatIconModule,
@@ -167,7 +165,7 @@ export class WidgetGalleryComponent implements OnInit {
     const groups: Record<string, TemplateResponse[]> = {};
 
     list.forEach((t) => {
-      const cat = t.category || 'General';
+      const cat = t.category || $localize`General`;
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push(t);
     });

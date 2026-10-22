@@ -6,6 +6,7 @@ Provides read-only analytics views over LLM outputs and user selections.
 
 import asyncio
 from datetime import UTC, datetime
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -20,9 +21,11 @@ from app.models.alert_rule import AlertRule, AlertSeverity
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.feedback import ExperimentLog
 from app.models.feedback import ModelCandidate as ExperimentCandidate
+from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
 from app.models.user import User
 from app.schemas.analytics import BedCapacityAlert, LlmOutputAnalyticsRow
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -41,10 +44,10 @@ async def get_capacity_alerts(
   Returns:
       list[BedCapacityAlert]: List of active capacity alerts exceeding configured thresholds.
   """
+  _ = current_user
   rules_res = await db.execute(select(AlertRule).where(AlertRule.is_active.is_(True)))
   rules = rules_res.scalars().all()
 
-  # Default fallback rules if none configured
   if not rules:
     threshold_map = {
       "Critical Care": (90.0, AlertSeverity.CRITICAL.value),
@@ -83,7 +86,7 @@ async def get_capacity_alerts(
             )
             GROUP BY 1
         )
-        SELECT 
+        SELECT
             l.unit_cat,
             l.occupied,
             GREATEST(COALESCE(h.capacity, l.occupied), l.occupied) AS capacity
@@ -116,9 +119,8 @@ async def get_capacity_alerts(
             timestamp=now,
           )
         )
-  except Exception:
-    # If DuckDB tables are empty or uninitialized during test, return empty alerts list
-    pass
+  except Exception as exc:
+    logger.warning(f"Failed to evaluate capacity alerts against DuckDB: {exc}")
 
   return alerts
 
@@ -131,7 +133,7 @@ async def list_llm_outputs(
   offset: int = 0,
 ) -> list[LlmOutputAnalyticsRow]:
   """
-  Returns a flattened, database-paginated (`UNION ALL`) view of chat and AI arena candidates.
+  Returns a flattened, database-paginated (`UNION ALL`) view of chat, AI, and MPAX Arena candidates.
 
   Args:
       current_user (User): Authenticated user requesting LLM telemetry.
@@ -142,6 +144,7 @@ async def list_llm_outputs(
   Returns:
       list[LlmOutputAnalyticsRow]: Combined and chronologically sorted LLM candidate telemetry rows.
   """
+  _ = current_user
   assistant_msg = aliased(Message)
   user_msg = aliased(Message)
 
@@ -201,7 +204,28 @@ async def list_llm_outputs(
     .join(User, ExperimentLog.user_id == User.id)
   )
 
-  combined_subq = union_all(chat_stmt, ai_stmt).subquery()
+  mpax_stmt = (
+    select(
+      literal("mpax_arena").label("source"),
+      MpaxArenaCandidateRecord.id.label("candidate_id"),
+      cast(null(), Message.id.type).label("assistant_message_id"),
+      cast(null(), Conversation.id.type).label("conversation_id"),
+      cast(null(), String).label("conversation_title"),
+      User.id.label("user_id"),
+      User.email.label("user_email"),
+      MpaxArenaRun.prompt.label("query_text"),
+      MpaxArenaRun.mode.label("prompt_strategy"),
+      MpaxArenaCandidateRecord.model_name.label("llm"),
+      MpaxArenaCandidateRecord.sql_snippet.label("sql_snippet"),
+      cast(null(), String).label("sql_hash"),
+      MpaxArenaCandidateRecord.is_winner.label("is_selected"),
+      MpaxArenaRun.created_at.label("created_at"),
+    )
+    .join(MpaxArenaRun, MpaxArenaCandidateRecord.run_id == MpaxArenaRun.id)
+    .join(User, MpaxArenaRun.user_id == User.id)
+  )
+
+  combined_subq = union_all(chat_stmt, ai_stmt, mpax_stmt).subquery()
   final_stmt = (
     select(combined_subq)
     .order_by(combined_subq.c.created_at.desc(), combined_subq.c.llm.asc())

@@ -6,6 +6,9 @@ package io.healthplatform.pulsequery.ui.screens.auth
 
 import io.healthplatform.pulsequery.api.apis.AuthApi
 import io.healthplatform.pulsequery.api.models.UserCreate
+import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,7 +145,7 @@ class AuthViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
 
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 executeLoginFlow(current, errFetchProfile, onLoginSuccess)
             }.onFailure { e ->
                 val formattedError = formatLoginError(e, current.isRegisterMode, errAuthFailed)
@@ -151,6 +154,13 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Executes the network calls for login (and optional inline registration) and profile lookup.
+     *
+     * @param current Snapshot of the active [AuthUiState].
+     * @param errFetchProfile Fallback error message when `/me` profile retrieval fails.
+     * @param onLoginSuccess Callback invoked upon successful login and profile retrieval.
+     */
     private suspend fun executeLoginFlow(
         current: AuthUiState,
         errFetchProfile: String,
@@ -181,12 +191,20 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Maps a thrown authentication or registration error to a user-friendly message.
+     *
+     * @param error Caught [Throwable] or [PulseQueryError].
+     * @param isRegisterMode Whether the failure occurred during inline registration.
+     * @param errAuthFailed Fallback authentication failure message.
+     * @return User-friendly error message string.
+     */
     private fun formatLoginError(
         error: Throwable,
         isRegisterMode: Boolean,
         errAuthFailed: String
     ): String {
-        val msg = error.message.orEmpty()
+        val msg = PulseQueryError.fromThrowable(error).messageOrDefault("")
         if (isRegisterMode) {
             val detail = if (msg.contains("already registered", ignoreCase = true)) {
                 "Email already registered"
@@ -222,7 +240,7 @@ class AuthViewModel(
 
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 executeRegistrationFlow(email, password, onRegisterSuccess)
             }.onFailure { e ->
                 val displayMsg = formatRegistrationError(e)
@@ -231,6 +249,12 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Validates registration fields and returns an error string or null when valid.
+     *
+     * @param current Current [AuthUiState] to validate.
+     * @return Validation error description, or null if valid.
+     */
     private fun validateRegistrationInput(current: AuthUiState): String? {
         val email = current.email.trim()
         val password = current.password
@@ -243,6 +267,13 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Executes the user registration API request and updates [state] accordingly.
+     *
+     * @param email Trimmed user email address.
+     * @param password User password string.
+     * @param onRegisterSuccess Callback invoked when registration succeeds.
+     */
     private suspend fun executeRegistrationFlow(
         email: String,
         password: String,
@@ -268,8 +299,14 @@ class AuthViewModel(
         onRegisterSuccess()
     }
 
+    /**
+     * Formats a thrown registration error into a user-facing error message.
+     *
+     * @param error Caught [Throwable] or [PulseQueryError].
+     * @return Formatted registration error string.
+     */
     private fun formatRegistrationError(error: Throwable): String {
-        val msg = error.message ?: "Registration failed"
+        val msg = PulseQueryError.fromThrowable(error).messageOrDefault("Registration failed")
         return if (msg.contains("400") || msg.contains("already registered", ignoreCase = true)) {
             "An account with this email already exists."
         } else {

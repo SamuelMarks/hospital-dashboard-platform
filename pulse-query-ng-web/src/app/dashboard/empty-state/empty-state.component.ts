@@ -18,7 +18,7 @@ import { DashboardStore } from '../dashboard.store';
 import { AskDataService } from '../../global/ask-data.service';
 import { WidgetBuilderComponent } from '../widget-builder/widget-builder.component';
 
-/** Empty State component. */
+/** Onboarding empty-state component displayed when a dashboard has no configured widgets. */
 @Component({
   selector: 'app-empty-state',
   imports: [MatCardModule, MatButtonModule, MatIconModule, MatRippleModule],
@@ -137,11 +137,11 @@ import { WidgetBuilderComponent } from '../widget-builder/widget-builder.compone
   templateUrl: './empty-state.component.html',
 })
 export class EmptyStateComponent {
-  /** Store. */
+  /** Centralized reactive state store for the active dashboard. */
   readonly store = inject(DashboardStore);
-  /** dialog property. */
+  /** Material dialog service used to launch the widget builder wizard. */
   private readonly dialog = inject(MatDialog);
-  /** askDataService property. */
+  /** Service controlling the conversational Ask Data drawer. */
   private readonly askDataService = inject(AskDataService);
 
   /** Open Wizard. */

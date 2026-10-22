@@ -1,10 +1,13 @@
+/**
+ * Root application navigation routes and Compose entry point for PulseQuery.
+ */
 package io.healthplatform.pulsequery
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Science
@@ -33,13 +36,121 @@ import io.healthplatform.pulsequery.ui.screens.BenchmarksScreen
 import io.healthplatform.pulsequery.ui.screens.ChatScreen
 import io.healthplatform.pulsequery.ui.screens.DashboardScreen
 import io.healthplatform.pulsequery.ui.screens.EditorScreen
-import io.healthplatform.pulsequery.ui.screens.admin.UserManagementScreen
 import io.healthplatform.pulsequery.ui.screens.LoginScreen
 import io.healthplatform.pulsequery.ui.screens.MpaxArenaScreen
 import io.healthplatform.pulsequery.ui.screens.RegisterScreen
 import io.healthplatform.pulsequery.ui.screens.SimulationScreen
+import io.healthplatform.pulsequery.ui.screens.admin.UserManagementScreen
 import io.healthplatform.pulsequery.ui.screens.wizard.WizardScreen
 import io.healthplatform.pulsequery.ui.theme.PulseQueryTheme
+
+/**
+ * Strongly typed navigation routes for the PulseQuery Compose Multiplatform navigation graph.
+ *
+ * @property route Route pattern string registered in the `NavHost`.
+ * @property showBottomBar Whether the primary bottom navigation bar should be displayed on this route.
+ */
+enum class AppRoute(
+    val route: String,
+    val showBottomBar: Boolean
+) {
+    /** Login authentication screen route. */
+    LOGIN("login", false),
+
+    /** New user registration screen route. */
+    REGISTER("register", false),
+
+    /** Primary hospital command center dashboard screen route. */
+    DASHBOARD("dashboard", true),
+
+    /** Parameterized widget creation wizard route for a specific dashboard. */
+    WIZARD_WITH_DASHBOARD("wizard/{dashboardId}", false),
+
+    /** Standalone widget creation wizard route. */
+    WIZARD("wizard", false),
+
+    /** Conversational AI assistant screen route. */
+    CHAT("chat", true),
+
+    /** LLM Arena analytics screen route. */
+    ANALYTICS("analytics", true),
+
+    /** Clinical bed occupancy alert rules screen route. */
+    ALERT_RULES("alert_rules", true),
+
+    /** Ad-hoc SQL editor screen route. */
+    EDITOR("editor", true),
+
+    /** What-If capacity simulation screen route. */
+    SIMULATION("simulation", true),
+
+    /** Text-to-SQL and MPAX benchmark suite screen route. */
+    BENCHMARKS("benchmarks", true),
+
+    /** MPAX Arena evaluation screen route. */
+    MPAX_ARENA("mpax_arena", true),
+
+    /** MPAX Arena evaluation screen route pre-populated with a benchmark prompt. */
+    MPAX_ARENA_WITH_PROMPT("mpax_arena?prompt={prompt}", true),
+
+    /** System administration configuration screen route. */
+    ADMIN("admin", true),
+
+    /** Privileged user directory and role management screen route. */
+    ADMIN_USERS("admin/users", true),
+
+    /** Passive 10-foot TV wallboard dashboard route. */
+    TV_DASHBOARD("tv/dashboard", false),
+
+    /** Compact smartwatch companion census route. */
+    WEAR_CENSUS("wear/census", false);
+
+    /**
+     * Companion utilities for resolving and formatting [AppRoute] destination strings.
+     */
+    companion object {
+        /**
+         * Resolves an [AppRoute] matching a raw navigation destination route string.
+         *
+         * @param route Raw destination route string, or null.
+         * @return Matching [AppRoute], or null if unrecognized.
+         */
+        fun fromRoute(route: String?): AppRoute? {
+            if (route.isNullOrBlank()) return null
+            return entries.firstOrNull { it.route == route }
+        }
+
+        /**
+         * Determines whether the bottom navigation bar should be visible for [route].
+         *
+         * @param route Raw destination route string, or null.
+         * @return `true` when the bottom navigation bar should be rendered.
+         */
+        fun shouldShowBottomBar(route: String?): Boolean {
+            if (route == null) return true
+            if (route.startsWith("wizard")) return false
+            return fromRoute(route)?.showBottomBar ?: true
+        }
+
+        /**
+         * Formats the wizard navigation destination path for a specific [dashboardId].
+         *
+         * @param dashboardId Target dashboard UUID string.
+         * @return Formatted navigation path string.
+         */
+        fun wizardRoute(dashboardId: String): String =
+            if (dashboardId.isBlank()) WIZARD.route else "wizard/$dashboardId"
+
+        /**
+         * Formats the MPAX Arena navigation destination path with an optional [prompt].
+         *
+         * @param prompt Optional scenario prompt string.
+         * @return Formatted navigation path string.
+         */
+        fun mpaxArenaRoute(prompt: String): String =
+            if (prompt.isBlank()) MPAX_ARENA.route else "mpax_arena?prompt=$prompt"
+    }
+}
 
 /**
  * Root Compose entry point handling Theme injection and Jetpack Navigation routing.
@@ -59,12 +170,12 @@ fun App() {
         }
 
         val items = listOf(
-            "dashboard" to Icons.Filled.Dashboard,
-            "chat" to Icons.AutoMirrored.Filled.Chat,
-            "analytics" to Icons.Filled.Analytics,
-            "editor" to Icons.Filled.Edit,
-            "simulation" to Icons.Filled.Science,
-            "admin" to Icons.Filled.Settings
+            AppRoute.DASHBOARD.route to Icons.Filled.Dashboard,
+            AppRoute.CHAT.route to Icons.AutoMirrored.Filled.Chat,
+            AppRoute.ANALYTICS.route to Icons.Filled.Analytics,
+            AppRoute.EDITOR.route to Icons.Filled.Edit,
+            AppRoute.SIMULATION.route to Icons.Filled.Science,
+            AppRoute.ADMIN.route to Icons.Filled.Settings
         )
 
         Scaffold(
@@ -77,7 +188,7 @@ fun App() {
                 }
             },
             bottomBar = {
-                if (currentDestination?.route != "login" && currentDestination?.route?.startsWith("wizard") != true) {
+                if (AppRoute.shouldShowBottomBar(currentDestination?.route)) {
                     NavigationBar {
                         items.forEach { (route, icon) ->
                             NavigationBarItem(
@@ -86,7 +197,7 @@ fun App() {
                                 selected = currentDestination?.hierarchy?.any { it.route == route } == true,
                                 onClick = {
                                     navController.navigate(route) {
-                                        popUpTo("dashboard") { saveState = true }
+                                        popUpTo(AppRoute.DASHBOARD.route) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
@@ -99,26 +210,26 @@ fun App() {
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = "login",
+                startDestination = AppRoute.LOGIN.route,
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
-                composable("login") {
+                composable(AppRoute.LOGIN.route) {
                     LoginScreen(
                         onLoginSuccess = {
-                            navController.navigate("dashboard") {
-                                popUpTo("login") { inclusive = true }
+                            navController.navigate(AppRoute.DASHBOARD.route) {
+                                popUpTo(AppRoute.LOGIN.route) { inclusive = true }
                             }
                         },
                         onNavigateToRegister = {
-                            navController.navigate("register")
+                            navController.navigate(AppRoute.REGISTER.route)
                         }
                     )
                 }
-                composable("register") {
+                composable(AppRoute.REGISTER.route) {
                     RegisterScreen(
                         onRegisterSuccess = {
-                            navController.navigate("login") {
-                                popUpTo("register") { inclusive = true }
+                            navController.navigate(AppRoute.LOGIN.route) {
+                                popUpTo(AppRoute.REGISTER.route) { inclusive = true }
                             }
                         },
                         onNavigateToLogin = {
@@ -126,14 +237,14 @@ fun App() {
                         }
                     )
                 }
-                composable("dashboard") {
+                composable(AppRoute.DASHBOARD.route) {
                     DashboardScreen(
                         onAddWidget = { dashboardId ->
-                            navController.navigate("wizard/$dashboardId")
+                            navController.navigate(AppRoute.wizardRoute(dashboardId))
                         }
                     )
                 }
-                composable("wizard/{dashboardId}") { backStackEntry ->
+                composable(AppRoute.WIZARD_WITH_DASHBOARD.route) { backStackEntry ->
                     val dashboardId = backStackEntry.savedStateHandle.get<String>("dashboardId") ?: ""
                     WizardScreen(
                         dashboardId = dashboardId,
@@ -141,50 +252,50 @@ fun App() {
                         onBack = { navController.popBackStack() }
                     )
                 }
-                composable("wizard") {
+                composable(AppRoute.WIZARD.route) {
                     WizardScreen(
                         dashboardId = "",
                         onComplete = { navController.popBackStack() },
                         onBack = { navController.popBackStack() }
                     )
                 }
-                composable("chat") { ChatScreen(conversationId = null) }
-                composable("analytics") {
+                composable(AppRoute.CHAT.route) { ChatScreen(conversationId = null) }
+                composable(AppRoute.ANALYTICS.route) {
                     AnalyticsScreen(
-                        onNavigateToAlertRules = { navController.navigate("alert_rules") }
+                        onNavigateToAlertRules = { navController.navigate(AppRoute.ALERT_RULES.route) }
                     )
                 }
-                composable("alert_rules") { AlertRulesScreen() }
-                composable("editor") { EditorScreen() }
-                composable("simulation") { SimulationScreen() }
-                composable("benchmarks") {
+                composable(AppRoute.ALERT_RULES.route) { AlertRulesScreen() }
+                composable(AppRoute.EDITOR.route) { EditorScreen() }
+                composable(AppRoute.SIMULATION.route) { SimulationScreen() }
+                composable(AppRoute.BENCHMARKS.route) {
                     BenchmarksScreen(
                         onSimulateMpax = { prompt ->
-                            navController.navigate("mpax_arena?prompt=$prompt")
+                            navController.navigate(AppRoute.mpaxArenaRoute(prompt))
                         }
                     )
                 }
-                composable("mpax_arena") { MpaxArenaScreen() }
-                composable("mpax_arena?prompt={prompt}") { backStackEntry ->
+                composable(AppRoute.MPAX_ARENA.route) { MpaxArenaScreen() }
+                composable(AppRoute.MPAX_ARENA_WITH_PROMPT.route) { backStackEntry ->
                     val scenarioPrompt = backStackEntry.savedStateHandle.get<String>("prompt")
                     MpaxArenaScreen(initialPrompt = scenarioPrompt)
                 }
-                composable("admin") {
+                composable(AppRoute.ADMIN.route) {
                     AdminScreen(
-                        onNavigateToUserManagement = { navController.navigate("admin/users") }
+                        onNavigateToUserManagement = { navController.navigate(AppRoute.ADMIN_USERS.route) }
                     )
                 }
-                composable("admin/users") {
+                composable(AppRoute.ADMIN_USERS.route) {
                     UserManagementScreen(
                         onNavigateBack = { navController.popBackStack() }
                     )
                 }
-                composable("tv/dashboard") {
+                composable(AppRoute.TV_DASHBOARD.route) {
                     io.healthplatform.pulsequery.ui.screens.tv.TvDashboardScreen(
                         onExit = { navController.popBackStack() }
                     )
                 }
-                composable("wear/census") {
+                composable(AppRoute.WEAR_CENSUS.route) {
                     io.healthplatform.pulsequery.ui.screens.wear.WearCensusScreen(
                         onExit = { navController.popBackStack() }
                     )

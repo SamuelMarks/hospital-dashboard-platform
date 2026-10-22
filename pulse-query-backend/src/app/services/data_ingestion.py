@@ -11,25 +11,22 @@ It handles:
 5. Generating sample data if the directory is empty.
 """
 
+from builtins import open as open
 import csv
+from datetime import datetime, timedelta
 import logging
 import os
 import random
 import re
-from builtins import open as open
-from datetime import datetime, timedelta
-from typing import Any
 
 from app.core.diagnostics import (
   diagnostics_registry,
   format_missing_data_warning_banner,
 )
-from app.database.duckdb import duckdb_manager
+from app.database.duckdb import DuckDBConnectionProtocol, duckdb_manager
 
 logger = logging.getLogger("data_ingestion")
 
-# Calculate paths relative to this file location: pulse-query-backend/src/app/services/
-# We want to reach: pulse-query-backend/data
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(FILE_DIR, "..", "..", ".."))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
@@ -70,8 +67,9 @@ class DataIngestionService:
         filepath (str): Target path to write the CSV.
         rows (int): Number of rows to generate.
     """
+    nl = chr(10)
     banner = format_missing_data_warning_banner(DEFAULT_CSV_FILENAME, filepath, rows)
-    logger.warning("\n" + banner)
+    logger.warning(f"{nl}{banner}")
     diagnostics_registry.data_status["fallback_generated"] = True
     diagnostics_registry.data_status["has_default_data"] = False
     diagnostics_registry.add_warning(
@@ -193,40 +191,41 @@ class DataIngestionService:
       logger.error(f"❌ Failed to generate synthetic clinical sample data: {e}")
 
   @classmethod
-  def _ingest_single_csv(cls, conn: Any, filename: str) -> bool:
+  def _ingest_single_csv(cls, conn: DuckDBConnectionProtocol, filename: str) -> bool:
     """
     Loads a single CSV file from `DATA_DIR` into DuckDB and creates standard indices.
 
     Args:
-        conn (Any): Active DuckDB read-write connection.
+        conn (DuckDBConnectionProtocol): Active DuckDB read-write connection.
         filename (str): CSV filename inside `DATA_DIR`.
 
     Returns:
         bool: True if ingestion succeeded, False if an error occurred.
     """
     filepath = os.path.join(DATA_DIR, filename)
+    safe_filepath = filepath.replace("'", "''")
     table_name = cls._sanitize_table_name(filename)
+    safe_table = table_name.replace('"', '""')
     logger.info(f"   ... Ingesting {filename} -> Table: '{table_name}'")
 
     try:
-      conn.execute(f"""
-                    CREATE OR REPLACE TABLE {table_name} AS 
-                    SELECT * FROM read_csv_auto('{filepath}', header=True); 
-                """)
+      conn.execute(
+        f"CREATE OR REPLACE TABLE \"{safe_table}\" AS SELECT * FROM read_csv_auto('{safe_filepath}', header=True);"
+      )
 
-      columns = conn.execute(f"DESCRIBE {table_name}").fetchall()
-      col_names = [c[0].lower() for c in columns]
+      columns = conn.execute(f'DESCRIBE "{safe_table}"').fetchall()
+      col_names = [str(c[0]).lower() for c in columns]
 
       if "clinical_service" in col_names:
-        conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_service ON {table_name} (Clinical_Service)")
+        conn.execute(f'CREATE INDEX IF NOT EXISTS "idx_{safe_table}_service" ON "{safe_table}" (Clinical_Service)')
         logger.info("       Using Index: Clinical_Service")
 
       if "entry_point" in col_names:
-        conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table_name}_entry ON {table_name} (Entry_Point)")
+        conn.execute(f'CREATE INDEX IF NOT EXISTS "idx_{safe_table}_entry" ON "{safe_table}" (Entry_Point)')
         logger.info("       Using Index: Entry_Point")
 
-      count = conn.execute(f"SELECT count(*) FROM {table_name}").fetchone()
-      row_count = count[0] if count else 0
+      count = conn.execute(f'SELECT count(*) FROM "{safe_table}"').fetchone()
+      row_count = int(count[0]) if count else 0
       logger.info(f"       ✅ Loaded {row_count} rows.")
       diagnostics_registry.data_status["row_counts"][table_name] = row_count
       return True
@@ -241,19 +240,19 @@ class DataIngestionService:
       return False
 
   @classmethod
-  def _ensure_alias_views(cls, conn: Any) -> None:
+  def _ensure_alias_views(cls, conn: DuckDBConnectionProtocol) -> None:
     """
     Creates compatibility alias views between `synthetic_hospital_data` and `hospital_data`.
 
     Args:
-        conn (Any): Active DuckDB read-write connection.
+        conn (DuckDBConnectionProtocol): Active DuckDB read-write connection.
     """
     try:
-      existing_tables = [c[0].lower() for c in conn.execute("SHOW TABLES").fetchall()]
+      existing_tables = [str(c[0]).lower() for c in conn.execute("SHOW TABLES").fetchall()]
       if "synthetic_hospital_data" in existing_tables and "hospital_data" not in existing_tables:
-        conn.execute("CREATE VIEW hospital_data AS SELECT * FROM synthetic_hospital_data")
+        conn.execute('CREATE VIEW "hospital_data" AS SELECT * FROM "synthetic_hospital_data"')
       elif "hospital_data" in existing_tables and "synthetic_hospital_data" not in existing_tables:
-        conn.execute("CREATE VIEW synthetic_hospital_data AS SELECT * FROM hospital_data")
+        conn.execute('CREATE VIEW "synthetic_hospital_data" AS SELECT * FROM "hospital_data"')
     except Exception as view_err:
       logger.warning(f"Could not create compatibility alias view: {view_err}")
 

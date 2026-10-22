@@ -2,12 +2,11 @@
  * @fileoverview Conversation thread component rendering chat messages, multi-model
  * arena candidate comparisons, inline SQL execution previews, and message composition.
  */
-import { Component, inject, ViewChild, ElementRef, effect, signal } from '@angular/core';
+import { Component, inject, viewChild, ElementRef, effect, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { finalize, retry } from 'rxjs/operators';
+import { retry } from 'rxjs/operators';
 
 // Material
 import { MatButtonModule } from '@angular/material/button';
@@ -34,12 +33,11 @@ import {
 } from '../../shared/visualizations/viz-table/viz-table.component';
 import { ArenaSqlService } from '../arena-sql.service';
 
-/** Conversation component. */
+/** Interactive conversation thread component displaying messages, arena candidates, and SQL previews. */
 @Component({
   selector: 'app-conversation',
   imports: [
     DatePipe,
-    ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
     MatInputModule,
@@ -250,7 +248,7 @@ export class ConversationComponent {
   private readonly snackBar = inject(MatSnackBar);
 
   /** Reference to the scroll container. */
-  @ViewChild('scrollContainer') private scrollContainer!: ElementRef<HTMLElement>;
+  private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   /** Input text model. */
   readonly inputText = signal('');
 
@@ -261,7 +259,7 @@ export class ConversationComponent {
   /** Signal map for candidate loading states. */
   readonly candidateLoading = signal<Record<string, boolean>>({});
 
-  /** Creates a new ConversationComponent. */
+  /** Initializes reactive auto-scroll effect when new messages arrive in the store. */
   constructor() {
     effect(() => {
       const len = this.store.messages().length;
@@ -317,9 +315,9 @@ export class ConversationComponent {
   /**
    * Opens the global scratchpad drawer to run a SQL query.
    *
-   * @param sql - The SQL query string to inspect.
+   * @param _sql - The SQL query string to inspect.
    */
-  runQuery(sql: string): void {
+  runQuery(_sql: string): void {
     this.scratchpadService.open();
   }
 
@@ -331,7 +329,7 @@ export class ConversationComponent {
   saveToCart(sql: string): void {
     if (!sql) return;
     this.cart.add(sql);
-    this.snackBar.open('Saved to Query Cart 🛒', 'OK', { duration: 2500 });
+    this.snackBar.open($localize`Saved to Query Cart 🛒`, $localize`OK`, { duration: 2500 });
   }
 
   /**
@@ -376,10 +374,10 @@ export class ConversationComponent {
         },
         error: (err: HttpErrorResponse) => {
           // Enhanced Error Extraction (Handles status 0/undefined detail)
-          let msg = err?.message || 'Unknown error';
+          let msg = err?.message || $localize`Unknown error`;
           const errBody = err.error as { detail?: unknown } | null | undefined;
           if (err.status === 0) {
-            msg = 'Network Error: Cannot reach server.';
+            msg = $localize`Network Error: Cannot reach server.`;
           } else if (errBody && errBody.detail) {
             msg = String(errBody.detail);
           }
@@ -484,7 +482,7 @@ export class ConversationComponent {
   /** Scrolls chat to bottom. */
   private scrollToBottom(): void {
     setTimeout(() => {
-      const el = this.scrollContainer?.nativeElement;
+      const el = this.scrollContainer()?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
     }, 50);
   }

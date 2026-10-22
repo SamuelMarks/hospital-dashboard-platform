@@ -3,15 +3,13 @@
  * Displays all available keyboard shortcuts grouped by category.
  */
 
+import { DOCUMENT } from '@angular/common';
 import { Component, inject, computed } from '@angular/core';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import {
-  KeyboardShortcutsService,
-  KeyboardShortcut,
-} from '../../../core/keyboard/keyboard-shortcuts.service';
+import { KeyboardShortcutsService } from '../../../core/keyboard/keyboard-shortcuts.service';
 
 /**
  * Keyboard Shortcuts Help Dialog Component.
@@ -39,7 +37,7 @@ import {
           aria-label="Close dialog"
           data-testid="close-button"
         >
-          <mat-icon i18n>close</mat-icon>
+          <mat-icon aria-hidden="true">close</mat-icon>
         </button>
       </div>
 
@@ -170,6 +168,7 @@ export class KeyboardShortcutsDialogComponent {
   );
   /** Injected KeyboardService. */ private readonly keyboardService =
     inject(KeyboardShortcutsService);
+  /** Injected DOM document reference. */ private readonly document = inject(DOCUMENT);
 
   /**
    * Computed signal containing shortcuts grouped by category.
@@ -178,10 +177,10 @@ export class KeyboardShortcutsDialogComponent {
   readonly categories = computed(() => {
     const shortcutsByCategory = this.keyboardService.getShortcutsByCategory();
     const categoryLabels: Record<string, string> = {
-      navigation: 'Navigation',
-      actions: 'Global Actions',
-      editing: 'Editor',
-      view: 'View',
+      navigation: $localize`Navigation`,
+      actions: $localize`Global Actions`,
+      editing: $localize`Editor`,
+      view: $localize`View`,
     };
 
     return Array.from(shortcutsByCategory.entries()).map(([name, shortcuts]) => ({
@@ -199,7 +198,8 @@ export class KeyboardShortcutsDialogComponent {
    * @returns Formatted key combination for display.
    */
   formatKeys(keys: string): string {
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const platform = (this.document.defaultView as Window).navigator.platform;
+    const isMac = platform.toUpperCase().indexOf('MAC') >= 0;
     return keys
       .replace(/mod/gi, isMac ? '⌘' : 'Ctrl')
       .replace(/alt/gi, isMac ? '⌥' : 'Alt')

@@ -6,29 +6,34 @@
     i18n-aria-label
     aria-label="Heatmap Data Grid"
   >
-    <!-- Top Left Corner (Empty) -->
-    <div aria-hidden="true"></div>
+    <div role="row" style="display: contents">
+      <!-- Top Left Corner (Empty) -->
+      <div role="columnheader" aria-hidden="true"></div>
 
-    <!-- X Axis Header (Hours) -->
-    @for (hx of m.xHeaders; track hx) {
-      <div class="axis-label x-label" role="columnheader">{{ hx }}</div>
-    }
+      <!-- X Axis Header (Hours) -->
+      @for (hx of m.xHeaders; track hx) {
+        <div class="axis-label x-label" role="columnheader">{{ hx }}</div>
+      }
+    </div>
 
     <!-- Rows -->
     @for (hy of m.yHeaders; track hy) {
-      <!-- Y Axis Label (Service) -->
-      <div class="axis-label y-label" [title]="hy" role="rowheader">{{ hy }}</div>
+      <div role="row" style="display: contents">
+        <!-- Y Axis Label (Service) -->
+        <div class="axis-label y-label" [title]="hy" role="rowheader">{{ hy }}</div>
 
-      <!-- Cells -->
-      @for (hx of m.xHeaders; track hx) {
-        <div
-          class="cell"
-          role="gridcell"
-          [style.background-color]="getCellColor(m, hx, hy)"
-          [matTooltip]="getCellTooltip(m, hx, hy)"
-          [attr.aria-label]="getCellTooltip(m, hx, hy)"
-        ></div>
-      }
+        <!-- Cells -->
+        @for (hx of m.xHeaders; track hx) {
+          <div
+            class="cell"
+            role="gridcell"
+            tabindex="0"
+            [style.background-color]="getCellColor(m, hx, hy)"
+            [matTooltip]="getCellTooltip(m, hx, hy)"
+            [attr.aria-label]="getCellTooltip(m, hx, hy)"
+          ></div>
+        }
+      </div>
     }
   </div>
 
@@ -38,5 +43,11 @@
     <span i18n>High Load</span>
   </div>
 } @else {
-  <div i18n class="flex items-center justify-center h-full text-gray-500">No Data</div>
+  <div
+    i18n
+    class="flex items-center justify-center h-full"
+    style="color: var(--sys-text-secondary)"
+  >
+    No Data
+  </div>
 }

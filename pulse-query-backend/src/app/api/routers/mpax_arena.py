@@ -4,10 +4,11 @@ API Router for the MPAX Arena integrations.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
+from app.core.result import unwrap_or_raise_http
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.mpax_arena import MpaxArenaRequest, MpaxArenaResponse
@@ -25,30 +26,17 @@ async def run_mpax_arena_mode(
   """
   Executes an MPAX Arena evaluation mode.
   Modes: judge, translator, constraints, sql_vs_mpax, critic.
-  """
-  if not request.prompt.strip():
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Prompt cannot be empty.",
-    )
-  if not request.mode:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail="Mode must be specified.",
-    )
 
-  try:
-    return await mpax_arena_service.run_mpax_arena(request, db, current_user)
-  except ValueError as e:
-    raise HTTPException(
-      status_code=status.HTTP_400_BAD_REQUEST,
-      detail=str(e),
-    ) from e
-  except Exception as e:
-    raise HTTPException(
-      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail=f"MPAX Arena failed: {e!s}",
-    ) from e
+  Args:
+      request (MpaxArenaRequest): Arena evaluation mode and scenario configuration.
+      current_user (User): Authenticated user session.
+      db (AsyncSession): Active transactional database session.
+
+  Returns:
+      MpaxArenaResponse: Evaluated candidate responses and ground-truth MPAX output.
+  """
+  res = await mpax_arena_service.run_mpax_arena_result(request, db, current_user)
+  return unwrap_or_raise_http(res)
 
 
 @router.post("/runs/{run_id}/candidates/{candidate_id}/vote", response_model=MpaxArenaResponse)
@@ -69,19 +57,6 @@ async def vote_mpax_arena_candidate(
 
   Returns:
       MpaxArenaResponse: Updated experiment results with is_selected true for winning candidate.
-
-  Raises:
-      HTTPException: 404 if run or candidate not found, 500 on server failure.
   """
-  try:
-    return await mpax_arena_service.vote_candidate(run_id, candidate_id, db, current_user)
-  except ValueError as e:
-    raise HTTPException(
-      status_code=status.HTTP_404_NOT_FOUND,
-      detail=str(e),
-    ) from e
-  except Exception as e:
-    raise HTTPException(
-      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-      detail=f"MPAX Arena voting failed: {e!s}",
-    ) from e
+  res = await mpax_arena_service.vote_candidate_result(run_id, candidate_id, db, current_user)
+  return unwrap_or_raise_http(res)

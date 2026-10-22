@@ -1,8 +1,8 @@
 <div class="header">
   <div class="title">
-    <mat-icon i18n>shopping_cart</mat-icon>
+    <mat-icon aria-hidden="true">shopping_cart</mat-icon>
     <span i18n>Query Cart</span>
-    <span i18n class="count-pill" data-testid="cart-count">{{ count() }}</span>
+    <span class="count-pill" data-testid="cart-count">{{ count() }}</span>
   </div>
   <button i18n mat-button (click)="clear()" [disabled]="count() === 0" data-testid="clear-cart">
     Clear
@@ -26,7 +26,7 @@
   @for (item of items(); track item.id) {
     <div class="cart-item" cdkDrag [cdkDragData]="item" [attr.data-testid]="'cart-item-' + item.id">
       <div class="drag-handle" cdkDragHandle i18n-matTooltip matTooltip="Drag onto dashboard">
-        <mat-icon i18n>drag_indicator</mat-icon>
+        <mat-icon aria-hidden="true">drag_indicator</mat-icon>
       </div>
 
       <div class="item-body">
@@ -37,7 +37,6 @@
       <div class="item-actions">
         <!-- Click functionality for non-drag interaction -->
         <button
-          i18n
           mat-icon-button
           color="primary"
           (click)="addToDashboard(item)"
@@ -48,10 +47,9 @@
           aria-label="Add to dashboard"
           data-testid="add-to-dashboard"
         >
-          <mat-icon>add</mat-icon>
+          <mat-icon aria-hidden="true">add</mat-icon>
         </button>
         <button
-          i18n
           mat-icon-button
           (click)="rename(item)"
           i18n-matTooltip
@@ -59,10 +57,9 @@
           i18n-aria-label
           aria-label="Rename"
         >
-          <mat-icon>edit</mat-icon>
+          <mat-icon aria-hidden="true">edit</mat-icon>
         </button>
         <button
-          i18n
           mat-icon-button
           color="warn"
           (click)="remove(item)"
@@ -72,7 +69,7 @@
           aria-label="Remove"
           data-testid="remove-item"
         >
-          <mat-icon>delete</mat-icon>
+          <mat-icon aria-hidden="true">delete</mat-icon>
         </button>
       </div>
 

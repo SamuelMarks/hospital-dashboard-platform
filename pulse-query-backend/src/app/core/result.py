@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Generic, TypeVar
 
+from fastapi import HTTPException
+
 T = TypeVar("T")
 U = TypeVar("U")
 E = TypeVar("E")
@@ -23,6 +25,8 @@ class ErrorCode(StrEnum):
   """Canonical error code enumeration for all backend domain operations."""
 
   DATABASE_UNAVAILABLE = "DATABASE_UNAVAILABLE"
+  DUCKDB_STORAGE_ERROR = "DUCKDB_STORAGE_ERROR"
+  POSTGRES_UNAVAILABLE = "POSTGRES_UNAVAILABLE"
   SQL_VALIDATION_ERROR = "SQL_VALIDATION_ERROR"
   SQL_EXECUTION_ERROR = "SQL_EXECUTION_ERROR"
   SSRF_BLOCKED = "SSRF_BLOCKED"
@@ -32,8 +36,30 @@ class ErrorCode(StrEnum):
   RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
   AUTHORIZATION_ERROR = "AUTHORIZATION_ERROR"
   AUTHENTICATION_ERROR = "AUTHENTICATION_ERROR"
+  AUTH_INVALID_CREDENTIALS = "AUTH_INVALID_CREDENTIALS"
+  AUTH_INACTIVE_USER = "AUTH_INACTIVE_USER"
+  AUTH_USER_EXISTS = "AUTH_USER_EXISTS"
+  AUTH_INVALID_TOKEN = "AUTH_INVALID_TOKEN"
+  AUTH_TOKEN_REVOKED = "AUTH_TOKEN_REVOKED"
+  AUTH_INSUFFICIENT_ROLE = "AUTH_INSUFFICIENT_ROLE"
+  ADMIN_INVALID_SECRET = "ADMIN_INVALID_SECRET"
+  ADMIN_SELF_MODIFICATION_FORBIDDEN = "ADMIN_SELF_MODIFICATION_FORBIDDEN"
+  ADMIN_INVALID_ROLE = "ADMIN_INVALID_ROLE"
+  CONVERSATION_NOT_FOUND = "CONVERSATION_NOT_FOUND"
+  MESSAGE_NOT_FOUND = "MESSAGE_NOT_FOUND"
+  CANDIDATE_NOT_FOUND = "CANDIDATE_NOT_FOUND"
+  CANDIDATE_MESSAGE_MISMATCH = "CANDIDATE_MESSAGE_MISMATCH"
+  MPAX_INVALID_MODE = "MPAX_INVALID_MODE"
+  MPAX_RUN_NOT_FOUND = "MPAX_RUN_NOT_FOUND"
+  MPAX_CANDIDATE_NOT_FOUND = "MPAX_CANDIDATE_NOT_FOUND"
+  MPAX_PERSISTENCE_ERROR = "MPAX_PERSISTENCE_ERROR"
+  ALERT_RULE_NOT_FOUND = "ALERT_RULE_NOT_FOUND"
+  SHARE_NOT_FOUND = "SHARE_NOT_FOUND"
+  SHARE_SELF_FORBIDDEN = "SHARE_SELF_FORBIDDEN"
+  SHARE_INVALID_PERMISSION = "SHARE_INVALID_PERMISSION"
   CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
   LLM_PROVIDER_ERROR = "LLM_PROVIDER_ERROR"
+  EMAIL_DELIVERY_FAILED = "EMAIL_DELIVERY_FAILED"
   VALIDATION_ERROR = "VALIDATION_ERROR"
   IO_ERROR = "IO_ERROR"
   INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -215,3 +241,26 @@ class Err(Generic[E]):
 
 Result = Ok[T] | Err[E]
 AppResult = Result[T, AppError]
+
+
+def unwrap_or_raise_http(result: AppResult[T], headers: dict[str, str] | None = None) -> T:
+  """
+  Unwraps an `AppResult[T]` value or raises a FastAPI `HTTPException` from `AppError`.
+
+  Args:
+      result (AppResult[T]): Domain result to unwrap.
+      headers (dict[str, str] | None): Optional HTTP response headers to attach on error.
+
+  Returns:
+      T: The unwrapped success value when `result` is `Ok[T]`.
+
+  Raises:
+      HTTPException: When `result` is `Err[AppError]`, using `status_code` and `message`.
+  """
+  if isinstance(result, Err):
+    raise HTTPException(
+      status_code=result.error.status_code,
+      detail=result.error.message,
+      headers=headers,
+    )
+  return result.value

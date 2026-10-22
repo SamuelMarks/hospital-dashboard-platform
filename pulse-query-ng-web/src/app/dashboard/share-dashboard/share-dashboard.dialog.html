@@ -7,9 +7,11 @@
       <mat-label i18n>Collaborator Email</mat-label>
       <input
         matInput
-        [(ngModel)]="emailInput"
+        [value]="emailInput()"
+        (input)="onEmailInput($event)"
         placeholder="doctor@hospital.org"
         type="email"
+        autocomplete="email"
         i18n-placeholder
         data-testid="input-share-email"
       />
@@ -17,7 +19,11 @@
 
     <mat-form-field appearance="outline" style="width: 120px" subscriptSizing="dynamic">
       <mat-label i18n>Permission</mat-label>
-      <mat-select [(ngModel)]="roleInput" data-testid="select-share-role">
+      <mat-select
+        [value]="roleInput()"
+        (valueChange)="roleInput.set($event)"
+        data-testid="select-share-role"
+      >
         <mat-option value="VIEW" i18n>View</mat-option>
         <mat-option value="EDIT" i18n>Edit</mat-option>
       </mat-select>
@@ -27,7 +33,7 @@
       mat-flat-button
       color="primary"
       (click)="addShare()"
-      [disabled]="!emailInput.trim() || isSubmitting()"
+      [disabled]="!emailInput().trim() || isSubmitting()"
       data-testid="btn-add-share"
       i18n
     >
@@ -36,7 +42,7 @@
   </div>
 
   @if (errorMessage()) {
-    <div class="error-banner mb-3 p-2 text-sm text-red-600 bg-red-50 rounded">
+    <div role="alert" class="error-banner mb-3 p-2 text-sm text-red-600 bg-red-50 rounded">
       {{ errorMessage() }}
     </div>
   }
@@ -45,7 +51,7 @@
   <h3 class="text-sm font-semibold text-secondary mb-2" i18n>Active Collaborators</h3>
 
   @if (isLoading()) {
-    <div class="flex justify-center p-4">
+    <div class="flex justify-center p-4" role="status" aria-live="polite">
       <mat-spinner diameter="28"></mat-spinner>
     </div>
   } @else if (shares().length === 0) {
@@ -56,11 +62,10 @@
     <mat-list class="shares-list">
       @for (share of shares(); track share.id) {
         <mat-list-item [attr.data-testid]="'share-item-' + share.id">
-          <mat-icon matListItemIcon i18n>person</mat-icon>
+          <mat-icon matListItemIcon aria-hidden="true">person</mat-icon>
           <div matListItemTitle>{{ share.user_email }}</div>
           <div matListItemLine class="text-xs text-secondary">
             <span
-              i18n
               class="inline-block px-2 py-0.5 rounded text-xs"
               [class.bg-blue-100]="share.permission_level === 'EDIT'"
               [class.bg-gray-100]="share.permission_level === 'VIEW'"
@@ -75,9 +80,11 @@
             (click)="revokeShare(share.id)"
             matTooltip="Revoke access"
             i18n-matTooltip
+            aria-label="Revoke access"
+            i18n-aria-label
             [attr.data-testid]="'btn-revoke-' + share.id"
           >
-            <mat-icon i18n>delete</mat-icon>
+            <mat-icon aria-hidden="true">delete</mat-icon>
           </button>
         </mat-list-item>
       }

@@ -1,20 +1,36 @@
 """API router for serving benchmark datasets and real-time execution progress telemetry."""
 
 import asyncio
-import json
 from collections.abc import AsyncGenerator
+import json
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
+from app.api.routers.admin import require_admin
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.models.user import User
 
 router = APIRouter()
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data"
+
+
+class BenchmarkProgressUpdateRequest(BaseModel):
+  """
+  Request payload for updating active benchmark execution progress telemetry.
+  """
+
+  active: bool
+  completed: int
+  total: int
+  current_model: str
+  current_status: str
+  eta_seconds: int = 0
 
 
 class BenchmarkTelemetryService:
@@ -186,6 +202,33 @@ async def get_mpax_benchmarks() -> list[dict[str, Any]]:
   return res.value
 
 
+@router.post("/progress", response_model=dict[str, Any])
+async def post_benchmark_progress(
+  payload: BenchmarkProgressUpdateRequest,
+  current_user: Annotated[User, Depends(require_admin)],
+) -> dict[str, Any]:
+  """
+  Updates the benchmark progress telemetry state (Admin only).
+
+  Args:
+      payload (BenchmarkProgressUpdateRequest): Telemetry progress fields.
+      current_user (User): Authenticated administrator.
+
+  Returns:
+      dict[str, Any]: Updated telemetry state snapshot.
+  """
+  _ = current_user
+  update_benchmark_progress(
+    active=payload.active,
+    completed=payload.completed,
+    total=payload.total,
+    current_model=payload.current_model,
+    current_status=payload.current_status,
+    eta_seconds=payload.eta_seconds,
+  )
+  return benchmark_telemetry_service.state
+
+
 @router.get("/progress")
 async def stream_benchmark_progress() -> StreamingResponse:
   """
@@ -202,8 +245,9 @@ async def stream_benchmark_progress() -> StreamingResponse:
     Yields:
         str: Serialized SSE data payload.
     """
+    nl = chr(10)
     data_str = benchmark_telemetry_service.snapshot_json()
-    yield f"data: {data_str}\n\n"
+    yield f"data: {data_str}{nl}{nl}"
     await asyncio.sleep(0.01)
 
   return StreamingResponse(

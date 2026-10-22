@@ -87,3 +87,15 @@ suspend inline fun <T> runCatchingPulseAsync(crossinline block: suspend () -> T)
 fun <T> Result<T>.toPulseQueryError(): PulseQueryError? {
     return exceptionOrNull()?.let { PulseQueryError.fromThrowable(it) }
 }
+
+/**
+ * Extracts a user-facing error message from this [Throwable], returning [defaultMessage] when
+ * the underlying exception or [PulseQueryError.General] cause had no explicit message.
+ *
+ * @param defaultMessage Fallback message to return when the underlying exception message is null.
+ * @return Resolved user-facing error message string.
+ */
+fun Throwable.messageOrDefault(defaultMessage: String): String {
+    val rawMsg = if (this is PulseQueryError.General && cause != null) cause.message else message
+    return rawMsg ?: defaultMessage
+}

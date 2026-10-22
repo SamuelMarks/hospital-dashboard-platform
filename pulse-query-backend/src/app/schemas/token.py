@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Token(BaseModel):
@@ -36,7 +36,7 @@ class ResetPasswordRequest(BaseModel):
   """Payload supplying reset token and the replacement password."""
 
   token: str
-  new_password: str
+  new_password: str = Field(min_length=1, max_length=128)
 
 
 class PasswordResetResponse(BaseModel):

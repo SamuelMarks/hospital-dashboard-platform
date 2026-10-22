@@ -3,13 +3,11 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { NgZone } from '@angular/core';
 
 import { BenchmarkProgressService, BenchmarkProgress } from './benchmark-progress.service';
 
 describe('BenchmarkProgressService', () => {
   let service: BenchmarkProgressService;
-  let ngZone: NgZone;
   let mockEventSource: {
     close: ReturnType<typeof vi.fn>;
     onmessage: ((event: MessageEvent) => void) | null;
@@ -34,7 +32,6 @@ describe('BenchmarkProgressService', () => {
     });
 
     service = TestBed.inject(BenchmarkProgressService);
-    ngZone = TestBed.inject(NgZone);
   });
 
   afterEach(() => {

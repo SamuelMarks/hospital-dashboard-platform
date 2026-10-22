@@ -40,8 +40,12 @@ describe('VizScalarComponent', () => {
 
     fixture = TestBed.createComponent(VizScalarComponent);
     component = fixture.componentInstance;
-    dataSig = signal<ScalarData | null>(null);
-    (component as unknown as { data: WritableSignal<ScalarData | null> }).data = dataSig;
+    dataSig = {
+      set: (val: ScalarData | null) => {
+        fixture.componentRef.setInput('data', val);
+      },
+    } as unknown as WritableSignal<ScalarData | null>;
+    fixture.componentRef.setInput('data', null);
     fixture.detectChanges();
   });
 

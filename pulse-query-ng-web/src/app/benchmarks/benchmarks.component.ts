@@ -108,7 +108,7 @@ export class BenchmarksComponent implements OnInit, OnDestroy {
           this.mpaxCount.set(mpax.length);
         },
         error: (err: { message?: string }) => {
-          this.error.set(err.message || 'Failed to load benchmarks.');
+          this.error.set(err.message || $localize`Failed to load benchmarks.`);
         },
       });
   }

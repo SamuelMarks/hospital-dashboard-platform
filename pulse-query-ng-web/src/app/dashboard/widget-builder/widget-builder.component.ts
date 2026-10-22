@@ -179,7 +179,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   private readonly templatesApi = inject(TemplatesService);
   /** Execution API Client. */
   private readonly execApi = inject(ExecutionService);
-  /** Global Dashboard Store. */
+  /** Centralized reactive state store for the active hospital dashboard. */
   readonly store = inject(DashboardStore);
 
   /** Active wizard mode (Template vs Custom). */
@@ -245,13 +245,23 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   /** List of supported visualizations. */
   readonly visualizations = [
-    { id: 'table', icon: 'table_chart', label: 'Table' },
-    { id: 'metric', icon: 'exposure_plus_1', label: 'Metric Card' },
-    { id: 'bar_chart', icon: 'bar_chart', label: 'Bar Chart' },
-    { id: 'pie', icon: 'pie_chart', label: 'Pie Chart' },
-    { id: 'heatmap', icon: 'grid_on', label: 'Heatmap' },
-    { id: 'scalar', icon: 'speed', label: 'Gauge' },
+    { id: 'table', icon: 'table_chart', label: $localize`Table` },
+    { id: 'metric', icon: 'exposure_plus_1', label: $localize`Metric Card` },
+    { id: 'bar_chart', icon: 'bar_chart', label: $localize`Bar Chart` },
+    { id: 'pie', icon: 'pie_chart', label: $localize`Pie Chart` },
+    { id: 'heatmap', icon: 'grid_on', label: $localize`Heatmap` },
+    { id: 'scalar', icon: 'speed', label: $localize`Gauge` },
   ];
+
+  /**
+   * Returns a localized accessible label for a template card.
+   *
+   * @param t - The template response object.
+   * @returns Localized ARIA label string.
+   */
+  getTemplateAriaLabel(t: TemplateResponse): string {
+    return $localize`Select template: ${t.title}`;
+  }
 
   /** Whether to show axis config options. */
   readonly showAxesConfig = computed(() => {
@@ -320,7 +330,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Initialize component. */
+  /** Loads initial widget templates and subscribes to debounced search query changes. */
   ngOnInit(): void {
     this.loadTemplates();
     this.sub = this.search$
@@ -469,7 +479,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.isBusy.set(true);
 
     // Determine defaults
-    let title = 'New Widget';
+    let title = $localize`New Widget`;
     let type = this.selectedCustomType() || 'SQL';
     let config: Record<string, unknown> = {};
     let visualization = 'table';
@@ -488,7 +498,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
       } else {
         config = { content: '### New Text Widget\nEdit this content.' };
         visualization = 'markdown';
-        title = 'Text Block';
+        title = $localize`Text Block`;
       }
     }
 

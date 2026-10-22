@@ -2,11 +2,10 @@
 Tests for system health API, diagnostics router, and exception handlers.
 """
 
-from typing import Any
-
 import json
-from unittest.mock import AsyncMock, MagicMock
 import os
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 
 import duckdb
 from fastapi.testclient import TestClient
@@ -35,7 +34,7 @@ def test_get_system_health_endpoint() -> None:
   assert "warnings" in data
 
 
-def test_get_system_health_strict_mode_when_critical(monkeypatch: Any) -> None:
+def test_get_system_health_strict_mode_when_critical(monkeypatch: pytest.MonkeyPatch) -> None:
   """GET /api/v1/system/health?strict=true should return 503 when overall_status is critical."""
   monkeypatch.setattr(
     "app.api.routers.system.validate_postgres_connection",
@@ -94,7 +93,7 @@ def test_trigger_reingest_endpoint_forbidden_for_non_admin() -> None:
     main_module.app.dependency_overrides = {}
 
 
-def test_trigger_reingest_endpoint_admin(monkeypatch: Any) -> None:
+def test_trigger_reingest_endpoint_admin(monkeypatch: pytest.MonkeyPatch) -> None:
   """POST /api/v1/system/reingest should invoke CSV auto-ingestion for admin users."""
   mock_admin = MagicMock()
   mock_admin.is_admin = True
@@ -124,7 +123,7 @@ async def test_duckdb_catalog_exception_handler() -> None:
   exc = duckdb.CatalogException("Table with name missing_table does not exist!")
   res = await main_module.duckdb_catalog_exception_handler(dummy_request, exc)
   assert res.status_code == 404
-  body = json.loads(res.body.decode())
+  body = json.loads(bytes(res.body).decode())
   assert body["code"] == "TABLE_NOT_FOUND"
   assert "missing_table" in body["detail"]
   assert "remediation_hint" in body
@@ -137,13 +136,13 @@ async def test_duckdb_database_exception_handler() -> None:
   exc = duckdb.DatabaseError("Corrupted file header")
   res = await main_module.duckdb_database_exception_handler(dummy_request, exc)
   assert res.status_code == 500
-  body = json.loads(res.body.decode())
+  body = json.loads(bytes(res.body).decode())
   assert body["code"] == "DATABASE_ERROR"
   assert "Corrupted file header" in body["detail"]
 
 
 @pytest.mark.asyncio
-async def test_template_seeder_edge_cases(tmp_path: Any, monkeypatch: Any) -> None:
+async def test_template_seeder_edge_cases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
   """TemplateSeeder should handle missing file, empty list, and malformed JSON."""
   nonexistent_file = str(tmp_path / "nonexistent.json")
   monkeypatch.setattr("app.services.template_seeder.DATA_FILE", nonexistent_file)
@@ -163,7 +162,7 @@ async def test_template_seeder_edge_cases(tmp_path: Any, monkeypatch: Any) -> No
   assert any(w.code == "CORRUPTED_TEMPLATE_PACK" for w in diagnostics_registry.warnings)
 
 
-def test_data_ingestion_edge_cases(tmp_path: Any, monkeypatch: Any) -> None:
+def test_data_ingestion_edge_cases(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
   """DataIngestionService should handle missing data directory and ingestion errors."""
   empty_dir = str(tmp_path / "empty_data_dir")
   monkeypatch.setattr("app.services.data_ingestion.DATA_DIR", empty_dir)

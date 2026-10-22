@@ -11,6 +11,8 @@ import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.api.models.MessageVoteRequest
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.ChatStreamEvent
 import io.healthplatform.pulsequery.network.ChatStreamingRepository
@@ -85,7 +87,7 @@ class ChatViewModel(
      */
     fun loadConversations() {
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentChatApi.listConversationsApiV1ConversationsGet().body()
             }.fold(
                 onSuccess = { list ->
@@ -107,7 +109,7 @@ class ChatViewModel(
                     }
                 },
                 onFailure = { e ->
-                    val msg = "Failed to load conversations: ${e.message ?: "Unknown error"}"
+                    val msg = "Failed to load conversations: ${e.messageOrDefault("Unknown error")}"
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -143,7 +145,7 @@ class ChatViewModel(
         }
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatching {
+            runCatchingPulseAsync {
                 currentChatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
                     conversationId = active.id
                 ).body()
@@ -152,7 +154,7 @@ class ChatViewModel(
                     _state.update { it.copy(messages = msgs, errorMessage = null) }
                 },
                 onFailure = { e ->
-                    val msg = "Failed to load messages: ${e.message ?: "Unknown error"}"
+                    val msg = "Failed to load messages: ${e.messageOrDefault("Unknown error")}"
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -177,7 +179,7 @@ class ChatViewModel(
      */
     fun deleteConversation(id: String) {
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentChatApi.deleteConversationApiV1ConversationsConversationIdDelete(id)
             }.fold(
                 onSuccess = {
@@ -187,7 +189,7 @@ class ChatViewModel(
                     loadConversations()
                 },
                 onFailure = { e ->
-                    val msg = "Failed to delete conversation: ${e.message ?: "Unknown error"}"
+                    val msg = "Failed to delete conversation: ${e.messageOrDefault("Unknown error")}"
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -206,7 +208,7 @@ class ChatViewModel(
         _state.update { it.copy(inputText = "", isLoading = true, errorMessage = null) }
 
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 val active = _state.value.activeConversation
                 val targetConv: ConversationResponse = if (active == null) {
                     val detail: ConversationDetail = currentChatApi.createConversationApiV1ConversationsPost(
@@ -241,7 +243,7 @@ class ChatViewModel(
                 streamTokensForConversation(targetConv.id)
                 loadMessages()
             }.onFailure { e ->
-                val msg = "Failed to send message: ${e.message ?: "Unknown error"}"
+                val msg = "Failed to send message: ${e.messageOrDefault("Unknown error")}"
                 _state.update { it.copy(errorMessage = msg, streamingCandidateText = null) }
                 _notifications.tryEmit(msg)
             }
@@ -253,7 +255,7 @@ class ChatViewModel(
         val token = tokenProvider()
         if (token.isNullOrBlank()) return
         val buffer = StringBuilder()
-        runCatching {
+        runCatchingPulseAsync {
             currentStreamingRepository.streamTokens(
                 conversationId = conversationId,
                 token = token
@@ -286,7 +288,7 @@ class ChatViewModel(
     fun voteCandidate(messageId: String, candidateId: String) {
         val active = _state.value.activeConversation ?: return
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentChatApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
                     conversationId = active.id,
                     messageId = messageId,
@@ -298,7 +300,7 @@ class ChatViewModel(
                     loadMessages()
                 },
                 onFailure = { e ->
-                    val msg = e.message ?: "Failed to record vote"
+                    val msg = e.messageOrDefault("Failed to record vote")
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }

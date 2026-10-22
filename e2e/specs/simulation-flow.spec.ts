@@ -49,11 +49,12 @@ test.describe("Hospital What-If Capacity Simulation Flow", () => {
     await expect(runBtn).toBeVisible({ timeout: 10000 });
     await runBtn.click();
 
-    // Verify either spinner appears or results render
+    // Verify optimization results table renders without error banner
     const resultsContainer = page
-      .locator(".simulation-results, .results-table, table, .error-box")
+      .locator(".simulation-results, .results-table, table")
       .first();
     await expect(resultsContainer).toBeVisible({ timeout: 15000 });
+    await expect(page.locator(".error-box")).toBeHidden();
   });
 
   test("should handle contradictory constraints gracefully with user error feedback", async ({

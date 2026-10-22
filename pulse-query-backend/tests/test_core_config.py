@@ -2,27 +2,24 @@
 Tests for application configuration helpers.
 """
 
-from typing import Any
+import os
+from unittest.mock import patch
 
 from app.core.config import Settings
 
 
 def test_sqlalchemy_database_uri_builds_expected_url() -> None:
   """Ensure the computed SQLAlchemy URI matches expected formatting."""
-  import os
-
   old_val = os.environ.get("USE_SQLITE_ALEMBIC")
   if old_val is not None:
     del os.environ["USE_SQLITE_ALEMBIC"]
 
-  # Note: Pydantic settings are immutable after init usually, so we pass via constructor
   settings = Settings(
     POSTGRES_SERVER="db.local",
     POSTGRES_USER="alice",
     POSTGRES_PASSWORD="secret",
     POSTGRES_DB="analytics",
     POSTGRES_PORT=5433,
-    # Isolate from real env
     OLLAMA_MODELS="",
     LLM_LOCAL_MODELS="",
   )
@@ -35,18 +32,14 @@ def test_sqlalchemy_database_uri_builds_expected_url() -> None:
 
 def test_config_sqlite_alembic_branch() -> None:
   """Tests SQLALCHEMY_DATABASE_URI when USE_SQLITE_ALEMBIC is enabled."""
-  import os
-  from unittest.mock import patch
-
   with patch.dict(os.environ, {"USE_SQLITE_ALEMBIC": "1"}):
     s = Settings()
     uri = s.SQLALCHEMY_DATABASE_URI
     assert "sqlite" in uri
 
 
-def test_llm_swarm_defaults_to_empty(monkeypatch: Any) -> None:
+def test_llm_swarm_defaults_to_empty() -> None:
   """Ensure default behavior is an empty list if no env vars are set."""
-  # Clear all relevant keys to simulate clean env
   settings = Settings(
     OPENAI_API_KEY=None,
     MISTRAL_API_KEY=None,
@@ -58,24 +51,20 @@ def test_llm_swarm_defaults_to_empty(monkeypatch: Any) -> None:
   )
 
   swarm = settings.LLM_SWARM
-
-  # Updated Logic: We no longer default to a broken "local-model"
   assert len(swarm) == 0
 
 
 def test_llm_swarm_exhaustive_parsing() -> None:
   """
-  Provides exhaustive coverage to hit all branches of internal `_display_name`
-  and `_parse_models` within the Settings class.
+  Provides exhaustive coverage to hit all branches of internal `_resolve_model_display_name`
+  and `_parse_model_entries` within the Settings class.
   """
   settings = Settings(
-    # hits empty strings and fallback loop branches
     LLM_LOCAL_MODELS="just-model-id,  ,",
     OPENAI_API_KEY="x",
-    OPENAI_MODELS="",  # Tests empty fallback to ["gpt-4o"]
+    OPENAI_MODELS="",
     GEMINI_API_KEY="x",
     GEMINI_MODELS="gemini-1.5-pro",
-    # Include un-customized IDs explicitly so they hit line 112 directly
     OLLAMA_MODELS=(
       "deepseek-r1,deepseek-coder:base,qwen2.5-coder,gpt-4o,mistral-large,claude-3-opus,local-model,custom-id|Local DS"
     ),
@@ -88,7 +77,6 @@ def test_llm_swarm_exhaustive_parsing() -> None:
   swarm = settings.LLM_SWARM
   names = {item["name"] for item in swarm}
 
-  # Validated mapped heuristic names
   assert "Local DS" in names
   assert "Local LLM: DeepSeek R1" in names
   assert "Local LLM: DeepSeek Coder" in names
@@ -97,19 +85,13 @@ def test_llm_swarm_exhaustive_parsing() -> None:
   assert "Local LLM: Mistral Large" in names
   assert "Local LLM: Claude 3 Opus" in names
   assert "Local Model" in names
-
-  # Validate split logic hit
   assert "just-model-id" in [m["model_name"] for m in swarm]
-
-  # Cloud default parsing
   assert "GPT-4o" in names
   assert "Gemini 1.5 Pro" in names
 
 
 def test_llm_swarm_mixed_provider_mapping() -> None:
-  """
-  Verify robust mapping across different providers.
-  """
+  """Verify robust mapping across different providers."""
   settings = Settings(
     LLM_LOCAL_MODELS="gemma:2b|Model 0",
     GEMINI_API_KEY="fake-key",
@@ -153,7 +135,6 @@ def test_llm_swarm_auto_ollama_fallback() -> None:
 
 def test_cors_origins_parsing() -> None:
   """Test parsing of CORS origins from both list and comma-separated string formats."""
-  # List format
   settings_list = Settings(
     BACKEND_CORS_ORIGINS=["http://localhost:4200", "https://dashboard.hospital.org"],
     OLLAMA_MODELS="",
@@ -161,7 +142,6 @@ def test_cors_origins_parsing() -> None:
   )
   assert settings_list.parsed_cors_origins == ["http://localhost:4200", "https://dashboard.hospital.org"]
 
-  # String format with whitespace and empty elements
   settings_str = Settings(
     BACKEND_CORS_ORIGINS="http://localhost:3000, https://hospital.org , , http://localhost:4200",
     OLLAMA_MODELS="",

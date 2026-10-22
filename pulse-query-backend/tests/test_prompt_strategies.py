@@ -5,14 +5,13 @@ Verifies that the SQLGeneratorService correctly instantiates and utilizes differ
 PromptStrategies (Zero-Shot, CoT, RAG) based on input arguments.
 """
 
-from typing import Any
-
 import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.models.feedback import ExperimentLog
 from app.models.user import User
 from app.services.llm_client import ArenaResponse
 from app.services.sql_generator import SQLGeneratorService
@@ -30,12 +29,12 @@ def mock_db_session() -> MagicMock:
   )
 
   # Side effect: Populate ID and CreatedAt on refresh
-  async def mock_refresh(instance: Any) -> None:
+  async def mock_refresh(instance: ExperimentLog) -> None:
     """
-    Verify mock refresh behavior.
+    Populates `id` and `created_at` on `ExperimentLog` instances during mock refresh.
 
     Args:
-        instance: Test parameter or fixture.
+        instance (ExperimentLog): ExperimentLog instance being refreshed.
     """
     if not instance.id:
       instance.id = uuid.uuid4()
@@ -70,18 +69,20 @@ async def test_run_arena_uses_zero_shot_messages(
   orchestrator: SQLGeneratorService, mock_db_session: MagicMock, mock_user: User
 ) -> None:
   """Verify 'zero-shot' strategy prompt construction."""
-  orchestrator.llm.generate_arena_competition.return_value = [ArenaResponse("Model A", "id-a", "SELECT 1", 100, None)]
+  with patch.object(
+    orchestrator.llm,
+    "generate_arena_competition",
+    new=AsyncMock(return_value=[ArenaResponse("Model A", "id-a", "SELECT 1", 100, None)]),
+  ) as mock_gen:
+    await orchestrator.run_arena_experiment("Count patients", mock_db_session, mock_user, strategy="zero-shot")
 
-  await orchestrator.run_arena_experiment("Count patients", mock_db_session, mock_user, strategy="zero-shot")
+    call_args = mock_gen.call_args
+    messages = call_args[1]["messages"]
+    system_msg = messages[0]["content"]
+    user_msg = messages[1]["content"]
 
-  call_args = orchestrator.llm.generate_arena_competition.call_args
-  messages = call_args[1]["messages"]
-  system_msg = messages[0]["content"]
-  user_msg = messages[1]["content"]
-
-  assert "expert data analyst" in system_msg.lower()
-  # Zero-shot does NOT include "valid sql examples"
-  assert "valid sql examples" not in user_msg.lower()
+    assert "expert data analyst" in system_msg.lower()
+    assert "valid sql examples" not in user_msg.lower()
 
 
 @pytest.mark.asyncio
@@ -89,16 +90,18 @@ async def test_run_arena_uses_rag_messages(
   orchestrator: SQLGeneratorService, mock_db_session: MagicMock, mock_user: User
 ) -> None:
   """Verify 'rag-few-shot' strategy prompt construction."""
-  with patch("app.services.prompt_engineering.few_shot_rag.TemplateRetriever.find_relevant_examples") as mock_find:
+  with (
+    patch.object(orchestrator.llm, "generate_arena_competition", new=AsyncMock(return_value=[])) as mock_gen,
+    patch("app.services.prompt_engineering.few_shot_rag.TemplateRetriever.find_relevant_examples") as mock_find,
+  ):
     mock_find.return_value = [{"question": "How many beds?", "sql": "SELECT count(*) FROM beds"}]
 
     await orchestrator.run_arena_experiment("Count beds", mock_db_session, mock_user, strategy="rag-few-shot")
 
-    call_args = orchestrator.llm.generate_arena_competition.call_args
+    call_args = mock_gen.call_args
     messages = call_args[1]["messages"]
     user_msg = messages[1]["content"]
 
-    # RAG must inject examples
     assert "valid SQL examples" in user_msg
     assert "SELECT count(*) FROM beds" in user_msg
 
@@ -108,12 +111,11 @@ async def test_run_arena_uses_cot_messages(
   orchestrator: SQLGeneratorService, mock_db_session: MagicMock, mock_user: User
 ) -> None:
   """Verify 'cot-macro' strategy prompt construction."""
-  await orchestrator.run_arena_experiment("Analyze risk", mock_db_session, mock_user, strategy="cot-macro")
+  with patch.object(orchestrator.llm, "generate_arena_competition", new=AsyncMock(return_value=[])) as mock_gen:
+    await orchestrator.run_arena_experiment("Analyze risk", mock_db_session, mock_user, strategy="cot-macro")
 
-  call_args = orchestrator.llm.generate_arena_competition.call_args
-  messages = call_args[1]["messages"]
-  system_msg = messages[0]["content"]
-  messages[1]["content"]
+    call_args = mock_gen.call_args
+    messages = call_args[1]["messages"]
+    system_msg = messages[0]["content"]
 
-  # CoT must inject Macros documentation
-  assert "AVAILABLE ANALYTIC MACROS" in system_msg
+    assert "AVAILABLE ANALYTIC MACROS" in system_msg

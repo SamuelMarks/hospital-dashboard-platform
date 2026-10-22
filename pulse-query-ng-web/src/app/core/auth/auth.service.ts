@@ -4,8 +4,8 @@
  */
 
 import { safeStorage } from '../storage.utils';
-import { Injectable, computed, signal, inject, PLATFORM_ID, Signal } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Service, computed, signal, inject, PLATFORM_ID, Signal } from '@angular/core';
+import { isPlatformBrowser, DOCUMENT } from '@angular/common';
 import { Router } from '@angular/router';
 import { tap, catchError, Observable, throwError, switchMap, finalize, shareReplay } from 'rxjs';
 import { AuthService as AuthApiClient, Token, UserResponse, UserCreate } from '../../api-client';
@@ -14,9 +14,7 @@ import { AuthService as AuthApiClient, Token, UserResponse, UserCreate } from '.
  * Singleton authentication service responsible for user identity state,
  * token storage, and communicating with backend `/api/v1/auth` endpoints.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class AuthService {
   /** LocalStorage key used to persist the JWT access token. */
   private readonly TOKEN_KEY = 'pulse_auth_token';
@@ -28,6 +26,8 @@ export class AuthService {
   private readonly router = inject(Router);
   /** Angular platform token used to guard browser storage operations during SSR. */
   private readonly platformId = inject(PLATFORM_ID);
+  /** Injected DOM document reference for syncing document language attributes. */
+  private readonly document = inject(DOCUMENT);
 
   /** Internal writable signal holding the authenticated user profile. */
   private readonly _currentUser = signal<UserResponse | null>(null);
@@ -36,6 +36,11 @@ export class AuthService {
 
   /** Read-only signal exposing the currently authenticated user profile, or `null` when logged out. */
   readonly currentUser: Signal<UserResponse | null> = this._currentUser.asReadonly();
+
+  /** Computed signal exposing the active user's preferred language code (defaults to `'en'`). */
+  readonly preferredLanguage: Signal<string> = computed(
+    () => this._currentUser()?.language_preference || 'en',
+  );
 
   /** Computed signal indicating whether the user is currently authenticated or holds a stored token. */
   readonly isAuthenticated: Signal<boolean> = computed(() => {
@@ -197,7 +202,12 @@ export class AuthService {
    */
   private fetchMe(): void {
     this.api.readUsersMeApiV1AuthMeGet().subscribe({
-      next: (user: UserResponse) => this._currentUser.set(user),
+      next: (user: UserResponse) => {
+        this._currentUser.set(user);
+        if (isPlatformBrowser(this.platformId) && this.document?.documentElement) {
+          this.document.documentElement.lang = user.language_preference || 'en';
+        }
+      },
       error: () => {
         this.logout();
       },

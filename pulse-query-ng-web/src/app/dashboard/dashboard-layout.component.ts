@@ -2,8 +2,9 @@
  * @fileoverview Dashboard layout component orchestrating the responsive widget grid,
  * edit-mode sidebars, drag-and-drop provisioning, and undo/redo actions.
  */
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { Component, DestroyRef, OnInit, OnDestroy, inject } from '@angular/core';
+import { DatePipe, DOCUMENT } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { Subscription } from 'rxjs';
@@ -35,6 +36,7 @@ import { DashboardCollaborationService } from '../core/collaboration/dashboard-c
 import { DATE_NOW } from '../core/time.token';
 import { UndoRedoService } from '../core/undo/undo-redo.service';
 import { DeleteWidgetCommand } from '../core/undo/dashboard-commands';
+import { FocusTrapDirective } from '../core/accessibility/focus-trap.directive';
 
 /**
  * Dashboard Layout component.
@@ -62,40 +64,45 @@ import { DeleteWidgetCommand } from '../core/undo/dashboard-commands';
     MatProgressBarModule,
     SkeletonLoaderComponent,
     EmptyStateComponent,
+    FocusTrapDirective,
   ],
 })
 export class DashboardLayoutComponent implements OnInit, OnDestroy {
-  /** Store. */
+  /** Centralized reactive state store for the active hospital dashboard. */
   public readonly store = inject(DashboardStore);
-  /** themeService property. */
+  /** Theme service providing dark-mode and TV kiosk mode signals. */
   private readonly themeService = inject(ThemeService);
-  /** route property. */
+  /** Activated route used to observe dashboard ID and global filter query parameters. */
   private readonly route = inject(ActivatedRoute);
-  /** dashboardApi property. */
+  /** Generated OpenAPI service for dashboard and widget CRUD operations. */
   private readonly dashboardApi = inject(DashboardsService);
-  /** provisioning property. */
+  /** Provisioning service for instantiating widget templates onto the dashboard. */
   private readonly provisioning = inject(ProvisioningService);
-  /** cartProvisioning property. */
+  /** Service converting staged Query Cart SQL items into persisted dashboard widgets. */
   private readonly cartProvisioning = inject(QueryCartProvisioningService);
-  /** dialog property. */
+  /** Material dialog service used to open widget editor and confirmation modals. */
   private readonly dialog = inject(MatDialog);
-  /** snackBar property. */
+  /** Material snackbar service used to display status and undo toast notifications. */
   private readonly snackBar = inject(MatSnackBar);
-  /** collaborationService property. */
+  /** Real-time WebSocket collaboration service for peer presence and widget updates. */
   private readonly collaborationService = inject(DashboardCollaborationService);
-  /** undoRedoService property. */
+  /** Undo/redo command history service for reversible widget mutations. */
   private readonly undoRedoService = inject(UndoRedoService);
-  /** dateNow property. */
+  /** Injected clock function returning the current Date instance. */
   private readonly dateNow = inject(DATE_NOW);
-  /** widgetUpdateSub property. */
+  /** Injected DOM document reference. */
+  private readonly document = inject(DOCUMENT);
+  /** DestroyRef for cleaning up route subscriptions. */
+  private readonly destroyRef = inject(DestroyRef);
+  /** Active subscription listening for remote peer widget refresh events. */
   private widgetUpdateSub?: Subscription;
 
   /** Whether the app is in TV Mode (Kiosk). */
   readonly isTvMode = this.themeService.isTvMode;
 
-  /** Ng On Init. */
+  /** Subscribes to route parameters, collaboration socket updates, and global filter query params. */
   ngOnInit(): void {
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const id = params.get('id');
       if (id) {
         this.store.reset();
@@ -108,7 +115,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
       this.store.refreshWidget(widgetId);
     });
 
-    this.route.queryParamMap.subscribe((qParams) => {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((qParams) => {
       const paramsObj: Record<string, string | null> = {};
       qParams.keys.forEach((key) => {
         if (key !== 'mode') paramsObj[key] = qParams.get(key);
@@ -117,7 +124,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Ng On Destroy. */
+  /** Unsubscribes from remote widget updates and disconnects the collaboration WebSocket. */
   ngOnDestroy(): void {
     this.widgetUpdateSub?.unsubscribe();
     this.collaborationService.disconnect();
@@ -130,12 +137,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
    * @param {CdkDragDrop<any[]>} event - The drop event.
    */
   onDrop(event: CdkDragDrop<unknown[]>): void {
-    console.log('onDrop triggered', event.previousIndex, event.currentIndex);
     if (this.isTvMode()) return;
 
     if (event.previousContainer === event.container) {
       // Internal Sort
-      console.log('Internal sort calling updateWidgetOrder');
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex);
     } else {
       // External Drop (Widget Gallery or Query Cart)
@@ -149,12 +154,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.store.setLoading(true);
         this.cartProvisioning.addToDashboard(data, dashboard.id).subscribe({
           next: () => {
-            this.snackBar.open(`Added query: ${data.title}`, 'OK', { duration: 3000 });
+            this.snackBar.open($localize`Added query: ${data.title}`, $localize`OK`, {
+              duration: 3000,
+            });
             this.store.loadDashboard(dashboard.id);
           },
           error: (err: unknown) => {
             console.error(err);
-            this.snackBar.open('Failed to add query to dashboard', 'Close');
+            this.snackBar.open($localize`Failed to add query to dashboard`, $localize`Close`);
             this.store.setLoading(false);
           },
         });
@@ -168,12 +175,14 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
       this.provisioning.provisionWidget(template, dashboard.id).subscribe({
         next: () => {
-          this.snackBar.open(`Added widget: ${template.title}`, 'OK', { duration: 3000 });
+          this.snackBar.open($localize`Added widget: ${template.title}`, $localize`OK`, {
+            duration: 3000,
+          });
           this.store.loadDashboard(dashboard.id);
         },
         error: (err: unknown) => {
           console.error(err);
-          this.snackBar.open('Failed to create widget from template', 'Close');
+          this.snackBar.open($localize`Failed to create widget from template`, $localize`Close`);
           this.store.setLoading(false);
         },
       });
@@ -233,11 +242,13 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     const gridSize = container.clientWidth;
     const colPixelWidth = gridSize / 12;
 
-    const onMove = (e: MouseEvent): void => {};
+    const onMove = (e: MouseEvent): void => {
+      e.preventDefault();
+    };
 
     const onUp = (e: MouseEvent): void => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      this.document.removeEventListener('mousemove', onMove);
+      this.document.removeEventListener('mouseup', onUp);
       const deltaX = e.clientX - startX;
       const colsChanged = Math.round(deltaX / colPixelWidth);
 
@@ -246,8 +257,19 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         this.updateWidgetWidth(widget, newSpan);
       }
     };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+    this.document.addEventListener('mousemove', onMove);
+    this.document.addEventListener('mouseup', onUp);
+  }
+
+  /**
+   * Closes the focus/zen mode overlay when the user clicks directly on the backdrop.
+   *
+   * @param event - DOM mouse click event on the overlay backdrop.
+   */
+  onFocusOverlayClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.store.setFocusedWidget(null);
+    }
   }
 
   /**
@@ -300,10 +322,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     this.dialog
       .open(ConfirmDialogComponent, {
         data: {
-          title: 'Delete Widget',
-          message: `Remove "${widget.title}" from this dashboard?`,
+          title: $localize`Delete Widget`,
+          message: $localize`Remove "${widget.title}" from this dashboard?`,
           isDestructive: true,
-          confirmJson: 'Delete',
+          confirmJson: $localize`Delete`,
         },
       })
       .afterClosed()

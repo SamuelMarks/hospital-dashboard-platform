@@ -6,15 +6,15 @@ Allows authenticated users to run optimization scenarios without persisting
 dashboards or widgets.
 """
 
-import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
 from app.api import deps
+from app.core.result import unwrap_or_raise_http
 from app.models.user import User
 from app.schemas.simulation import ScenarioResult, ScenarioRunRequest
-from app.services.simulation_service import SimulationInfeasibleError, simulation_service
+from app.services.simulation_service import simulation_service
 
 router = APIRouter()
 
@@ -31,17 +31,12 @@ async def run_simulation(
   user-defined capacity and constraints to solve the bed allocation problem.
 
   Args:
-      request: Configuration containing SQL source and capacity map.
-      current_user: Authenticated user.
+      request (ScenarioRunRequest): Configuration containing SQL source and capacity map.
+      current_user (User): Authenticated user.
 
   Returns:
       ScenarioResult: The calculated assignments.
   """
-  try:
-    return await asyncio.to_thread(simulation_service.run_scenario, request)
-  except SimulationInfeasibleError as e:
-    raise HTTPException(status_code=422, detail=str(e)) from e
-  except ValueError as e:
-    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-  except Exception as e:
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Simulation Failed: {e!s}") from e
+  _ = current_user
+  res = await simulation_service.run_scenario_async(request)
+  return unwrap_or_raise_http(res)

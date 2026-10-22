@@ -11,6 +11,8 @@ import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.api.models.TextConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,7 +61,7 @@ class WizardViewModel(
     fun loadTemplates() {
         _state.value = WizardState.Loading
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentTemplatesApi.listTemplatesApiV1TemplatesGet(limit = 100).body()
             }.fold(
                 onSuccess = { templates ->
@@ -74,7 +76,7 @@ class WizardViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = WizardState.Error(e.message ?: "Failed to load templates")
+                    _state.value = WizardState.Error(e.messageOrDefault("Failed to load templates"))
                 }
             )
         }
@@ -277,7 +279,7 @@ class WizardViewModel(
     private fun persistWidget(widgetIn: WidgetIn, onSuccess: (WidgetResponse) -> Unit) {
         _state.value = WizardState.Submitting()
         scope.launch {
-            runCatching {
+            runCatchingPulseAsync {
                 currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                     dashboardId = dashboardId,
                     widgetIn = widgetIn
@@ -288,7 +290,7 @@ class WizardViewModel(
                     onSuccess(created)
                 },
                 onFailure = { e ->
-                    _state.value = WizardState.Error(e.message ?: "Failed to create widget")
+                    _state.value = WizardState.Error(e.messageOrDefault("Failed to create widget"))
                 }
             )
         }

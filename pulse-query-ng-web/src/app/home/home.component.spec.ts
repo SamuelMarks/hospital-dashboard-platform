@@ -317,4 +317,12 @@ describe('HomeComponent', () => {
     component.deleteDashboard(mockDashboardList[0]);
     expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).not.toHaveBeenCalled();
   });
+
+  it('should navigate via openDashboard and format getDashboardOptionsAriaLabel', () => {
+    component.openDashboard('d1');
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard', 'd1']);
+    expect(component.getDashboardOptionsAriaLabel(mockDashboardList[0])).toBe(
+      'Options for Finance',
+    );
+  });
 });

@@ -21,6 +21,7 @@ import io.healthplatform.pulsequery.api.apis.TemplatesApi
 import io.healthplatform.pulsequery.api.models.RefreshTokenRequest
 import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.database.DatabaseDriverFactory
 import io.healthplatform.pulsequery.database.KeyValueStorage
 import io.healthplatform.pulsequery.database.WidgetCacheStorage
@@ -215,7 +216,7 @@ object AppContainer {
         val ref = refreshToken ?: return Result.failure(
             PulseQueryError.Auth.Unauthenticated("No refresh token present")
         )
-        return runCatching {
+        return runCatchingPulseAsync {
             val response = authApi.refreshAccessTokenApiV1AuthRefreshPost(
                 RefreshTokenRequest(refreshToken = ref)
             )

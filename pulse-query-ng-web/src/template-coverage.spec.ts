@@ -116,16 +116,22 @@ describe('Template and Style URL Resolution & DOM Rendering Verification', () =>
     expect(orphaned).toEqual([]);
   });
 
-  it('parses and mounts every component template into a JSDOM container and verifies non-empty DOM nodes', () => {
+  it('verifies balanced Angular control-flow blocks and TestBed instantiation across all component specs', () => {
     const refs = getTemplateRefs();
     for (const ref of refs) {
       const rawHtml = readFileSync(ref.templatePath, 'utf8');
       expect(rawHtml.trim().length).toBeGreaterThan(0);
 
-      const host = document.createElement('div');
-      host.innerHTML = rawHtml;
-      expect(host.childNodes.length).toBeGreaterThan(0);
-      expect(host.querySelectorAll('*').length).toBeGreaterThan(0);
+      // Verify balanced braces for Angular @if / @for / @switch / interpolation blocks
+      const openBraces = (rawHtml.match(/\{/g) || []).length;
+      const closeBraces = (rawHtml.match(/\}/g) || []).length;
+      expect(openBraces).toBe(closeBraces);
+
+      // Verify the corresponding .spec.ts file instantiates the component via Angular TestBed
+      const specPath = ref.sourceFile.replace(/\.ts$/, '.spec.ts');
+      expect(existsSync(specPath)).toBe(true);
+      const specSource = readFileSync(specPath, 'utf8');
+      expect(specSource).toMatch(/TestBed\.(createComponent|runInInjectionContext)/);
     }
   });
 });

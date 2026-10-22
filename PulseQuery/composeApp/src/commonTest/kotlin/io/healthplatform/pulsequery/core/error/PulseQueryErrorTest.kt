@@ -2,6 +2,7 @@ package io.healthplatform.pulsequery.core.error
 
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.flatMap
+import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.core.result.toPulseQueryError
@@ -139,6 +140,10 @@ class PulseQueryErrorTest {
         val nullMsgRaw = RuntimeException()
         val convertedNullMsg = PulseQueryError.fromThrowable(nullMsgRaw)
         assertEquals("Unknown error occurred", convertedNullMsg.message)
+        assertEquals("Custom fallback", convertedNullMsg.messageOrDefault("Custom fallback"))
+        assertEquals("Something failed", generic.messageOrDefault("Custom fallback"))
+        assertEquals("Invalid argument value", converted.messageOrDefault("Custom fallback"))
+        assertEquals("Custom fallback", nullMsgRaw.messageOrDefault("Custom fallback"))
     }
 
     @Test

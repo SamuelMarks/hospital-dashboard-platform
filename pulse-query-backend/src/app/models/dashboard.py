@@ -1,7 +1,7 @@
 """Dashboard and widget models for the analytics UI."""
 
+from typing import TYPE_CHECKING, Any
 import uuid
-from typing import Any
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -9,8 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
 
-# Avoid circular import issues by using string references for relationships if needed,
-# but since we import Base, we rely on SQLAlchemy registry.
+if TYPE_CHECKING:
+  from app.models.user import User
 
 
 class Dashboard(Base):
@@ -24,7 +24,7 @@ class Dashboard(Base):
   permission_level: str = "OWNER"
 
   # Relationships
-  owner = relationship("app.models.user.User", back_populates="dashboards")
+  owner: Mapped["User"] = relationship("app.models.user.User", back_populates="dashboards")
 
   # Cascade delete: if dashboard is deleted, delete its widgets
   widgets: Mapped[list["Widget"]] = relationship(
@@ -48,8 +48,8 @@ class DashboardShare(Base):
   permission_level: Mapped[str] = mapped_column(String, default="VIEW")  # "VIEW" or "EDIT"
 
   # Relationships
-  dashboard = relationship("Dashboard", back_populates="shares")
-  user = relationship("app.models.user.User", back_populates="dashboard_shares")
+  dashboard: Mapped["Dashboard"] = relationship("Dashboard", back_populates="shares")
+  user: Mapped["User"] = relationship("app.models.user.User", back_populates="dashboard_shares")
 
 
 class Widget(Base):
@@ -72,6 +72,6 @@ class Widget(Base):
   # For SQL: { "query": "SELECT * ..." }
   # For HTTP: { "url": "https://api...", "method": "GET" }
   # Also stores Layout: { "w": 6, "h": 4, "x": 0, "y": 0 }
-  config: Mapped[dict[str, Any]] = mapped_column(JSONB, default={})
+  config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
-  dashboard = relationship("Dashboard", back_populates="widgets")
+  dashboard: Mapped["Dashboard"] = relationship("Dashboard", back_populates="widgets")

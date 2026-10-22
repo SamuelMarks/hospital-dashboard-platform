@@ -259,18 +259,20 @@ fun DashboardScreen(
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
-                                            val result = DashboardExportHelper.exportDashboardPdf(activeDashboard.id)
-                                            if (result.success) {
-                                                DashboardExportHelper.saveExportedFile(result.filename, "binary_pdf_cached")
-                                                val saveRes = saveFileToDevice(result.filename, result.mimeType, result.bytes)
-                                                if (saveRes.isSuccess) {
-                                                    snackbarHostState.showSnackbar("Report saved to ${result.filename}")
-                                                } else {
-                                                    snackbarHostState.showSnackbar("Report exported locally: ${result.filename}")
+                                            DashboardExportHelper.exportDashboardPdf(activeDashboard.id).fold(
+                                                onSuccess = { artifact ->
+                                                    DashboardExportHelper.saveExportedFile(artifact.filename, "binary_pdf_cached")
+                                                    val saveRes = saveFileToDevice(artifact.filename, artifact.mimeType, artifact.bytes)
+                                                    if (saveRes.isSuccess) {
+                                                        snackbarHostState.showSnackbar("Report saved to ${artifact.filename}")
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("Report exported locally: ${artifact.filename}")
+                                                    }
+                                                },
+                                                onFailure = { err ->
+                                                    snackbarHostState.showSnackbar(err.message ?: "Failed to export PDF")
                                                 }
-                                            } else {
-                                                snackbarHostState.showSnackbar(result.errorMessage ?: "Failed to export PDF")
-                                            }
+                                            )
                                         }
                                     }
                                 )
@@ -279,18 +281,20 @@ fun DashboardScreen(
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
-                                            val result = DashboardExportHelper.exportDashboard(activeDashboard.id, "csv")
-                                            if (result.success) {
-                                                DashboardExportHelper.saveExportedFile(result.filename, result.content)
-                                                val saveRes = saveFileToDevice(result.filename, result.mimeType, result.bytes)
-                                                if (saveRes.isSuccess) {
-                                                    snackbarHostState.showSnackbar("CSV saved to ${result.filename}")
-                                                } else {
-                                                    snackbarHostState.showSnackbar("CSV exported locally: ${result.filename}")
+                                            DashboardExportHelper.exportDashboard(activeDashboard.id, "csv").fold(
+                                                onSuccess = { artifact ->
+                                                    DashboardExportHelper.saveExportedFile(artifact.filename, artifact.content)
+                                                    val saveRes = saveFileToDevice(artifact.filename, artifact.mimeType, artifact.bytes)
+                                                    if (saveRes.isSuccess) {
+                                                        snackbarHostState.showSnackbar("CSV saved to ${artifact.filename}")
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("CSV exported locally: ${artifact.filename}")
+                                                    }
+                                                },
+                                                onFailure = { err ->
+                                                    snackbarHostState.showSnackbar(err.message ?: "Failed to export CSV")
                                                 }
-                                            } else {
-                                                snackbarHostState.showSnackbar(result.errorMessage ?: "Failed to export CSV")
-                                            }
+                                            )
                                         }
                                     }
                                 )
@@ -299,18 +303,20 @@ fun DashboardScreen(
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
-                                            val result = DashboardExportHelper.exportDashboard(activeDashboard.id, "json")
-                                            if (result.success) {
-                                                DashboardExportHelper.saveExportedFile(result.filename, result.content)
-                                                val saveRes = saveFileToDevice(result.filename, result.mimeType, result.bytes)
-                                                if (saveRes.isSuccess) {
-                                                    snackbarHostState.showSnackbar("JSON saved to ${result.filename}")
-                                                } else {
-                                                    snackbarHostState.showSnackbar("JSON exported locally: ${result.filename}")
+                                            DashboardExportHelper.exportDashboard(activeDashboard.id, "json").fold(
+                                                onSuccess = { artifact ->
+                                                    DashboardExportHelper.saveExportedFile(artifact.filename, artifact.content)
+                                                    val saveRes = saveFileToDevice(artifact.filename, artifact.mimeType, artifact.bytes)
+                                                    if (saveRes.isSuccess) {
+                                                        snackbarHostState.showSnackbar("JSON saved to ${artifact.filename}")
+                                                    } else {
+                                                        snackbarHostState.showSnackbar("JSON exported locally: ${artifact.filename}")
+                                                    }
+                                                },
+                                                onFailure = { err ->
+                                                    snackbarHostState.showSnackbar(err.message ?: "Failed to export JSON")
                                                 }
-                                            } else {
-                                                snackbarHostState.showSnackbar(result.errorMessage ?: "Failed to export JSON")
-                                            }
+                                            )
                                         }
                                     }
                                 )

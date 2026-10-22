@@ -24,8 +24,8 @@ router = APIRouter()
 async def dashboard_websocket_endpoint(
   websocket: WebSocket,
   dashboard_id: UUID,
+  db: Annotated[AsyncSession, Depends(get_db)],
   token: Annotated[str | None, Query()] = None,
-  db: Annotated[AsyncSession, Depends(get_db)] = None,  # type: ignore[assignment]
 ) -> None:
   """
   WebSocket endpoint facilitating real-time collaborator presence and widget events.
@@ -35,15 +35,14 @@ async def dashboard_websocket_endpoint(
   Args:
       websocket (WebSocket): Incoming client WebSocket connection.
       dashboard_id (UUID): ID of the dashboard being observed or edited.
-      token (str | None): JWT access token provided as a query parameter.
       db (AsyncSession): PostgreSQL async database session.
+      token (str | None): JWT access token provided as a query parameter.
   """
-  # 1. Validate Token & Fetch Active User via shared dependency logic
   if not token:
     await websocket.close(code=4401, reason="Unauthorized: Missing authentication token")
     return
 
-  auth_res = await deps.resolve_user_from_token_result(token, db)
+  auth_res = await deps.authenticate_bearer_token(token, db)
   if isinstance(auth_res, Err):
     ws_reason = auth_res.error.details.get("ws_reason", "Unauthorized: Could not validate credentials")
     await websocket.close(code=4401, reason=ws_reason)
@@ -51,7 +50,6 @@ async def dashboard_websocket_endpoint(
 
   user = auth_res.value
 
-  # 3. Check Dashboard Permissions
   try:
     await get_dashboard_with_access(dashboard_id, user, db, required_level="VIEW")
   except HTTPException as exc:
@@ -72,7 +70,6 @@ async def dashboard_websocket_endpoint(
   try:
     while True:
       data = await websocket.receive_json()
-      # Broadcast message to all collaborators on the dashboard, excluding sender
       await ws_manager.broadcast(dash_key, data, sender=websocket)
   except WebSocketDisconnect:
     user_meta = ws_manager.disconnect(dash_key, websocket)
