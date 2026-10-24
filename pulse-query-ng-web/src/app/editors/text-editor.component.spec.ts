@@ -1,17 +1,13 @@
+/**
+ * @fileoverview Unit tests for TextEditorComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
 import { TextEditorComponent } from './text-editor.component';
 import { DashboardsService } from '../api-client';
 import { of, throwError } from 'rxjs';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { By } from '@angular/platform-browser';
-
-interface TextEditorPrivate {
-  dashboardId: WritableSignal<string>;
-  widgetId: WritableSignal<string>;
-  initialContent: WritableSignal<string>;
-}
 
 describe('TextEditorComponent', () => {
   let component: TextEditorComponent;
@@ -24,17 +20,16 @@ describe('TextEditorComponent', () => {
     mockApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})) };
 
     await TestBed.configureTestingModule({
-      imports: [TextEditorComponent, NoopAnimationsModule],
+      imports: [TextEditorComponent],
       providers: [{ provide: DashboardsService, useValue: mockApi }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TextEditorComponent);
     component = fixture.componentInstance;
 
-    const priv = component as unknown as TextEditorPrivate;
-    priv.dashboardId = signal('d1');
-    priv.widgetId = signal('w1');
-    priv.initialContent = signal('Initial Text');
+    fixture.componentRef.setInput('dashboardId', 'd1');
+    fixture.componentRef.setInput('widgetId', 'w1');
+    fixture.componentRef.setInput('initialContent', 'Initial Text');
 
     fixture.detectChanges();
   });
@@ -81,22 +76,6 @@ describe('TextEditorComponent', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should coerce falsy content to empty string', () => {
-    component.formModel.set({ content: 0 as unknown as string });
-    // update validity of form
-    component.formModel.set({ content: 'truthy' }); // required validation
-    component.formModel.set({ content: null as unknown as string }); // skip required, wait required prevents submit
-    // to cover the "|| ''" line, let's bypass the valid check directly in tests if possible or simulate it
-    vi.spyOn(component, 'form').mockReturnValue({
-      invalid: () => false,
-    } as unknown as ReturnType<TextEditorComponent['form']>);
-    component.save();
-    expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'w1',
-      expect.objectContaining({ config: { content: '' } }),
-    );
-  });
-
   it('should wire save button click in template', () => {
     const saveSpy = vi.spyOn(component, 'save');
     component.formModel.set({ content: 'Click Save' });
@@ -108,7 +87,6 @@ describe('TextEditorComponent', () => {
 
   it('should submit form from template', () => {
     const saveSpy = vi.spyOn(component, 'save');
-    const formEl = fixture.debugElement.query(By.css('form'));
     component.save();
     expect(saveSpy).toHaveBeenCalled();
   });

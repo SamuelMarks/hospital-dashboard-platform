@@ -34,11 +34,11 @@ describe('scripts/verify_docs.ts', () => {
   it('flattens string, undefined, and NodeArray JSDoc comments', () => {
     expect(flattenJsDocComment(undefined)).toBe('');
     expect(flattenJsDocComment('  Hello world  ')).toBe('Hello world');
-    const mockArray = [
-      { text: 'Part 1 ' },
-      { text: 'Part 2' },
-    ] as unknown as ts.NodeArray<ts.JSDocComment>;
-    expect(flattenJsDocComment(mockArray)).toBe('Part 1 Part 2');
+    const nodeArray = ts.factory.createNodeArray([
+      ts.factory.createJSDocText('Part 1 '),
+      ts.factory.createJSDocText('Part 2'),
+    ]);
+    expect(flattenJsDocComment(nodeArray)).toBe('Part 1 Part 2');
   });
 
   it('verifies AST declarations and reports missing or placeholder docs', () => {

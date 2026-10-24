@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end authentication flow tests verifying user login and error handling.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Authentication', () => {
@@ -9,7 +13,7 @@ test.describe('Authentication', () => {
     const password = 'password123';
 
     // Seed user (we perform this side-effect to ensure the login attempt can actually succeed)
-    const response = await request.post('http://127.0.0.1:8000/api/v1/auth/register', {
+    await request.post('http://127.0.0.1:8000/api/v1/auth/register', {
       data: { email, password },
     });
 

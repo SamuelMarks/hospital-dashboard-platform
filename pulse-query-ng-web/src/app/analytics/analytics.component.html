@@ -10,7 +10,6 @@
       <a
         i18n
         mat-flat-button
-        color="primary"
         routerLink="/analytics/alert-rules"
         data-testid="manage-alert-rules-btn"
       >
@@ -51,82 +50,23 @@
     </mat-card>
   </div>
 
-  <mat-card class="filters-card">
-    <div class="filters">
-      <mat-form-field appearance="outline">
-        <mat-label i18n>Search</mat-label>
-        <input
-          matInput
-          i18n-placeholder
-          placeholder="Query, SQL, model, or user"
-          [value]="searchText()"
-          (input)="searchText.set(getEventValue($event))"
-        />
-        @if (searchText()) {
-          <button
-            mat-icon-button
-            matSuffix
-            (click)="searchText.set('')"
-            i18n-aria-label
-            aria-label="Clear search"
-          >
-            <mat-icon aria-hidden="true">close</mat-icon>
-          </button>
-        }
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label i18n>Model</mat-label>
-        <mat-select [value]="modelFilter()" (selectionChange)="modelFilter.set($event.value)">
-          <mat-option i18n value="all">All models</mat-option>
-          @for (model of models(); track model) {
-            <mat-option [value]="model">{{ model }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label i18n>User</mat-label>
-        <mat-select [value]="userFilter()" (selectionChange)="userFilter.set($event.value)">
-          <mat-option i18n value="all">All users</mat-option>
-          @for (user of users(); track user) {
-            <mat-option [value]="user">{{ user }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label i18n>Score</mat-label>
-        <mat-select [value]="scoreFilter()" (selectionChange)="scoreFilter.set($event.value)">
-          <mat-option i18n value="all">All outcomes</mat-option>
-          <mat-option i18n value="selected">Selected</mat-option>
-          <mat-option i18n value="unselected">Not selected</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label i18n>SQL</mat-label>
-        <mat-select [value]="sqlFilter()" (selectionChange)="sqlFilter.set($event.value)">
-          <mat-option i18n value="all">All</mat-option>
-          <mat-option i18n value="with_sql">With SQL</mat-option>
-          <mat-option i18n value="no_sql">No SQL</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label i18n>Source</mat-label>
-        <mat-select [value]="sourceFilter()" (selectionChange)="sourceFilter.set($event.value)">
-          <mat-option i18n value="all">All sources</mat-option>
-          <mat-option i18n value="chat">Chat Arena</mat-option>
-          <mat-option i18n value="ai">AI Arena</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <div class="actions">
-        <button i18n mat-stroked-button (click)="clearFilters()">Clear</button>
-      </div>
-    </div>
-  </mat-card>
+  <app-analytics-filter-bar
+    [searchText]="searchText()"
+    [modelFilter]="modelFilter()"
+    [userFilter]="userFilter()"
+    [scoreFilter]="scoreFilter()"
+    [sqlFilter]="sqlFilter()"
+    [sourceFilter]="sourceFilter()"
+    [models]="models()"
+    [users]="users()"
+    (searchTextChange)="searchText.set($event)"
+    (modelFilterChange)="modelFilter.set($event)"
+    (userFilterChange)="userFilter.set($event)"
+    (scoreFilterChange)="scoreFilter.set($event)"
+    (sqlFilterChange)="sqlFilter.set($event)"
+    (sourceFilterChange)="sourceFilter.set($event)"
+    (clearFilters)="clearFilters()"
+  ></app-analytics-filter-bar>
 
   <div class="content-grid">
     <mat-card class="table-card">
@@ -146,6 +86,7 @@
         <div class="table-wrapper">
           <table
             mat-table
+            role="grid"
             [dataSource]="filteredRows()"
             class="analytics-table"
             i18n-aria-label
@@ -259,89 +200,6 @@
       }
     </mat-card>
 
-    <mat-card class="detail-card">
-      @if (selectedRow(); as row) {
-        <div class="detail-header">
-          <h3 i18n>Candidate Detail</h3>
-          <div class="status-row">
-            <span class="status-dot" [class.active]="row.is_selected" aria-hidden="true"></span>
-            {{ scoreLabel(row) }}
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">Query</div>
-          <div class="detail-value">
-            @if (row.query_text) {
-              {{ row.query_text }}
-            } @else {
-              <span i18n>Unknown query</span>
-            }
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">Conversation</div>
-          <div class="detail-value">
-            @if (row.conversation_title) {
-              {{ row.conversation_title }}
-            } @else if (row.source === 'ai') {
-              <span i18n>AI Arena Experiment</span>
-            } @else {
-              <span i18n>Unknown conversation</span>
-            }
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">User</div>
-          <div class="detail-value">{{ row.user_email }}</div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">LLM</div>
-          <div class="detail-value">{{ row.llm }}</div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">Source</div>
-          <div class="detail-value">{{ sourceLabel(row) }}</div>
-        </div>
-
-        @if (row.prompt_strategy) {
-          <div class="detail-section">
-            <div i18n class="detail-label">Prompt Strategy</div>
-            <div class="detail-value">{{ row.prompt_strategy }}</div>
-          </div>
-        }
-
-        <div class="detail-section">
-          <div i18n class="detail-label">Score</div>
-          <div class="detail-value">
-            @if (row.is_selected) {
-              <span i18n>1 (Selected)</span>
-            } @else {
-              <span i18n>0 (Not selected)</span>
-            }
-          </div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">Timestamp</div>
-          <div class="detail-value">{{ row.created_at | date: 'full' }}</div>
-        </div>
-
-        <div class="detail-section">
-          <div i18n class="detail-label">SQL</div>
-          @if (row.sql_snippet) {
-            <pre class="sql-block">{{ row.sql_snippet }}</pre>
-          } @else {
-            <pre i18n class="sql-block">No SQL snippet captured.</pre>
-          }
-        </div>
-      } @else {
-        <div i18n class="empty-state">Select a row to inspect the full SQL and metadata.</div>
-      }
-    </mat-card>
+    <app-analytics-candidate-detail [selectedRow]="selectedRow()"></app-analytics-candidate-detail>
   </div>
 </div>

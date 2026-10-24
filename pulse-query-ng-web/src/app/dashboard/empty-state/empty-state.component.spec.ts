@@ -8,7 +8,6 @@ import { EmptyStateComponent } from './empty-state.component';
 import { DashboardStore } from '../dashboard.store';
 import { AskDataService } from '../../global/ask-data.service';
 import { MatDialog } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { signal, WritableSignal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { WidgetBuilderComponent } from '../widget-builder/widget-builder.component';
@@ -54,7 +53,7 @@ describe('EmptyStateComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [EmptyStateComponent, NoopAnimationsModule],
+      imports: [EmptyStateComponent],
       providers: [
         { provide: DashboardStore, useValue: mockStore },
         { provide: AskDataService, useValue: mockAskData },

@@ -3,7 +3,6 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { PLATFORM_ID, signal } from '@angular/core';
 import { vi } from 'vitest';
 import { ThemeToggleComponent } from './theme-toggle.component';
@@ -26,6 +25,7 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('ThemeToggleComponent', () => {
   let component: ThemeToggleComponent;
   let fixture: ComponentFixture<ThemeToggleComponent>;
+  let hostEl: HTMLElement;
 
   const isDarkSig = signal(false);
   const mockThemeService = {
@@ -38,7 +38,7 @@ describe('ThemeToggleComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ThemeToggleComponent, NoopAnimationsModule],
+      imports: [ThemeToggleComponent],
       providers: [
         { provide: ThemeService, useValue: mockThemeService },
         { provide: PLATFORM_ID, useValue: 'browser' },
@@ -47,6 +47,7 @@ describe('ThemeToggleComponent', () => {
 
     fixture = TestBed.createComponent(ThemeToggleComponent);
     component = fixture.componentInstance;
+    hostEl = fixture.nativeElement as HTMLElement;
     isDarkSig.set(false);
     fixture.detectChanges();
   });
@@ -62,30 +63,30 @@ describe('ThemeToggleComponent', () => {
   it('should show dark_mode icon in light mode', () => {
     isDarkSig.set(false);
     fixture.detectChanges();
-    const icon = fixture.nativeElement.querySelector('mat-icon');
+    const icon = hostEl.querySelector('mat-icon');
     expect(icon?.textContent?.trim()).toBe('dark_mode');
   });
 
   it('should show light_mode icon in dark mode', () => {
     isDarkSig.set(true);
     fixture.detectChanges();
-    const icon = fixture.nativeElement.querySelector('mat-icon');
+    const icon = hostEl.querySelector('mat-icon');
     expect(icon?.textContent?.trim()).toBe('light_mode');
   });
 
   it('should call themeService.toggle() when button is clicked', () => {
-    const btn = fixture.nativeElement.querySelector('button');
+    const btn = hostEl.querySelector('button');
     btn?.click();
     expect(mockThemeService.toggle).toHaveBeenCalledTimes(1);
   });
 
   it('should have aria-label="Toggle theme"', () => {
-    const btn = fixture.nativeElement.querySelector('button');
+    const btn = hostEl.querySelector('button');
     expect(btn?.getAttribute('aria-label')).toBe('Toggle theme');
   });
 
   it('should have data-testid="theme-toggle"', () => {
-    const btn = fixture.nativeElement.querySelector('button');
+    const btn = hostEl.querySelector('button');
     expect(btn?.getAttribute('data-testid')).toBe('theme-toggle');
   });
 

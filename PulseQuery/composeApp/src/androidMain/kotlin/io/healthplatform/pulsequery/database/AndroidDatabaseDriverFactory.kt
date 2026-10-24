@@ -1,3 +1,6 @@
+/**
+ * Android SQLDelight database driver factory implementation module.
+ */
 package io.healthplatform.pulsequery.database
 
 import android.content.Context

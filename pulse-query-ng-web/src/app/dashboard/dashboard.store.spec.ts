@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for DashboardStore.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { DashboardStore } from './dashboard.store';
 import { DashboardOfflineCacheService } from './dashboard-offline-cache.service';
@@ -8,7 +12,6 @@ import {
   WidgetResponse,
 } from '../api-client';
 import { of, throwError } from 'rxjs';
-import { delay } from 'rxjs/operators';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { vi } from 'vitest';
@@ -66,7 +69,6 @@ describe('DashboardStore', () => {
       navigate: vi.fn().mockReturnValue(Promise.resolve(true)),
     };
 
-    // Default return to prevent pipe crash
     mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(of({}));
     mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost.mockReturnValue(
       of({}),
@@ -101,7 +103,7 @@ describe('DashboardStore', () => {
 
   it('should set focus widget', () => {
     const w1 = makeWidget({ id: 'w1' });
-    store['patch']({ widgets: [w1] });
+    store.patch({ widgets: [w1] });
 
     expect(store.focusedWidgetId()).toBeNull();
     expect(store.focusedWidget()).toBeNull();
@@ -128,11 +130,10 @@ describe('DashboardStore', () => {
       expect(store.dashboard()).toEqual(d1);
       expect(store.dataMap()).toEqual({ w1: [1, 2] });
 
-      // When dashboard becomes null before refresh response arrives
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
       mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockImplementationOnce(
         () => {
-          store['patch']({ dashboard: null });
+          store.patch({ dashboard: null });
           return of({ w1: [3, 4] });
         },
       );
@@ -151,17 +152,13 @@ describe('DashboardStore', () => {
       expect(store.error()).toBe('API Fail');
       expect(store.dashboard()).toBeNull();
 
-      // Now populate offline cache and verify fallback
       offlineCache.saveSnapshot(d1, { w1: { data: [] } });
       store.loadDashboard('d1');
       expect(store.dashboard()).toEqual(d1);
       expect(store.dataMap()).toEqual({ w1: { data: [] } });
 
-      const dNoWidgets = {
-        ...d1,
-        id: 'd-empty',
-        widgets: undefined as unknown as WidgetResponse[],
-      };
+      const dNoWidgets: DashboardResponse = { ...d1, id: 'd-empty' };
+      Reflect.deleteProperty(dNoWidgets, 'widgets');
       offlineCache.saveSnapshot(dNoWidgets, {});
       store.loadDashboard('d-empty');
       expect(store.widgets()).toEqual([]);
@@ -170,7 +167,7 @@ describe('DashboardStore', () => {
     });
 
     it('should deduplicate global params updates', () => {
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
 
       store.setGlobalParams({ dept: 'A' });
       expect(
@@ -219,44 +216,44 @@ describe('DashboardStore', () => {
 
   describe('Duplication', () => {
     it('should duplicate a widget', () => {
-      const source = {
+      const source: WidgetResponse = {
         id: 'w1',
         dashboard_id: 'd1',
         title: 'Original',
         type: 'SQL',
         visualization: 'table',
         config: { query: 'SELECT 1', x: 0, y: 0 },
-      } as WidgetResponse;
+      };
 
       const expectedResponse = { ...source, id: 'w2', title: 'Copy of Original' };
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
         of(expectedResponse),
       );
 
-      store['patch']({ dashboard: d1, widgets: [source] });
+      store.patch({ dashboard: d1, widgets: [source] });
 
       store.duplicateWidget(source);
       const widgets = store.widgets();
       expect(widgets.length).toBe(2);
-      expect(widgets[1].id).toBe('w2');
+      expect(widgets[1]?.id).toBe('w2');
     });
 
     it('should duplicate HTTP widget with type HTTP', () => {
-      const source = {
+      const source: WidgetResponse = {
         id: 'w-http',
         dashboard_id: 'd1',
         title: 'Original HTTP',
         type: 'HTTP',
         visualization: 'table',
         config: { url: 'https://api.test/data', method: 'GET' },
-      } as unknown as WidgetResponse;
+      };
 
       const expectedResponse = { ...source, id: 'w-http-copy', title: 'Copy of Original HTTP' };
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
         of(expectedResponse),
       );
 
-      store['patch']({ dashboard: d1, widgets: [source] });
+      store.patch({ dashboard: d1, widgets: [source] });
       store.duplicateWidget(source);
 
       expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
@@ -269,21 +266,21 @@ describe('DashboardStore', () => {
     });
 
     it('should duplicate TEXT widget with type TEXT', () => {
-      const source = {
+      const source: WidgetResponse = {
         id: 'w-text',
         dashboard_id: 'd1',
         title: 'Original TEXT',
         type: 'TEXT',
         visualization: 'markdown',
         config: { content: '# Hospital Notes' },
-      } as unknown as WidgetResponse;
+      };
 
       const expectedResponse = { ...source, id: 'w-text-copy', title: 'Copy of Original TEXT' };
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
         of(expectedResponse),
       );
 
-      store['patch']({ dashboard: d1, widgets: [source] });
+      store.patch({ dashboard: d1, widgets: [source] });
       store.duplicateWidget(source);
 
       expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
@@ -297,15 +294,15 @@ describe('DashboardStore', () => {
     });
 
     it('should handle duplication api errors', () => {
-      const source = {
+      const source: WidgetResponse = {
         id: 'w1',
         dashboard_id: 'd1',
         title: 'Original',
         type: 'SQL',
         visualization: 'table',
         config: { query: 'SELECT 1', x: 0, y: 0 },
-      } as WidgetResponse;
-      store['patch']({ dashboard: d1, widgets: [source] });
+      };
+      store.patch({ dashboard: d1, widgets: [source] });
 
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
         throwError(() => new Error('Duplication Error')),
@@ -335,36 +332,35 @@ describe('DashboardStore', () => {
     });
 
     it('should pause polling if toggleAutoRefresh is disabled', () => {
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
       mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockClear();
 
-      store.toggleAutoRefresh(); // Disable
+      store.toggleAutoRefresh();
       vi.advanceTimersByTime(300_000);
       expect(
         mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
       ).not.toHaveBeenCalled();
     });
+
     it('startPolling triggers refreshTrigger', () => {
-      const spy = vi.spyOn(
-        (store as unknown as { refreshTrigger$: { next: () => void } }).refreshTrigger$,
-        'next',
-      );
-      store['startPolling']();
+      store.patch({ dashboard: d1 });
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockClear();
+      store.startPolling();
       vi.advanceTimersByTime(300_000);
-      expect(spy).toHaveBeenCalled();
+      expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalled();
     });
   });
 
   describe('Widget Updates & Optimistic Data', () => {
     it('should optimistically remove widget', () => {
-      const w1 = { id: 'w1' } as WidgetResponse;
-      store['patch']({ widgets: [w1] });
+      const w1 = makeWidget({ id: 'w1' });
+      store.patch({ widgets: [w1] });
       store.optimisticRemoveWidget('w1');
       expect(store.widgets().length).toBe(0);
     });
 
     it('should optimistically restore widget', () => {
-      const w1 = { id: 'w1' } as WidgetResponse;
+      const w1 = makeWidget({ id: 'w1' });
       store.optimisticRestoreWidget(w1);
       expect(store.widgets().length).toBe(1);
     });
@@ -373,7 +369,7 @@ describe('DashboardStore', () => {
       mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost.mockReturnValue(
         of({ w2: [9, 9] }),
       );
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
       store.refreshWidget('w2', true);
 
       expect(
@@ -381,14 +377,12 @@ describe('DashboardStore', () => {
       ).toHaveBeenCalledWith('d1', 'w2', true);
       expect(store.dataMap()).toEqual({ w2: [9, 9] });
 
-      // Test updating another widget
       mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost.mockReturnValue(
         of({ w3: [1, 2, 3] }),
       );
       store.refreshWidget('w3');
       expect(store.dataMap()['w3']).toEqual([1, 2, 3]);
 
-      // Test null result
       mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost.mockReturnValue(
         of(null),
       );
@@ -400,20 +394,20 @@ describe('DashboardStore', () => {
       mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost.mockReturnValue(
         throwError(() => new Error('Refresh error')),
       );
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
       store.refreshWidget('w2');
 
       expect(store.error()).toBe('Refresh error');
     });
 
     it('should early return from refreshWidget if no dashboard or no widgetId', () => {
-      store['patch']({ dashboard: null });
+      store.patch({ dashboard: null });
       store.refreshWidget('w2');
       expect(
         mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost,
       ).not.toHaveBeenCalled();
 
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
       store.refreshWidget('');
       expect(
         mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost,
@@ -434,7 +428,7 @@ describe('DashboardStore', () => {
         mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost,
       ).not.toHaveBeenCalled();
 
-      store['patch']({ dashboard: d1, widgets: [] });
+      store.patch({ dashboard: d1, widgets: [] });
       store.updateWidgetOrder(5, 0);
       expect(
         mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost,
@@ -444,16 +438,16 @@ describe('DashboardStore', () => {
     it('should update order optimistically and call reorder API', () => {
       const w1 = makeWidget({ id: 'w1', config: { group: 'A', order: 0 } });
       const w2 = makeWidget({ id: 'w2', config: { group: 'A', order: 1 } });
-      store['patch']({ dashboard: d1, widgets: [w1, w2] });
+      store.patch({ dashboard: d1, widgets: [w1, w2] });
 
       mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost.mockReturnValue(of({}));
 
-      store.updateWidgetOrder(1, 0); // Move w2 to top
+      store.updateWidgetOrder(1, 0);
 
-      expect(store.widgets()[0].id).toBe('w2');
-      expect(store.widgets()[1].id).toBe('w1');
-      expect(store.widgets()[0].config['order']).toBe(0);
-      expect(store.widgets()[1].config['order']).toBe(1);
+      expect(store.widgets()[0]?.id).toBe('w2');
+      expect(store.widgets()[1]?.id).toBe('w1');
+      expect(store.widgets()[0]?.config['order']).toBe(0);
+      expect(store.widgets()[1]?.config['order']).toBe(1);
 
       expect(mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost).toHaveBeenCalledWith(
         'd1',
@@ -469,12 +463,12 @@ describe('DashboardStore', () => {
     it('should handle reorder error and reload dashboard', () => {
       const w1 = makeWidget({ id: 'w1', config: { group: 'A', order: 0 } });
       const w2 = makeWidget({ id: 'w2', config: { group: 'A', order: 1 } });
-      store['patch']({ dashboard: d1, widgets: [w1, w2] });
+      store.patch({ dashboard: d1, widgets: [w1, w2] });
 
       mockDashApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost.mockReturnValue(
         throwError(() => new Error('Reorder err')),
       );
-      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1)); // Mock reload
+      mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
 
       store.updateWidgetOrder(1, 0);
 
@@ -485,18 +479,18 @@ describe('DashboardStore', () => {
   describe('HandleError Details', () => {
     it('should handle non-string details from API', () => {
       const err = new HttpErrorResponse({ error: { detail: { nested: 'info' } }, status: 500 });
-      store['handleError'](err);
+      store.handleError(err);
       expect(store.error()).toBe('{"nested":"info"}');
     });
 
     it('should handle generic error', () => {
-      store['handleError'](new Error('Generic failure'));
+      store.handleError(new Error('Generic failure'));
       expect(store.error()).toBe('Generic failure');
     });
   });
 
   it('should reset store state', () => {
-    store['patch']({ dashboard: d1 });
+    store.patch({ dashboard: d1 });
     store.reset();
     expect(store.dashboard()).toBeNull();
     expect(store.widgets()).toEqual([]);
@@ -504,13 +498,13 @@ describe('DashboardStore', () => {
 
   describe('Edge cases and missing branches', () => {
     it('handleError with non-Error object', () => {
-      store['handleError']('Just a string error');
+      store.handleError('Just a string error');
       expect(store.error()).toBe('An unexpected error occurred');
     });
 
     it('focusedWidget returns null if widget is not found', () => {
       const w1 = makeWidget({ id: 'w1' });
-      store['patch']({ widgets: [w1] });
+      store.patch({ widgets: [w1] });
       store.setFocusedWidget('non-existent');
       expect(store.focusedWidget()).toBeNull();
     });
@@ -524,7 +518,7 @@ describe('DashboardStore', () => {
     });
 
     it('duplicateWidget returns early if dashboard is null', () => {
-      store['patch']({ dashboard: null });
+      store.patch({ dashboard: null });
       store.duplicateWidget(makeWidget());
       expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).not.toHaveBeenCalled();
     });
@@ -535,7 +529,7 @@ describe('DashboardStore', () => {
         title: 'Original',
         config: { query: 'SELECT 1', x: 2, y: 3 },
       });
-      store['patch']({ dashboard: d1, widgets: [source] });
+      store.patch({ dashboard: d1, widgets: [source] });
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
         of({ ...source, id: 'w2' }),
       );
@@ -545,18 +539,18 @@ describe('DashboardStore', () => {
       expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
         'd1',
         expect.objectContaining({
-          config: expect.objectContaining({ x: 3, y: 4 }),
+          config: expect.objectContaining({ x: 3, y: 4 }) as unknown,
         }),
       );
     });
 
     it('sortedWidgets handles widgets with explicit order vs no order', () => {
-      const w1 = makeWidget({ id: 'w1', config: {} }); // order defaults to 0
+      const w1 = makeWidget({ id: 'w1', config: {} });
       const w2 = makeWidget({ id: 'w2', config: { order: -1 } });
       const w3 = makeWidget({ id: 'w3', config: { order: 2 } });
       const w4 = makeWidget({ id: 'w4', config: { order: 0 } });
 
-      store['patch']({ widgets: [w1, w2, w3, w4] });
+      store.patch({ widgets: [w1, w2, w3, w4] });
 
       const sorted = store.sortedWidgets();
       expect(sorted.length).toBe(4);
@@ -566,14 +560,14 @@ describe('DashboardStore', () => {
       store.setGlobalParams({ test: 123 });
       expect(store.globalParams()).toEqual({ test: 123 });
 
-      store['patch']({ loadingWidgetIds: new Set(['w1']) });
+      store.patch({ loadingWidgetIds: new Set(['w1']) });
       const isWidgetLoadingFn = store.isWidgetLoading();
       expect(isWidgetLoadingFn('w1')).toBe(true);
       expect(isWidgetLoadingFn('w2')).toBe(false);
     });
 
     it('refreshAll when dashboard is null', () => {
-      store['patch']({ dashboard: null });
+      store.patch({ dashboard: null });
       store.refreshAll();
       expect(
         mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
@@ -584,19 +578,20 @@ describe('DashboardStore', () => {
       mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
         throwError(() => new Error('Simulated exec failure')),
       );
-      store['patch']({ dashboard: d1 });
+      store.patch({ dashboard: d1 });
       store.refreshAll();
       expect(store.error()).toBe('Simulated exec failure');
       expect(store.isLoading()).toBe(false);
     });
 
     it('ngOnDestroy stops polling and destroys', () => {
-      const unsubSpy = vi.spyOn(
-        (store as unknown as { destroy$: { next: () => void } }).destroy$,
-        'next',
-      );
+      store.patch({ dashboard: d1 });
+      mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockClear();
       store.ngOnDestroy();
-      expect(unsubSpy).toHaveBeenCalled();
+      vi.advanceTimersByTime(300_000);
+      expect(
+        mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost,
+      ).not.toHaveBeenCalled();
     });
 
     it('setLoading directly patches loading state', () => {
@@ -621,6 +616,4 @@ describe('DashboardStore', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
-
-  // ... (rest of tests unchanged)
 });

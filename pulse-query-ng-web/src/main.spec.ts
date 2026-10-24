@@ -1,6 +1,8 @@
-import { vi } from 'vitest';
+/**
+ * @fileoverview Unit tests for browser `main.ts` bootstrap entry point.
+ */
 
-const mockBootstrapApplication = vi.fn();
+import { vi } from 'vitest';
 
 vi.mock('@material/material-color-utilities', () => ({
   argbFromHex: () => 0xffffffff,
@@ -22,16 +24,19 @@ vi.mock('@angular/platform-browser', async (importOriginal) => {
 });
 
 describe('main bootstrap', () => {
-  let bootstrapApplication: ReturnType<typeof vi.fn>;
+  let bootstrapApplication: ReturnType<
+    typeof vi.mocked<typeof import('@angular/platform-browser').bootstrapApplication>
+  >;
+
   beforeEach(async () => {
     vi.resetModules();
     const pb = await import('@angular/platform-browser');
-    bootstrapApplication = pb.bootstrapApplication as unknown as ReturnType<typeof vi.fn>;
+    bootstrapApplication = vi.mocked(pb.bootstrapApplication);
     bootstrapApplication.mockReset();
   });
 
   it('bootstraps the application', async () => {
-    bootstrapApplication.mockResolvedValue(undefined);
+    bootstrapApplication.mockResolvedValue(undefined as never);
 
     await import('./main');
 

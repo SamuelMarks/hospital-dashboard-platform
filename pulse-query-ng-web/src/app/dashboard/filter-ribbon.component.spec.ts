@@ -7,7 +7,6 @@ import { FilterRibbonComponent } from './filter-ribbon.component';
 import { DashboardStore } from './dashboard.store';
 import { ActivatedRoute, Router } from '@angular/router';
 import { signal, WritableSignal } from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { BehaviorSubject } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -41,7 +40,7 @@ describe('FilterRibbonComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [FilterRibbonComponent, NoopAnimationsModule],
+      imports: [FilterRibbonComponent],
       providers: [
         { provide: DashboardStore, useValue: mockStore },
         { provide: Router, useValue: mockRouter },
@@ -139,7 +138,7 @@ describe('FilterRibbonComponent', () => {
   });
 
   it('should not emit navigate during initial load (syncing from route)', () => {
-    (component as unknown as { isSyncingFromRoute: boolean }).isSyncingFromRoute = true;
+    component.isSyncingFromRoute = true;
     component.onDeptChange('Neurology');
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });

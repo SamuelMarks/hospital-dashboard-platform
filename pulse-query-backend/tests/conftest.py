@@ -1,30 +1,56 @@
 """Pytest fixtures and test database harness configuration."""
 
+from collections.abc import AsyncGenerator, Generator
 import os
 import tempfile
-from collections.abc import AsyncGenerator
 from typing import Any
 
-import pydantic.root_model  # noqa: F401
-import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+import pydantic.root_model  # noqa: F401
+import pytest
+import pytest_asyncio
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Result
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql import Executable
 
+from app.core.config import settings
 from app.database.duckdb import duckdb_manager
 from app.database.duckdb_init import init_duckdb_on_startup
 from app.database.postgres import Base, get_db, register_sqlite_type_compilers
 from app.main import app
 from app.services.data_ingestion import DataIngestionService
+from app.services.llm_client import llm_client
 
 register_sqlite_type_compilers()
+
+# Isolate LLM environment variables and global settings so `.env` or shell
+# variables never trigger real Ollama/Cloud network connections during pytest.
+for _llm_env_key in (
+  "OPENAI_API_KEY",
+  "GEMINI_API_KEY",
+  "GOOGLE_API_KEY",
+  "MISTRAL_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "OLLAMA_MODELS",
+  "LLM_LOCAL_MODELS",
+):
+  os.environ[_llm_env_key] = ""
+
+settings.OPENAI_API_KEY = None
+settings.GEMINI_API_KEY = None
+settings.GOOGLE_API_KEY = None
+settings.MISTRAL_API_KEY = None
+settings.ANTHROPIC_API_KEY = None
+settings.OLLAMA_MODELS = ""
+settings.LLM_LOCAL_MODELS = ""
+llm_client.init_swarm()
 
 # Use a local SQLite file to avoid network/database dependencies in tests.
 TEST_DB_PATH = f"{tempfile.gettempdir()}/pulse_query_test_{os.getpid()}.db"
 DUCKDB_TEST_PATH = f"{tempfile.gettempdir()}/pulse_query_test_{os.getpid()}.duckdb"
 duckdb_manager.db_path = DUCKDB_TEST_PATH
+settings.DUCKDB_PATH = DUCKDB_TEST_PATH
 
 engine = create_engine(f"sqlite:///{TEST_DB_PATH}", future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
@@ -186,3 +212,16 @@ async def client(db_session: AsyncSessionShim) -> AsyncGenerator[AsyncClient, No
     yield ac
 
   app.dependency_overrides = {}
+
+
+@pytest.fixture(autouse=True)
+def isolate_llm_swarm() -> Generator[None, None, None]:
+  """
+  Ensures `llm_client.swarm` is reset to the isolated fallback mock state around each test.
+
+  Yields:
+      None: Control back to the active test function.
+  """
+  llm_client.init_swarm()
+  yield
+  llm_client.init_swarm()

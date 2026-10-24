@@ -1,14 +1,20 @@
-import { safeStorage } from '../../../core/storage.utils';
 /**
  * @fileoverview Unit tests for OnboardingService.
  */
 
+import { safeStorage } from '../../../core/storage.utils';
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { vi } from 'vitest';
 import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 
 describe('OnboardingService', () => {
+  /**
+   * Creates an `OnboardingService` instance for the given platform.
+   *
+   * @param platformId - Angular platform identifier (`'browser'` or `'server'`).
+   * @returns Configured `OnboardingService` instance.
+   */
   function createService(platformId = 'browser'): OnboardingService {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({

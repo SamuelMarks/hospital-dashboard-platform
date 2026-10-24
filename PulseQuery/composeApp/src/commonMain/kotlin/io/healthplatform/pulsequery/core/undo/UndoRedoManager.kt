@@ -127,6 +127,9 @@ class UndoRedoManager(private val maxHistory: Int = 50) {
         updateFlags()
     }
 
+    /**
+     * Synchronizes [_canUndo] and [_canRedo] state flows with the current stack sizes.
+     */
     private fun updateFlags() {
         _canUndo.value = undoStack.isNotEmpty()
         _canRedo.value = redoStack.isNotEmpty()

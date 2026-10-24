@@ -12,7 +12,7 @@
     </div>
   </div>
   @if (store.isLoading()) {
-    <mat-progress-bar mode="indeterminate" color="accent" style="height: 4px"></mat-progress-bar>
+    <mat-progress-bar mode="indeterminate" style="height: 4px"></mat-progress-bar>
   }
 }
 
@@ -88,7 +88,15 @@
                 tabindex="0"
                 i18n-aria-label
                 aria-label="Resize widget"
+                aria-orientation="vertical"
+                aria-valuemin="2"
+                aria-valuemax="12"
+                [attr.aria-valuenow]="getColSpan(widget)"
                 (mousedown)="startResizing($event, widget)"
+                (keydown.arrowLeft)="resizeByKeyboard($event, widget, -1)"
+                (keydown.arrowRight)="resizeByKeyboard($event, widget, 1)"
+                (keydown.arrowUp)="resizeByKeyboard($event, widget, -1)"
+                (keydown.arrowDown)="resizeByKeyboard($event, widget, 1)"
               ></div>
             }
           </div>

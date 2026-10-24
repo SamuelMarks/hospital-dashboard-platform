@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for QueryCartProvisioningService.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service';
@@ -47,7 +51,7 @@ describe('QueryCartProvisioningService', () => {
         title: 'Test Query',
         type: 'SQL',
         visualization: 'table',
-        config: expect.objectContaining({ query: 'SELECT 1', w: 6, h: 4 }),
+        config: expect.objectContaining({ query: 'SELECT 1', w: 6, h: 4 }) as unknown,
       }),
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');

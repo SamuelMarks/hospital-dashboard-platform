@@ -19,7 +19,6 @@ import {
 } from '@angular/router';
 import { provideHttpClient, withInterceptors, withFetch } from '@angular/common/http';
 import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
-import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 
 import { routes } from './app.routes';
@@ -36,10 +35,10 @@ import { A11yTitleStrategy } from './core/accessibility/a11y-title-strategy';
  * Checks for existing tokens in local storage before the router bootstraps
  * effectively blocking application load until auth state is resolved.
  *
- * @param {AuthService} authService - The injected AuthService singleton.
- * @returns {() => Promise<void>} A promise-returning function required by APP_INITIALIZER.
+ * @param authService - The injected AuthService singleton.
+ * @returns A promise-returning function required by APP_INITIALIZER.
  */
-export function initializeAuth(authService: AuthService): () => Promise<void> {
+export function initializeAuth(authService: Pick<AuthService, 'initialize'>): () => Promise<void> {
   return () => authService.initialize();
 }
 
@@ -118,7 +117,6 @@ export const appConfig: ApplicationConfig = {
     { provide: TitleStrategy, useClass: A11yTitleStrategy },
 
     provideClientHydration(withNoIncrementalHydration()),
-    provideAnimationsAsync(),
 
     // HTTP Stack with Functional Interceptors
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, errorInterceptor])),

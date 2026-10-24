@@ -8,13 +8,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Injector } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { of } from 'rxjs';
+import { vi, type MockInstance } from 'vitest';
 
 describe('GlobalErrorHandler', () => {
   let handler: GlobalErrorHandler;
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
 
   // Spy on console to keep test output clean from expected error logs
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
+  let consoleSpy: MockInstance;
 
   beforeEach(() => {
     consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -111,7 +112,7 @@ describe('GlobalErrorHandler', () => {
   });
 
   it('should invoke reload on snackbar action', () => {
-    const reloadSpy = vi.spyOn(handler as unknown as { reloadApp: () => void }, 'reloadApp');
+    const reloadSpy = vi.spyOn(handler, 'reloadApp');
     handler.handleError(new Error('Reload Test'));
     expect(reloadSpy).toHaveBeenCalled();
     reloadSpy.mockRestore();

@@ -33,6 +33,14 @@ if (!appRoot) {
 }
 const appRootPath = appRoot;
 
+/**
+ * Recursively walks a directory tree and returns files matching `matcher`.
+ *
+ * @param dir - Root directory to traverse.
+ * @param matcher - Predicate function returning true for matching file paths.
+ * @param results - Accumulator array of matched file paths.
+ * @returns Array of matched file paths.
+ */
 function walk(dir: string, matcher: (file: string) => boolean, results: string[] = []): string[] {
   const entries = readdirSync(dir);
   for (const entry of entries) {
@@ -47,6 +55,11 @@ function walk(dir: string, matcher: (file: string) => boolean, results: string[]
   return results;
 }
 
+/**
+ * Extracts all `templateUrl` references from non-spec TypeScript files in `src/app`.
+ *
+ * @returns Array of `TemplateRef` entries.
+ */
 function getTemplateRefs(): TemplateRef[] {
   const tsFiles = walk(appRootPath, (file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'));
   const templateRefs: TemplateRef[] = [];
@@ -68,6 +81,11 @@ function getTemplateRefs(): TemplateRef[] {
   return templateRefs;
 }
 
+/**
+ * Extracts all `styleUrl` references from non-spec TypeScript files in `src/app`.
+ *
+ * @returns Array of `StyleRef` entries.
+ */
 function getStyleRefs(): StyleRef[] {
   const tsFiles = walk(appRootPath, (file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'));
   const styleRefs: StyleRef[] = [];

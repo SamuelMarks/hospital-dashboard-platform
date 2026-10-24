@@ -12,7 +12,6 @@ import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { finalize, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { Subject, Subscription } from 'rxjs';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatStepperModule } from '@angular/material/stepper';
@@ -34,11 +33,11 @@ import {
   TemplateResponse,
   WidgetCreateSql,
 } from '../../api-client';
-import {
-  VizTableComponent,
-  TableDataSet,
-} from '../../shared/visualizations/viz-table/viz-table.component';
 import { DynamicFormComponent } from './dynamic-form.component';
+import {
+  TemplatePreviewExecutionResult,
+  TemplateWizardPreviewStepComponent,
+} from './template-wizard-preview-step.component';
 import { TemplateConfigurationService } from '../template-configuration.service';
 
 /**
@@ -68,8 +67,8 @@ export interface WizardData {
     MatProgressSpinnerModule,
     MatChipsModule,
     MatCardModule,
-    VizTableComponent,
     DynamicFormComponent,
+    TemplateWizardPreviewStepComponent,
   ],
   templateUrl: './template-wizard.component.html',
   styles: [
@@ -103,32 +102,6 @@ export interface WizardData {
         border-color: var(--sys-surface-border);
         background-color: var(--sys-hover);
       }
-      .editor-wrapper {
-        position: relative;
-        background: #1e1e1e;
-        color: #d4d4d4;
-        font-family: 'Consolas', monospace;
-        font-size: 14px;
-        overflow: hidden;
-      }
-      textarea.raw-input {
-        position: absolute;
-        inset: 0;
-        padding: 12px;
-        background: transparent;
-        color: transparent;
-        caret-color: white;
-        border: none;
-        resize: none;
-        z-index: 2;
-      }
-      .highlight-layer {
-        position: absolute;
-        inset: 0;
-        padding: 12px;
-        z-index: 1;
-        pointer-events: none;
-      }
     `,
   ],
 })
@@ -150,9 +123,6 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
 
   /** Injected dialog configuration containing `dashboardId`. */
   private readonly data = inject<WizardData>(MAT_DIALOG_DATA);
-
-  /** DOM sanitizer for rendering syntax-highlighted SQL HTML. */
-  private readonly sanitizer = inject(DomSanitizer);
 
   /** Marketplace templates loaded from the backend. */
   readonly templates = signal<TemplateResponse[]>([]);
@@ -191,11 +161,7 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   readonly isRunning = signal<boolean>(false);
 
   /** Latest stateless SQL preview result or error message. */
-  readonly executionResult = signal<{
-    error?: string | null;
-    columns?: string[];
-    data?: Record<string, unknown>[];
-  } | null>(null);
+  readonly executionResult = signal<TemplatePreviewExecutionResult | null>(null);
 
   /** Current parameter values emitted by `DynamicFormComponent`. */
   readonly paramsValue = signal<Record<string, unknown>>({});
@@ -416,43 +382,5 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
    */
   cancel(): void {
     this.dialogRef.close(false);
-  }
-
-  /**
-   * Converts the preview execution result into a `TableDataSet` for `VizTableComponent`.
-   *
-   * @param res - Raw execution result object.
-   * @returns Typed `TableDataSet` for tabular rendering.
-   */
-  asTableData(res: unknown): TableDataSet {
-    return res as TableDataSet;
-  }
-
-  /**
-   * Computed signal producing syntax-highlighted HTML for the preview SQL query.
-   */
-  readonly highlightedSql = computed((): SafeHtml => {
-    let code = this.finalSql() || '';
-    code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const keywords =
-      /\b(SELECT|FROM|WHERE|GROUP|BY|ORDER|LIMIT|JOIN|LEFT|RIGHT|INNER|ON|AND|OR|AS)\b/gi;
-    code = code.replace(keywords, '<span class="kwd">$1</span>');
-    code = code.replace(/'([^']*)'/g, `<span class="str">'$1'</span>`);
-    code = code.replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
-    return this.sanitizer.bypassSecurityTrustHtml(code + '<br>');
-  });
-
-  /**
-   * Synchronizes scroll offsets between the transparent textarea and the syntax-highlight layer.
-   *
-   * @param e - DOM scroll event from the SQL textarea.
-   */
-  syncScroll(e: Event): void {
-    const target = e.target as HTMLTextAreaElement;
-    const highlight = target.parentElement?.querySelector('.highlight-layer');
-    if (highlight) {
-      highlight.scrollTop = target.scrollTop;
-      highlight.scrollLeft = target.scrollLeft;
-    }
   }
 }

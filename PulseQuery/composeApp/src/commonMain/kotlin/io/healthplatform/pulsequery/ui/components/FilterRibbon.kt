@@ -147,7 +147,7 @@ fun FilterRibbon(
 
             // Reset Filter Button if active filters present
             val hasActiveFilter = (activeDepartment != null && activeDepartment != "All Departments") ||
-                    (activeTimeRange != null && activeTimeRange != "All Time")
+                (activeTimeRange != null && activeTimeRange != "All Time")
             if (hasActiveFilter) {
                 IconButton(
                     onClick = onResetFilters,

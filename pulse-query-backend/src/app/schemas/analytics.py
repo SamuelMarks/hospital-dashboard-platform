@@ -10,6 +10,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.alert_rule import AlertSeverity
+
 
 class LlmOutputAnalyticsRow(BaseModel):
   """
@@ -44,7 +46,7 @@ class BedCapacityAlert(BaseModel):
   max_capacity: int
   occupancy_percentage: float
   threshold_percentage: float
-  severity: Literal["INFO", "WARNING", "CRITICAL"]
+  severity: AlertSeverity | Literal["INFO", "WARNING", "CRITICAL"]
   message: str
   timestamp: datetime
 

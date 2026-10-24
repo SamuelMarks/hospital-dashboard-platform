@@ -12,25 +12,43 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-
-import io.healthplatform.pulsequery.api.infrastructure.*
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for root `/` health check endpoint.
+ */
 open class DefaultApi : ApiClient {
 
+    /**
+     * Constructs a [DefaultApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -38,10 +56,16 @@ open class DefaultApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [DefaultApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Root
@@ -50,16 +74,15 @@ open class DefaultApi : ApiClient {
      */
     @Suppress("UNCHECKED_CAST")
     open suspend fun rootGet(): HttpResponse<kotlin.collections.Map<kotlin.String, kotlin.String>> {
-
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/",
             query = localVariableQuery,
@@ -83,5 +106,4 @@ open class DefaultApi : ApiClient {
             override fun deserialize(decoder: Decoder) = RootGetResponse(serializer.deserialize(decoder))
         }
     }
-
 }

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for the `@material/material-color-utilities` test mock.
+ */
+
 import {
   argbFromHex,
   hexFromArgb,

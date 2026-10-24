@@ -10,10 +10,11 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException, WebSocketDisconnect
+from fastapi import WebSocketDisconnect
 
 from app.api.routers.ws import dashboard_websocket_endpoint
 from app.core import security
+from app.core.result import AppError, Err, ErrorCode, Ok
 from app.models.user import User
 from app.services.ws_manager import DashboardConnectionManager, ws_manager
 
@@ -185,17 +186,17 @@ async def test_dashboard_websocket_endpoint_access_denied() -> None:
   mock_result.scalars.return_value.first.return_value = active_user
   db.execute.return_value = mock_result
 
-  # HTTPException from permission check
+  # Err(AppError) from permission check
   with patch(
-    "app.api.routers.ws.get_dashboard_with_access",
-    side_effect=HTTPException(status_code=403, detail="Permission denied"),
+    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result",
+    return_value=Err(AppError(code=ErrorCode.AUTHORIZATION_ERROR, message="Permission denied", status_code=403)),
   ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
   mock_ws.close.assert_awaited_with(code=4403, reason="Forbidden: Permission denied")
 
   # Generic exception from permission check
   with patch(
-    "app.api.routers.ws.get_dashboard_with_access",
+    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result",
     side_effect=RuntimeError("Access denied"),
   ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
@@ -225,7 +226,9 @@ async def test_dashboard_websocket_endpoint_full_lifecycle() -> None:
   mock_result.scalars.return_value.first.return_value = active_user
   db.execute.return_value = mock_result
 
-  with patch("app.api.routers.ws.get_dashboard_with_access", return_value=(MagicMock(), "VIEW")):
+  with patch(
+    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+  ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
 
   mock_ws.accept.assert_awaited_once()
@@ -255,7 +258,9 @@ async def test_dashboard_websocket_endpoint_generic_exception() -> None:
   mock_result.scalars.return_value.first.return_value = active_user
   db.execute.return_value = mock_result
 
-  with patch("app.api.routers.ws.get_dashboard_with_access", return_value=(MagicMock(), "VIEW")):
+  with patch(
+    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+  ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
 
   mock_ws.accept.assert_awaited_once()
@@ -287,7 +292,9 @@ async def test_dashboard_websocket_endpoint_untracked_disconnect_branches() -> N
   mock_ws1.receive_json = AsyncMock(side_effect=WebSocketDisconnect())
 
   with (
-    patch("app.api.routers.ws.get_dashboard_with_access", return_value=(MagicMock(), "VIEW")),
+    patch(
+      "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+    ),
     patch("app.api.routers.ws.ws_manager.disconnect", return_value=None),
   ):
     await dashboard_websocket_endpoint(mock_ws1, dash_id, token=valid_token, db=db)
@@ -299,7 +306,9 @@ async def test_dashboard_websocket_endpoint_untracked_disconnect_branches() -> N
   mock_ws2.receive_json = AsyncMock(side_effect=RuntimeError("Generic failure"))
 
   with (
-    patch("app.api.routers.ws.get_dashboard_with_access", return_value=(MagicMock(), "VIEW")),
+    patch(
+      "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+    ),
     patch("app.api.routers.ws.ws_manager.disconnect", return_value=None),
   ):
     await dashboard_websocket_endpoint(mock_ws2, dash_id, token=valid_token, db=db)

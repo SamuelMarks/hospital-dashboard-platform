@@ -431,7 +431,6 @@ class LLMArenaClient:
       content = str(getattr(choices[0].message, "content", ""))
       for word in content.split(" "):
         yield word + " "
-        await asyncio.sleep(0.01)
       return
 
     if hasattr(stream_result, "__aiter__"):
@@ -439,7 +438,6 @@ class LLMArenaClient:
         delta = _extract_chunk_delta(chunk)
         if delta:
           yield delta
-          await asyncio.sleep(0.005)
       return
 
     loop = asyncio.get_running_loop()
@@ -453,7 +451,6 @@ class LLMArenaClient:
         if isinstance(item, Exception):
           raise item
         yield str(item)
-        await asyncio.sleep(0.005)
     finally:
       pump_task.cancel()
       with contextlib.suppress(asyncio.CancelledError, Exception):
@@ -501,7 +498,6 @@ class LLMArenaClient:
       words = mock_response.split(" ")
       for i, word in enumerate(words):
         yield word + (" " if i < len(words) - 1 else "")
-        await asyncio.sleep(0.01)
       return
 
     try:
@@ -534,10 +530,8 @@ class LLMArenaClient:
         if res.error
         else res.content
       )
-      delay = 0.005 if res.error else 0.01
       for word in fallback_text.split(" "):
         yield word + " "
-        await asyncio.sleep(delay)
 
 
 # Singleton instance

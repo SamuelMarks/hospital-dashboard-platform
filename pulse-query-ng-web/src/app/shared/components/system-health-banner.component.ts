@@ -37,16 +37,14 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
           }
         </div>
         <div class="banner-actions">
-          <button mat-flat-button color="warn" (click)="retryNow()" [disabled]="isChecking()">
+          <button mat-flat-button (click)="retryNow()" [disabled]="isChecking()">
             @if (isChecking()) {
               <mat-spinner diameter="14"></mat-spinner>
             } @else {
               <span i18n>Retry Now</span>
             }
           </button>
-          <button i18n mat-stroked-button color="warn" (click)="openTroubleshoot()">
-            Troubleshoot
-          </button>
+          <button i18n mat-stroked-button (click)="openTroubleshoot()">Troubleshoot</button>
         </div>
       </div>
     }
@@ -60,9 +58,7 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
           is unreachable or reporting critical errors.
         </div>
         <div class="banner-actions">
-          <button i18n mat-flat-button color="warn" (click)="openTroubleshoot()">
-            View Diagnostics
-          </button>
+          <button i18n mat-flat-button (click)="openTroubleshoot()">View Diagnostics</button>
         </div>
       </div>
     }
@@ -76,7 +72,7 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
           fallback data.
         </div>
         <div class="banner-actions">
-          <button i18n mat-button color="accent" (click)="openTroubleshoot()">Details</button>
+          <button i18n mat-button (click)="openTroubleshoot()">Details</button>
           <button
             mat-icon-button
             (click)="dismiss()"

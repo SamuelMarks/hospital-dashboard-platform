@@ -1,10 +1,13 @@
+/**
+ * @fileoverview Unit tests for RegisterComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RegisterComponent } from './register.component';
 import { AuthService } from '../core/auth/auth.service';
 import { provideRouter, Router } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 
 describe('RegisterComponent', () => {
@@ -17,7 +20,7 @@ describe('RegisterComponent', () => {
     mockAuthService = { register: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [RegisterComponent, NoopAnimationsModule],
+      imports: [RegisterComponent],
       providers: [provideRouter([]), { provide: AuthService, useValue: mockAuthService }],
     }).compileComponents();
 

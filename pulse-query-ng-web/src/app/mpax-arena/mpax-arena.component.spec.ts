@@ -7,24 +7,32 @@ import { MpaxArenaComponent } from './mpax-arena.component';
 import { MpaxArenaService, MpaxArenaResponse } from '../api-client';
 import { of, throwError } from 'rxjs';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Component, input } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { resolveComponentResourcesForTests } from '../../test-utils/component-resources';
+import {
+  readTemplate,
+  resolveComponentResourcesForTests,
+} from '../../test-utils/component-resources';
+import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
+import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 
+/** Mock markdown visualization component for unit testing `MpaxArenaComponent`. */
 @Component({
   selector: 'viz-markdown',
   template: '',
 })
 class MockVizMarkdownComponent {
+  /** Markdown content input. */
   readonly content = input<string>('');
 }
 
+/** Mock SQL snippet component for unit testing `MpaxArenaComponent`. */
 @Component({
   selector: 'app-sql-snippet',
   template: '',
 })
 class MockSqlSnippetComponent {
+  /** SQL snippet input. */
   readonly sql = input<string>('');
 }
 
@@ -58,11 +66,15 @@ describe('MpaxArenaComponent', () => {
     };
 
     TestBed.overrideComponent(MpaxArenaComponent, {
-      set: { template: '<div></div>', templateUrl: undefined },
+      remove: { imports: [VizMarkdownComponent, SqlSnippetComponent] },
+      add: { imports: [MockVizMarkdownComponent, MockSqlSnippetComponent] },
+    });
+    TestBed.overrideComponent(MpaxArenaComponent, {
+      set: { template: readTemplate('./mpax-arena.component.html'), templateUrl: undefined },
     });
 
     await TestBed.configureTestingModule({
-      imports: [MpaxArenaComponent, NoopAnimationsModule],
+      imports: [MpaxArenaComponent],
       providers: [
         { provide: MpaxArenaService, useValue: mockApi },
         { provide: ActivatedRoute, useValue: mockRoute },

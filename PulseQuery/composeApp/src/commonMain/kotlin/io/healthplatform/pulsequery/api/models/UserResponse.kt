@@ -17,39 +17,26 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Public representation of a user returned by the API.
  *
- * @param id 
- * @param email 
- * @param isActive 
- * @param isAdmin 
- * @param languagePreference 
- * @param role 
+ * @param id
+ * @param email
+ * @param isActive
+ * @param isAdmin
+ * @param languagePreference
+ * @param role
  */
 @Serializable
-
-data class UserResponse (
-
+data class UserResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "email") @Required val email: kotlin.String,
-
     @SerialName(value = "is_active") @Required val isActive: kotlin.Boolean,
-
     @SerialName(value = "is_admin") @Required val isAdmin: kotlin.Boolean,
-
     @SerialName(value = "language_preference") val languagePreference: kotlin.String = "en",
-
     @SerialName(value = "role") val role: kotlin.String? = "DATA_ANALYST"
-
-) {
-
-
-}
-
+)

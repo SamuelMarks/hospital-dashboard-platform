@@ -1,5 +1,5 @@
 """
-Unit tests for CLI utility scripts in `pulse-query-backend/scripts/`.
+Unit and integration tests for CLI utility scripts in `pulse-query-backend/scripts/`.
 
 Covers:
 1. `scripts/extract_openapi.py`
@@ -8,15 +8,18 @@ Covers:
 4. `scripts/seed_templates.py`
 """
 
+import asyncio
 from collections.abc import Coroutine
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import duckdb
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database.duckdb import duckdb_manager
 from app.models.template import WidgetTemplate
 from scripts import extract_openapi as extract_openapi_mod
 from scripts import generate_mpax_benchmarks as gen_mpax_mod
@@ -61,13 +64,51 @@ def test_generate_mpax_benchmarks_and_main(tmp_path: Path) -> None:
     assert default_path.name == "mpax_benchmark_scenarios.json"
 
 
-def test_ingest_script_main() -> None:
-  """Verify manual ingestion CLI wrapper handles success and error exit."""
-  with patch("scripts.ingest.data_ingestion_service.ingest_all_csvs") as mock_ingest:
-    ingest_mod.main()
-    mock_ingest.assert_called_once()
+def test_ingest_script_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify manual ingestion CLI wrapper ingests required CSVs into a temporary DuckDB file and exits on failure."""
+  data_dir = tmp_path / "ingest_data"
+  data_dir.mkdir()
+  csv_file = data_dir / "hospital_data.csv"
+  transfers_file = data_dir / "Synthetic_hospital_data_transfers.csv"
+  nl = chr(10)
+  csv_file.write_text(f"Clinical_Service,Entry_Point{nl}Cardiology,ER{nl}Neurology,Transfer{nl}", encoding="utf-8")
+  transfers_file.write_text(f"CSN,Transfer_In_Unit{nl}101,ICU{nl}102,PCU{nl}", encoding="utf-8")
 
-  with patch("scripts.ingest.data_ingestion_service.ingest_all_csvs", side_effect=RuntimeError("disk full")):
+  temp_duckdb = str(tmp_path / "cli_ingest.duckdb")
+  monkeypatch.setattr("app.services.data_ingestion.DATA_DIR", str(data_dir))
+  monkeypatch.setattr(duckdb_manager, "db_path", temp_duckdb)
+
+  ingest_mod.main()
+
+  conn = duckdb.connect(temp_duckdb, read_only=True)
+  try:
+    row = conn.execute("SELECT COUNT(*) FROM hospital_data").fetchone()
+    assert row is not None
+    assert row[0] == 2
+  finally:
+    conn.close()
+
+  # Missing required table should exit 1
+  with patch("scripts.ingest.data_ingestion_service.ingest_data", return_value=["hospital_data"]):
+    with pytest.raises(SystemExit) as exc_missing:
+      ingest_mod.main()
+    assert exc_missing.value.code == 1
+
+  # Zero rows in required table should exit 1
+  empty_conn = MagicMock()
+  empty_conn.execute.return_value.fetchone.return_value = (0,)
+  with (
+    patch(
+      "scripts.ingest.data_ingestion_service.ingest_data",
+      return_value=["hospital_data", "Synthetic_hospital_data_transfers"],
+    ),
+    patch("scripts.ingest.duckdb_manager.get_readonly_connection", return_value=empty_conn),
+  ):
+    with pytest.raises(SystemExit) as exc_zero:
+      ingest_mod.main()
+    assert exc_zero.value.code == 1
+
+  with patch("scripts.ingest.data_ingestion_service.ingest_data", side_effect=RuntimeError("disk full")):
     with pytest.raises(SystemExit) as exc:
       ingest_mod.main()
     assert exc.value.code == 1
@@ -79,7 +120,6 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
   missing_path = str(tmp_path / "missing.json")
   assert seed_templates_mod._read_templates_disk(missing_path) is None
 
-  # Pre-insert an existing template to verify update behavior
   existing_tmpl = WidgetTemplate(
     title="Existing Template",
     description="Old desc",
@@ -133,7 +173,6 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
   ):
     await seed_templates_mod.seed_templates()
 
-  # Verify actual DB state
   rows = (await db_session.execute(select(WidgetTemplate))).scalars().all()
   by_title = {r.title: r for r in rows}
   assert "Existing Template" in by_title
@@ -142,7 +181,7 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
   assert "New Template" in by_title
   assert by_title["New Template"].sql_template == "SELECT 2"
 
-  # Also test direct upsert_template wrapper
+  # Direct upsert_template wrapper
   await seed_templates_mod.upsert_template(
     db_session,
     {"title": "Direct Wrapper Template", "description": "Direct", "sql_template": "SELECT 3", "category": "Ops"},
@@ -170,28 +209,47 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
     await seed_templates_mod.seed_templates()
     mock_err_session.rollback.assert_awaited_once()
 
-  # 5. CLI main() executes seed_templates coroutine
-  ran_main = False
+  # 5. CLI main() executes real seed_templates against db_session via running loop
+  cli_file = tmp_path / "cli_templates.json"
+  cli_file.write_text(
+    json.dumps(
+      [{"title": "CLI Main Template", "description": "From CLI", "sql_template": "SELECT 42", "category": "CLI"}]
+    ),
+    encoding="utf-8",
+  )
+  loop = asyncio.get_running_loop()
+  spawned_tasks: list[asyncio.Task[None]] = []
 
-  async def _fake_seed() -> None:
-    """Marks `ran_main` True when invoked by `asyncio.run` inside `main()`."""
-    nonlocal ran_main
-    ran_main = True
-
-  def _close_coro(coro: Coroutine[object, object, None]) -> None:
+  def _spawn_coro(coro: Coroutine[object, object, None]) -> None:
     """
-    Closes the coroutine passed to `asyncio.run` and records invocation.
+    Schedules `coro` on the active event loop so `main()` executes the real coroutine.
 
     Args:
-        coro (Coroutine[object, object, None]): Coroutine object.
+        coro (Coroutine[object, object, None]): Coroutine passed to `asyncio.run`.
     """
-    nonlocal ran_main
-    coro.close()
-    ran_main = True
+    spawned_tasks.append(loop.create_task(coro))
 
   with (
-    patch.object(seed_templates_mod, "seed_templates", side_effect=_fake_seed),
-    patch("scripts.seed_templates.asyncio.run", side_effect=_close_coro),
+    patch.object(seed_templates_mod, "DATA_FILE", str(cli_file)),
+    patch.object(seed_templates_mod, "AsyncSessionLocal", return_value=session_cm),
+    patch("scripts.seed_templates.asyncio.run", side_effect=_spawn_coro),
   ):
     seed_templates_mod.main()
-    assert ran_main is True
+    for t in spawned_tasks:
+      await t
+
+  cli_row = (
+    (await db_session.execute(select(WidgetTemplate).where(WidgetTemplate.title == "CLI Main Template")))
+    .scalars()
+    .first()
+  )
+  assert cli_row is not None
+  assert cli_row.sql_template == "SELECT 42"
+
+  with (
+    patch.object(seed_templates_mod, "seed_templates", return_value=0),
+    patch("scripts.seed_templates.asyncio.run", return_value=0),
+  ):
+    with pytest.raises(SystemExit) as exc_seed:
+      seed_templates_mod.main()
+    assert exc_seed.value.code == 1

@@ -12,33 +12,50 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ConversationCreate
 import io.healthplatform.pulsequery.api.models.ConversationDetail
 import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.ConversationUpdate
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.api.models.MessageVoteRequest
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/chat` and `/api/v1/conversations` conversational SQL arena and candidate voting endpoints.
+ */
 open class ChatApi : ApiClient {
 
+    /**
+     * Constructs a [ChatApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -46,21 +63,29 @@ open class ChatApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [ChatApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Create Conversation
      * Create a new conversation and optionally seed the first message.
-     * @param conversationCreate 
+     * @param conversationCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationDetail
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createConversationApiV1ChatPost(conversationCreate: ConversationCreate, token: kotlin.String? = null): HttpResponse<ConversationDetail> {
-
+    open suspend fun createConversationApiV1ChatPost(
+        conversationCreate: ConversationCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<ConversationDetail> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = conversationCreate
@@ -69,7 +94,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/chat/",
             query = localVariableQuery,
@@ -84,18 +109,18 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Create Conversation
      * Create a new conversation and optionally seed the first message.
-     * @param conversationCreate 
+     * @param conversationCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationDetail
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createConversationApiV1ConversationsPost(conversationCreate: ConversationCreate, token: kotlin.String? = null): HttpResponse<ConversationDetail> {
-
+    open suspend fun createConversationApiV1ConversationsPost(
+        conversationCreate: ConversationCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<ConversationDetail> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = conversationCreate
@@ -104,7 +129,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/conversations/",
             query = localVariableQuery,
@@ -119,27 +144,27 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Delete Conversation
      * Delete a conversation and its messages.
-     * @param conversationId 
+     * @param conversationId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
-    open suspend fun deleteConversationApiV1ChatConversationIdDelete(conversationId: kotlin.String, token: kotlin.String? = null): HttpResponse<Unit> {
-
+    open suspend fun deleteConversationApiV1ChatConversationIdDelete(
+        conversationId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<Unit> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.DELETE,
             "/api/v1/chat/{conversation_id}".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -154,26 +179,27 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Delete Conversation
      * Delete a conversation and its messages.
-     * @param conversationId 
+     * @param conversationId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
-    open suspend fun deleteConversationApiV1ConversationsConversationIdDelete(conversationId: kotlin.String, token: kotlin.String? = null): HttpResponse<Unit> {
-
+    open suspend fun deleteConversationApiV1ConversationsConversationIdDelete(
+        conversationId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<Unit> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.DELETE,
             "/api/v1/conversations/{conversation_id}".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -188,27 +214,28 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Get Messages
      * Return the ordered message history for a conversation.
-     * @param conversationId 
+     * @param conversationId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<MessageResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getMessagesApiV1ChatConversationIdMessagesGet(conversationId: kotlin.String, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<MessageResponse>> {
-
+    open suspend fun getMessagesApiV1ChatConversationIdMessagesGet(
+        conversationId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<MessageResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/chat/{conversation_id}/messages".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -228,31 +255,38 @@ open class ChatApi : ApiClient {
         companion object : KSerializer<GetMessagesApiV1ChatConversationIdMessagesGetResponse> {
             private val serializer: KSerializer<List<MessageResponse>> = serializer<List<MessageResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: GetMessagesApiV1ChatConversationIdMessagesGetResponse) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = GetMessagesApiV1ChatConversationIdMessagesGetResponse(serializer.deserialize(decoder))
+            override fun serialize(
+                encoder: Encoder,
+                value: GetMessagesApiV1ChatConversationIdMessagesGetResponse
+            ) = serializer.serialize(encoder, value.value)
+            override fun deserialize(
+                decoder: Decoder
+            ) = GetMessagesApiV1ChatConversationIdMessagesGetResponse(serializer.deserialize(decoder))
         }
     }
 
     /**
      * Get Messages
      * Return the ordered message history for a conversation.
-     * @param conversationId 
+     * @param conversationId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<MessageResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getMessagesApiV1ConversationsConversationIdMessagesGet(conversationId: kotlin.String, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<MessageResponse>> {
-
+    open suspend fun getMessagesApiV1ConversationsConversationIdMessagesGet(
+        conversationId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<MessageResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/conversations/{conversation_id}/messages".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -272,8 +306,13 @@ open class ChatApi : ApiClient {
         companion object : KSerializer<GetMessagesApiV1ConversationsConversationIdMessagesGetResponse> {
             private val serializer: KSerializer<List<MessageResponse>> = serializer<List<MessageResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: GetMessagesApiV1ConversationsConversationIdMessagesGetResponse) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = GetMessagesApiV1ConversationsConversationIdMessagesGetResponse(serializer.deserialize(decoder))
+            override fun serialize(
+                encoder: Encoder,
+                value: GetMessagesApiV1ConversationsConversationIdMessagesGetResponse
+            ) = serializer.serialize(encoder, value.value)
+            override fun deserialize(
+                decoder: Decoder
+            ) = GetMessagesApiV1ConversationsConversationIdMessagesGetResponse(serializer.deserialize(decoder))
         }
     }
 
@@ -286,11 +325,14 @@ open class ChatApi : ApiClient {
      * @return kotlin.collections.List<ConversationResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listConversationsApiV1ChatGet(limit: kotlin.Int? = 50, offset: kotlin.Int? = 0, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<ConversationResponse>> {
-
+    open suspend fun listConversationsApiV1ChatGet(
+        limit: kotlin.Int? = 50,
+        offset: kotlin.Int? = 0,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<ConversationResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -299,7 +341,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/chat/",
             query = localVariableQuery,
@@ -319,7 +361,10 @@ open class ChatApi : ApiClient {
         companion object : KSerializer<ListConversationsApiV1ChatGetResponse> {
             private val serializer: KSerializer<List<ConversationResponse>> = serializer<List<ConversationResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListConversationsApiV1ChatGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListConversationsApiV1ChatGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListConversationsApiV1ChatGetResponse(serializer.deserialize(decoder))
         }
     }
@@ -333,11 +378,14 @@ open class ChatApi : ApiClient {
      * @return kotlin.collections.List<ConversationResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listConversationsApiV1ConversationsGet(limit: kotlin.Int? = 50, offset: kotlin.Int? = 0, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<ConversationResponse>> {
-
+    open suspend fun listConversationsApiV1ConversationsGet(
+        limit: kotlin.Int? = 50,
+        offset: kotlin.Int? = 0,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<ConversationResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -346,7 +394,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/conversations/",
             query = localVariableQuery,
@@ -366,7 +414,10 @@ open class ChatApi : ApiClient {
         companion object : KSerializer<ListConversationsApiV1ConversationsGetResponse> {
             private val serializer: KSerializer<List<ConversationResponse>> = serializer<List<ConversationResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListConversationsApiV1ConversationsGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListConversationsApiV1ConversationsGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListConversationsApiV1ConversationsGetResponse(serializer.deserialize(decoder))
         }
     }
@@ -374,14 +425,17 @@ open class ChatApi : ApiClient {
     /**
      * Send Message
      * Append a user message and generate assistant candidates.
-     * @param conversationId 
-     * @param messageCreate 
+     * @param conversationId
+     * @param messageCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun sendMessageApiV1ChatConversationIdMessagesPost(conversationId: kotlin.String, messageCreate: MessageCreate, token: kotlin.String? = null): HttpResponse<MessageResponse> {
-
+    open suspend fun sendMessageApiV1ChatConversationIdMessagesPost(
+        conversationId: kotlin.String,
+        messageCreate: MessageCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<MessageResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = messageCreate
@@ -390,7 +444,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/chat/{conversation_id}/messages".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -405,19 +459,20 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Send Message
      * Append a user message and generate assistant candidates.
-     * @param conversationId 
-     * @param messageCreate 
+     * @param conversationId
+     * @param messageCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun sendMessageApiV1ConversationsConversationIdMessagesPost(conversationId: kotlin.String, messageCreate: MessageCreate, token: kotlin.String? = null): HttpResponse<MessageResponse> {
-
+    open suspend fun sendMessageApiV1ConversationsConversationIdMessagesPost(
+        conversationId: kotlin.String,
+        messageCreate: MessageCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<MessageResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = messageCreate
@@ -426,7 +481,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/conversations/{conversation_id}/messages".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -441,22 +496,23 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Stream Conversation Tokens
      * Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.  Args:     conversation_id (UUID): The conversation ID context.     db (AsyncSession): Database session.     current_user (User): Authenticated user owning the conversation.     model_id (Optional[str]): Targeted model ID.  Returns:     StreamingResponse: Text/event-stream containing incremental tokens.
-     * @param conversationId 
+     * @param conversationId
      * @param modelId  (optional)
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @return kotlin.Any
+     * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun streamConversationTokensApiV1ChatStreamConversationIdGet(conversationId: kotlin.String, modelId: kotlin.String? = null, token: kotlin.String? = null): HttpResponse<kotlin.Any> {
-
+    open suspend fun streamConversationTokensApiV1ChatStreamConversationIdGet(
+        conversationId: kotlin.String,
+        modelId: kotlin.String? = null,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.String> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -464,7 +520,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/chat/stream/{conversation_id}".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -479,21 +535,23 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Stream Conversation Tokens
      * Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.  Args:     conversation_id (UUID): The conversation ID context.     db (AsyncSession): Database session.     current_user (User): Authenticated user owning the conversation.     model_id (Optional[str]): Targeted model ID.  Returns:     StreamingResponse: Text/event-stream containing incremental tokens.
-     * @param conversationId 
+     * @param conversationId
      * @param modelId  (optional)
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @return kotlin.Any
+     * @return kotlin.String
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun streamConversationTokensApiV1ConversationsStreamConversationIdGet(conversationId: kotlin.String, modelId: kotlin.String? = null, token: kotlin.String? = null): HttpResponse<kotlin.Any> {
-
+    open suspend fun streamConversationTokensApiV1ConversationsStreamConversationIdGet(
+        conversationId: kotlin.String,
+        modelId: kotlin.String? = null,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.String> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -501,7 +559,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/conversations/stream/{conversation_id}".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -516,18 +574,20 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Update Conversation
      * Update the title for an existing conversation.
-     * @param conversationId 
-     * @param conversationUpdate 
+     * @param conversationId
+     * @param conversationUpdate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateConversationApiV1ChatConversationIdPut(conversationId: kotlin.String, conversationUpdate: ConversationUpdate, token: kotlin.String? = null): HttpResponse<ConversationResponse> {
-
+    open suspend fun updateConversationApiV1ChatConversationIdPut(
+        conversationId: kotlin.String,
+        conversationUpdate: ConversationUpdate,
+        token: kotlin.String? = null
+    ): HttpResponse<ConversationResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = conversationUpdate
@@ -536,7 +596,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/chat/{conversation_id}".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -551,19 +611,20 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Update Conversation
      * Update the title for an existing conversation.
-     * @param conversationId 
-     * @param conversationUpdate 
+     * @param conversationId
+     * @param conversationUpdate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateConversationApiV1ConversationsConversationIdPut(conversationId: kotlin.String, conversationUpdate: ConversationUpdate, token: kotlin.String? = null): HttpResponse<ConversationResponse> {
-
+    open suspend fun updateConversationApiV1ConversationsConversationIdPut(
+        conversationId: kotlin.String,
+        conversationUpdate: ConversationUpdate,
+        token: kotlin.String? = null
+    ): HttpResponse<ConversationResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = conversationUpdate
@@ -572,7 +633,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/conversations/{conversation_id}".replace("{" + "conversation_id" + "}", "$conversationId"),
             query = localVariableQuery,
@@ -587,20 +648,22 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Vote Candidate
      * Records a user&#39;s vote for a specific generated candidate.  This selects the chosen candidate by its ID (or matching SQL hash), sets its &#x60;is_selected&#x60; flag to True, and promotes its text and SQL contents to the parent Message object.
-     * @param conversationId 
-     * @param messageId 
-     * @param messageVoteRequest 
+     * @param conversationId
+     * @param messageId
+     * @param messageVoteRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun voteCandidateApiV1ChatConversationIdMessagesMessageIdVotePost(conversationId: kotlin.String, messageId: kotlin.String, messageVoteRequest: MessageVoteRequest, token: kotlin.String? = null): HttpResponse<MessageResponse> {
-
+    open suspend fun voteCandidateApiV1ChatConversationIdMessagesMessageIdVotePost(
+        conversationId: kotlin.String,
+        messageId: kotlin.String,
+        messageVoteRequest: MessageVoteRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<MessageResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = messageVoteRequest
@@ -609,7 +672,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/chat/{conversation_id}/messages/{message_id}/vote".replace("{" + "conversation_id" + "}", "$conversationId").replace("{" + "message_id" + "}", "$messageId"),
             query = localVariableQuery,
@@ -624,20 +687,22 @@ open class ChatApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Vote Candidate
      * Records a user&#39;s vote for a specific generated candidate.  This selects the chosen candidate by its ID (or matching SQL hash), sets its &#x60;is_selected&#x60; flag to True, and promotes its text and SQL contents to the parent Message object.
-     * @param conversationId 
-     * @param messageId 
-     * @param messageVoteRequest 
+     * @param conversationId
+     * @param messageId
+     * @param messageVoteRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(conversationId: kotlin.String, messageId: kotlin.String, messageVoteRequest: MessageVoteRequest, token: kotlin.String? = null): HttpResponse<MessageResponse> {
-
+    open suspend fun voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
+        conversationId: kotlin.String,
+        messageId: kotlin.String,
+        messageVoteRequest: MessageVoteRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<MessageResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = messageVoteRequest
@@ -646,7 +711,7 @@ open class ChatApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/conversations/{conversation_id}/messages/{message_id}/vote".replace("{" + "conversation_id" + "}", "$conversationId").replace("{" + "message_id" + "}", "$messageId"),
             query = localVariableQuery,
@@ -660,7 +725,4 @@ open class ChatApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

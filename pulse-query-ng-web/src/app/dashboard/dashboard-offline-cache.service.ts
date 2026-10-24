@@ -2,9 +2,10 @@
  * @fileoverview Service for persisting and restoring offline dashboard snapshots in `localStorage`.
  */
 
-import { Service } from '@angular/core';
+import { inject, Service } from '@angular/core';
 import { DashboardResponse } from '../api-client';
 import { safeStorage } from '../core/storage.utils';
+import { DATE_NOW } from '../core/time.token';
 import { WidgetExecutionPayload } from './dashboard.models';
 
 /**
@@ -27,6 +28,9 @@ const CACHE_KEY_PREFIX = 'pulse_dashboard_snapshot_';
  */
 @Service()
 export class DashboardOfflineCacheService {
+  /** Injected clock provider returning the current Date instance. */
+  private readonly dateNow = inject(DATE_NOW);
+
   /**
    * Saves a dashboard and its execution data map to `localStorage`.
    *
@@ -37,7 +41,7 @@ export class DashboardOfflineCacheService {
   saveSnapshot(
     dashboard: DashboardResponse,
     dataMap: Record<string, WidgetExecutionPayload>,
-    now: Date = new Date(),
+    now: Date = this.dateNow(),
   ): void {
     const snapshot: DashboardOfflineSnapshot = {
       dashboard,

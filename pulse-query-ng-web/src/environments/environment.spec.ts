@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for environment configuration (`environment.ts`).
+ */
+
 import { environment } from './environment';
 
 describe('environment', () => {

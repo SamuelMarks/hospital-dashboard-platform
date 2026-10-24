@@ -9,7 +9,6 @@ import logging
 from typing import Any
 import uuid
 
-from fastapi import status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,7 +82,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.MPAX_PERSISTENCE_ERROR,
           message=f"Failed to persist MPAX Arena run: {exc!s}",
-          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          status_code=500,
         )
       )
 
@@ -109,7 +108,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.VALIDATION_ERROR,
           message="Prompt cannot be empty.",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
     if not request.mode:
@@ -117,7 +116,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.VALIDATION_ERROR,
           message="Mode must be specified.",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -127,7 +126,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.MPAX_INVALID_MODE,
           message=f"Unknown mode: {mode}",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -147,7 +146,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.VALIDATION_ERROR,
           message=str(e),
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
     except Exception as e:
@@ -155,7 +154,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.INTERNAL_ERROR,
           message=f"MPAX Arena failed: {e!s}",
-          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          status_code=500,
         )
       )
 
@@ -185,7 +184,7 @@ class MpaxArenaService:
     """
     res = await self.run_mpax_arena_result(request, db, user)
     if isinstance(res, Err):
-      if res.error.status_code == status.HTTP_400_BAD_REQUEST:
+      if res.error.status_code == 400:
         raise ValueError(res.error.message)
       raise RuntimeError(res.error.message)
     return res.value
@@ -217,7 +216,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.MPAX_RUN_NOT_FOUND,
           message="Invalid UUID format for run or candidate.",
-          status_code=status.HTTP_404_NOT_FOUND,
+          status_code=404,
         )
       )
 
@@ -233,7 +232,7 @@ class MpaxArenaService:
           AppError(
             code=ErrorCode.MPAX_RUN_NOT_FOUND,
             message="MPAX Arena run not found.",
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
           )
         )
 
@@ -250,7 +249,7 @@ class MpaxArenaService:
           AppError(
             code=ErrorCode.MPAX_CANDIDATE_NOT_FOUND,
             message="Candidate not found in this MPAX Arena run.",
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
           )
         )
 
@@ -282,7 +281,7 @@ class MpaxArenaService:
         AppError(
           code=ErrorCode.INTERNAL_ERROR,
           message=f"MPAX Arena voting failed: {exc!s}",
-          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          status_code=500,
         )
       )
 
@@ -305,7 +304,7 @@ class MpaxArenaService:
     """
     res = await self.vote_candidate_result(run_id, candidate_id, db, user)
     if isinstance(res, Err):
-      if res.error.status_code == status.HTTP_404_NOT_FOUND:
+      if res.error.status_code == 404:
         raise ValueError(res.error.message)
       raise RuntimeError(res.error.message)
     return res.value

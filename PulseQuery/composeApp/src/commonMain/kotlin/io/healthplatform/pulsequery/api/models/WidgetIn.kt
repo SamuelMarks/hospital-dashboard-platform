@@ -1,34 +1,49 @@
+/**
+ * Polymorphic widget creation payload models (`SQL`, `HTTP`, `TEXT`).
+ */
 package io.healthplatform.pulsequery.api.models
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Polymorphic base model for creating widgets.
+ * Polymorphic base model for creating dashboard widgets.
  */
 @Serializable
 sealed class WidgetIn {
-    /** The title of the widget. */
+    /** Display title of the widget. */
     abstract val title: String
-    /** The widget type identifier (e.g., SQL, TEXT, HTTP). */
+
+    /** Discriminator type of the widget ("SQL", "TEXT", or "HTTP"). */
     abstract val type: String
-    /** The visualization format (e.g., table, bar_chart). */
+
+    /** Visualization identifier ("table", "bar_chart", "line_chart", "pie_chart", "heatmap", "metric", "markdown"). */
     abstract val visualization: String
 
     /**
-     * Payload for creating a SQL widget.
+     * SQL widget creation payload.
+     *
+     * @property title Display title of the SQL widget.
+     * @property type Widget source discriminator ("SQL").
+     * @property visualization Selected chart or table visualization identifier.
+     * @property config SQL query configuration payload.
      */
     @Serializable
     @SerialName("SQL")
     data class Sql(
         override val title: String,
         override val type: String = "SQL",
-        override val visualization: String = "table",
+        override val visualization: String,
         val config: SqlConfig
     ) : WidgetIn()
 
     /**
-     * Payload for creating a text widget.
+     * Text / Markdown widget creation payload.
+     *
+     * @property title Display title of the text widget.
+     * @property type Widget source discriminator ("TEXT").
+     * @property visualization Selected visualization identifier ("markdown").
+     * @property config Text content configuration payload.
      */
     @Serializable
     @SerialName("TEXT")
@@ -40,7 +55,12 @@ sealed class WidgetIn {
     ) : WidgetIn()
 
     /**
-     * Payload for creating an HTTP widget.
+     * External HTTP endpoint widget creation payload.
+     *
+     * @property title Display title of the HTTP widget.
+     * @property type Widget source discriminator ("HTTP").
+     * @property visualization Selected visualization identifier ("table").
+     * @property config HTTP request configuration payload.
      */
     @Serializable
     @SerialName("HTTP")

@@ -199,8 +199,9 @@ flowchart TD
 
 ### Production Checklist
 
-1.  **Environment Variables:** Ensure `SECRET_KEY` and `POSTGRES_PASSWORD` are set in the production environment (e.g., `.env` or K8s Secrets), overriding defaults in `config.py`.
+1.  **Environment Variables:** Ensure `SECRET_KEY` and `POSTGRES_PASSWORD` are set in the production environment (e.g., `.env.secrets`, `.env`, `.env.libscript`, or K8s Secrets), overriding defaults in `config.py`.
 2.  **Build:**
-    - Frontend: `npm run build` (Output: `dist/pulse-query-ng-web/browser`).
+    - Frontend (Angular): `npm run build` (Output: `dist/pulse-query-ng-web/browser`) or via `~/repos/libscript/_lib/app-servers/provision_frontend.sh`.
+    - Frontend (KMP): `./gradlew :composeApp:wasmJsBrowserDistribution` or Desktop/Android/iOS targets.
     - Backend: Copy `src/` and `alembic/`.
-3.  **Reverse Proxy:** Configure Nginx to serve the Static Frontend files for root requests and proxy `/api` requests to the Uvicorn worker running the FastAPI app.
+3.  **Reverse Proxy & Daemon Orchestration:** Configure Nginx to serve the Static Frontend files for root requests (`try_files $uri $uri/ /index.html;`), upgrade `/ws` WebSocket connections, and proxy `/api` requests to the Uvicorn worker running the FastAPI app—or run `~/repos/libscript/libscript.sh start libscript.json` to apply `libscript.json` declaratively. See [DEPLOY.md](DEPLOY.md) for full details.

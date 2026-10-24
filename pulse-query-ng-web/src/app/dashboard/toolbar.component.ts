@@ -53,7 +53,100 @@ import { triggerBlobDownload } from '../shared/utils/csv-export.utils';
   ],
 
   templateUrl: './toolbar.component.html',
-  styles: ['/* See existing styles */'],
+  styles: [
+    `
+      .app-toolbar {
+        background-color: var(--sys-surface);
+        color: var(--sys-on-surface);
+        border-bottom: 1px solid var(--sys-surface-border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .title-group {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.15;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+      .title-group:focus-visible {
+        outline: 2px solid var(--sys-primary);
+        outline-offset: 2px;
+      }
+      .title-overline {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .title-main {
+        font-size: 16px;
+        font-weight: 500;
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .toolbar-spacer {
+        flex: 1 1 auto;
+      }
+      .items-center {
+        display: flex;
+        align-items: center;
+      }
+      .gap-2 {
+        gap: 8px;
+      }
+      .mr-2 {
+        margin-right: 8px;
+      }
+      .divider-vertical {
+        width: 1px;
+        height: 24px;
+        background-color: var(--sys-surface-border);
+        margin: 0 4px;
+      }
+      .color-dot {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+      }
+      .color-dot.active {
+        border-color: var(--sys-on-surface);
+      }
+      .menu-header-compact {
+        padding: 6px 16px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--sys-text-secondary);
+      }
+      .menu-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--sys-surface-border);
+      }
+      .large-avatar {
+        font-size: 36px;
+        width: 36px;
+        height: 36px;
+        color: var(--sys-primary);
+      }
+      .menu-email {
+        font-size: 12px;
+        color: var(--sys-text-secondary);
+      }
+    `,
+  ],
 })
 export class ToolbarComponent {
   /** Active dashboard state store. */

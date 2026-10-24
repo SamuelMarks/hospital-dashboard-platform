@@ -17,37 +17,24 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.WidgetResponse
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * API Response model for a Dashboard. Includes the nested list of Widgets and permission level.
  *
- * @param name 
- * @param id 
- * @param ownerId 
- * @param permissionLevel 
- * @param widgets 
+ * @param name
+ * @param id
+ * @param ownerId
+ * @param permissionLevel
+ * @param widgets
  */
 @Serializable
-
-data class DashboardResponse (
-
+data class DashboardResponse(
     @SerialName(value = "name") @Required val name: kotlin.String,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "owner_id") @Required val ownerId: kotlin.String,
-
     @SerialName(value = "permission_level") val permissionLevel: kotlin.String? = "OWNER",
-
     @SerialName(value = "widgets") val widgets: kotlin.collections.List<WidgetResponse>? = null
-
-) {
-
-
-}
-
+)

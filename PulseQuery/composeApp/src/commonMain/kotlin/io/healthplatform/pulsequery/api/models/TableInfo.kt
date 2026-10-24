@@ -17,28 +17,18 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ColumnInfo
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Metadata for a database table, including its columns.
  *
- * @param tableName 
- * @param columns 
+ * @param tableName
+ * @param columns
  */
 @Serializable
-
-data class TableInfo (
-
+data class TableInfo(
     @SerialName(value = "table_name") @Required val tableName: kotlin.String,
-
     @SerialName(value = "columns") @Required val columns: kotlin.collections.List<ColumnInfo>
-
-) {
-
-
-}
-
+)

@@ -6,7 +6,7 @@ import { Component, DestroyRef, OnInit, OnDestroy, inject } from '@angular/core'
 import { DatePipe, DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { Subscription } from 'rxjs';
 
 // Material & UI
@@ -37,6 +37,22 @@ import { DATE_NOW } from '../core/time.token';
 import { UndoRedoService } from '../core/undo/undo-redo.service';
 import { DeleteWidgetCommand } from '../core/undo/dashboard-commands';
 import { FocusTrapDirective } from '../core/accessibility/focus-trap.directive';
+
+/**
+ * Minimal drag-drop event contract required by `DashboardLayoutComponent.onDrop`.
+ */
+export interface DashboardDropEvent {
+  /** Source drop list container reference. */
+  previousContainer: unknown;
+  /** Target drop list container reference. */
+  container: unknown;
+  /** Previous index of the dragged item. */
+  previousIndex: number;
+  /** Target index of the dropped item. */
+  currentIndex: number;
+  /** Dragged item wrapper containing optional payload data. */
+  item?: { data?: unknown };
+}
 
 /**
  * Dashboard Layout component.
@@ -134,9 +150,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
    * Unified Drop Handler.
    * Distinguishes between internal reordering and external template/cart dropping.
    *
-   * @param {CdkDragDrop<any[]>} event - The drop event.
+   * @param event - The drop event.
    */
-  onDrop(event: CdkDragDrop<unknown[]>): void {
+  onDrop(event: DashboardDropEvent): void {
     if (this.isTvMode()) return;
 
     if (event.previousContainer === event.container) {
@@ -144,7 +160,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
       this.store.updateWidgetOrder(event.previousIndex, event.currentIndex);
     } else {
       // External Drop (Widget Gallery or Query Cart)
-      const data: unknown = event.item.data;
+      const data: unknown = event.item?.data;
       const dashboard = this.store.dashboard();
 
       if (!dashboard || !data) return;
@@ -191,10 +207,11 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
   /**
    * Type guard for query-cart drag data.
-   * @param {unknown} value - The drag item data.
-   * @returns {boolean} True if item is a QueryCartItem.
+   *
+   * @param value - The drag item data.
+   * @returns True if item is a QueryCartItem.
    */
-  private isQueryCartItem(value: unknown): value is QueryCartItem {
+  isQueryCartItem(value: unknown): value is QueryCartItem {
     return (
       !!value && typeof value === 'object' && (value as QueryCartItem).kind === QUERY_CART_ITEM_KIND
     );
@@ -259,6 +276,24 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     };
     this.document.addEventListener('mousemove', onMove);
     this.document.addEventListener('mouseup', onUp);
+  }
+
+  /**
+   * Adjusts widget column span via keyboard arrow keys for accessible resizing.
+   *
+   * @param event - DOM keyboard event triggered on the resize separator handle.
+   * @param widget - Target widget being resized.
+   * @param deltaCols - Number of grid columns to add or subtract.
+   */
+  resizeByKeyboard(event: Event, widget: WidgetResponse, deltaCols: number): void {
+    if (this.isTvMode()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const currentSpan = this.getColSpan(widget);
+    const newSpan = Math.max(2, Math.min(12, currentSpan + deltaCols));
+    if (newSpan !== currentSpan) {
+      this.updateWidgetWidth(widget, newSpan);
+    }
   }
 
   /**

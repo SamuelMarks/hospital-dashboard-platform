@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end user registration and logout flow tests.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Registration', () => {

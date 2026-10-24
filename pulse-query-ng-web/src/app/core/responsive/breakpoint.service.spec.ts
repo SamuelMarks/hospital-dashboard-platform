@@ -6,7 +6,13 @@ import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { BreakpointService, BREAKPOINTS } from './breakpoint.service';
 
-/** Helper: create a fresh service with a given innerWidth/innerHeight. */
+/**
+ * Helper: create a fresh service with a given innerWidth/innerHeight.
+ *
+ * @param width - Viewport width in pixels.
+ * @param height - Viewport height in pixels.
+ * @returns Configured `BreakpointService` instance.
+ */
 function createService(width: number, height = 768): BreakpointService {
   Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: width });
   Object.defineProperty(window, 'innerHeight', {
@@ -135,11 +141,10 @@ describe('BreakpointService', () => {
   });
 
   it('should detect touch support when ontouchstart is present', () => {
-    const win = window as unknown as Record<string, unknown>;
-    win['ontouchstart'] = null;
-    const svc = createService(1000);
+    Reflect.set(window, 'ontouchstart', null);
+    const svc = createService(1024);
     expect(svc.hasTouch()).toBe(true);
-    delete win['ontouchstart'];
+    Reflect.deleteProperty(window, 'ontouchstart');
   });
 
   it('should not detect touch support when ontouchstart is absent', () => {
@@ -147,6 +152,13 @@ describe('BreakpointService', () => {
     Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true });
     const svc = createService(1000);
     expect(svc.hasTouch()).toBe(false);
+
+    // Also verify legacy msMaxTouchPoints property branch
+    Object.defineProperty(navigator, 'msMaxTouchPoints', { value: 2, configurable: true });
+    const svcLegacy = createService(1000);
+    expect(svcLegacy.hasTouch()).toBe(true);
+    Reflect.deleteProperty(navigator, 'msMaxTouchPoints');
+
     Object.defineProperty(navigator, 'maxTouchPoints', {
       value: originalMaxTouch,
       configurable: true,

@@ -1,35 +1,49 @@
+/**
+ * @fileoverview Unit tests for WidgetEditorDialog.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Component, input, output, signal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog';
 import { WidgetResponse, DashboardsService, DashboardResponse } from '../api-client';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { DashboardStore } from './dashboard.store';
 import { of } from 'rxjs';
 import { readTemplate } from '../../test-utils/component-resources';
+import { vi } from 'vitest';
 
+/** Mock SQL builder component for unit testing `WidgetEditorDialog`. */
 @Component({
   selector: 'app-sql-builder',
   template: '<div data-testid="mock-sql-builder"></div>',
 })
 class MockSqlBuilderComponent {
+  /** Dashboard ID input. */
   readonly dashboardId = input<string | undefined>();
+  /** Widget ID input. */
   readonly widgetId = input<string | undefined>();
+  /** Initial SQL input. */
   readonly initialSql = input<string | undefined>();
+  /** SQL change output. */
   readonly sqlChange = output<string>();
 }
 
+/** Mock HTTP config component for unit testing `WidgetEditorDialog`. */
 @Component({
   selector: 'app-http-config',
   template: '<div data-testid="mock-http-config"></div>',
 })
 class MockHttpConfigComponent {
+  /** Dashboard ID input. */
   readonly dashboardId = input<string | undefined>();
+  /** Widget ID input. */
   readonly widgetId = input<string | undefined>();
+  /** Initial config input. */
   readonly initialConfig = input<Record<string, unknown> | undefined>();
+  /** Config change output. */
   readonly configChange = output<Record<string, unknown>>();
 }
 
@@ -71,7 +85,7 @@ describe('WidgetEditorDialog', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [WidgetEditorDialog, NoopAnimationsModule],
+      imports: [WidgetEditorDialog],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: mockData },
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -104,7 +118,7 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should render HTTP editor for HTTP widgets', () => {
-    component.data.widget = { ...sqlWidget, type: 'HTTP' } as WidgetResponse;
+    component.data.widget = { ...sqlWidget, type: 'HTTP' };
     fixture.detectChanges();
 
     const httpBuilder = fixture.debugElement.query(By.css('[data-testid="mock-http-config"]'));
@@ -117,7 +131,8 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should default xKey/yKey to null when config missing', () => {
-    const noConfigWidget = { ...sqlWidget, config: undefined } as unknown as WidgetResponse;
+    const noConfigWidget: WidgetResponse = { ...sqlWidget };
+    Reflect.deleteProperty(noConfigWidget, 'config');
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
@@ -174,7 +189,7 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should report mapping unsupported when visualization is missing', () => {
-    component.data.widget.visualization = undefined as unknown as string;
+    Reflect.set(component.data.widget, 'visualization', undefined);
     fixture.detectChanges();
     expect(component.supportsMapping()).toBe(false);
   });
@@ -185,12 +200,12 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should save settings and close dialog', () => {
-    const freshDash = {
+    const freshDash: DashboardResponse = {
       id: 'd1',
       name: 'Dash',
       owner_id: 'u1',
       widgets: [{ ...sqlWidget, config: { query: 'SELECT 2' } }],
-    } as DashboardResponse;
+    };
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
 
     component.xKey.set('x');
@@ -199,7 +214,9 @@ describe('WidgetEditorDialog', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) }),
+      expect.objectContaining({
+        config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) as unknown,
+      }),
     );
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
   });
@@ -211,7 +228,7 @@ describe('WidgetEditorDialog', () => {
     sqlBuilder.triggerEventHandler('sqlChange', 'SELECT 2');
     expect(spy).toHaveBeenCalled();
 
-    component.data.widget = { ...sqlWidget, type: 'HTTP' } as WidgetResponse;
+    component.data.widget = { ...sqlWidget, type: 'HTTP' };
     fixture.detectChanges();
     const httpConfig = fixture.debugElement.query(By.directive(MockHttpConfigComponent));
     expect(httpConfig).toBeTruthy();
@@ -226,8 +243,8 @@ describe('WidgetEditorDialog', () => {
     fixture.detectChanges();
     const selects = fixture.debugElement.queryAll(By.css('mat-select'));
     expect(selects.length).toBeGreaterThanOrEqual(2);
-    selects[0].triggerEventHandler('ngModelChange', 'x');
-    selects[1].triggerEventHandler('ngModelChange', 'y');
+    selects[0]?.triggerEventHandler('ngModelChange', 'x');
+    selects[1]?.triggerEventHandler('ngModelChange', 'y');
 
     const updateBtn = fixture.debugElement.query(By.css('button[mat-flat-button]'));
     updateBtn.triggerEventHandler('click', null);
@@ -243,12 +260,14 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should save settings when config missing', () => {
-    const freshDash = {
+    const widgetWithoutConfig: WidgetResponse = { ...sqlWidget };
+    Reflect.deleteProperty(widgetWithoutConfig, 'config');
+    const freshDash: DashboardResponse = {
       id: 'd1',
       name: 'Dash',
       owner_id: 'u1',
-      widgets: [{ ...sqlWidget, config: undefined } as unknown as WidgetResponse],
-    } as DashboardResponse;
+      widgets: [widgetWithoutConfig],
+    };
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
 
     component.xKey.set('x');
@@ -263,7 +282,7 @@ describe('WidgetEditorDialog', () => {
 
   it('should skip save when widget missing', () => {
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
-      of({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] } as DashboardResponse),
+      of({ id: 'd1', name: 'Dash', owner_id: 'u1', widgets: [] } satisfies DashboardResponse),
     );
 
     component.saveSettings();
@@ -273,7 +292,7 @@ describe('WidgetEditorDialog', () => {
   });
 
   it('should merge settings when fresh widget has no config', () => {
-    const freshDash = {
+    const freshDash: DashboardResponse = {
       id: 'd1',
       name: 'Dash',
       owner_id: 'u1',
@@ -287,7 +306,7 @@ describe('WidgetEditorDialog', () => {
           config: {},
         },
       ],
-    } as DashboardResponse;
+    };
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
 
     component.xKey.set('x');
@@ -296,7 +315,9 @@ describe('WidgetEditorDialog', () => {
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
       'w1',
-      expect.objectContaining({ config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) }),
+      expect.objectContaining({
+        config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) as unknown,
+      }),
     );
   });
 });

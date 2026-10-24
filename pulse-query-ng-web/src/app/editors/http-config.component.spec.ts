@@ -1,18 +1,13 @@
+/**
+ * @fileoverview Unit tests for HttpConfigComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
 import { HttpConfigComponent } from './http-config.component';
 import { DashboardsService, ExecutionService } from '../api-client';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
-
-interface HttpConfigPrivate {
-  dashboardId: WritableSignal<string>;
-  widgetId: WritableSignal<string>;
-  initialConfig: WritableSignal<Record<string, unknown>>;
-  parseConfig: (cfg: Record<string, unknown> | null) => void;
-  arrToObj: (arr: Array<{ key: string; value: string }>) => Record<string, string>;
-}
 
 describe('HttpConfigComponent', () => {
   let component: HttpConfigComponent;
@@ -24,8 +19,6 @@ describe('HttpConfigComponent', () => {
   let mockExecutionApi: {
     refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
   };
-
-  let initialConfigSig: WritableSignal<Record<string, unknown>>;
 
   beforeEach(async () => {
     mockDashboardsApi = {
@@ -46,10 +39,9 @@ describe('HttpConfigComponent', () => {
     fixture = TestBed.createComponent(HttpConfigComponent);
     component = fixture.componentInstance;
 
-    const priv = component as unknown as HttpConfigPrivate;
-    priv.dashboardId = signal('d1');
-    priv.widgetId = signal('w1');
-    initialConfigSig = signal<Record<string, unknown>>({
+    fixture.componentRef.setInput('dashboardId', 'd1');
+    fixture.componentRef.setInput('widgetId', 'w1');
+    fixture.componentRef.setInput('initialConfig', {
       method: 'POST',
       url: 'https://api.test.com',
       params: { q: 'search' },
@@ -57,7 +49,6 @@ describe('HttpConfigComponent', () => {
       body: { someProperty: 123 },
       meta_forward_auth: true,
     });
-    priv.initialConfig = initialConfigSig;
 
     fixture.detectChanges();
   });
@@ -72,12 +63,12 @@ describe('HttpConfigComponent', () => {
     expect(val.body).toContain('"someProperty": 123');
 
     expect(val.params.length).toBe(1);
-    expect(val.params[0].key).toBe('q');
-    expect(val.params[0].value).toBe('search');
+    expect(val.params[0]?.key).toBe('q');
+    expect(val.params[0]?.value).toBe('search');
 
     expect(val.headers.length).toBe(1);
-    expect(val.headers[0].key).toBe('X-Custom');
-    expect(val.headers[0].value).toBe('123');
+    expect(val.headers[0]?.key).toBe('X-Custom');
+    expect(val.headers[0]?.value).toBe('123');
   });
 
   it('should validate URL format', () => {
@@ -128,8 +119,8 @@ describe('HttpConfigComponent', () => {
     component.removeItem('params', 0);
     fixture.detectChanges();
     expect(component.formModel().params.length).toBe(1);
-    expect(component.formModel().params[0].key).toBe('page');
-    expect(component.formModel().params[0].value).toBe('2');
+    expect(component.formModel().params[0]?.key).toBe('page');
+    expect(component.formModel().params[0]?.value).toBe('2');
   });
 
   it('should add and remove headers dynamically', () => {
@@ -228,7 +219,7 @@ describe('HttpConfigComponent', () => {
       component.saveAndTest();
       expect(mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
         'w1',
-        expect.objectContaining({ config: expect.objectContaining({ body: null }) }),
+        expect.objectContaining({ config: expect.objectContaining({ body: null }) as unknown }),
       );
     });
   });
@@ -242,7 +233,7 @@ describe('HttpConfigComponent', () => {
   });
 
   it('should handle hydrate when config body is non-serializable', () => {
-    initialConfigSig.set({
+    fixture.componentRef.setInput('initialConfig', {
       body: {
         toJSON: () => {
           throw new Error('fail');
@@ -254,18 +245,22 @@ describe('HttpConfigComponent', () => {
   });
 
   it('should no-op hydrate when config is null', () => {
-    (component as unknown as HttpConfigPrivate).parseConfig(null);
-    expect(component.formModel().method).toBe('POST');
+    expect(component.parseConfig(null).method).toBe('GET');
   });
 
   it('should leave body empty when config has no body', () => {
-    initialConfigSig.set({ method: 'GET', url: 'https://example.com', params: {}, headers: {} });
+    fixture.componentRef.setInput('initialConfig', {
+      method: 'GET',
+      url: 'https://example.com',
+      params: {},
+      headers: {},
+    });
     fixture.detectChanges();
     expect(component.formModel().body).toBe('');
   });
 
   it('should omit empty keys when building object', () => {
-    const obj = (component as unknown as HttpConfigPrivate).arrToObj([
+    const obj = component.arrToObj([
       { key: '', value: 'x' },
       { key: 'a', value: '1' },
     ]);
@@ -273,15 +268,17 @@ describe('HttpConfigComponent', () => {
   });
 
   it('should render preview fallback when no result', () => {
-    const preview = fixture.debugElement.query(By.css('.preview-panel'));
-    expect(preview.nativeElement.textContent).toContain('Save and Test to see response');
+    const preview = fixture.debugElement.query(By.css('.preview-panel'))
+      .nativeElement as HTMLElement;
+    expect(preview.textContent).toContain('Save and Test to see response');
   });
 
   it('should render preview json when result is present', () => {
     component.result.set({ ok: true });
     fixture.detectChanges();
-    const preview = fixture.debugElement.query(By.css('.preview-panel'));
-    expect(preview.nativeElement.textContent).toContain('"ok": true');
+    const preview = fixture.debugElement.query(By.css('.preview-panel'))
+      .nativeElement as HTMLElement;
+    expect(preview.textContent).toContain('"ok": true');
   });
 
   it('should trigger save via template button', () => {
@@ -290,8 +287,8 @@ describe('HttpConfigComponent', () => {
     fixture.detectChanges();
     const saveBtn = fixture.debugElement
       .queryAll(By.css('button'))
-      .find((btn) => btn.nativeElement.textContent.includes('Save & Test'))!;
-    saveBtn.triggerEventHandler('click', null);
+      .find((btn) => (btn.nativeElement as HTMLElement).textContent?.includes('Save & Test'));
+    saveBtn?.triggerEventHandler('click', null);
     expect(saveSpy).toHaveBeenCalled();
   });
 
@@ -299,26 +296,28 @@ describe('HttpConfigComponent', () => {
     fixture.detectChanges();
     const addParamBtn = fixture.debugElement
       .queryAll(By.css('button'))
-      .find((btn) => btn.nativeElement.textContent.includes('Add Parameter'))!;
-    addParamBtn.triggerEventHandler('click', null);
+      .find((btn) => (btn.nativeElement as HTMLElement).textContent?.includes('Add Parameter'));
+    addParamBtn?.triggerEventHandler('click', null);
     fixture.detectChanges();
     expect(component.formModel().params.length).toBeGreaterThan(1);
 
     const removeParamBtn = fixture.debugElement.queryAll(By.css('button[mat-icon-button]'))[0];
-    removeParamBtn.triggerEventHandler('click', null);
+    removeParamBtn?.triggerEventHandler('click', null);
     fixture.detectChanges();
 
     const addHeaderBtn = fixture.debugElement
       .queryAll(By.css('button'))
-      .find((btn) => btn.nativeElement.textContent.includes('Add Header'))!;
-    addHeaderBtn.triggerEventHandler('click', null);
+      .find((btn) => (btn.nativeElement as HTMLElement).textContent?.includes('Add Header'));
+    addHeaderBtn?.triggerEventHandler('click', null);
     fixture.detectChanges();
     expect(component.formModel().headers.length).toBeGreaterThan(1);
 
     const removeHeaderBtn = fixture.debugElement
       .queryAll(By.css('button[mat-icon-button]'))
-      .find((btn) => btn.nativeElement.getAttribute('aria-label') === 'Remove Header')!;
-    removeHeaderBtn.triggerEventHandler('click', null);
+      .find(
+        (btn) => (btn.nativeElement as HTMLElement).getAttribute('aria-label') === 'Remove Header',
+      );
+    removeHeaderBtn?.triggerEventHandler('click', null);
     fixture.detectChanges();
   });
 

@@ -147,32 +147,19 @@
         }
 
         <div class="flex gap-2 items-center flex-wrap justify-center">
-          <button
-            i18n
-            mat-stroked-button
-            color="primary"
-            (click)="manualRefresh()"
-            data-testid="btn-retry-widget"
-          >
+          <button i18n mat-stroked-button (click)="manualRefresh()" data-testid="btn-retry-widget">
             <mat-icon aria-hidden="true">refresh</mat-icon> Retry
           </button>
           <button
             i18n
             mat-stroked-button
-            color="accent"
             (click)="openDiagnostics()"
             data-testid="btn-diagnostics-widget"
           >
             <mat-icon aria-hidden="true">build</mat-icon> Diagnostics
           </button>
           @if (isEditMode()) {
-            <button
-              i18n
-              mat-stroked-button
-              color="warn"
-              (click)="edit.emit()"
-              data-testid="btn-fix-query"
-            >
+            <button i18n mat-stroked-button (click)="edit.emit()" data-testid="btn-fix-query">
               Fix Query
             </button>
           }

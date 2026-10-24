@@ -3,7 +3,7 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { simulationRoutes } from './simulation.routes';
 import { vi } from 'vitest';
 
@@ -21,13 +21,10 @@ vi.mock('@material/material-color-utilities', () => ({
 }));
 
 describe('SimulationRoutes', () => {
-  let router: Router;
-
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideRouter(simulationRoutes)],
     });
-    router = TestBed.inject(Router);
   });
 
   it('should define the default route', async () => {
@@ -35,7 +32,7 @@ describe('SimulationRoutes', () => {
     expect(route).toBeDefined();
 
     // Check lazy loading function
-    const component = await route?.loadComponent!();
+    const component = await route?.loadComponent?.();
     expect(component).toBeTruthy();
   });
 });

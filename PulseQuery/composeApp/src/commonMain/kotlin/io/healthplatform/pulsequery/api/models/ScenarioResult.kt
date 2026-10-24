@@ -17,31 +17,20 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.SimulationAssignment
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Response containing the optimization outcome.
  *
- * @param assignments 
- * @param status 
- * @param message 
+ * @param assignments
+ * @param status
+ * @param message
  */
 @Serializable
-
-data class ScenarioResult (
-
+data class ScenarioResult(
     @SerialName(value = "assignments") @Required val assignments: kotlin.collections.List<SimulationAssignment>,
-
     @SerialName(value = "status") @Required val status: kotlin.String,
-
     @SerialName(value = "message") val message: kotlin.String? = null
-
-) {
-
-
-}
-
+)

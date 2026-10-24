@@ -91,4 +91,3 @@ class FallbackStorageTest {
         assertEquals(1, cache.getCachedWidgets("dash_2").size)
     }
 }
-

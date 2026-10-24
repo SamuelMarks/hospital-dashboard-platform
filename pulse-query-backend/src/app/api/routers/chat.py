@@ -5,17 +5,12 @@ Handles stateful conversations between the User and the Analytics Assistant.
 Integrates with `ChatService` and `LLMArenaClient` to provide multiple response candidates for voting.
 """
 
-import asyncio
-from collections.abc import AsyncGenerator
-from datetime import UTC, datetime
-import json
 import logging
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
@@ -34,7 +29,6 @@ from app.schemas.chat import (
 )
 from app.services.admin import get_admin_settings
 from app.services.chat_service import (
-  build_chat_system_prompt,
   chat_service,
   extract_and_validate_chat_sql,
 )
@@ -278,72 +272,24 @@ async def stream_conversation_tokens(
   Returns:
       StreamingResponse: Text/event-stream containing incremental tokens.
   """
-  conv_res = await chat_service.get_owned_conversation_result(conversation_id, current_user, db)
-  unwrap_or_raise_http(conv_res)
-
-  hist_stmt = (
-    select(Message).where(Message.conversation_id == conversation_id).order_by(desc(Message.created_at)).limit(10)
+  ctx_res = await chat_service.prepare_stream_context_result(
+    conversation_id=conversation_id,
+    current_user=current_user,
+    db=db,
+    schema_svc=schema_service,
+    admin_settings_fn=get_admin_settings,
   )
-  hist_res = await db.execute(hist_stmt)
-  history = hist_res.scalars().all()[::-1]
-
-  schema_context = await asyncio.to_thread(schema_service.get_schema_context_string)
-  system_prompt = build_chat_system_prompt(schema_context)
-  messages_payload = [{"role": "system", "content": system_prompt}]
-  for msg in history:
-    if msg.role in ["user", "assistant"]:
-      messages_payload.append({"role": msg.role, "content": msg.content})
-
-  admin_settings = await get_admin_settings(db)
-
-  async def event_generator() -> AsyncGenerator[str, None]:
-    """
-    Asynchronous generator yielding Server-Sent Events for real-time LLM token streaming.
-
-    Yields:
-        str: SSE data frames (`start`, `token`, `done`).
-    """
-    nl = chr(10)
-    start_payload = json.dumps({"event": "start", "conversation_id": str(conversation_id)})
-    yield f"data: {start_payload}{nl}{nl}"
-
-    accumulated: list[str] = []
-    async for token in llm_client.stream_tokens(
-      messages=messages_payload,
-      model_id=model_id,
-      admin_settings=admin_settings,
-    ):
-      accumulated.append(token)
-      payload = json.dumps({"event": "token", "token": token})
-      yield f"data: {payload}{nl}{nl}"
-
-    full_text = "".join(accumulated)
-    sql = _extract_and_validate_sql(full_text)
-
-    now = datetime.now(UTC)
-    assistant_msg = Message(
-      conversation_id=conversation_id,
-      role="assistant",
-      content=full_text,
-      sql_snippet=sql,
-      created_at=now,
-    )
-    db.add(assistant_msg)
-    await db.commit()
-    await db.refresh(assistant_msg)
-
-    done_payload = json.dumps(
-      {
-        "event": "done",
-        "message_id": str(assistant_msg.id),
-        "content": full_text,
-        "sql_snippet": sql,
-      }
-    )
-    yield f"data: {done_payload}{nl}{nl}"
+  messages_payload, admin_settings = unwrap_or_raise_http(ctx_res)
 
   return StreamingResponse(
-    event_generator(),
+    chat_service.stream_conversation_events(
+      conversation_id=conversation_id,
+      messages_payload=messages_payload,
+      admin_settings=admin_settings,
+      db=db,
+      model_id=model_id,
+      arena_client=llm_client,
+    ),
     media_type="text/event-stream",
     headers={
       "Cache-Control": "no-cache",

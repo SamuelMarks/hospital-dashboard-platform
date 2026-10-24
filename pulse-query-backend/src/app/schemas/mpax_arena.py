@@ -2,9 +2,12 @@
 Schemas for the MPAX vs LLM Arena integrations.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
+
+MpaxArenaMode = Literal["judge", "translator", "constraints", "sql_vs_mpax", "critic"]
+MpaxPayloadType = dict[str, Any]
 
 
 class MpaxArenaRequest(BaseModel):
@@ -13,7 +16,7 @@ class MpaxArenaRequest(BaseModel):
   """
 
   prompt: str
-  mode: str  # judge, translator, constraints, sql_vs_mpax, critic
+  mode: str  # Validated in MpaxArenaService against MpaxArenaMode to return 400 AppError
   demand_sql: str | None = (
     "SELECT department as Service, department as Unit, COUNT(*) as Count FROM hospital_data GROUP BY department;"
   )
@@ -29,7 +32,7 @@ class MpaxArenaCandidate(BaseModel):
   model_name: str
   content: str
   is_selected: bool = False
-  mpax_result: Any | None = None
+  mpax_result: MpaxPayloadType | None = None
   mpax_score: int | None = None
   sql_snippet: str | None = None
 
@@ -41,5 +44,5 @@ class MpaxArenaResponse(BaseModel):
 
   experiment_id: str
   mode: str
-  ground_truth_mpax: Any | None = None
+  ground_truth_mpax: MpaxPayloadType | None = None
   candidates: list[MpaxArenaCandidate]

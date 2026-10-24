@@ -342,3 +342,28 @@ def test_data_ingestion_table_without_indexed_columns(tmp_path: Path, monkeypatc
   agg_row = check_conn.execute("SELECT COUNT(*), SUM(value) FROM tbl").fetchone()
   assert agg_row == (2, 30)
   check_conn.close()
+
+
+def test_ingest_data_method_and_transfers_alias(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+  """DataIngestionService.ingest_data() should resolve data_dir and return canonical + aliased table names."""
+  data_dir = tmp_path / "custom_data"
+  data_dir.mkdir()
+  (data_dir / "Synthetic_hospital_data.csv").write_text("col1\nval1\n", encoding="utf-8")
+  (data_dir / "Synthetic_hospital_data_transfers.csv").write_text("CSN\n1\n", encoding="utf-8")
+
+  db_path = str(tmp_path / "custom_ingest.duckdb")
+  monkeypatch.setattr("app.services.data_ingestion.duckdb_manager.db_path", db_path)
+
+  svc = data_ingestion.DataIngestionService(data_dir=data_dir)
+  assert svc.data_dir == data_dir.resolve()
+
+  # 1. Explicit data_dir argument
+  tables = svc.ingest_data(data_dir=data_dir)
+  assert "hospital_data" in tables
+  assert "synthetic_hospital_data" in tables
+  assert "synthetic_hospital_data_transfers" in tables
+  assert "Synthetic_hospital_data_transfers" in tables
+
+  # 2. Default self.data_dir resolution when DATA_DIR is unchanged
+  tables_default = svc.ingest_data()
+  assert "Synthetic_hospital_data_transfers" in tables_default

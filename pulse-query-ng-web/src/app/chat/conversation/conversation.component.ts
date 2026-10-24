@@ -248,7 +248,7 @@ export class ConversationComponent {
   private readonly snackBar = inject(MatSnackBar);
 
   /** Reference to the scroll container. */
-  private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
+  readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   /** Input text model. */
   readonly inputText = signal('');
 
@@ -308,7 +308,7 @@ export class ConversationComponent {
    * @param txt - Raw markdown string.
    * @returns Cleaned string without fenced SQL blocks.
    */
-  cleanContentSimple(txt: string): string {
+  cleanContentSimple(txt: string | null | undefined): string {
     return (txt || '').replace(/```sql[\s\S]*?```/gi, '').trim();
   }
 
@@ -480,7 +480,7 @@ export class ConversationComponent {
   }
 
   /** Scrolls chat to bottom. */
-  private scrollToBottom(): void {
+  scrollToBottom(): void {
     setTimeout(() => {
       const el = this.scrollContainer()?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;

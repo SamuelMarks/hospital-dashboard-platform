@@ -12,26 +12,43 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
-
-import io.healthplatform.pulsequery.api.infrastructure.*
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/dashboards/{id}/refresh` batch and single-widget query execution endpoints.
+ */
 open class ExecutionApi : ApiClient {
 
+    /**
+     * Constructs a [ExecutionApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -39,15 +56,21 @@ open class ExecutionApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [ExecutionApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Refresh Dashboard
      * Refreshes data for ALL widgets in a specific dashboard. Injects global_params into SQL queries before execution.  Args:     dashboard_id (UUID): ID of the target dashboard to refresh.     current_user (User): Authenticated user requesting the refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Authorization header for token forwarding.     accept_language (Optional[str]): Preferred response language header.     global_params (dict[str, Any]): Global filter parameters for queries.  Returns:     dict[UUID, Any]: Map of widget UUID to execution results.  Raises:     HTTPException: 404 if dashboard not found or user lacks access.
-     * @param dashboardId 
+     * @param dashboardId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @param authorization  (optional)
      * @param acceptLanguage  (optional)
@@ -55,8 +78,13 @@ open class ExecutionApi : ApiClient {
      * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun refreshDashboardApiV1DashboardsDashboardIdRefreshPost(dashboardId: kotlin.String, token: kotlin.String? = null, authorization: kotlin.String? = null, acceptLanguage: kotlin.String? = null, requestBody: kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
-
+    open suspend fun refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
+        dashboardId: kotlin.String,
+        token: kotlin.String? = null,
+        authorization: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null,
+        requestBody: kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>? = null
+    ): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(
@@ -69,7 +97,7 @@ open class ExecutionApi : ApiClient {
         authorization?.apply { localVariableHeaders["authorization"] = this.toString() }
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/refresh".replace("{" + "dashboard_id" + "}", "$dashboardId"),
             query = localVariableQuery,
@@ -85,29 +113,43 @@ open class ExecutionApi : ApiClient {
     }
 
     @Serializable(RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest.Companion::class)
-    private class RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>) {
+    private class RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(
+        val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>
+    ) {
         companion object : KSerializer<RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest> {
             private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(serializer.deserialize(decoder))
+            override fun serialize(
+                encoder: Encoder,
+                value: RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest
+            ) = serializer.serialize(encoder, value.value)
+            override fun deserialize(
+                decoder: Decoder
+            ) = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(serializer.deserialize(decoder))
         }
     }
     @Serializable(RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse.Companion::class)
-    private class RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse(val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>) {
+    private class RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse(
+        val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>
+    ) {
         companion object : KSerializer<RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse> {
             private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse(serializer.deserialize(decoder))
+            override fun serialize(
+                encoder: Encoder,
+                value: RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse
+            ) = serializer.serialize(encoder, value.value)
+            override fun deserialize(
+                decoder: Decoder
+            ) = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse(serializer.deserialize(decoder))
         }
     }
 
     /**
      * Refresh Widget
      * Refreshes data for a SINGLE widget. Supports ?force_refresh&#x3D;true to bypass cache.  Args:     dashboard_id (UUID): Target dashboard ID.     widget_id (UUID): Target widget ID within the dashboard.     current_user (User): Authenticated user requesting refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Optional authorization header for forwarding.     accept_language (Optional[str]): Preferred response language header.     force_refresh (bool): Whether to bypass query cache.  Returns:     dict[UUID, Any]: Dictionary mapping widget ID to query execution payload.  Raises:     HTTPException: 404 if dashboard or widget not found or access denied.
-     * @param dashboardId 
-     * @param widgetId 
+     * @param dashboardId
+     * @param widgetId
      * @param forceRefresh  (optional, default to false)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @param authorization  (optional)
@@ -115,11 +157,17 @@ open class ExecutionApi : ApiClient {
      * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(dashboardId: kotlin.String, widgetId: kotlin.String, forceRefresh: kotlin.Boolean? = false, token: kotlin.String? = null, authorization: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
-
+    open suspend fun refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
+        dashboardId: kotlin.String,
+        widgetId: kotlin.String,
+        forceRefresh: kotlin.Boolean? = false,
+        token: kotlin.String? = null,
+        authorization: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -129,7 +177,7 @@ open class ExecutionApi : ApiClient {
         authorization?.apply { localVariableHeaders["authorization"] = this.toString() }
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/dashboards/{dashboard_id}/widgets/{widget_id}/refresh".replace("{" + "dashboard_id" + "}", "$dashboardId").replace("{" + "widget_id" + "}", "$widgetId"),
             query = localVariableQuery,
@@ -145,13 +193,19 @@ open class ExecutionApi : ApiClient {
     }
 
     @Serializable(RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse.Companion::class)
-    private class RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse(val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>) {
+    private class RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse(
+        val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>
+    ) {
         companion object : KSerializer<RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse> {
             private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse(serializer.deserialize(decoder))
+            override fun serialize(
+                encoder: Encoder,
+                value: RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse
+            ) = serializer.serialize(encoder, value.value)
+            override fun deserialize(
+                decoder: Decoder
+            ) = RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse(serializer.deserialize(decoder))
         }
     }
-
 }

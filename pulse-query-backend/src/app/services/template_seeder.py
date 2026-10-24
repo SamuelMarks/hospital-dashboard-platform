@@ -6,14 +6,16 @@ automatically at application startup. It reads the `initial_templates.json` file
 performs an idempotent upsert (insert or update) for each template.
 """
 
+from pathlib import Path
 import json
 import logging
 import os
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import BACKEND_ROOT
 from app.core.diagnostics import (
   diagnostics_registry,
   format_missing_template_warning_banner,
@@ -21,9 +23,7 @@ from app.core.diagnostics import (
 from app.database.postgres import AsyncSessionLocal
 from app.models.template import WidgetTemplate
 
-# Configure Path relative to this file:
-# src/app/services -> ../../../data/initial_templates.json
-DATA_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../data/initial_templates.json"))
+DATA_FILE = str((BACKEND_ROOT / "data" / "initial_templates.json").resolve())
 
 logger = logging.getLogger("template_seeder")
 
@@ -33,58 +33,137 @@ class TemplateSeeder:
   Service class to manage the seeding lifecycle of Analytics Templates.
   """
 
-  @staticmethod
-  def _check_template_file_exists() -> bool:
+  def __init__(self, file_path: str | Path | None = None) -> None:
     """
-    Checks whether `DATA_FILE` exists on disk.
+    Initializes the template seeder with a resolved `file_path` pointing to `initial_templates.json`.
+
+    Args:
+        file_path (str | Path | None): Optional file path override; defaults to `BACKEND_ROOT / "data" / "initial_templates.json"`.
+    """
+    self.file_path: Path = (
+      Path(file_path).resolve() if file_path is not None else (BACKEND_ROOT / "data" / "initial_templates.json").resolve()
+    )
+
+  @staticmethod
+  def _check_template_file_exists(data_file: str | Path | None = None) -> bool:
+    """
+    Checks whether `data_file` (or `DATA_FILE`) exists on disk.
+
+    Args:
+        data_file (str | Path | None): Optional path override.
 
     Returns:
         bool: True if the template JSON file exists.
     """
-    return os.path.exists(DATA_FILE)
+    target = str(data_file) if data_file is not None else DATA_FILE
+    return os.path.exists(target)
 
   @staticmethod
-  def _read_template_file() -> list[dict[str, Any]]:
+  def _read_template_file(data_file: str | Path | None = None) -> list[dict[str, Any]]:
     """
-    Reads and parses `DATA_FILE` from disk.
+    Reads and parses `data_file` (or `DATA_FILE`) from disk.
+
+    Args:
+        data_file (str | Path | None): Optional path override.
 
     Returns:
         list[dict[str, Any]]: Parsed list of template dictionaries.
     """
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    target = str(data_file) if data_file is not None else DATA_FILE
+    with open(target, "r", encoding="utf-8") as f:
       data: list[dict[str, Any]] = json.load(f)
       return data
 
   @staticmethod
-  async def seed_defaults() -> None:
+  async def _ensure_templates_view(db: AsyncSession) -> None:
+    """
+    Creates the `templates` compatibility SQL view over `widget_templates` for PostgreSQL or SQLite.
+
+    Args:
+        db (AsyncSession): Active database session.
+    """
+    bind = getattr(db, "bind", None) or getattr(getattr(db, "_session", None), "bind", None)
+    dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
+    sql = (
+      "CREATE OR REPLACE VIEW templates AS SELECT * FROM widget_templates"
+      if dialect_name == "postgresql"
+      else "CREATE VIEW IF NOT EXISTS templates AS SELECT * FROM widget_templates"
+    )
+    await db.execute(text(sql))
+
+  async def seed_Async(
+    self,
+    db: AsyncSession,
+    templates_data: list[dict[str, Any]] | None = None,
+  ) -> int:
+    """
+    Seeds templates into the provided `db` session and ensures the `templates` view exists.
+
+    Args:
+        db (AsyncSession): Active database session.
+        templates_data (list[dict[str, Any]] | None): Optional pre-parsed template list; reads `self.file_path` if None.
+
+    Returns:
+        int: Number of template items processed.
+    """
+    items = templates_data if templates_data is not None else self._read_template_file(self.file_path)
+    await self._process_batch(db, items)
+    await db.commit()
+    diagnostics_registry.template_status = {
+      "status": "ready" if len(items) > 0 else "empty",
+      "template_count": len(items),
+      "templates_loaded": len(items),
+      "has_templates": len(items) > 0,
+      "missing_file": False,
+    }
+    return len(items)
+
+  @staticmethod
+  async def seed_defaults(
+    data_file: str | Path | None = None,
+    db: AsyncSession | None = None,
+  ) -> None:
     """
     Orchestrates the loading of default templates into the database.
     Designed to be called during ASGI startup.
+
+    Args:
+        data_file (str | Path | None): Optional JSON file path override.
+        db (AsyncSession | None): Optional injected database session for testing.
     """
-    if not TemplateSeeder._check_template_file_exists():
-      banner = format_missing_template_warning_banner(DATA_FILE)
+    target = str(data_file) if data_file is not None else DATA_FILE
+    if not TemplateSeeder._check_template_file_exists(target):
+      banner = format_missing_template_warning_banner(target)
       logger.warning("\n" + banner)
       diagnostics_registry.template_status = {
+        "status": "empty",
+        "template_count": 0,
         "templates_loaded": 0,
         "has_templates": False,
         "missing_file": True,
       }
       diagnostics_registry.add_warning(
         code="MISSING_TEMPLATE_PACK",
-        message=f"Template pack missing at {DATA_FILE}.",
+        message=f"Template pack missing at {target}.",
         severity="warning",
         remediation="Verify repository data/ directory contains initial_templates.json.",
       )
       return
 
     try:
-      templates_data = TemplateSeeder._read_template_file()
+      templates_data = TemplateSeeder._read_template_file(target)
 
-      async with AsyncSessionLocal() as db:
+      if db is not None:
         await TemplateSeeder._process_batch(db, templates_data)
         await db.commit()
+      else:
+        async with AsyncSessionLocal() as session:
+          await TemplateSeeder._process_batch(session, templates_data)
+          await session.commit()
 
       diagnostics_registry.template_status = {
+        "status": "ready" if len(templates_data) > 0 else "empty",
+        "template_count": len(templates_data),
         "templates_loaded": len(templates_data),
         "has_templates": len(templates_data) > 0,
         "missing_file": False,
@@ -92,7 +171,7 @@ class TemplateSeeder:
       if not templates_data:
         diagnostics_registry.add_warning(
           code="EMPTY_TEMPLATE_PACK",
-          message=f"Template pack at {DATA_FILE} contains 0 templates.",
+          message=f"Template pack at {target} contains 0 templates.",
           severity="warning",
           remediation="Populate data/initial_templates.json with template objects.",
         )
@@ -102,6 +181,8 @@ class TemplateSeeder:
     except json.JSONDecodeError as e:
       logger.error(f"❌ Invalid JSON in Content Pack: {e}")
       diagnostics_registry.template_status = {
+        "status": "empty",
+        "template_count": 0,
         "templates_loaded": 0,
         "has_templates": False,
         "missing_file": False,
@@ -110,7 +191,7 @@ class TemplateSeeder:
         code="CORRUPTED_TEMPLATE_PACK",
         message=f"Invalid JSON syntax in template pack: {e}",
         severity="error",
-        remediation=f"Validate JSON formatting in {DATA_FILE}.",
+        remediation=f"Validate JSON formatting in {target}.",
       )
     except Exception as e:
       logger.exception(f"❌ Unexpected seeding error: {e}")
@@ -132,6 +213,8 @@ class TemplateSeeder:
     """
     for item in data_list:
       await TemplateSeeder._upsert_template(db, item)
+    if data_list:
+      await TemplateSeeder._ensure_templates_view(db)
 
   @staticmethod
   async def _upsert_template(db: AsyncSession, data: dict[str, Any]) -> None:
@@ -166,3 +249,6 @@ class TemplateSeeder:
         parameters_schema=data.get("parameters_schema", {}),
       )
       db.add(new_template)
+
+
+template_seeder = TemplateSeeder()

@@ -4,15 +4,18 @@
  * ReorderWidgetsCommand, DeleteWidgetCommand, AddWidgetCommand, and UpdateWidgetConfigCommand.
  */
 
+import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import {
   ReorderWidgetsCommand,
   DeleteWidgetCommand,
   AddWidgetCommand,
   UpdateWidgetConfigCommand,
+  DashboardCommandApi,
+  DashboardCommandStore,
 } from './dashboard-commands';
-import { DashboardsService, WidgetResponse } from '../../api-client';
-import { DashboardStore } from '../../dashboard/dashboard.store';
+import { WidgetResponse } from '../../api-client';
 
 describe('Dashboard Undo/Redo Commands', () => {
   const mockDate = new Date('2026-01-01T12:00:00Z');
@@ -26,14 +29,14 @@ describe('Dashboard Undo/Redo Commands', () => {
     config: { order, xKey: 'col_a', yKey: 'col_b' },
   });
 
-  let mockDashboardApi: {
+  let mockDashboardApi: DashboardCommandApi & {
     reorderWidgetsApiV1DashboardsDashboardIdReorderPost: ReturnType<typeof vi.fn>;
     deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: ReturnType<typeof vi.fn>;
     updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
   };
 
-  let mockStore: {
-    widgets: ReturnType<typeof vi.fn>;
+  let mockStore: DashboardCommandStore & {
+    widgets: ReturnType<typeof signal<WidgetResponse[]>>;
     setWidgets: ReturnType<typeof vi.fn>;
     optimisticRemoveWidget: ReturnType<typeof vi.fn>;
     optimisticRestoreWidget: ReturnType<typeof vi.fn>;
@@ -48,7 +51,7 @@ describe('Dashboard Undo/Redo Commands', () => {
     };
 
     mockStore = {
-      widgets: vi.fn().mockReturnValue([]),
+      widgets: signal<WidgetResponse[]>([]),
       setWidgets: vi.fn(),
       optimisticRemoveWidget: vi.fn(),
       optimisticRestoreWidget: vi.fn(),
@@ -65,8 +68,8 @@ describe('Dashboard Undo/Redo Commands', () => {
         'dash-1',
         prev,
         next,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
+        mockDashboardApi,
+        mockStore,
         mockDate,
       );
 
@@ -108,8 +111,8 @@ describe('Dashboard Undo/Redo Commands', () => {
         'dash-1',
         prev,
         next,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
+        mockDashboardApi,
+        mockStore,
         mockDate,
       );
 
@@ -121,12 +124,7 @@ describe('Dashboard Undo/Redo Commands', () => {
   describe('DeleteWidgetCommand', () => {
     it('should remove widget on execute and restore widget on undo', async () => {
       const widget = createMockWidget('w1', 'Bed Occupancy');
-      const cmd = new DeleteWidgetCommand(
-        widget,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
-        mockDate,
-      );
+      const cmd = new DeleteWidgetCommand(widget, mockDashboardApi, mockStore, mockDate);
 
       expect(cmd.id).toBe(`delete-widget-w1-${mockDate.getTime()}`);
       expect(cmd.description).toBe('Delete widget "Bed Occupancy"');
@@ -147,12 +145,7 @@ describe('Dashboard Undo/Redo Commands', () => {
       );
 
       const widget = createMockWidget('w1');
-      const cmd = new DeleteWidgetCommand(
-        widget,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
-        mockDate,
-      );
+      const cmd = new DeleteWidgetCommand(widget, mockDashboardApi, mockStore, mockDate);
 
       await cmd.execute();
       expect(mockStore.optimisticRestoreWidget).toHaveBeenCalledWith(widget);
@@ -162,12 +155,7 @@ describe('Dashboard Undo/Redo Commands', () => {
   describe('AddWidgetCommand', () => {
     it('should restore widget on execute and remove widget on undo', async () => {
       const widget = createMockWidget('w2', 'New Chart');
-      const cmd = new AddWidgetCommand(
-        widget,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
-        mockDate,
-      );
+      const cmd = new AddWidgetCommand(widget, mockDashboardApi, mockStore, mockDate);
 
       expect(cmd.id).toBe(`add-widget-w2-${mockDate.getTime()}`);
       expect(cmd.description).toBe('Add widget "New Chart"');
@@ -188,12 +176,7 @@ describe('Dashboard Undo/Redo Commands', () => {
       );
 
       const widget = createMockWidget('w2');
-      const cmd = new AddWidgetCommand(
-        widget,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
-        mockDate,
-      );
+      const cmd = new AddWidgetCommand(widget, mockDashboardApi, mockStore, mockDate);
 
       await cmd.undo();
       expect(mockStore.optimisticRestoreWidget).toHaveBeenCalledWith(widget);
@@ -204,7 +187,7 @@ describe('Dashboard Undo/Redo Commands', () => {
     it('should apply next config on execute and previous config on undo', async () => {
       const w1 = createMockWidget('w1', 'Original Title');
       const w2 = createMockWidget('w2', 'Other');
-      mockStore.widgets.mockReturnValue([w1, w2]);
+      mockStore.widgets.set([w1, w2]);
 
       const prev = { title: 'Original Title', visualization: 'table', config: { a: 1 } };
       const next = { title: 'Updated Title', visualization: 'bar_chart', config: { a: 2 } };
@@ -213,8 +196,8 @@ describe('Dashboard Undo/Redo Commands', () => {
         'w1',
         prev,
         next,
-        mockDashboardApi as unknown as DashboardsService,
-        mockStore as unknown as DashboardStore,
+        mockDashboardApi,
+        mockStore,
         mockDate,
       );
 

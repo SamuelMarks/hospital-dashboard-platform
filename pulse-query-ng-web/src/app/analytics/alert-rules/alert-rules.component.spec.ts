@@ -3,7 +3,6 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -23,37 +22,35 @@ describe('AlertRulesComponent', () => {
     deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete: ReturnType<typeof vi.fn>;
   };
 
-  const mockRules: AlertRuleResponse[] = [
-    {
-      id: 'rule-1',
-      unit_category: 'ICU',
-      threshold_percentage: 90,
-      severity: AlertSeverity.Critical,
-      is_active: true,
-      created_at: '2026-09-15T00:00:00Z',
-    },
-    {
-      id: 'rule-2',
-      unit_category: 'Cardiology',
-      threshold_percentage: 80,
-      severity: AlertSeverity.Warning,
-      is_active: false,
-      created_at: '2026-09-15T01:00:00Z',
-    },
-  ];
+  const rule1: AlertRuleResponse = {
+    id: 'rule-1',
+    unit_category: 'ICU',
+    threshold_percentage: 90,
+    severity: AlertSeverity.Critical,
+    is_active: true,
+    created_at: '2026-09-15T00:00:00Z',
+  };
+  const rule2: AlertRuleResponse = {
+    id: 'rule-2',
+    unit_category: 'Cardiology',
+    threshold_percentage: 80,
+    severity: AlertSeverity.Warning,
+    is_active: false,
+    created_at: '2026-09-15T01:00:00Z',
+  };
+  const mockRules: AlertRuleResponse[] = [rule1, rule2];
 
   beforeEach(async () => {
     alertRulesServiceMock = {
       listAlertRulesApiV1AnalyticsAlertRulesGet: vi.fn().mockReturnValue(of(mockRules)),
-      createAlertRuleApiV1AnalyticsAlertRulesPost: vi.fn().mockReturnValue(of(mockRules[0])),
-      updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut: vi.fn().mockReturnValue(of(mockRules[0])),
+      createAlertRuleApiV1AnalyticsAlertRulesPost: vi.fn().mockReturnValue(of(rule1)),
+      updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut: vi.fn().mockReturnValue(of(rule1)),
       deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete: vi.fn().mockReturnValue(of(null)),
     };
 
     await TestBed.configureTestingModule({
       imports: [AlertRulesComponent],
       providers: [
-        provideNoopAnimations(),
         provideRouter([]),
         { provide: AlertRulesService, useValue: alertRulesServiceMock },
       ],
@@ -133,17 +130,23 @@ describe('AlertRulesComponent', () => {
 
   it('should populate form when editing and update rule on submit', () => {
     component.startEditing({
-      ...mockRules[0],
-      severity: undefined as unknown as AlertSeverity,
-      is_active: undefined as unknown as boolean,
+      id: 'rule-3',
+      unit_category: 'ER',
+      threshold_percentage: 70,
+      created_at: '2026-09-15T02:00:00Z',
     });
+    expect(component.ruleFormModel().severity).toBe(AlertSeverity.Warning);
+    expect(component.ruleFormModel().is_active).toBe(true);
+
+    component.startEditing(rule1);
     expect(component.editingRuleId()).toBe('rule-1');
     expect(component.ruleFormModel().unit_category).toBe('ICU');
 
     component.ruleFormModel.update((m) => ({
       ...m,
       threshold_percentage: 95,
-      is_active: null as unknown as boolean,
+      severity: AlertSeverity.Warning,
+      is_active: true,
     }));
     component.submitRule();
 
@@ -156,21 +159,6 @@ describe('AlertRulesComponent', () => {
       is_active: true,
     });
     expect(component.editingRuleId()).toBeNull();
-
-    // Also test create branch with is_active: null
-    component.ruleFormModel.set({
-      unit_category: 'NICU',
-      threshold_percentage: 80,
-      severity: AlertSeverity.Info,
-      is_active: null as unknown as boolean,
-    });
-    component.submitRule();
-    expect(alertRulesServiceMock.createAlertRuleApiV1AnalyticsAlertRulesPost).toHaveBeenCalledWith({
-      unit_category: 'NICU',
-      threshold_percentage: 80,
-      severity: AlertSeverity.Info,
-      is_active: true,
-    });
   });
 
   it('should handle update failure gracefully', () => {
@@ -178,7 +166,7 @@ describe('AlertRulesComponent', () => {
       throwError(() => new Error('Update error')),
     );
 
-    component.startEditing(mockRules[0]);
+    component.startEditing(rule1);
     component.submitRule();
 
     expect(component.errorMessage()).toBe('Failed to update alert rule.');
@@ -186,7 +174,7 @@ describe('AlertRulesComponent', () => {
   });
 
   it('should cancel editing mode', () => {
-    component.startEditing(mockRules[0]);
+    component.startEditing(rule1);
     expect(component.editingRuleId()).toBe('rule-1');
 
     component.cancelEditing();
@@ -195,7 +183,7 @@ describe('AlertRulesComponent', () => {
   });
 
   it('should toggle rule active state', () => {
-    component.toggleRuleActive(mockRules[0]);
+    component.toggleRuleActive(rule1);
     expect(
       alertRulesServiceMock.updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut,
     ).toHaveBeenCalledWith('rule-1', { is_active: false });
@@ -206,7 +194,7 @@ describe('AlertRulesComponent', () => {
       throwError(() => new Error('Toggle error')),
     );
 
-    component.toggleRuleActive(mockRules[0]);
+    component.toggleRuleActive(rule1);
     expect(component.errorMessage()).toBe('Failed to update rule status.');
   });
 

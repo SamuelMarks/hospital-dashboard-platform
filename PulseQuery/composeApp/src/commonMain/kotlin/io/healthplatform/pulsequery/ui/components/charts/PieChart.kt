@@ -45,7 +45,7 @@ fun PieChart(
         Color(0xFFEF4444), // Red
         Color(0xFF8B5CF6), // Purple
         Color(0xFFEC4899), // Pink
-        Color(0xFF06B6D4)  // Cyan
+        Color(0xFF06B6D4) // Cyan
     )
 ) {
     if (data.isEmpty()) return

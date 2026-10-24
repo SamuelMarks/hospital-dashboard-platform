@@ -1,3 +1,6 @@
+/**
+ * Reusable Material 3 error banners, cards, and diagnostic state components for PulseQuery.
+ */
 package io.healthplatform.pulsequery.ui.components
 
 import androidx.compose.foundation.layout.Arrangement

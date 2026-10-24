@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end HTTP API widget creation wizard tests.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Widget Wizard - HTTP Flow', () => {

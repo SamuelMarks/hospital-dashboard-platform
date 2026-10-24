@@ -6,7 +6,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA, PLATFORM_ID, signal, WritableSignal } from '@angular/core';
 import { RouterOutlet, provideRouter, ActivatedRoute } from '@angular/router';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { App } from './app';
 import { AskDataComponent } from './global/ask-data.component';
 import { AskDataService } from './global/ask-data.service';
@@ -85,7 +84,7 @@ describe('App', () => {
     mockThemeService = { isTvMode: signal(false), setTvMode: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [App, NoopAnimationsModule],
+      imports: [App],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         { provide: AskDataService, useValue: mockAskDataService },
@@ -126,11 +125,12 @@ describe('App', () => {
 
   it('should respond to service signal changes', () => {
     const sidenavElement = fixture.debugElement.query(By.css('mat-sidenav'));
+    const sidenavInstance = sidenavElement.componentInstance as { opened: boolean };
     expect(component.askData.isOpen()).toBe(false);
-    expect(sidenavElement.componentInstance.opened).toBe(false);
+    expect(sidenavInstance.opened).toBe(false);
     mockAskDataService.isOpen.set(true);
     fixture.detectChanges();
-    expect(sidenavElement.componentInstance.opened).toBe(true);
+    expect(sidenavInstance.opened).toBe(true);
   });
 
   it('should call service.close() when sidenav emits closed event', () => {

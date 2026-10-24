@@ -12,11 +12,11 @@ import { vi } from 'vitest';
 vi.mock('@material/material-color-utilities', () => {
   return {
     // Stub color conversion functions
-    argbFromHex: (hex: string) => 0xffffffff,
-    hexFromArgb: (argb: number) => '#ffffff',
+    argbFromHex: (_hex: string) => 0xffffffff,
+    hexFromArgb: (_argb: number) => '#ffffff',
 
     // Stub theme generation
-    themeFromSourceColor: (sourceArgb: number) => ({
+    themeFromSourceColor: (_sourceArgb: number) => ({
       schemes: {
         // Return a proxy that provides a white color int for any property accessed
         light: new Proxy({}, { get: () => 0xffffffff }),

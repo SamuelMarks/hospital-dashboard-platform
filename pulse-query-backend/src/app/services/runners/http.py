@@ -8,6 +8,7 @@ essential for loading multiple widgets simultaneously on a dashboard.
 
 import json
 import logging
+from threading import Lock
 from typing import Any
 
 import httpx
@@ -18,7 +19,42 @@ from app.schemas.execution import HttpRunnerPayload, HttpRunnerResultDict
 
 logger = logging.getLogger(__name__)
 
-_shared_http_client: httpx.AsyncClient | None = None
+
+class HttpClientManager:
+  """
+  Thread-safe lifecycle manager for the shared, SSRF-hardened `httpx.AsyncClient` pool.
+  """
+
+  def __init__(self) -> None:
+    """Initializes the synchronization lock and null client reference."""
+    self._lock = Lock()
+    self._client: httpx.AsyncClient | None = None
+
+  def get_client(self) -> httpx.AsyncClient:
+    """
+    Returns an active `httpx.AsyncClient`, creating a new instance if uninitialized or closed.
+
+    Returns:
+        httpx.AsyncClient: Pooled async HTTP client configured with `SafeAsyncHTTPTransport`.
+    """
+    with self._lock:
+      if self._client is None or self._client.is_closed:
+        transport = SafeAsyncHTTPTransport(verify=True)
+        self._client = httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=10.0)
+      return self._client
+
+  async def close_client(self) -> None:
+    """
+    Closes and resets the shared `httpx.AsyncClient` connection pool if open.
+    """
+    with self._lock:
+      client = self._client
+      self._client = None
+    if client is not None and not client.is_closed:
+      await client.aclose()
+
+
+http_client_manager = HttpClientManager()
 
 
 def get_shared_http_client() -> httpx.AsyncClient:
@@ -28,21 +64,14 @@ def get_shared_http_client() -> httpx.AsyncClient:
   Returns:
       httpx.AsyncClient: Singleton pooled async HTTP client.
   """
-  global _shared_http_client
-  if _shared_http_client is None or _shared_http_client.is_closed:
-    transport = SafeAsyncHTTPTransport(verify=True)
-    _shared_http_client = httpx.AsyncClient(transport=transport, follow_redirects=True, timeout=10.0)
-  return _shared_http_client
+  return http_client_manager.get_client()
 
 
 async def close_shared_http_client() -> None:
   """
   Closes and resets the shared `httpx.AsyncClient` connection pool if open.
   """
-  global _shared_http_client
-  if _shared_http_client is not None and not _shared_http_client.is_closed:
-    await _shared_http_client.aclose()
-  _shared_http_client = None
+  await http_client_manager.close_client()
 
 
 async def _dispatch_http_request(

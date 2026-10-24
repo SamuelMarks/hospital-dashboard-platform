@@ -67,7 +67,7 @@ describe('errorInterceptor', () => {
 
   it('should handle status 0 network errors and mark backend unreachable', () => {
     httpClient.get('/api/test').subscribe({
-      error: (err) => {
+      error: (err: { status: number }) => {
         expect(err.status).toBe(0);
       },
     });
@@ -86,7 +86,7 @@ describe('errorInterceptor', () => {
 
   it('should handle status 503 service unavailable with troubleshoot action', () => {
     httpClient.get('/api/test').subscribe({
-      error: (err) => {
+      error: (err: { status: number }) => {
         expect(err.status).toBe(503);
       },
     });
@@ -144,7 +144,7 @@ describe('errorInterceptor', () => {
     const errorMsg = 'Internal Database Failure';
 
     httpClient.get('/api/test').subscribe({
-      error: (err) => {
+      error: (err: { status: number }) => {
         expect(err.status).toBe(500);
       },
     });

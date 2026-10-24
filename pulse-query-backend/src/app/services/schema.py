@@ -8,10 +8,37 @@ actual data structure.
 """
 
 import asyncio
-from typing import Any
+from typing import Protocol, TypedDict
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import DuckDBConnectionProtocol, duckdb_manager
+
+
+class ColumnSchemaDict(TypedDict):
+  """Typed dictionary describing a single DuckDB column."""
+
+  name: str
+  type: str
+
+
+class TableSchemaDict(TypedDict):
+  """Typed dictionary describing a DuckDB table and its columns."""
+
+  table_name: str
+  columns: list[ColumnSchemaDict]
+
+
+class DuckDBManagerProtocol(Protocol):
+  """Protocol describing the DuckDB connection manager interface required by `SchemaService`."""
+
+  def get_readonly_connection(self) -> DuckDBConnectionProtocol:
+    """
+    Opens and returns a read-only DuckDB connection.
+
+    Returns:
+        DuckDBConnectionProtocol: Read-only DuckDB connection.
+    """
+    ...
 
 
 class SchemaService:
@@ -21,11 +48,14 @@ class SchemaService:
   and JSON (for UI builders) formats.
   """
 
-  def __init__(self) -> None:
+  def __init__(self, manager: DuckDBManagerProtocol | None = None) -> None:
     """
     Initialize the SchemaService with the global DuckDB manager.
+
+    Args:
+        manager (DuckDBManagerProtocol | None): Optional DuckDB manager override.
     """
-    self.manager: Any = duckdb_manager
+    self.manager: DuckDBManagerProtocol = manager if manager is not None else duckdb_manager
 
   def get_schema_context_result(self, conn: DuckDBConnectionProtocol | None = None) -> AppResult[str]:
     """
@@ -193,7 +223,7 @@ class SchemaService:
     """
     return await asyncio.to_thread(self.get_schema_context_string, conn)
 
-  def get_schema_json(self, conn: DuckDBConnectionProtocol | None = None) -> list[dict[str, Any]]:
+  def get_schema_json(self, conn: DuckDBConnectionProtocol | None = None) -> list[TableSchemaDict]:
     """
     Returns structured JSON representation of the database schema.
     Useful for the Frontend SQL Builder UI to display available columns.
@@ -202,18 +232,18 @@ class SchemaService:
         conn (DuckDBConnectionProtocol | None): Optional pre-opened DuckDB connection.
 
     Returns:
-        list[dict[str, Any]]: List of table objects containing name and columns.
+        list[TableSchemaDict]: List of table objects containing name and columns.
     """
     owns_conn = conn is None
     active_conn: DuckDBConnectionProtocol = conn if conn is not None else self.manager.get_readonly_connection()
     try:
-      tables_list: list[dict[str, Any]] = []
+      tables_list: list[TableSchemaDict] = []
       tables = active_conn.execute("SHOW TABLES").fetchall()
 
       for (table_name,) in tables:
         t_str = str(table_name)
         safe_table = t_str.replace('"', '""')
-        cols_data: list[dict[str, str]] = []
+        cols_data: list[ColumnSchemaDict] = []
         columns = active_conn.execute(f'DESCRIBE "{safe_table}"').fetchall()
 
         for col in columns:
@@ -225,7 +255,7 @@ class SchemaService:
       if owns_conn:
         active_conn.close()
 
-  async def get_schema_json_async(self, conn: DuckDBConnectionProtocol | None = None) -> list[dict[str, Any]]:
+  async def get_schema_json_async(self, conn: DuckDBConnectionProtocol | None = None) -> list[TableSchemaDict]:
     """
     Asynchronously retrieves structured schema metadata in a background worker thread.
 
@@ -233,7 +263,7 @@ class SchemaService:
         conn (DuckDBConnectionProtocol | None): Optional pre-opened DuckDB connection.
 
     Returns:
-        list[dict[str, Any]]: List of table metadata dictionaries.
+        list[TableSchemaDict]: List of table metadata dictionaries.
     """
     return await asyncio.to_thread(self.get_schema_json, conn)
 

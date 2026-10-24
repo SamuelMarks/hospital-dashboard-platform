@@ -42,6 +42,8 @@
                   <mat-chip-option
                     [selected]="selectedCategory() === cat"
                     (click)="toggleCategory(cat)"
+                    (keydown.enter)="toggleCategory(cat)"
+                    (keydown.space)="toggleCategory(cat); $event.preventDefault()"
                     >{{ cat }}</mat-chip-option
                   >
                 }
@@ -151,74 +153,11 @@
       <!-- STEP 3: Preview -->
       <mat-step>
         <ng-template matStepLabel i18n>Preview & Save</ng-template>
-        <div
-          class="step-content pt-4 h-full flex flex-col"
-          style="background-color: var(--sys-background)"
-        >
-          <div class="flex flex-col gap-2 mb-4">
-            <label
-              i18n
-              for="wizard-generated-sql"
-              class="text-sm font-bold"
-              style="color: var(--sys-text-primary)"
-              >Generated Query</label
-            >
-            <div
-              class="editor-wrapper shadow-inner h-48 border rounded overflow-hidden relative"
-              style="border-color: var(--sys-surface-border)"
-            >
-              <div
-                class="highlight-layer absolute inset-0 p-4"
-                [innerHTML]="highlightedSql()"
-              ></div>
-              <textarea
-                id="wizard-generated-sql"
-                class="raw-input absolute inset-0 w-full h-full p-4"
-                readonly
-                [value]="finalSql()"
-                (scroll)="syncScroll($event)"
-                i18n-aria-label
-                aria-label="Generated SQL query preview"
-              ></textarea>
-            </div>
-          </div>
-
-          <div
-            class="results-container relative flex-grow border rounded overflow-hidden"
-            style="
-              min-height: 250px;
-              background-color: var(--sys-surface);
-              border-color: var(--sys-surface-border);
-            "
-          >
-            @if (isRunning()) {
-              <div
-                class="absolute inset-0 z-10 flex items-center justify-center"
-                style="background-color: color-mix(in srgb, var(--sys-surface) 80%, transparent)"
-              >
-                <mat-spinner diameter="32"></mat-spinner>
-              </div>
-            }
-
-            @if (executionResult(); as res) {
-              @if (res.error) {
-                <div
-                  role="alert"
-                  class="p-4 flex items-center justify-center"
-                  style="color: var(--sys-error)"
-                >
-                  <mat-icon aria-hidden="true">error</mat-icon> {{ res.error }}
-                </div>
-              } @else {
-                @defer {
-                  <viz-table [dataSet]="asTableData(res)" class="h-full block w-full"></viz-table>
-                } @loading {
-                  <span i18n>Loading Table...</span>
-                }
-              }
-            }
-          </div>
-        </div>
+        <app-template-wizard-preview-step
+          [finalSql]="finalSql()"
+          [isRunning]="isRunning()"
+          [executionResult]="executionResult()"
+        ></app-template-wizard-preview-step>
       </mat-step>
     </mat-stepper>
   </mat-dialog-content>
@@ -238,7 +177,6 @@
         <button
           i18n
           mat-flat-button
-          color="primary"
           (click)="parseParams(); stepper.next()"
           [disabled]="!selectionValid()"
         >
@@ -249,7 +187,6 @@
         <button
           i18n
           mat-flat-button
-          color="primary"
           (click)="renderPreview(); stepper.next()"
           [disabled]="!paramsValid()"
         >
@@ -257,7 +194,7 @@
         </button>
       }
       @case (2) {
-        <button i18n mat-flat-button color="accent" (click)="saveWidget()" [disabled]="isRunning()">
+        <button i18n mat-flat-button (click)="saveWidget()" [disabled]="isRunning()">
           Add Widget
         </button>
       }

@@ -15,6 +15,24 @@ import {
 import { DashboardStore } from '../../dashboard/dashboard.store';
 
 /**
+ * Subset of `DashboardsService` required by dashboard undo/redo commands.
+ */
+export type DashboardCommandApi = Pick<
+  DashboardsService,
+  | 'reorderWidgetsApiV1DashboardsDashboardIdReorderPost'
+  | 'deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete'
+  | 'updateWidgetApiV1DashboardsWidgetsWidgetIdPut'
+>;
+
+/**
+ * Subset of `DashboardStore` required by dashboard undo/redo commands.
+ */
+export type DashboardCommandStore = Pick<
+  DashboardStore,
+  'widgets' | 'setWidgets' | 'optimisticRemoveWidget' | 'optimisticRestoreWidget' | 'loadDashboard'
+>;
+
+/**
  * Command for reordering widgets in the active dashboard.
  */
 export class ReorderWidgetsCommand implements Command {
@@ -39,8 +57,8 @@ export class ReorderWidgetsCommand implements Command {
     private readonly dashboardId: string,
     private readonly previousWidgets: WidgetResponse[],
     private readonly nextWidgets: WidgetResponse[],
-    private readonly dashboardApi: DashboardsService,
-    private readonly store: DashboardStore,
+    private readonly dashboardApi: DashboardCommandApi,
+    private readonly store: DashboardCommandStore,
     now: Date,
   ) {
     this.id = `reorder-${now.getTime()}`;
@@ -107,8 +125,8 @@ export class DeleteWidgetCommand implements Command {
    */
   constructor(
     private readonly widget: WidgetResponse,
-    private readonly dashboardApi: DashboardsService,
-    private readonly store: DashboardStore,
+    private readonly dashboardApi: DashboardCommandApi,
+    private readonly store: DashboardCommandStore,
     now: Date,
   ) {
     this.id = `delete-widget-${widget.id}-${now.getTime()}`;
@@ -155,8 +173,8 @@ export class AddWidgetCommand implements Command {
    */
   constructor(
     private readonly widget: WidgetResponse,
-    private readonly dashboardApi: DashboardsService,
-    private readonly store: DashboardStore,
+    private readonly dashboardApi: DashboardCommandApi,
+    private readonly store: DashboardCommandStore,
     now: Date,
   ) {
     this.id = `add-widget-${widget.id}-${now.getTime()}`;
@@ -221,8 +239,8 @@ export class UpdateWidgetConfigCommand implements Command {
     private readonly widgetId: string,
     private readonly previous: WidgetConfigSnapshot,
     private readonly next: WidgetConfigSnapshot,
-    private readonly dashboardApi: DashboardsService,
-    private readonly store: DashboardStore,
+    private readonly dashboardApi: DashboardCommandApi,
+    private readonly store: DashboardCommandStore,
     now: Date,
   ) {
     this.id = `update-widget-${widgetId}-${now.getTime()}`;

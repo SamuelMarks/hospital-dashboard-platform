@@ -17,12 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.SystemHealthResponse
-import io.healthplatform.pulsequery.api.models.TroubleshootingStep
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for comprehensive system diagnostics and troubleshooting guides.
@@ -32,20 +29,11 @@ import kotlinx.serialization.encoding.*
  * @param troubleshootingGuides Curated troubleshooting steps.
  */
 @Serializable
-
-data class SystemDiagnosticsResponse (
-
-    /* Current system health summary. */
+data class SystemDiagnosticsResponse(
+    // Current system health summary.
     @SerialName(value = "health") @Required val health: SystemHealthResponse,
-
-    /* Environment variables and runtime parameters. */
-    @SerialName(value = "environment_checks") @Required val environmentChecks: kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>,
-
-    /* Curated troubleshooting steps. */
+    // Environment variables and runtime parameters.
+    @SerialName(value = "environment_checks") @Required val environmentChecks: Map<String, kotlinx.serialization.json.JsonElement>,
+    // Curated troubleshooting steps.
     @SerialName(value = "troubleshooting_guides") val troubleshootingGuides: kotlin.collections.List<TroubleshootingStep>? = null
-
-) {
-
-
-}
-
+)

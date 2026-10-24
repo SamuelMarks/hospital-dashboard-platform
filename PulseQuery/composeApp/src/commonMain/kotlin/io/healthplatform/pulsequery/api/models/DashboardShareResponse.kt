@@ -17,36 +17,24 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * API Response model for an active dashboard share.
  *
- * @param id 
- * @param dashboardId 
- * @param userId 
- * @param userEmail 
- * @param permissionLevel 
+ * @param id
+ * @param dashboardId
+ * @param userId
+ * @param userEmail
+ * @param permissionLevel
  */
 @Serializable
-
-data class DashboardShareResponse (
-
+data class DashboardShareResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "dashboard_id") @Required val dashboardId: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "user_email") @Required val userEmail: kotlin.String,
-
     @SerialName(value = "permission_level") @Required val permissionLevel: kotlin.String
-
-) {
-
-
-}
-
+)

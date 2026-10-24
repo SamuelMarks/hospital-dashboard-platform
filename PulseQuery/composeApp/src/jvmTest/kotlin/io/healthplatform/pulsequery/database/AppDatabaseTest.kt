@@ -68,4 +68,3 @@ class AppDatabaseTest {
         assertTrue(fallbackWidgetCache.getCachedWidgets("d1").isEmpty())
     }
 }
-

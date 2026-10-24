@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.diagnostics import diagnostics_registry
 import app.main as main_module
 
 
@@ -193,3 +194,41 @@ async def test_background_ingest_loop_iteration_and_exception(monkeypatch: pytes
 
   await main_module._background_ingest_loop(interval_minutes=1)
   assert call_count >= 2
+
+
+@pytest.mark.asyncio
+async def test_lifespan_handles_postgres_schema_init_error(monkeypatch: pytest.MonkeyPatch) -> None:
+  """Lifespan should log and record a critical warning when engine.begin() fails on startup."""
+  monkeypatch.setattr(main_module, "check_configuration_hygiene", MagicMock())
+  monkeypatch.setattr(main_module, "validate_postgres_connection", AsyncMock(return_value={"status": "error"}))
+
+  class _FailingBeginCM:
+    """Stub async context manager raising RuntimeError on enter."""
+
+    async def __aenter__(self) -> None:
+      """Raise error on enter."""
+      raise RuntimeError("schema init failed")
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+      """Exit context."""
+      _ = (exc_type, exc, tb)
+      return False
+
+  dummy_engine = MagicMock()
+  dummy_engine.begin.return_value = _FailingBeginCM()
+  dummy_engine.dispose = AsyncMock()
+  monkeypatch.setattr(main_module, "engine", dummy_engine)
+
+  mock_duck_mgr = MagicMock()
+  monkeypatch.setattr(main_module, "duckdb_manager", mock_duck_mgr)
+  monkeypatch.setattr(main_module, "data_ingestion_service", MagicMock())
+  mock_seeder = MagicMock()
+  mock_seeder.seed_defaults = AsyncMock()
+  monkeypatch.setattr(main_module, "TemplateSeeder", mock_seeder)
+  monkeypatch.setattr(main_module, "init_duckdb_on_startup", MagicMock())
+  monkeypatch.setattr("app.main.settings.AUTO_INGEST_INTERVAL_MINUTES", 0)
+
+  async with main_module.lifespan(main_module.app):
+    pass
+
+  assert any(w.code == "POSTGRES_SCHEMA_INIT_FAILED" for w in diagnostics_registry.warnings)

@@ -1,11 +1,19 @@
+/**
+ * @fileoverview Automated WCAG 2.0/2.1 Level A and AA accessibility verification suite
+ * powered by Playwright and `@axe-core/playwright`.
+ */
+
+import { type Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
 
 /**
- * Helper function to run AXE analysis on a page.
- * Checks for WCAG 2.0/2.1 Level A and AA violations.
+ * Runs an AXE accessibility scan against the active Playwright page and asserts zero WCAG AA violations.
+ *
+ * @param page - Playwright page instance under test.
+ * @param contextName - Descriptive label for the view or modal being audited.
  */
-async function checkA11y(page: any, contextName: string) {
+async function checkA11y(page: Page, contextName: string): Promise<void> {
   // Wait for animations/stable state before scanning
   await page.waitForLoadState('domcontentloaded');
 
@@ -14,11 +22,12 @@ async function checkA11y(page: any, contextName: string) {
     .analyze();
 
   if (accessibilityScanResults.violations.length > 0) {
-    console.error(`\n[${contextName}] Accessibility Violations:`);
-    accessibilityScanResults.violations.forEach((violation: any) => {
+    console.error(`
+[${contextName}] Accessibility Violations:`);
+    accessibilityScanResults.violations.forEach((violation) => {
       console.error(`- [${violation.id}] ${violation.help}`);
-      console.error(`  Impact: ${violation.impact}`);
-      console.error(`  Nodes: ${violation.nodes.length}`);
+      console.error(`  Impact: ${String(violation.impact)}`);
+      console.error(`  Nodes: ${String(violation.nodes.length)}`);
     });
   }
 
@@ -29,7 +38,6 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
   // 1. PUBLIC ROUTES
   test('Login Page should be accessible', async ({ page }) => {
     await page.goto('/login');
-    // Wait for animations/loading to settle. Increased timeout for CI stability.
     await expect(page.locator('mat-card-title')).toBeVisible({ timeout: 15000 });
     await checkA11y(page, 'Login Page');
   });
@@ -42,7 +50,6 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
 
   // 2. PROTECTED ROUTES
   test('Protected Views should be accessible', async ({ loggedInPage }) => {
-    // FIX: Increase timeout significantly because AXE analysis is slow and we perform multiple scans + navigations in one test
     test.setTimeout(120000);
 
     // A. Home / Dashboard List (Light & Dark Mode + Onboarding Overlay)
@@ -74,8 +81,8 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
       await checkA11y(loggedInPage, 'Alert Rules Page');
     });
 
-    // C. Benchmarks & MPAX Arena Views
-    await test.step('Benchmarks & MPAX Arena Pages', async () => {
+    // C. Benchmarks, MPAX Arena & Chat Views
+    await test.step('Benchmarks, MPAX Arena & Chat Pages', async () => {
       await loggedInPage.goto('/benchmarks');
       await expect(loggedInPage.locator('app-benchmarks')).toBeVisible({ timeout: 15000 });
       await checkA11y(loggedInPage, 'Benchmarks Page');
@@ -83,12 +90,26 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
       await loggedInPage.goto('/mpax-arena');
       await expect(loggedInPage.locator('app-mpax-arena')).toBeVisible({ timeout: 15000 });
       await checkA11y(loggedInPage, 'MPAX Arena Page');
+
+      await loggedInPage.goto('/chat');
+      await expect(loggedInPage.locator('app-chat-layout')).toBeVisible({ timeout: 15000 });
+      await checkA11y(loggedInPage, 'Chat Page');
     });
 
     // D. Admin & User Management Views
     await test.step('Admin & User Management Pages', async () => {
       await loggedInPage.goto('/admin');
       await checkA11y(loggedInPage, 'Admin Page');
+
+      const diagBtn = loggedInPage.getByRole('button', { name: 'Open Diagnostics' });
+      if (await diagBtn.isVisible()) {
+        await diagBtn.click();
+        await expect(loggedInPage.locator('app-system-diagnostics-dialog')).toBeVisible({
+          timeout: 10000,
+        });
+        await checkA11y(loggedInPage, 'System Diagnostics Dialog');
+        await loggedInPage.keyboard.press('Escape');
+      }
 
       await loggedInPage.goto('/admin/users');
       await checkA11y(loggedInPage, 'User Management Page');
@@ -97,36 +118,23 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
     // E. Simulation Engine
     await test.step('Simulation Page', async () => {
       await loggedInPage.goto('/simulation');
-      // Ensure the interactive element is ready
       await expect(loggedInPage.getByRole('button', { name: 'Run Optimization' })).toBeVisible({
         timeout: 15000,
       });
       await checkA11y(loggedInPage, 'Simulation Page');
     });
 
-    // C. Dashboard Detail View
-    // We create a dashboard dynamically to ensure we have a valid ID to test
-    await test.step('Dashboard Detail View', async () => {
+    // F. Dashboard Detail View & Modals (Share, Theme Picker, Query Cart, Template Wizard)
+    await test.step('Dashboard Detail View & Dialogs', async () => {
       await loggedInPage.goto('/');
 
-      // Verify Home is ready before clicking (prevents hydration race condition)
       await expect(loggedInPage.locator('app-home')).toBeVisible();
-
-      // NEW FIX: Wait for the main loading spinner to disappear.
-      // Scoped to 'app-home' to resolve ambiguity with 'AskData' global spinner.
       await expect(loggedInPage.locator('app-home').getByTestId('loading-state')).not.toBeVisible();
 
-      // FIX: Ensure the button is actually visible and interactive before clicking
       const createBtn = loggedInPage.getByTestId('btn-create');
       await expect(createBtn).toBeVisible({ timeout: 15000 });
-
-      // Removed force: true to ensure standard event dispatch.
-      // This ensures the element is not only visible but also hydrated and ready to receive events.
       await createBtn.click();
 
-      // FIX: Explicitly wait for the Dialog to appear before filling
-      // This ensures the input locator is attached and robustly actionable.
-      // Increased timeout to 20s to account for animation sluggishness on CI.
       await expect(loggedInPage.getByRole('heading', { name: 'Create New Dashboard' })).toBeVisible(
         { timeout: 20000 },
       );
@@ -137,19 +145,46 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
       await inputName.pressSequentially(`A11y Test ${Date.now()}`, { delay: 10 });
       await loggedInPage.getByTestId('btn-submit').click();
 
-      // Wait for navigation
       await expect(loggedInPage).toHaveURL(/\/dashboard\//, { timeout: 15000 });
-      // Wait for layout to settle (Toolbar, Grid, or Empty State)
       await expect(loggedInPage.locator('app-toolbar')).toBeVisible({ timeout: 15000 });
+      await checkA11y(loggedInPage, 'Dashboard Detail View');
+
+      // Share Dashboard Dialog
+      const shareBtn = loggedInPage.getByTestId('btn-share-dashboard');
+      if (await shareBtn.isVisible()) {
+        await shareBtn.click();
+        await expect(loggedInPage.locator('app-share-dashboard-dialog')).toBeVisible({
+          timeout: 10000,
+        });
+        await checkA11y(loggedInPage, 'Share Dashboard Dialog');
+        await loggedInPage.keyboard.press('Escape');
+      }
+
+      // Theme Color Picker Dialog
+      const themeMenuBtn = loggedInPage.getByTestId('btn-theme-menu');
+      if (await themeMenuBtn.isVisible()) {
+        await themeMenuBtn.click();
+        const openThemeDialogBtn = loggedInPage.getByTestId('btn-open-theme-dialog');
+        if (await openThemeDialogBtn.isVisible()) {
+          await openThemeDialogBtn.click();
+          await expect(loggedInPage.locator('app-theme-color-picker-dialog')).toBeVisible({
+            timeout: 10000,
+          });
+          await checkA11y(loggedInPage, 'Theme Color Picker Dialog');
+          await loggedInPage.keyboard.press('Escape');
+        }
+      }
     });
 
-    // D. Editor View
+    // G. Editor View (Query Cart, Widget Builder, Template Marketplace)
     await test.step('Editor View', async () => {
-      // 1. Turn on Edit Mode
+      // 1. Turn on Edit Mode (reveals QueryCartComponent & WidgetGalleryComponent)
       await loggedInPage.getByTestId('toggle-edit-mode').click();
+      await checkA11y(loggedInPage, 'Dashboard Edit Mode & Query Cart');
 
       // 2. Click "Add Widget"
       await loggedInPage.getByTestId('btn-add-widget').click();
+      await checkA11y(loggedInPage, 'Widget Builder Template Marketplace');
 
       // 3. Switch to "Custom Query" Tab
       await loggedInPage.getByText('Custom Query').click();

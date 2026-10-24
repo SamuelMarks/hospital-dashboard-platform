@@ -45,7 +45,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
   readonly escape = output<void>();
 
   /** Previous active element. */
-  private previousActiveElement: HTMLElement | null = null;
+  previousActiveElement: HTMLElement | null = null;
 
   /**
    * Lifecycle hook: Initialize focus trap.
@@ -122,7 +122,7 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
    *
    * @returns Array of focusable HTML elements.
    */
-  private getFocusableElements(): HTMLElement[] {
+  getFocusableElements(): HTMLElement[] {
     const selector = [
       'a[href]',
       'button:not([disabled])',

@@ -3,16 +3,12 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
 import { VizMetricComponent } from './viz-metric.component';
 import { By } from '@angular/platform-browser';
 
 describe('VizMetricComponent', () => {
   let component: VizMetricComponent;
   let fixture: ComponentFixture<VizMetricComponent>;
-  let dataSig: WritableSignal<unknown>;
-  let configSig: WritableSignal<Record<string, unknown> | null>;
-  let titleOverrideSig: WritableSignal<string>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -21,17 +17,9 @@ describe('VizMetricComponent', () => {
 
     fixture = TestBed.createComponent(VizMetricComponent);
     component = fixture.componentInstance;
-    dataSig = signal<unknown>(null);
-    configSig = signal<Record<string, unknown> | null>(null);
-    titleOverrideSig = signal<string>('');
-    const priv = component as unknown as {
-      data: WritableSignal<unknown>;
-      config: WritableSignal<Record<string, unknown> | null>;
-      titleOverride: WritableSignal<string>;
-    };
-    priv.data = dataSig;
-    priv.config = configSig;
-    priv.titleOverride = titleOverrideSig;
+    fixture.componentRef.setInput('data', null);
+    fixture.componentRef.setInput('config', null);
+    fixture.componentRef.setInput('titleOverride', '');
     fixture.detectChanges();
   });
 
@@ -40,35 +28,37 @@ describe('VizMetricComponent', () => {
   });
 
   it('should display primitive values correctly', () => {
-    dataSig.set(42);
+    fixture.componentRef.setInput('data', 42);
     fixture.detectChanges();
-    const valueEl = fixture.debugElement.query(By.css('.metric-value'));
-    expect(valueEl.nativeElement.textContent.trim()).toBe('42');
+    const valueEl = fixture.debugElement.query(By.css('.metric-value'))
+      .nativeElement as HTMLElement;
+    expect(valueEl.textContent?.trim()).toBe('42');
   });
 
   it('should fallback to dash', () => {
-    dataSig.set(null);
+    fixture.componentRef.setInput('data', null);
     fixture.detectChanges();
-    let valueEl = fixture.debugElement.query(By.css('.metric-value'));
-    expect(valueEl.nativeElement.textContent.trim()).toBe('-');
+    let valueEl = fixture.debugElement.query(By.css('.metric-value')).nativeElement as HTMLElement;
+    expect(valueEl.textContent?.trim()).toBe('-');
 
-    dataSig.set(undefined);
+    fixture.componentRef.setInput('data', undefined);
     fixture.detectChanges();
-    valueEl = fixture.debugElement.query(By.css('.metric-value'));
-    expect(valueEl.nativeElement.textContent.trim()).toBe('-');
+    valueEl = fixture.debugElement.query(By.css('.metric-value')).nativeElement as HTMLElement;
+    expect(valueEl.textContent?.trim()).toBe('-');
   });
 
   it('should extract value from object structure', () => {
-    dataSig.set({ value: 99, label: 'Test' });
+    fixture.componentRef.setInput('data', { value: 99, label: 'Test' });
     fixture.detectChanges();
 
-    const valueEl = fixture.debugElement.query(By.css('.metric-value'));
-    expect(valueEl.nativeElement.textContent.trim()).toBe('99');
+    const valueEl = fixture.debugElement.query(By.css('.metric-value'))
+      .nativeElement as HTMLElement;
+    expect(valueEl.textContent?.trim()).toBe('99');
   });
 
   it('should apply warning class when value exceeds warning threshold', () => {
-    dataSig.set(85);
-    configSig.set({ thresholds: { warning: 80, critical: 90 } });
+    fixture.componentRef.setInput('data', 85);
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
     fixture.detectChanges();
 
     const valueEl = fixture.debugElement.query(By.css('.metric-value'));
@@ -77,8 +67,8 @@ describe('VizMetricComponent', () => {
   });
 
   it('should apply critical class when value exceeds critical threshold', () => {
-    dataSig.set(95);
-    configSig.set({ thresholds: { warning: 80, critical: 90 } });
+    fixture.componentRef.setInput('data', 95);
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
     fixture.detectChanges();
 
     const valueEl = fixture.debugElement.query(By.css('.metric-value'));
@@ -87,25 +77,25 @@ describe('VizMetricComponent', () => {
 
   it('should render Sparkline if trend_data is provided', () => {
     const dataWithTrend = { value: 100, trend_data: [10, 20, 15, 30] };
-    dataSig.set(dataWithTrend);
+    fixture.componentRef.setInput('data', dataWithTrend);
     fixture.detectChanges();
 
     const svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
     expect(svg).toBeTruthy();
 
     const paths = svg.queryAll(By.css('path'));
-    expect(paths.length).toBe(2); // Stroke and Fill paths
-    expect(paths[0].classes['spark-pos']).toBe(true);
+    expect(paths.length).toBe(2);
+    expect(paths[0]?.classes['spark-pos']).toBe(true);
   });
 
   it('should NOT render Sparkline if trend_data is missing, not array, or too short', () => {
-    dataSig.set({ value: 100, trend_data: [10] }); // Only 1 point
+    fixture.componentRef.setInput('data', { value: 100, trend_data: [10] });
     fixture.detectChanges();
 
     let svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
     expect(svg).toBeFalsy();
 
-    dataSig.set({ value: 100, trend_data: 'invalid' }); // Not array
+    fixture.componentRef.setInput('data', { value: 100, trend_data: 'invalid' });
     fixture.detectChanges();
 
     svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
@@ -114,165 +104,167 @@ describe('VizMetricComponent', () => {
   });
 
   it('should derive label from columns or override', () => {
-    dataSig.set({ columns: ['Value'], data: [{ Value: 10 }] });
+    fixture.componentRef.setInput('data', { columns: ['Value'], data: [{ Value: 10 }] });
     fixture.detectChanges();
     expect(component.displayLabel()).toBe('Value');
 
-    titleOverrideSig.set('Custom Title');
+    fixture.componentRef.setInput('titleOverride', 'Custom Title');
     fixture.detectChanges();
     expect(component.displayLabel()).toBe('Custom Title');
   });
 
   it('should parse trend and compute negative direction', () => {
-    dataSig.set({ value: 100, trend: -5, trend_data: [10, 5] });
+    fixture.componentRef.setInput('data', { value: 100, trend: -5, trend_data: [10, 5] });
     fixture.detectChanges();
     expect(component.parsedTrend()).toBe(-5);
     expect(component.isTrendUp()).toBe(false);
     expect(component.sparklineFill()).toBeTruthy();
 
-    dataSig.set({ value: 100, trend: 5, trend_data: [10, 20] });
+    fixture.componentRef.setInput('data', { value: 100, trend: 5, trend_data: [10, 20] });
     fixture.detectChanges();
     expect(component.parsedTrend()).toBe(5);
     expect(component.isTrendUp()).toBe(true);
   });
 
   it('should return empty alert class when no thresholds or empty config', () => {
-    dataSig.set(5);
-    configSig.set(null);
+    fixture.componentRef.setInput('data', 5);
+    fixture.componentRef.setInput('config', null);
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');
 
-    configSig.set({});
+    fixture.componentRef.setInput('config', {});
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');
   });
 
   it('should extract value from dataset and object', () => {
-    dataSig.set({ columns: ['Value'], data: [{ Value: 12 }] });
+    fixture.componentRef.setInput('data', { columns: ['Value'], data: [{ Value: 12 }] });
     fixture.detectChanges();
     expect(component.displayValue()).toBe(12);
 
-    dataSig.set({ a: 7, b: 'x' });
+    fixture.componentRef.setInput('data', { a: 7, b: 'x' });
     fixture.detectChanges();
     expect(component.displayValue()).toBe(7);
   });
 
   it('should fallback when dataset row has no keys or empty array', () => {
-    dataSig.set({ columns: [], data: [{}] });
+    fixture.componentRef.setInput('data', { columns: [], data: [{}] });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
 
-    dataSig.set({ data: [{}] });
+    fixture.componentRef.setInput('data', { data: [{}] });
     fixture.detectChanges();
     expect(component.displayLabel()).toBe('');
 
-    dataSig.set({ data: [] });
+    fixture.componentRef.setInput('data', { data: [] });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
   });
 
   it('should derive label from data label property', () => {
-    dataSig.set({ value: 1, label: 'Label' });
+    fixture.componentRef.setInput('data', { value: 1, label: 'Label' });
     fixture.detectChanges();
     expect(component.displayLabel()).toBe('Label');
   });
 
   it('should return null trend when missing', () => {
-    dataSig.set({ value: 1 });
+    fixture.componentRef.setInput('data', { value: 1 });
     fixture.detectChanges();
     expect(component.parsedTrend()).toBeNull();
   });
 
   it('should treat short trend series as upward and no fill', () => {
-    dataSig.set({ value: 1, trend_data: [5] });
+    fixture.componentRef.setInput('data', { value: 1, trend_data: [5] });
     fixture.detectChanges();
     expect(component.isTrendUp()).toBe(true);
     expect(component.sparklineFill()).toBeNull();
   });
 
   it('should fallback to dash when no numeric value found or input is array', () => {
-    dataSig.set({ a: 'x' });
+    fixture.componentRef.setInput('data', { a: 'x' });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
 
-    dataSig.set([1, 2, 3]);
+    fixture.componentRef.setInput('data', [1, 2, 3]);
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
   });
 
   it('should return empty alert class when below thresholds', () => {
-    dataSig.set(10);
-    configSig.set({ thresholds: { warning: 50, critical: 100 } });
+    fixture.componentRef.setInput('data', 10);
+    fixture.componentRef.setInput('config', { thresholds: { warning: 50, critical: 100 } });
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');
   });
 
   it('should display non-number non-object values as strings', () => {
-    dataSig.set('hello world');
+    fixture.componentRef.setInput('data', 'hello world');
     fixture.detectChanges();
-    const valueEl = fixture.debugElement.query(By.css('.metric-value'));
-    expect(valueEl.nativeElement.textContent.trim()).toBe('hello world');
+    const valueEl = fixture.debugElement.query(By.css('.metric-value'))
+      .nativeElement as HTMLElement;
+    expect(valueEl.textContent?.trim()).toBe('hello world');
   });
 
   it('should handle sparkline when min and max are equal', () => {
-    dataSig.set({ value: 100, trend_data: [5, 5] });
+    fixture.componentRef.setInput('data', { value: 100, trend_data: [5, 5] });
     fixture.detectChanges();
     const svg = fixture.debugElement.query(By.css('svg.sparkline-container'));
     expect(svg).toBeTruthy();
   });
+
   it('should return empty string if value is not number', () => {
-    dataSig.set('hello');
-    configSig.set({ thresholds: { warning: 50, critical: 100 } });
+    fixture.componentRef.setInput('data', 'hello');
+    fixture.componentRef.setInput('config', { thresholds: { warning: 50, critical: 100 } });
     fixture.detectChanges();
     expect(component.alertClass()).toBe('');
   });
 
   it('should apply warning class when critical is undefined but warning is met', () => {
-    dataSig.set(60);
-    configSig.set({ thresholds: { warning: 50 } });
+    fixture.componentRef.setInput('data', 60);
+    fixture.componentRef.setInput('config', { thresholds: { warning: 50 } });
     fixture.detectChanges();
     expect(component.alertClass()).toBe('val-warn');
   });
 
   it('should apply critical class when warning is undefined but critical is met', () => {
-    dataSig.set(110);
-    configSig.set({ thresholds: { critical: 100 } });
+    fixture.componentRef.setInput('data', 110);
+    fixture.componentRef.setInput('config', { thresholds: { critical: 100 } });
     fixture.detectChanges();
     expect(component.alertClass()).toBe('val-critical');
   });
 
   it('should cover empty array and missing columns branches', () => {
-    dataSig.set([]);
+    fixture.componentRef.setInput('data', []);
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
 
-    dataSig.set({ data: [{ val: 10 }], columns: [] });
+    fixture.componentRef.setInput('data', { data: [{ val: 10 }], columns: [] });
     fixture.detectChanges();
     expect(component.displayLabel()).toBe('');
 
-    dataSig.set({ value: 20 });
+    fixture.componentRef.setInput('data', { value: 20 });
     fixture.detectChanges();
     expect(component.parsedTrend()).toBeNull();
 
-    dataSig.set({ non_num: 'str', num: 42, label: null, trend: null });
+    fixture.componentRef.setInput('data', { non_num: 'str', num: 42, label: null, trend: null });
     fixture.detectChanges();
     expect(component.displayValue()).toBe(42);
     expect(component.displayLabel()).toBe('');
     expect(component.parsedTrend()).toBeNull();
 
-    dataSig.set({ only_str: 'abc' });
+    fixture.componentRef.setInput('data', { only_str: 'abc' });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
 
-    dataSig.set({ value: null });
+    fixture.componentRef.setInput('data', { value: null });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
 
-    dataSig.set({ data: [] });
+    fixture.componentRef.setInput('data', { data: [] });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
 
-    dataSig.set({ data: [{}] });
+    fixture.componentRef.setInput('data', { data: [{}] });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
   });

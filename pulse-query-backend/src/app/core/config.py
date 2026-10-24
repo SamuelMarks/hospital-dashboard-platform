@@ -18,7 +18,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # .parents[2] = src
 # .parents[3] = backend  <-- The distinct root where .env lives
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = BACKEND_ROOT.parent
+REPO_ENV_PATH = REPO_ROOT / ".env"
+REPO_ENV_SECRETS_PATH = REPO_ROOT / ".env.secrets"
 ENV_PATH = BACKEND_ROOT / ".env"
+ENV_SECRETS_PATH = BACKEND_ROOT / ".env.secrets"
 
 
 class SwarmConfigDict(TypedDict):
@@ -306,7 +310,16 @@ class Settings(BaseSettings):
 
     return swarm
 
-  model_config = SettingsConfigDict(env_file=str(ENV_PATH), case_sensitive=True, extra="ignore")
+  model_config = SettingsConfigDict(
+    env_file=(
+      str(REPO_ENV_PATH),
+      str(REPO_ENV_SECRETS_PATH),
+      str(ENV_PATH),
+      str(ENV_SECRETS_PATH),
+    ),
+    case_sensitive=True,
+    extra="ignore",
+  )
 
 
 settings = Settings()

@@ -17,11 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ScenarioConstraint
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload to trigger a simulation run.
@@ -32,23 +30,13 @@ import kotlinx.serialization.encoding.*
  * @param affinityOverrides Optional overrides for clinical affinity scores.
  */
 @Serializable
-
-data class ScenarioRunRequest (
-
-    /* SQL Query. Supports 2 cols (Service, Count) or 3 cols (Service, CurrentUnit, Count). */
+data class ScenarioRunRequest(
+    // SQL Query. Supports 2 cols (Service, Count) or 3 cols (Service, CurrentUnit, Count).
     @SerialName(value = "demand_source_sql") @Required val demandSourceSql: kotlin.String,
-
-    /* Map of Unit Name to available bed capacity. */
+    // Map of Unit Name to available bed capacity.
     @SerialName(value = "capacity_parameters") @Required val capacityParameters: kotlin.collections.Map<kotlin.String, kotlin.Double>,
-
-    /* List of hard constraints to apply. */
+    // List of hard constraints to apply.
     @SerialName(value = "constraints") val constraints: kotlin.collections.List<ScenarioConstraint>? = null,
-
-    /* Optional overrides for clinical affinity scores. */
-    @SerialName(value = "affinity_overrides") val affinityOverrides: kotlin.collections.Map<kotlin.String, kotlin.collections.Map<kotlin.String, kotlin.Double>>? = null
-
-) {
-
-
-}
-
+    // Optional overrides for clinical affinity scores.
+    @SerialName(value = "affinity_overrides") val affinityOverrides: Map<String, Map<String, Double>>? = null
+)

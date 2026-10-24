@@ -3,53 +3,59 @@
     <h2 i18n>Admin Configuration</h2>
 
     <form [formRoot]="adminForm" (submit)="saveSettings()">
-      <div class="section">
+      <mat-card class="section">
         <h3 i18n>API Keys</h3>
         <div class="key-item">
-          <label i18n for="openai-key">OpenAI API Key</label>
-          <input
-            id="openai-key"
-            type="password"
-            [formField]="adminForm.openai"
-            placeholder="sk-..."
-            i18n-placeholder
-            autocomplete="off"
-          />
+          <mat-form-field appearance="outline" class="full-width-field" subscriptSizing="dynamic">
+            <mat-label i18n>OpenAI API Key</mat-label>
+            <input
+              matInput
+              id="openai-key"
+              type="password"
+              [formField]="adminForm.openai"
+              placeholder="sk-..."
+              i18n-placeholder
+              autocomplete="off"
+            />
+          </mat-form-field>
         </div>
         <div class="key-item">
-          <label i18n for="anthropic-key">Anthropic API Key</label>
-          <input
-            id="anthropic-key"
-            type="password"
-            [formField]="adminForm.anthropic"
-            placeholder="sk-..."
-            i18n-placeholder
-            autocomplete="off"
-          />
+          <mat-form-field appearance="outline" class="full-width-field" subscriptSizing="dynamic">
+            <mat-label i18n>Anthropic API Key</mat-label>
+            <input
+              matInput
+              id="anthropic-key"
+              type="password"
+              [formField]="adminForm.anthropic"
+              placeholder="sk-..."
+              i18n-placeholder
+              autocomplete="off"
+            />
+          </mat-form-field>
         </div>
-      </div>
+      </mat-card>
 
-      <div class="section">
+      <mat-card class="section">
         <h3 i18n id="visible-models-title">Visible Models</h3>
         <p i18n id="visible-models-desc">
           Select which models are shown to users in the Ad-hoc query interface.
         </p>
-        <fieldset aria-labelledby="visible-models-title" aria-describedby="visible-models-desc">
-          <legend i18n class="sr-only">Available Models</legend>
-          <div>
-            @for (modelVal of adminForm.models; track $index) {
-              <div class="model-item">
-                <label [for]="'model-' + $index">
-                  <input [id]="'model-' + $index" type="checkbox" [formField]="modelVal" />
-                  {{ availableModels()[$index]?.name }} ({{ availableModels()[$index]?.id }})
-                </label>
-              </div>
-            }
-          </div>
-        </fieldset>
-      </div>
+        <div
+          role="group"
+          aria-labelledby="visible-models-title"
+          aria-describedby="visible-models-desc"
+        >
+          @for (modelVal of adminForm.models; track $index) {
+            <div class="model-item">
+              <mat-checkbox [id]="'model-' + $index" [formField]="modelVal">
+                {{ availableModels()[$index]?.name }} ({{ availableModels()[$index]?.id }})
+              </mat-checkbox>
+            </div>
+          }
+        </div>
+      </mat-card>
 
-      <div class="section">
+      <mat-card class="section">
         <h3 i18n>Database &amp; Analytics Diagnostics</h3>
         <p i18n>Live operational status of PostgreSQL, DuckDB, and ingested hospital datasets.</p>
         <div class="diag-summary">
@@ -57,13 +63,17 @@
           <div class="diag-item" i18n><strong>DuckDB OLAP:</strong> {{ duckStatus() }}</div>
           <div class="diag-item" i18n><strong>Hospital Data:</strong> {{ dataStatusText() }}</div>
         </div>
-        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap">
-          <button i18n type="button" (click)="openDiagnostics()">Open Diagnostics</button>
-          <button i18n type="button" (click)="reingestData()">Re-ingest CSVs</button>
+        <div class="diag-actions">
+          <button i18n mat-stroked-button type="button" (click)="openDiagnostics()">
+            Open Diagnostics
+          </button>
+          <button i18n mat-stroked-button type="button" (click)="reingestData()">
+            Re-ingest CSVs
+          </button>
         </div>
-      </div>
+      </mat-card>
 
-      <button i18n type="submit" [disabled]="adminForm().invalid() || isSaving()">
+      <button i18n mat-flat-button type="submit" [disabled]="adminForm().invalid() || isSaving()">
         Save Configuration
       </button>
 

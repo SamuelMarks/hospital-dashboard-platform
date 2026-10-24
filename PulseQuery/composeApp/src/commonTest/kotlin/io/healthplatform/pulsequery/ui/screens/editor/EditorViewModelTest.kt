@@ -12,7 +12,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -109,7 +108,11 @@ class EditorViewModelTest {
         // Non-blank query succeeds using default AppContainer.aiApi
         vmDefault.updateSqlQuery("SELECT count(*) AS cnt FROM admissions;")
         vmDefault.executeSql()
-        kotlinx.coroutines.delay(50)
+        kotlinx.coroutines.withTimeout(5000) {
+            while (vmDefault.state.value.result == null) {
+                kotlinx.coroutines.delay(10)
+            }
+        }
         assertEquals(1, callCount)
         assertNotNull(vmDefault.state.value.result)
         assertEquals(listOf("cnt"), vmDefault.state.value.result?.columns)
@@ -120,7 +123,11 @@ class EditorViewModelTest {
         val explicitApi = AiApi(baseUrl = "http://localhost", httpClient = client)
         val vmExplicit = EditorViewModel(scope = this, aiApi = explicitApi)
         vmExplicit.executeSql()
-        kotlinx.coroutines.delay(50)
+        kotlinx.coroutines.withTimeout(5000) {
+            while (vmExplicit.state.value.result == null) {
+                kotlinx.coroutines.delay(10)
+            }
+        }
         assertEquals(2, callCount)
         assertNotNull(vmExplicit.state.value.result)
     }
@@ -145,5 +152,86 @@ class EditorViewModelTest {
         vm2.executeSql()
         kotlinx.coroutines.delay(50)
         assertEquals("Execution failed: Unknown error", vm2.state.value.errorMessage)
+    }
+
+    @Test
+    fun testLoadAvailableDashboardsAndSaveQuery() = kotlinx.coroutines.runBlocking {
+        val engine = MockEngine { request ->
+            val path = request.url.encodedPath
+            when {
+                path.endsWith("/dashboards") -> respond(
+                    content = """[{"id":"d1","name":"ICU Dashboard","owner_id":"u1","widgets":[]}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                path.contains("/widgets") -> respond(
+                    content = """{"id":"w1","dashboard_id":"d1","title":"Saved Widget","type":"SQL","visualization":"table","config":{"query":"SELECT 1"}}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                path.contains("/templates") -> respond(
+                    content = """{"id":"t1","title":"Saved Template","sql_template":"SELECT 1","category":"Clinical"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                else -> respond("", HttpStatusCode.NotFound)
+            }
+        }
+        val client = createClient(engine)
+        AppContainer.setHttpClientForTest(client)
+
+        // Default APIs via AppContainer
+        val vmDefault = EditorViewModel(scope = this)
+        val dashRes = vmDefault.loadAvailableDashboards()
+        assertTrue(dashRes.isSuccess)
+        assertEquals(1, dashRes.getOrThrow().size)
+
+        val saveWidgetRes = vmDefault.saveQuery(
+            destination = SaveQueryDestination.DASHBOARD_WIDGET,
+            title = "Saved Widget",
+            sql = "SELECT 1",
+            dashboardId = "d1"
+        )
+        assertTrue(saveWidgetRes.isSuccess)
+        assertEquals("Widget successfully added to dashboard", saveWidgetRes.getOrThrow())
+
+        val saveTemplateRes = vmDefault.saveQuery(
+            destination = SaveQueryDestination.TEMPLATE,
+            title = "Saved Template",
+            sql = "SELECT 1",
+            dashboardId = null,
+            category = "   ",
+            description = "Desc"
+        )
+        assertTrue(saveTemplateRes.isSuccess)
+        assertEquals("Template successfully registered in library", saveTemplateRes.getOrThrow())
+
+        // Fallback to TEMPLATE when destination is DASHBOARD_WIDGET but dashboardId is null, with explicit APIs
+        val explicitDashApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(baseUrl = "http://localhost", httpClient = client)
+        val explicitTmplApi = io.healthplatform.pulsequery.api.apis.TemplatesApi(baseUrl = "http://localhost", httpClient = client)
+        val vmExplicit = EditorViewModel(
+            scope = this,
+            dashboardsApi = explicitDashApi,
+            templatesApi = explicitTmplApi
+        )
+        assertTrue(vmExplicit.loadAvailableDashboards().isSuccess)
+        val saveExplicitWidget = vmExplicit.saveQuery(
+            destination = SaveQueryDestination.DASHBOARD_WIDGET,
+            title = "Explicit Widget",
+            sql = "SELECT 1",
+            dashboardId = "d1",
+            visualization = "bar_chart"
+        )
+        assertTrue(saveExplicitWidget.isSuccess)
+
+        val saveFallbackTemplate = vmExplicit.saveQuery(
+            destination = SaveQueryDestination.DASHBOARD_WIDGET,
+            title = "Fallback Template",
+            sql = "SELECT 1",
+            dashboardId = null,
+            category = "ICU",
+            description = "Desc"
+        )
+        assertTrue(saveFallbackTemplate.isSuccess)
     }
 }

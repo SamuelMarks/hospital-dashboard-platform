@@ -2,7 +2,7 @@
  * @fileoverview Modal dialog component for editing an existing dashboard widget's
  * data source configuration and visualization column mappings.
  */
-import { Component, computed, Signal, inject, signal } from '@angular/core';
+import { Component, computed, Signal, inject, linkedSignal } from '@angular/core';
 
 // Material Imports
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -81,7 +81,7 @@ export interface WidgetEditorData {
   templateUrl: './widget-editor.dialog.html',
 })
 export class WidgetEditorDialog {
-  /** Data. */
+  /** Injected dialog data containing the target dashboard ID and widget entity. */
   readonly data = inject<WidgetEditorData>(MAT_DIALOG_DATA);
   /** Reference to the active Material dialog instance hosting this editor. */
   private readonly dialogRef = inject(MatDialogRef<WidgetEditorDialog>);
@@ -91,21 +91,19 @@ export class WidgetEditorDialog {
   /** Access existing data to populate column dropdowns. */
   private readonly store = inject(DashboardStore);
 
-  // --- Local State for Settings Form ---
-  /** X Key. */
-  readonly xKey = signal<string | null>(null);
-  /** Y Key. */
-  readonly yKey = signal<string | null>(null);
+  /** Selected horizontal axis or category column key synchronized from widget configuration. */
+  readonly xKey = linkedSignal<string | null>(() => {
+    const raw: unknown = this.data.widget.config?.['xKey'];
+    return typeof raw === 'string' && raw.length > 0 ? raw : null;
+  });
 
-  /** Initializes axis mapping signals (`xKey`, `yKey`) from the existing widget configuration. */
-  constructor() {
-    // Initialize form from existing config
-    const conf = this.widget.config || {};
-    this.xKey.set(conf['xKey'] || null);
-    this.yKey.set(conf['yKey'] || null);
-  }
+  /** Selected vertical axis or metric value column key synchronized from widget configuration. */
+  readonly yKey = linkedSignal<string | null>(() => {
+    const raw: unknown = this.data.widget.config?.['yKey'];
+    return typeof raw === 'string' && raw.length > 0 ? raw : null;
+  });
 
-  /** Widget. */
+  /** Target widget entity currently being edited in the dialog. */
   get widget(): WidgetResponse {
     return this.data.widget;
   }

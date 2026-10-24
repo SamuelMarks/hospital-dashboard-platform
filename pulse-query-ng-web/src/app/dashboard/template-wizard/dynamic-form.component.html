@@ -1,28 +1,29 @@
-<form [formGroup]="form" class="dynamic-form-grid">
+<div class="dynamic-form-grid" role="group" i18n-aria-label aria-label="Template Parameters">
   @for (key of fieldKeys(); track key) {
     @if (getProperty(key); as prop) {
       <!-- Case 1: Boolean (Checkbox) -->
       @if (prop.type === 'boolean') {
         <div class="checkbox-row">
-          <mat-checkbox [formControlName]="key" color="primary">
+          <mat-checkbox [checked]="!!getValue(key)" (change)="setFieldValue(key, $event.checked)">
             {{ prop.title || formatLabel(key) }}
           </mat-checkbox>
           @if (prop.description) {
-            <mat-icon
-              class="help-icon"
+            <button
+              mat-icon-button
+              type="button"
+              class="help-icon-btn"
               [matTooltip]="prop.description"
-              fontIcon="help_outline"
-              tabindex="0"
-              i18n-aria-label
-              aria-label="Help info"
-            ></mat-icon>
+              [attr.aria-label]="getHelpAriaLabel(key)"
+            >
+              <mat-icon aria-hidden="true">help_outline</mat-icon>
+            </button>
           }
         </div>
       } @else if (prop.enum) {
         <!-- Case 2: Enumeration (Select Dropdown) -->
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
-          <mat-select [formControlName]="key">
+          <mat-select [value]="getValue(key)" (selectionChange)="setFieldValue(key, $event.value)">
             @for (opt of prop.enum; track opt) {
               <mat-option [value]="opt">{{ opt }}</mat-option>
             }
@@ -38,7 +39,12 @@
         <!-- Case 3: Date Picker -->
         <mat-form-field appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ prop.title || formatLabel(key) }}</mat-label>
-          <input matInput [matDatepicker]="picker" [formControlName]="key" />
+          <input
+            matInput
+            [matDatepicker]="picker"
+            [value]="getValue(key)"
+            (dateChange)="onDateChange(key, $event)"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
           <mat-datepicker #picker></mat-datepicker>
           @if (prop.description) {
@@ -55,9 +61,10 @@
           <input
             matInput
             [type]="prop.type === 'number' || prop.type === 'integer' ? 'number' : 'text'"
-            [formControlName]="key"
-            [min]="prop.minimum"
-            [max]="prop.maximum"
+            [value]="getValue(key)"
+            (input)="onTextOrNumberInput(key, $event)"
+            [min]="prop.minimum ?? null"
+            [max]="prop.maximum ?? null"
           />
           @if (prop.description) {
             <mat-hint>{{ prop.description }}</mat-hint>
@@ -79,4 +86,4 @@
   @if (fieldKeys().length === 0) {
     <div i18n class="empty-state">No parameters required for this template.</div>
   }
-</form>
+</div>

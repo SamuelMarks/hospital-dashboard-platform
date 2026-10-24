@@ -8,14 +8,7 @@ import { ErrorBoundaryDirective, ErrorBoundaryContext } from './error-boundary.d
 import { ErrorHandler } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 import { By } from '@angular/platform-browser';
-
-interface ErrorBoundaryPrivate {
-  vcr: ViewContainerRef;
-  sub: { unsubscribe: ReturnType<typeof vi.fn> };
-  ngOnInit: () => void;
-  ngOnDestroy: () => void;
-  renderFallback: (err: unknown) => void;
-}
+import { vi } from 'vitest';
 
 /**
  * Host component to test structural directive usage.
@@ -40,12 +33,18 @@ interface ErrorBoundaryPrivate {
   `,
 })
 class TestHostComponent {
+  /** Whether the child view should throw during rendering. */
   shouldCrash = false;
-  throwError() {
+
+  /**
+   * Throws a synthetic crash error during template evaluation.
+   */
+  throwError(): never {
     throw new Error('Crash!');
   }
 }
 
+/** Host component with an undefined fallback template reference. */
 @Component({
   imports: [ErrorBoundaryDirective],
   template: `
@@ -55,6 +54,7 @@ class TestHostComponent {
   `,
 })
 class MissingTemplateHostComponent {
+  /** Undefined fallback template reference. */
   missingTemplate?: TemplateRef<ErrorBoundaryContext>;
 }
 
@@ -80,57 +80,52 @@ describe('ErrorBoundaryDirective', () => {
   it('should render main content when no error occurs', () => {
     const el = fixture.debugElement.query(By.css('#content'));
     expect(el).toBeTruthy();
-    expect(el.nativeElement.textContent).toContain('Safe Content');
+    expect((el.nativeElement as HTMLElement).textContent).toContain('Safe Content');
     expect(fixture.debugElement.query(By.css('#fallback'))).toBeFalsy();
   });
 
   it('should switch to fallback template on error (simulated via method call)', () => {
-    // 1. Get directive instance
     const debugNode = fixture.debugElement
-      .queryAllNodes((node) => true)
+      .queryAllNodes(() => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective);
 
     expect(directive).toBeTruthy();
 
-    // 2. Trigger fallback manually (simulating catch)
     directive?.renderFallback('Manual Crash');
     fixture.detectChanges();
 
-    // 3. Verify Fallback UI
     const fallback = fixture.debugElement.query(By.css('#fallback'));
     expect(fallback).toBeTruthy();
-    expect(fallback.nativeElement.textContent).toContain('Manual Crash');
+    expect((fallback.nativeElement as HTMLElement).textContent).toContain('Manual Crash');
     expect(fixture.debugElement.query(By.css('#content'))).toBeFalsy();
   });
 
   it('should call global handler clearError() when retry is clicked', () => {
     const debugNode = fixture.debugElement
-      .queryAllNodes((node) => true)
+      .queryAllNodes(() => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
     const directive = debugNode?.injector.get(ErrorBoundaryDirective);
 
-    // Enter Error State
     directive?.renderFallback('Crash');
     fixture.detectChanges();
 
-    // Click Retry
     const btn = fixture.debugElement.query(By.css('#retry-btn'));
     btn.triggerEventHandler('click', null);
     fixture.detectChanges();
 
     expect(handlerMock.clearError).toHaveBeenCalled();
-    // Should attempt to re-render content
     expect(fixture.debugElement.query(By.css('#content'))).toBeTruthy();
   });
 
   it('should render fallback when content creation throws', () => {
     const debugNode = fixture.debugElement
-      .queryAllNodes((_node) => true)
+      .queryAllNodes(() => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
-    const directive = debugNode?.injector.get(
-      ErrorBoundaryDirective,
-    ) as unknown as ErrorBoundaryPrivate;
+    const directive = debugNode?.injector.get(ErrorBoundaryDirective);
+    if (!directive) {
+      throw new Error('ErrorBoundaryDirective not found');
+    }
 
     const originalCreate = directive.vcr.createEmbeddedView.bind(directive.vcr);
     vi.spyOn(directive.vcr, 'createEmbeddedView')
@@ -152,11 +147,12 @@ describe('ErrorBoundaryDirective', () => {
     noTemplateFixture.detectChanges();
 
     const debugNode = noTemplateFixture.debugElement
-      .queryAllNodes((_node) => true)
+      .queryAllNodes(() => true)
       .find((n) => n.injector.get(ErrorBoundaryDirective, null) !== null);
-    const directive = debugNode?.injector.get(
-      ErrorBoundaryDirective,
-    ) as unknown as ErrorBoundaryPrivate;
+    const directive = debugNode?.injector.get(ErrorBoundaryDirective);
+    if (!directive) {
+      throw new Error('ErrorBoundaryDirective not found');
+    }
 
     const createSpy = vi.spyOn(directive.vcr, 'createEmbeddedView');
     createSpy.mockClear();

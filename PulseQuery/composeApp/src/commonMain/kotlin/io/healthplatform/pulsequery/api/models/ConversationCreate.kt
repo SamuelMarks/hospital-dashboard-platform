@@ -17,30 +17,19 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for starting a new conversation. If 'message' is provided, the conversation is initialized with it.
  *
- * @param title 
- * @param message 
- * @param targetModels 
+ * @param title
+ * @param message
+ * @param targetModels
  */
 @Serializable
-
-data class ConversationCreate (
-
+data class ConversationCreate(
     @SerialName(value = "title") val title: kotlin.String? = null,
-
     @SerialName(value = "message") val message: kotlin.String? = null,
-
     @SerialName(value = "target_models") val targetModels: kotlin.collections.List<kotlin.String>? = null
-
-) {
-
-
-}
-
+)

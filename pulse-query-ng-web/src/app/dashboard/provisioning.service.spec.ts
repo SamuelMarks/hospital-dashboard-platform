@@ -101,7 +101,7 @@ describe('ProvisioningService', () => {
       'd1',
       expect.objectContaining({
         visualization: 'table',
-        config: expect.objectContaining({ x: 0, y: 0, query: 'SELECT 1' }),
+        config: expect.objectContaining({ x: 0, y: 0, query: 'SELECT 1' }) as unknown,
       }),
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w2');

@@ -17,33 +17,22 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * OAuth2 access and refresh token response payload.
  *
- * @param accessToken 
- * @param tokenType 
- * @param refreshToken 
- * @param expiresIn 
+ * @param accessToken
+ * @param tokenType
+ * @param refreshToken
+ * @param expiresIn
  */
 @Serializable
-
-data class Token (
-
+data class Token(
     @SerialName(value = "access_token") @Required val accessToken: kotlin.String,
-
     @SerialName(value = "token_type") val tokenType: kotlin.String? = "bearer",
-
     @SerialName(value = "refresh_token") val refreshToken: kotlin.String? = null,
-
     @SerialName(value = "expires_in") val expiresIn: kotlin.Int? = 3600
-
-) {
-
-
-}
-
+)

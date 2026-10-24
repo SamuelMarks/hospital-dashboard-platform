@@ -1,13 +1,7 @@
 <!-- Toolbar -->
 <div class="header-bar">
   <h3 i18n class="header-title">HTTP Configuration</h3>
-  <button
-    i18n
-    mat-flat-button
-    color="primary"
-    (click)="saveAndTest()"
-    [disabled]="form().invalid() || isRunning()"
-  >
+  <button i18n mat-flat-button (click)="saveAndTest()" [disabled]="form().invalid() || isRunning()">
     @if (isRunning()) {
       <mat-spinner diameter="18" class="mr-2"></mat-spinner>
     }
@@ -45,7 +39,7 @@
       </div>
 
       <div class="mb-4">
-        <mat-slide-toggle i18n [formField]="form.forward_auth" color="primary">
+        <mat-slide-toggle i18n [formField]="form.forward_auth">
           Forward Authentication Token
         </mat-slide-toggle>
         <p i18n class="text-xs mt-1 ml-10" style="color: var(--sys-text-secondary)">
@@ -85,7 +79,6 @@
                 </mat-form-field>
                 <button
                   mat-icon-button
-                  color="warn"
                   (click)="removeItem('params', $index)"
                   i18n-aria-label
                   aria-label="Remove Parameter"
@@ -95,7 +88,7 @@
               </div>
             }
           </div>
-          <button i18n mat-button color="primary" (click)="addItem('params')">
+          <button i18n mat-button (click)="addItem('params')">
             <mat-icon aria-hidden="true">add</mat-icon> Add Parameter
           </button>
         </mat-expansion-panel>
@@ -131,7 +124,6 @@
                 </mat-form-field>
                 <button
                   mat-icon-button
-                  color="warn"
                   (click)="removeItem('headers', $index)"
                   i18n-aria-label
                   aria-label="Remove Header"
@@ -141,7 +133,7 @@
               </div>
             }
           </div>
-          <button i18n mat-button color="primary" (click)="addItem('headers')">
+          <button i18n mat-button (click)="addItem('headers')">
             <mat-icon aria-hidden="true">add</mat-icon> Add Header
           </button>
         </mat-expansion-panel>

@@ -12,31 +12,48 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ExperimentResponse
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.ModelInfo
 import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
 import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
 import io.healthplatform.pulsequery.api.models.SQLGenerationRequest
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/ai` ad-hoc SQL preview execution and multi-LLM arena comparison endpoints.
+ */
 open class AiApi : ApiClient {
 
+    /**
+     * Constructs a [AiApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -44,21 +61,29 @@ open class AiApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [AiApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Execute Sql Preview
      * Executes SQL (read-only) and returns a small preview result. Intended for Arena candidate comparison in the UI.
-     * @param sqLExecutionRequest 
+     * @param sqLExecutionRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return SQLExecutionResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun executeSqlPreviewApiV1AiExecutePost(sqLExecutionRequest: SQLExecutionRequest, token: kotlin.String? = null): HttpResponse<SQLExecutionResponse> {
-
+    open suspend fun executeSqlPreviewApiV1AiExecutePost(
+        sqLExecutionRequest: SQLExecutionRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<SQLExecutionResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = sqLExecutionRequest
@@ -67,7 +92,7 @@ open class AiApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/ai/execute",
             query = localVariableQuery,
@@ -82,18 +107,18 @@ open class AiApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Generate Sql Comparison
      * Generates SQL usage the Multi-LLM Arena.  This endpoint: 1. Broadcasts the prompt to all configured LLMs. 2. Persists the results as an Experiment. 3. Returns a list of candidates so the frontend can display a comparison view.  Args:     request (SQLGenerationRequest): The prompt payload.     current_user (User): Authenticated user.     db (AsyncSession): Database session for logging.  Returns:     ExperimentResponse: Object containing experiment ID and list of candidate SQLs.
-     * @param sqLGenerationRequest 
+     * @param sqLGenerationRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ExperimentResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun generateSqlComparisonApiV1AiGeneratePost(sqLGenerationRequest: SQLGenerationRequest, token: kotlin.String? = null): HttpResponse<ExperimentResponse> {
-
+    open suspend fun generateSqlComparisonApiV1AiGeneratePost(
+        sqLGenerationRequest: SQLGenerationRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<ExperimentResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = sqLGenerationRequest
@@ -102,7 +127,7 @@ open class AiApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/ai/generate",
             query = localVariableQuery,
@@ -117,8 +142,6 @@ open class AiApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * List Available Models
      * Returns the list of currently configured LLMs available for the Arena.
@@ -127,11 +150,13 @@ open class AiApi : ApiClient {
      * @return kotlin.collections.List<ModelInfo>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listAvailableModelsApiV1AiModelsGet(showAll: kotlin.Boolean? = false, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<ModelInfo>> {
-
+    open suspend fun listAvailableModelsApiV1AiModelsGet(
+        showAll: kotlin.Boolean? = false,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<ModelInfo>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -139,7 +164,7 @@ open class AiApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/ai/models",
             query = localVariableQuery,
@@ -159,9 +184,11 @@ open class AiApi : ApiClient {
         companion object : KSerializer<ListAvailableModelsApiV1AiModelsGetResponse> {
             private val serializer: KSerializer<List<ModelInfo>> = serializer<List<ModelInfo>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListAvailableModelsApiV1AiModelsGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListAvailableModelsApiV1AiModelsGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListAvailableModelsApiV1AiModelsGetResponse(serializer.deserialize(decoder))
         }
     }
-
 }

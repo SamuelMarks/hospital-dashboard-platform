@@ -6,7 +6,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SimulationComponent } from './simulation.component';
 import { SimulationStore, UnitCapacity } from './simulation.store';
 import { signal, NO_ERRORS_SCHEMA, Component, input, WritableSignal } from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { By } from '@angular/platform-browser';
 import { vi, describe, beforeEach, it, expect, type Mock } from 'vitest';
 import {
@@ -14,16 +13,19 @@ import {
   TableDataSet,
 } from '../shared/visualizations/viz-table/viz-table.component';
 import { readTemplate } from '../../test-utils/component-resources';
+import { createMockInputEvent } from '../../test-utils/mock-factories';
 import { ActivatedRoute, Params } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
-import { ReactiveFormsModule } from '@angular/forms';
 
+/** Mock table visualization component for unit testing `SimulationComponent`. */
 @Component({
   selector: 'viz-table',
   template: '',
 })
 class MockVizTableComponent {
+  /** Dataset input binding. */
   readonly dataSet = input<unknown>();
+  /** Config input binding. */
   readonly config = input<unknown>();
 }
 
@@ -75,9 +77,8 @@ describe('SimulationComponent', () => {
         templateUrl: undefined,
       },
     });
-
     await TestBed.configureTestingModule({
-      imports: [SimulationComponent, NoopAnimationsModule, ReactiveFormsModule],
+      imports: [SimulationComponent],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         {
@@ -94,7 +95,7 @@ describe('SimulationComponent', () => {
 
   it('should create and extract input event values', () => {
     expect(component).toBeTruthy();
-    const fakeEvent = { target: { value: 'ICU_West' } } as unknown as Event;
+    const fakeEvent = createMockInputEvent('ICU_West');
     expect(component.getEventValue(fakeEvent)).toBe('ICU_West');
   });
 
@@ -145,6 +146,6 @@ describe('SimulationComponent', () => {
     fixture.detectChanges();
     const err = fixture.debugElement.query(By.css('.error-box'));
     expect(err).toBeTruthy();
-    expect(err.nativeElement.textContent).toContain('Failed validation');
+    expect((err.nativeElement as HTMLElement).textContent).toContain('Failed validation');
   });
 });

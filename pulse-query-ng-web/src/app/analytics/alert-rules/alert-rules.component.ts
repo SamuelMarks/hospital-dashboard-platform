@@ -241,7 +241,7 @@ export class AlertRulesComponent implements OnInit {
         unit_category: formValues.unit_category,
         threshold_percentage: Number(formValues.threshold_percentage),
         severity: formValues.severity,
-        is_active: formValues.is_active ?? true,
+        is_active: formValues.is_active,
       };
 
       this.alertRulesService
@@ -261,7 +261,7 @@ export class AlertRulesComponent implements OnInit {
         unit_category: formValues.unit_category,
         threshold_percentage: Number(formValues.threshold_percentage),
         severity: formValues.severity,
-        is_active: formValues.is_active ?? true,
+        is_active: formValues.is_active,
       };
 
       this.alertRulesService.createAlertRuleApiV1AnalyticsAlertRulesPost(createPayload).subscribe({

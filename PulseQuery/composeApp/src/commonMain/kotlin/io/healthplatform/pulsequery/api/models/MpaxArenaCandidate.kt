@@ -17,43 +17,28 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Individual LLM candidate result in an MPAX Arena experiment.
  *
- * @param id 
- * @param modelName 
- * @param content 
- * @param isSelected 
- * @param mpaxResult 
- * @param mpaxScore 
- * @param sqlSnippet 
+ * @param id
+ * @param modelName
+ * @param content
+ * @param isSelected
+ * @param mpaxResult
+ * @param mpaxScore
+ * @param sqlSnippet
  */
 @Serializable
-
-data class MpaxArenaCandidate (
-
+data class MpaxArenaCandidate(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "model_name") @Required val modelName: kotlin.String,
-
     @SerialName(value = "content") @Required val content: kotlin.String,
-
     @SerialName(value = "is_selected") val isSelected: kotlin.Boolean? = false,
-
     @SerialName(value = "mpax_result") val mpaxResult: kotlinx.serialization.json.JsonElement? = null,
-
     @SerialName(value = "mpax_score") val mpaxScore: kotlin.Int? = null,
-
     @SerialName(value = "sql_snippet") val sqlSnippet: kotlin.String? = null
-
-) {
-
-
-}
-
+)

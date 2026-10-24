@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload requesting rotation of an active refresh token.
  *
- * @param refreshToken 
+ * @param refreshToken
  */
 @Serializable
-
-data class RefreshTokenRequest (
-
+data class RefreshTokenRequest(
     @SerialName(value = "refresh_token") @Required val refreshToken: kotlin.String
-
-) {
-
-
-}
-
+)

@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for template seeder pack health.
@@ -30,20 +29,11 @@ import kotlinx.serialization.encoding.*
  * @param missingFile True if initial_templates.json was missing.
  */
 @Serializable
-
-data class TemplateHealthSchema (
-
-    /* Number of widget templates seeded into database. */
+data class TemplateHealthSchema(
+    // Number of widget templates seeded into database.
     @SerialName(value = "templates_loaded") @Required val templatesLoaded: kotlin.Int,
-
-    /* True if one or more templates are available. */
+    // True if one or more templates are available.
     @SerialName(value = "has_templates") @Required val hasTemplates: kotlin.Boolean,
-
-    /* True if initial_templates.json was missing. */
+    // True if initial_templates.json was missing.
     @SerialName(value = "missing_file") @Required val missingFile: kotlin.Boolean
-
-) {
-
-
-}
-
+)

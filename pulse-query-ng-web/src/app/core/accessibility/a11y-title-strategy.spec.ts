@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for A11yTitleStrategy.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { A11yTitleStrategy } from './a11y-title-strategy';
 import { Title } from '@angular/platform-browser';

@@ -216,7 +216,8 @@ fun EditorScreen(
                 coroutineScope.launch {
                     snackbarHostState.showSnackbar(msg)
                 }
-            }
+            },
+            viewModel = vm
         )
     }
 }

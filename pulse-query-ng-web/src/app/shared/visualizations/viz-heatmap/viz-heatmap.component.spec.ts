@@ -4,24 +4,14 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
 import { VizHeatmapComponent } from './viz-heatmap.component';
-import { TableDataSet } from '../viz-table/viz-table.component';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 
-/**
- * Test suite for the Heatmap Visualization.
- */
 describe('VizHeatmapComponent', () => {
   let component: VizHeatmapComponent;
   let fixture: ComponentFixture<VizHeatmapComponent>;
-  let dataSetSig: WritableSignal<TableDataSet>;
 
-  /**
-   * Setup global browser mocks for Material components.
-   */
   beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -38,31 +28,21 @@ describe('VizHeatmapComponent', () => {
     });
   });
 
-  /**
-   * Configure the testing module.
-   */
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VizHeatmapComponent, NoopAnimationsModule],
+      imports: [VizHeatmapComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VizHeatmapComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal<TableDataSet>({ columns: [], data: [] });
-    (component as unknown as { dataSet: WritableSignal<TableDataSet> }).dataSet = dataSetSig;
+    fixture.componentRef.setInput('dataSet', { columns: [], data: [] });
     fixture.detectChanges();
   });
 
-  /**
-   * Test instantiation.
-   */
   it('should create', () => {
     expect(component).toBeTruthy();
   });
 
-  /**
-   * Test grid structure rendering.
-   */
   it('should render grid based on data', () => {
     const data = {
       columns: ['svc', 'hr', 'val'],
@@ -73,24 +53,20 @@ describe('VizHeatmapComponent', () => {
         { svc: 'B', hr: 2, val: 15 },
       ],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
-    // Grid Container Check
     const container = fixture.debugElement.query(By.css('.heatmap-container'));
     expect(container).toBeTruthy();
     expect(container.attributes['role']).toBe('grid');
 
     const cells = fixture.debugElement.queryAll(By.css('.cell'));
     expect(cells.length).toBe(4);
-
-    // Check Tooltips exist
-    // Note: Tooltip text is in aria-label for accessibility
-    expect(cells[0].attributes['aria-label']).toContain('10');
+    expect(cells[0]?.attributes['aria-label']).toContain('10');
   });
 
   it('should render empty state when no data', () => {
-    dataSetSig.set({ columns: [], data: [] });
+    fixture.componentRef.setInput('dataSet', { columns: [], data: [] });
     fixture.detectChanges();
     const empty = fixture.debugElement.query(By.css('.flex.items-center'));
     expect(empty).toBeTruthy();
@@ -104,13 +80,15 @@ describe('VizHeatmapComponent', () => {
         { svc: 'A', hr: 2, val: 0 },
       ],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const m = component.matrix();
     expect(m?.min).toBe(-5);
     expect(m?.max).toBe(0);
-    expect(component.getCellTooltip(m!, '1', 'A')).toContain('-5');
+    if (m) {
+      expect(component.getCellTooltip(m, '1', 'A')).toContain('-5');
+    }
   });
 
   it('should use fallback range (color-mix) when all values equal', () => {
@@ -118,13 +96,14 @@ describe('VizHeatmapComponent', () => {
       columns: ['svc', 'hr', 'val'],
       data: [{ svc: 'A', hr: 1, val: 0 }],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const m = component.matrix();
-    const color = component.getCellColor(m!, '1', 'A');
-    // Expect modern color-mix syntax instead of legacy rgba
-    expect(color).toContain('color-mix(in srgb');
-    expect(color).toContain('var(--sys-error)');
+    if (m) {
+      const color = component.getCellColor(m, '1', 'A');
+      expect(color).toContain('color-mix(in srgb');
+      expect(color).toContain('var(--sys-error)');
+    }
   });
 });

@@ -20,32 +20,202 @@ from app.services.template_seeder import TemplateSeeder
 client = TestClient(main_module.app)
 
 
-def test_get_system_health_endpoint() -> None:
-  """GET /api/v1/system/health should return system status summary."""
+def test_get_system_health_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+  """GET /api/v1/system/health should return 200 OK when Postgres, DuckDB datasets, and templates are populated."""
+  monkeypatch.setattr(
+    "app.services.system_service.validate_postgres_connection",
+    AsyncMock(return_value={"status": "connected", "latency_ms": 1.0, "details": "ok", "error": None}),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.duckdb_manager.validate_duckdb_storage",
+    MagicMock(
+      return_value={
+        "status": "ready",
+        "path": ":memory:",
+        "tables": {"hospital_data": 700, "synthetic_hospital_data_transfers": 41692},
+        "total_tables": 2,
+        "error": None,
+      }
+    ),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.system_diagnostics_service._query_template_count",
+    AsyncMock(return_value=29),
+  )
+
   response = client.get("/api/v1/system/health")
   assert response.status_code == 200
   data = response.json()
-  assert "overall_status" in data
+  assert data["status"] == "healthy"
+  assert data["overall_status"] == "healthy"
+  assert data["datasets"]["status"] == "ready"
+  assert data["datasets"]["table_count"] == 2
+  assert data["datasets"]["row_counts"]["hospital_data"] == 700
+  assert data["datasets"]["row_counts"]["Synthetic_hospital_data_transfers"] == 41692
+  assert data["templates"]["status"] == "ready"
+  assert data["templates"]["template_count"] == 29
   assert "postgres" in data
   assert "duckdb" in data
   assert "data" in data
-  assert "templates" in data
   assert "llm" in data
   assert "warnings" in data
 
 
 def test_get_system_health_strict_mode_when_critical(monkeypatch: pytest.MonkeyPatch) -> None:
-  """GET /api/v1/system/health?strict=true should return 503 when overall_status is critical."""
+  """GET /api/v1/system/health?strict=true should return 503 with full SystemHealthResponse when critical."""
   monkeypatch.setattr(
-    "app.api.routers.system.validate_postgres_connection",
-    AsyncMock(return_value={"status": "error"}),
+    "app.services.system_service.validate_postgres_connection",
+    AsyncMock(return_value={"status": "error", "latency_ms": None, "details": None, "error": "down"}),
   )
   diagnostics_registry.postgres_status["status"] = "error"
 
   response = client.get("/api/v1/system/health?strict=true")
   assert response.status_code == 503
   data = response.json()
-  assert data["detail"]["overall_status"] == "critical"
+  assert data["status"] == "critical"
+  assert data["overall_status"] == "critical"
+  assert data["templates"]["status"] == "critical"
+
+
+def test_get_system_health_returns_503_when_datasets_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+  """GET /api/v1/system/health should return 503 when DuckDB has 0 tables or missing clinical tables."""
+  monkeypatch.setattr(
+    "app.services.system_service.validate_postgres_connection",
+    AsyncMock(return_value={"status": "connected", "latency_ms": 1.0, "details": "ok", "error": None}),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.duckdb_manager.validate_duckdb_storage",
+    MagicMock(
+      return_value={
+        "status": "ready",
+        "path": ":memory:",
+        "tables": {},
+        "total_tables": 0,
+        "error": None,
+      }
+    ),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.system_diagnostics_service._query_template_count",
+    AsyncMock(return_value=15),
+  )
+
+  response = client.get("/api/v1/system/health")
+  assert response.status_code == 503
+  data = response.json()
+  assert data["status"] == "unhealthy"
+  assert data["overall_status"] == "unhealthy"
+  assert data["datasets"]["status"] == "empty"
+  assert data["datasets"]["table_count"] == 0
+  assert data["templates"]["status"] == "ready"
+
+  # Also verify strict=false returns 503 with 'degraded' status
+  response_non_strict = client.get("/api/v1/system/health?strict=false")
+  assert response_non_strict.status_code == 503
+  assert response_non_strict.json()["status"] == "degraded"
+
+
+def test_get_system_health_returns_503_when_templates_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+  """GET /api/v1/system/health should return 503 when PostgreSQL has 0 templates."""
+  monkeypatch.setattr(
+    "app.services.system_service.validate_postgres_connection",
+    AsyncMock(return_value={"status": "connected", "latency_ms": 1.0, "details": "ok", "error": None}),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.duckdb_manager.validate_duckdb_storage",
+    MagicMock(
+      return_value={
+        "status": "ready",
+        "path": ":memory:",
+        "tables": {"hospital_data": 500, "Synthetic_hospital_data_transfers": 300},
+        "total_tables": 2,
+        "error": None,
+      }
+    ),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.system_diagnostics_service._query_template_count",
+    AsyncMock(return_value=0),
+  )
+
+  response = client.get("/api/v1/system/health")
+  assert response.status_code == 503
+  data = response.json()
+  assert data["status"] == "unhealthy"
+  assert data["overall_status"] == "unhealthy"
+  assert data["datasets"]["status"] == "ready"
+  assert data["datasets"]["row_counts"]["synthetic_hospital_data_transfers"] == 300
+  assert data["templates"]["status"] == "empty"
+  assert data["templates"]["template_count"] == 0
+
+
+def test_get_system_health_returns_503_when_duckdb_error(monkeypatch: pytest.MonkeyPatch) -> None:
+  """GET /api/v1/system/health should return 503 critical when DuckDB storage validation fails."""
+  monkeypatch.setattr(
+    "app.services.system_service.validate_postgres_connection",
+    AsyncMock(return_value={"status": "connected", "latency_ms": 1.0, "details": "ok", "error": None}),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.duckdb_manager.validate_duckdb_storage",
+    MagicMock(
+      return_value={
+        "status": "error",
+        "path": ":memory:",
+        "tables": {},
+        "total_tables": 0,
+        "error": "locked",
+      }
+    ),
+  )
+  monkeypatch.setattr(
+    "app.services.system_service.system_diagnostics_service._query_template_count",
+    AsyncMock(return_value=12),
+  )
+
+  response = client.get("/api/v1/system/health")
+  assert response.status_code == 503
+  data = response.json()
+  assert data["status"] == "critical"
+  assert data["datasets"]["status"] == "critical"
+
+
+@pytest.mark.asyncio
+async def test_query_template_count_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+  """_query_template_count should support explicit db session, AsyncSessionLocal, and registry fallback."""
+  from app.services.system_service import system_diagnostics_service
+
+  mock_db = AsyncMock()
+  mock_res = MagicMock()
+  mock_res.scalar_one_or_none.return_value = 18
+  mock_db.execute.return_value = mock_res
+
+  count_with_db = await system_diagnostics_service._query_template_count(db=mock_db)
+  assert count_with_db == 18
+
+  class _MockSessionCM:
+    """Stub async context manager returning `mock_db`."""
+
+    async def __aenter__(self) -> AsyncMock:
+      """Enter context."""
+      return mock_db
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+      """Exit context."""
+      _ = (exc_type, exc, tb)
+      return False
+
+  monkeypatch.setattr("app.services.system_service.AsyncSessionLocal", lambda: _MockSessionCM())
+  count_via_session_local = await system_diagnostics_service._query_template_count(db=None)
+  assert count_via_session_local == 18
+
+  def _failing_session_local() -> None:
+    """Raises RuntimeError to test fallback."""
+    raise RuntimeError("no db")
+
+  monkeypatch.setattr("app.services.system_service.AsyncSessionLocal", _failing_session_local)
+  diagnostics_registry.template_status["templates_loaded"] = 11
+  count_fallback = await system_diagnostics_service._query_template_count(db=None)
+  assert count_fallback == 11
 
 
 def test_get_system_diagnostics_endpoint_unauthorized() -> None:

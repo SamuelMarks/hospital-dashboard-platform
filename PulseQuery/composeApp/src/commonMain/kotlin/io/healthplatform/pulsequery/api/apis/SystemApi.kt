@@ -12,29 +12,40 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ReingestResponse
 import io.healthplatform.pulsequery.api.models.SystemDiagnosticsResponse
 import io.healthplatform.pulsequery.api.models.SystemHealthResponse
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
 
+/**
+ * REST client for `/api/v1/system` health readiness, diagnostics, and CSV re-ingestion endpoints.
+ */
 open class SystemApi : ApiClient {
 
+    /**
+     * Constructs a [SystemApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -42,10 +53,16 @@ open class SystemApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [SystemApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Detailed system diagnostics and troubleshooting guides
@@ -55,17 +72,16 @@ open class SystemApi : ApiClient {
      */
     @Suppress("UNCHECKED_CAST")
     open suspend fun getSystemDiagnosticsApiV1SystemDiagnosticsGet(token: kotlin.String? = null): HttpResponse<SystemDiagnosticsResponse> {
-
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/system/diagnostics",
             query = localVariableQuery,
@@ -80,7 +96,6 @@ open class SystemApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Check aggregate system health and database readiness
      * Queries live health states for PostgreSQL, DuckDB, data ingestion, and LLM configuration.  Args:     strict (bool): Whether to return HTTP 503 on critical errors.  Returns:     dict[str, Any]: Consolidated system health dictionary.  Raises:     HTTPException: If strict is True and overall_status is critical.
@@ -89,17 +104,16 @@ open class SystemApi : ApiClient {
      */
     @Suppress("UNCHECKED_CAST")
     open suspend fun getSystemHealthApiV1SystemHealthGet(strict: kotlin.Boolean? = false): HttpResponse<SystemHealthResponse> {
-
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         strict?.apply { localVariableQuery["strict"] = listOf("$strict") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/system/health",
             query = localVariableQuery,
@@ -114,7 +128,6 @@ open class SystemApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Trigger manual CSV re-ingestion into DuckDB
      * Forces reload of all CSV datasets from the data folder into DuckDB tables. Requires administrative privileges.  Args:     current_user (User): The authenticated administrative user.  Returns:     dict[str, Any]: ReingestResponse with updated table row counts.
@@ -123,11 +136,13 @@ open class SystemApi : ApiClient {
      * @return ReingestResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun triggerReingestApiV1SystemReingestPost(token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<ReingestResponse> {
-
+    open suspend fun triggerReingestApiV1SystemReingestPost(
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<ReingestResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -135,7 +150,7 @@ open class SystemApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/system/reingest",
             query = localVariableQuery,
@@ -149,6 +164,4 @@ open class SystemApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
 }

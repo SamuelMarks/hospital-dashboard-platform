@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for dataset re-ingestion operation result.
@@ -30,20 +29,11 @@ import kotlinx.serialization.encoding.*
  * @param tables Updated table row counts.
  */
 @Serializable
-
-data class ReingestResponse (
-
-    /* True if re-ingestion completed without fatal errors. */
+data class ReingestResponse(
+    // True if re-ingestion completed without fatal errors.
     @SerialName(value = "success") @Required val success: kotlin.Boolean,
-
-    /* Status message describing the result. */
+    // Status message describing the result.
     @SerialName(value = "message") @Required val message: kotlin.String,
-
-    /* Updated table row counts. */
+    // Updated table row counts.
     @SerialName(value = "tables") val tables: kotlin.collections.Map<kotlin.String, kotlin.Int>? = null
-
-) {
-
-
-}
-
+)

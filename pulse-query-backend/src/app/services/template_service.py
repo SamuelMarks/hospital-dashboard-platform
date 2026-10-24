@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -116,7 +115,7 @@ class TemplateService:
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
           message="Template not found",
-          status_code=status.HTTP_404_NOT_FOUND,
+          status_code=404,
         )
       )
     return Ok(template)

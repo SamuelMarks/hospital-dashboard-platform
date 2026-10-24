@@ -17,39 +17,26 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * API Response model for a persisted Widget.
  *
- * @param title 
- * @param type 
- * @param visualization 
- * @param config 
- * @param id 
- * @param dashboardId 
+ * @param title
+ * @param type
+ * @param visualization
+ * @param config
+ * @param id
+ * @param dashboardId
  */
 @Serializable
-
-data class WidgetResponse (
-
+data class WidgetResponse(
     @SerialName(value = "title") @Required val title: kotlin.String,
-
     @SerialName(value = "type") @Required val type: kotlin.String,
-
     @SerialName(value = "visualization") @Required val visualization: kotlin.String,
-
     @SerialName(value = "config") @Required val config: kotlinx.serialization.json.JsonObject,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "dashboard_id") @Required val dashboardId: kotlin.String
-
-) {
-
-
-}
-
+)

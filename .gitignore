@@ -3,12 +3,16 @@
 venv
 coverage.json
 *.duckdb
-.env
+.env.libscript
+.env.secrets
+*.resolved.json
 .venv*
 .idea
 .vscode
 tmp
 *.log
+logs/
+.deploy_state
 __pycache__/
 *.py[cod]
 *$py.class

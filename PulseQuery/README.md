@@ -16,6 +16,18 @@ This application maintains parity with the core capabilities defined in the broa
 
 This project requires **Java 17+** (JDK 21 recommended) and a connected device, emulator, or running backend server.
 
+### Automated Toolchain & Web Staging via LibScript
+
+You can install the required JDK, Gradle, Kotlin, and Android SDK toolchains and build/stage the KMP Web (`wasmJs` / `js`) or Desktop distributions declaratively via `libscript`:
+
+```bash
+# Install Android SDK, JDK, and Gradle via LibScript
+~/repos/libscript/libscript.sh install android-sdk latest
+
+# Build and stage KMP Web (wasmJsBrowserDistribution) alongside Angular via provision_frontend
+~/repos/libscript/_lib/app-servers/provision_frontend.sh --app-dir .. --manifest ../libscript.json --packaging ../libscript.json
+```
+
 ### Android
 
 ```bash

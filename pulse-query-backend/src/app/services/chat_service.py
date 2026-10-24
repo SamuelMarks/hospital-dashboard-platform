@@ -9,8 +9,9 @@ candidate voting, and multi-LLM Arena candidate generation for conversational an
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from datetime import UTC, datetime
+import json
 import logging
 import re
 from uuid import UUID
@@ -560,6 +561,114 @@ class ChatService:
     final_stmt = select(Message).where(Message.id == message_id).options(selectinload(Message.candidates))
     final_msg = (await db.execute(final_stmt)).scalars().first()
     return Ok(final_msg if final_msg is not None else msg_obj)
+
+  async def prepare_stream_context_result(
+    self,
+    conversation_id: UUID,
+    current_user: User,
+    db: AsyncSession,
+    history_limit: int = 10,
+    schema_svc: SchemaService = schema_service,
+    admin_settings_fn: AdminSettingsFn = get_admin_settings,
+  ) -> AppResult[tuple[list[dict[str, str]], AdminSettingsResponse]]:
+    """
+    Validates conversation ownership and builds the LLM message payload and admin settings for SSE streaming.
+
+    Args:
+        conversation_id (UUID): Target conversation UUID.
+        current_user (User): Authenticated user owning the conversation.
+        db (AsyncSession): Active database session.
+        history_limit (int): Maximum number of historical turns to include.
+        schema_svc (SchemaService): Schema service instance.
+        admin_settings_fn (AdminSettingsFn): Async callable returning admin settings.
+
+    Returns:
+        AppResult[tuple[list[dict[str, str]], AdminSettingsResponse]]: `Ok((messages_payload, admin_settings))` or `Err`.
+    """
+    conv_res = await self.get_owned_conversation_result(conversation_id, current_user, db)
+    if isinstance(conv_res, Err):
+      return conv_res
+
+    hist_stmt = (
+      select(Message)
+      .where(Message.conversation_id == conversation_id)
+      .order_by(desc(Message.created_at))
+      .limit(history_limit)
+    )
+    hist_res = await db.execute(hist_stmt)
+    history = hist_res.scalars().all()[::-1]
+
+    schema_context = await asyncio.to_thread(schema_svc.get_schema_context_string)
+    system_prompt = build_chat_system_prompt(schema_context)
+    messages_payload: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    for msg in history:
+      if msg.role in ["user", "assistant"]:
+        messages_payload.append({"role": msg.role, "content": msg.content})
+
+    admin_settings = await admin_settings_fn(db)
+    return Ok((messages_payload, admin_settings))
+
+  async def stream_conversation_events(
+    self,
+    conversation_id: UUID,
+    messages_payload: list[dict[str, str]],
+    admin_settings: AdminSettingsResponse | None,
+    db: AsyncSession,
+    model_id: str | None = None,
+    arena_client: LLMArenaClient = llm_client,
+  ) -> AsyncGenerator[str, None]:
+    """
+    Streams Server-Sent Events (`start`, `token`, `done`) and persists the final assistant `Message`.
+
+    Args:
+        conversation_id (UUID): Target conversation UUID.
+        messages_payload (list[dict[str, str]]): OpenAI-formatted prompt and history messages.
+        admin_settings (AdminSettingsResponse | None): Active admin settings configuration.
+        db (AsyncSession): Active database session for persisting the final message.
+        model_id (str | None): Optional target model identifier.
+        arena_client (LLMArenaClient): LLM Arena client instance.
+
+    Yields:
+        str: Formatted SSE event frames (`start`, `token`, `done`).
+    """
+    nl = chr(10)
+    start_payload = json.dumps({"event": "start", "conversation_id": str(conversation_id)})
+    yield f"data: {start_payload}{nl}{nl}"
+
+    accumulated: list[str] = []
+    async for token in arena_client.stream_tokens(
+      messages=messages_payload,
+      model_id=model_id,
+      admin_settings=admin_settings,
+    ):
+      accumulated.append(token)
+      payload = json.dumps({"event": "token", "token": token})
+      yield f"data: {payload}{nl}{nl}"
+
+    full_text = "".join(accumulated)
+    sql = extract_and_validate_chat_sql(full_text)
+
+    now = datetime.now(UTC)
+    assistant_msg = Message(
+      conversation_id=conversation_id,
+      role="assistant",
+      content=full_text,
+      sql_snippet=sql,
+      created_at=now,
+    )
+    db.add(assistant_msg)
+    await db.commit()
+    await db.refresh(assistant_msg)
+
+    done_payload = json.dumps(
+      {
+        "event": "done",
+        "message_id": str(assistant_msg.id),
+        "content": full_text,
+        "sql_snippet": sql,
+      }
+    )
+    yield f"data: {done_payload}{nl}{nl}"
 
 
 chat_service = ChatService()

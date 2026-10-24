@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for updating conversation metadata (e.g. rename).
  *
- * @param title 
+ * @param title
  */
 @Serializable
-
-data class ConversationUpdate (
-
+data class ConversationUpdate(
     @SerialName(value = "title") @Required val title: kotlin.String
-
-) {
-
-
-}
-
+)

@@ -1,5 +1,9 @@
+/**
+ * @fileoverview Unit tests for browser and in-memory storage utilities (`storage.utils.ts`).
+ */
+
 import { createMemoryStorage, getSafeStorage, safeStorage } from './storage.utils';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('storage.utils', () => {
   it('should support in-memory storage fallback', () => {

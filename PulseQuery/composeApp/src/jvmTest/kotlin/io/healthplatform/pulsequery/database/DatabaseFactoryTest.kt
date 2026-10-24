@@ -75,4 +75,34 @@ class DatabaseFactoryTest {
         assertEquals("123", AppContainer.keyValueStorage?.get("session_test"))
         AppContainer.keyValueStorage?.remove("session_test")
     }
+
+    @Test
+    fun testDatabaseAndStorageResultMethods() {
+        val factory = JvmDatabaseDriverFactory()
+        val driverRes = factory.createDriverResult()
+        assertNotNull(driverRes.getOrNull())
+
+        val dbRes = createDatabaseResult(factory)
+        val db = dbRes.getOrNull()
+        assertNotNull(db)
+
+        val kv = KeyValueStorage(db)
+        kotlin.test.assertTrue(kv.saveResult("k_res", "v_res").isSuccess)
+        assertEquals("v_res", kv.getResult("k_res").getOrNull())
+        kotlin.test.assertTrue(kv.removeResult("k_res").isSuccess)
+        assertNull(kv.getResult("k_res").getOrNull())
+
+        val wc = WidgetCacheStorage(db)
+        kotlin.test.assertTrue(wc.cacheWidgetResult("w1", "d1", """{"a":1}""").isSuccess)
+        kotlin.test.assertTrue(wc.cacheWidgetResult("w2", "d1", """{"a":2}""", 1000L).isSuccess)
+        val cachedList = wc.getCachedWidgetsResult("d1").getOrNull()
+        assertNotNull(cachedList)
+        assertEquals(2, cachedList.size)
+
+        kotlin.test.assertTrue(wc.clearWidgetResult("w1").isSuccess)
+        assertEquals(1, wc.getCachedWidgetsResult("d1").getOrNull()?.size)
+
+        kotlin.test.assertTrue(wc.clearDashboardWidgetsResult("d1").isSuccess)
+        assertEquals(0, wc.getCachedWidgetsResult("d1").getOrNull()?.size)
+    }
 }

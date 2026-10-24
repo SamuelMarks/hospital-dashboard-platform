@@ -17,40 +17,26 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.MessageResponse
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Detailed view including message history.
  *
- * @param id 
- * @param userId 
- * @param createdAt 
- * @param updatedAt 
- * @param title 
- * @param messages 
+ * @param id
+ * @param userId
+ * @param createdAt
+ * @param updatedAt
+ * @param title
+ * @param messages
  */
 @Serializable
-
-data class ConversationDetail (
-
+data class ConversationDetail(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "updated_at") @Required val updatedAt: kotlin.time.Instant,
-
     @SerialName(value = "title") val title: kotlin.String? = null,
-
     @SerialName(value = "messages") val messages: kotlin.collections.List<MessageResponse>? = null
-
-) {
-
-
-}
-
+)

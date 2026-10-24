@@ -57,7 +57,20 @@ naming:
 exceptions:
   active: true
   TooGenericExceptionCaught:
-    active: false
+    active: true
+  TooGenericExceptionThrown:
+    active: true
+  SwallowedException:
+    active: true
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: true
+
+potential-bugs:
+  active: true
+  UnsafeCallOnNullableType:
+    active: true
+  UnsafeCast:
+    active: true
 
 comments:
   active: true
@@ -70,4 +83,6 @@ comments:
   UndocumentedPublicFunction:
     active: true
   UndocumentedPublicProperty:
+    active: true
+  KDocReferencesNonPublicProperty:
     active: true

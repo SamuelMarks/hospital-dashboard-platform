@@ -41,7 +41,7 @@
   </div>
 
   <!-- Custom Hex Input -->
-  <div class="mb-4">
+  <form [formRoot]="hexForm" class="mb-4">
     <span i18n class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2 block">
       Custom Color Seed
     </span>
@@ -58,23 +58,23 @@
         <mat-label i18n>Hex Color Code</mat-label>
         <input
           matInput
-          [(ngModel)]="customHex"
+          [formField]="hexForm.customHex"
           (input)="onHexInputChange()"
           placeholder="#1565C0"
           i18n-placeholder
-          maxlength="7"
         />
       </mat-form-field>
     </div>
-  </div>
+  </form>
 
   <!-- Live Palette Preview -->
   <div
     class="preview-box border border-outline/30 flex items-center justify-between"
     [style.background-color]="selectedColor()"
+    [style.color]="previewTextColor()"
   >
-    <span i18n class="text-white font-medium text-sm shadow-sm">Theme Preview Card</span>
-    <span class="text-white/80 font-mono text-xs">{{ selectedColor() }}</span>
+    <span i18n class="font-medium text-sm shadow-sm">Theme Preview Card</span>
+    <span class="font-mono text-xs opacity-90">{{ selectedColor() }}</span>
   </div>
 </mat-dialog-content>
 
@@ -83,7 +83,6 @@
   <button
     i18n
     mat-stroked-button
-    color="primary"
     (click)="applyTheme()"
     [disabled]="isSaving()"
     data-testid="btn-apply-theme"
@@ -93,7 +92,6 @@
   <button
     i18n
     mat-flat-button
-    color="primary"
     (click)="saveToDashboard()"
     [disabled]="isSaving()"
     data-testid="btn-save-theme"

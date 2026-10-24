@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for LLM swarm configuration and readiness.
@@ -30,20 +29,11 @@ import kotlinx.serialization.encoding.*
  * @param models List of active model display names.
  */
 @Serializable
-
-data class LlmHealthSchema (
-
-    /* Number of configured LLM providers. */
+data class LlmHealthSchema(
+    // Number of configured LLM providers.
     @SerialName(value = "providers_count") @Required val providersCount: kotlin.Int,
-
-    /* True if running in mock/fallback AI mode. */
+    // True if running in mock/fallback AI mode.
     @SerialName(value = "mock_mode") @Required val mockMode: kotlin.Boolean,
-
-    /* List of active model display names. */
+    // List of active model display names.
     @SerialName(value = "models") val models: kotlin.collections.List<kotlin.String>? = null
-
-) {
-
-
-}
-
+)

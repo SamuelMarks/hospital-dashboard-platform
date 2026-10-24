@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end dashboard grid layout, drag-and-drop, and widget resizing tests.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Dashboard Layout Management', () => {

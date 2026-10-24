@@ -137,7 +137,7 @@ class AppContainerTest {
         assertNotNull(chatStreaming)
         assertEquals(chatStreaming, AppContainer.chatStreamingRepository)
     }
-    
+
     @Test
     fun testSetHttpClientForTest() {
         val mockClient = HttpClient(MockEngine) {
@@ -149,7 +149,7 @@ class AppContainerTest {
         }
         AppContainer.currentBaseUrl = "http://localhost:8080" // Clear state
         AppContainer.setHttpClientForTest(mockClient)
-        
+
         assertEquals(mockClient, AppContainer.httpClient)
     }
 

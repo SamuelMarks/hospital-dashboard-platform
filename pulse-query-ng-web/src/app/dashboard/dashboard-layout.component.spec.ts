@@ -1,7 +1,10 @@
+/**
+ * @fileoverview Unit tests for `DashboardLayoutComponent`.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 import { signal, WritableSignal } from '@angular/core';
-import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { DashboardLayoutComponent } from './dashboard-layout.component';
 import { DashboardStore } from './dashboard.store';
 import { DashboardsService, TemplateResponse, WidgetResponse } from '../api-client';
@@ -24,14 +27,14 @@ const makeCartItem = (): QueryCartItem => ({
   kind: QUERY_CART_ITEM_KIND,
 });
 
-const makeTemplate = (): TemplateResponse =>
-  ({
-    id: 't1',
-    title: 'Template A',
-    description: 'desc',
-    sql_template: 'SELECT 1',
-    parameters_schema: {},
-  }) as TemplateResponse;
+const makeTemplate = (): TemplateResponse => ({
+  id: 't1',
+  title: 'Template A',
+  category: 'Clinical',
+  description: 'desc',
+  sql_template: 'SELECT 1',
+  parameters_schema: {},
+});
 
 const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => ({
   id: 'w1',
@@ -74,7 +77,8 @@ describe('DashboardLayoutComponent', () => {
   let paramMap$: Subject<{ get: (key: string) => string | null }>;
   let queryParamMap$: Subject<{ keys: string[]; get: (key: string) => string | null }>;
 
-  const setup = () => TestBed.runInInjectionContext(() => new DashboardLayoutComponent());
+  const setup = (): DashboardLayoutComponent =>
+    TestBed.runInInjectionContext(() => new DashboardLayoutComponent());
 
   beforeEach(() => {
     paramMap$ = new Subject<{ get: (key: string) => string | null }>();
@@ -170,7 +174,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: makeCartItem() },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockStore.updateWidgetOrder).not.toHaveBeenCalled();
     expect(mockCartProvisioning.addToDashboard).not.toHaveBeenCalled();
@@ -185,7 +189,7 @@ describe('DashboardLayoutComponent', () => {
       container,
       previousIndex: 1,
       currentIndex: 2,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockStore.updateWidgetOrder).toHaveBeenCalledWith(1, 2);
   });
@@ -200,7 +204,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: makeTemplate() },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockProvisioning.provisionWidget).not.toHaveBeenCalled();
   });
@@ -214,7 +218,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: null },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockProvisioning.provisionWidget).not.toHaveBeenCalled();
     expect(mockCartProvisioning.addToDashboard).not.toHaveBeenCalled();
@@ -231,7 +235,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: item },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockStore.setLoading).toHaveBeenCalledWith(true);
     expect(mockCartProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'd1');
@@ -256,7 +260,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: item },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to add query to dashboard', 'Close');
     expect(mockStore.setLoading).toHaveBeenCalledWith(false);
@@ -275,7 +279,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: template },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockProvisioning.provisionWidget).toHaveBeenCalledWith(template, 'd1');
     expect(mockSnackBar.open).toHaveBeenCalledWith(
@@ -299,7 +303,7 @@ describe('DashboardLayoutComponent', () => {
       item: { data: template },
       previousIndex: 0,
       currentIndex: 0,
-    } as unknown as CdkDragDrop<unknown>);
+    });
 
     expect(mockSnackBar.open).toHaveBeenCalledWith(
       'Failed to create widget from template',
@@ -310,9 +314,8 @@ describe('DashboardLayoutComponent', () => {
     consoleSpy.mockRestore();
   });
 
-  // ... rest of the tests remain unchanged
   it('should identify query cart drag data', () => {
-    const component = setup() as unknown as { isQueryCartItem: (data: unknown) => boolean };
+    const component = setup();
     expect(component.isQueryCartItem(null)).toBe(false);
     expect(component.isQueryCartItem('bad')).toBe(false);
     expect(component.isQueryCartItem(makeTemplate())).toBe(false);
@@ -334,15 +337,10 @@ describe('DashboardLayoutComponent', () => {
     mockTheme.isTvMode.set(true);
     const spy = vi.spyOn(component, 'updateWidgetWidth');
 
-    component.startResizing(
-      {
-        clientX: 0,
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-        target: { closest: () => null },
-      } as unknown as MouseEvent,
-      makeWidget(),
-    );
+    const detached = document.createElement('div');
+    const event = new MouseEvent('mousedown', { clientX: 0 });
+    Object.defineProperty(event, 'target', { value: detached });
+    component.startResizing(event, makeWidget());
 
     expect(spy).not.toHaveBeenCalled();
   });
@@ -351,15 +349,10 @@ describe('DashboardLayoutComponent', () => {
     const component = setup();
     const spy = vi.spyOn(component, 'updateWidgetWidth');
 
-    component.startResizing(
-      {
-        clientX: 0,
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-        target: { closest: () => null },
-      } as unknown as MouseEvent,
-      makeWidget(),
-    );
+    const detached = document.createElement('div');
+    const event = new MouseEvent('mousedown', { clientX: 0 });
+    Object.defineProperty(event, 'target', { value: detached });
+    component.startResizing(event, makeWidget());
 
     expect(spy).not.toHaveBeenCalled();
   });
@@ -375,15 +368,9 @@ describe('DashboardLayoutComponent', () => {
     const handle = document.createElement('div');
     grid.appendChild(handle);
 
-    component.startResizing(
-      {
-        clientX: 100,
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-        target: handle,
-      } as unknown as MouseEvent,
-      makeWidget({ config: { w: 6 } }),
-    );
+    const event = new MouseEvent('mousedown', { clientX: 100 });
+    Object.defineProperty(event, 'target', { value: handle });
+    component.startResizing(event, makeWidget({ config: { w: 6 } }));
 
     document.dispatchEvent(new MouseEvent('mousemove', { clientX: 200 }));
     document.dispatchEvent(new MouseEvent('mouseup', { clientX: 300 }));
@@ -402,15 +389,9 @@ describe('DashboardLayoutComponent', () => {
     const handle = document.createElement('div');
     grid.appendChild(handle);
 
-    component.startResizing(
-      {
-        clientX: 100,
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-        target: handle,
-      } as unknown as MouseEvent,
-      makeWidget({ config: { w: 6 } }),
-    );
+    const event = new MouseEvent('mousedown', { clientX: 100 });
+    Object.defineProperty(event, 'target', { value: handle });
+    component.startResizing(event, makeWidget({ config: { w: 6 } }));
 
     document.dispatchEvent(new MouseEvent('mouseup', { clientX: 100 }));
 
@@ -512,21 +493,40 @@ describe('DashboardLayoutComponent', () => {
     expect(mockStore.optimisticRestoreWidget).toHaveBeenCalledWith(expect.any(Object));
   });
 
+  it('should update widget width when resizing via keyboard arrow keys', () => {
+    const component = setup();
+    const spy = vi.spyOn(component, 'updateWidgetWidth');
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true });
+
+    component.resizeByKeyboard(event, makeWidget({ config: { w: 6 } }), 1);
+    expect(spy).toHaveBeenCalledWith(expect.any(Object), 7);
+
+    // Clamping at max=12 should not call updateWidgetWidth when already 12
+    spy.mockClear();
+    component.resizeByKeyboard(event, makeWidget({ config: { w: 12 } }), 1);
+    expect(spy).not.toHaveBeenCalled();
+
+    // TV mode no-op
+    mockTheme.isTvMode.set(true);
+    component.resizeByKeyboard(event, makeWidget({ config: { w: 6 } }), 1);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   it('should close focus overlay when clicking directly on the backdrop', () => {
     const component = setup();
     const overlayEl = document.createElement('div');
     const childEl = document.createElement('div');
 
-    component.onFocusOverlayClick({
-      target: childEl,
-      currentTarget: overlayEl,
-    } as unknown as MouseEvent);
+    const childClick = new MouseEvent('click');
+    Object.defineProperty(childClick, 'target', { value: childEl });
+    Object.defineProperty(childClick, 'currentTarget', { value: overlayEl });
+    component.onFocusOverlayClick(childClick);
     expect(mockStore.setFocusedWidget).not.toHaveBeenCalled();
 
-    component.onFocusOverlayClick({
-      target: overlayEl,
-      currentTarget: overlayEl,
-    } as unknown as MouseEvent);
+    const backdropClick = new MouseEvent('click');
+    Object.defineProperty(backdropClick, 'target', { value: overlayEl });
+    Object.defineProperty(backdropClick, 'currentTarget', { value: overlayEl });
+    component.onFocusOverlayClick(backdropClick);
     expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null);
   });
 });

@@ -9,12 +9,10 @@ import asyncio
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
-from app.core.i18n import get_translated_message
 from app.core.result import unwrap_or_raise_http
 from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
@@ -219,10 +217,8 @@ async def update_dashboard(
   dashboard, perm = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
-  dashboard.name = dashboard_update.name
-  await db.commit()
-  dashboard.permission_level = perm
-  return dashboard
+  res = await dashboard_service.update_dashboard_result(dashboard, perm, dashboard_update, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.delete("/{dashboard_id}", status_code=204)
@@ -244,8 +240,8 @@ async def delete_dashboard(
   dashboard, _ = await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
   )
-  await db.delete(dashboard)
-  await db.commit()
+  res = await dashboard_service.delete_dashboard_result(dashboard, db)
+  unwrap_or_raise_http(res)
 
 
 @router.post("/{dashboard_id}/widgets", response_model=WidgetResponse)
@@ -270,20 +266,15 @@ async def create_widget(
       Widget: Created widget model.
   """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language)
-
-  if widget_in.type == "SQL":
-    _validate_sql_query(widget_in.config.query, accept_language or current_user.language_preference)
-
-  widget = Widget(
+  res = await dashboard_service.create_widget_result(
     dashboard_id=dashboard_id,
-    title=widget_in.title,
-    type=widget_in.type,
-    visualization=widget_in.visualization,
-    config=widget_in.config.model_dump(mode="json"),
+    widget_in=widget_in,
+    current_user=current_user,
+    db=db,
+    accept_language=accept_language,
+    conn_factory=duckdb_manager.get_readonly_connection,
   )
-  db.add(widget)
-  await db.commit()
-  return widget
+  return unwrap_or_raise_http(res)
 
 
 @router.put("/widgets/{widget_id}", response_model=WidgetResponse)
@@ -307,27 +298,21 @@ async def update_widget(
   Returns:
       Widget: Updated widget model.
   """
-  result = await db.execute(select(Widget).where(Widget.id == widget_id))
-  widget = result.scalars().first()
-  if not widget:
-    msg = get_translated_message(
-      accept_language or current_user.language_preference, "error.widget_not_found", "Widget not found"
-    )
-    raise HTTPException(status_code=404, detail=msg)
-
+  widget = unwrap_or_raise_http(
+    await dashboard_service.get_widget_by_id_result(widget_id, current_user, db, accept_language=accept_language)
+  )
   await _get_dashboard_with_access(
     widget.dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
-
-  if widget.type == "SQL" and widget_in.config and "query" in widget_in.config:
-    _validate_sql_query(str(widget_in.config["query"]), accept_language or current_user.language_preference)
-
-  update_data = widget_in.model_dump(exclude_unset=True)
-  for key, value in update_data.items():
-    setattr(widget, key, value)
-
-  await db.commit()
-  return widget
+  res = await dashboard_service.update_widget_result(
+    widget=widget,
+    widget_in=widget_in,
+    current_user=current_user,
+    db=db,
+    accept_language=accept_language,
+    conn_factory=duckdb_manager.get_readonly_connection,
+  )
+  return unwrap_or_raise_http(res)
 
 
 @router.delete("/widgets/{widget_id}", status_code=204)
@@ -346,20 +331,14 @@ async def delete_widget(
       db (AsyncSession): Active database session.
       accept_language (str | None): Language preference header.
   """
-  result = await db.execute(select(Widget).where(Widget.id == widget_id))
-  widget = result.scalars().first()
-  if not widget:
-    msg = get_translated_message(
-      accept_language or current_user.language_preference, "error.widget_not_found", "Widget not found"
-    )
-    raise HTTPException(status_code=404, detail=msg)
-
+  widget = unwrap_or_raise_http(
+    await dashboard_service.get_widget_by_id_result(widget_id, current_user, db, accept_language=accept_language)
+  )
   await _get_dashboard_with_access(
     widget.dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
-
-  await db.delete(widget)
-  await db.commit()
+  res = await dashboard_service.delete_widget_result(widget, db)
+  unwrap_or_raise_http(res)
 
 
 @router.post("/{dashboard_id}/reorder", status_code=200)
@@ -453,9 +432,7 @@ async def export_widget(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
 
-  widget = next((w for w in dashboard.widgets if w.id == widget_id), None)
-  if not widget:
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Widget not found")
+  widget = unwrap_or_raise_http(dashboard_service.get_dashboard_widget_result(dashboard, widget_id))
 
   content, media_type, filename = await asyncio.to_thread(
     dashboard_service.build_widget_export_content,

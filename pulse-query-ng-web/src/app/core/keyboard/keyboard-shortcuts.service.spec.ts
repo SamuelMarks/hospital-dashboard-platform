@@ -12,8 +12,6 @@ import { ThemeService } from '../theme/theme.service';
 import { MatDialog } from '@angular/material/dialog';
 import { signal } from '@angular/core';
 
-import { Subject } from 'rxjs';
-
 vi.mock('@material/material-color-utilities', () => ({
   argbFromHex: () => 0xffffffff,
   hexFromArgb: () => '#ffffff',

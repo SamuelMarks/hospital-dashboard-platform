@@ -17,33 +17,22 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Information about a configured LLM in the Arena.
  *
- * @param id 
- * @param name 
- * @param provider 
- * @param isLocal 
+ * @param id
+ * @param name
+ * @param provider
+ * @param isLocal
  */
 @Serializable
-
-data class ModelInfo (
-
+data class ModelInfo(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "name") @Required val name: kotlin.String,
-
     @SerialName(value = "provider") @Required val provider: kotlin.String,
-
     @SerialName(value = "is_local") @Required val isLocal: kotlin.Boolean
-
-) {
-
-
-}
-
+)

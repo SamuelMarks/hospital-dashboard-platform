@@ -3,6 +3,7 @@
  */
 package io.healthplatform.pulsequery.database
 
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import kotlin.time.Clock
 
 /**
@@ -49,6 +50,22 @@ class WidgetCacheStorage(private val database: PulseQueryDatabase? = null) {
     }
 
     /**
+     * Safely persists or updates the cached JSON snapshot of a widget wrapped in a [Result].
+     *
+     * @param widgetId Unique ID of the widget.
+     * @param dashboardId ID of the parent dashboard.
+     * @param dataJson Serialized JSON payload of the widget's query results or configuration.
+     * @param updatedAt Epoch milliseconds when the cache entry was created or updated.
+     * @return [Result] containing [Unit] on success or a [io.healthplatform.pulsequery.core.error.PulseQueryError] on failure.
+     */
+    fun cacheWidgetResult(
+        widgetId: String,
+        dashboardId: String,
+        dataJson: String,
+        updatedAt: Long = Clock.System.now().toEpochMilliseconds()
+    ): Result<Unit> = runCatchingPulse { cacheWidget(widgetId, dashboardId, dataJson, updatedAt) }
+
+    /**
      * Retrieves all cached widget entries for a specific dashboard.
      *
      * @param dashboardId ID of the dashboard.
@@ -65,6 +82,15 @@ class WidgetCacheStorage(private val database: PulseQueryDatabase? = null) {
     }
 
     /**
+     * Safely retrieves all cached widget entries for a specific dashboard wrapped in a [Result].
+     *
+     * @param dashboardId ID of the dashboard.
+     * @return [Result] containing the list of [CachedWidget] items or a [io.healthplatform.pulsequery.core.error.PulseQueryError].
+     */
+    fun getCachedWidgetsResult(dashboardId: String): Result<List<CachedWidget>> =
+        runCatchingPulse { getCachedWidgets(dashboardId) }
+
+    /**
      * Deletes all cached widgets for a specific dashboard.
      *
      * @param dashboardId ID of the dashboard whose cached widgets should be removed.
@@ -77,6 +103,15 @@ class WidgetCacheStorage(private val database: PulseQueryDatabase? = null) {
             memoryWidgets.remove(dashboardId)
         }
     }
+
+    /**
+     * Safely deletes all cached widgets for a specific dashboard wrapped in a [Result].
+     *
+     * @param dashboardId ID of the dashboard whose cached widgets should be removed.
+     * @return [Result] containing [Unit] on success or a [io.healthplatform.pulsequery.core.error.PulseQueryError] on failure.
+     */
+    fun clearDashboardWidgetsResult(dashboardId: String): Result<Unit> =
+        runCatchingPulse { clearDashboardWidgets(dashboardId) }
 
     /**
      * Deletes a single cached widget entry.
@@ -93,4 +128,13 @@ class WidgetCacheStorage(private val database: PulseQueryDatabase? = null) {
             }
         }
     }
+
+    /**
+     * Safely deletes a single cached widget entry wrapped in a [Result].
+     *
+     * @param widgetId ID of the widget to delete from cache.
+     * @return [Result] containing [Unit] on success or a [io.healthplatform.pulsequery.core.error.PulseQueryError] on failure.
+     */
+    fun clearWidgetResult(widgetId: String): Result<Unit> =
+        runCatchingPulse { clearWidget(widgetId) }
 }

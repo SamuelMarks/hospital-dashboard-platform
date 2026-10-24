@@ -1,3 +1,6 @@
+/**
+ * Material 3 vertical Bar Chart Canvas visualization component module.
+ */
 package io.healthplatform.pulsequery.ui.components.charts
 
 import androidx.compose.foundation.Canvas
@@ -10,15 +13,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
-
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 
 /**
  * A natively drawn Material 3 Bar Chart component.
@@ -60,7 +62,7 @@ fun BarChart(
 
             // Calculate height proportional to max value
             val barHeight = (value / maxValue) * (canvasHeight - 30.dp.toPx()) // Reserve bottom 30dp for label
-            
+
             val startX = index * (barWidth + barSpacing)
             val startY = canvasHeight - 30.dp.toPx() - barHeight
 

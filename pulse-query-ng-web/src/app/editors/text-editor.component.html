@@ -12,13 +12,7 @@
 </form>
 
 <div class="footer">
-  <button
-    i18n
-    mat-flat-button
-    color="primary"
-    (click)="save()"
-    [disabled]="form().invalid() || isRunning()"
-  >
+  <button i18n mat-flat-button (click)="save()" [disabled]="form().invalid() || isRunning()">
     @if (isRunning()) {
       <mat-spinner diameter="18" class="mr-2"></mat-spinner>
     }

@@ -9,9 +9,6 @@ import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -20,7 +17,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { AnalyticsService, LlmAnalyticsRow } from './analytics.service';
-import { extractEventInputValue } from '../shared/utils/dom-event.utils';
+import { AnalyticsFilterBarComponent } from './analytics-filter-bar.component';
+import { AnalyticsCandidateDetailComponent } from './analytics-candidate-detail.component';
 
 /** Read-only analytics dashboard component for exploring LLM Arena outputs and selection rates. */
 @Component({
@@ -31,13 +29,12 @@ import { extractEventInputValue } from '../shared/utils/dom-event.utils';
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
     MatChipsModule,
     MatTableModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
+    AnalyticsFilterBarComponent,
+    AnalyticsCandidateDetailComponent,
   ],
 
   styles: [
@@ -87,22 +84,6 @@ import { extractEventInputValue } from '../shared/utils/dom-event.utils';
         text-transform: uppercase;
         color: var(--sys-text-secondary);
         letter-spacing: 0.04em;
-      }
-      .filters-card {
-        border: 1px solid var(--sys-surface-border);
-        background: var(--sys-surface);
-        padding: 12px 16px;
-      }
-      .filters {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        align-items: end;
-      }
-      .filters .actions {
-        display: flex;
-        gap: 8px;
-        justify-content: flex-end;
       }
       .content-grid {
         display: grid;
@@ -179,49 +160,6 @@ import { extractEventInputValue } from '../shared/utils/dom-event.utils';
         background-color: rgba(88, 94, 113, 0.12);
         color: var(--sys-on-surface-variant);
       }
-      .detail-card {
-        border: 1px solid var(--sys-surface-border);
-        background: var(--sys-surface);
-        padding: 16px;
-        min-height: 420px;
-      }
-      .detail-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-      }
-      .detail-header h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 500;
-      }
-      .detail-section {
-        margin-bottom: 12px;
-      }
-      .detail-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--sys-text-secondary);
-        margin-bottom: 4px;
-      }
-      .detail-value {
-        font-size: 14px;
-      }
-      .sql-block {
-        font-family:
-          'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
-          monospace;
-        font-size: 12px;
-        background: var(--sys-background);
-        border: 1px solid var(--sys-surface-border);
-        border-radius: 6px;
-        padding: 12px;
-        max-height: 280px;
-        overflow: auto;
-        white-space: pre-wrap;
-      }
       .empty-state {
         text-align: center;
         color: var(--sys-text-secondary);
@@ -229,22 +167,6 @@ import { extractEventInputValue } from '../shared/utils/dom-event.utils';
       }
       .mt-2 {
         margin-top: 8px;
-      }
-      .status-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-        color: var(--sys-text-secondary);
-      }
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--sys-outline);
-      }
-      .status-dot.active {
-        background: var(--sys-primary);
       }
       @media (max-width: 1024px) {
         .content-grid {
@@ -259,15 +181,6 @@ import { extractEventInputValue } from '../shared/utils/dom-event.utils';
   templateUrl: './analytics.component.html',
 })
 export class AnalyticsComponent implements OnInit {
-  /**
-   * Helper to extract the value from a DOM event.
-   * @param event The DOM event.
-   * @returns The extracted string value.
-   */
-  getEventValue(event: Event): string {
-    return extractEventInputValue(event);
-  }
-
   /** Analytics API client. */
   private readonly analyticsApi = inject(AnalyticsService);
 

@@ -17,39 +17,26 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * DTO for a single Arena Candidate.
  *
- * @param id 
- * @param modelName 
- * @param content 
- * @param isSelected 
- * @param sqlSnippet 
- * @param sqlHash 
+ * @param id
+ * @param modelName
+ * @param content
+ * @param isSelected
+ * @param sqlSnippet
+ * @param sqlHash
  */
 @Serializable
-
-data class MessageCandidateResponse (
-
+data class MessageCandidateResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "model_name") @Required val modelName: kotlin.String,
-
     @SerialName(value = "content") @Required val content: kotlin.String,
-
     @SerialName(value = "is_selected") @Required val isSelected: kotlin.Boolean,
-
     @SerialName(value = "sql_snippet") val sqlSnippet: kotlin.String? = null,
-
     @SerialName(value = "sql_hash") val sqlHash: kotlin.String? = null
-
-) {
-
-
-}
-
+)

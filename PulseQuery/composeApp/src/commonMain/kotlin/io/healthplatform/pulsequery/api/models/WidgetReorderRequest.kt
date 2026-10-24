@@ -17,25 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.WidgetReorderItem
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Bulk update payload for persisting drag-and-drop results.
  *
- * @param items 
+ * @param items
  */
 @Serializable
-
-data class WidgetReorderRequest (
-
+data class WidgetReorderRequest(
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WidgetReorderItem>
-
-) {
-
-
-}
-
+)

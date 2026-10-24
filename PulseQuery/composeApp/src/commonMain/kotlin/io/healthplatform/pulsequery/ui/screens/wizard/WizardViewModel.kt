@@ -276,6 +276,12 @@ class WizardViewModel(
         persistWidget(widgetIn, onSuccess)
     }
 
+    /**
+     * Persists the authored [widgetIn] to the backend dashboard API and updates [state].
+     *
+     * @param widgetIn Polymorphic widget creation payload.
+     * @param onSuccess Callback invoked with the persisted [WidgetResponse].
+     */
     private fun persistWidget(widgetIn: WidgetIn, onSuccess: (WidgetResponse) -> Unit) {
         _state.value = WizardState.Submitting()
         scope.launch {
@@ -321,6 +327,12 @@ class WizardViewModel(
     ): String = substituteSqlParameters(templateSql, parameters, fields)
 }
 
+/**
+ * Validates required fields on a [WizardState.CustomWidgetConfiguration].
+ *
+ * @param current Active custom widget configuration state.
+ * @return Map of field names to validation error messages.
+ */
 private fun validateCustomWidgetConfig(
     current: WizardState.CustomWidgetConfiguration
 ): Map<String, String> {
@@ -334,6 +346,12 @@ private fun validateCustomWidgetConfig(
     return errors
 }
 
+/**
+ * Constructs a polymorphic [WidgetIn] payload from [current] custom widget configuration.
+ *
+ * @param current Validated custom widget configuration state.
+ * @return Constructed [WidgetIn] payload.
+ */
 private fun buildCustomWidgetPayload(
     current: WizardState.CustomWidgetConfiguration
 ): WidgetIn {
@@ -364,6 +382,12 @@ private fun buildCustomWidgetPayload(
     }
 }
 
+/**
+ * Validates title and schema-defined parameter values on a [WizardState.ParameterConfiguration].
+ *
+ * @param current Active template parameter configuration state.
+ * @return Map of field keys to validation error messages.
+ */
 private fun validateTemplateParameterConfig(
     current: WizardState.ParameterConfiguration
 ): Map<String, String> {
@@ -381,6 +405,13 @@ private fun validateTemplateParameterConfig(
     return errors
 }
 
+/**
+ * Validates a single template [ParameterField] value against requiredness and numeric type constraints.
+ *
+ * @param field Parameter schema definition.
+ * @param rawValue User-entered string value.
+ * @return Error message if invalid, or null if valid.
+ */
 private fun validateSingleParameterField(field: ParameterField, rawValue: String): String? {
     val cleanValue = rawValue.trim()
     if (cleanValue.isEmpty()) {
@@ -393,11 +424,25 @@ private fun validateSingleParameterField(field: ParameterField, rawValue: String
     }
 }
 
+/**
+ * Extracts a string primitive property from [obj] or returns [fallback].
+ *
+ * @param obj Source JSON object.
+ * @param key Property key name.
+ * @param fallback Default string value if key is missing or not a primitive.
+ * @return Extracted string value.
+ */
 private fun extractJsonString(obj: JsonObject, key: String, fallback: String): String {
     val prim = obj[key] as? JsonPrimitive ?: return fallback
     return prim.content
 }
 
+/**
+ * Parses a JSON Schema object into a list of [ParameterField] descriptors.
+ *
+ * @param schema Optional JSON Schema object.
+ * @return List of parsed [ParameterField] definitions.
+ */
 private fun extractSchemaParameterFields(schema: JsonObject?): List<ParameterField> {
     if (schema == null) return emptyList()
     val properties = schema["properties"] as? JsonObject ?: return emptyList()
@@ -419,6 +464,14 @@ private fun extractSchemaParameterFields(schema: JsonObject?): List<ParameterFie
     }
 }
 
+/**
+ * Safely substitutes handlebars-style `{{key}}` tokens in [templateSql] with sanitized values from [parameters].
+ *
+ * @param templateSql SQL template containing `{{key}}` placeholders.
+ * @param parameters Map of parameter keys to raw string values.
+ * @param fields Parameter field definitions providing type metadata.
+ * @return Rendered SQL query string.
+ */
 private fun substituteSqlParameters(
     templateSql: String,
     parameters: Map<String, String>,
@@ -438,6 +491,14 @@ private fun substituteSqlParameters(
     return result
 }
 
+/**
+ * Filters a list of [TemplateResponse] items by optional [category] and search [query].
+ *
+ * @param templates Full list of available templates.
+ * @param category Optional category filter.
+ * @param query Free-text search query.
+ * @return Filtered list of matching [TemplateResponse] items.
+ */
 private fun filterWizardTemplates(
     templates: List<TemplateResponse>,
     category: String?,

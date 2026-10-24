@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Configuration schema for Static Text/Markdown widgets.  Attributes:     content (str): The static text content (Markdown supported).
@@ -32,26 +31,15 @@ import kotlinx.serialization.encoding.*
  * @param h Grid Height (rows)
  */
 @Serializable
-
-data class TextConfig (
-
-    /* Markdown text content. */
+data class TextConfig(
+    // Markdown text content.
     @SerialName(value = "content") @Required val content: kotlin.String,
-
-    /* Grid X position */
+    // Grid X position
     @SerialName(value = "x") val x: kotlin.Int? = 0,
-
-    /* Grid Y position */
+    // Grid Y position
     @SerialName(value = "y") val y: kotlin.Int? = 0,
-
-    /* Grid Width (cols) */
+    // Grid Width (cols)
     @SerialName(value = "w") val w: kotlin.Int? = 6,
-
-    /* Grid Height (rows) */
+    // Grid Height (rows)
     @SerialName(value = "h") val h: kotlin.Int? = 4
-
-) {
-
-
-}
-
+)

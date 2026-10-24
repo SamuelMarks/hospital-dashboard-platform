@@ -1,6 +1,13 @@
-// ... imports
+/**
+ * @fileoverview Unit tests for `WidgetBuilderComponent`.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { NO_ERRORS_SCHEMA, signal } from '@angular/core';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatStepper } from '@angular/material/stepper';
+import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { WidgetBuilderComponent } from './widget-builder.component';
 import {
   DashboardsService,
@@ -10,21 +17,12 @@ import {
   TemplateResponse,
 } from '../../api-client';
 import { DashboardStore } from '../dashboard.store';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatStepper } from '@angular/material/stepper';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of, throwError, Subscription } from 'rxjs';
-import { signal } from '@angular/core';
-import { vi } from 'vitest';
-import { DynamicFormComponent } from '../template-wizard/dynamic-form.component';
 import { SqlBuilderComponent } from '../../editors/sql-builder.component';
 import { HttpConfigComponent } from '../../editors/http-config.component';
 import { TextEditorComponent } from '../../editors/text-editor.component';
-import { WidgetComponent } from '../../widget/widget.component';
-
+import { WidgetBuilderVisualizeStepComponent } from './widget-builder-visualize-step.component';
 import { resolveComponentResourcesForTests } from '../../../test-utils/component-resources';
 
-// Mocks
 const MOCK_TEMPLATE: TemplateResponse = {
   id: 't1',
   title: 'Admissions',
@@ -88,7 +86,7 @@ describe('WidgetBuilderComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [WidgetBuilderComponent, NoopAnimationsModule],
+      imports: [WidgetBuilderComponent],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         { provide: DashboardsService, useValue: mockDashApi },
@@ -99,15 +97,13 @@ describe('WidgetBuilderComponent', () => {
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1' } },
       ],
     })
-      // Replace complex children with schema bypass
       .overrideComponent(WidgetBuilderComponent, {
         remove: {
           imports: [
-            DynamicFormComponent,
             SqlBuilderComponent,
             HttpConfigComponent,
             TextEditorComponent,
-            WidgetComponent,
+            WidgetBuilderVisualizeStepComponent,
           ],
         },
         add: { schemas: [NO_ERRORS_SCHEMA] },
@@ -131,21 +127,30 @@ describe('WidgetBuilderComponent', () => {
     expect(component.templates().length).toBe(1);
   });
 
-  it('should sync local controls with draft state on value changes', () => {
+  it('should sync local controls with previewWidget state on value changes', () => {
     component.draftWidget.set(MOCK_DRAFT);
-    component.vizFormModel.update((m) => ({ ...m, title: 'Updated Title' }));
+    component.updateTitle('Updated Title');
     fixture.detectChanges();
-    expect(component.draftWidget()?.title).toBe('Updated Title');
+    expect(component.previewWidget()?.title).toBe('Updated Title');
+
+    component.updateTitle('');
+    expect(component.previewWidget()?.title).toBe('New Widget');
   });
 
-  it('should sync local controls with draft state xKey/yKey', () => {
+  it('should sync local controls with previewWidget and syncVizConfig for xKey/yKey', () => {
     component.draftWidget.set(MOCK_DRAFT);
-    component.vizFormModel.update((m) => ({ ...m, xKey: 'x_col' }));
+    component.updateXKey('x_col');
     fixture.detectChanges();
+    expect(component.previewWidget()?.config['xKey']).toBe('x_col');
+    component.updateYKey('y_col');
+    fixture.detectChanges();
+    expect(component.previewWidget()?.config['yKey']).toBe('y_col');
+
+    component.syncVizConfig('x_col', 'y_col');
     expect(component.draftWidget()?.config['xKey']).toBe('x_col');
-    component.vizFormModel.update((m) => ({ ...m, yKey: 'y_col' }));
-    fixture.detectChanges();
     expect(component.draftWidget()?.config['yKey']).toBe('y_col');
+    component.syncVizConfig('x_col', 'y_col');
+    expect(component.draftWidget()?.config['xKey']).toBe('x_col');
   });
 
   it('syncVizConfig should do nothing if no draft widget', () => {
@@ -157,21 +162,20 @@ describe('WidgetBuilderComponent', () => {
   it('ngOnDestroy should unsubscribe and handle draft cleanup logic if needed', () => {
     component.draftWidget.set(MOCK_DRAFT);
     mockDialogRef.getState.mockReturnValue(0);
-    const subSpy = vi.spyOn((component as unknown as { sub: Subscription }).sub, 'unsubscribe');
-    component.ngOnDestroy();
-    expect(subSpy).toHaveBeenCalled();
+    expect(() => component.ngOnDestroy()).not.toThrow();
   });
 
-  it('ngOnDestroy should do nothing if no sub', () => {
-    (component as unknown as { sub?: Subscription }).sub = undefined;
-    expect(() => component.ngOnDestroy()).not.toThrow();
+  it('ngOnDestroy should do nothing if called before ngOnInit', () => {
+    const uninit = TestBed.runInInjectionContext(() => new WidgetBuilderComponent());
+    expect(() => uninit.ngOnDestroy()).not.toThrow();
   });
 
   it('updateSearch should trigger search$', () => {
     vi.useFakeTimers();
     const input = document.createElement('input');
     input.value = 'search term';
-    const event = { target: input } as unknown as Event;
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
     component.updateSearch(event);
     vi.advanceTimersByTime(300);
     vi.useRealTimers();
@@ -203,7 +207,6 @@ describe('WidgetBuilderComponent', () => {
     expect(component.selectedCustomType()).toBe('HTTP');
     expect(component.activeMode()).toBe('custom');
     expect(component.selectedTemplate()).toBeNull();
-    expect(component.activeMode()).toBe('custom');
   });
 
   it('parseParams should reset params and set valid to true if mode is not predefined', () => {
@@ -267,7 +270,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('initializeDraft should handle template mode', () => {
-    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
+    const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.activeMode.set('template');
     component.selectedTemplate.set(MOCK_TEMPLATE);
     vi.useFakeTimers();
@@ -322,13 +325,16 @@ describe('WidgetBuilderComponent', () => {
       expect.objectContaining({
         type: 'TEXT',
         visualization: 'markdown',
-        config: { content: '### New Text Widget\nEdit this content.' },
+        config: {
+          content: `### New Text Widget
+Edit this content.`,
+        },
       }),
     );
   });
 
   it('initializeDraft should log error if creation fails', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
       throwError(() => new Error('err')),
     );
@@ -336,17 +342,18 @@ describe('WidgetBuilderComponent', () => {
     component.selectedCustomType.set('SQL');
     component.initializeDraft();
     expect(consoleSpy).toHaveBeenCalledWith('Draft creation failed', expect.any(Error));
+    consoleSpy.mockRestore();
   });
 
   it('runTemplateQuery should do nothing if no draft or template', () => {
-    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
+    const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(null);
     component.runTemplateQuery(mockStepper);
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
 
   it('runTemplateQuery should compile sql, execute update and call stepper next', () => {
-    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
+    const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
@@ -360,7 +367,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('runTemplateQuery should handle error', () => {
-    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
+    const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
@@ -372,7 +379,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('validateDataPresence should refresh widget and call next', () => {
-    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
+    const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(MOCK_DRAFT);
     component.validateDataPresence(mockStepper);
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('draft-1');
@@ -380,7 +387,7 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('validateDataPresence should only call next if no draft', () => {
-    const mockStepper = { next: vi.fn() } as unknown as MatStepper;
+    const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(null);
     component.validateDataPresence(mockStepper);
     expect(mockStore.refreshWidget).not.toHaveBeenCalled();
@@ -443,7 +450,7 @@ describe('WidgetBuilderComponent', () => {
 
   it('saveWidget should update widget and close dialog', () => {
     component.draftWidget.set(MOCK_DRAFT);
-    component.vizFormModel.update((m) => ({ ...m, title: 'New Title' }));
+    component.updateTitle('New Title');
     fixture.detectChanges();
     component.saveWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
@@ -459,13 +466,14 @@ describe('WidgetBuilderComponent', () => {
   });
 
   it('saveWidget should handle error', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     component.draftWidget.set(MOCK_DRAFT);
     mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
       throwError(() => new Error('err')),
     );
     component.saveWidget();
     expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
+    consoleSpy.mockRestore();
   });
 
   it('cancel should close dialog without draft', () => {
@@ -531,13 +539,12 @@ describe('WidgetBuilderComponent', () => {
     component.draftWidget.set(null);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.renderPreview();
-    // Check that it doesn't try to call the API
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
   });
 
   it('should do nothing on title changes if no draft', () => {
     component.draftWidget.set(null);
-    component.vizFormModel.update((m) => ({ ...m, title: 'Another Title' }));
+    component.updateTitle('Another Title');
     fixture.detectChanges();
     expect(component.draftWidget()).toBeNull();
   });

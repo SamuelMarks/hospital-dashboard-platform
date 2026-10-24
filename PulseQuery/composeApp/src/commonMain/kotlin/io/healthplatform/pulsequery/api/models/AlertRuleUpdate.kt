@@ -17,34 +17,21 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.AlertSeverity
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for updating an existing clinical alert rule with partial attributes.  Attributes:     unit_category (str | None): Updated unit or department category.     threshold_percentage (float | None): Updated trigger percentage.     severity (AlertSeverity | None): Updated severity classification.     is_active (bool | None): Updated active evaluation flag.
  *
- * @param unitCategory 
- * @param thresholdPercentage 
- * @param severity 
- * @param isActive 
+ * @param unitCategory
+ * @param thresholdPercentage
+ * @param severity
+ * @param isActive
  */
 @Serializable
-
-data class AlertRuleUpdate (
-
+data class AlertRuleUpdate(
     @SerialName(value = "unit_category") val unitCategory: kotlin.String? = null,
-
     @SerialName(value = "threshold_percentage") val thresholdPercentage: kotlin.Double? = null,
-
     @SerialName(value = "severity") val severity: AlertSeverity? = null,
-
     @SerialName(value = "is_active") val isActive: kotlin.Boolean? = null
-
-) {
-
-
-}
-
+)

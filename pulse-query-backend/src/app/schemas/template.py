@@ -50,9 +50,6 @@ class TemplateBase(BaseModel):
         ValueError: If a parameter defined in `parameters_schema['properties']`
             is not present as a `{{placeholder}}` in `sql_template`.
     """
-    if not isinstance(self.parameters_schema, dict):
-      return self
-
     properties = self.parameters_schema.get("properties")
     if not isinstance(properties, dict) or not properties:
       return self

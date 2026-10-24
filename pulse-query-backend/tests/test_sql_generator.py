@@ -1,102 +1,60 @@
-"""Tests for sql generator."""
+"""Tests for sql generator against real database persistence."""
 
 import uuid
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.feedback import ExperimentLog, ModelCandidate
+from app.models.user import User
 from app.services.llm_client import ArenaResponse
 from app.services.sql_generator import sql_generator
+from app.services.sql_utils import extract_sql_from_markdown
 
 
 def test_sql_cleaning_logic() -> None:
   """Test that the service correctly strips Markdown formatting."""
   raw_1 = "SELECT * FROM hospital_data LIMIT 10;"
-  assert sql_generator._clean_sql_response(raw_1) == raw_1
+  assert extract_sql_from_markdown(raw_1) == raw_1
 
   raw_2 = """```sql
     SELECT count(*) FROM hospital_data;
     ```"""
-  cleaned_2 = sql_generator._clean_sql_response(raw_2)
+  cleaned_2 = extract_sql_from_markdown(raw_2)
   assert cleaned_2 == "SELECT count(*) FROM hospital_data;"
 
 
 @pytest.mark.asyncio
-async def test_generation_flow_mocked() -> None:
+async def test_generation_flow_persists_experiment_and_candidates(db_session: AsyncSession) -> None:
   """
-  Simulate a full Arena flow using mocks.
-  Verifies that the service calls the multi-model client and persists data.
-  """
-  mock_sql = "SELECT department FROM hospital_data"
+  Verifies `sql_generator.run_arena_experiment` invokes the Arena client and persists
+  both `ExperimentLog` and `ModelCandidate` records in the real SQLite database.
 
+  Args:
+      db_session (AsyncSession): Active test database session.
+  """
+  user = User(email=f"sqlgen_{uuid.uuid4()}@hospital.org", hashed_password="pw")
+  db_session.add(user)
+  await db_session.commit()
+  await db_session.refresh(user)
+
+  mock_sql = "SELECT department FROM hospital_data"
+  nl = chr(10)
   mock_responses = [
     ArenaResponse(
-      provider_name="GPT-4o", model_identifier="openai/gpt-4o", content=f"```sql\n{mock_sql}\n```", latency_ms=120
+      provider_name="GPT-4o",
+      model_identifier="openai/gpt-4o",
+      content=f"```sql{nl}{mock_sql}{nl}```",
+      latency_ms=120,
     )
   ]
-
-  # Mock Dependencies
-  mock_db = MagicMock()
-  mock_db.add = MagicMock()
-
-  mock_result = MagicMock()
-  mock_result.scalars.return_value.all.return_value = []
-  mock_db.execute = AsyncMock(return_value=mock_result)
-
-  # Mock side-effects for persistence
-  added_objects: list[ExperimentLog | ModelCandidate] = []
-
-  def side_effect_add(obj: ExperimentLog | ModelCandidate) -> None:
-    """
-    Appends `obj` to `added_objects` and initializes `is_selected` if None.
-
-    Args:
-        obj (ExperimentLog | ModelCandidate): ORM object added to session.
-    """
-    if isinstance(obj, ModelCandidate) and obj.is_selected is None:
-      obj.is_selected = False
-    added_objects.append(obj)
-
-  mock_db.add.side_effect = side_effect_add
-
-  async def side_effect_persistence() -> None:
-    """Assigns UUIDs to pending objects in `added_objects`."""
-    for obj in added_objects:
-      if not getattr(obj, "id", None):
-        obj.id = uuid.uuid4()
-
-  mock_db.flush = AsyncMock(side_effect=side_effect_persistence)
-  mock_db.commit = AsyncMock(side_effect=side_effect_persistence)
-
-  async def mock_refresh(instance: ExperimentLog, attribute_names: list[str] | None = None) -> None:
-    """
-    Populates `id`, `created_at`, and `candidates` on `instance`.
-
-    Args:
-        instance (ExperimentLog): ExperimentLog instance being refreshed.
-        attribute_names (list[str] | None): Optional attribute names.
-    """
-    _ = attribute_names
-    if not instance.id:
-      instance.id = uuid.uuid4()
-    if not hasattr(instance, "created_at") or not instance.created_at:
-      instance.created_at = datetime.now(UTC)
-
-    if hasattr(instance, "candidates"):
-      cands = [obj for obj in added_objects if isinstance(obj, ModelCandidate)]
-      instance.candidates = cands
-
-  mock_db.refresh = AsyncMock(side_effect=mock_refresh)
-
-  mock_user = MagicMock()
-  mock_user.id = uuid.uuid4()
 
   with patch("app.services.sql_generator.llm_client.generate_arena_competition", new_callable=AsyncMock) as mock_llm:
     mock_llm.return_value = mock_responses
 
-    res = await sql_generator.run_arena_experiment("How many visits?", mock_db, mock_user)
+    res = await sql_generator.run_arena_experiment("How many visits?", db_session, user)
 
     assert len(res.candidates) == 1
     assert res.candidates[0].generated_sql == mock_sql
@@ -105,6 +63,18 @@ async def test_generation_flow_mocked() -> None:
     messages = call_args["messages"]
     user_content = messages[1]["content"]
 
-    # Fix: ZeroShotStrategy uses "Here is the database schema", not "Database Schema"
     assert "Here is the database schema" in user_content
     assert "Question: How many visits?" in user_content
+
+  # Verify persisted database state
+  exp_row = (await db_session.execute(select(ExperimentLog).where(ExperimentLog.id == res.id))).scalars().first()
+  assert exp_row is not None
+  assert exp_row.prompt_text == "How many visits?"
+  assert exp_row.user_id == user.id
+
+  cand_rows = (
+    (await db_session.execute(select(ModelCandidate).where(ModelCandidate.experiment_id == res.id))).scalars().all()
+  )
+  assert len(cand_rows) == 1
+  assert cand_rows[0].generated_sql == mock_sql
+  assert cand_rows[0].model_tag == "GPT-4o"

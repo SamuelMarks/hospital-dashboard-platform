@@ -1,8 +1,13 @@
+/**
+ * @fileoverview Unit tests for WidgetGalleryComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { WidgetGalleryComponent } from './widget-gallery.component';
 import { TemplatesService, TemplateResponse } from '../../api-client';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { createMockInputEvent } from '../../../test-utils/mock-factories';
+import { vi } from 'vitest';
 
 describe('WidgetGalleryComponent', () => {
   let fixture: ComponentFixture<WidgetGalleryComponent>;
@@ -21,9 +26,10 @@ describe('WidgetGalleryComponent', () => {
     {
       id: '3',
       title: 'No Category',
+      category: '',
       description: 'General',
       sql_template: 'SELECT 3',
-    } as TemplateResponse,
+    },
   ];
 
   beforeEach(async () => {
@@ -32,7 +38,7 @@ describe('WidgetGalleryComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [WidgetGalleryComponent, NoopAnimationsModule],
+      imports: [WidgetGalleryComponent],
       providers: [{ provide: TemplatesService, useValue: mockApi }],
     }).compileComponents();
   });
@@ -72,7 +78,7 @@ describe('WidgetGalleryComponent', () => {
 
     const groups = component.groupedTemplates();
     expect(groups.length).toBe(1);
-    expect(groups[0].category).toBe('Ops');
+    expect(groups[0]?.category).toBe('Ops');
   });
 
   it('groups uncategorized templates under General', () => {
@@ -98,7 +104,7 @@ describe('WidgetGalleryComponent', () => {
 
     component.templates.set([
       { id: '1', title: 'Alpha', category: 'Ops', description: 'needle', sql_template: 'SELECT 1' },
-      { id: '2', title: 'Beta', category: 'Ops', sql_template: 'SELECT 2' } as TemplateResponse,
+      { id: '2', title: 'Beta', category: 'Ops', sql_template: 'SELECT 2' },
     ]);
 
     component.searchQuery.set('needle');
@@ -123,7 +129,7 @@ describe('WidgetGalleryComponent', () => {
     const groups = component.groupedTemplates();
 
     expect(groups.length).toBe(1);
-    expect(groups[0].items.length).toBe(2);
-    expect(component.getEventValue({ target: { value: 'abc' } } as unknown as Event)).toBe('abc');
+    expect(groups[0]?.items.length).toBe(2);
+    expect(component.getEventValue(createMockInputEvent('abc'))).toBe('abc');
   });
 });

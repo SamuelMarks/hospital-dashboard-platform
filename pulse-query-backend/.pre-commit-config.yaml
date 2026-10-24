@@ -15,35 +15,35 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: bash -c "cd pulse-query-backend && uv run ruff check src scripts tests alembic"
+        entry: bash -c "if [ -d pulse-query-backend ]; then cd pulse-query-backend; fi && uv run ruff check src scripts tests alembic"
         language: system
         types: [python]
         pass_filenames: false
 
       - id: ruff-format
         name: ruff format
-        entry: bash -c "cd pulse-query-backend && uv run ruff format --check src scripts tests alembic"
+        entry: bash -c "if [ -d pulse-query-backend ]; then cd pulse-query-backend; fi && uv run ruff format --check src scripts tests alembic"
         language: system
         types: [python]
         pass_filenames: false
 
       - id: mypy
         name: mypy
-        entry: bash -c "cd pulse-query-backend && uv run mypy src scripts tests"
+        entry: bash -c "if [ -d pulse-query-backend ]; then cd pulse-query-backend; fi && uv run mypy src scripts tests alembic"
         language: system
         types: [python]
         pass_filenames: false
 
       - id: interrogate
         name: interrogate
-        entry: bash -c "cd pulse-query-backend && uv run interrogate -c pyproject.toml src scripts tests alembic"
+        entry: bash -c "if [ -d pulse-query-backend ]; then cd pulse-query-backend; fi && uv run interrogate -c pyproject.toml src scripts tests alembic"
         language: system
         types: [python]
         pass_filenames: false
 
       - id: pytest
         name: pytest
-        entry: bash -c "cd pulse-query-backend && uv run pytest -q"
+        entry: bash -c "if [ -d pulse-query-backend ]; then cd pulse-query-backend; fi && uv run pytest -q"
         language: system
         types: [python]
         pass_filenames: false

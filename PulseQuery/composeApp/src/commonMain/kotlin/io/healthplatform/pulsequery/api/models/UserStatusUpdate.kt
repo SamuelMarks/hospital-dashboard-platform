@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for modifying user active account status.
  *
- * @param isActive 
+ * @param isActive
  */
 @Serializable
-
-data class UserStatusUpdate (
-
+data class UserStatusUpdate(
     @SerialName(value = "is_active") @Required val isActive: kotlin.Boolean
-
-) {
-
-
-}
-
+)

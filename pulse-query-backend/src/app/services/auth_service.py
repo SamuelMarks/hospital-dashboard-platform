@@ -12,7 +12,6 @@ from datetime import UTC, datetime, timedelta
 import logging
 from uuid import UUID
 
-from fastapi import status
 from jose import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,7 +70,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_USER_EXISTS,
           message=msg,
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -117,7 +116,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_CREDENTIALS,
           message=msg,
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -128,7 +127,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INACTIVE_USER,
           message=msg,
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -177,7 +176,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
           message="Could not validate refresh token",
-          status_code=status.HTTP_401_UNAUTHORIZED,
+          status_code=401,
         )
       )
 
@@ -186,7 +185,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
           message="Invalid token type",
-          status_code=status.HTTP_401_UNAUTHORIZED,
+          status_code=401,
         )
       )
 
@@ -197,7 +196,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
           message="Invalid token payload",
-          status_code=status.HTTP_401_UNAUTHORIZED,
+          status_code=401,
         )
       )
 
@@ -208,7 +207,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
           message="Could not validate refresh token",
-          status_code=status.HTTP_401_UNAUTHORIZED,
+          status_code=401,
         )
       )
 
@@ -227,7 +226,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_TOKEN_REVOKED,
           message="Refresh token revoked or expired",
-          status_code=status.HTTP_401_UNAUTHORIZED,
+          status_code=401,
         )
       )
 
@@ -286,7 +285,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
           message="Invalid refresh token",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -330,7 +329,7 @@ class AuthService:
         AppError(
           code=ErrorCode.EMAIL_DELIVERY_FAILED,
           message=f"Failed to dispatch password reset email: {e!s}",
-          status_code=status.HTTP_502_BAD_GATEWAY,
+          status_code=502,
         )
       )
 
@@ -389,7 +388,7 @@ class AuthService:
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
           message="Invalid or expired reset token",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -400,7 +399,7 @@ class AuthService:
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
           message="User not found",
-          status_code=status.HTTP_404_NOT_FOUND,
+          status_code=404,
         )
       )
 

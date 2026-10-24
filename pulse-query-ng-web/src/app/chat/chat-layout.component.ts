@@ -164,7 +164,7 @@ export class ChatLayoutComponent implements OnInit {
   private readonly breakpointObserver = inject(BreakpointObserver);
 
   /** Reference to the Material sidenav drawer hosting conversation history. */
-  readonly drawer = viewChild<MatSidenav>('drawer');
+  readonly drawer = viewChild<Pick<MatSidenav, 'mode' | 'close'>>('drawer');
 
   /** Signal indicating whether the viewport matches handset dimensions. */
   isHandset = toSignal(

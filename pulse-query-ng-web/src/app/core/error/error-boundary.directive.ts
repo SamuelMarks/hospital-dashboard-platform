@@ -53,7 +53,7 @@ export interface ErrorBoundaryContext {
 })
 export class ErrorBoundaryDirective implements OnInit {
   /** View container reference used to mount either the primary template or the fallback view. */
-  private readonly vcr = inject(ViewContainerRef);
+  readonly vcr = inject(ViewContainerRef);
   /** Primary structural template reference wrapped by the error boundary. */
   private readonly templateCallback = inject(TemplateRef<unknown>);
   /** Global error handler instance used to reset global error state on retry. */
@@ -77,7 +77,7 @@ export class ErrorBoundaryDirective implements OnInit {
    * If the rendering fails synchronously (e.g. OnInit crash in child),
    * it catches the exception and switches to fallback.
    */
-  private renderContent(): void {
+  renderContent(): void {
     this.vcr.clear();
 
     try {

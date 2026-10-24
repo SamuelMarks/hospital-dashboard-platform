@@ -3,18 +3,18 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpClient } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
 import {
   ThemeColorPickerDialogComponent,
   ThemeColorPickerData,
   CLINICAL_PALETTES,
 } from './theme-color-picker.dialog';
+import { DashboardsService } from '../../api-client';
 import { ThemeService } from '../../core/theme/theme.service';
+import * as colorUtils from '../../core/theme/color-utils';
 
 describe('ThemeColorPickerDialogComponent', () => {
   let component: ThemeColorPickerDialogComponent;
@@ -25,7 +25,7 @@ describe('ThemeColorPickerDialogComponent', () => {
   };
   let mockDialogRef: { close: ReturnType<typeof vi.fn> };
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
-  let mockHttp: { put: ReturnType<typeof vi.fn> };
+  let mockDashboardsApi: { updateDashboardApiV1DashboardsDashboardIdPut: ReturnType<typeof vi.fn> };
 
   const testData: ThemeColorPickerData = {
     dashboardId: 'dash-123',
@@ -40,16 +40,18 @@ describe('ThemeColorPickerDialogComponent', () => {
     };
     mockDialogRef = { close: vi.fn() };
     mockSnackBar = { open: vi.fn() };
-    mockHttp = { put: vi.fn().mockReturnValue(of({})) };
+    mockDashboardsApi = {
+      updateDashboardApiV1DashboardsDashboardIdPut: vi.fn().mockReturnValue(of({})),
+    };
 
     await TestBed.configureTestingModule({
-      imports: [ThemeColorPickerDialogComponent, NoopAnimationsModule],
+      imports: [ThemeColorPickerDialogComponent],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: testData },
         { provide: ThemeService, useValue: mockThemeService },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: HttpClient, useValue: mockHttp },
+        { provide: DashboardsService, useValue: mockDashboardsApi },
       ],
     }).compileComponents();
 
@@ -62,10 +64,21 @@ describe('ThemeColorPickerDialogComponent', () => {
     expect(component).toBeTruthy();
     expect(component.selectedColor()).toBe('#1565C0');
     expect(component.palettes.length).toBe(CLINICAL_PALETTES.length);
+    expect(component.previewTextColor()).toBeTruthy();
+  });
+
+  it('should fallback previewTextColor to #ffffff if --sys-on-primary is absent', () => {
+    const spy = vi.spyOn(colorUtils, 'generateThemeVariables').mockReturnValue({});
+    component.selectedColor.set('#00796B');
+    expect(component.previewTextColor()).toBe('#ffffff');
+    spy.mockRestore();
   });
 
   it('should select a predefined clinical palette', () => {
-    const target = CLINICAL_PALETTES[0]; // Stanford Cardinal
+    const target = CLINICAL_PALETTES[0];
+    if (!target) {
+      throw new Error('Missing palette');
+    }
     component.selectPalette(target);
 
     expect(component.selectedColor()).toBe(target.hex);
@@ -74,7 +87,10 @@ describe('ThemeColorPickerDialogComponent', () => {
   });
 
   it('should handle color picker input event', () => {
-    const event = { target: { value: '#00796B' } } as unknown as Event;
+    const input = document.createElement('input');
+    input.value = '#00796B';
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
     component.onColorPickerInput(event);
 
     expect(component.selectedColor()).toBe('#00796B');
@@ -119,16 +135,21 @@ describe('ThemeColorPickerDialogComponent', () => {
     expect(mockDialogRef.close).not.toHaveBeenCalled();
   });
 
-  it('should save theme to dashboard via HTTP and close dialog on success', () => {
+  it('should save theme to dashboard via DashboardsService and close dialog on success', () => {
     component.selectedColor.set('#EF6C00');
-    mockHttp.put.mockReturnValue(of({ status: 'ok' }));
+    mockDashboardsApi.updateDashboardApiV1DashboardsDashboardIdPut.mockReturnValue(
+      of({ id: 'dash-123', name: 'ICU Census Dashboard', owner_id: 'u1', widgets: [] }),
+    );
 
     component.saveToDashboard();
 
     expect(mockThemeService.setSeedColor).toHaveBeenCalledWith('#EF6C00');
-    expect(mockHttp.put).toHaveBeenCalledWith('/api/v1/dashboards/dash-123', {
-      name: 'ICU Census Dashboard',
-    });
+    expect(mockDashboardsApi.updateDashboardApiV1DashboardsDashboardIdPut).toHaveBeenCalledWith(
+      'dash-123',
+      {
+        name: 'ICU Census Dashboard',
+      },
+    );
     expect(mockSnackBar.open).toHaveBeenCalledWith(
       'Dashboard theme color saved permanently',
       'OK',
@@ -141,9 +162,11 @@ describe('ThemeColorPickerDialogComponent', () => {
     });
   });
 
-  it('should handle HTTP error when saving theme to dashboard', () => {
+  it('should handle API error when saving theme to dashboard', () => {
     component.selectedColor.set('#EF6C00');
-    mockHttp.put.mockReturnValue(throwError(() => new Error('Network error')));
+    mockDashboardsApi.updateDashboardApiV1DashboardsDashboardIdPut.mockReturnValue(
+      throwError(() => new Error('Network error')),
+    );
 
     component.saveToDashboard();
 
@@ -168,7 +191,7 @@ describe('ThemeColorPickerDialogComponent', () => {
       'Close',
       { duration: 3000 },
     );
-    expect(mockHttp.put).not.toHaveBeenCalled();
+    expect(mockDashboardsApi.updateDashboardApiV1DashboardsDashboardIdPut).not.toHaveBeenCalled();
   });
 
   it('should close dialog when cancel button is invoked', () => {
@@ -177,14 +200,25 @@ describe('ThemeColorPickerDialogComponent', () => {
   });
 
   it('should handle saveToDashboard when dashboardId is not provided', () => {
-    // Override data to have no dashboardId
-    (component as unknown as { data: ThemeColorPickerData | undefined }).data = undefined;
-    component.selectedColor.set('#00796B');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [ThemeColorPickerDialogComponent],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: null },
+        { provide: ThemeService, useValue: mockThemeService },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MatSnackBar, useValue: mockSnackBar },
+        { provide: DashboardsService, useValue: mockDashboardsApi },
+      ],
+    });
+    const noDataFixture = TestBed.createComponent(ThemeColorPickerDialogComponent);
+    const noDataComp = noDataFixture.componentInstance;
+    noDataComp.selectedColor.set('#00796B');
 
-    component.saveToDashboard();
+    noDataComp.saveToDashboard();
 
     expect(mockThemeService.setSeedColor).toHaveBeenCalledWith('#00796B');
-    expect(mockHttp.put).not.toHaveBeenCalled();
+    expect(mockDashboardsApi.updateDashboardApiV1DashboardsDashboardIdPut).not.toHaveBeenCalled();
     expect(mockDialogRef.close).toHaveBeenCalledWith({
       applied: true,
       saved: false,
@@ -194,7 +228,10 @@ describe('ThemeColorPickerDialogComponent', () => {
 
   it('should ignore color picker input event when value is empty', () => {
     const initial = component.selectedColor();
-    const event = { target: { value: '' } } as unknown as Event;
+    const input = document.createElement('input');
+    input.value = '';
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
     component.onColorPickerInput(event);
 
     expect(component.selectedColor()).toBe(initial);
@@ -208,13 +245,13 @@ describe('ThemeColorPickerDialogComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [ThemeColorPickerDialogComponent, NoopAnimationsModule],
+      imports: [ThemeColorPickerDialogComponent],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', dashboardName: 'D1' } },
         { provide: ThemeService, useValue: customMockTheme },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: HttpClient, useValue: mockHttp },
+        { provide: DashboardsService, useValue: mockDashboardsApi },
       ],
     });
 
@@ -231,13 +268,13 @@ describe('ThemeColorPickerDialogComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [ThemeColorPickerDialogComponent, NoopAnimationsModule],
+      imports: [ThemeColorPickerDialogComponent],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: null },
         { provide: ThemeService, useValue: customMockTheme },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MatSnackBar, useValue: mockSnackBar },
-        { provide: HttpClient, useValue: mockHttp },
+        { provide: DashboardsService, useValue: mockDashboardsApi },
       ],
     });
 

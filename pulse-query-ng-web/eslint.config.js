@@ -7,14 +7,7 @@ const jsdoc = require('eslint-plugin-jsdoc');
 
 module.exports = defineConfig([
   {
-    ignores: [
-      'src/app/api-client/**',
-      '**/*.spec.ts',
-      'src/test-setup.ts',
-      'src/setup-storage.ts',
-      'src/test-mocks/**',
-      'src/test-utils/**',
-    ],
+    ignores: ['src/app/api-client/**'],
   },
   {
     files: ['**/*.ts'],
@@ -116,6 +109,12 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-empty-function': 'off',
+    },
+  },
+  {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
     rules: {
@@ -155,6 +154,7 @@ module.exports = defineConfig([
             'content',
             'aria-labelledby',
             'aria-describedby',
+            'aria-orientation',
             'aria-valuemin',
             'aria-valuemax',
             'for',
@@ -186,6 +186,12 @@ module.exports = defineConfig([
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['**/*.spec.ts*.html'],
+    rules: {
+      '@angular-eslint/template/i18n': 'off',
     },
   },
 ]);

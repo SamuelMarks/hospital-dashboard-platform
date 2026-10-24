@@ -48,9 +48,7 @@ export interface PromptDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button i18n mat-button mat-dialog-close>Cancel</button>
-      <button i18n mat-flat-button color="primary" (click)="save()" [disabled]="!value().trim()">
-        Save
-      </button>
+      <button i18n mat-flat-button (click)="save()" [disabled]="!value().trim()">Save</button>
     </mat-dialog-actions>
   `,
   styles: [

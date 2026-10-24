@@ -3,20 +3,14 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
-import { VizScalarComponent, ScalarData } from './viz-scalar.component';
+import { VizScalarComponent } from './viz-scalar.component';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 
 describe('VizScalarComponent', () => {
   let component: VizScalarComponent;
   let fixture: ComponentFixture<VizScalarComponent>;
-  let dataSig: WritableSignal<ScalarData | null>;
 
-  /**
-   * Fix for "TypeError: mql.addListener is not a function" on CI.
-   */
   beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -35,16 +29,11 @@ describe('VizScalarComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VizScalarComponent, NoopAnimationsModule],
+      imports: [VizScalarComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VizScalarComponent);
     component = fixture.componentInstance;
-    dataSig = {
-      set: (val: ScalarData | null) => {
-        fixture.componentRef.setInput('data', val);
-      },
-    } as unknown as WritableSignal<ScalarData | null>;
     fixture.componentRef.setInput('data', null);
     fixture.detectChanges();
   });
@@ -55,11 +44,11 @@ describe('VizScalarComponent', () => {
 
   it('should display simple number', () => {
     const data = { data: [{ val: 1000 }] };
-    dataSig.set(data);
+    fixture.componentRef.setInput('data', data);
     fixture.detectChanges();
 
-    const valEl = fixture.debugElement.query(By.css('.value-display'));
-    expect(valEl.nativeElement.textContent).toBe('1,000');
+    const valEl = fixture.debugElement.query(By.css('.value-display')).nativeElement as HTMLElement;
+    expect(valEl.textContent).toBe('1,000');
   });
 
   it('should display correlation context', () => {
@@ -67,11 +56,11 @@ describe('VizScalarComponent', () => {
       columns: ['correlation_coef'],
       data: [{ correlation_coef: 0.85 }],
     };
-    dataSig.set(data);
+    fixture.componentRef.setInput('data', data);
     fixture.detectChanges();
 
-    const valEl = fixture.debugElement.query(By.css('.value-display'));
-    expect(valEl.nativeElement.textContent).toBe('0.85');
+    const valEl = fixture.debugElement.query(By.css('.value-display')).nativeElement as HTMLElement;
+    expect(valEl.textContent).toBe('0.85');
 
     const gauge = fixture.debugElement.query(By.css('mat-progress-bar'));
     expect(gauge).toBeTruthy();
@@ -80,7 +69,7 @@ describe('VizScalarComponent', () => {
 
   it('should compute gauge helpers for negative values', () => {
     const data = { columns: ['correlation'], data: [{ correlation: -0.5 }] };
-    dataSig.set(data);
+    fixture.componentRef.setInput('data', data);
     fixture.detectChanges();
 
     expect(component.gaugePosition()).toBeCloseTo(25);
@@ -89,13 +78,16 @@ describe('VizScalarComponent', () => {
   });
 
   it('should compute strength color as variable', () => {
-    dataSig.set({ columns: ['correlation'], data: [{ correlation: -0.9 }] });
+    fixture.componentRef.setInput('data', {
+      columns: ['correlation'],
+      data: [{ correlation: -0.9 }],
+    });
     fixture.detectChanges();
     expect(component.strengthColor()).toBe('var(--sys-error)');
   });
 
   it('should fall back to neutral helpers when value is missing', () => {
-    dataSig.set({ data: 'invalid' } as unknown as ScalarData);
+    fixture.componentRef.setInput('data', {});
     fixture.detectChanges();
 
     expect(component.value()).toBeNull();
@@ -106,38 +98,44 @@ describe('VizScalarComponent', () => {
   });
 
   it('should use data.value if it is a number and data is not an array', () => {
-    dataSig.set({ value: 42 });
+    fixture.componentRef.setInput('data', { value: 42 });
     fixture.detectChanges();
     expect(component.value()).toBe(42);
     expect(component.formattedValue()).toBe('42');
   });
 
   it('should return null if first row has no number values', () => {
-    dataSig.set({ data: [{ str: 'hello' }] });
+    fixture.componentRef.setInput('data', { data: [{ str: 'hello' }] });
     fixture.detectChanges();
     expect(component.value()).toBeNull();
   });
 
   it('should fallback to d.columns[0] if no column other than "value" exists', () => {
-    dataSig.set({ columns: ['value'] });
+    fixture.componentRef.setInput('data', { columns: ['value'] });
     fixture.detectChanges();
     expect(component.label()).toBe('value');
   });
 
   it('should return "Weak / No Correlation" for |value| < 0.3', () => {
-    dataSig.set({ columns: ['correlation'], data: [{ correlation: 0.2 }] });
+    fixture.componentRef.setInput('data', {
+      columns: ['correlation'],
+      data: [{ correlation: 0.2 }],
+    });
     fixture.detectChanges();
     expect(component.strengthLabel()).toBe('Weak / No Correlation');
   });
 
   it('should return "Strong Correlation" for |value| >= 0.7', () => {
-    dataSig.set({ columns: ['correlation'], data: [{ correlation: 0.8 }] });
+    fixture.componentRef.setInput('data', {
+      columns: ['correlation'],
+      data: [{ correlation: 0.8 }],
+    });
     fixture.detectChanges();
     expect(component.strengthLabel()).toBe('Strong Correlation');
   });
 
   it('should return null when data array is empty', () => {
-    dataSig.set({ data: [] });
+    fixture.componentRef.setInput('data', { data: [] });
     fixture.detectChanges();
     expect(component.value()).toBeNull();
   });

@@ -275,6 +275,18 @@ async def test_resolve_and_pin_safe_ip_and_transport_rewriting() -> None:
       assert req_http.headers["host"] == "custom.example.com"
       assert req_http.url.host == "93.184.216.34"
 
+  # Test IPv6 literal bracket formatting when pin_ip_rewrite=True
+  with patch("socket.getaddrinfo", return_value=[(10, 1, 6, "", ("2606:4700:4700::1111", 0, 0, 0))]):
+    transport_v6 = SafeAsyncHTTPTransport(pin_ip_rewrite=True)
+    req_v6 = httpx.Request("GET", "https://ipv6.example.com/api")
+    with patch.object(
+      httpx.AsyncHTTPTransport,
+      "handle_async_request",
+      new=AsyncMock(return_value=httpx.Response(200)),
+    ):
+      await transport_v6.handle_async_request(req_v6)
+      assert req_v6.url.host == "2606:4700:4700::1111"
+
   with patch("socket.getaddrinfo", return_value=[]):
     res_empty = resolve_and_pin_safe_ip_result("https://example.com/api")
     assert isinstance(res_empty, Ok)

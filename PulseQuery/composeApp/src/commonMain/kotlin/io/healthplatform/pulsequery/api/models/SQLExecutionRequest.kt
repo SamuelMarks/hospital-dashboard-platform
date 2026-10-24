@@ -17,30 +17,20 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Request model for executing SQL and returning a preview result.
  *
- * @param sql 
- * @param maxRows 
- * @param globalParams 
+ * @param sql
+ * @param maxRows
+ * @param globalParams
  */
 @Serializable
-
-data class SQLExecutionRequest (
-
+data class SQLExecutionRequest(
     @SerialName(value = "sql") @Required val sql: kotlin.String,
-
     @SerialName(value = "max_rows") val maxRows: kotlin.Int? = null,
-
     @SerialName(value = "global_params") val globalParams: kotlinx.serialization.json.JsonObject? = null
-
-) {
-
-
-}
-
+)

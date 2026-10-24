@@ -17,30 +17,19 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for updating a widget. Note: Polymorphism is relaxed on Updates because 'type' is often immutable or missing in partial PATCH requests. We allow a loose dict for config, but individual fields are validated if matched.  Attributes:     title (Optional[str]): New title.     visualization (Optional[str]): New visualization type.     config (Optional[Dict]): Partial configuration updates.
  *
- * @param title 
- * @param visualization 
- * @param config 
+ * @param title
+ * @param visualization
+ * @param config
  */
 @Serializable
-
-data class WidgetUpdate (
-
+data class WidgetUpdate(
     @SerialName(value = "title") val title: kotlin.String? = null,
-
     @SerialName(value = "visualization") val visualization: kotlin.String? = null,
-
     @SerialName(value = "config") val config: kotlinx.serialization.json.JsonObject? = null
-
-) {
-
-
-}
-
+)

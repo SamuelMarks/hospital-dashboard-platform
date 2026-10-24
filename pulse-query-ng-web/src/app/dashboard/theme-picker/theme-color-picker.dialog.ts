@@ -3,9 +3,8 @@
  * to select curated clinical color palettes or define custom dynamic theme seed colors.
  */
 
-import { Component, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { FormField, FormRoot, form, maxLength } from '@angular/forms/signals';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,8 +13,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
+import { DashboardsService } from '../../api-client';
 import { ThemeService } from '../../core/theme/theme.service';
-import { isValidHex } from '../../core/theme/color-utils';
+import { generateThemeVariables, isValidHex } from '../../core/theme/color-utils';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 
 /**
  * Data payload injected into [ThemeColorPickerDialogComponent].
@@ -78,7 +79,8 @@ export const CLINICAL_PALETTES: ClinicalPalette[] = [
 @Component({
   selector: 'app-theme-color-picker-dialog',
   imports: [
-    FormsModule,
+    FormRoot,
+    FormField,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -129,8 +131,8 @@ export class ThemeColorPickerDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ThemeColorPickerDialogComponent>);
   /** Material SnackBar for feedback messages. */
   private readonly snackBar = inject(MatSnackBar);
-  /** Angular HTTP client for persisting dashboard settings. */
-  private readonly http = inject(HttpClient);
+  /** Generated OpenAPI client for persisting dashboard metadata. */
+  private readonly dashboardsApi = inject(DashboardsService);
 
   /** Predefined clinical palette options. */
   readonly palettes = CLINICAL_PALETTES;
@@ -140,11 +142,42 @@ export class ThemeColorPickerDialogComponent {
     this.data?.currentColor || this.themeService.seedColor() || '#1565C0',
   );
 
-  /** Custom hex input value. */
-  customHex = this.selectedColor();
+  /** Synchronized custom hex input model derived from the active `selectedColor` signal. */
+  readonly hexModel = linkedSignal<{ customHex: string }>(() => ({
+    customHex: this.selectedColor(),
+  }));
+
+  /** Signal Form binding the custom hex color text field. */
+  readonly hexForm = form(this.hexModel, (path) => {
+    maxLength(path.customHex, 7);
+  });
+
+  /** Computed accessible foreground color (`--sys-on-primary`) for the live preview box. */
+  readonly previewTextColor = computed(() => {
+    const vars = generateThemeVariables(this.selectedColor(), false);
+    return vars['--sys-on-primary'] ?? '#ffffff';
+  });
 
   /** Saving state indicator. */
   readonly isSaving = signal<boolean>(false);
+
+  /**
+   * Gets the current custom hex input text value.
+   *
+   * @returns Current string in the custom hex input field.
+   */
+  get customHex(): string {
+    return this.hexModel().customHex;
+  }
+
+  /**
+   * Sets the custom hex input text value.
+   *
+   * @param value - New hex string to populate into the form model.
+   */
+  set customHex(value: string) {
+    this.hexModel.set({ customHex: value });
+  }
 
   /**
    * Returns a localized accessible label for a clinical palette option card.
@@ -163,7 +196,6 @@ export class ThemeColorPickerDialogComponent {
    */
   selectPalette(palette: ClinicalPalette): void {
     this.selectedColor.set(palette.hex);
-    this.customHex = palette.hex;
   }
 
   /**
@@ -172,10 +204,9 @@ export class ThemeColorPickerDialogComponent {
    * @param event DOM input event from HTML color input element.
    */
   onColorPickerInput(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input && input.value) {
-      this.selectedColor.set(input.value);
-      this.customHex = input.value;
+    const val = extractEventInputValue(event);
+    if (val) {
+      this.selectedColor.set(val);
     }
   }
 
@@ -231,8 +262,8 @@ export class ThemeColorPickerDialogComponent {
 
     if (this.data?.dashboardId) {
       this.isSaving.set(true);
-      this.http
-        .put(`/api/v1/dashboards/${this.data.dashboardId}`, {
+      this.dashboardsApi
+        .updateDashboardApiV1DashboardsDashboardIdPut(this.data.dashboardId, {
           name: this.data.dashboardName,
         })
         .subscribe({

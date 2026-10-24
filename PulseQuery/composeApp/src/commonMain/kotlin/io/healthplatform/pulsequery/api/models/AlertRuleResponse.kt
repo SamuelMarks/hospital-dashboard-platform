@@ -17,44 +17,30 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.AlertSeverity
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Response model representing a persisted clinical alert rule.  Attributes:     id (UUID): Unique rule identifier.     created_at (datetime): Rule registration timestamp.
  *
  * @param unitCategory Unit or department category
  * @param thresholdPercentage Trigger occupancy percentage
- * @param id 
- * @param createdAt 
+ * @param id
+ * @param createdAt
  * @param severity Alert severity level
  * @param isActive Active status flag
  */
 @Serializable
-
-data class AlertRuleResponse (
-
-    /* Unit or department category */
+data class AlertRuleResponse(
+    // Unit or department category
     @SerialName(value = "unit_category") @Required val unitCategory: kotlin.String,
-
-    /* Trigger occupancy percentage */
+    // Trigger occupancy percentage
     @SerialName(value = "threshold_percentage") @Required val thresholdPercentage: kotlin.Double,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
-    /* Alert severity level */
+    // Alert severity level
     @SerialName(value = "severity") val severity: AlertSeverity? = null,
-
-    /* Active status flag */
+    // Active status flag
     @SerialName(value = "is_active") val isActive: kotlin.Boolean? = true
-
-) {
-
-
-}
-
+)

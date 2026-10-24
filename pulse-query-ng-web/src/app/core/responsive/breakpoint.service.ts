@@ -204,10 +204,12 @@ export class BreakpointService implements OnDestroy {
    * Detects if touch input is available.
    */
   private detectTouch(): void {
+    const legacyMsTouch =
+      'msMaxTouchPoints' in navigator &&
+      typeof navigator.msMaxTouchPoints === 'number' &&
+      navigator.msMaxTouchPoints > 0;
     const hasTouchSupport =
-      'ontouchstart' in window ||
-      navigator.maxTouchPoints > 0 ||
-      (navigator as unknown as { msMaxTouchPoints: number }).msMaxTouchPoints > 0;
+      'ontouchstart' in window || navigator.maxTouchPoints > 0 || legacyMsTouch;
 
     this._hasTouch.set(hasTouchSupport);
   }

@@ -17,27 +17,18 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for sending a message from the User. Role is implicitly 'user'.
  *
- * @param content 
- * @param targetModels 
+ * @param content
+ * @param targetModels
  */
 @Serializable
-
-data class MessageCreate (
-
+data class MessageCreate(
     @SerialName(value = "content") @Required val content: kotlin.String,
-
     @SerialName(value = "target_models") val targetModels: kotlin.collections.List<kotlin.String>? = null
-
-) {
-
-
-}
-
+)

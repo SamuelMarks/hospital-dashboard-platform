@@ -7,7 +7,6 @@ import uuid
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import Executable
 
 from app.api.routers.dashboards import _validate_sql_query
 
@@ -200,118 +199,71 @@ async def test_delete_widget_success(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_dashboard_scalars_none(client: AsyncClient) -> None:
-  """Test create_dashboard raises 404 if re-selected dashboard returns None."""
-  from unittest.mock import MagicMock, patch
+async def test_reload_dashboard_with_widgets_not_found(db_session: AsyncSession) -> None:
+  """
+  Verifies `DashboardService._reload_dashboard_with_widgets_result` returns `Err(RESOURCE_NOT_FOUND)`
+  when the target dashboard UUID does not exist in `db_session`.
 
-  from tests import conftest
+  Args:
+      db_session (AsyncSession): Active test database session.
+  """
+  from app.core.result import Err, ErrorCode
+  from app.services.dashboard_service import dashboard_service
 
-  headers = await _auth_headers(client)
-  orig_execute = conftest.AsyncSessionShim.execute
-
-  async def mock_execute(self: conftest.AsyncSessionShim, statement: Executable) -> object:
-    """
-    Intercepts dashboard select queries to simulate None return after commit.
-
-    Args:
-        self (conftest.AsyncSessionShim): Session instance.
-        statement (Executable): SQLAlchemy statement.
-
-    Returns:
-        object: Mocked or original execution result.
-    """
-    res = await orig_execute(self, statement)
-    stmt_str = str(statement)
-    if "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
-      mock_res = MagicMock()
-      mock_res.scalars.return_value.first.return_value = None
-      return mock_res
-    return res
-
-  with patch.object(conftest.AsyncSessionShim, "execute", side_effect=mock_execute, autospec=True):
-    res = await client.post("/api/v1/dashboards/", json={"name": "TestNone"}, headers=headers)
-    assert res.status_code == 404
-    assert res.json()["detail"] == "Dashboard not found"
+  res = await dashboard_service._reload_dashboard_with_widgets_result(
+    uuid.uuid4(),
+    db_session,
+    not_found_message="Dashboard not found",
+  )
+  assert isinstance(res, Err)
+  assert res.error.code == ErrorCode.RESOURCE_NOT_FOUND
+  assert res.error.status_code == 404
+  assert res.error.message == "Dashboard not found"
 
 
 @pytest.mark.asyncio
-async def test_clone_dashboard_scalars_none(client: AsyncClient) -> None:
-  """Test clone_dashboard raises 404 if re-selected dashboard returns None."""
-  from unittest.mock import MagicMock, patch
+async def test_dashboards_SQL_validation_errors_on_create_and_update(
+  client: AsyncClient,
+  db_session: AsyncSession,
+) -> None:
+  """
+  Verifies `create_widget` and `update_widget` return 400 when SQL validation fails.
 
-  from tests import conftest
-
+  Args:
+      client (AsyncClient): Active ASGI HTTP test client.
+      db_session (AsyncSession): Active test database session.
+  """
   headers = await _auth_headers(client)
-  create_dash = await client.post("/api/v1/dashboards/", json={"name": "SourceDash"}, headers=headers)
-  dash_id = create_dash.json()["id"]
+  dash_res = await client.post("/api/v1/dashboards/", json={"name": "SQLValidationDash"}, headers=headers)
+  dash_id = dash_res.json()["id"]
 
-  orig_execute = conftest.AsyncSessionShim.execute
-  clone_call = False
-  dash_queries = 0
+  bad_create = await client.post(
+    f"/api/v1/dashboards/{dash_id}/widgets",
+    json={
+      "title": "BadSQL",
+      "type": "SQL",
+      "visualization": "table",
+      "config": {"query": "SELECT * FROM nonexistent_xyz"},
+    },
+    headers=headers,
+  )
+  assert bad_create.status_code == 400
 
-  async def mock_execute(self: conftest.AsyncSessionShim, statement: Executable) -> object:
-    """
-    Intercepts the second dashboard select query during clone to simulate None return.
+  good_create = await client.post(
+    f"/api/v1/dashboards/{dash_id}/widgets",
+    json={"title": "GoodSQL", "type": "SQL", "visualization": "table", "config": {"query": "SELECT 1"}},
+    headers=headers,
+  )
+  assert good_create.status_code == 200
+  wid_id = good_create.json()["id"]
 
-    Args:
-        self (conftest.AsyncSessionShim): Session instance.
-        statement (Executable): SQLAlchemy statement.
-
-    Returns:
-        object: Mocked or original execution result.
-    """
-    nonlocal dash_queries
-    res = await orig_execute(self, statement)
-    stmt_str = str(statement)
-    if clone_call and "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
-      dash_queries += 1
-      # First dashboard query in clone_dashboard is _get_dashboard_with_access, second is reload
-      if dash_queries >= 2:
-        mock_res = MagicMock()
-        mock_res.scalars.return_value.first.return_value = None
-        return mock_res
-    return res
-
-  with patch.object(conftest.AsyncSessionShim, "execute", side_effect=mock_execute, autospec=True):
-    clone_call = True
-    res = await client.post(f"/api/v1/dashboards/{dash_id}/clone", headers=headers)
-    assert res.status_code == 404
-    assert res.json()["detail"] == "Cloned dashboard could not be loaded"
-
-
-@pytest.mark.asyncio
-async def test_restore_default_dashboard_scalars_none(client: AsyncClient) -> None:
-  """Test restore_default_dashboard raises 404 if re-selected dashboard returns None."""
-  from unittest.mock import MagicMock, patch
-
-  from tests import conftest
-
-  headers = await _auth_headers(client)
-  orig_execute = conftest.AsyncSessionShim.execute
-
-  async def mock_execute(self: conftest.AsyncSessionShim, statement: Executable) -> object:
-    """
-    Intercepts dashboard select queries during restore-defaults to simulate None return.
-
-    Args:
-        self (conftest.AsyncSessionShim): Session instance.
-        statement (Executable): SQLAlchemy statement.
-
-    Returns:
-        object: Mocked or original execution result.
-    """
-    res = await orig_execute(self, statement)
-    stmt_str = str(statement)
-    if "dashboards" in stmt_str.lower() and "users" not in stmt_str.lower():
-      mock_res = MagicMock()
-      mock_res.scalars.return_value.first.return_value = None
-      return mock_res
-    return res
-
-  with patch.object(conftest.AsyncSessionShim, "execute", side_effect=mock_execute, autospec=True):
-    res = await client.post("/api/v1/dashboards/restore-defaults", headers=headers)
-    assert res.status_code == 404
-    assert res.json()["detail"] == "Default dashboard could not be restored"
+  bad_update = await client.put(
+    f"/api/v1/dashboards/widgets/{wid_id}",
+    json={"config": {"query": "SELECT * FROM nonexistent_xyz"}},
+    headers=headers,
+  )
+  assert bad_update.status_code == 400
+  _ = db_session
 
 
 @pytest.mark.asyncio

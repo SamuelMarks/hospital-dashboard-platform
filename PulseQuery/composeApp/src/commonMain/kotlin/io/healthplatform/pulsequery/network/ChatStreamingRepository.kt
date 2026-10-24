@@ -3,6 +3,9 @@
  */
 package io.healthplatform.pulsequery.network
 
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.request.headers
@@ -106,7 +109,7 @@ class ChatStreamingRepository(
         val client = httpClient ?: AppContainer.httpClient
         val url = buildStreamUrl(conversationId, modelId)
 
-        runCatching {
+        runCatchingPulseAsync {
             client.prepareGet(url) {
                 headers {
                     append(HttpHeaders.Accept, "text/event-stream")
@@ -118,10 +121,17 @@ class ChatStreamingRepository(
                 processStreamResponse(response, conversationId)
             }
         }.onFailure { e ->
-            send(ChatStreamEvent.StreamError(e.message ?: "Network error during token streaming"))
+            send(ChatStreamEvent.StreamError(e.messageOrDefault("Network error during token streaming")))
         }
     }
 
+    /**
+     * Constructs the target SSE endpoint URL for a conversation and optional model ID.
+     *
+     * @param conversationId Target conversation UUID.
+     * @param modelId Optional model identifier query parameter.
+     * @return Full HTTP URL string for the SSE stream endpoint.
+     */
     private fun buildStreamUrl(conversationId: String, modelId: String?): String {
         val base = baseUrlProvider().trimEnd('/')
         return if (modelId != null) {
@@ -131,6 +141,12 @@ class ChatStreamingRepository(
         }
     }
 
+    /**
+     * Reads lines from the SSE [HttpResponse] and dispatches parsed [ChatStreamEvent] items.
+     *
+     * @param response Active Ktor [HttpResponse] stream.
+     * @param conversationId Fallback conversation ID if omitted from the start packet.
+     */
     private suspend fun ProducerScope<ChatStreamEvent>.processStreamResponse(
         response: HttpResponse,
         conversationId: String
@@ -148,23 +164,42 @@ class ChatStreamingRepository(
         }
     }
 
+    /**
+     * Extracts the JSON payload following the `data:` prefix in an SSE line.
+     *
+     * @param line Raw line from the SSE body.
+     * @return Non-empty JSON payload string, or null if the line is not a data frame.
+     */
     private fun extractSseDataPayload(line: String): String? {
         val trimmed = line.trim()
         if (!trimmed.startsWith("data:")) return null
         return trimmed.removePrefix("data:").trim().takeIf { it.isNotEmpty() }
     }
 
+    /**
+     * Decodes a raw JSON string into an [SsePacket] using [Result] and emits the mapped [ChatStreamEvent].
+     *
+     * @param jsonText Raw JSON string from an SSE `data:` frame.
+     * @param conversationId Fallback conversation identifier.
+     */
     private suspend fun ProducerScope<ChatStreamEvent>.emitPacketEvent(
         jsonText: String,
         conversationId: String
     ) {
-        val packet = runCatching { json.decodeFromString<SsePacket>(jsonText) }.getOrNull() ?: return
+        val packet = runCatchingPulse { json.decodeFromString<SsePacket>(jsonText) }.getOrNull() ?: return
         val event = mapPacketToEvent(packet, conversationId)
         if (event != null) {
             send(event)
         }
     }
 
+    /**
+     * Maps a deserialized [SsePacket] to its corresponding domain [ChatStreamEvent].
+     *
+     * @param packet Deserialized SSE packet payload.
+     * @param fallbackConversationId Conversation ID used if [SsePacket.conversationId] is null.
+     * @return Corresponding [ChatStreamEvent] or null for unrecognized heartbeats.
+     */
     private fun mapPacketToEvent(packet: SsePacket, fallbackConversationId: String): ChatStreamEvent? {
         return when (packet.event) {
             "start" -> ChatStreamEvent.StreamStarted(packet.conversationId ?: fallbackConversationId)

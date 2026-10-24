@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
 
 /**
  * TV Wallboard dashboard screen optimized for passive 10-foot nursing station displays,
@@ -191,7 +192,7 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
 
     LaunchedEffect(Unit) {
         if (isFirst) {
-            runCatching {
+            runCatchingPulse {
                 focusRequester.requestFocus()
             }
         }

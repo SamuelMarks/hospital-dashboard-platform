@@ -70,10 +70,16 @@ async def test_update_widget_valid_sql_dry_run(client: AsyncClient, db_session: 
 
 @pytest.mark.asyncio
 async def test_update_widget_invalid_sql_returns_400(client: AsyncClient, db_session: AsyncSession) -> None:
-  """Test that an invalid SQL query or multi-statement query raises 400 Bad Request."""
-  user, _, widget = await _seed_user_and_widget(db_session)
+  """Test that an invalid SQL query or multi-statement query raises 400 Bad Request on create and update."""
+  user, dash, widget = await _seed_user_and_widget(db_session)
   app.dependency_overrides[get_current_user] = lambda: user
   try:
+    res_create_bad = await client.post(
+      f"/api/v1/dashboards/{dash.id}/widgets",
+      json={"title": "Bad", "type": "SQL", "visualization": "table", "config": {"query": "SELECT * FRO ("}},
+    )
+    assert res_create_bad.status_code == 400
+
     res_syntax = await client.put(
       f"/api/v1/dashboards/widgets/{widget.id}",
       json={"config": {"query": "SELECT * FRO ("}},

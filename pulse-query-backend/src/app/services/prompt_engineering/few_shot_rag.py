@@ -16,12 +16,24 @@ import os
 import re
 from typing import Any
 
+from app.core.config import BACKEND_ROOT
 from app.services.prompt_engineering.interfaces import PromptStrategy
 
-# Helper to locate the standard content pack
-# Path relative to: pulse-query-backend/src/app/services/prompt_engineering/
-current_dir = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE_PATH = os.path.abspath(os.path.join(current_dir, "../../../../data/initial_templates.json"))
+DATA_FILE_PATH = str(BACKEND_ROOT / "data" / "initial_templates.json")
+_default_retriever: "TemplateRetriever | None" = None
+
+
+def get_default_template_retriever() -> "TemplateRetriever":
+  """
+  Returns a cached singleton `TemplateRetriever` loaded from `DATA_FILE_PATH`.
+
+  Returns:
+      TemplateRetriever: Cached template retriever instance.
+  """
+  global _default_retriever
+  if _default_retriever is None:
+    _default_retriever = TemplateRetriever()
+  return _default_retriever
 
 
 class TemplateRetriever:
@@ -141,9 +153,9 @@ class FewShotRAGStrategy(PromptStrategy):
 
     Args:
         retriever: Optional dependency injection for testing.
-                   If None, creates a default Internal TemplateRetriever.
+                   If None, reuses the cached default `TemplateRetriever`.
     """
-    self.retriever = retriever or TemplateRetriever()
+    self.retriever = retriever or get_default_template_retriever()
 
   def get_strategy_name(self) -> str:
     """

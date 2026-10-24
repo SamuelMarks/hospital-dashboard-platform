@@ -4,19 +4,10 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal, PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID } from '@angular/core';
 import { VizChartComponent } from './viz-chart.component';
-import { TableDataSet } from '../viz-table/viz-table.component';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
-
-interface VizChartPrivate {
-  dataSet: WritableSignal<TableDataSet>;
-  config: WritableSignal<Record<string, unknown> | undefined>;
-  palette: WritableSignal<string[]>;
-  document: Document | null;
-  updatePaletteFromDom: () => void;
-}
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -36,8 +27,6 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('VizChartComponent', () => {
   let component: VizChartComponent;
   let fixture: ComponentFixture<VizChartComponent>;
-  let dataSetSig: WritableSignal<TableDataSet>;
-  let configSig: WritableSignal<Record<string, unknown> | undefined>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -46,11 +35,8 @@ describe('VizChartComponent', () => {
 
     fixture = TestBed.createComponent(VizChartComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal<TableDataSet>({ columns: [], data: [] });
-    configSig = signal<Record<string, unknown> | undefined>(undefined);
-    const priv = component as unknown as VizChartPrivate;
-    priv.dataSet = dataSetSig;
-    priv.config = configSig;
+    fixture.componentRef.setInput('dataSet', { columns: [], data: [] });
+    fixture.componentRef.setInput('config', undefined);
 
     fixture.detectChanges();
   });
@@ -64,15 +50,13 @@ describe('VizChartComponent', () => {
         { date: '2023-01-02', service: 'A', cnt: 15 },
       ],
     };
-    dataSetSig.set(data);
-    // Trigger change detection to run computation
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const keys = component.axisKeys();
     expect(keys.stack).toBe('service');
 
     const items = component.processedData();
-    // Two groups: 2023-01-01 (stack of 30), 2023-01-02 (stack of 15)
     expect(items.length).toBe(2);
 
     const d1 = items.find((i) => i.label === '2023-01-01');
@@ -88,49 +72,31 @@ describe('VizChartComponent', () => {
         { cat: 'C1', type: 'T2', val: 50 },
       ],
     };
-    dataSetSig.set(data);
-    configSig.set({ stackBy: 'type' });
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', { stackBy: 'type' });
     fixture.detectChanges();
 
     const segments = fixture.debugElement.queryAll(By.css('.bar-segment'));
     expect(segments.length).toBe(2);
-
-    const c1 = segments[0].styles['background-color'];
-    const c2 = segments[1].styles['background-color'];
-    // Mock returns same color, but usually they differ by index.
-    // However, since we bypassed the library, exact color logic might result in both being white/mocked.
-    // We check existence primarily.
     expect(segments[0]).toBeTruthy();
     expect(segments[1]).toBeTruthy();
   });
 
   it('should handle empty data set', () => {
-    dataSetSig.set({ columns: [], data: [] });
+    fixture.componentRef.setInput('dataSet', { columns: [], data: [] });
     fixture.detectChanges();
     expect(component.axisKeys()).toEqual({ x: '', y: '', stack: '' });
     expect(component.processedData().length).toBe(0);
   });
 
   it('should fallback palette colors when CSS vars are missing', () => {
-    const styleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
-      getPropertyValue: vi.fn().mockReturnValue(''),
-    } as unknown as CSSStyleDeclaration);
+    const emptyStyle = document.createElement('div').style;
+    const styleSpy = vi.spyOn(window, 'getComputedStyle').mockReturnValue(emptyStyle);
 
-    (component as unknown as VizChartPrivate).updatePaletteFromDom();
+    component.updatePaletteFromDom();
 
     expect(component.getPalette(-1)).toBe('#ba1a1a');
     styleSpy.mockRestore();
-  });
-
-  it('should no-op palette update when document missing', () => {
-    const priv = component as unknown as VizChartPrivate;
-    const originalDoc = priv.document;
-    priv.document = null;
-
-    priv.updatePaletteFromDom();
-
-    priv.document = originalDoc;
-    expect(true).toBe(true);
   });
 
   it('should compute simple chart with negatives', () => {
@@ -141,12 +107,12 @@ describe('VizChartComponent', () => {
         { label: 'B', value: 20 },
       ],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const items = component.processedData();
     expect(items.length).toBe(2);
-    expect(items[0].isNegative).toBe(true);
+    expect(items[0]?.isNegative).toBe(true);
   });
 
   it('should treat missing values as zero in simple data', () => {
@@ -157,16 +123,16 @@ describe('VizChartComponent', () => {
         { label: 'B', value: null },
       ],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const items = component.processedData();
-    expect(items[0].value).toBe(0);
-    expect(items[1].value).toBe(0);
+    expect(items[0]?.value).toBe(0);
+    expect(items[1]?.value).toBe(0);
   });
 
   it('should fallback palette when empty', () => {
-    (component as unknown as VizChartPrivate).palette.set([]);
+    component.palette.set([]);
     const colors = component.getPalette(0);
     const neg = component.getPalette(-1);
     expect(colors).toBeTruthy();
@@ -178,12 +144,12 @@ describe('VizChartComponent', () => {
       columns: ['label', 'value'],
       data: [{ label: 'A', value: 1 }],
     };
-    dataSetSig.set(data);
-    configSig.set({ referenceLines: [{ y: 100 }] });
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', { referenceLines: [{ y: 100 }] });
     fixture.detectChanges();
 
     const items = component.processedData();
-    expect(items[0].heightPct).toContain('%');
+    expect(items[0]?.heightPct).toContain('%');
   });
 
   it('should handle stacked data with zero totals', () => {
@@ -194,18 +160,18 @@ describe('VizChartComponent', () => {
         { cat: 'A', stack: 'S2', val: -5 },
       ],
     };
-    dataSetSig.set(data);
-    configSig.set({ stackBy: 'stack' });
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', { stackBy: 'stack' });
     fixture.detectChanges();
 
     const items = component.processedData();
-    expect(items[0].isStacked).toBe(true);
-    expect(items[0].segments?.length).toBe(2);
-    expect(items[0].segments?.[0].heightPct).toContain('%');
+    expect(items[0]?.isStacked).toBe(true);
+    expect(items[0]?.segments?.length).toBe(2);
+    expect(items[0]?.segments?.[0]?.heightPct).toContain('%');
   });
 
   it('should use palette when available', () => {
-    (component as unknown as VizChartPrivate).palette.set(['#111', '#222', '#333']);
+    component.palette.set(['#111', '#222', '#333']);
     expect(component.getPalette(0)).toBe('#111');
     expect(component.getPalette(5)).toBe('#222');
     expect(component.getPalette(-1)).toBe('#333');
@@ -216,8 +182,8 @@ describe('VizChartComponent', () => {
       columns: ['x', 'y'],
       data: [{ x: 'A', y: 1 }],
     };
-    dataSetSig.set(data);
-    configSig.set({ xKey: 'x', yKey: 'y' });
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', { xKey: 'x', yKey: 'y' });
     fixture.detectChanges();
     expect(component.axisKeys()).toEqual({ x: 'x', y: 'y', stack: '' });
   });
@@ -226,8 +192,8 @@ describe('VizChartComponent', () => {
     const data = {
       data: [{ a: 1, b: 2, c: 3 }],
     };
-    dataSetSig.set(data as unknown as TableDataSet);
-    configSig.set(undefined);
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', undefined);
     fixture.detectChanges();
 
     expect(component.axisKeys()).toEqual({ x: 'a', y: 'a', stack: '' });
@@ -237,8 +203,8 @@ describe('VizChartComponent', () => {
     const data = {
       data: [{ a: 'one', b: 'two', c: 'three' }],
     };
-    dataSetSig.set(data as unknown as TableDataSet);
-    configSig.set(undefined);
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', undefined);
     fixture.detectChanges();
 
     expect(component.axisKeys()).toEqual({ x: 'a', y: 'b', stack: 'b' });
@@ -248,8 +214,8 @@ describe('VizChartComponent', () => {
     const data = {
       data: [{ only: 'A' }],
     };
-    dataSetSig.set(data as unknown as TableDataSet);
-    configSig.set(undefined);
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', undefined);
     fixture.detectChanges();
 
     expect(component.axisKeys()).toEqual({ x: 'only', y: 'only', stack: '' });
@@ -265,12 +231,9 @@ describe('VizChartComponent', () => {
 
     const serverFixture = TestBed.createComponent(VizChartComponent);
     const serverComponent = serverFixture.componentInstance;
-    const serverDataSig = signal<TableDataSet>({ columns: [], data: [] });
-    const serverConfigSig = signal<Record<string, unknown> | undefined>(undefined);
-    const serverPriv = serverComponent as unknown as VizChartPrivate;
-    serverPriv.dataSet = serverDataSig;
-    serverPriv.config = serverConfigSig;
-    const updateSpy = vi.spyOn(serverPriv, 'updatePaletteFromDom');
+    serverFixture.componentRef.setInput('dataSet', { columns: [], data: [] });
+    serverFixture.componentRef.setInput('config', undefined);
+    const updateSpy = vi.spyOn(serverComponent, 'updatePaletteFromDom');
     serverFixture.detectChanges();
 
     expect(updateSpy).not.toHaveBeenCalled();

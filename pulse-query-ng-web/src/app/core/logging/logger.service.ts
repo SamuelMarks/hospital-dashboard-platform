@@ -5,12 +5,12 @@
  * stores avoid raw `console.error` / `console.warn` calls and can be cleanly spied in tests.
  */
 
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 
 /**
  * Injectable logging service routing error and warning diagnostics.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class LoggerService {
   /**
    * Logs a structured error diagnostic message and optional error object.

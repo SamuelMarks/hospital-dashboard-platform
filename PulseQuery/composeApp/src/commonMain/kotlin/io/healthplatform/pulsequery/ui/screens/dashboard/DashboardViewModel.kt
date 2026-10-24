@@ -16,7 +16,6 @@ import io.healthplatform.pulsequery.api.models.WidgetReorderItem
 import io.healthplatform.pulsequery.api.models.WidgetReorderRequest
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.core.undo.DashboardCommand
 import io.healthplatform.pulsequery.core.undo.UndoRedoManager
@@ -158,6 +157,11 @@ class DashboardViewModel(
         }
     }
 
+    /**
+     * Handles successful retrieval of [fetched] dashboards, connecting WebSocket presence and refreshing widgets.
+     *
+     * @param fetched List of dashboards returned by the backend.
+     */
     private suspend fun onDashboardsLoaded(fetched: List<DashboardResponse>) {
         val currentActiveId = _state.value.activeDashboard?.id
         val resolvedActive = fetched.find { it.id == currentActiveId } ?: fetched.firstOrNull()
@@ -178,6 +182,12 @@ class DashboardViewModel(
         }
     }
 
+    /**
+     * Handles dashboard list retrieval failures by falling back to offline cached widgets if available.
+     *
+     * @param error Underlying failure [Throwable].
+     * @param errorPrefix Prefix prepended to the error message when no offline cache exists.
+     */
     private fun onDashboardsLoadFailed(error: Throwable, errorPrefix: String) {
         val currentActive = _state.value.activeDashboard
         val cached = if (currentActive != null) {
@@ -264,6 +274,14 @@ class DashboardViewModel(
         )
     }
 
+    /**
+     * Caches raw widget execution JSON payloads and parses them into [WidgetRenderState] instances.
+     *
+     * @param dashboardId Parent dashboard UUID.
+     * @param executableWidgets List of non-text widgets that were executed.
+     * @param payloadMap Map of widget IDs to raw execution [JsonElement] payloads.
+     * @return Map of widget IDs to parsed [WidgetRenderState] instances.
+     */
     private fun cacheAndParseExecutedWidgets(
         dashboardId: String,
         executableWidgets: List<WidgetResponse>,
@@ -281,6 +299,14 @@ class DashboardViewModel(
         }
     }
 
+    /**
+     * Handles batch widget execution failures by restoring from [WidgetCacheStorage] or populating per-widget error states.
+     *
+     * @param dashboard Active dashboard whose refresh failed.
+     * @param executableWidgets List of executable widgets on the dashboard.
+     * @param textMap Pre-rendered states for static text widgets.
+     * @param error Underlying failure [Throwable].
+     */
     private fun handleDashboardRefreshFailure(
         dashboard: DashboardResponse,
         executableWidgets: List<WidgetResponse>,
@@ -442,16 +468,35 @@ class DashboardViewModel(
     }
 }
 
+/**
+ * Extracts a string primitive property from [config] or returns null.
+ *
+ * @param config Widget configuration JSON object.
+ * @param key Property key to look up.
+ * @return String value or null if absent.
+ */
 private fun extractConfigString(config: JsonObject, key: String): String? {
     val prim = config[key] as? JsonPrimitive ?: return null
     return prim.content
 }
 
+/**
+ * Extracts the Markdown text body from a `TEXT` [widget] configuration.
+ *
+ * @param widget Target [WidgetResponse].
+ * @return Extracted text content string.
+ */
 private fun extractTextWidgetContent(widget: WidgetResponse): String =
     extractConfigString(widget.config, "content")
         ?: extractConfigString(widget.config, "text")
-        .orEmpty()
+            .orEmpty()
 
+/**
+ * Builds [WidgetRenderState] entries for all static `TEXT` widgets in [widgets].
+ *
+ * @param widgets All widgets belonging to the active dashboard.
+ * @return Map of text widget IDs to their [WidgetRenderState].
+ */
 private fun extractTextWidgetStates(widgets: List<WidgetResponse>): Map<String, WidgetRenderState> {
     return widgets
         .filter { it.type.equals("TEXT", ignoreCase = true) }
@@ -460,6 +505,12 @@ private fun extractTextWidgetStates(widgets: List<WidgetResponse>): Map<String, 
         }
 }
 
+/**
+ * Constructs the global filter request map from [state].
+ *
+ * @param state Current [DashboardUiState].
+ * @return Map of filter keys to [JsonElement] values.
+ */
 private fun buildGlobalFilterPayload(state: DashboardUiState): Map<String, JsonElement> {
     return buildMap {
         state.filterDepartment?.takeIf { it.isNotBlank() }?.let {
@@ -471,6 +522,13 @@ private fun buildGlobalFilterPayload(state: DashboardUiState): Map<String, JsonE
     }
 }
 
+/**
+ * Parses a raw execution [element] for [widget] into tabular and chart series data.
+ *
+ * @param widget Metadata of the executed widget.
+ * @param element Raw JSON execution payload.
+ * @return Populated [WidgetRenderState].
+ */
 private fun parseExecutionElement(widget: WidgetResponse, element: JsonElement): WidgetRenderState {
     val obj = element as? JsonObject ?: return WidgetRenderState()
     val errorMsg = extractExecutionError(obj)
@@ -502,11 +560,26 @@ private fun parseExecutionElement(widget: WidgetResponse, element: JsonElement):
     )
 }
 
+/**
+ * Extracts a non-blank execution error string from [obj], if present.
+ *
+ * @param obj Execution response JSON object.
+ * @return Error message string, or null if no error occurred.
+ */
 private fun extractExecutionError(obj: JsonObject): String? {
     val errorPrim = obj["error"] as? JsonPrimitive ?: return null
     return if (errorPrim.isString && errorPrim.content.isNotBlank()) errorPrim.content else null
 }
 
+/**
+ * Resolves the column key to use for a chart axis from [configuredKey] or positional fallbacks in [cols].
+ *
+ * @param configuredKey Explicitly configured axis column name, if any.
+ * @param cols Available result column names.
+ * @param fallbackIndex Positional column index fallback.
+ * @param defaultKey Final fallback column name when [cols] is empty.
+ * @return Resolved column name.
+ */
 private fun resolveAxisKey(
     configuredKey: String?,
     cols: List<String>,
@@ -519,6 +592,14 @@ private fun resolveAxisKey(
     return cols.getOrNull(fallbackIndex) ?: cols.firstOrNull() ?: defaultKey
 }
 
+/**
+ * Deserializes cached JSON snapshots for all widgets in [dashboard].
+ *
+ * @param json Serializer instance used to parse cached JSON strings.
+ * @param dashboard Active dashboard metadata.
+ * @param cachedJsonByWidgetId Map of widget IDs to cached JSON strings.
+ * @return Map of widget IDs to restored [WidgetRenderState] instances.
+ */
 private fun deserializeCachedDashboardWidgets(
     json: Json,
     dashboard: DashboardResponse,
@@ -540,6 +621,12 @@ private fun deserializeCachedDashboardWidgets(
     }
 }
 
+/**
+ * Converts a [WidgetResponse] into a polymorphic [WidgetIn] creation payload for undo restoration.
+ *
+ * @param widget Source [WidgetResponse] instance.
+ * @return Corresponding [WidgetIn] payload.
+ */
 private fun convertResponseToWidgetIn(widget: WidgetResponse): WidgetIn {
     return when (widget.type.uppercase()) {
         "TEXT" -> {

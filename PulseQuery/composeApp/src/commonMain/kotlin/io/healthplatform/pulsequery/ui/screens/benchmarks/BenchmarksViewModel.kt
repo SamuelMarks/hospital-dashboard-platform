@@ -151,14 +151,14 @@ class BenchmarksViewModel(
      * @param elemMap Raw benchmark JSON map entry.
      * @return Parsed [SqlBenchmarkItem].
      */
-    private fun parseSqlBenchmarkItem(elemMap: Map<String, *>): SqlBenchmarkItem {
+    private fun parseSqlBenchmarkItem(elemMap: Map<String, JsonElement>): SqlBenchmarkItem {
         return SqlBenchmarkItem(
             theme = extractField(elemMap, "theme") ?: "General",
             sql = extractField(elemMap, "sql").orEmpty(),
             difficulty = extractField(elemMap, "difficulty") ?: "Medium",
             description = extractField(elemMap, "description")
                 ?: extractField(elemMap, "question")
-                .orEmpty()
+                    .orEmpty()
         )
     }
 
@@ -168,7 +168,7 @@ class BenchmarksViewModel(
      * @param elemMap Raw MPAX benchmark JSON map entry.
      * @return Parsed [MpaxBenchmarkItem].
      */
-    private fun parseMpaxBenchmarkItem(elemMap: Map<String, *>): MpaxBenchmarkItem {
+    private fun parseMpaxBenchmarkItem(elemMap: Map<String, JsonElement>): MpaxBenchmarkItem {
         return MpaxBenchmarkItem(
             title = extractField(elemMap, "title") ?: "Optimization Scenario",
             difficulty = extractField(elemMap, "difficulty") ?: "Standard",
@@ -178,19 +178,13 @@ class BenchmarksViewModel(
     }
 
     /**
-     * Extracts a string value for [key] from an untyped benchmark map entry.
+     * Extracts a string value for [key] from a typed [JsonElement] benchmark map entry.
      *
-     * @param map Map representing a raw benchmark JSON object.
+     * @param map Map representing a benchmark JSON object.
      * @param key Property key to extract.
      * @return Extracted string value, or null if absent.
      */
-    private fun extractField(map: Map<String, *>, key: String): String? {
-        return map[key]?.let { value ->
-            if (value is JsonElement) {
-                value.jsonPrimitive.content
-            } else {
-                value.toString().trim('"')
-            }
-        }
+    private fun extractField(map: Map<String, JsonElement>, key: String): String? {
+        return map[key]?.let { it.jsonPrimitive.content }
     }
 }

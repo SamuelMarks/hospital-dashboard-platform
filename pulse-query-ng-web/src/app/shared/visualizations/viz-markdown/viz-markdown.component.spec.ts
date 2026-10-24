@@ -3,14 +3,12 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
 import { VizMarkdownComponent } from './viz-markdown.component';
 import { By } from '@angular/platform-browser';
 
 describe('VizMarkdownComponent', () => {
   let component: VizMarkdownComponent;
   let fixture: ComponentFixture<VizMarkdownComponent>;
-  let contentSig: WritableSignal<string>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -19,11 +17,6 @@ describe('VizMarkdownComponent', () => {
 
     fixture = TestBed.createComponent(VizMarkdownComponent);
     component = fixture.componentInstance;
-    contentSig = {
-      set: (val: string) => {
-        fixture.componentRef.setInput('content', val);
-      },
-    } as unknown as WritableSignal<string>;
     fixture.componentRef.setInput('content', '');
     fixture.detectChanges();
   });
@@ -33,40 +26,48 @@ describe('VizMarkdownComponent', () => {
   });
 
   it('should escape HTML tags in input', () => {
-    contentSig.set('<script>alert(1)</script>');
+    fixture.componentRef.setInput('content', '<script>alert(1)</script>');
     fixture.detectChanges();
 
-    // The content is sanitized, so innerHTML might strip it or encode it
-    const div = fixture.debugElement.query(By.css('.md-content')).nativeElement;
+    const div = fixture.debugElement.query(By.css('.md-content')).nativeElement as HTMLElement;
     expect(div.innerHTML).not.toContain('<script>');
     expect(div.textContent).toContain('alert(1)');
   });
 
   it('should parse markdown headers', () => {
-    contentSig.set('# Heading 1');
+    fixture.componentRef.setInput('content', '# Heading 1');
     fixture.detectChanges();
-    const h1 = fixture.debugElement.query(By.css('h1'));
+    const h1 = fixture.debugElement.query(By.css('h1')).nativeElement as HTMLElement;
     expect(h1).toBeTruthy();
-    expect(h1.nativeElement.textContent).toBe('Heading 1');
+    expect(h1.textContent).toBe('Heading 1');
   });
 
   it('should parse strong text', () => {
-    contentSig.set('**Bold**');
+    fixture.componentRef.setInput('content', '**Bold**');
     fixture.detectChanges();
-    const strong = fixture.debugElement.query(By.css('strong'));
+    const strong = fixture.debugElement.query(By.css('strong')).nativeElement as HTMLElement;
     expect(strong).toBeTruthy();
-    expect(strong.nativeElement.textContent).toBe('Bold');
+    expect(strong.textContent).toBe('Bold');
   });
 
   it('should parse lists', () => {
-    contentSig.set('- Item 1\n- Item 2');
+    fixture.componentRef.setInput(
+      'content',
+      `- Item 1
+- Item 2`,
+    );
     fixture.detectChanges();
     const lis = fixture.debugElement.queryAll(By.css('li'));
     expect(lis.length).toBe(2);
   });
 
   it('should parse italics, code, and blockquotes', () => {
-    contentSig.set('*Italic*\n`code`\n> quote');
+    fixture.componentRef.setInput(
+      'content',
+      `*Italic*
+\`code\`
+> quote`,
+    );
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('em'))).toBeTruthy();
     expect(fixture.debugElement.query(By.css('code'))).toBeTruthy();
@@ -74,9 +75,13 @@ describe('VizMarkdownComponent', () => {
   });
 
   it('should convert line breaks', () => {
-    contentSig.set('Line1\nLine2');
+    fixture.componentRef.setInput(
+      'content',
+      `Line1
+Line2`,
+    );
     fixture.detectChanges();
-    const div = fixture.debugElement.query(By.css('.md-content')).nativeElement;
+    const div = fixture.debugElement.query(By.css('.md-content')).nativeElement as HTMLElement;
     expect(div.innerHTML).toContain('<br>');
   });
 });

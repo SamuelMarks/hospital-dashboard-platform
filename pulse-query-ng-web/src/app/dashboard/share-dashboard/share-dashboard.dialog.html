@@ -31,7 +31,6 @@
 
     <button
       mat-flat-button
-      color="primary"
       (click)="addShare()"
       [disabled]="!emailInput().trim() || isSubmitting()"
       data-testid="btn-add-share"
@@ -76,7 +75,6 @@
           <button
             mat-icon-button
             matListItemMeta
-            color="warn"
             (click)="revokeShare(share.id)"
             matTooltip="Revoke access"
             i18n-matTooltip

@@ -17,34 +17,23 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for PostgreSQL status.
  *
  * @param status Connection status (e.g. connected, error, unknown).
- * @param latencyMs 
- * @param details 
- * @param error 
+ * @param latencyMs
+ * @param details
+ * @param error
  */
 @Serializable
-
-data class PostgresHealthSchema (
-
-    /* Connection status (e.g. connected, error, unknown). */
+data class PostgresHealthSchema(
+    // Connection status (e.g. connected, error, unknown).
     @SerialName(value = "status") @Required val status: kotlin.String,
-
     @SerialName(value = "latency_ms") val latencyMs: kotlin.Double? = null,
-
     @SerialName(value = "details") val details: kotlin.String? = null,
-
     @SerialName(value = "error") val error: kotlin.String? = null
-
-) {
-
-
-}
-
+)

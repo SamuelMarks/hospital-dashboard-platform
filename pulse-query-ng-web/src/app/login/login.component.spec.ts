@@ -1,10 +1,13 @@
+/**
+ * @fileoverview Unit tests for LoginComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { LoginComponent } from './login.component';
 import { AuthService } from '../core/auth/auth.service';
 import { Router, ActivatedRoute, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { vi } from 'vitest';
@@ -30,7 +33,7 @@ describe('LoginComponent', () => {
     mockRoute = { snapshot: { queryParamMap: { get: vi.fn() } } };
 
     await TestBed.configureTestingModule({
-      imports: [LoginComponent, NoopAnimationsModule],
+      imports: [LoginComponent],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: mockAuthService },
@@ -46,7 +49,7 @@ describe('LoginComponent', () => {
     environment.registrationEnabled = originalRegState;
   });
 
-  const createComponent = () => {
+  const createComponent = (): void => {
     fixture = TestBed.createComponent(LoginComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -96,7 +99,7 @@ describe('LoginComponent', () => {
 
     fixture.detectChanges();
     const alertBox = fixture.debugElement.query(By.css('[data-testid="error-alert"]'));
-    expect(alertBox.nativeElement.textContent).toContain('Bad credentials');
+    expect((alertBox.nativeElement as HTMLElement).textContent).toContain('Bad credentials');
   });
 
   it('should use fallback error message when detail is missing', () => {

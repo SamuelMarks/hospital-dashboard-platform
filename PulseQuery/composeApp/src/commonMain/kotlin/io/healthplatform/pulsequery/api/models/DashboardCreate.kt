@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for creating a Dashboard.
  *
- * @param name 
+ * @param name
  */
 @Serializable
-
-data class DashboardCreate (
-
+data class DashboardCreate(
     @SerialName(value = "name") @Required val name: kotlin.String
-
-) {
-
-
-}
-
+)

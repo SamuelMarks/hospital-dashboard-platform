@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
+/** Material 3 light color scheme for clinical high-readability daytime environments. */
 private val LightColors = lightColorScheme(
     primary = Color(0xFF006C4C),
     onPrimary = Color(0xFFFFFFFF),
@@ -33,6 +34,7 @@ private val LightColors = lightColorScheme(
     onSurface = Color(0xFF191C1A)
 )
 
+/** Material 3 dark color scheme for low-glare clinical and wallboard environments. */
 private val DarkColors = darkColorScheme(
     primary = Color(0xFF6CDBAC),
     onPrimary = Color(0xFF003826),

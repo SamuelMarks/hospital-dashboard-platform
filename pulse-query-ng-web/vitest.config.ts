@@ -29,9 +29,7 @@ export default defineConfig({
       exclude: [
         'src/**/*.spec.ts',
         'src/app/api-client/**',
-        'src/setup-storage.ts',
         'src/test-setup.ts',
-        'src/test-utils/**',
         'src/main.server.ts',
         'src/app/app.config.server.ts',
         'src/app/app.routes.server.ts',

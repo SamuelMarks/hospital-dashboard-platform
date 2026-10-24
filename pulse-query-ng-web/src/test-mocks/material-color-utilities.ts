@@ -4,12 +4,24 @@
  */
 
 /**
+ * Container holding light and dark Material Design color schemes.
+ */
+export interface MockThemeSchemes {
+  /** Light mode Material color scheme. */
+  light: Scheme;
+  /** Dark mode Material color scheme. */
+  dark: Scheme;
+}
+
+/**
  * Converts a hexadecimal color string into a 32-bit ARGB integer.
  *
  * @param _hex - Hexadecimal color string to convert.
  * @returns Deterministic ARGB color integer (`0xffffffff`).
  */
-export const argbFromHex = (_hex: string): number => 0xffffffff;
+export function argbFromHex(_hex: string): number {
+  return 0xffffffff;
+}
 
 /**
  * Converts a 32-bit ARGB integer into a hexadecimal color string.
@@ -17,7 +29,9 @@ export const argbFromHex = (_hex: string): number => 0xffffffff;
  * @param _argb - ARGB integer representation of a color.
  * @returns Deterministic hex color string (`'#ffffff'`).
  */
-export const hexFromArgb = (_argb: number): string => '#ffffff';
+export function hexFromArgb(_argb: number): string {
+  return '#ffffff';
+}
 
 /**
  * Generates a mock Material Design theme from a source ARGB color.
@@ -25,12 +39,14 @@ export const hexFromArgb = (_argb: number): string => '#ffffff';
  * @param _sourceArgb - Source seed color in ARGB format.
  * @returns Object containing light and dark `Scheme` instances.
  */
-export const themeFromSourceColor = (_sourceArgb: number) => ({
-  schemes: {
-    light: new Scheme(),
-    dark: new Scheme(),
-  },
-});
+export function themeFromSourceColor(_sourceArgb: number): { schemes: MockThemeSchemes } {
+  return {
+    schemes: {
+      light: new Scheme(),
+      dark: new Scheme(),
+    },
+  };
+}
 
 /**
  * Mock Material Design color scheme containing ARGB token values for surface and accent roles.

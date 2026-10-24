@@ -22,7 +22,7 @@
                 }
               </span>
               @if (hasSqlCandidates(msg)) {
-                <button i18n mat-button color="accent" (click)="runAllCandidates(msg)">
+                <button i18n mat-button (click)="runAllCandidates(msg)">
                   <mat-icon aria-hidden="true">play_arrow</mat-icon> Run All
                 </button>
               }
@@ -47,9 +47,7 @@
                   <div class="candidate-body">
                     @if (candidateError(cand.id)) {
                       <div class="error-container" role="alert">
-                        <mat-icon aria-hidden="true" color="warn" class="icon-small"
-                          >warning</mat-icon
-                        >
+                        <mat-icon aria-hidden="true" class="icon-small">warning</mat-icon>
                         <span>{{ candidateError(cand.id) }}</span>
                       </div>
                     }
@@ -79,13 +77,7 @@
                   </div>
 
                   <div class="candidate-actions">
-                    <button
-                      i18n
-                      mat-flat-button
-                      color="primary"
-                      class="w-full"
-                      (click)="vote(msg.id, cand.id)"
-                    >
+                    <button i18n mat-flat-button class="w-full" (click)="vote(msg.id, cand.id)">
                       Select Model
                     </button>
                   </div>
@@ -130,7 +122,7 @@
 
   @if (store.error(); as err) {
     <div class="global-error-toast mat-elevation-z4" role="alert">
-      <mat-icon aria-hidden="true" color="warn">error</mat-icon>
+      <mat-icon aria-hidden="true">error</mat-icon>
       <span>{{ err }}</span>
     </div>
   }
@@ -173,7 +165,6 @@
     <button
       mat-icon-button
       matSuffix
-      color="primary"
       (click)="send()"
       [disabled]="!inputText().trim() || store.isGenerating()"
       i18n-aria-label

@@ -36,7 +36,7 @@ from app.api.routers import (
   ws,
 )
 from app.core.config import settings
-from app.core.diagnostics import check_configuration_hygiene
+from app.core.diagnostics import check_configuration_hygiene, diagnostics_registry
 from app.database.duckdb import duckdb_manager
 from app.database.duckdb_init import init_duckdb_on_startup
 from app.database.postgres import Base, engine, validate_postgres_connection
@@ -77,8 +77,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
   # 1. Postgres Initialization (Keys/Schema)
   await validate_postgres_connection(raise_on_error=False)
-  async with engine.begin() as conn:
-    await conn.run_sync(Base.metadata.create_all)
+  try:
+    async with engine.begin() as conn:
+      await conn.run_sync(Base.metadata.create_all)
+  except Exception as pg_err:
+    logger.critical(f"❌ PostgreSQL schema initialization failed on startup: {pg_err}")
+    diagnostics_registry.add_warning(
+      code="POSTGRES_SCHEMA_INIT_FAILED",
+      message=f"PostgreSQL schema initialization failed on startup: {pg_err}",
+      severity="critical",
+      remediation="Run 'uv run alembic upgrade head' and verify PostgreSQL connection settings.",
+    )
 
   # 2. DuckDB Auto-Ingestion (Data Layer)
   duckdb_manager.validate_duckdb_storage()

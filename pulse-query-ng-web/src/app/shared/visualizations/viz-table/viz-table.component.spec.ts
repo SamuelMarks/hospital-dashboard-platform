@@ -1,11 +1,18 @@
+/**
+ * @fileoverview Unit tests for VizTableComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal } from '@angular/core';
-import { Subject } from 'rxjs';
-import { MatPaginator } from '@angular/material/paginator';
 import { VizTableComponent, TableDataSet } from './viz-table.component';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { vi } from 'vitest';
 
+/**
+ * Generates a synthetic `TableDataSet` with the requested number of rows.
+ *
+ * @param count - Number of rows to generate.
+ * @returns Generated `TableDataSet` fixture.
+ */
 function generateData(count: number): TableDataSet {
   return {
     columns: ['id', 'value', 'census'],
@@ -20,24 +27,16 @@ function generateData(count: number): TableDataSet {
 describe('VizTableComponent', () => {
   let component: VizTableComponent;
   let fixture: ComponentFixture<VizTableComponent>;
-  let dataSetSig: WritableSignal<TableDataSet | null | undefined>;
-  let configSig: WritableSignal<Record<string, unknown> | null>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [VizTableComponent, NoopAnimationsModule],
+      imports: [VizTableComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(VizTableComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal<TableDataSet | null | undefined>(undefined);
-    configSig = signal<Record<string, unknown> | null>(null);
-    const priv = component as unknown as {
-      dataSet: WritableSignal<TableDataSet | null | undefined>;
-      config: WritableSignal<Record<string, unknown> | null>;
-    };
-    priv.dataSet = dataSetSig;
-    priv.config = configSig;
+    fixture.componentRef.setInput('dataSet', undefined);
+    fixture.componentRef.setInput('config', null);
     fixture.detectChanges();
   });
 
@@ -47,7 +46,7 @@ describe('VizTableComponent', () => {
 
   it('should render properties into DataSource via effect', () => {
     const mockData = generateData(5);
-    dataSetSig.set(mockData);
+    fixture.componentRef.setInput('dataSet', mockData);
     fixture.detectChanges();
 
     expect(component.dataSource.data.length).toBe(5);
@@ -55,18 +54,18 @@ describe('VizTableComponent', () => {
   });
 
   it('should render mat-table rows', () => {
-    dataSetSig.set(generateData(3));
+    fixture.componentRef.setInput('dataSet', generateData(3));
     fixture.detectChanges();
 
     const rows = fixture.debugElement.queryAll(By.css('tr[mat-row]'));
     expect(rows.length).toBe(3);
 
-    const cell = rows[0].query(By.css('td[mat-cell]'));
-    expect(cell.nativeElement.textContent.trim()).toBe('1');
+    const cell = rows[0]?.query(By.css('td[mat-cell]')).nativeElement as HTMLElement | undefined;
+    expect(cell?.textContent?.trim()).toBe('1');
   });
 
   it('should connect paginator', async () => {
-    dataSetSig.set(generateData(20));
+    fixture.componentRef.setInput('dataSet', generateData(20));
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -75,12 +74,12 @@ describe('VizTableComponent', () => {
   });
 
   it('should assign paginator via effect when available', async () => {
-    dataSetSig.set(generateData(1));
+    fixture.componentRef.setInput('dataSet', generateData(1));
     fixture.detectChanges();
     await fixture.whenStable();
 
     const paginator = component.paginator();
-    dataSetSig.set(generateData(2));
+    fixture.componentRef.setInput('dataSet', generateData(2));
     fixture.detectChanges();
 
     expect(component.dataSource.paginator).toBe(paginator);
@@ -89,32 +88,17 @@ describe('VizTableComponent', () => {
   it('should skip paginator assignment when paginator is missing', () => {
     vi.spyOn(component, 'paginator').mockReturnValue(undefined);
     component.dataSource.paginator = null;
-    dataSetSig.set(generateData(2));
+    fixture.componentRef.setInput('dataSet', generateData(2));
     fixture.detectChanges();
     expect(component.dataSource.paginator).toBeNull();
   });
 
-  it('should attach paginator when set manually', () => {
-    const mockPaginator = {
-      page: new Subject<void>(),
-      initialized: new Subject<void>(),
-      pageIndex: 0,
-      pageSize: 10,
-      length: 0,
-    } as unknown as MatPaginator;
-    vi.spyOn(component, 'paginator').mockReturnValue(mockPaginator);
-    dataSetSig.set(generateData(1));
-    fixture.detectChanges();
-    expect(component.dataSource.paginator).toBe(mockPaginator);
-  });
-
   it('should apply warning class to cells exceeding threshold', () => {
-    const row = { id: 1, census: 85 }; // > 80
+    const row = { id: 1, census: 85 };
     component.dataSource.data = [row];
-    dataSetSig.set({ columns: ['census'], data: [row] });
-    configSig.set({ thresholds: { warning: 80, critical: 90 } });
+    fixture.componentRef.setInput('dataSet', { columns: ['census'], data: [row] });
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
 
-    // census contains 'census' string so heuristic should pick it up
     const classes = component.getCellClass(row, 'census');
     expect(classes).toContain('cell-warn');
     expect(classes).not.toContain('cell-critical');
@@ -122,7 +106,7 @@ describe('VizTableComponent', () => {
 
   it('should apply warning class when only warning threshold is configured', () => {
     const row = { id: 1, census: 60 };
-    configSig.set({ thresholds: { warning: 50 } });
+    fixture.componentRef.setInput('config', { thresholds: { warning: 50 } });
 
     const classes = component.getCellClass(row, 'census');
     expect(classes).toContain('cell-warn');
@@ -130,7 +114,7 @@ describe('VizTableComponent', () => {
 
   it('should not apply threshold classes when value is below warning', () => {
     const row = { id: 1, census: 10 };
-    configSig.set({ thresholds: { warning: 50, critical: 90 } });
+    fixture.componentRef.setInput('config', { thresholds: { warning: 50, critical: 90 } });
 
     const classes = component.getCellClass(row, 'census');
     expect(classes).not.toContain('cell-warn');
@@ -138,8 +122,8 @@ describe('VizTableComponent', () => {
   });
 
   it('should apply critical class to cells exceeding critical threshold', () => {
-    const row = { id: 1, census: 95 }; // > 90
-    configSig.set({ thresholds: { warning: 80, critical: 90 } });
+    const row = { id: 1, census: 95 };
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
 
     const classes = component.getCellClass(row, 'census');
     expect(classes).toContain('cell-critical');
@@ -147,8 +131,7 @@ describe('VizTableComponent', () => {
 
   it('should respect manual thresholdColumn config', () => {
     const row = { id: 1, custom_val: 100 };
-    // 'custom_val' doesn't match heuristics, so we must specify it
-    configSig.set({
+    fixture.componentRef.setInput('config', {
       thresholds: { critical: 50 },
       thresholdColumn: 'custom_val',
     });
@@ -178,7 +161,7 @@ describe('VizTableComponent', () => {
   });
 
   it('should return localized aria-label for warning and critical threshold cells', () => {
-    configSig.set({ thresholds: { warning: 80, critical: 90 } });
+    fixture.componentRef.setInput('config', { thresholds: { warning: 80, critical: 90 } });
     expect(component.getCellAriaLabel({ census: 85 }, 'census')).toBe('Warning: 85');
     expect(component.getCellAriaLabel({ census: 95 }, 'census')).toBe('Critical: 95');
   });

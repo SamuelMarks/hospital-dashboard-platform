@@ -4,6 +4,11 @@
  */
 import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
 import { form, FormRoot, FormField } from '@angular/forms/signals';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatButtonModule } from '@angular/material/button';
 import { AdminService, AiService, ModelInfo } from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -14,77 +19,48 @@ import { forkJoin } from 'rxjs';
  */
 @Component({
   selector: 'app-admin',
-  imports: [FormRoot, FormField],
+  imports: [
+    FormRoot,
+    FormField,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatCheckboxModule,
+    MatButtonModule,
+  ],
   templateUrl: './admin.component.html',
   styles: [
     `
       .admin-container {
         padding: 20px;
-        max-width: 600px;
+        max-width: 640px;
         margin: 0 auto;
         color: var(--sys-on-surface);
       }
       .section {
-        margin-bottom: 2rem;
-        padding: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 1.25rem;
         border: 1px solid var(--sys-surface-border);
         background-color: var(--sys-surface);
         border-radius: 8px;
+        display: block;
       }
       .key-item {
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
         display: flex;
         flex-direction: column;
       }
-      .key-item label {
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        color: var(--sys-on-surface);
-      }
-      .key-item input {
-        padding: 0.5rem;
-        font-size: 1rem;
-        border: 1px solid var(--sys-outline);
-        background-color: var(--sys-background);
-        color: var(--sys-on-surface);
-        border-radius: 4px;
-      }
-      .key-item input:focus {
-        outline: 2px solid var(--sys-primary);
-        outline-offset: 2px;
+      .full-width-field {
+        width: 100%;
       }
       .model-item {
         margin-bottom: 0.5rem;
       }
-      .model-item label {
+      .diag-actions {
+        margin-top: 1rem;
         display: flex;
-        align-items: center;
         gap: 0.5rem;
-        cursor: pointer;
-        color: var(--sys-on-surface);
-      }
-      button {
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        cursor: pointer;
-        background-color: var(--sys-primary);
-        color: var(--sys-on-primary);
-        border: none;
-        border-radius: 4px;
-        font-weight: 600;
-        transition: opacity 0.2s;
-      }
-      button:hover {
-        opacity: 0.92;
-      }
-      button:focus-visible {
-        outline: 2px solid var(--sys-primary);
-        outline-offset: 2px;
-      }
-      button:disabled {
-        background-color: var(--sys-surface-variant);
-        color: var(--sys-text-secondary);
-        cursor: not-allowed;
+        flex-wrap: wrap;
       }
       .message {
         margin-top: 1rem;
@@ -94,17 +70,6 @@ import { forkJoin } from 'rxjs';
         padding: 1rem;
         border-radius: 4px;
         font-weight: 600;
-      }
-      .sr-only {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border-width: 0;
       }
       .loading {
         padding: 20px;
@@ -118,11 +83,6 @@ import { forkJoin } from 'rxjs';
       }
       p {
         color: var(--sys-text-secondary);
-      }
-      fieldset {
-        border: none;
-        padding: 0;
-        margin: 0;
       }
     `,
   ],
@@ -216,19 +176,17 @@ export class AdminComponent implements OnInit {
       });
   }
 
-  /** Validates and persists the updated API keys and visible model selections. */
+  /** Persists the updated API keys and visible model selections. */
   saveSettings(): void {
-    if (this.adminForm().invalid()) return;
-
     this.isSaving.set(true);
 
     const formValue = this.formModel();
     const finalKeys: Record<string, string> = {};
 
-    if (formValue.openai && formValue.openai.trim()) {
+    if (formValue.openai.trim()) {
       finalKeys['openai'] = formValue.openai.trim();
     }
-    if (formValue.anthropic && formValue.anthropic.trim()) {
+    if (formValue.anthropic.trim()) {
       finalKeys['anthropic'] = formValue.anthropic.trim();
     }
 

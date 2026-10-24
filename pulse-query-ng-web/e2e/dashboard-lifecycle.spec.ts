@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end dashboard creation, listing, and deletion lifecycle tests.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Dashboard Lifecycle', () => {

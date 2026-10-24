@@ -5,7 +5,6 @@
 
 import { Component, input, computed, inject, effect, signal, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { TableDataSet } from '../viz-table/viz-table.component';
 import { ThemeService } from '../../../core/theme/theme.service';
 
 /**
@@ -193,7 +192,10 @@ interface ChartItem {
 })
 export class VizChartComponent {
   /** Tabular dataset containing rows and columns to plot. */
-  readonly dataSet = input.required<TableDataSet | null>();
+  readonly dataSet = input.required<{
+    columns?: string[];
+    data: Record<string, unknown>[];
+  } | null>();
   /** Optional chart axis and stacking configuration. */
   readonly config = input<ChartConfig>();
 
@@ -208,7 +210,7 @@ export class VizChartComponent {
    * Reactive Palette Signal.
    * Stores the resolved hex codes from CSS variables.
    */
-  private readonly palette = signal<string[]>([]);
+  readonly palette = signal<string[]>([]);
 
   /**
    * Initializes the reactive theme effect to synchronize chart colors with DOM CSS variables.
@@ -230,8 +232,7 @@ export class VizChartComponent {
   /**
    * Extracts runtime CSS variables for charting consistency.
    */
-  private updatePaletteFromDom(): void {
-    if (!this.document) return;
+  updatePaletteFromDom(): void {
     const style = getComputedStyle(this.document.documentElement);
 
     // We expect these to be populated by ThemeService/ColorUtils

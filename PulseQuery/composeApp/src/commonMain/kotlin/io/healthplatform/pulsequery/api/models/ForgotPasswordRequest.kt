@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload requesting a time-bound password reset token.
  *
- * @param email 
+ * @param email
  */
 @Serializable
-
-data class ForgotPasswordRequest (
-
+data class ForgotPasswordRequest(
     @SerialName(value = "email") @Required val email: kotlin.String
-
-) {
-
-
-}
-
+)

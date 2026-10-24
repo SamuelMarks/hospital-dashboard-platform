@@ -2,8 +2,8 @@
  * @fileoverview Unit tests for ConnectionStatusService.
  */
 
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
 import {

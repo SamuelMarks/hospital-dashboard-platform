@@ -1,17 +1,17 @@
-import { By } from '@angular/platform-browser';
 /**
  * @fileoverview Unit tests for FocusTrapDirective.
  */
 
+import { By } from '@angular/platform-browser';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { FocusTrapDirective } from './focus-trap.directive';
 
+/** Host component for testing FocusTrapDirective. */
 @Component({
   selector: 'app-test-focus-trap',
   imports: [FocusTrapDirective],
-
   template: `
     <div appFocusTrap [autoFocus]="autoFocus()" (escape)="onEscape()">
       <button id="first">First</button>
@@ -21,7 +21,9 @@ import { FocusTrapDirective } from './focus-trap.directive';
   `,
 })
 class TestFocusTrapComponent {
-  readonly autoFocus = signal(false); // default false to avoid JSDOM focus side-effects
+  /** Whether autoFocus is enabled. */
+  readonly autoFocus = signal(false);
+  /** Spy invoked when escape is emitted. */
   readonly onEscape = vi.fn();
 }
 
@@ -43,12 +45,12 @@ describe('FocusTrapDirective', () => {
     component = fixture.componentInstance;
     fixture.detectChanges();
 
-    container = fixture.nativeElement.querySelector('[appFocusTrap]') as HTMLElement;
-    first = fixture.nativeElement.querySelector('#first') as HTMLElement;
-    middle = fixture.nativeElement.querySelector('#middle') as HTMLElement;
-    last = fixture.nativeElement.querySelector('#last') as HTMLElement;
+    const hostEl = fixture.nativeElement as HTMLElement;
+    container = hostEl.querySelector('[appFocusTrap]') as HTMLElement;
+    first = hostEl.querySelector('#first') as HTMLElement;
+    middle = hostEl.querySelector('#middle') as HTMLElement;
+    last = hostEl.querySelector('#last') as HTMLElement;
 
-    // Mock for JSDOM
     [first, middle, last].forEach((el) => {
       if (el) {
         Object.defineProperty(el, 'offsetWidth', { value: 100, configurable: true });
@@ -56,19 +58,20 @@ describe('FocusTrapDirective', () => {
       }
     });
 
-    document.body.appendChild(fixture.nativeElement);
+    document.body.appendChild(hostEl);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
     if (fixture?.nativeElement) {
-      fixture.nativeElement.remove();
+      (fixture.nativeElement as HTMLElement).remove();
     }
   });
 
   it('should create and support autoFocus=true on init', () => {
     expect(component).toBeTruthy();
 
+    /** Host component with autoFocus enabled. */
     @Component({
       selector: 'app-autofocus-trap',
       imports: [FocusTrapDirective],
@@ -99,15 +102,12 @@ describe('FocusTrapDirective', () => {
   });
 
   it('should prevent default when Tab is pressed and active element is the last focusable', () => {
-    // Manually set activeElement by focusing last
     last.focus();
-    // Verify JSDOM updated activeElement (it does when element is in document)
     if (document.activeElement === last) {
       const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
       last.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(true);
     } else {
-      // JSDOM may not support focus on detached elements; skip gracefully
       expect(true).toBe(true);
     }
   });
@@ -145,6 +145,7 @@ describe('FocusTrapDirective', () => {
   });
 
   it('should not throw when Tab is pressed in a container with no focusable elements', async () => {
+    /** Empty focus trap host with autoFocus disabled. */
     @Component({
       selector: 'app-empty-trap',
       imports: [FocusTrapDirective],
@@ -153,7 +154,6 @@ describe('FocusTrapDirective', () => {
     class EmptyTrapComponent {}
 
     TestBed.resetTestingModule();
-    TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
       imports: [EmptyTrapComponent, FocusTrapDirective],
     }).compileComponents();
@@ -161,13 +161,14 @@ describe('FocusTrapDirective', () => {
     const emptyFixture = TestBed.createComponent(EmptyTrapComponent);
     emptyFixture.detectChanges();
 
-    const emptyContainer = emptyFixture.nativeElement.querySelector(
+    const emptyContainer = (emptyFixture.nativeElement as HTMLElement).querySelector(
       '[appFocusTrap]',
     ) as HTMLElement;
     expect(() => {
       emptyContainer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
     }).not.toThrow();
 
+    /** Empty focus trap host with autoFocus enabled. */
     @Component({
       selector: 'app-empty-autofocus-trap',
       imports: [FocusTrapDirective],
@@ -179,14 +180,17 @@ describe('FocusTrapDirective', () => {
   });
 
   it('should not throw when Escape is pressed in a container with no focusable elements', async () => {
+    /** Empty focus trap host with escape output listener. */
     @Component({
       selector: 'app-empty-trap2',
       imports: [FocusTrapDirective],
       template: '<div appFocusTrap [autoFocus]="false" (escape)="onEsc()"><span>x</span></div>',
     })
     class EmptyTrap2Component {
+      /** Escape spy function. */
       readonly escSpy = vi.fn();
-      onEsc() {
+      /** Handles escape event emission. */
+      onEsc(): void {
         this.escSpy();
       }
     }
@@ -198,7 +202,7 @@ describe('FocusTrapDirective', () => {
 
     const f = TestBed.createComponent(EmptyTrap2Component);
     f.detectChanges();
-    const c = f.nativeElement.querySelector('[appFocusTrap]') as HTMLElement;
+    const c = (f.nativeElement as HTMLElement).querySelector('[appFocusTrap]') as HTMLElement;
     expect(() => {
       const directiveEl = f.debugElement.query(By.directive(FocusTrapDirective));
       const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
@@ -210,6 +214,7 @@ describe('FocusTrapDirective', () => {
   });
 
   it('should focus first element on init if autoFocus is true', async () => {
+    /** AutoFocus focus trap host with visible button. */
     @Component({
       selector: 'app-autofocus-trap',
       imports: [FocusTrapDirective],
@@ -224,17 +229,17 @@ describe('FocusTrapDirective', () => {
     }).compileComponents();
 
     const f = TestBed.createComponent(AutoFocusTrapComponent);
-    document.body.appendChild(f.nativeElement);
+    const fEl = f.nativeElement as HTMLElement;
+    document.body.appendChild(fEl);
 
-    // Set up mock before detectChanges which triggers ngOnInit
-    const btn = f.nativeElement.querySelector('#af-btn') as HTMLElement;
+    const btn = fEl.querySelector('#af-btn') as HTMLElement;
     Object.defineProperty(btn, 'offsetWidth', { value: 100, configurable: true });
     Object.defineProperty(btn, 'offsetHeight', { value: 100, configurable: true });
 
     f.detectChanges();
 
     expect(document.activeElement).toBe(btn);
-    f.nativeElement.remove();
+    fEl.remove();
   });
 
   it('should restore focus on destroy', () => {
@@ -243,9 +248,7 @@ describe('FocusTrapDirective', () => {
 
     const mockElement = document.createElement('button');
     document.body.appendChild(mockElement);
-    (
-      directiveInstance as unknown as { previousActiveElement: HTMLElement | null }
-    ).previousActiveElement = mockElement;
+    directiveInstance.previousActiveElement = mockElement;
 
     const spy = vi.spyOn(mockElement, 'focus');
     directiveInstance.ngOnDestroy();
@@ -257,15 +260,11 @@ describe('FocusTrapDirective', () => {
     const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
     const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
 
-    (
-      directiveInstance as unknown as { previousActiveElement: HTMLElement | null }
-    ).previousActiveElement = null;
+    directiveInstance.previousActiveElement = null;
     expect(() => directiveInstance.ngOnDestroy()).not.toThrow();
   });
 
   it('should ignore hidden and zero-dimension elements', () => {
-    // We already have container and first, middle, last.
-    // Let's add some hidden ones programmatically.
     const zeroDim = document.createElement('button');
     Object.defineProperty(zeroDim, 'offsetWidth', { value: 0 });
     Object.defineProperty(zeroDim, 'offsetHeight', { value: 0 });
@@ -286,9 +285,7 @@ describe('FocusTrapDirective', () => {
     const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
     const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
 
-    const focusable = (
-      directiveInstance as unknown as { getFocusableElements: () => HTMLElement[] }
-    ).getFocusableElements();
+    const focusable = directiveInstance.getFocusableElements();
     expect(focusable).not.toContain(zeroDim);
     expect(focusable).not.toContain(attrHidden);
     expect(focusable).not.toContain(styleHidden);
@@ -296,6 +293,7 @@ describe('FocusTrapDirective', () => {
   });
 
   it('should use default autoFocus value (true) and focus first element', async () => {
+    /** Default autoFocus focus trap host. */
     @Component({
       selector: 'app-default-autofocus',
       imports: [FocusTrapDirective],
@@ -309,15 +307,16 @@ describe('FocusTrapDirective', () => {
     }).compileComponents();
 
     const f = TestBed.createComponent(DefaultAutoFocusComponent);
-    document.body.appendChild(f.nativeElement);
+    const fEl = f.nativeElement as HTMLElement;
+    document.body.appendChild(fEl);
 
-    const btn = f.nativeElement.querySelector('#def-btn') as HTMLElement;
+    const btn = fEl.querySelector('#def-btn') as HTMLElement;
     Object.defineProperty(btn, 'offsetWidth', { value: 100, configurable: true });
     Object.defineProperty(btn, 'offsetHeight', { value: 100, configurable: true });
 
     f.detectChanges();
 
     expect(document.activeElement).toBe(btn);
-    f.nativeElement.remove();
+    fEl.remove();
   });
 });

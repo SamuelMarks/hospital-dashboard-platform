@@ -12,29 +12,46 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.AlertRuleCreate
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/analytics/alert-rules` hospital bed occupancy threshold alert rule CRUD endpoints.
+ */
 open class AlertRulesApi : ApiClient {
 
+    /**
+     * Constructs a [AlertRulesApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -42,21 +59,29 @@ open class AlertRulesApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [AlertRulesApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Create Alert Rule
      * Creates a new clinical alert rule with configured unit and occupancy threshold.  Args:     request (AlertRuleCreate): Creation payload with category, threshold, and severity.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The newly created and persisted alert rule.
-     * @param alertRuleCreate 
+     * @param alertRuleCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createAlertRuleApiV1AnalyticsAlertRulesPost(alertRuleCreate: AlertRuleCreate, token: kotlin.String? = null): HttpResponse<AlertRuleResponse> {
-
+    open suspend fun createAlertRuleApiV1AnalyticsAlertRulesPost(
+        alertRuleCreate: AlertRuleCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<AlertRuleResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = alertRuleCreate
@@ -65,7 +90,7 @@ open class AlertRulesApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/analytics/alert-rules/",
             query = localVariableQuery,
@@ -80,18 +105,18 @@ open class AlertRulesApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Create Alert Rule
      * Creates a new clinical alert rule with configured unit and occupancy threshold.  Args:     request (AlertRuleCreate): Creation payload with category, threshold, and severity.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The newly created and persisted alert rule.
-     * @param alertRuleCreate 
+     * @param alertRuleCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createAlertRuleApiV1AnalyticsAlertRulesPost_0(alertRuleCreate: AlertRuleCreate, token: kotlin.String? = null): HttpResponse<AlertRuleResponse> {
-
+    open suspend fun createAlertRuleApiV1AnalyticsAlertRulesPost_0(
+        alertRuleCreate: AlertRuleCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<AlertRuleResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = alertRuleCreate
@@ -100,7 +125,7 @@ open class AlertRulesApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/analytics/alert-rules",
             query = localVariableQuery,
@@ -115,27 +140,27 @@ open class AlertRulesApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Delete Alert Rule
      * Deletes an existing clinical alert rule by UUID.  Args:     rule_id (UUID): Unique alert rule identifier to remove.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Raises:     HTTPException: 404 if the rule does not exist.
-     * @param ruleId 
+     * @param ruleId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
-    open suspend fun deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId: kotlin.String, token: kotlin.String? = null): HttpResponse<Unit> {
-
+    open suspend fun deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(
+        ruleId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<Unit> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.DELETE,
             "/api/v1/analytics/alert-rules/{rule_id}".replace("{" + "rule_id" + "}", "$ruleId"),
             query = localVariableQuery,
@@ -150,27 +175,28 @@ open class AlertRulesApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Get Alert Rule
      * Retrieves a single clinical alert rule by its UUID.  Args:     rule_id (UUID): Unique alert rule identifier.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The requested alert rule entity.  Raises:     HTTPException: 404 if the rule does not exist.
-     * @param ruleId 
+     * @param ruleId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getAlertRuleApiV1AnalyticsAlertRulesRuleIdGet(ruleId: kotlin.String, token: kotlin.String? = null): HttpResponse<AlertRuleResponse> {
-
+    open suspend fun getAlertRuleApiV1AnalyticsAlertRulesRuleIdGet(
+        ruleId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<AlertRuleResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/analytics/alert-rules/{rule_id}".replace("{" + "rule_id" + "}", "$ruleId"),
             query = localVariableQuery,
@@ -185,7 +211,6 @@ open class AlertRulesApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * List Alert Rules
      * Lists all configured hospital capacity alert rules.  Args:     current_user (User): Authenticated requesting user.     db (AsyncSession): PostgreSQL async database session.  Returns:     list[AlertRule]: List of active and inactive alert rules.
@@ -193,18 +218,19 @@ open class AlertRulesApi : ApiClient {
      * @return kotlin.collections.List<AlertRuleResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listAlertRulesApiV1AnalyticsAlertRulesGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<AlertRuleResponse>> {
-
+    open suspend fun listAlertRulesApiV1AnalyticsAlertRulesGet(
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<AlertRuleResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/analytics/alert-rules/",
             query = localVariableQuery,
@@ -224,7 +250,10 @@ open class AlertRulesApi : ApiClient {
         companion object : KSerializer<ListAlertRulesApiV1AnalyticsAlertRulesGetResponse> {
             private val serializer: KSerializer<List<AlertRuleResponse>> = serializer<List<AlertRuleResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListAlertRulesApiV1AnalyticsAlertRulesGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListAlertRulesApiV1AnalyticsAlertRulesGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListAlertRulesApiV1AnalyticsAlertRulesGetResponse(serializer.deserialize(decoder))
         }
     }
@@ -236,18 +265,19 @@ open class AlertRulesApi : ApiClient {
      * @return kotlin.collections.List<AlertRuleResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listAlertRulesApiV1AnalyticsAlertRulesGet_0(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<AlertRuleResponse>> {
-
+    open suspend fun listAlertRulesApiV1AnalyticsAlertRulesGet_0(
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<AlertRuleResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/analytics/alert-rules",
             query = localVariableQuery,
@@ -267,7 +297,10 @@ open class AlertRulesApi : ApiClient {
         companion object : KSerializer<ListAlertRulesApiV1AnalyticsAlertRulesGet0Response> {
             private val serializer: KSerializer<List<AlertRuleResponse>> = serializer<List<AlertRuleResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListAlertRulesApiV1AnalyticsAlertRulesGet0Response) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListAlertRulesApiV1AnalyticsAlertRulesGet0Response
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListAlertRulesApiV1AnalyticsAlertRulesGet0Response(serializer.deserialize(decoder))
         }
     }
@@ -275,14 +308,17 @@ open class AlertRulesApi : ApiClient {
     /**
      * Update Alert Rule
      * Updates an existing clinical alert rule with partial attribute modifications.  Args:     rule_id (UUID): Unique alert rule identifier.     request (AlertRuleUpdate): Attributes to update.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The updated alert rule entity.  Raises:     HTTPException: 404 if the rule does not exist.
-     * @param ruleId 
-     * @param alertRuleUpdate 
+     * @param ruleId
+     * @param alertRuleUpdate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(ruleId: kotlin.String, alertRuleUpdate: AlertRuleUpdate, token: kotlin.String? = null): HttpResponse<AlertRuleResponse> {
-
+    open suspend fun updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(
+        ruleId: kotlin.String,
+        alertRuleUpdate: AlertRuleUpdate,
+        token: kotlin.String? = null
+    ): HttpResponse<AlertRuleResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = alertRuleUpdate
@@ -291,7 +327,7 @@ open class AlertRulesApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/analytics/alert-rules/{rule_id}".replace("{" + "rule_id" + "}", "$ruleId"),
             query = localVariableQuery,
@@ -305,7 +341,4 @@ open class AlertRulesApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

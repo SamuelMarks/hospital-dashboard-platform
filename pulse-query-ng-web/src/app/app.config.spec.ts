@@ -71,7 +71,7 @@ describe('AppConfig', () => {
 
   it('should contain the APP_INITIALIZER for Auth', () => {
     // Verify the factory function behavior
-    const initFn = initializeAuth(mockAuthService as unknown as AuthService);
+    const initFn = initializeAuth(mockAuthService);
     initFn();
     expect(mockAuthService.initialize).toHaveBeenCalled();
 

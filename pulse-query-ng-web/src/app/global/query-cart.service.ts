@@ -45,7 +45,7 @@ export class QueryCartService {
    * @param title - Optional title override.
    * @returns The created cart item, or null when SQL is empty.
    */
-  add(sql: string, title?: string): QueryCartItem | null {
+  add(sql: string | null | undefined, title?: string): QueryCartItem | null {
     const trimmed = (sql || '').trim();
     if (!trimmed) return null;
 
@@ -98,7 +98,7 @@ export class QueryCartService {
    * @param sql - The raw SQL query string.
    * @returns Truncated single-line title derived from the SQL text.
    */
-  private deriveTitle(sql: string): string {
+  deriveTitle(sql: string): string {
     const normalized = sql.replace(/\s+/g, ' ').trim();
     if (!normalized) return 'Untitled Query';
     const max = 42;
@@ -119,8 +119,10 @@ export class QueryCartService {
     try {
       const raw = safeStorage.getItem(this.storageKey);
       if (!raw) return;
-      const parsed = JSON.parse(raw) as QueryCartItem[];
-      const safe = Array.isArray(parsed) ? parsed.filter(this.isValidItem) : [];
+      const parsed: unknown = JSON.parse(raw);
+      const safe = Array.isArray(parsed)
+        ? parsed.filter((entry): entry is QueryCartItem => this.isValidItem(entry))
+        : [];
       this._items.set(safe);
     } catch {
       this._items.set([]);
@@ -132,7 +134,7 @@ export class QueryCartService {
    *
    * @param items - Array of query cart items to persist.
    */
-  private persistToStorage(items: QueryCartItem[]): void {
+  persistToStorage(items: QueryCartItem[]): void {
     try {
       safeStorage.setItem(this.storageKey, JSON.stringify(items));
     } catch {
@@ -146,14 +148,17 @@ export class QueryCartService {
    * @param item - Candidate item loaded from storage.
    * @returns True if the item has all required `QueryCartItem` fields.
    */
-  private isValidItem(item: QueryCartItem): boolean {
+  isValidItem(item: unknown): item is QueryCartItem {
+    if (!item || typeof item !== 'object') {
+      return false;
+    }
+    const candidate = item as Partial<QueryCartItem>;
     return (
-      !!item &&
-      typeof item.id === 'string' &&
-      typeof item.title === 'string' &&
-      typeof item.sql === 'string' &&
-      typeof item.createdAt === 'string' &&
-      item.kind === QUERY_CART_ITEM_KIND
+      typeof candidate.id === 'string' &&
+      typeof candidate.title === 'string' &&
+      typeof candidate.sql === 'string' &&
+      typeof candidate.createdAt === 'string' &&
+      candidate.kind === QUERY_CART_ITEM_KIND
     );
   }
 }

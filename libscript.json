@@ -1,102 +1,672 @@
 {
+  "$schema": "https://raw.githubusercontent.com/SamuelMarks/libscript/master/libscript.schema.json",
+  "name": "hospital-dashboard-platform",
+  "version": "0.0.1",
   "domain": "pulse-query.healthplatform.io",
-  "infrastructure": {
-    "node": {
-      "size": "Standard_D16s_v7",
-      "data_disks": [
-        {
-          "size_gb": 100,
-          "mount_path": "/mnt/data",
-          "name": "data-disk"
-        }
-      ]
-    },
-    "network": {
-      "ports": ["22", "80", "443", "5432"]
-    }
-  },
-  "ingress": {
-    "tls": "letsencrypt",
-    "port": 4200
-  },
-  "hooks": {
-    "install": [
-      "sudo mkdir -p /mnt/data",
-      "sudo mount /dev/nvme1n1 /mnt/data || sudo mount /dev/disk/azure/scsi1/lun0 /mnt/data || true",
-      "(cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npm install)",
-      "(cd pulse-query-backend && /home/azureuser/.local/bin/uv sync)",
-      "sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx",
-      "printf 'server { listen 80; server_name pulse-query.healthplatform.io; proxy_read_timeout 3600; proxy_connect_timeout 3600; proxy_send_timeout 3600; location / { proxy_pass http://127.0.0.1:4200; } location /api/ { proxy_pass http://127.0.0.1:8000; } }' | sudo tee /etc/nginx/conf.d/pulse-query.healthplatform.io.conf",
-      "sudo systemctl restart nginx || true",
-      "sudo certbot --nginx -n --agree-tos -d pulse-query.healthplatform.io -m admin@healthplatform.io --redirect || true"
-    ],
-    "build": [
-      "(cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npm run build)"
-    ],
-    "pre_start": ["sudo -u postgres createdb pulse_query || true"]
-  },
-  "services": {
-    "pulse-web": {
-      "command": "cd pulse-query-ng-web && export PATH=/home/azureuser/.volta/bin:$PATH && npx -y serve -s dist/pulse-query-ng-web/browser -l 4200",
-      "env": {}
-    },
-    "pulse-backend": {
-      "command": "cd pulse-query-backend && /home/azureuser/.local/bin/uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
-      "env": {
-        "ENVIRONMENT": "production",
-        "SQLALCHEMY_DATABASE_URI": "postgresql+asyncpg://postgres:password@127.0.0.1:5432/pulse_query",
-        "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": "password",
-        "POSTGRES_SERVER": "127.0.0.1",
-        "POSTGRES_PORT": "5432",
-        "POSTGRES_DB": "pulse_query"
-      }
-    }
+  "deps": {
+    "python": "3.12",
+    "nodejs": "22",
+    "postgres": "18",
+    "nginx": "latest",
+    "duckdb": "latest",
+    "ollama": "latest",
+    "uv": "latest"
   },
   "dependencies": {
+    "python": "3.12",
+    "nodejs": "22",
+    "postgres": "18",
+    "nginx": "latest",
+    "duckdb": "latest",
+    "ollama": "latest",
+    "uv": "latest",
+    "runtime": [
+      {
+        "name": "python",
+        "version": "3.12"
+      },
+      {
+        "name": "nodejs",
+        "version": "22"
+      },
+      {
+        "name": "postgres",
+        "version": "18"
+      },
+      {
+        "name": "duckdb",
+        "version": "latest"
+      },
+      {
+        "name": "nginx",
+        "version": "latest"
+      },
+      {
+        "name": "ollama",
+        "version": "latest"
+      }
+    ],
+    "build": [
+      {
+        "name": "uv",
+        "version": "latest"
+      }
+    ],
     "required": {
       "databases": [
         {
           "name": "postgres",
-          "version": "latest",
-          "env": "DATABASE_URL",
-          "vars": {
-            "database_name": "pulse_query"
-          }
+          "version": "18"
+        },
+        {
+          "name": "duckdb",
+          "version": "latest"
         }
       ],
       "servers": [
         {
           "name": "nginx",
+          "version": "latest",
           "daemon": {
             "os_native": true
           },
           "vars": {
             "NGINX_SERVER_NAME": "pulse-query.healthplatform.io",
-            "PROXY_PASS": "http://127.0.0.1:4200",
-            "LOCATION": "/"
+            "PROXY_PASS": "http://127.0.0.1:8000",
+            "LOCATION": "/api"
           }
-        }
-      ],
-      "toolchains": [
-        {
-          "name": "nodejs",
-          "version": "20.x"
-        },
-        {
-          "name": "python",
-          "version": "3.11"
-        },
-        {
-          "name": "duckdb",
-          "version": "latest"
         },
         {
           "name": "ollama",
           "version": "latest"
         }
       ],
-      "capabilities": ["systemd"]
+      "toolchains": [
+        {
+          "name": "python",
+          "version": "3.12"
+        },
+        {
+          "name": "nodejs",
+          "version": "22"
+        },
+        {
+          "name": "uv",
+          "version": "latest"
+        }
+      ],
+      "capabilities": ["${INIT_SYSTEM}"]
+    }
+  },
+  "databases": [
+    {
+      "engine": "postgres",
+      "name": "pulse_query_db",
+      "user": "postgres",
+      "password_env": "POSTGRES_PASSWORD",
+      "host": "127.0.0.1",
+      "port": 5432,
+      "url_env": "DATABASE_URL",
+      "min_tables": 2,
+      "required_tables": ["templates", "alembic_version"]
+    },
+    {
+      "engine": "duckdb",
+      "name": "hospital_analytics",
+      "path": "${DUCKDB_PATH}",
+      "url_env": "DUCKDB_URL",
+      "min_tables": 2,
+      "required_tables": ["hospital_data", "Synthetic_hospital_data_transfers"]
+    }
+  ],
+  "frontends": {
+    "web": {
+      "framework": "angular",
+      "source_dir": "pulse-query-ng-web",
+      "build_command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
+      "output_dir": "dist/pulse-query-ng-web/browser"
+    },
+    "kmp": {
+      "framework": "kmp",
+      "target": "kmp-wasm",
+      "source_dir": "PulseQuery",
+      "build_command": "./gradlew :composeApp:wasmJsBrowserDistribution",
+      "output_dir": "composeApp/build/dist/wasmJs/productionExecutable"
+    }
+  },
+  "services": [
+    {
+      "name": "pulse-query-backend",
+      "command": "sh -c 'if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\"; exec \"${UV_BIN:-uv}\" run uvicorn app.main:app --host 0.0.0.0 --port 8000'",
+      "working_dir": "pulse-query-backend",
+      "working_directory": "pulse-query-backend",
+      "port": 8000,
+      "user": "${SERVICE_USER}",
+      "env_files": [".env", ".env.secrets", "../.env", "../.env.secrets"],
+      "health_check": {
+        "url": "http://127.0.0.1:8000/api/v1/system/health",
+        "expect_status": 200,
+        "expect_json": ".status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10"
+      },
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "src",
+        "POSTGRES_SERVER": "localhost",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres",
+        "POSTGRES_DB": "pulse_query_db",
+        "POSTGRES_PORT": "5432",
+        "DUCKDB_PATH": "${DUCKDB_PATH}",
+        "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
+        "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+      },
+      "environment": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "src",
+        "POSTGRES_SERVER": "localhost",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "postgres",
+        "POSTGRES_DB": "pulse_query_db",
+        "POSTGRES_PORT": "5432",
+        "DUCKDB_PATH": "${DUCKDB_PATH}",
+        "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
+        "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+      }
+    }
+  ],
+  "hooks": {
+    "pre_install": [
+      {
+        "name": "prepare-persistent-data-dir",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\" && (sudo -u postgres psql -c 'ALTER USER postgres WITH PASSWORD $$postgres$$;' || true) && (sudo -u postgres psql -c 'CREATE DATABASE pulse_query_db OWNER postgres;' || true)",
+        "cmd_windows": "if not exist data mkdir data",
+        "description": "Mount and prepare persistent data directory for DuckDB"
+      }
+    ],
+    "install": [
+      {
+        "name": "prepare-persistent-data-dir",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\" && (sudo -u postgres psql -c 'ALTER USER postgres WITH PASSWORD $$postgres$$;' || true) && (sudo -u postgres psql -c 'CREATE DATABASE pulse_query_db OWNER postgres;' || true)",
+        "cmd_windows": "if not exist data mkdir data",
+        "description": "Mount and prepare persistent data directory for DuckDB"
+      },
+      {
+        "name": "install-backend-deps",
+        "working_dir": "pulse-query-backend",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
+        "cmd_windows": "uv sync --python 3.12",
+        "description": "Install Python backend dependencies"
+      },
+      {
+        "name": "install-frontend-deps",
+        "working_dir": "pulse-query-ng-web",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps",
+        "cmd_windows": "npm install --legacy-peer-deps",
+        "description": "Install Node.js frontend dependencies"
+      }
+    ],
+    "post_install": [
+      {
+        "name": "prepare-persistent-data-dir",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\" && (sudo -u postgres psql -c 'ALTER USER postgres WITH PASSWORD $$postgres$$;' || true) && (sudo -u postgres psql -c 'CREATE DATABASE pulse_query_db OWNER postgres;' || true)",
+        "cmd_windows": "if not exist data mkdir data",
+        "description": "Mount and prepare persistent data directory for DuckDB"
+      },
+      {
+        "name": "sync-backend-deps",
+        "working_dir": "pulse-query-backend",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
+        "cmd_windows": "uv sync --python 3.12",
+        "description": "Install Python backend dependencies"
+      },
+      {
+        "name": "build-angular-frontend",
+        "working_dir": "pulse-query-ng-web",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps && npm run build",
+        "cmd_windows": "npm install --legacy-peer-deps && npm run build",
+        "description": "Install and build Angular frontend application"
+      },
+      {
+        "name": "fix-workspace-permissions",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" .; fi",
+        "cmd_windows": "rem Workspace permissions managed by Windows ACLs",
+        "description": "Ensure configured service user owns workspace files"
+      }
+    ],
+    "build": [
+      {
+        "name": "build-angular-web",
+        "working_dir": "pulse-query-ng-web",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
+        "cmd_windows": "npm run build",
+        "description": "Build Angular frontend application"
+      }
+    ],
+    "db_migrate": [
+      {
+        "name": "alembic-upgrade-head",
+        "working_dir": "pulse-query-backend",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run alembic upgrade head",
+        "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run alembic upgrade head",
+        "description": "Run Alembic database migrations for PostgreSQL"
+      },
+      {
+        "name": "ingest-clinical-datasets",
+        "working_dir": "pulse-query-backend",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
+        "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
+        "description": "Ingest synthetic clinical datasets into DuckDB"
+      },
+      {
+        "name": "seed-dashboard-templates",
+        "working_dir": "pulse-query-backend",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/seed_templates.py",
+        "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
+        "description": "Seed initial dashboard templates into PostgreSQL"
+      },
+      {
+        "name": "fix-data-directory-ownership",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; elif [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; elif [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if [ -d \"$DATA_DIR\" ] && id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" \"$DATA_DIR\" && sudo chmod -R u+rwX,go+rX \"$DATA_DIR\"; fi",
+        "cmd_windows": "rem Data directory permissions managed by Windows ACLs",
+        "description": "Ensure configured service user owns data directory and DuckDB files after migration"
+      }
+    ],
+    "pre_start": [
+      {
+        "name": "ensure-persistent-data-dir",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
+        "cmd_windows": "if not exist data mkdir data",
+        "description": "Ensure persistent data directory exists before starting services"
+      },
+      {
+        "name": "ensure-service-user-data-ownership",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if [ -d \"$DATA_DIR\" ] && id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" \"$DATA_DIR\" && sudo chmod -R u+rwX,go+rX \"$DATA_DIR\"; fi",
+        "cmd_windows": "rem Data directory permissions managed by Windows ACLs",
+        "description": "Ensure configured service user owns data directory before starting backend service"
+      }
+    ],
+    "health": [
+      {
+        "name": "verify-system-health-payload",
+        "command": "curl -sf http://127.0.0.1:8000/api/v1/system/health | jq -e '.status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10'"
+      }
+    ]
+  },
+  "ingress": {
+    "provider": "nginx",
+    "domain": "pulse-query.healthplatform.io",
+    "server_name": "pulse-query.healthplatform.io",
+    "tls": "letsencrypt",
+    "port": 8000,
+    "listen": [80, 443],
+    "routes": {
+      "/api": {
+        "proxy": "http://127.0.0.1:8000"
+      },
+      "/ws": {
+        "ws": "ws://127.0.0.1:8000"
+      },
+      "/docs": {
+        "proxy": "http://127.0.0.1:8000"
+      },
+      "/openapi.json": {
+        "proxy": "http://127.0.0.1:8000"
+      },
+      "/": {
+        "static": "./pulse-query-ng-web/dist/pulse-query-ng-web/browser",
+        "spa": true
+      }
+    },
+    "upstreams": [
+      {
+        "path": "/api",
+        "type": "proxy",
+        "target": "http://127.0.0.1:8000"
+      },
+      {
+        "path": "/ws",
+        "type": "ws",
+        "target": "ws://127.0.0.1:8000"
+      },
+      {
+        "path": "/docs",
+        "type": "proxy",
+        "target": "http://127.0.0.1:8000"
+      },
+      {
+        "path": "/openapi.json",
+        "type": "proxy",
+        "target": "http://127.0.0.1:8000"
+      },
+      {
+        "path": "/",
+        "type": "static",
+        "spa": true,
+        "target": "${FRONTEND_STATIC_TARGET}"
+      }
+    ]
+  },
+  "ml": {
+    "backend": "jax",
+    "target": "local",
+    "model": "gemma4:26b",
+    "etl_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/generate_mpax_benchmarks.py",
+    "train_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/run_benchmark.py",
+    "infer_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/score_mpax_arena.py"
+  },
+  "infrastructure": {
+    "provider": {
+      "default": "${CLOUD_PROVIDER}",
+      "supported": ["${DEFAULT_CLOUD_PROVIDER}", "aws", "gcp"]
+    },
+    "compute": {
+      "os": "${VM_OS_IMAGE}",
+      "min_vcpu": 4,
+      "min_ram_gb": 16,
+      "data_disk": {
+        "mount_point": "${DATA_MOUNT_DIR}",
+        "size_gb": 100
+      }
+    },
+    "network": {
+      "ports": ["22", "80", "443", "8000", "4200"],
+      "open_ports": ["22", "80", "443", "8000", "4200"],
+      "ingress": {
+        "provider": "nginx",
+        "domain": "pulse-query.healthplatform.io",
+        "server_name": "pulse-query.healthplatform.io",
+        "tls": "letsencrypt",
+        "port": 8000,
+        "listen": [80, 443],
+        "routes": {
+          "/api": {
+            "proxy": "http://127.0.0.1:8000"
+          },
+          "/ws": {
+            "ws": "ws://127.0.0.1:8000"
+          },
+          "/docs": {
+            "proxy": "http://127.0.0.1:8000"
+          },
+          "/openapi.json": {
+            "proxy": "http://127.0.0.1:8000"
+          },
+          "/": {
+            "static": "./pulse-query-ng-web/dist/pulse-query-ng-web/browser",
+            "spa": true
+          }
+        },
+        "upstreams": [
+          {
+            "path": "/api",
+            "type": "proxy",
+            "target": "http://127.0.0.1:8000"
+          },
+          {
+            "path": "/ws",
+            "type": "ws",
+            "target": "ws://127.0.0.1:8000"
+          },
+          {
+            "path": "/docs",
+            "type": "proxy",
+            "target": "http://127.0.0.1:8000"
+          },
+          {
+            "path": "/openapi.json",
+            "type": "proxy",
+            "target": "http://127.0.0.1:8000"
+          },
+          {
+            "path": "/",
+            "type": "static",
+            "spa": true,
+            "target": "${FRONTEND_STATIC_TARGET}"
+          }
+        ]
+      }
+    },
+    "databases": [
+      {
+        "engine": "postgres",
+        "name": "pulse_query_db",
+        "user": "postgres",
+        "password_env": "POSTGRES_PASSWORD",
+        "host": "127.0.0.1",
+        "port": 5432,
+        "url_env": "DATABASE_URL",
+        "min_tables": 2,
+        "required_tables": ["templates", "alembic_version"]
+      },
+      {
+        "engine": "duckdb",
+        "name": "hospital_analytics",
+        "path": "${DUCKDB_PATH}",
+        "url_env": "DUCKDB_URL",
+        "min_tables": 2,
+        "required_tables": [
+          "hospital_data",
+          "Synthetic_hospital_data_transfers"
+        ]
+      }
+    ],
+    "frontends": {
+      "web": {
+        "framework": "angular",
+        "source_dir": "pulse-query-ng-web",
+        "build_command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
+        "output_dir": "dist/pulse-query-ng-web/browser"
+      },
+      "kmp": {
+        "framework": "kmp",
+        "target": "kmp-wasm",
+        "source_dir": "PulseQuery",
+        "build_command": "./gradlew :composeApp:wasmJsBrowserDistribution",
+        "output_dir": "composeApp/build/dist/wasmJs/productionExecutable"
+      }
+    },
+    "services": [
+      {
+        "name": "pulse-query-backend",
+        "command": "sh -c 'if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\"; exec \"${UV_BIN:-uv}\" run uvicorn app.main:app --host 0.0.0.0 --port 8000'",
+        "working_dir": "pulse-query-backend",
+        "working_directory": "pulse-query-backend",
+        "port": 8000,
+        "user": "${SERVICE_USER}",
+        "env_files": [".env", ".env.secrets", "../.env", "../.env.secrets"],
+        "health_check": {
+          "url": "http://127.0.0.1:8000/api/v1/system/health",
+          "expect_status": 200,
+          "expect_json": ".status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10"
+        },
+        "env": {
+          "PYTHONUNBUFFERED": "1",
+          "PYTHONPATH": "src",
+          "POSTGRES_SERVER": "localhost",
+          "POSTGRES_USER": "postgres",
+          "POSTGRES_PASSWORD": "postgres",
+          "POSTGRES_DB": "pulse_query_db",
+          "POSTGRES_PORT": "5432",
+          "DUCKDB_PATH": "${DUCKDB_PATH}",
+          "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
+          "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+        },
+        "environment": {
+          "PYTHONUNBUFFERED": "1",
+          "PYTHONPATH": "src",
+          "POSTGRES_SERVER": "localhost",
+          "POSTGRES_USER": "postgres",
+          "POSTGRES_PASSWORD": "postgres",
+          "POSTGRES_DB": "pulse_query_db",
+          "POSTGRES_PORT": "5432",
+          "DUCKDB_PATH": "${DUCKDB_PATH}",
+          "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
+          "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+        }
+      }
+    ],
+    "hooks": {
+      "pre_install": [
+        {
+          "name": "prepare-persistent-data-dir",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
+          "cmd_windows": "if not exist data mkdir data",
+          "description": "Mount and prepare persistent data directory for DuckDB"
+        }
+      ],
+      "install": [
+        {
+          "name": "prepare-persistent-data-dir",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
+          "cmd_windows": "if not exist data mkdir data",
+          "description": "Mount and prepare persistent data directory for DuckDB"
+        },
+        {
+          "name": "install-backend-deps",
+          "working_dir": "pulse-query-backend",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
+          "cmd_windows": "uv sync --python 3.12",
+          "description": "Install Python backend dependencies"
+        },
+        {
+          "name": "install-frontend-deps",
+          "working_dir": "pulse-query-ng-web",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps",
+          "cmd_windows": "npm install --legacy-peer-deps",
+          "description": "Install Node.js frontend dependencies"
+        }
+      ],
+      "post_install": [
+        {
+          "name": "prepare-persistent-data-dir",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
+          "cmd_windows": "if not exist data mkdir data",
+          "description": "Mount and prepare persistent data directory for DuckDB"
+        },
+        {
+          "name": "sync-backend-deps",
+          "working_dir": "pulse-query-backend",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
+          "cmd_windows": "uv sync --python 3.12",
+          "description": "Install Python backend dependencies"
+        },
+        {
+          "name": "build-angular-frontend",
+          "working_dir": "pulse-query-ng-web",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps && npm run build",
+          "cmd_windows": "npm install --legacy-peer-deps && npm run build",
+          "description": "Install and build Angular frontend application"
+        },
+        {
+          "name": "fix-workspace-permissions",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" .; fi",
+          "cmd_windows": "rem Workspace permissions managed by Windows ACLs",
+          "description": "Ensure configured service user owns workspace files"
+        }
+      ],
+      "build": [
+        {
+          "name": "build-angular-web",
+          "working_dir": "pulse-query-ng-web",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
+          "cmd_windows": "npm run build",
+          "description": "Build Angular frontend application"
+        }
+      ],
+      "db_migrate": [
+        {
+          "name": "alembic-upgrade-head",
+          "working_dir": "pulse-query-backend",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run alembic upgrade head",
+          "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run alembic upgrade head",
+          "description": "Run Alembic database migrations for PostgreSQL"
+        },
+        {
+          "name": "ingest-clinical-datasets",
+          "working_dir": "pulse-query-backend",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
+          "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
+          "description": "Ingest synthetic clinical datasets into DuckDB"
+        },
+        {
+          "name": "seed-dashboard-templates",
+          "working_dir": "pulse-query-backend",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/seed_templates.py",
+          "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
+          "description": "Seed initial dashboard templates into PostgreSQL"
+        },
+        {
+          "name": "fix-data-directory-ownership",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; elif [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; elif [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if [ -d \"$DATA_DIR\" ] && id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" \"$DATA_DIR\" && sudo chmod -R u+rwX,go+rX \"$DATA_DIR\"; fi",
+          "cmd_windows": "rem Data directory permissions managed by Windows ACLs",
+          "description": "Ensure configured service user owns data directory and DuckDB files after migration"
+        }
+      ],
+      "pre_start": [
+        {
+          "name": "ensure-persistent-data-dir",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
+          "cmd_windows": "if not exist data mkdir data",
+          "description": "Ensure persistent data directory exists before starting services"
+        },
+        {
+          "name": "ensure-service-user-data-ownership",
+          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if [ -d \"$DATA_DIR\" ] && id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" \"$DATA_DIR\" && sudo chmod -R u+rwX,go+rX \"$DATA_DIR\"; fi",
+          "cmd_windows": "rem Data directory permissions managed by Windows ACLs",
+          "description": "Ensure configured service user owns data directory before starting backend service"
+        }
+      ],
+      "health": [
+        {
+          "name": "verify-system-health-payload",
+          "command": "curl -sf http://127.0.0.1:8000/api/v1/system/health | jq -e '.status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10'"
+        }
+      ]
+    },
+    "dependencies": {
+      "databases": [
+        {
+          "name": "postgres",
+          "version": "18"
+        },
+        {
+          "name": "duckdb",
+          "version": "latest"
+        }
+      ],
+      "servers": [
+        {
+          "name": "nginx",
+          "version": "latest",
+          "daemon": {
+            "os_native": true
+          },
+          "vars": {
+            "NGINX_SERVER_NAME": "pulse-query.healthplatform.io",
+            "PROXY_PASS": "http://127.0.0.1:8000",
+            "LOCATION": "/api"
+          }
+        },
+        {
+          "name": "ollama",
+          "version": "latest"
+        }
+      ],
+      "toolchains": [
+        {
+          "name": "python",
+          "version": "3.12"
+        },
+        {
+          "name": "nodejs",
+          "version": "22"
+        },
+        {
+          "name": "uv",
+          "version": "latest"
+        }
+      ],
+      "capabilities": ["${INIT_SYSTEM}"]
     }
   }
 }

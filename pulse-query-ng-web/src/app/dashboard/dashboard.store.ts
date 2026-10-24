@@ -16,15 +16,18 @@ import {
   ExecutionService,
   DashboardResponse,
   WidgetResponse,
-  WidgetCreateSql,
-  WidgetCreateHttp,
-  WidgetCreateText,
   WidgetIn,
 } from '../api-client';
 import { UndoRedoService } from '../core/undo/undo-redo.service';
 import { ReorderWidgetsCommand, AddWidgetCommand } from '../core/undo/dashboard-commands';
 import { extractApiErrorMessage } from '../core/error.utils';
-import { offsetWidgetCoordinates, sortWidgetsByOrder } from './dashboard-grid-layout.utils';
+import {
+  buildHttpWidgetConfig,
+  buildSqlWidgetConfig,
+  buildTextWidgetConfig,
+  offsetWidgetCoordinates,
+  sortWidgetsByOrder,
+} from './dashboard-grid-layout.utils';
 import { DashboardOfflineCacheService } from './dashboard-offline-cache.service';
 import { WidgetExecutionPayload } from './dashboard.models';
 
@@ -234,7 +237,7 @@ export class DashboardStore implements OnDestroy {
   /**
    * Starts the periodic background timer that triggers refreshes when auto-refresh is enabled.
    */
-  private startPolling(): void {
+  startPolling(): void {
     this.stopPolling();
     this.pollingSub = timer(DEFAULT_REFRESH_RATE, DEFAULT_REFRESH_RATE)
       .pipe(
@@ -308,21 +311,21 @@ export class DashboardStore implements OnDestroy {
         title: $localize`Copy of ${source.title}`,
         type: 'HTTP',
         visualization: source.visualization,
-        config: newConfig as unknown as WidgetCreateHttp['config'],
+        config: buildHttpWidgetConfig(newConfig),
       };
     } else if (source.type === 'TEXT') {
       payload = {
         title: $localize`Copy of ${source.title}`,
         type: 'TEXT',
         visualization: 'markdown',
-        config: newConfig as unknown as WidgetCreateText['config'],
+        config: buildTextWidgetConfig(newConfig),
       };
     } else {
       payload = {
         title: $localize`Copy of ${source.title}`,
         type: 'SQL',
         visualization: source.visualization,
-        config: newConfig as unknown as WidgetCreateSql['config'],
+        config: buildSqlWidgetConfig(newConfig),
       };
     }
 
@@ -549,7 +552,7 @@ export class DashboardStore implements OnDestroy {
    *
    * @param p - Partial `DashboardState` fields to update.
    */
-  private patch(p: Partial<DashboardState>): void {
+  patch(p: Partial<DashboardState>): void {
     this._state.update((current) => ({ ...current, ...p }));
   }
 
@@ -558,7 +561,7 @@ export class DashboardStore implements OnDestroy {
    *
    * @param e - Caught error value.
    */
-  private handleError(e: unknown): void {
+  handleError(e: unknown): void {
     const msg = extractApiErrorMessage(e, $localize`An unexpected error occurred`);
     this.patch({ error: msg });
   }

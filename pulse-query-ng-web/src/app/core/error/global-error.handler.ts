@@ -68,7 +68,7 @@ export class GlobalErrorHandler implements ErrorHandler {
   }
 
   /** Reloads the current browser window to recover from a fatal runtime error. */
-  private reloadApp(): void {
+  reloadApp(): void {
     try {
       window.location.reload();
     } catch {

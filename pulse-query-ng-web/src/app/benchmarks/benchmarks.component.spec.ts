@@ -5,7 +5,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Component, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
@@ -13,12 +12,15 @@ import { BenchmarksComponent } from './benchmarks.component';
 import { BenchmarksService } from './benchmarks.service';
 import { BenchmarkProgressService, BenchmarkProgress } from './benchmark-progress.service';
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
+import { readTemplate } from '../../test-utils/component-resources';
 
+/** Mock SQL snippet component for unit testing. */
 @Component({
   selector: 'app-sql-snippet',
   template: '',
 })
 class MockSqlSnippetComponent {
+  /** SQL input binding. */
   readonly sql = input<string | null | undefined>('');
 }
 
@@ -67,7 +69,7 @@ describe('BenchmarksComponent', () => {
     mockRouter = { navigate: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [BenchmarksComponent, NoopAnimationsModule],
+      imports: [BenchmarksComponent],
       providers: [
         { provide: BenchmarksService, useValue: mockService },
         { provide: BenchmarkProgressService, useValue: mockProgressService },
@@ -75,7 +77,11 @@ describe('BenchmarksComponent', () => {
       ],
     })
       .overrideComponent(BenchmarksComponent, {
-        set: { template: '<div class="benchmarks-container"></div>' },
+        remove: { imports: [SqlSnippetComponent] },
+        add: { imports: [MockSqlSnippetComponent] },
+      })
+      .overrideComponent(BenchmarksComponent, {
+        set: { template: readTemplate('./benchmarks.component.html'), templateUrl: undefined },
       })
       .compileComponents();
 

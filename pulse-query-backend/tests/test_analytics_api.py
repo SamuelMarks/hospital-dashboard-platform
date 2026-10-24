@@ -156,3 +156,34 @@ async def test_get_capacity_alerts_fallback_and_duckdb_exception(client: AsyncCl
     res = await client.get("/api/v1/analytics/alerts")
     assert res.status_code == 200
     assert res.json() == []
+
+
+@pytest.mark.asyncio
+async def test_analytics_service_severity_normalization_and_default_factory(
+  db_session: AsyncSession,
+) -> None:
+  """
+  Verifies `_normalize_severity` branches (`CRITICAL`, `INFO`, `WARNING`) and default `conn_factory` fallback.
+
+  Args:
+      db_session (AsyncSession): Active test database session.
+  """
+  from app.core.result import Ok
+  from app.models.alert_rule import AlertRule
+  from app.services.analytics_service import _normalize_severity, analytics_service
+
+  assert _normalize_severity("CRITICAL") == "CRITICAL"
+  assert _normalize_severity("INFO") == "INFO"
+  assert _normalize_severity("WARNING") == "WARNING"
+  assert _normalize_severity("unknown") == "WARNING"
+
+  db_session.add_all(
+    [
+      AlertRule(unit_category="StepDown", threshold_percentage=50.0, severity="INFO", is_active=True),
+      AlertRule(unit_category="Ward", threshold_percentage=70.0, severity="WARNING", is_active=True),
+    ]
+  )
+  await db_session.commit()
+
+  res = await analytics_service.get_capacity_alerts_result(db=db_session, conn_factory=None)
+  assert isinstance(res, Ok)

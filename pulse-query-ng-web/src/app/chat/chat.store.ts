@@ -10,6 +10,7 @@
  */
 
 import { DATE_NOW } from '../core/time.token';
+import { LoggerService } from '../core/logging/logger.service';
 import { safeStorage } from '../core/storage.utils';
 import { extractApiErrorMessage } from '../core/error.utils';
 import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
@@ -53,7 +54,7 @@ export interface ChatState {
   isStreaming: boolean;
 }
 
-/** Initial State constant. */
+/** Initial default state snapshot for the conversational AI store. */
 const initialState: ChatState = {
   conversations: [],
   activeConversationId: null,
@@ -70,8 +71,10 @@ const initialState: ChatState = {
 /** Centralized reactive state store managing chat conversations, multi-model arena candidates, and SSE streaming. */
 @Service()
 export class ChatStore implements OnDestroy {
-  /** Date now token. */
+  /** Injected clock provider returning the current Date instance. */
   private readonly dateNow = inject(DATE_NOW);
+  /** Centralized diagnostic logger service. */
+  private readonly logger = inject(LoggerService);
   /** Generated OpenAPI client for conversation and message endpoints. */
   private readonly chatApi = inject(ChatService);
   /** Generated OpenAPI client for AI model discovery endpoints. */
@@ -81,28 +84,28 @@ export class ChatStore implements OnDestroy {
   /** Subject emitting when the store is destroyed to cancel active subscriptions. */
   private readonly destroy$ = new Subject<void>();
 
-  /** State. */
+  /** Read-only signal exposing the complete chat store state snapshot. */
   readonly state = this._state.asReadonly();
-  /** Conversations. */
+  /** Computed signal returning the ordered list of user conversation threads. */
   readonly conversations = computed(() => this._state().conversations);
-  /** Active Conversation Id. */
+  /** Computed signal returning the currently active conversation UUID, or null if none is selected. */
   readonly activeConversationId = computed(() => this._state().activeConversationId);
-  /** Messages. */
+  /** Computed signal returning the chronological messages for the active conversation. */
   readonly messages = computed(() => this._state().messages);
-  /** Whether data Loading. */
+  /** Computed signal indicating whether conversation history or messages are loading. */
   readonly isDataLoading = computed(() => this._state().isLoadingList);
-  /** Whether generating. */
+  /** Computed signal indicating whether an LLM response generation request is in flight. */
   readonly isGenerating = computed(() => this._state().isGenerating);
-  /** Error. */
+  /** Computed signal returning the latest user-facing error message, or null when clear. */
   readonly error = computed(() => this._state().error);
 
-  /** Available Models. */
+  /** Computed signal returning the list of available LLM models for arena comparison. */
   readonly availableModels = computed(() => this._state().availableModels);
-  /** Selected Models. */
+  /** Computed signal returning the list of currently selected model identifiers. */
   readonly selectedModelIds = computed(() => this._state().selectedModelIds);
-  /** Whether actively streaming tokens. */
+  /** Computed signal indicating whether an SSE token stream is actively being consumed. */
   readonly isStreaming = computed(() => this._state().isStreaming);
-  /** Live streaming token text. */
+  /** Computed signal returning the accumulated text content of an in-progress SSE stream. */
   readonly streamingMessageContent = computed(() => this._state().streamingMessageContent);
 
   /** Completes active RxJS streams when the store is destroyed. */
@@ -111,7 +114,7 @@ export class ChatStore implements OnDestroy {
     this.destroy$.complete();
   }
 
-  /** Loads history and available models. */
+  /** Loads the user's conversation history and available LLM arena models from the backend. */
   loadHistory(): void {
     this.patch({ isLoadingList: true, error: null });
     this.chatApi
@@ -134,11 +137,11 @@ export class ChatStore implements OnDestroy {
           .pipe(retry(2))
           .subscribe({
             next: (models: ModelInfo[]) => this.patch({ availableModels: models }),
-            error: (err: unknown) => console.error('Failed to load models', err),
+            error: (err: unknown) => this.logger.error('Failed to load models', err),
           });
       }
     } catch {
-      console.warn('AI Models endpoint not available in client');
+      this.logger.warn('AI Models endpoint not available in client');
     }
   }
 
@@ -162,7 +165,7 @@ export class ChatStore implements OnDestroy {
       });
   }
 
-  /** Creates new Chat. */
+  /** Clears the active conversation selection and message list to begin a fresh chat session. */
   createNewChat(): void {
     if (!this.activeConversationId() && this.messages().length === 0) return;
     this.patch({ activeConversationId: null, messages: [], error: null });
@@ -215,13 +218,14 @@ export class ChatStore implements OnDestroy {
         )
         .subscribe({
           next: (convResponse: ConversationDetail | ConversationResponse) => {
-            const conv = convResponse as ConversationDetail;
-
-            const updatedList = [conv, ...this.conversations()];
-            const messages = conv.messages || [];
+            const updatedList = [convResponse, ...this.conversations()];
+            const messages =
+              'messages' in convResponse && Array.isArray(convResponse.messages)
+                ? convResponse.messages
+                : [];
 
             this.patch({
-              activeConversationId: conv.id,
+              activeConversationId: convResponse.id,
               conversations: updatedList,
               messages: messages,
             });
@@ -447,7 +451,7 @@ export class ChatStore implements OnDestroy {
    *
    * @param p - Partial state properties to merge into the current state.
    */
-  private patch(p: Partial<ChatState>): void {
+  patch(p: Partial<ChatState>): void {
     this._state.update((s) => ({ ...s, ...p }));
   }
 
@@ -456,8 +460,8 @@ export class ChatStore implements OnDestroy {
    *
    * @param e - The caught error object or HTTP error response.
    */
-  private handleError(e: unknown): void {
-    console.error('[ChatStore] API Error:', e);
+  handleError(e: unknown): void {
+    this.logger.error('[ChatStore] API Error:', e);
     this.patch({ error: extractApiErrorMessage(e, $localize`Error`) });
   }
 }

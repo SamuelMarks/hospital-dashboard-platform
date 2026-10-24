@@ -34,167 +34,24 @@
           >
             <!-- TAB 1: MARKETPLACE -->
             <mat-tab label="Templates" i18n-label>
-              <div class="p-6 h-full overflow-y-auto">
-                <div class="flex gap-4 mb-4 items-center flex-wrap">
-                  <mat-form-field
-                    appearance="outline"
-                    density="compact"
-                    subscriptSizing="dynamic"
-                    class="w-64"
-                  >
-                    <mat-icon aria-hidden="true" matPrefix>search</mat-icon>
-                    <input
-                      matInput
-                      i18n-aria-label
-                      aria-label="Search templates"
-                      i18n-placeholder
-                      placeholder="Search templates..."
-                      (input)="updateSearch($event)"
-                    />
-                  </mat-form-field>
-                  <!-- Chips automatically inherit theme inputs via global styles -->
-                  <mat-chip-listbox i18n-aria-label aria-label="Template categories">
-                    @for (cat of categories(); track cat) {
-                      <mat-chip-option
-                        [selected]="selectedCategory() === cat"
-                        (selectionChange)="toggleCategory(cat)"
-                        >{{ cat }}</mat-chip-option
-                      >
-                    }
-                  </mat-chip-listbox>
-                </div>
-
-                @if (loadingTemplates()) {
-                  <div class="flex justify-center p-12">
-                    <mat-spinner diameter="40"></mat-spinner>
-                  </div>
-                }
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" role="list">
-                  @for (t of templates(); track t.id) {
-                    <div
-                      class="template-card"
-                      [class.selected]="selectedTemplateId() === t.id"
-                      (click)="selectTemplate(t)"
-                      (keydown.enter)="selectTemplate(t)"
-                      (keydown.space)="selectTemplate(t); $event.preventDefault()"
-                      tabindex="0"
-                      role="button"
-                      [attr.aria-pressed]="selectedTemplateId() === t.id"
-                      [attr.aria-label]="getTemplateAriaLabel(t)"
-                    >
-                      <div class="font-medium text-primary mb-1" style="color: var(--sys-primary)">
-                        {{ t.title }}
-                      </div>
-                      <div
-                        class="text-xs uppercase tracking-wider mb-2"
-                        style="color: var(--sys-text-secondary)"
-                      >
-                        {{ t.category }}
-                      </div>
-                      <div
-                        class="text-sm line-clamp-3"
-                        style="color: var(--sys-on-surface-variant)"
-                      >
-                        {{ t.description }}
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
+              <app-widget-builder-marketplace-step
+                [categories]="categories()"
+                [selectedCategory]="selectedCategory()"
+                [loadingTemplates]="loadingTemplates()"
+                [templates]="templates()"
+                [selectedTemplateId]="selectedTemplateId()"
+                (searchInput)="updateSearch($event)"
+                (categoryToggle)="toggleCategory($event)"
+                (templateSelect)="selectTemplate($event)"
+              ></app-widget-builder-marketplace-step>
             </mat-tab>
 
             <!-- TAB 2: CUSTOM -->
             <mat-tab label="Custom Query" i18n-label>
-              <div class="p-8 max-w-4xl mx-auto h-full flex flex-col justify-center">
-                <h3
-                  i18n
-                  class="text-lg font-medium mb-6 text-center"
-                  style="color: var(--sys-text-primary)"
-                >
-                  Choose Data Source
-                </h3>
-                <div class="grid grid-cols-3 gap-6">
-                  <!-- SQL -->
-                  <div
-                    class="source-option"
-                    [class.selected]="selectedCustomType() === 'SQL'"
-                    (click)="selectCustomType('SQL')"
-                    tabindex="0"
-                    role="button"
-                    [attr.aria-pressed]="selectedCustomType() === 'SQL'"
-                    (keydown.enter)="selectCustomType('SQL')"
-                    (keydown.space)="selectCustomType('SQL'); $event.preventDefault()"
-                  >
-                    <mat-icon
-                      aria-hidden="true"
-                      class="text-4xl mb-4"
-                      style="color: var(--sys-primary)"
-                      >storage</mat-icon
-                    >
-                    <div i18n class="font-bold">SQL Database</div>
-                    <div
-                      i18n
-                      class="text-sm mt-2 text-center"
-                      style="color: var(--sys-text-secondary)"
-                    >
-                      Query the internal DuckDB analytics engine using SQL
-                    </div>
-                  </div>
-                  <!-- HTTP -->
-                  <div
-                    class="source-option"
-                    [class.selected]="selectedCustomType() === 'HTTP'"
-                    (click)="selectCustomType('HTTP')"
-                    tabindex="0"
-                    role="button"
-                    [attr.aria-pressed]="selectedCustomType() === 'HTTP'"
-                    (keydown.enter)="selectCustomType('HTTP')"
-                    (keydown.space)="selectCustomType('HTTP'); $event.preventDefault()"
-                  >
-                    <mat-icon
-                      aria-hidden="true"
-                      class="text-4xl mb-4"
-                      style="color: var(--sys-tertiary)"
-                      >cloud_download</mat-icon
-                    >
-                    <div i18n class="font-bold">HTTP API</div>
-                    <div
-                      i18n
-                      class="text-sm mt-2 text-center"
-                      style="color: var(--sys-text-secondary)"
-                    >
-                      Fetch JSON data from an external REST endpoint
-                    </div>
-                  </div>
-                  <!-- TEXT -->
-                  <div
-                    class="source-option"
-                    [class.selected]="selectedCustomType() === 'TEXT'"
-                    (click)="selectCustomType('TEXT')"
-                    tabindex="0"
-                    role="button"
-                    [attr.aria-pressed]="selectedCustomType() === 'TEXT'"
-                    (keydown.enter)="selectCustomType('TEXT')"
-                    (keydown.space)="selectCustomType('TEXT'); $event.preventDefault()"
-                  >
-                    <mat-icon
-                      aria-hidden="true"
-                      class="text-4xl mb-4"
-                      style="color: var(--sys-secondary)"
-                      >description</mat-icon
-                    >
-                    <div i18n class="font-bold">Static Markdown</div>
-                    <div
-                      i18n
-                      class="text-sm mt-2 text-center"
-                      style="color: var(--sys-text-secondary)"
-                    >
-                      Add text descriptions, instructions, or notes.
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <app-widget-builder-custom-source-step
+                [selectedCustomType]="selectedCustomType()"
+                (customTypeSelect)="selectCustomType($event)"
+              ></app-widget-builder-custom-source-step>
             </mat-tab>
           </mat-tab-group>
 
@@ -206,7 +63,6 @@
             <button i18n mat-button (click)="cancel()">Cancel</button>
             <button
               mat-flat-button
-              color="primary"
               (click)="initializeDraft(stepper)"
               [disabled]="isBusy() || (!selectedTemplateId() && !selectedCustomType())"
             >
@@ -219,7 +75,7 @@
         </div>
       </mat-step>
 
-      <!-- STEP 2 & 3: Configure & Visualize (Use consistent transparent background to let host control it) -->
+      <!-- STEP 2: Configure Data -->
       <mat-step [completed]="dataConfigured()">
         <ng-template i18n matStepLabel>Configure Data</ng-template>
         @if (draftWidget(); as widget) {
@@ -262,7 +118,6 @@
               @if (activeMode() === 'template') {
                 <button
                   mat-flat-button
-                  color="primary"
                   (click)="runTemplateQuery(stepper)"
                   [disabled]="!templateFormValid() || isBusy()"
                 >
@@ -272,16 +127,9 @@
                   <span i18n>Run & Preview</span>
                 </button>
               } @else if (widget.type === 'TEXT') {
-                <button i18n mat-flat-button color="primary" (click)="saveAndClose()">
-                  Save & Finish
-                </button>
+                <button i18n mat-flat-button (click)="saveAndClose()">Save & Finish</button>
               } @else {
-                <button
-                  i18n
-                  mat-flat-button
-                  color="primary"
-                  (click)="validateDataPresence(stepper)"
-                >
+                <button i18n mat-flat-button (click)="validateDataPresence(stepper)">
                   Next: Visualize
                 </button>
               }
@@ -290,96 +138,24 @@
         }
       </mat-step>
 
+      <!-- STEP 3: Visualize -->
       <mat-step>
         <ng-template i18n matStepLabel>Visualize</ng-template>
-        <!-- Visualize Step layout adjustments for themes -->
-        <form [formRoot]="vizForm" class="h-full flex flex-col lg:flex-row overflow-hidden">
-          <div
-            class="w-full lg:w-80 border-r flex flex-col overflow-y-auto p-4 flex-shrink-0"
-            style="background: var(--sys-surface-variant); border-color: var(--sys-surface-border)"
-          >
-            <h4
-              i18n
-              class="text-xs font-bold uppercase mb-4"
-              style="color: var(--sys-text-secondary)"
-            >
-              Settings
-            </h4>
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
-              <mat-label i18n>Widget Title</mat-label>
-              <input matInput [formField]="vizForm.title" />
-            </mat-form-field>
-
-            <div
-              i18n
-              class="text-xs font-bold uppercase mb-2"
-              style="color: var(--sys-text-secondary)"
-            >
-              Visualization Type
-            </div>
-            <mat-chip-listbox
-              class="mb-4 flex-col"
-              [selectable]="true"
-              i18n-aria-label
-              aria-label="Visualization Type"
-            >
-              @for (viz of visualizations; track viz.id) {
-                <mat-chip-option
-                  [selected]="draftWidget()?.visualization === viz.id"
-                  (click)="updateVizType(viz.id)"
-                  class="w-full viz-option"
-                >
-                  <mat-icon aria-hidden="true">{{ viz.icon }}</mat-icon> {{ viz.label }}
-                </mat-chip-option>
-              }
-            </mat-chip-listbox>
-
-            @if (showAxesConfig()) {
-              <mat-divider class="mb-4"></mat-divider>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-2">
-                @if (isPie()) {
-                  <mat-label i18n>Label Column</mat-label>
-                } @else {
-                  <mat-label i18n>X-Axis / Category</mat-label>
-                }
-                <mat-select [formField]="vizForm.xKey">
-                  <mat-option i18n [value]="null">Auto</mat-option>
-                  @for (col of availableColumns(); track col) {
-                    <mat-option [value]="col">{{ col }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                @if (isPie()) {
-                  <mat-label i18n>Size Column</mat-label>
-                } @else {
-                  <mat-label i18n>Y-Axis / Value</mat-label>
-                }
-                <mat-select [formField]="vizForm.yKey">
-                  <mat-option i18n [value]="null">Auto</mat-option>
-                  @for (col of availableColumns(); track col) {
-                    <mat-option [value]="col">{{ col }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-            }
-          </div>
-          <div
-            class="flex-grow flex flex-col p-8 overflow-hidden relative"
-            style="background: var(--sys-background)"
-          >
-            <div
-              class="rounded-lg shadow-sm border h-full w-full overflow-hidden flex flex-col p-4"
-              style="background-color: var(--sys-surface); border-color: var(--sys-surface-border)"
-            >
-              @if (draftWidget(); as w) {
-                <app-widget [widget]="w" class="flex-grow h-full w-full"></app-widget>
-              }
-            </div>
-          </div>
-        </form>
+        <app-widget-builder-visualize-step
+          [title]="vizFormModel().title"
+          [selectedVisualization]="draftWidget()?.visualization"
+          [visualizations]="visualizations"
+          [showAxesConfig]="showAxesConfig()"
+          [isPie]="isPie()"
+          [availableColumns]="availableColumns()"
+          [xKey]="vizFormModel().xKey"
+          [yKey]="vizFormModel().yKey"
+          [previewWidget]="previewWidget()"
+          (titleChange)="updateTitle($event)"
+          (vizTypeChange)="updateVizType($event)"
+          (xKeyChange)="updateXKey($event)"
+          (yKeyChange)="updateYKey($event)"
+        ></app-widget-builder-visualize-step>
         <div
           class="p-4 border-t flex justify-end gap-2 fixed-bottom"
           style="background: var(--sys-surface); border-color: var(--sys-surface-border)"
@@ -387,7 +163,6 @@
           <button i18n mat-button matStepperPrevious>Back</button>
           <button
             mat-flat-button
-            color="primary"
             (click)="saveAndClose()"
             [disabled]="vizForm().invalid() || isBusy()"
           >

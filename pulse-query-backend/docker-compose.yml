@@ -9,6 +9,13 @@ services:
       - POSTGRES_DB=pulse_query_db
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pulse_query_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: .
@@ -21,7 +28,15 @@ services:
       - POSTGRES_DB=pulse_query_db
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
-      - USE_SQLITE_ALEMBIC=1
+      - DUCKDB_PATH=/var/lib/pulse-query/hospital_analytics.duckdb
+      - USE_SQLITE_ALEMBIC=${USE_SQLITE_ALEMBIC:-0}
       - DEBUG=1
+    volumes:
+      - duckdb_data:/var/lib/pulse-query
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  duckdb_data:

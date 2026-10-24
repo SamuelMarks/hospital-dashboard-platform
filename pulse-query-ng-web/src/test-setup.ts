@@ -1,10 +1,10 @@
-import '@angular/localize/init';
 /**
  * @fileoverview Test configuration setup for the Angular application.
  * This file is the entry point for the test runner (Vitest).
  * It initializes the Angular testing environment and sets up global browser mocks.
  */
 
+import '@angular/localize/init';
 import { TestBed } from '@angular/core/testing';
 import {
   BrowserDynamicTestingModule,
@@ -62,12 +62,8 @@ if (typeof window !== 'undefined') {
  * Mock DOM Rect APIs for CodeMirror 6 in JSDOM.
  */
 if (typeof Range !== 'undefined') {
-  Range.prototype.getClientRects = () =>
-    ({
-      item: () => null,
-      length: 0,
-      [Symbol.iterator]: [][Symbol.iterator],
-    }) as unknown as DOMRectList;
+  Range.prototype.getClientRects = (): DOMRectList =>
+    document.createElement('div').getClientRects();
 
   Range.prototype.getBoundingClientRect = () =>
     ({
@@ -79,7 +75,7 @@ if (typeof Range !== 'undefined') {
       right: 0,
       bottom: 0,
       left: 0,
-      toJSON: () => {},
+      toJSON: () => ({}),
     }) as DOMRect;
 }
 
@@ -98,7 +94,7 @@ TestBed.configureCompiler({
   providers: [{ provide: ResourceLoader, useValue: resourceLoader }],
 });
 
-let componentsNeedingResources: Array<unknown> = [];
+let componentsNeedingResources: unknown[] = [];
 
 beforeAll(async () => {
   const [
@@ -130,9 +126,9 @@ beforeEach(async () => {
 });
 
 const originalCompileComponents = TestBed.compileComponents.bind(TestBed);
-TestBed.compileComponents = async () => {
+TestBed.compileComponents = async (): Promise<void> => {
   await resolveComponentResourcesForTests();
-  return originalCompileComponents();
+  await originalCompileComponents();
 };
 
 // --- Signal input/output/viewChild compatibility for JIT tests ---
@@ -145,16 +141,14 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
     if (typeof this !== 'function' || this === Function.prototype || this === Object) {
       return undefined;
     }
-    const self = this as unknown as Record<string | symbol, unknown>;
-    if (Object.prototype.hasOwnProperty.call(self, SIGNAL_PROP_CACHE)) {
-      return self[SIGNAL_PROP_CACHE];
+    if (Object.prototype.hasOwnProperty.call(this, SIGNAL_PROP_CACHE)) {
+      return Reflect.get(this, SIGNAL_PROP_CACHE) as unknown;
     }
 
-    const baseMeta = (
-      Object.prototype.hasOwnProperty.call(self, PROP_METADATA_KEY)
-        ? { ...(self[PROP_METADATA_KEY] as Record<string, unknown[]>) }
-        : {}
-    ) as Record<string, unknown[]>;
+    const existingMeta = Object.prototype.hasOwnProperty.call(this, PROP_METADATA_KEY)
+      ? (Reflect.get(this, PROP_METADATA_KEY) as Record<string, unknown[]>)
+      : {};
+    const baseMeta: Record<string, unknown[]> = { ...existingMeta };
 
     const src = Function.prototype.toString.call(this);
     // Match `prop = ...input(...)`, `this.prop = ...input(...)`, or `(0,__vite_ssr_import_0__.input)(...)`
@@ -201,7 +195,7 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
     }
 
     const result = Object.keys(baseMeta).length > 0 ? baseMeta : undefined;
-    Object.defineProperty(self, SIGNAL_PROP_CACHE, {
+    Object.defineProperty(this, SIGNAL_PROP_CACHE, {
       value: result,
       configurable: true,
     });
@@ -226,7 +220,7 @@ ComponentRef.prototype.setInput = function (name: string, value: unknown) {
     if (instance && Object.prototype.hasOwnProperty.call(instance, name)) {
       const current = instance[name];
       if (typeof current === 'function') {
-        const node = (current as unknown as Record<symbol, SignalNodeLike | undefined>)[SIGNAL];
+        const node = Reflect.get(current, SIGNAL) as SignalNodeLike | undefined;
         if (node) {
           if (typeof node.applyValueToInputSignal === 'function') {
             node.applyValueToInputSignal(node, value);
@@ -276,7 +270,7 @@ if (typeof window !== 'undefined') {
       writable: true,
       configurable: true,
     });
-  } catch (e) {}
+  } catch {}
 }
 
 try {
@@ -290,5 +284,4 @@ try {
     writable: true,
     configurable: true,
   });
-} catch (e) {}
-import '@angular/localize/init';
+} catch {}

@@ -17,27 +17,18 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Request schema for updating admin settings.
  *
- * @param apiKeys 
- * @param visibleModels 
+ * @param apiKeys
+ * @param visibleModels
  */
 @Serializable
-
-data class AdminSettingsUpdateRequest (
-
+data class AdminSettingsUpdateRequest(
     @SerialName(value = "api_keys") @Required val apiKeys: kotlin.collections.Map<kotlin.String, kotlin.String>,
-
     @SerialName(value = "visible_models") @Required val visibleModels: kotlin.collections.List<kotlin.String>
-
-) {
-
-
-}
-
+)

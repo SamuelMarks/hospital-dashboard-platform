@@ -5,7 +5,6 @@ import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
 import io.healthplatform.pulsequery.api.models.AlertSeverity
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue

@@ -92,7 +92,7 @@ export class TextEditorComponent {
     if (this.form().invalid()) return;
 
     this.isRunning.set(true);
-    const val = this.formModel().content || '';
+    const val = this.formModel().content;
 
     const update: WidgetUpdate = {
       config: { content: val },

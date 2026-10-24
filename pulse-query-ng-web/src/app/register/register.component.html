@@ -11,7 +11,7 @@
   <mat-card-content>
     @if (errorMessage()) {
       <div class="error-box" role="alert" data-testid="error-alert">
-        <mat-icon aria-hidden="true" color="warn">error</mat-icon>
+        <mat-icon aria-hidden="true">error</mat-icon>
         <span>{{ errorMessage() }}</span>
       </div>
     }
@@ -75,7 +75,6 @@
 
       <button
         mat-flat-button
-        color="primary"
         type="submit"
         class="full-width-btn"
         [disabled]="registerForm().invalid() || isLoading()"

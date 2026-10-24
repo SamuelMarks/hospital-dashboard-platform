@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for AskDataComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AskDataComponent } from './ask-data.component';
 import { AskDataService } from './ask-data.service';
@@ -15,22 +19,28 @@ import {
   output,
   NO_ERRORS_SCHEMA,
 } from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { readTemplate } from '../../test-utils/component-resources';
 import { vi } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
+/** Mock SQL builder component for unit testing `AskDataComponent`. */
 @Component({
   selector: 'app-sql-builder',
   template: '<div data-testid="mock-sql-builder"></div>',
 })
 class MockSqlBuilderComponent {
+  /** Dashboard ID input. */
   readonly dashboardId = input<string | undefined>();
+  /** Widget ID input. */
   readonly widgetId = input<string | undefined>();
+  /** Initial SQL input. */
   readonly initialSql = input<string | undefined>();
+  /** Initial tab index input. */
   readonly initialTab = input<number | undefined>();
+  /** Enable cart input. */
   readonly enableCart = input<boolean | undefined>();
+  /** Save to cart output. */
   readonly saveToCart = output<string>();
 }
 
@@ -101,7 +111,7 @@ describe('AskDataComponent', () => {
     mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(of(null));
 
     await TestBed.configureTestingModule({
-      imports: [AskDataComponent, NoopAnimationsModule],
+      imports: [AskDataComponent],
       providers: [
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: AuthService, useValue: mockAuthService },
@@ -370,7 +380,7 @@ describe('AskDataComponent - Platform Server', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [AskDataComponent, NoopAnimationsModule],
+      imports: [AskDataComponent],
       providers: [
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: AuthService, useValue: { isAuthenticated: signal(true) } },

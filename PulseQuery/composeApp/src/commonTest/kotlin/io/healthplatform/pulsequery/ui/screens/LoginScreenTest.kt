@@ -5,11 +5,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.test.runComposeUiTest
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToLog
+import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -21,7 +21,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -103,7 +102,7 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithText("Email").performTextInput("test@test.com")
         onNodeWithText("Password").performTextInput("password")
         onNodeWithText("Login / Register").performClick()
-        
+
         waitUntil(timeoutMillis = 15000) {
             onAllNodes(androidx.compose.ui.test.hasText("Invalid username or password.", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
@@ -140,12 +139,12 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithText("Email").performTextInput("test@test.com")
         onNodeWithText("Password").performTextInput("password")
         onNodeWithText("Login / Register").performClick()
-        
+
         onRoot().printToLog("LoginScreenTest")
 
         // After click, wait for the state to settle
         waitUntil(timeoutMillis = 15000) { successCalled }
-        
+
         assertTrue(successCalled)
     }
 }

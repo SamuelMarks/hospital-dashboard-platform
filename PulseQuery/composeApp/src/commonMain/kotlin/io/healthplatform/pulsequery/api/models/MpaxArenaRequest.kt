@@ -17,33 +17,22 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Request payload for executing an MPAX vs LLM comparison.
  *
- * @param prompt 
- * @param mode 
- * @param demandSql 
- * @param baseCapacity 
+ * @param prompt
+ * @param mode
+ * @param demandSql
+ * @param baseCapacity
  */
 @Serializable
-
-data class MpaxArenaRequest (
-
+data class MpaxArenaRequest(
     @SerialName(value = "prompt") @Required val prompt: kotlin.String,
-
     @SerialName(value = "mode") @Required val mode: kotlin.String,
-
     @SerialName(value = "demand_sql") val demandSql: kotlin.String? = null,
-
     @SerialName(value = "base_capacity") val baseCapacity: kotlin.collections.Map<kotlin.String, kotlin.Int>? = null
-
-) {
-
-
-}
-
+)

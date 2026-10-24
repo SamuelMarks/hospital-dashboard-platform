@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,7 +77,7 @@ class AdminUsersService:
         AppError(
           code=ErrorCode.ADMIN_INVALID_ROLE,
           message=f"Invalid clinical role '{payload.role}'. Allowed: {', '.join(sorted(valid_roles))}",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -89,7 +88,7 @@ class AdminUsersService:
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
           message="User not found",
-          status_code=status.HTTP_404_NOT_FOUND,
+          status_code=404,
         )
       )
 
@@ -125,7 +124,7 @@ class AdminUsersService:
         AppError(
           code=ErrorCode.ADMIN_SELF_MODIFICATION_FORBIDDEN,
           message="Administrators cannot suspend their own active account.",
-          status_code=status.HTTP_400_BAD_REQUEST,
+          status_code=400,
         )
       )
 
@@ -136,7 +135,7 @@ class AdminUsersService:
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
           message="User not found",
-          status_code=status.HTTP_404_NOT_FOUND,
+          status_code=404,
         )
       )
 

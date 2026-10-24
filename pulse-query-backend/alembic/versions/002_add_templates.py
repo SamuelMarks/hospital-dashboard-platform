@@ -36,12 +36,18 @@ def upgrade() -> None:
   )
   op.create_index(op.f("ix_widget_templates_category"), "widget_templates", ["category"], unique=False)
   op.create_index(op.f("ix_widget_templates_title"), "widget_templates", ["title"], unique=False)
+  bind = op.get_bind()
+  if bind.dialect.name == "postgresql":
+    op.execute("CREATE OR REPLACE VIEW templates AS SELECT * FROM widget_templates")
+  else:
+    op.execute("CREATE VIEW IF NOT EXISTS templates AS SELECT * FROM widget_templates")
 
 
 def downgrade() -> None:
   """
-  Revert migration: Drop widget_templates table.
+  Revert migration: Drop widget_templates table and templates view.
   """
+  op.execute("DROP VIEW IF EXISTS templates")
   op.drop_index(op.f("ix_widget_templates_title"), table_name="widget_templates")
   op.drop_index(op.f("ix_widget_templates_category"), table_name="widget_templates")
   op.drop_table("widget_templates")

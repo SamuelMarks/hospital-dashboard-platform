@@ -2,7 +2,7 @@
  * @fileoverview Pure, stateless grid layout and bin-packing utilities for dashboard widgets.
  */
 
-import { WidgetResponse } from '../api-client';
+import { HttpConfig, SqlConfig, TextConfig, WidgetResponse } from '../api-client';
 
 /**
  * Sorts widgets in ascending order by their `config.order` numeric property.
@@ -98,4 +98,43 @@ export function offsetWidgetCoordinates(
   newConfig['x'] = Math.min(maxColIndex, currentX + 1);
   newConfig['y'] = currentY + 1;
   return newConfig;
+}
+
+/**
+ * Constructs a strongly-typed `HttpConfig` object from a raw widget configuration dictionary.
+ *
+ * @param config - Raw widget configuration map.
+ * @returns Strictly typed `HttpConfig` payload.
+ */
+export function buildHttpWidgetConfig(config: Record<string, unknown>): HttpConfig {
+  return {
+    ...config,
+    url: typeof config['url'] === 'string' ? config['url'] : '',
+  };
+}
+
+/**
+ * Constructs a strongly-typed `TextConfig` object from a raw widget configuration dictionary.
+ *
+ * @param config - Raw widget configuration map.
+ * @returns Strictly typed `TextConfig` payload.
+ */
+export function buildTextWidgetConfig(config: Record<string, unknown>): TextConfig {
+  return {
+    ...config,
+    content: typeof config['content'] === 'string' ? config['content'] : '',
+  };
+}
+
+/**
+ * Constructs a strongly-typed `SqlConfig` object from a raw widget configuration dictionary.
+ *
+ * @param config - Raw widget configuration map.
+ * @returns Strictly typed `SqlConfig` payload.
+ */
+export function buildSqlWidgetConfig(config: Record<string, unknown>): SqlConfig {
+  return {
+    ...config,
+    query: typeof config['query'] === 'string' ? config['query'] : '',
+  };
 }

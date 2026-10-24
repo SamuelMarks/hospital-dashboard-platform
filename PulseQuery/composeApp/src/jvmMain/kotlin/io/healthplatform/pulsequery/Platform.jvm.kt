@@ -1,3 +1,6 @@
+/**
+ * JVM / Desktop platform-specific implementation module for Pulse Query.
+ */
 package io.healthplatform.pulsequery
 
 import io.healthplatform.pulsequery.core.error.PulseQueryError
@@ -43,7 +46,10 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
         val targetFile = java.io.File(downloadsDir, filename)
         targetFile.writeBytes(bytes)
         targetFile.absolutePath
-    }.recoverCatching { error ->
-        throw PulseQueryError.Storage.WriteFailure(filename, filename, error)
-    }
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { error ->
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, filename, error))
+        }
+    )
 }

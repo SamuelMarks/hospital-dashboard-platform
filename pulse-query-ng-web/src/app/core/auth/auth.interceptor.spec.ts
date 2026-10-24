@@ -79,7 +79,7 @@ describe('authInterceptor', () => {
     mockAuthService.getToken.mockReturnValue('expired-token');
 
     httpClient.get('/api/protected').subscribe({
-      error: (err) => {
+      error: (err: { status: number }) => {
         expect(err.status).toBe(401);
       },
     });
@@ -131,7 +131,7 @@ describe('authInterceptor', () => {
     mockRouter.url = '/login';
 
     httpClient.post('/api/auth/login', {}).subscribe({
-      error: (err) => expect(err.status).toBe(401),
+      error: (err: { status: number }) => expect(err.status).toBe(401),
     });
 
     const req = httpMock.expectOne('/api/auth/login');

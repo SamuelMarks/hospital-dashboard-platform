@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end clinical user workflow test from login to dashboard widget creation.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('End-to-End Workflow', () => {

@@ -17,41 +17,28 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * API Response model for a Template. Include database ID.
  *
- * @param title 
+ * @param title
  * @param sqlTemplate SQL with {{handlebars}} placeholders
- * @param category 
- * @param id 
- * @param description 
+ * @param category
+ * @param id
+ * @param description
  * @param parametersSchema JSON Schema definition for dynamic form generation.
  */
 @Serializable
-
-data class TemplateResponse (
-
+data class TemplateResponse(
     @SerialName(value = "title") @Required val title: kotlin.String,
-
-    /* SQL with {{handlebars}} placeholders */
+    // SQL with {{handlebars}} placeholders
     @SerialName(value = "sql_template") @Required val sqlTemplate: kotlin.String,
-
     @SerialName(value = "category") @Required val category: kotlin.String,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "description") val description: kotlin.String? = null,
-
-    /* JSON Schema definition for dynamic form generation. */
+    // JSON Schema definition for dynamic form generation.
     @SerialName(value = "parameters_schema") val parametersSchema: kotlinx.serialization.json.JsonObject? = null
-
-) {
-
-
-}
-
+)

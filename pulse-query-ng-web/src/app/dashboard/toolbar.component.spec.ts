@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for ToolbarComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { ToolbarComponent } from './toolbar.component';
@@ -7,13 +11,16 @@ import { AuthService } from '../core/auth/auth.service';
 import { ThemeService } from '../core/theme/theme.service';
 import { DashboardsService, DashboardResponse } from '../api-client';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
-import { signal, WritableSignal } from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { Router, NavigationEnd, ActivatedRoute, Event as RouterEvent } from '@angular/router';
 import { vi } from 'vitest';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { QueryCartService } from '../global/query-cart.service';
+import { readTemplate } from '../../test-utils/component-resources';
+import { createMockInputEvent } from '../../test-utils/mock-factories';
+import { CollaboratorPresenceComponent } from './collaborator-presence/collaborator-presence.component';
+import { UndoRedoButtonsComponent } from '../shared/components/undo-redo-buttons.component';
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -34,6 +41,17 @@ describe('ToolbarComponent', () => {
   let component: ToolbarComponent;
   let fixture: ComponentFixture<ToolbarComponent>;
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
+  let mockDialog: { open: ReturnType<typeof vi.fn> };
+  let mockAuthService: {
+    currentUser: WritableSignal<Record<string, unknown>>;
+    logout: ReturnType<typeof vi.fn>;
+  };
+  let mockThemeService: {
+    isDark: WritableSignal<boolean>;
+    seedColor: WritableSignal<string>;
+    toggle: ReturnType<typeof vi.fn>;
+    setSeedColor: ReturnType<typeof vi.fn>;
+  };
   let routerEvents$: Subject<RouterEvent>;
   let mockStore: {
     dashboard: WritableSignal<Partial<DashboardResponse> | null>;
@@ -48,6 +66,7 @@ describe('ToolbarComponent', () => {
     url: string;
     navigate: ReturnType<typeof vi.fn>;
     createUrlTree: ReturnType<typeof vi.fn>;
+    serializeUrl: ReturnType<typeof vi.fn>;
   };
   let mockHttp: { get: ReturnType<typeof vi.fn> };
 
@@ -56,7 +75,6 @@ describe('ToolbarComponent', () => {
       get: vi.fn(),
     };
 
-    // Reset signals and spies
     mockStore = {
       dashboard: signal(null),
       isLoading: signal(false),
@@ -70,9 +88,21 @@ describe('ToolbarComponent', () => {
       onAction: vi.fn().mockReturnValue(of(undefined)),
     };
 
-    // Assign to the OUTER variable
     mockSnackBar = {
       open: vi.fn().mockReturnValue(snackRefMock),
+    };
+    mockDialog = {
+      open: vi.fn(),
+    };
+    mockAuthService = {
+      currentUser: signal({}),
+      logout: vi.fn(),
+    };
+    mockThemeService = {
+      isDark: signal(false),
+      seedColor: signal(''),
+      toggle: vi.fn(),
+      setSeedColor: vi.fn(),
     };
 
     routerEvents$ = new Subject();
@@ -80,26 +110,19 @@ describe('ToolbarComponent', () => {
       events: routerEvents$.asObservable(),
       url: '/',
       navigate: vi.fn(),
-      createUrlTree: vi.fn(),
+      createUrlTree: vi.fn().mockReturnValue({}),
+      serializeUrl: vi.fn().mockReturnValue('/'),
     };
 
     await TestBed.configureTestingModule({
-      imports: [ToolbarComponent, NoopAnimationsModule],
+      imports: [ToolbarComponent],
       providers: [
         { provide: DashboardStore, useValue: mockStore },
         { provide: DashboardsService, useValue: {} },
         { provide: AskDataService, useValue: { open: vi.fn() } },
-        { provide: MatDialog, useValue: { open: vi.fn() } },
-        { provide: AuthService, useValue: { currentUser: signal({}), logout: vi.fn() } },
-        {
-          provide: ThemeService,
-          useValue: {
-            isDark: signal(false),
-            seedColor: signal(''),
-            toggle: vi.fn(),
-            setSeedColor: vi.fn(),
-          },
-        },
+        { provide: MatDialog, useValue: mockDialog },
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: ThemeService, useValue: mockThemeService },
         { provide: QueryCartService, useValue: { count: signal(0) } },
         { provide: MatSnackBar, useValue: mockSnackBar },
         { provide: HttpClient, useValue: mockHttp },
@@ -107,10 +130,16 @@ describe('ToolbarComponent', () => {
         { provide: ActivatedRoute, useValue: { snapshot: {}, params: of({}) } },
       ],
     })
-      // Force override to prevent MatSnackBarModule inside component `imports` silencing mock
       .overrideProvider(MatSnackBar, { useValue: mockSnackBar })
       .overrideComponent(ToolbarComponent, {
-        set: { template: '<button data-testid="btn-theme-menu"></button>' },
+        remove: { imports: [CollaboratorPresenceComponent, UndoRedoButtonsComponent] },
+      })
+      .overrideComponent(ToolbarComponent, {
+        set: {
+          template: readTemplate('./toolbar.component.html'),
+          templateUrl: undefined,
+          schemas: [NO_ERRORS_SCHEMA],
+        },
       })
       .compileComponents();
 
@@ -120,28 +149,19 @@ describe('ToolbarComponent', () => {
   });
 
   it('should show hint when opening cart off dashboard', async () => {
-    // Arrange: Verify initial state
     mockStore.dashboard.set(null);
-    mockRouter.url = '/home'; // manually update mock property accessed by signal
+    mockRouter.url = '/home';
 
-    // Trigger Router Event to update the 'isDashboardRoute' signal
     routerEvents$.next(new NavigationEnd(1, '/home', '/home'));
 
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // Direct spy target ensures tracking regardless of DI abstraction scopes
-    const snackSpy = vi.spyOn(component['snackBar'], 'open').mockReturnValue({
-      onAction: () => of(undefined),
-    } as unknown as MatSnackBarRef<TextOnlySnackBar>);
-
-    // Act
     component.openCart();
 
-    // Assert
     expect(mockStore.toggleEditMode).not.toHaveBeenCalled();
 
-    expect(snackSpy).toHaveBeenCalledWith(
+    expect(mockSnackBar.open).toHaveBeenCalledWith(
       expect.stringContaining('Open a dashboard'),
       'Go to Home',
       expect.objectContaining({ duration: 4000 }),
@@ -149,7 +169,6 @@ describe('ToolbarComponent', () => {
   });
 
   it('should toggle edit mode when opening cart ON dashboard', async () => {
-    // Arrange
     const dash = { id: 'd1', name: 'Dash' };
     mockStore.dashboard.set(dash);
     mockRouter.url = '/dashboard/d1';
@@ -158,17 +177,13 @@ describe('ToolbarComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // Act
     component.openCart();
 
-    // Assert
-    const injectedSnackBar = TestBed.inject(MatSnackBar);
     expect(mockStore.toggleEditMode).toHaveBeenCalled();
-    expect(injectedSnackBar.open).not.toHaveBeenCalled();
+    expect(mockSnackBar.open).not.toHaveBeenCalled();
   });
 
   it('should do nothing when opening cart on dashboard if edit mode is already true', async () => {
-    // Arrange
     const dash = { id: 'd1', name: 'Dash' };
     mockStore.dashboard.set(dash);
     mockStore.isEditMode.set(true);
@@ -178,77 +193,62 @@ describe('ToolbarComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    // Act
     component.openCart();
 
-    // Assert
     expect(mockStore.toggleEditMode).not.toHaveBeenCalled();
   });
 
   it('should logout via auth service', () => {
-    const spy = TestBed.inject(AuthService).logout;
     component.logout();
-    expect(spy).toHaveBeenCalled();
+    expect(mockAuthService.logout).toHaveBeenCalled();
   });
 
   it('should update theme color', () => {
-    const spy = TestBed.inject(ThemeService).setSeedColor;
     component.updateTheme('#ff0000');
-    expect(spy).toHaveBeenCalledWith('#ff0000');
+    expect(mockThemeService.setSeedColor).toHaveBeenCalledWith('#ff0000');
   });
 
   it('should handle color picker changes', () => {
-    const spy = TestBed.inject(ThemeService).setSeedColor;
-    const input = document.createElement('input');
-    input.value = '#00ff00';
-
-    component.onColorPickerChange({ target: input } as unknown as Event);
-    expect(spy).toHaveBeenCalledWith('#00ff00');
+    component.onColorPickerChange(createMockInputEvent('#00ff00'));
+    expect(mockThemeService.setSeedColor).toHaveBeenCalledWith('#00ff00');
   });
 
   it('should ignore empty color picker changes', () => {
-    const spy = TestBed.inject(ThemeService).setSeedColor;
-    const input = document.createElement('input');
-    input.value = '';
-
-    component.onColorPickerChange({ target: input } as unknown as Event);
-    expect(spy).not.toHaveBeenCalled();
+    component.onColorPickerChange(createMockInputEvent(''));
+    expect(mockThemeService.setSeedColor).not.toHaveBeenCalled();
   });
 
   it('should open widget builder dialog', () => {
     const dash = { id: 'd1' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
-    dialogSpy.mockReturnValue({
+    mockDialog.open.mockReturnValue({
       afterClosed: () => of(true),
-    } as unknown as ReturnType<MatDialog['open']>);
+    });
 
     component.openWidgetBuilder();
 
-    expect(dialogSpy).toHaveBeenCalled();
+    expect(mockDialog.open).toHaveBeenCalled();
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
   });
 
   it('should open widget builder dialog but not load dashboard if false is returned', () => {
     const dash = { id: 'd1' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
-    dialogSpy.mockReturnValue({
+    mockDialog.open.mockReturnValue({
       afterClosed: () => of(false),
-    } as unknown as ReturnType<MatDialog['open']>);
+    });
 
     component.openWidgetBuilder();
 
-    expect(dialogSpy).toHaveBeenCalled();
+    expect(mockDialog.open).toHaveBeenCalled();
     expect(mockStore.loadDashboard).not.toHaveBeenCalled();
   });
 
   it('should not open widget builder if dashboard missing', () => {
     mockStore.dashboard.set(null);
-    const dialogSpy = TestBed.inject(MatDialog).open;
 
     component.openWidgetBuilder();
-    expect(dialogSpy).not.toHaveBeenCalled();
+    expect(mockDialog.open).not.toHaveBeenCalled();
   });
 
   it('should download authorized blob stream for csv, json, and pdf exports', () => {
@@ -276,14 +276,12 @@ describe('ToolbarComponent', () => {
       responseType: 'blob',
     });
 
-    // Test default fallback filename when name is empty
     mockStore.dashboard.set({ id: 'd123', name: '' });
     component.exportDashboard('csv');
     expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/dashboards/d123/export?format=csv', {
       responseType: 'blob',
     });
 
-    // Early return if no dashboard
     mockStore.dashboard.set(null);
     component.exportDashboard('csv');
     expect(mockHttp.get).toHaveBeenCalledTimes(4);
@@ -293,7 +291,6 @@ describe('ToolbarComponent', () => {
   });
 
   it('should display snackbar error on export HTTP failure', () => {
-    const { throwError } = require('rxjs');
     mockHttp.get.mockReturnValue(throwError(() => new Error('Export failed')));
     mockStore.dashboard.set({ id: 'd123', name: 'Clinical Overview' });
 
@@ -309,45 +306,41 @@ describe('ToolbarComponent', () => {
   it('should open share dialog when openShareDialog is called', () => {
     const dash = { id: 'd1', name: 'Clinical Ops' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
 
     component.openShareDialog();
 
-    expect(dialogSpy).toHaveBeenCalled();
+    expect(mockDialog.open).toHaveBeenCalled();
 
-    // Early return if no dashboard
     mockStore.dashboard.set(null);
     component.openShareDialog();
-    expect(dialogSpy).toHaveBeenCalledTimes(1);
+    expect(mockDialog.open).toHaveBeenCalledTimes(1);
   });
 
   it('should open theme dialog when openThemeDialog is called', () => {
     const dash = { id: 'd1', name: 'Clinical Ops' };
     mockStore.dashboard.set(dash);
-    const dialogSpy = vi.mocked(TestBed.inject(MatDialog).open);
 
     component.openThemeDialog();
 
-    expect(dialogSpy).toHaveBeenCalledWith(
+    expect(mockDialog.open).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         data: expect.objectContaining({
           dashboardId: 'd1',
           dashboardName: 'Clinical Ops',
-        }),
+        }) as unknown,
       }),
     );
 
-    // When dashboard is null, should use fallback values
     mockStore.dashboard.set(null);
     component.openThemeDialog();
-    expect(dialogSpy).toHaveBeenCalledWith(
+    expect(mockDialog.open).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         data: expect.objectContaining({
           dashboardId: '',
           dashboardName: 'Dashboard',
-        }),
+        }) as unknown,
       }),
     );
   });

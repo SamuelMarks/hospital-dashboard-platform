@@ -1,7 +1,8 @@
-import type { BootstrapContext } from '@angular/platform-browser';
-import { vi } from 'vitest';
+/**
+ * @fileoverview Unit tests for SSR `main.server.ts` bootstrap entry point.
+ */
 
-const mockBootstrapApplication = vi.fn();
+import { vi } from 'vitest';
 
 vi.mock('@material/material-color-utilities', () => ({
   argbFromHex: () => 0xffffffff,
@@ -23,26 +24,28 @@ vi.mock('@angular/platform-browser', async (importOriginal) => {
 });
 
 describe('main.server bootstrap', () => {
-  let bootstrapApplication: ReturnType<typeof vi.fn>;
+  let bootstrapApplication: ReturnType<
+    typeof vi.mocked<typeof import('@angular/platform-browser').bootstrapApplication>
+  >;
+
   beforeEach(async () => {
     vi.resetModules();
     const pb = await import('@angular/platform-browser');
-    bootstrapApplication = pb.bootstrapApplication as unknown as ReturnType<typeof vi.fn>;
+    bootstrapApplication = vi.mocked(pb.bootstrapApplication);
     bootstrapApplication.mockReset();
   });
 
   it('calls bootstrapApplication with context', async () => {
-    bootstrapApplication.mockResolvedValue(undefined);
+    bootstrapApplication.mockResolvedValue(undefined as never);
 
     const mod = await import('./main.server');
-    const context = {} as unknown as BootstrapContext;
 
-    await mod.default(context);
+    await mod.default(undefined);
 
     expect(bootstrapApplication).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
-      context,
+      undefined,
     );
   });
 });

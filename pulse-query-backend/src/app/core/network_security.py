@@ -6,6 +6,7 @@ Provides validation functions to detect and block Server-Side Request Forgery
 link-local, cloud metadata, IPv6 transition tunnels, or private network IP ranges.
 """
 
+import asyncio
 import ipaddress
 import socket
 from urllib.parse import urlparse
@@ -297,7 +298,11 @@ class SafeAsyncHTTPTransport(httpx.AsyncHTTPTransport):
     Raises:
         httpx.RequestError: If the target host or resolved IP violates SSRF policy.
     """
-    pin_res = resolve_and_pin_safe_ip_result(str(request.url), strict_dns=self._strict_dns)
+    pin_res = await asyncio.to_thread(
+      resolve_and_pin_safe_ip_result,
+      str(request.url),
+      strict_dns=self._strict_dns,
+    )
     if isinstance(pin_res, Err):
       raise httpx.RequestError(f"Security restriction: {pin_res.error.message}", request=request)
 
@@ -310,6 +315,7 @@ class SafeAsyncHTTPTransport(httpx.AsyncHTTPTransport):
         request.headers["host"] = original_host
       if request.url.scheme == "https" and "sni_hostname" not in request.extensions:
         request.extensions["sni_hostname"] = original_host.encode("ascii")
-      request.url = request.url.copy_with(host=pinned_ip)
+      formatted_host = f"[{pinned_ip}]" if ":" in pinned_ip and not pinned_ip.startswith("[") else pinned_ip
+      request.url = request.url.copy_with(host=formatted_host)
 
     return await super().handle_async_request(request)

@@ -17,43 +17,28 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.MessageCandidateResponse
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * API Response model for a persisted Message.
  *
- * @param content 
- * @param id 
- * @param conversationId 
- * @param role 
- * @param createdAt 
- * @param sqlSnippet 
- * @param candidates 
+ * @param content
+ * @param id
+ * @param conversationId
+ * @param role
+ * @param createdAt
+ * @param sqlSnippet
+ * @param candidates
  */
 @Serializable
-
-data class MessageResponse (
-
+data class MessageResponse(
     @SerialName(value = "content") @Required val content: kotlin.String,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "conversation_id") @Required val conversationId: kotlin.String,
-
     @SerialName(value = "role") @Required val role: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "sql_snippet") val sqlSnippet: kotlin.String? = null,
-
     @SerialName(value = "candidates") val candidates: kotlin.collections.List<MessageCandidateResponse>? = null
-
-) {
-
-
-}
-
+)

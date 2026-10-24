@@ -1,14 +1,5 @@
 <mat-toolbar class="app-toolbar mat-elevation-z2">
-  <div
-    class="title-group"
-    routerLink="/"
-    i18n-matTooltip
-    matTooltip="Back to Home"
-    tabindex="0"
-    role="button"
-    (keydown.enter)="router.navigate(['/'])"
-    (keydown.space)="router.navigate(['/']); $event.preventDefault()"
-  >
+  <a class="title-group" routerLink="/" i18n-matTooltip matTooltip="Back to Home">
     <span i18n class="title-overline" style="color: var(--sys-primary)">Analytics</span>
     <span class="title-main">
       @if (isDashboardRoute()) {
@@ -21,7 +12,7 @@
         <span i18n>Pulse Query</span>
       }
     </span>
-  </div>
+  </a>
 
   <nav class="nav-links hidden sm:flex" i18n-aria-label aria-label="Main navigation">
     <a
@@ -65,7 +56,6 @@
       i18n-aria-label
       aria-label="Query Cart items"
       [matBadge]="cartCount()"
-      matBadgeColor="accent"
       matBadgeSize="small"
       [matBadgeHidden]="cartCount() === 0"
       data-testid="btn-cart-location"
@@ -78,7 +68,6 @@
 
       <mat-slide-toggle
         i18n
-        color="primary"
         [checked]="store.isEditMode()"
         (change)="store.toggleEditMode()"
         class="mr-2"
@@ -267,7 +256,8 @@
       }
       <mat-divider></mat-divider>
       <button i18n mat-menu-item (click)="logout()">
-        <mat-icon aria-hidden="true" color="warn">logout</mat-icon><span>Logout</span>
+        <mat-icon aria-hidden="true" style="color: var(--sys-error)">logout</mat-icon
+        ><span>Logout</span>
       </button>
     </mat-menu>
   </div>

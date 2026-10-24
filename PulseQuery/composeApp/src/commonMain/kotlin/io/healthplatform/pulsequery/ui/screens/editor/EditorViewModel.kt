@@ -5,8 +5,15 @@
 package io.healthplatform.pulsequery.ui.screens.editor
 
 import io.healthplatform.pulsequery.api.apis.AiApi
+import io.healthplatform.pulsequery.api.apis.DashboardsApi
+import io.healthplatform.pulsequery.api.apis.TemplatesApi
+import io.healthplatform.pulsequery.api.models.DashboardResponse
 import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
 import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
+import io.healthplatform.pulsequery.api.models.SqlConfig
+import io.healthplatform.pulsequery.api.models.TemplateCreate
+import io.healthplatform.pulsequery.api.models.WidgetIn
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -39,14 +46,24 @@ data class EditorUiState(
  * @property scope Coroutine scope used for asynchronous API calls.
  * @property aiApi Optional explicit [AiApi] client for executing ad-hoc SQL preview queries.
  * @property queryCartRepository Repository for staging SQL queries to the cart.
+ * @property dashboardsApi Optional explicit [DashboardsApi] client for widget persistence.
+ * @property templatesApi Optional explicit [TemplatesApi] client for template registration.
  */
 class EditorViewModel(
     private val scope: CoroutineScope,
     private val aiApi: AiApi? = null,
-    private val queryCartRepository: QueryCartRepository = AppContainer.queryCartRepository
+    private val queryCartRepository: QueryCartRepository = AppContainer.queryCartRepository,
+    private val dashboardsApi: DashboardsApi? = null,
+    private val templatesApi: TemplatesApi? = null
 ) {
     private val currentAiApi: AiApi
         get() = aiApi ?: AppContainer.aiApi
+
+    private val currentDashboardsApi: DashboardsApi
+        get() = dashboardsApi ?: AppContainer.dashboardsApi
+
+    private val currentTemplatesApi: TemplatesApi
+        get() = templatesApi ?: AppContainer.templatesApi
 
     private val _state = MutableStateFlow(EditorUiState())
 
@@ -101,6 +118,64 @@ class EditorViewModel(
         val currentSql = _state.value.sqlQuery
         if (currentSql.isNotBlank()) {
             queryCartRepository.addQuery(title, currentSql)
+        }
+    }
+
+    /**
+     * Loads the list of available dashboards for saving a custom SQL widget.
+     *
+     * @return [Result] containing the list of [DashboardResponse] items or a [io.healthplatform.pulsequery.core.error.PulseQueryError].
+     */
+    suspend fun loadAvailableDashboards(): Result<List<DashboardResponse>> {
+        return runCatchingPulseAsync {
+            currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult().getOrThrow()
+        }
+    }
+
+    /**
+     * Persists a SQL query either as a dashboard widget or as a reusable template in the library.
+     *
+     * @param destination Selected [SaveQueryDestination].
+     * @param title Title of the widget or template.
+     * @param sql Raw SQL query string.
+     * @param dashboardId Target dashboard ID when [destination] is [SaveQueryDestination.DASHBOARD_WIDGET].
+     * @param visualization Selected visualization type for dashboard widgets.
+     * @param category Template category name when [destination] is [SaveQueryDestination.TEMPLATE].
+     * @param description Template description when [destination] is [SaveQueryDestination.TEMPLATE].
+     * @return [Result] containing a user-facing confirmation message on success.
+     */
+    @Suppress("LongParameterList")
+    suspend fun saveQuery(
+        destination: SaveQueryDestination,
+        title: String,
+        sql: String,
+        dashboardId: String?,
+        visualization: String = "table",
+        category: String = "Clinical",
+        description: String = ""
+    ): Result<String> {
+        return runCatchingPulseAsync {
+            if (destination == SaveQueryDestination.DASHBOARD_WIDGET && dashboardId != null) {
+                val widgetIn = WidgetIn.Sql(
+                    title = title.trim(),
+                    visualization = visualization,
+                    config = SqlConfig(query = sql)
+                )
+                currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
+                    dashboardId,
+                    widgetIn
+                ).asResult().getOrThrow()
+                "Widget successfully added to dashboard"
+            } else {
+                val templateCreate = TemplateCreate(
+                    title = title.trim(),
+                    sqlTemplate = sql,
+                    category = category.trim().ifBlank { "Clinical" },
+                    description = description.trim()
+                )
+                currentTemplatesApi.createTemplateApiV1TemplatesPost(templateCreate).asResult().getOrThrow()
+                "Template successfully registered in library"
+            }
         }
     }
 }

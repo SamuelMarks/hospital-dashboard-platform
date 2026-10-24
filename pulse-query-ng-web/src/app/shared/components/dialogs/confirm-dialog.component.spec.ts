@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for ConfirmDialogComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ConfirmDialogComponent, ConfirmDialogData } from './confirm-dialog.component';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -29,28 +33,19 @@ describe('ConfirmDialogComponent', () => {
   });
 
   it('should render content from data', () => {
-    const title = fixture.debugElement.query(By.css('h2')).nativeElement.textContent;
-    const msg = fixture.debugElement.query(By.css('p')).nativeElement.textContent;
-    const btn = fixture.debugElement.query(By.css('button[mat-flat-button]')).nativeElement
+    const title = (fixture.debugElement.query(By.css('h2')).nativeElement as HTMLElement)
       .textContent;
+    const msg = (fixture.debugElement.query(By.css('p')).nativeElement as HTMLElement).textContent;
+    const btn = (
+      fixture.debugElement.query(By.css('button[mat-flat-button]')).nativeElement as HTMLElement
+    ).textContent;
 
     expect(title).toBe('Test Title');
     expect(msg).toBe('Test Message');
-    expect(btn.trim()).toBe('Yes');
+    expect(btn?.trim()).toBe('Yes');
   });
 
   it('should use warn color for destructive actions', () => {
-    // Check component data directly as rendering attribute 'color' on mat-button is internal
-    expect(component.data.isDestructive).toBe(true);
-
-    // In unit tests, verify the input binding in template exists
-    const btnDebug = fixture.debugElement.query(By.css('button[mat-flat-button]'));
-    // MatButton inputs are not always reflected as attributes in JSDOM unless using ng-reflect
-    // If ng-reflect-color failed (undefined), it might mean binding is optimized out or not in dev mode.
-    // We trust the data input logic or check if class is applied if MatButton applies one (it applies 'mat-warn' usually).
-
-    // Fallback: Verify template logic by checking property on the directive instance if possible,
-    // or just rely on the fact that we passed data.isDestructive=true.
     expect(component.data.isDestructive).toBe(true);
   });
 });

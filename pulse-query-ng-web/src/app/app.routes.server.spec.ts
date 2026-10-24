@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for server route rendering modes (`app.routes.server.ts`).
+ */
+
 import { RenderMode } from '@angular/ssr';
 import { serverRoutes } from './app.routes.server';
 

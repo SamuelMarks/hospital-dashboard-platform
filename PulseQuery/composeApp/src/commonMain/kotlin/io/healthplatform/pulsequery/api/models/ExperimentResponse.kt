@@ -17,40 +17,26 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ModelCandidateResponse
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Return schema containing the UUID and list of anonymous candidates.
  *
- * @param promptText 
- * @param id 
- * @param userId 
- * @param createdAt 
- * @param promptStrategy 
- * @param candidates 
+ * @param promptText
+ * @param id
+ * @param userId
+ * @param createdAt
+ * @param promptStrategy
+ * @param candidates
  */
 @Serializable
-
-data class ExperimentResponse (
-
+data class ExperimentResponse(
     @SerialName(value = "prompt_text") @Required val promptText: kotlin.String,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "prompt_strategy") val promptStrategy: kotlin.String? = null,
-
     @SerialName(value = "candidates") val candidates: kotlin.collections.List<ModelCandidateResponse>? = null
-
-) {
-
-
-}
-
+)

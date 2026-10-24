@@ -17,30 +17,20 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Represents a single widget's new position.
  *
- * @param id 
- * @param order 
- * @param group 
+ * @param id
+ * @param order
+ * @param group
  */
 @Serializable
-
-data class WidgetReorderItem (
-
+data class WidgetReorderItem(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "order") @Required val order: kotlin.Int,
-
     @SerialName(value = "group") val group: kotlin.String? = null
-
-) {
-
-
-}
-
+)

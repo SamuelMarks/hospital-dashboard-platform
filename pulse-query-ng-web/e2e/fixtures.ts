@@ -1,16 +1,26 @@
+/**
+ * @fileoverview Custom Playwright test fixtures providing pre-authenticated clinician browser sessions.
+ */
+
 import { test as base, Page, expect } from '@playwright/test';
 
 /**
  * Extend the default Playwright constraints with our custom fixtures.
  */
-type PulseFixtures = {
+interface PulseFixtures {
+  /** Authenticated Playwright page instance. */
   loggedInPage: Page;
-};
+}
 
 export const test = base.extend<PulseFixtures>({
   /**
    * Fixture that provides a Page instance that is already logged in.
-   * It performs registration creates a new unique user via API, then logs in via UI.
+   * It registers a new unique user via API, then logs in via UI.
+   *
+   * @param root0 - Playwright fixture context.
+   * @param root0.page - Playwright Page instance.
+   * @param root0.request - Playwright APIRequestContext instance.
+   * @param use - Callback to provide the authenticated page to the test.
    */
   loggedInPage: async ({ page, request }, use) => {
     const uniqueId = Math.random().toString(36).substring(7);

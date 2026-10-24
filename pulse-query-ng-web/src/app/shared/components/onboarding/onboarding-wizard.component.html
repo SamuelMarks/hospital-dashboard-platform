@@ -76,7 +76,6 @@
         @if (onboarding.currentStep().actionLabel && onboarding.currentStep().actionRoute) {
           <button
             mat-stroked-button
-            color="primary"
             (click)="navigateToAction()"
             [attr.data-testid]="'action-button'"
           >
@@ -86,7 +85,6 @@
 
         <button
           mat-flat-button
-          color="primary"
           (click)="next()"
           [attr.aria-label]="nextButtonAriaLabel()"
           data-testid="next-button"

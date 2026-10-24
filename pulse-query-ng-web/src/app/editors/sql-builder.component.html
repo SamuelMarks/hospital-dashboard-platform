@@ -78,7 +78,7 @@
                 <span i18n>Save to Cart</span>
               </button>
             }
-            <button mat-flat-button color="accent" (click)="runQuery()" [disabled]="isRunning()">
+            <button mat-flat-button (click)="runQuery()" [disabled]="isRunning()">
               @if (isRunning()) {
                 <mat-spinner diameter="20" class="mr-2"></mat-spinner>
               }

@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for updating a user's clinical role.
  *
- * @param role 
+ * @param role
  */
 @Serializable
-
-data class UserRoleUpdate (
-
+data class UserRoleUpdate(
     @SerialName(value = "role") @Required val role: kotlin.String
-
-) {
-
-
-}
-
+)

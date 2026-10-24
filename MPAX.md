@@ -87,3 +87,17 @@ A new script has been provided to programmatically score LLM responses against t
 ### How to Run
 
 You can loop over the generated scenarios, send them to the `/api/v1/mpax_arena/run` endpoint with your target models (e.g., `llama-3` locally, `gpt-4o` remotely), and feed the `MpaxArenaResponse` directly into the scoring functions defined in `pulse-query-backend/scripts/score_mpax_arena.py`.
+
+Alternatively, execute the entire MPAX benchmark and arena scoring lifecycle declaratively via **LibScript** (`libscript.json` `.ml` block) across local hardware (`local`, `cuda`, `mlx`, `ollama`, `vllm`) or cloud accelerators (`gcp-tpu-vm`, `gcp-gpu-vm`, `gke-xpk`):
+
+```bash
+# Run benchmark evaluation (executes .ml.train_command)
+~/repos/libscript/libscript.sh train libscript.json
+
+# Run MPAX arena scoring (executes .ml.infer_command)
+~/repos/libscript/libscript.sh infer libscript.json
+
+# Or via Makefile / make.bat targets:
+make train_ml
+make infer_ml
+```

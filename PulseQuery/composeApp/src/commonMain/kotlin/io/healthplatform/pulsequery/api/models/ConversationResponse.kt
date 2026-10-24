@@ -17,36 +17,24 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * API Response model for a Conversation metadata wrapper.
  *
- * @param id 
- * @param userId 
- * @param createdAt 
- * @param updatedAt 
- * @param title 
+ * @param id
+ * @param userId
+ * @param createdAt
+ * @param updatedAt
+ * @param title
  */
 @Serializable
-
-data class ConversationResponse (
-
+data class ConversationResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "updated_at") @Required val updatedAt: kotlin.time.Instant,
-
     @SerialName(value = "title") val title: kotlin.String? = null
-
-) {
-
-
-}
-
+)

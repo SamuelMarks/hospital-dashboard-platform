@@ -12,28 +12,39 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ScenarioResult
 import io.healthplatform.pulsequery.api.models.ScenarioRunRequest
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
 
+/**
+ * REST client for `/api/v1/simulation` linear programming hospital bed capacity simulation endpoints.
+ */
 open class SimulationApi : ApiClient {
 
+    /**
+     * Constructs a [SimulationApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -41,21 +52,29 @@ open class SimulationApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [SimulationApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Run Simulation
      * Executes an optimization scenario.  This endpoint takes a snapshot of demand (defined by SQL) and applies user-defined capacity and constraints to solve the bed allocation problem.  Args:     request: Configuration containing SQL source and capacity map.     current_user: Authenticated user.  Returns:     ScenarioResult: The calculated assignments.
-     * @param scenarioRunRequest 
+     * @param scenarioRunRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ScenarioResult
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun runSimulationApiV1SimulationRunPost(scenarioRunRequest: ScenarioRunRequest, token: kotlin.String? = null): HttpResponse<ScenarioResult> {
-
+    open suspend fun runSimulationApiV1SimulationRunPost(
+        scenarioRunRequest: ScenarioRunRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<ScenarioResult> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = scenarioRunRequest
@@ -64,7 +83,7 @@ open class SimulationApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/simulation/run",
             query = localVariableQuery,
@@ -78,7 +97,4 @@ open class SimulationApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end conversational AI assistant tests verifying message streaming and SQL snippet execution.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('AI Chat Assistant', () => {
@@ -72,7 +76,7 @@ test.describe('AI Chat Assistant', () => {
     // We try to catch it, or at least ensure the state resolves.
     try {
       await expect(typingIndicator).toBeVisible({ timeout: 2000 });
-    } catch (e) {
+    } catch {
       console.log('Typing indicator missed or too fast (acceptable in mocks)');
     }
 

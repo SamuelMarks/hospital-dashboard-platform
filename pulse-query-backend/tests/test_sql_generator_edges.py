@@ -1,79 +1,44 @@
 """
-Additional tests for SQL generator edge cases.
+Additional tests for SQL generator edge cases against real database persistence.
 """
 
 import uuid
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.feedback import ExperimentLog, ModelCandidate
+from app.models.user import User
+from app.services.llm_client import ArenaResponse
 from app.services.sql_generator import sql_generator
+from app.services.sql_utils import process_global_filters
 
 
-def _make_db() -> MagicMock:
-  """Creates a mock `AsyncSession` capturing added `ExperimentLog` and `ModelCandidate` objects."""
-  db = MagicMock()
-  added: list[ExperimentLog | ModelCandidate] = []
+@pytest.mark.asyncio
+async def test_get_strategy_implementation_variants() -> None:
+  """Verify strategy resolution for cot-macro, rag-few-shot, and fallback."""
+  cot = sql_generator._get_strategy_implementation("cot-macro")
+  rag = sql_generator._get_strategy_implementation("rag-few-shot")
+  default = sql_generator._get_strategy_implementation("unknown")
 
-  def add_side_effect(obj: ExperimentLog | ModelCandidate) -> None:
-    """
-    Appends `obj` to `added`.
-
-    Args:
-        obj (ExperimentLog | ModelCandidate): ORM object added to session.
-    """
-    added.append(obj)
-
-  db.add.side_effect = add_side_effect
-
-  async def _assign_ids() -> None:
-    """Assigns UUIDs to objects in `added`."""
-    for obj in added:
-      if getattr(obj, "id", None) is None:
-        obj.id = uuid.uuid4()
-
-  async def _refresh(obj: ExperimentLog, attribute_names: list[str] | None = None) -> None:
-    """
-    Populates `id`, `created_at`, and `candidates` on `obj`.
-
-    Args:
-        obj (ExperimentLog): ExperimentLog instance being refreshed.
-        attribute_names (list[str] | None): Optional attribute names.
-    """
-    _ = attribute_names
-    if getattr(obj, "id", None) is None:
-      obj.id = uuid.uuid4()
-    if getattr(obj, "created_at", None) is None:
-      obj.created_at = datetime.now(UTC)
-    if hasattr(obj, "candidates"):
-      obj.candidates = [o for o in added if isinstance(o, ModelCandidate)]
-
-  db.flush = AsyncMock(side_effect=_assign_ids)
-  db.commit = AsyncMock(side_effect=_assign_ids)
-  db.refresh = AsyncMock(side_effect=_refresh)
-
-  return db
+  assert cot.get_strategy_name() == "cot-macro"
+  assert rag.get_strategy_name() == "rag-few-shot"
+  assert default.get_strategy_name() == "zero-shot"
 
 
-def test_strategy_factory_resolves_known_tags() -> None:
-  """Strategy tags should resolve to their concrete implementations."""
-  assert sql_generator._get_strategy_implementation("cot-macro").get_strategy_name() == "cot-macro"
-  assert sql_generator._get_strategy_implementation("rag-few-shot").get_strategy_name() == "rag-few-shot"
-  assert sql_generator._get_strategy_implementation("unknown").get_strategy_name() == "zero-shot"
-
-
-def test_process_global_filters_injects_values() -> None:
-  """Global filters should replace template tokens with user selections."""
+def test_process_global_filters_replaces_placeholders() -> None:
+  """Ensure global filters inject department and date ranges."""
   sql = (
-    "SELECT * FROM t WHERE 1=1 {{global_service}} "
+    "SELECT * FROM hospital_data "
+    "WHERE 1=1 {{global_service}} "
     "AND 1=1 {{global_date_range}} "
     "AND start >= '{{global_start_date}}' "
     "AND end <= '{{global_end_date}}'"
   )
 
-  result = sql_generator.process_global_filters(
+  result = process_global_filters(
     sql,
     {"dept": "Cardiology", "start_date": "2024-01-01", "end_date": "2024-02-01"},
   )
@@ -83,22 +48,27 @@ def test_process_global_filters_injects_values() -> None:
   assert "2024-01-01" in result
   assert "2024-02-01" in result
 
-  # Missing date range should clear the placeholder.
-  result_no_range = sql_generator.process_global_filters(sql, {"dept": "Cardiology"})
+  result_no_range = process_global_filters(sql, {"dept": "Cardiology"})
   assert "{{global_date_range}}" not in result_no_range
 
 
 @pytest.mark.asyncio
-async def test_run_arena_experiment_dry_run() -> None:
-  """Dry-run mode should skip LLM calls and still persist candidates."""
-  db = _make_db()
-  user = MagicMock()
-  user.id = uuid.uuid4()
+async def test_run_arena_experiment_dry_run(db_session: AsyncSession) -> None:
+  """
+  Dry run should bypass the LLM client, return a mock candidate, and persist to `db_session`.
 
-  with patch("app.services.sql_generator.schema_service.get_schema_context_string", return_value="schema"):
+  Args:
+      db_session (AsyncSession): Active test database session.
+  """
+  user = User(email=f"dryrun_{uuid.uuid4()}@hospital.org", hashed_password="pw")
+  db_session.add(user)
+  await db_session.commit()
+  await db_session.refresh(user)
+
+  with patch.object(sql_generator.schema_svc, "get_schema_context_string", return_value="SCHEMA"):
     result = await sql_generator.run_arena_experiment(
       "How many visits?",
-      db,
+      db_session,
       user,
       strategy="zero-shot",
       dry_run=True,
@@ -106,3 +76,32 @@ async def test_run_arena_experiment_dry_run() -> None:
 
   assert result.candidates
   assert "SELECT 1" in result.candidates[0].generated_sql
+
+  persisted = (await db_session.execute(select(ExperimentLog).where(ExperimentLog.id == result.id))).scalars().first()
+  assert persisted is not None
+
+  # Also verify empty content / error response persistence in real DB
+  with (
+    patch.object(sql_generator.schema_svc, "get_schema_context_string", return_value="SCHEMA"),
+    patch.object(
+      sql_generator.llm,
+      "generate_arena_competition",
+      new=AsyncMock(return_value=[ArenaResponse("ErrModel", "err/v1", "", 5, "Provider timeout")]),
+    ),
+  ):
+    err_result = await sql_generator.run_arena_experiment(
+      "Failing prompt",
+      db_session,
+      user,
+      strategy="zero-shot",
+      dry_run=False,
+    )
+
+  err_cands = (
+    (await db_session.execute(select(ModelCandidate).where(ModelCandidate.experiment_id == err_result.id)))
+    .scalars()
+    .all()
+  )
+  assert len(err_cands) == 1
+  assert err_cands[0].generated_sql == ""
+  assert err_cands[0].error_message == "Provider timeout"

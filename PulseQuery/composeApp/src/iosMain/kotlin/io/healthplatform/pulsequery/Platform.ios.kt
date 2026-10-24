@@ -99,11 +99,14 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
         }
 
         if (writeSuccess) {
-            finalPath
+            Result.success(finalPath)
         } else {
-            throw PulseQueryError.Storage.WriteFailure(filename, finalPath)
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, finalPath))
         }
-    }.recoverCatching { error ->
-        throw PulseQueryError.Storage.WriteFailure(filename, fullPath, error)
-    }
+    }.fold(
+        onSuccess = { it },
+        onFailure = { error ->
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, fullPath, error))
+        }
+    )
 }

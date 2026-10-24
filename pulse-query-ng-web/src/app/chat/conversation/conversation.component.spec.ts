@@ -6,16 +6,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ConversationComponent } from './conversation.component';
 import { ChatStore } from '../chat.store';
 import { AskDataService } from '../../global/ask-data.service';
-import {
-  Component,
-  ElementRef,
-  input,
-  output,
-  signal,
-  WritableSignal,
-  NO_ERRORS_SCHEMA,
-} from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { ElementRef, signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { MessageResponse } from '../../api-client';
 import { ArenaSqlService } from '../arena-sql.service';
@@ -24,10 +15,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 import { readTemplate } from '../../../test-utils/component-resources';
 import { createMockCandidate, createMockMessage } from '../../../test-utils/mock-factories';
-import { VizMarkdownComponent } from '../../shared/visualizations/viz-markdown/viz-markdown.component';
 import { SqlSnippetComponent } from './sql-snippet.component';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { vi } from 'vitest';
 
 describe('ConversationComponent', () => {
   let component: ConversationComponent;
@@ -74,7 +65,7 @@ describe('ConversationComponent', () => {
     mockRouter = { navigate: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [ConversationComponent, NoopAnimationsModule],
+      imports: [ConversationComponent],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         { provide: ChatStore, useValue: mockStore },
@@ -185,17 +176,19 @@ describe('ConversationComponent', () => {
 
   describe('handleEnter and send', () => {
     it('should not send if shift key is pressed', () => {
-      const e = { shiftKey: true, preventDefault: vi.fn() } as unknown as KeyboardEvent;
+      const e = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, cancelable: true });
+      const preventSpy = vi.spyOn(e, 'preventDefault');
       component.handleEnter(e);
-      expect(e.preventDefault).not.toHaveBeenCalled();
+      expect(preventSpy).not.toHaveBeenCalled();
       expect(mockStore.sendMessage).not.toHaveBeenCalled();
     });
 
     it('should send and clear inputText if valid', () => {
       component.inputText.set('Hello');
-      const e = { shiftKey: false, preventDefault: vi.fn() } as unknown as KeyboardEvent;
+      const e = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: false, cancelable: true });
+      const preventSpy = vi.spyOn(e, 'preventDefault');
       component.handleEnter(e);
-      expect(e.preventDefault).toHaveBeenCalled();
+      expect(preventSpy).toHaveBeenCalled();
       expect(mockStore.sendMessage).toHaveBeenCalledWith('Hello');
       expect(component.inputText()).toBe('');
     });
@@ -212,9 +205,7 @@ describe('ConversationComponent', () => {
       expect(component.cleanContent(createMockMessage({ content: '   ' }))).toBe('');
     });
     it('cleanContent: should handle missing content gracefully', () => {
-      expect(
-        component.cleanContent(createMockMessage({ content: undefined as unknown as string })),
-      ).toBe('');
+      expect(component.cleanContent(createMockMessage({ content: '' }))).toBe('');
     });
     it('cleanContent: should return content if no sql_snippet', () => {
       expect(component.cleanContent(createMockMessage({ content: 'hi' }))).toBe('hi');
@@ -223,15 +214,21 @@ describe('ConversationComponent', () => {
       expect(
         component.cleanContent(
           createMockMessage({
-            content: 'test ```sql \n SELECT 1 \n ``` end',
+            content: `test \`\`\`sql 
+ SELECT 1 
+ \`\`\` end`,
             sql_snippet: 'a',
           }),
         ),
       ).toBe('test  end');
     });
     it('cleanContentSimple: should strip sql block and handle empty', () => {
-      expect(component.cleanContentSimple('test ```sql\n SELECT \n```')).toBe('test');
-      expect(component.cleanContentSimple(null as unknown as string)).toBe('');
+      expect(
+        component.cleanContentSimple(`test \`\`\`sql
+ SELECT 
+\`\`\``),
+      ).toBe('test');
+      expect(component.cleanContentSimple(null)).toBe('');
     });
   });
 
@@ -256,7 +253,7 @@ describe('ConversationComponent', () => {
     });
 
     it('should early exit if sql is missing', () => {
-      component.runCandidateQuery(createMockCandidate({ id: 'c1' }));
+      component.runCandidateQuery(createMockCandidate({ id: 'c1', sql_snippet: null }));
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
 
@@ -294,7 +291,9 @@ describe('ConversationComponent', () => {
 
   describe('runAllCandidates', () => {
     it('should do nothing if no candidates', () => {
-      component.runAllCandidates(createMockMessage());
+      const msg = createMockMessage();
+      delete msg.candidates;
+      component.runAllCandidates(msg);
       expect(mockArenaSql.execute).not.toHaveBeenCalled();
     });
     it('should run for each candidate', () => {
@@ -312,11 +311,14 @@ describe('ConversationComponent', () => {
 
   describe('sqlGroupCount', () => {
     it('should return 0 if no sql_hash or no candidates', () => {
+      const msgNoCands = createMockMessage();
+      delete msgNoCands.candidates;
+      expect(component.sqlGroupCount(msgNoCands, createMockCandidate({ sql_hash: 'a' }))).toBe(0);
       expect(
-        component.sqlGroupCount(createMockMessage(), createMockCandidate({ sql_hash: 'a' })),
-      ).toBe(0);
-      expect(
-        component.sqlGroupCount(createMockMessage({ candidates: [] }), createMockCandidate()),
+        component.sqlGroupCount(
+          createMockMessage({ candidates: [] }),
+          createMockCandidate({ sql_hash: null }),
+        ),
       ).toBe(0);
     });
     it('should return matching count', () => {
@@ -413,7 +415,9 @@ describe('ConversationComponent', () => {
           createMockMessage({ candidates: [createMockCandidate({ sql_snippet: '' })] }),
         ),
       ).toBe(false);
-      expect(component.hasSqlCandidates(createMockMessage())).toBe(false);
+      const msgNoCands = createMockMessage();
+      delete msgNoCands.candidates;
+      expect(component.hasSqlCandidates(msgNoCands)).toBe(false);
     });
   });
 
@@ -427,27 +431,20 @@ describe('ConversationComponent', () => {
   describe('scrollToBottom', () => {
     it('should set scrollTop to scrollHeight if element exists', () => {
       vi.useFakeTimers();
-      const mockEl = {
-        nativeElement: { scrollTop: 0, scrollHeight: 100 } as unknown as HTMLElement,
-      } as ElementRef<HTMLElement>;
-      vi.spyOn(
-        component as unknown as { scrollContainer: () => ElementRef<HTMLElement> | undefined },
-        'scrollContainer',
-      ).mockReturnValue(mockEl);
-      component['scrollToBottom']();
+      const div = document.createElement('div');
+      Object.defineProperty(div, 'scrollHeight', { value: 100 });
+      const mockEl = new ElementRef<HTMLElement>(div);
+      vi.spyOn(component, 'scrollContainer').mockReturnValue(mockEl);
+      component.scrollToBottom();
       vi.advanceTimersByTime(50);
-      expect(mockEl.nativeElement.scrollTop).toBe(100);
+      expect(div.scrollTop).toBe(100);
       vi.useRealTimers();
     });
     it('should do nothing if scrollContainer is missing', () => {
       vi.useFakeTimers();
-      vi.spyOn(
-        component as unknown as { scrollContainer: () => ElementRef<HTMLElement> | undefined },
-        'scrollContainer',
-      ).mockReturnValue(undefined);
-      component['scrollToBottom']();
+      vi.spyOn(component, 'scrollContainer').mockReturnValue(undefined);
+      component.scrollToBottom();
       vi.advanceTimersByTime(50);
-      // Shouldn't crash
       vi.useRealTimers();
     });
   });

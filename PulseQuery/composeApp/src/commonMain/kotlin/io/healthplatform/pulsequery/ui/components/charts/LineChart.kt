@@ -1,3 +1,6 @@
+/**
+ * Material 3 trend Line Chart Canvas visualization component module.
+ */
 package io.healthplatform.pulsequery.ui.components.charts
 
 import androidx.compose.foundation.Canvas
@@ -12,15 +15,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
-
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 
 /**
  * A natively drawn Material 3 Line Chart component.
@@ -56,7 +58,7 @@ fun LineChart(
         val canvasHeight = size.height
 
         val xSpacing = if (data.size > 1) canvasWidth / (data.size - 1) else canvasWidth
-        
+
         val path = Path()
         val points = mutableListOf<Offset>()
 

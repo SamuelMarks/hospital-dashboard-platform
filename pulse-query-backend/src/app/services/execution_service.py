@@ -24,7 +24,7 @@ from app.schemas.execution import HttpRunnerResultDict, SqlRunnerResultDict
 from app.services.cache_service import ResultCacheService, cache_service
 from app.services.runners.http import run_http_widget
 from app.services.runners.sql import DuckDBCursorProtocol, run_sql_widget
-from app.services.sql_generator import sql_generator
+from app.services.sql_utils import process_global_filters
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class ExecutionService:
       run_config = widget.config.copy()
       if widget.type == "SQL":
         raw_sql = str(run_config.get("query", ""))
-        run_config["query"] = sql_generator.process_global_filters(raw_sql, global_params)
+        run_config["query"] = process_global_filters(raw_sql, global_params)
 
       cache_key = cache_svc.generate_key(widget.type, run_config)
       cached_result = cache_svc.get(cache_key)
@@ -268,7 +268,7 @@ class ExecutionService:
     run_config = widget.config.copy()
     if widget.type == "SQL":
       raw_sql = str(run_config.get("query", ""))
-      run_config["query"] = sql_generator.process_global_filters(raw_sql, global_params or {})
+      run_config["query"] = process_global_filters(raw_sql, global_params or {})
 
     cache_key = cache_svc.generate_key(widget.type, run_config)
 

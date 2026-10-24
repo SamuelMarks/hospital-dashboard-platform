@@ -156,10 +156,10 @@ body {
   color: #b5cea8;
 }
 
-/* MatTabs Flex Growth (replaces ::ng-deep in ChatLayoutComponent) */
-.sidebar-tabs .mat-mdc-tab-body-wrapper {
-  flex-grow: 1;
-  height: 100%;
+/* MatTabs Flex Growth */
+.sidebar-tabs {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Rendered Markdown Content Typography (replaces ::ng-deep in VizMarkdownComponent) */
@@ -212,13 +212,25 @@ body {
   font-style: italic;
 }
 
-/* Scalar Gauge Progress Bar Colors (replaces ::ng-deep in VizScalarComponent) */
-.gauge-pos .mdc-linear-progress__bar-inner {
-  border-color: var(--sys-success) !important;
+/* Scalar Gauge Progress Bar Colors via Material M3 Token Overrides */
+.gauge-pos {
+  @include mat.progress-bar-overrides(
+    (
+      active-indicator-color: var(--sys-success),
+    )
+  );
 }
-.gauge-neg .mdc-linear-progress__bar-inner {
-  border-color: var(--sys-error) !important;
+.gauge-neg {
+  @include mat.progress-bar-overrides(
+    (
+      active-indicator-color: var(--sys-error),
+    )
+  );
 }
-.gauge-neutral .mdc-linear-progress__bar-inner {
-  border-color: var(--sys-text-secondary) !important;
+.gauge-neutral {
+  @include mat.progress-bar-overrides(
+    (
+      active-indicator-color: var(--sys-text-secondary),
+    )
+  );
 }

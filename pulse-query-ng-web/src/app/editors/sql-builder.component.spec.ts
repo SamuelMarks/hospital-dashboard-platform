@@ -12,40 +12,40 @@ import {
   ChatService,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
-import { signal, WritableSignal, NO_ERRORS_SCHEMA } from '@angular/core';
-import { HttpErrorResponse, withXhr } from '@angular/common/http';
-import { provideHttpClient } from '@angular/common/http';
+import { signal, WritableSignal, NO_ERRORS_SCHEMA, Component, input } from '@angular/core';
+import { HttpErrorResponse, withXhr, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
-import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { EditorState } from '@codemirror/state';
 import { By } from '@angular/platform-browser';
 import { MatMenuTrigger } from '@angular/material/menu';
 import { OverlayContainer } from '@angular/cdk/overlay';
-import { Component, input } from '@angular/core';
 import { readTemplate } from '../../test-utils/component-resources';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { ConversationComponent } from '../chat/conversation/conversation.component';
 import { vi } from 'vitest';
 
-interface SqlBuilderPrivate {
-  editorView: {
-    state?: { selection: { main: { from: number; to: number } } };
-    dispatch: (tr: unknown) => void;
-    focus?: () => void;
-    destroy: () => void;
-  } | null;
-  editorHost: { nativeElement: HTMLElement } | null;
-  loadSchemaForAutocomplete: () => void;
-  initEditor: () => void;
+/** Mock table visualization component for unit testing `SqlBuilderComponent`. */
+@Component({
+  selector: 'viz-table',
+  template: '<div data-testid="mock-table"></div>',
+})
+class MockVizTableComponent {
+  /** Dataset input binding. */
+  readonly dataSet = input<unknown>();
 }
+
+/** Mock conversation component for unit testing `SqlBuilderComponent`. */
+@Component({
+  selector: 'app-conversation',
+  template: '<div data-testid="mock-conversation"></div>',
+})
+class MockConversationComponent {}
 
 describe('SqlBuilderComponent', () => {
   let component: SqlBuilderComponent;
   let fixture: ComponentFixture<SqlBuilderComponent>;
 
-  // Declare variables in describe scope so 'it' blocks can see them
   let mockDashApi: {
     updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
   };
@@ -91,11 +91,19 @@ describe('SqlBuilderComponent', () => {
     };
 
     TestBed.overrideComponent(SqlBuilderComponent, {
-      set: { template: '<div></div>' },
+      remove: { imports: [VizTableComponent, ConversationComponent] },
+      add: { imports: [MockVizTableComponent, MockConversationComponent] },
+    });
+    TestBed.overrideComponent(SqlBuilderComponent, {
+      set: {
+        template: readTemplate('./sql-builder.component.html'),
+        templateUrl: undefined,
+        schemas: [NO_ERRORS_SCHEMA],
+      },
     });
 
     await TestBed.configureTestingModule({
-      imports: [SqlBuilderComponent, NoopAnimationsModule],
+      imports: [SqlBuilderComponent],
       providers: [
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
@@ -110,14 +118,13 @@ describe('SqlBuilderComponent', () => {
 
     fixture = TestBed.createComponent(SqlBuilderComponent);
     component = fixture.componentInstance;
-    setInputSignal(component, 'dashboardId', 'd1');
-    setInputSignal(component, 'widgetId', 'w1');
-    setInputSignal(component, 'initialSql', "SELECT * FROM t WHERE d='{{dept}}'");
+    fixture.componentRef.setInput('dashboardId', 'd1');
+    fixture.componentRef.setInput('widgetId', 'w1');
+    fixture.componentRef.setInput('initialSql', "SELECT * FROM t WHERE d='{{dept}}'");
     fixture.detectChanges();
   });
 
   it('should fetch schema on view init for autocomplete', () => {
-    // Schema fetch happens in ngAfterViewInit
     expect(mockSchemaApi.getDatabaseSchemaApiV1SchemaGet).toHaveBeenCalled();
   });
 
@@ -142,10 +149,9 @@ describe('SqlBuilderComponent', () => {
   });
 
   it('should fallback update signal if editor not ready on insert', () => {
-    // Simulate no editor view (component created but not viewed/attached fully in test env)
     component.currentSql.set('SELECT ');
-    // Force editorView null to test fallback
-    (component as unknown as SqlBuilderPrivate).editorView = null;
+    component.editorView?.destroy();
+    component.editorView = null;
 
     component.insertParam('dept');
     expect(component.currentSql()).toBe('SELECT  {{dept}}');
@@ -154,9 +160,9 @@ describe('SqlBuilderComponent', () => {
   it('should set initial tab index from input', () => {
     const newFixture = TestBed.createComponent(SqlBuilderComponent);
     const inst = newFixture.componentInstance;
-    setInputSignal(inst, 'dashboardId', 'd1');
-    setInputSignal(inst, 'widgetId', 'w1');
-    setInputSignal(inst, 'initialTab', 1);
+    newFixture.componentRef.setInput('dashboardId', 'd1');
+    newFixture.componentRef.setInput('widgetId', 'w1');
+    newFixture.componentRef.setInput('initialTab', 1);
     newFixture.detectChanges();
     expect(inst.selectedTabIndex()).toBe(1);
   });
@@ -165,8 +171,9 @@ describe('SqlBuilderComponent', () => {
     const dispatch = vi.fn();
     const focus = vi.fn();
     const destroy = vi.fn();
-    (component as unknown as SqlBuilderPrivate).editorView = {
-      state: { selection: { main: { from: 0, to: 0 } } },
+    component.editorView?.destroy();
+    component.editorView = {
+      state: EditorState.create({ doc: 'SELECT ' }),
       dispatch,
       focus,
       destroy,
@@ -186,11 +193,8 @@ describe('SqlBuilderComponent', () => {
     expect(component.isRunning()).toBe(false);
   });
 
-  // Feature 2 Test: Error Handling
   it('should set validationError if execution returns error payload', () => {
     mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
-
-    // Simulate backend successfully returning 200, but payload contains DuckDB error
     mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost.mockReturnValue(
       of({ w1: { error: 'Catalog Error: Table not found' } }),
     );
@@ -214,12 +218,18 @@ describe('SqlBuilderComponent', () => {
   it('should handle schema load errors and no editor', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
+    component.editorView?.destroy();
+    component.editorView = null;
+
+    mockSchemaApi.getDatabaseSchemaApiV1SchemaGet.mockReturnValue(
+      of([{ table_name: 't', columns: [{ name: 'c' }] }]),
+    );
+    component.loadSchemaForAutocomplete();
+
     mockSchemaApi.getDatabaseSchemaApiV1SchemaGet.mockReturnValue(
       throwError(() => new Error('fail')),
     );
-    const priv = component as unknown as SqlBuilderPrivate;
-    priv.editorView = null;
-    priv.loadSchemaForAutocomplete();
+    component.loadSchemaForAutocomplete();
 
     expect(consoleSpy).toHaveBeenCalledWith(
       'Failed to load schema for autocomplete',
@@ -231,46 +241,57 @@ describe('SqlBuilderComponent', () => {
   it('should dispatch schema config when editor exists', () => {
     const dispatch = vi.fn();
     const destroy = vi.fn();
-    const priv = component as unknown as SqlBuilderPrivate;
-    priv.editorView = { dispatch, destroy };
+    component.editorView?.destroy();
+    component.editorView = {
+      state: EditorState.create({ doc: '' }),
+      dispatch,
+      focus: vi.fn(),
+      destroy,
+    };
     mockSchemaApi.getDatabaseSchemaApiV1SchemaGet.mockReturnValue(
       of([{ table_name: 't', columns: [{ name: 'c' }] }]),
     );
-    priv.loadSchemaForAutocomplete();
+    component.loadSchemaForAutocomplete();
     expect(dispatch).toHaveBeenCalled();
   });
 
   it('should destroy editor on ngOnDestroy', () => {
     const destroy = vi.fn();
-    (component as unknown as SqlBuilderPrivate).editorView = { dispatch: vi.fn(), destroy };
+    component.editorView?.destroy();
+    component.editorView = {
+      state: EditorState.create({ doc: '' }),
+      dispatch: vi.fn(),
+      focus: vi.fn(),
+      destroy,
+    };
     component.ngOnDestroy();
     expect(destroy).toHaveBeenCalled();
   });
 
   it('should no-op initEditor without host', () => {
-    const priv = component as unknown as SqlBuilderPrivate;
-    const prev = priv.editorView;
+    const prev = component.editorView;
     vi.spyOn(component, 'editorHost').mockReturnValue(undefined);
-    priv.initEditor();
-    expect(priv.editorView).toBe(prev);
+    component.initEditor();
+    expect(component.editorView).toBe(prev);
   });
 
   it('should initialize editor when host is available', () => {
     const host = document.createElement('div');
-    const priv = component as unknown as SqlBuilderPrivate;
     vi.spyOn(component, 'editorHost').mockReturnValue({ nativeElement: host });
     const createSpy = vi.spyOn(EditorState, 'create');
-    priv.initEditor();
-    expect(priv.editorView).toBeTruthy();
+    component.initEditor();
+    expect(component.editorView).toBeTruthy();
     expect(createSpy).toHaveBeenCalled();
 
-    const view = priv.editorView!;
-    view.dispatch({ changes: { from: 0, to: 0, insert: 'X' } });
-    view.dispatch({ selection: { anchor: 0 } });
+    const view = component.editorView;
+    if (view) {
+      view.dispatch({ changes: { from: 0, to: 0, insert: 'X' } });
+      view.dispatch({ selection: { anchor: 0 } });
+    }
     expect(component.currentSql().startsWith('X')).toBe(true);
 
     createSpy.mockRestore();
-    priv.editorView?.destroy();
+    component.editorView?.destroy();
   });
 
   it('should fall back to default error message when detail missing', () => {
@@ -305,20 +326,6 @@ describe('SqlBuilderComponent', () => {
   });
 });
 
-@Component({
-  selector: 'viz-table',
-  template: '<div data-testid="mock-table"></div>',
-})
-class MockVizTableComponent {
-  readonly dataSet = input<unknown>();
-}
-
-@Component({
-  selector: 'app-conversation',
-  template: '<div data-testid="mock-conversation"></div>',
-})
-class MockConversationComponent {}
-
 describe('SqlBuilderComponent template wiring', () => {
   let fixture: ComponentFixture<SqlBuilderComponent>;
   let component: SqlBuilderComponent;
@@ -350,7 +357,7 @@ describe('SqlBuilderComponent template wiring', () => {
     mockStore = { globalParams: signal<Record<string, unknown>>({}) };
 
     await TestBed.configureTestingModule({
-      imports: [SqlBuilderComponent, NoopAnimationsModule],
+      imports: [SqlBuilderComponent],
       providers: [
         provideHttpClient(withXhr()),
         provideHttpClientTesting(),
@@ -377,9 +384,9 @@ describe('SqlBuilderComponent template wiring', () => {
 
     fixture = TestBed.createComponent(SqlBuilderComponent);
     component = fixture.componentInstance;
-    setInputSignal(component, 'dashboardId', 'd1');
-    setInputSignal(component, 'widgetId', 'w1');
-    setInputSignal(component, 'enableCart', true);
+    fixture.componentRef.setInput('dashboardId', 'd1');
+    fixture.componentRef.setInput('widgetId', 'w1');
+    fixture.componentRef.setInput('enableCart', true);
     fixture.detectChanges();
     overlay = TestBed.inject(OverlayContainer);
   });
@@ -425,10 +432,14 @@ describe('SqlBuilderComponent template wiring', () => {
     component.currentSql.set('SELECT 1');
     fixture.detectChanges();
     const buttons = fixture.debugElement.queryAll(By.css('button'));
-    const saveBtn = buttons.find((b) => b.nativeElement.textContent.includes('Save to Cart'))!;
-    const runBtn = buttons.find((b) => b.nativeElement.textContent.includes('Run Query'))!;
-    saveBtn.triggerEventHandler('click', null);
-    runBtn.triggerEventHandler('click', null);
+    const saveBtn = buttons.find((b) =>
+      (b.nativeElement as HTMLElement).textContent?.includes('Save to Cart'),
+    );
+    const runBtn = buttons.find((b) =>
+      (b.nativeElement as HTMLElement).textContent?.includes('Run Query'),
+    );
+    saveBtn?.triggerEventHandler('click', null);
+    runBtn?.triggerEventHandler('click', null);
     expect(saveSpy).toHaveBeenCalled();
     expect(runSpy).toHaveBeenCalled();
   });
@@ -441,26 +452,12 @@ describe('SqlBuilderComponent template wiring', () => {
     component.latestResult.set(null);
     component.isRunning.set(true);
     fixture.detectChanges();
-    expect(fixture.debugElement.nativeElement.textContent).toContain('Executing');
+    expect((fixture.debugElement.nativeElement as HTMLElement).textContent).toContain('Executing');
 
     component.isRunning.set(false);
     fixture.detectChanges();
-    expect(fixture.debugElement.nativeElement.textContent).toContain('Run query to see results');
+    expect((fixture.debugElement.nativeElement as HTMLElement).textContent).toContain(
+      'Run query to see results',
+    );
   });
 });
-
-function setInputSignal(component: object, key: string, value: unknown): void {
-  const record = component as Record<string, unknown>;
-  const current = record[key] as
-    { [SIGNAL]?: { applyValueToInputSignal?: (node: unknown, val: unknown) => void } } | undefined;
-  const node = current?.[SIGNAL];
-  if (node) {
-    if (typeof node.applyValueToInputSignal === 'function') {
-      node.applyValueToInputSignal(node, value);
-    } else {
-      signalSetFn(node as Parameters<typeof signalSetFn>[0], value as never);
-    }
-  } else {
-    record[key] = value;
-  }
-}

@@ -17,31 +17,20 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ValidationErrorLocInner
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * @param loc 
- * @param msg 
- * @param type 
+ *
+ * @param loc
+ * @param msg
+ * @param type
  */
 @Serializable
-
-data class ValidationError (
-
+data class ValidationError(
     @SerialName(value = "loc") @Required val loc: kotlin.collections.List<ValidationErrorLocInner>,
-
     @SerialName(value = "msg") @Required val msg: kotlin.String,
-
     @SerialName(value = "type") @Required val type: kotlin.String
-
-) {
-
-
-}
-
+)

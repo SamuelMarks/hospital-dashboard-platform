@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for clinical dataset health and availability.
@@ -31,23 +30,13 @@ import kotlinx.serialization.encoding.*
  * @param rowCounts Row count per ingested dataset.
  */
 @Serializable
-
-data class DataHealthSchema (
-
-    /* True if default hospital_data.csv was found. */
+data class DataHealthSchema(
+    // True if default hospital_data.csv was found.
     @SerialName(value = "has_default_data") @Required val hasDefaultData: kotlin.Boolean,
-
-    /* True if synthetic fallback sample data was generated. */
+    // True if synthetic fallback sample data was generated.
     @SerialName(value = "fallback_generated") @Required val fallbackGenerated: kotlin.Boolean,
-
-    /* List of expected files not found. */
+    // List of expected files not found.
     @SerialName(value = "missing_files") val missingFiles: kotlin.collections.List<kotlin.String>? = null,
-
-    /* Row count per ingested dataset. */
+    // Row count per ingested dataset.
     @SerialName(value = "row_counts") val rowCounts: kotlin.collections.Map<kotlin.String, kotlin.Int>? = null
-
-) {
-
-
-}
-
+)

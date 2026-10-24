@@ -12,29 +12,46 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.api.models.UserRoleUpdate
 import io.healthplatform.pulsequery.api.models.UserStatusUpdate
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/admin/users` clinical role and user status management endpoints.
+ */
 open class AdminUsersApi : ApiClient {
 
+    /**
+     * Constructs a [AdminUsersApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -42,10 +59,16 @@ open class AdminUsersApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [AdminUsersApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * List Users
@@ -59,11 +82,17 @@ open class AdminUsersApi : ApiClient {
      * @return kotlin.collections.List<UserResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listUsersApiV1AdminUsersGet(limit: kotlin.Int? = 50, offset: kotlin.Int? = 0, role: kotlin.String? = null, search: kotlin.String? = null, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.collections.List<UserResponse>> {
-
+    open suspend fun listUsersApiV1AdminUsersGet(
+        limit: kotlin.Int? = 50,
+        offset: kotlin.Int? = 0,
+        role: kotlin.String? = null,
+        search: kotlin.String? = null,
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<UserResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -75,7 +104,7 @@ open class AdminUsersApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/admin/users/",
             query = localVariableQuery,
@@ -95,7 +124,10 @@ open class AdminUsersApi : ApiClient {
         companion object : KSerializer<ListUsersApiV1AdminUsersGetResponse> {
             private val serializer: KSerializer<List<UserResponse>> = serializer<List<UserResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListUsersApiV1AdminUsersGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListUsersApiV1AdminUsersGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListUsersApiV1AdminUsersGetResponse(serializer.deserialize(decoder))
         }
     }
@@ -112,11 +144,17 @@ open class AdminUsersApi : ApiClient {
      * @return kotlin.collections.List<UserResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listUsersApiV1AdminUsersGet_0(limit: kotlin.Int? = 50, offset: kotlin.Int? = 0, role: kotlin.String? = null, search: kotlin.String? = null, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<kotlin.collections.List<UserResponse>> {
-
+    open suspend fun listUsersApiV1AdminUsersGet_0(
+        limit: kotlin.Int? = 50,
+        offset: kotlin.Int? = 0,
+        role: kotlin.String? = null,
+        search: kotlin.String? = null,
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<UserResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -128,7 +166,7 @@ open class AdminUsersApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/admin/users",
             query = localVariableQuery,
@@ -148,7 +186,10 @@ open class AdminUsersApi : ApiClient {
         companion object : KSerializer<ListUsersApiV1AdminUsersGet0Response> {
             private val serializer: KSerializer<List<UserResponse>> = serializer<List<UserResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListUsersApiV1AdminUsersGet0Response) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListUsersApiV1AdminUsersGet0Response
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListUsersApiV1AdminUsersGet0Response(serializer.deserialize(decoder))
         }
     }
@@ -156,15 +197,19 @@ open class AdminUsersApi : ApiClient {
     /**
      * Update User Role
      * Updates the clinical or administrative role assignment for a target user.  Args:     user_id (UUID): Target user identifier.     payload (UserRoleUpdate): Desired new clinical role string.     db (AsyncSession): PostgreSQL async database session.     current_user (User): Requesting administrator user.  Returns:     User: The updated user profile entity.  Raises:     HTTPException: 400 if the role is invalid, 404 if the user is not found.
-     * @param userId 
-     * @param userRoleUpdate 
+     * @param userId
+     * @param userRoleUpdate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @param acceptLanguage  (optional)
      * @return UserResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateUserRoleApiV1AdminUsersUserIdRolePut(userId: kotlin.String, userRoleUpdate: UserRoleUpdate, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<UserResponse> {
-
+    open suspend fun updateUserRoleApiV1AdminUsersUserIdRolePut(
+        userId: kotlin.String,
+        userRoleUpdate: UserRoleUpdate,
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<UserResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = userRoleUpdate
@@ -174,7 +219,7 @@ open class AdminUsersApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/admin/users/{user_id}/role".replace("{" + "user_id" + "}", "$userId"),
             query = localVariableQuery,
@@ -189,20 +234,22 @@ open class AdminUsersApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Update User Status
      * Activates or suspends a hospital user platform account.  Prevents administrators from suspending their own active account.  Args:     user_id (UUID): Target user identifier.     payload (UserStatusUpdate): New active flag state.     db (AsyncSession): PostgreSQL async database session.     current_user (User): Requesting administrator user.  Returns:     User: The updated user profile entity.  Raises:     HTTPException: 400 if administrator attempts self-suspension, 404 if not found.
-     * @param userId 
-     * @param userStatusUpdate 
+     * @param userId
+     * @param userStatusUpdate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @param acceptLanguage  (optional)
      * @return UserResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateUserStatusApiV1AdminUsersUserIdStatusPut(userId: kotlin.String, userStatusUpdate: UserStatusUpdate, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<UserResponse> {
-
+    open suspend fun updateUserStatusApiV1AdminUsersUserIdStatusPut(
+        userId: kotlin.String,
+        userStatusUpdate: UserStatusUpdate,
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<UserResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = userStatusUpdate
@@ -212,7 +259,7 @@ open class AdminUsersApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/admin/users/{user_id}/status".replace("{" + "user_id" + "}", "$userId"),
             query = localVariableQuery,
@@ -226,7 +273,4 @@ open class AdminUsersApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

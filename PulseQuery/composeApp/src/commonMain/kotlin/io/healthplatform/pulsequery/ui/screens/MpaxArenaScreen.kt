@@ -49,9 +49,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.MpaxArenaCandidate
+import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaViewModel
 import io.healthplatform.pulsequery.ui.screens.mpax.MPAX_ARENA_MODES as ViewModelMpaxArenaModes
 import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaUiState as ViewModelMpaxArenaUiState
-import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaViewModel
 
 /**
  * Re-exported [ViewModelMpaxArenaUiState] typealias preserving package compatibility for callers and tests.

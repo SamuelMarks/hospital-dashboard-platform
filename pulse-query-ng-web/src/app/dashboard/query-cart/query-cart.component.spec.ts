@@ -1,16 +1,29 @@
+/**
+ * @fileoverview Unit tests for QueryCartComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { QueryCartComponent } from './query-cart.component';
 import { QueryCartService } from '../../global/query-cart.service';
 import { QueryCartProvisioningService } from '../query-cart-provisioning.service';
 import { DashboardStore } from '../dashboard.store';
-import { type QueryCartItem } from '../../global/query-cart.models';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../../global/query-cart.models';
 import { computed, signal, Signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
-import { MatSnackBar, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-dialog.component';
+import { vi } from 'vitest';
+
+const makeItem = (overrides: Partial<QueryCartItem> = {}): QueryCartItem => ({
+  id: 'q1',
+  title: 'Old',
+  sql: 'SELECT 1',
+  createdAt: '2026-01-01T00:00:00Z',
+  kind: QUERY_CART_ITEM_KIND,
+  ...overrides,
+});
 
 describe('QueryCartComponent', () => {
   let fixture: ComponentFixture<QueryCartComponent>;
@@ -25,7 +38,7 @@ describe('QueryCartComponent', () => {
   let mockDialog: { open: ReturnType<typeof vi.fn> };
   let mockProvisioning: { addToDashboard: ReturnType<typeof vi.fn> };
   let mockStore: { loadDashboard: ReturnType<typeof vi.fn> };
-  let snackBar: MatSnackBar;
+  let mockSnackBar: { open: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockCart = {
@@ -38,23 +51,23 @@ describe('QueryCartComponent', () => {
     mockDialog = { open: vi.fn() };
     mockProvisioning = { addToDashboard: vi.fn() };
     mockStore = { loadDashboard: vi.fn() };
+    mockSnackBar = { open: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [QueryCartComponent, NoopAnimationsModule],
+      imports: [QueryCartComponent],
       providers: [
         { provide: QueryCartService, useValue: mockCart },
         { provide: QueryCartProvisioningService, useValue: mockProvisioning },
         { provide: DashboardStore, useValue: mockStore },
         { provide: MatDialog, useValue: mockDialog },
+        { provide: MatSnackBar, useValue: mockSnackBar },
       ],
-    }).compileComponents();
+    })
+      .overrideProvider(MatSnackBar, { useValue: mockSnackBar })
+      .compileComponents();
 
     fixture = TestBed.createComponent(QueryCartComponent);
     component = fixture.componentInstance;
-    snackBar = fixture.debugElement.injector.get(MatSnackBar);
-    vi.spyOn(snackBar, 'open').mockImplementation(
-      () => ({}) as unknown as MatSnackBarRef<TextOnlySnackBar>,
-    );
     fixture.detectChanges();
   });
 
@@ -73,14 +86,14 @@ describe('QueryCartComponent', () => {
   });
 
   it('should remove item', () => {
-    const item = { id: 'q1' } as QueryCartItem;
+    const item = makeItem({ id: 'q1' });
     component.remove(item);
     expect(mockCart.remove).toHaveBeenCalledWith('q1');
   });
 
   it('should rename via dialog if confirmed', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of('New') });
-    const item = { id: 'q1', title: 'Old' } as QueryCartItem;
+    const item = makeItem({ id: 'q1', title: 'Old' });
     component.rename(item);
     expect(mockDialog.open).toHaveBeenCalledWith(PromptDialogComponent, expect.anything());
     expect(mockCart.rename).toHaveBeenCalledWith('q1', 'New');
@@ -88,41 +101,40 @@ describe('QueryCartComponent', () => {
 
   it('should not rename via dialog if not confirmed', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(null) });
-    const item = { id: 'q1', title: 'Old' } as QueryCartItem;
+    const item = makeItem({ id: 'q1', title: 'Old' });
     component.rename(item);
     expect(mockDialog.open).toHaveBeenCalledWith(PromptDialogComponent, expect.anything());
     expect(mockCart.rename).not.toHaveBeenCalled();
   });
 
   it('should do nothing when adding to dashboard if no dashboardId', () => {
-    // dashboardId is null by default
-    component.addToDashboard({} as QueryCartItem);
+    component.addToDashboard(makeItem());
     expect(mockProvisioning.addToDashboard).not.toHaveBeenCalled();
   });
 
   it('should add to dashboard successfully', () => {
-    Object.defineProperty(component, 'dashboardId', { value: signal('dash-1'), writable: true });
+    fixture.componentRef.setInput('dashboardId', 'dash-1');
     fixture.detectChanges();
 
     mockProvisioning.addToDashboard.mockReturnValue(of({}));
-    const item = { id: 'q1', title: 'Test' } as QueryCartItem;
+    const item = makeItem({ id: 'q1', title: 'Test' });
     component.addToDashboard(item);
 
     expect(mockProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'dash-1');
-    expect(snackBar.open).toHaveBeenCalledWith('Added query: Test', 'OK', { duration: 3000 });
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Added query: Test', 'OK', { duration: 3000 });
     expect(mockStore.loadDashboard).toHaveBeenCalledWith('dash-1');
   });
 
   it('should show error when adding to dashboard fails', () => {
-    Object.defineProperty(component, 'dashboardId', { value: signal('dash-1'), writable: true });
+    fixture.componentRef.setInput('dashboardId', 'dash-1');
     fixture.detectChanges();
 
     mockProvisioning.addToDashboard.mockReturnValue(throwError(() => new Error('Error')));
-    const item = { id: 'q1', title: 'Test' } as QueryCartItem;
+    const item = makeItem({ id: 'q1', title: 'Test' });
     component.addToDashboard(item);
 
     expect(mockProvisioning.addToDashboard).toHaveBeenCalledWith(item, 'dash-1');
-    expect(snackBar.open).toHaveBeenCalledWith('Failed to add query to dashboard', 'Close');
+    expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to add query to dashboard', 'Close');
   });
 
   it('should preview sql (short)', () => {

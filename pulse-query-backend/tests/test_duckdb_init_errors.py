@@ -1,7 +1,8 @@
 """
-Tests for DuckDB initialization error paths.
+Tests for DuckDB initialization, macro registration, and error paths.
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import duckdb
@@ -74,12 +75,36 @@ def test_create_hospital_macros_handles_execute_errors() -> None:
   create_hospital_macros(_ConnWithExecuteFailure())
 
 
-def test_init_duckdb_on_startup_closes_connection(monkeypatch: pytest.MonkeyPatch) -> None:
-  """Startup initialization should always close its connection."""
-  conn = MagicMock()
-  monkeypatch.setattr(duckdb_manager, "get_connection", lambda: conn)
-  monkeypatch.setattr(duckdb_init, "create_hospital_macros", lambda _conn: None)
+def test_init_duckdb_on_startup_registers_macros_and_closes_connection(
+  tmp_path: Path,
+  monkeypatch: pytest.MonkeyPatch,
+) -> None:
+  """
+  Verifies `init_duckdb_on_startup` registers executable clinical macros (`SAFE_DIV`, `IS_BOTTLENECK`)
+  against a real DuckDB instance and guarantees connection closure even if macro setup raises.
+  """
+  temp_db = str(tmp_path / "startup_macros.duckdb")
+  monkeypatch.setattr(duckdb_manager, "db_path", temp_db)
 
   init_duckdb_on_startup()
 
-  conn.close.assert_called_once()
+  check_conn = duckdb.connect(temp_db, read_only=True)
+  try:
+    div_row = check_conn.execute("SELECT SAFE_DIV(10, 2), SAFE_DIV(10, 0)").fetchone()
+    assert div_row == (5.0, 0.0)
+    bottleneck_row = check_conn.execute("SELECT IS_BOTTLENECK(10, 2), IS_BOTTLENECK(2, 10)").fetchone()
+    assert bottleneck_row == (True, False)
+  finally:
+    check_conn.close()
+
+  # Also verify finally block closes connection when create_hospital_macros raises
+  mock_conn = MagicMock()
+  monkeypatch.setattr(duckdb_manager, "get_connection", lambda: mock_conn)
+  monkeypatch.setattr(
+    duckdb_init,
+    "create_hospital_macros",
+    lambda _conn: (_ for _ in ()).throw(RuntimeError("macro boom")),
+  )
+  with pytest.raises(RuntimeError, match="macro boom"):
+    init_duckdb_on_startup()
+  mock_conn.close.assert_called_once()

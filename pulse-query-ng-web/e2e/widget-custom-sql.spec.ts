@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end custom SQL widget creation wizard tests.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Widget Wizard - Custom SQL Flow', () => {

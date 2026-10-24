@@ -1,3 +1,6 @@
+/**
+ * JVM / Desktop SQLDelight JDBC database driver factory implementation module.
+ */
 package io.healthplatform.pulsequery.database
 
 import app.cash.sqldelight.db.SqlDriver

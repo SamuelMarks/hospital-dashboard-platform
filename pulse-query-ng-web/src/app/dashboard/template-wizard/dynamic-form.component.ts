@@ -1,7 +1,7 @@
 /**
  * @fileoverview Reusable Dynamic Form Generator.
  *
- * Parses a subset of JSON Schema (Draft 7) to generate Angular Reactive Forms on the fly.
+ * Parses a subset of JSON Schema (Draft 7) to generate reactive Signal-backed form controls on the fly.
  * Supports:
  * - Text / Number inputs
  * - Dropdowns (enums)
@@ -12,39 +12,32 @@
 
 import {
   Component,
-  input,
-  output,
-  OnChanges,
-  OnDestroy,
-  SimpleChanges,
+  computed,
   inject,
-  signal,
+  input,
+  linkedSignal,
   LOCALE_ID,
+  output,
+  signal,
 } from '@angular/core';
 import { formatDate } from '@angular/common';
-import {
-  ReactiveFormsModule,
-  FormGroup,
-  FormControl,
-  Validators,
-  ValidatorFn,
-} from '@angular/forms';
-import { Subscription } from 'rxjs';
 
 // Material Imports
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDatepickerInputEvent, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { provideNativeDateAdapter } from '@angular/material/core';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 
 /**
  * Typings for Supported JSON Schema Features.
  */
-interface JsonSchemaProperty {
+export interface JsonSchemaProperty {
   /** Primitive JSON Schema data type for the form control. */
   type: 'string' | 'number' | 'integer' | 'boolean';
   /** Human-readable label displayed above the form field. */
@@ -64,7 +57,7 @@ interface JsonSchemaProperty {
 }
 
 /** Root JSON Schema object describing a widget template's configurable parameters. */
-interface JsonSchema {
+export interface JsonSchema {
   /** Root schema structural type (typically 'object'). */
   type: string;
   /** Array of property keys that require non-empty user values. */
@@ -74,28 +67,38 @@ interface JsonSchema {
 }
 
 /**
- * Dynamic Form Component.
+ * Type guard verifying whether an unknown record conforms to the `JsonSchema` structure.
  *
- * **Updates:**
- * - Fully typed schema parsing.
- * - Reactive Output signals.
- * - Optimized OnPush detection.
+ * @param value - Unknown candidate object to inspect.
+ * @returns True if the candidate is a non-null object compatible with `JsonSchema`.
+ */
+export function isJsonSchema(value: unknown): value is JsonSchema {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  if (record['properties'] !== undefined) {
+    return typeof record['properties'] === 'object' && record['properties'] !== null;
+  }
+  return true;
+}
+
+/**
+ * Dynamic Form Component powered by Angular Signals (`computed` and `linkedSignal`).
  */
 @Component({
   selector: 'app-dynamic-form',
-  // '' removed (default).
   providers: [provideNativeDateAdapter()],
   imports: [
-    ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatDatepickerModule,
     MatCheckboxModule,
+    MatButtonModule,
     MatIconModule,
     MatTooltipModule,
   ],
-
   templateUrl: './dynamic-form.component.html',
   styles: [
     `
@@ -110,15 +113,11 @@ interface JsonSchema {
       .checkbox-row {
         display: flex;
         align-items: center;
-        height: 56px; /* Match form field height */
+        height: 56px;
       }
-      .help-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+      .help-icon-btn {
         color: var(--sys-text-secondary);
-        margin-left: 8px;
-        cursor: help;
+        margin-left: 4px;
       }
       .empty-state {
         text-align: center;
@@ -130,92 +129,97 @@ interface JsonSchema {
     `,
   ],
 })
-export class DynamicFormComponent implements OnChanges, OnDestroy {
+export class DynamicFormComponent {
   /** Injected application locale identifier. */
   private readonly localeId = inject(LOCALE_ID);
-  /** Active subscription to `form.valueChanges`, cleaned up on rebuild and destroy. */
-  private valueChangesSub = new Subscription();
 
-  /** valid JSON Schema Object (subset). */
-  readonly jsonSchema = input<Record<string, unknown>>({});
+  /** Input JSON Schema subset describing configurable template parameters. */
+  readonly jsonSchema = input<Record<string, unknown> | null>({});
 
-  /** Output emitting validity status. */
+  /** Output signal emitting `'VALID'` or `'INVALID'` whenever form values change. */
   readonly statusChange = output<'VALID' | 'INVALID'>();
-  /** Output emitting extracted values. */
+  /** Output signal emitting sanitized key-value pairs whenever the form is valid. */
   readonly formValueChange = output<Record<string, unknown>>();
 
-  /** Form. */
-  readonly form = new FormGroup({});
-  /** Field Keys. */
-  readonly fieldKeys = signal<string[]>([]);
+  /** Parsed and narrowed JSON schema derived from the `jsonSchema` input signal. */
+  readonly parsedSchema = computed<JsonSchema | null>(() => {
+    const raw = this.jsonSchema();
+    return isJsonSchema(raw) ? raw : null;
+  });
 
-  /**
-   * Rebuilds the reactive form when the input JSON schema changes.
-   *
-   * @param changes - Angular SimpleChanges map of changed input properties.
-   */
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['jsonSchema']) {
-      this.rebuildForm();
-    }
-  }
+  /** Ordered list of configurable parameter keys defined in the active schema. */
+  readonly fieldKeys = computed<string[]>(() => {
+    const props = this.parsedSchema()?.properties;
+    return props ? Object.keys(props) : [];
+  });
 
-  /**
-   * Unsubscribes from reactive form value changes when the component is destroyed.
-   */
-  ngOnDestroy(): void {
-    this.valueChangesSub.unsubscribe();
-  }
-
-  /**
-   * Reconstructs the Form Group controls based on new Schema input.
-   */
-  private rebuildForm(): void {
-    this.valueChangesSub.unsubscribe();
-
-    // 1. Clear existing
-    Object.keys(this.form.controls).forEach((k) => this.form.removeControl(k));
-
-    // 2. Coerce type safely
-    const raw = this.jsonSchema() || {};
-    const schema = raw as unknown as JsonSchema;
-    const props = schema.properties;
-    // Ensure basic structure match
+  /** Reactive map of parameter keys to their current user-entered values, synchronized with schema defaults. */
+  readonly values = linkedSignal<Record<string, unknown>>(() => {
+    const props = this.parsedSchema()?.properties;
     if (!props) {
-      this.fieldKeys.set([]);
-      return;
+      return {};
+    }
+    const defaults: Record<string, unknown> = {};
+    for (const [key, prop] of Object.entries(props)) {
+      defaults[key] = prop.default ?? (prop.type === 'boolean' ? false : '');
+    }
+    return defaults;
+  });
+
+  /** Set of field keys that have been interacted with by the user. */
+  readonly touchedFields = signal<Record<string, boolean>>({});
+
+  /** Computed map of validation errors per field key (`required`, `min`, `max`). */
+  readonly errorsMap = computed<Record<string, Record<string, boolean>>>(() => {
+    const schema = this.parsedSchema();
+    const props = schema?.properties;
+    if (!props) {
+      return {};
+    }
+    const requiredSet = new Set(schema?.required ?? []);
+    const currentValues = this.values();
+    const errors: Record<string, Record<string, boolean>> = {};
+
+    for (const [key, prop] of Object.entries(props)) {
+      const fieldErrors: Record<string, boolean> = {};
+      const val = currentValues[key];
+
+      if (requiredSet.has(key)) {
+        const isEmpty =
+          val === undefined || val === null || (typeof val === 'string' && val.trim() === '');
+        if (isEmpty) {
+          fieldErrors['required'] = true;
+        }
+      }
+
+      if (
+        (prop.type === 'number' || prop.type === 'integer') &&
+        val !== '' &&
+        val !== null &&
+        val !== undefined
+      ) {
+        const num = typeof val === 'number' ? val : Number(val);
+        if (!Number.isNaN(num)) {
+          if (prop.minimum !== undefined && num < prop.minimum) {
+            fieldErrors['min'] = true;
+          }
+          if (prop.maximum !== undefined && num > prop.maximum) {
+            fieldErrors['max'] = true;
+          }
+        }
+      }
+
+      errors[key] = fieldErrors;
     }
 
-    const requiredList = schema.required || [];
-    const entries = Object.entries(props);
+    return errors;
+  });
 
-    entries.forEach(([key, prop]) => {
-      const validators: ValidatorFn[] = [];
-
-      if (requiredList.includes(key)) {
-        validators.push(Validators.required);
-      }
-      if (prop.type === 'number' || prop.type === 'integer') {
-        if (prop.minimum !== undefined) validators.push(Validators.min(prop.minimum));
-        if (prop.maximum !== undefined) validators.push(Validators.max(prop.maximum));
-      }
-
-      const control = new FormControl(prop.default ?? '', validators);
-      this.form.addControl(key, control);
-    });
-
-    this.fieldKeys.set(Object.keys(props));
-
-    // Subscribe to changes
-    this.valueChangesSub = this.form.valueChanges.subscribe((val) => {
-      // Emit status
-      this.statusChange.emit(this.form.valid ? 'VALID' : 'INVALID');
-
-      if (this.form.valid) {
-        this.formValueChange.emit(this.cleanValues(val));
-      }
-    });
-  }
+  /** Computed boolean indicating whether all schema constraints are currently satisfied. */
+  readonly isValid = computed<boolean>(() => {
+    const errMap = this.errorsMap();
+    return Object.values(errMap).every((fieldErrs) => Object.keys(fieldErrs).length === 0);
+  });
 
   /**
    * Retrieves the JSON schema property definition for a given field key.
@@ -224,19 +228,88 @@ export class DynamicFormComponent implements OnChanges, OnDestroy {
    * @returns The property definition or null if not found.
    */
   getProperty(key: string): JsonSchemaProperty | null {
-    const schema = this.jsonSchema() as unknown as JsonSchema; // Safe cast after rebuild
-    return schema?.properties?.[key] || null;
+    return this.parsedSchema()?.properties?.[key] ?? null;
+  }
+
+  /**
+   * Retrieves the current value for a given field key.
+   *
+   * @param key - The parameter key in the form state.
+   * @returns Current value of the field.
+   */
+  getValue(key: string): unknown {
+    return this.values()[key];
+  }
+
+  /**
+   * Updates a single field's value and emits updated form validity and sanitized values.
+   *
+   * @param key - Parameter key to update.
+   * @param value - New value for the parameter.
+   */
+  setFieldValue(key: string, value: unknown): void {
+    this.touchedFields.update((t) => ({ ...t, [key]: true }));
+    this.values.update((curr) => ({ ...curr, [key]: value }));
+    this.emitCurrentState();
+  }
+
+  /**
+   * Updates multiple field values simultaneously and emits updated form validity and values.
+   *
+   * @param patch - Key-value map of parameter updates to merge.
+   */
+  patchValues(patch: Record<string, unknown>): void {
+    this.values.update((curr) => ({ ...curr, ...patch }));
+    this.emitCurrentState();
+  }
+
+  /**
+   * Handles native input events for text and numeric schema fields.
+   *
+   * @param key - Parameter key being edited.
+   * @param event - DOM input event.
+   */
+  onTextOrNumberInput(key: string, event: Event): void {
+    const raw = extractEventInputValue(event);
+    const prop = this.getProperty(key);
+    if (prop?.type === 'number' || prop?.type === 'integer') {
+      const parsed = raw === '' ? '' : Number(raw);
+      this.setFieldValue(key, parsed);
+      return;
+    }
+    this.setFieldValue(key, raw);
+  }
+
+  /**
+   * Handles Material Datepicker change events.
+   *
+   * @param key - Parameter key being edited.
+   * @param event - Material datepicker change event.
+   */
+  onDateChange(key: string, event: MatDatepickerInputEvent<Date>): void {
+    this.setFieldValue(key, event.value);
   }
 
   /**
    * Checks whether a specific form control has the given validation error.
    *
    * @param key - The form control name.
-   * @param errorName - The validator error key to check.
+   * @param errorName - The validator error key to check (`'required'`, `'min'`, `'max'`).
    * @returns True if the control currently has the specified error.
    */
   hasError(key: string, errorName: string): boolean {
-    return this.form.get(key)?.hasError(errorName) ?? false;
+    return Boolean(this.errorsMap()[key]?.[errorName]);
+  }
+
+  /**
+   * Returns a localized accessible label for a field's help tooltip button.
+   *
+   * @param key - Parameter key.
+   * @returns Localized ARIA label string.
+   */
+  getHelpAriaLabel(key: string): string {
+    const label = this.getProperty(key)?.title || this.formatLabel(key);
+    return $localize`Help info for ${label}`;
   }
 
   /**
@@ -250,9 +323,20 @@ export class DynamicFormComponent implements OnChanges, OnDestroy {
   }
 
   /**
+   * Emits the current validity status and, when valid, the sanitized parameter map.
+   */
+  private emitCurrentState(): void {
+    const valid = this.isValid();
+    this.statusChange.emit(valid ? 'VALID' : 'INVALID');
+    if (valid) {
+      this.formValueChange.emit(this.cleanValues(this.values()));
+    }
+  }
+
+  /**
    * Sanitizes form values before emission (e.g., converting Date instances to YYYY-MM-DD strings).
    *
-   * @param raw - Raw key-value map from the reactive FormGroup.
+   * @param raw - Raw key-value map from the signal form state.
    * @returns Sanitized key-value map.
    */
   private cleanValues(raw: Record<string, unknown>): Record<string, unknown> {

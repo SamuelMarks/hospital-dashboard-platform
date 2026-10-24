@@ -70,7 +70,10 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
         val base64 = bytes.toByteString().base64()
         triggerWasmBrowserDownload(filename, mimeType, base64)
         "Downloaded $filename ($mimeType)"
-    }.recoverCatching { error ->
-        throw PulseQueryError.Storage.WriteFailure(filename, "Wasm DOM", error)
-    }
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { error ->
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, "Wasm DOM", error))
+        }
+    )
 }

@@ -187,7 +187,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Editor Host. */
   readonly editorHost = viewChild<ElementRef<HTMLDivElement>>('editorHost');
   /** Active CodeMirror 6 EditorView instance mounted inside `editorHost`. */
-  private editorView?: EditorView;
+  editorView?: Pick<EditorView, 'state' | 'dispatch' | 'focus' | 'destroy'> | null;
   /** CodeMirror compartment managing dynamic SQL dialect and schema completion extensions. */
   private languageConf = new Compartment();
 
@@ -211,8 +211,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  /** initEditor method. */
-  private initEditor(): void {
+  /** Initializes the CodeMirror 6 SQL editor instance inside `editorHost`. */
+  initEditor(): void {
     const host = this.editorHost();
     if (!host) return;
 
@@ -305,8 +305,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  /** loadSchemaForAutocomplete method. */
-  private loadSchemaForAutocomplete(): void {
+  /** Fetches database schema metadata and reconfigures CodeMirror SQL autocomplete. */
+  loadSchemaForAutocomplete(): void {
     this.schemaApi.getDatabaseSchemaApiV1SchemaGet().subscribe({
       next: (tables) => {
         if (!this.editorView) return;

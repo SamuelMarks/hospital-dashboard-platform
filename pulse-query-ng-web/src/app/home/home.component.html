@@ -18,7 +18,6 @@
       <button
         i18n
         mat-stroked-button
-        color="primary"
         routerLink="/admin"
         i18n-matTooltip
         matTooltip="Admin Settings"
@@ -31,7 +30,6 @@
     <button
       i18n
       mat-stroked-button
-      color="primary"
       (click)="askDataService.open()"
       i18n-matTooltip
       matTooltip="Open chat assistant"
@@ -44,7 +42,6 @@
     <button
       i18n
       mat-stroked-button
-      color="primary"
       (click)="restoreDefaults()"
       [disabled]="isRestoring()"
       i18n-matTooltip
@@ -60,13 +57,7 @@
       <span class="ml-2">Restore Defaults</span>
     </button>
 
-    <button
-      i18n
-      mat-flat-button
-      color="primary"
-      (click)="openCreateDialog()"
-      data-testid="btn-create"
-    >
+    <button i18n mat-flat-button (click)="openCreateDialog()" data-testid="btn-create">
       <mat-icon aria-hidden="true">add</mat-icon>
       New Dashboard
     </button>
@@ -126,7 +117,7 @@
               <span>Duplicate</span>
             </button>
             <button i18n mat-menu-item (click)="deleteDashboard(dash)" class="text-red-600">
-              <mat-icon aria-hidden="true" color="warn">delete</mat-icon>
+              <mat-icon aria-hidden="true">delete</mat-icon>
               <span>Delete</span>
             </button>
           </mat-menu>
@@ -152,18 +143,10 @@
         <p i18n>You haven't created any analytics dashboards yet.</p>
 
         <div class="flex gap-4">
-          <button
-            i18n
-            mat-stroked-button
-            color="primary"
-            (click)="restoreDefaults()"
-            [disabled]="isRestoring()"
-          >
+          <button i18n mat-stroked-button (click)="restoreDefaults()" [disabled]="isRestoring()">
             Create Default Dashboard
           </button>
-          <button i18n mat-button color="accent" (click)="openCreateDialog()">
-            Create Empty Custom
-          </button>
+          <button i18n mat-button (click)="openCreateDialog()">Create Empty Custom</button>
         </div>
       </div>
     }

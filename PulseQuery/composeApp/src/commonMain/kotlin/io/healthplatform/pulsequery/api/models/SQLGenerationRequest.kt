@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Request model for generating SQL from natural language.
  *
- * @param prompt 
+ * @param prompt
  */
 @Serializable
-
-data class SQLGenerationRequest (
-
+data class SQLGenerationRequest(
     @SerialName(value = "prompt") @Required val prompt: kotlin.String
-
-) {
-
-
-}
-
+)

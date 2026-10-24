@@ -54,7 +54,7 @@ describe('SystemHealthBannerComponent', () => {
 
     const banner = fixture.debugElement.query(By.css('.banner-offline'));
     expect(banner).toBeTruthy();
-    expect(banner.nativeElement.textContent).toContain('No Internet Connection');
+    expect((banner.nativeElement as HTMLElement).textContent).toContain('No Internet Connection');
   });
 
   it('should render unreachable banner with retry button when backend unreachable', () => {
@@ -64,8 +64,8 @@ describe('SystemHealthBannerComponent', () => {
 
     const banner = fixture.debugElement.query(By.css('.banner-unreachable'));
     expect(banner).toBeTruthy();
-    expect(banner.nativeElement.textContent).toContain('Backend Inaccessible');
-    expect(banner.nativeElement.textContent).toContain('Auto-retrying in 5s');
+    expect((banner.nativeElement as HTMLElement).textContent).toContain('Backend Inaccessible');
+    expect((banner.nativeElement as HTMLElement).textContent).toContain('Auto-retrying in 5s');
 
     component.retryNow();
     expect(mockService.checkHealth).toHaveBeenCalled();
@@ -80,7 +80,9 @@ describe('SystemHealthBannerComponent', () => {
 
     const banner = fixture.debugElement.query(By.css('.banner-critical'));
     expect(banner).toBeTruthy();
-    expect(banner.nativeElement.textContent).toContain('Database Misconfiguration');
+    expect((banner.nativeElement as HTMLElement).textContent).toContain(
+      'Database Misconfiguration',
+    );
   });
 
   it('should render degraded banner and handle dismiss', () => {
@@ -89,7 +91,7 @@ describe('SystemHealthBannerComponent', () => {
 
     const banner = fixture.debugElement.query(By.css('.banner-degraded'));
     expect(banner).toBeTruthy();
-    expect(banner.nativeElement.textContent).toContain('System Notice');
+    expect((banner.nativeElement as HTMLElement).textContent).toContain('System Notice');
 
     component.dismiss();
     expect(mockService.dismissWarningBanner).toHaveBeenCalled();

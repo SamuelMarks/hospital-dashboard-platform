@@ -13,16 +13,18 @@ import os
 import sys
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Ensure backend modules are resolvable by adding the 'src' directory to sys.path
 sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
+from app.core.config import BACKEND_ROOT
 from app.database.postgres import AsyncSessionLocal
-from app.services.template_seeder import TemplateSeeder
+from app.services.template_seeder import TemplateSeeder, template_seeder
 
 # Configuration
-DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
+DATA_FILE = str((BACKEND_ROOT / "data" / "initial_templates.json").resolve())
 
 # Logging Setup
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -57,9 +59,13 @@ async def upsert_template(db: AsyncSession, data: dict[str, Any]) -> None:
   await TemplateSeeder._upsert_template(db, data)
 
 
-async def seed_templates() -> None:
+async def seed_templates() -> int:
   """
-  Main execution orchestration delegating batch upsert to `TemplateSeeder`.
+  Main execution orchestration delegating batch upsert to `template_seeder.seed_Async`
+  and verifying the total template count in PostgreSQL.
+
+  Returns:
+      int: Total number of templates present in the database after seeding.
   """
   logger.info(f"📂 Loading templates from {DATA_FILE}")
 
@@ -67,30 +73,37 @@ async def seed_templates() -> None:
     templates_data = _read_templates_disk(DATA_FILE)
   except json.JSONDecodeError as e:
     logger.error(f"❌ Invalid JSON format in content pack: {e}")
-    return
+    return 0
 
   if templates_data is None:
     logger.error(f"❌ Data file not found at {DATA_FILE}")
-    return
+    return 0
 
   async with AsyncSessionLocal() as db:
     try:
-      await TemplateSeeder._process_batch(db, templates_data)
-      await db.commit()
-      logger.info(f"✅ Seeding complete. Processed {len(templates_data)} templates.")
+      await template_seeder.seed_Async(db, templates_data=templates_data)
+      count_res = await db.execute(text("SELECT COUNT(*) FROM templates"))
+      total_count = int(count_res.scalar_one_or_none() or 0)
+      print(f"Total templates in pulse_query_db: {total_count}")
+      logger.info(f"✅ Seeding complete. Processed {len(templates_data)} templates (total in DB: {total_count}).")
+      return total_count
     except Exception as e:
       await db.rollback()
       logger.exception(f"❌ Database error during seeding: {e}")
+      return 0
 
 
 def main() -> None:
   """
-  CLI entry point for running `seed_templates()`.
+  CLI entry point for running `seed_templates()` and asserting >= 10 templates exist.
   """
   if sys.platform == "win32":  # pragma: no cover
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-  asyncio.run(seed_templates())
+  count = asyncio.run(seed_templates())
+  if isinstance(count, int) and count < 10:
+    print(f"Error: Expected >= 10 templates in pulse_query_db, found {count}.")
+    sys.exit(1)
 
 
 if __name__ == "__main__":

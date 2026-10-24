@@ -34,10 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.DashboardResponse
-import io.healthplatform.pulsequery.api.models.SqlConfig
-import io.healthplatform.pulsequery.api.models.TemplateCreate
-import io.healthplatform.pulsequery.api.models.WidgetIn
-import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.core.result.messageOrDefault
 import kotlinx.coroutines.launch
 
 /**
@@ -56,14 +53,20 @@ enum class SaveQueryDestination {
  * @param sql The analytical SQL query string being saved.
  * @param onDismiss Invoked when the user closes or cancels the dialog.
  * @param onSaved Invoked with a success message when the query is saved.
+ * @param viewModel Optional [EditorViewModel] instance for executing persistence operations.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaveQueryDialog(
     sql: String,
     onDismiss: () -> Unit,
-    onSaved: (String) -> Unit
+    onSaved: (String) -> Unit,
+    viewModel: EditorViewModel? = null
 ) {
+    val scope = rememberCoroutineScope()
+    val vm = remember(viewModel, scope) {
+        viewModel ?: EditorViewModel(scope = scope)
+    }
     var destination by remember { mutableStateOf(SaveQueryDestination.DASHBOARD_WIDGET) }
     var title by remember { mutableStateOf("") }
     var visualization by remember { mutableStateOf("table") }
@@ -80,16 +83,12 @@ fun SaveQueryDialog(
     var vizDropdownExpanded by remember { mutableStateOf(false) }
     var dashDropdownExpanded by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
     val availableVisualizations = listOf("table", "bar_chart", "line_chart", "pie_chart", "heatmap")
 
-    LaunchedEffect(destination) {
+    LaunchedEffect(destination, vm) {
         if (destination == SaveQueryDestination.DASHBOARD_WIDGET && dashboards.isEmpty()) {
             isDashboardsLoading = true
-            runCatching {
-                val res = AppContainer.dashboardsApi.listDashboardsApiV1DashboardsGet()
-                res.body()
-            }.fold(
+            vm.loadAvailableDashboards().fold(
                 onSuccess = { list ->
                     dashboards = list
                     if (dashboards.isNotEmpty() && selectedDashboardId == null) {
@@ -97,7 +96,7 @@ fun SaveQueryDialog(
                     }
                 },
                 onFailure = { e ->
-                    errorMessage = "Failed to load dashboards: ${e.message}"
+                    errorMessage = "Failed to load dashboards: ${e.messageOrDefault("Unknown error")}"
                 }
             )
             isDashboardsLoading = false
@@ -223,34 +222,20 @@ fun SaveQueryDialog(
                     scope.launch {
                         isSaving = true
                         errorMessage = null
-                        runCatching {
-                            if (destination == SaveQueryDestination.DASHBOARD_WIDGET && targetDashId != null) {
-                                val widgetIn = WidgetIn.Sql(
-                                    title = title.trim(),
-                                    visualization = visualization,
-                                    config = SqlConfig(query = sql)
-                                )
-                                AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
-                                    targetDashId,
-                                    widgetIn
-                                )
-                                "Widget successfully added to dashboard"
-                            } else {
-                                val templateCreate = TemplateCreate(
-                                    title = title.trim(),
-                                    sqlTemplate = sql,
-                                    category = category.trim().ifBlank { "Clinical" },
-                                    description = description.trim()
-                                )
-                                AppContainer.templatesApi.createTemplateApiV1TemplatesPost(templateCreate)
-                                "Template successfully registered in library"
-                            }
-                        }.fold(
+                        vm.saveQuery(
+                            destination = destination,
+                            title = title,
+                            sql = sql,
+                            dashboardId = targetDashId,
+                            visualization = visualization,
+                            category = category,
+                            description = description
+                        ).fold(
                             onSuccess = { successMsg ->
                                 onSaved(successMsg)
                             },
                             onFailure = { e ->
-                                errorMessage = e.message ?: "Failed to save query"
+                                errorMessage = e.messageOrDefault("Failed to save query")
                             }
                         )
                         isSaving = false

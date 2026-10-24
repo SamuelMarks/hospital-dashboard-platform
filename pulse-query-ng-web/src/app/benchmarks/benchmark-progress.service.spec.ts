@@ -21,8 +21,12 @@ describe('BenchmarkProgressService', () => {
       onerror: null,
     };
 
-    // Mock global EventSource constructor
-    function MockEventSourceConstructor() {
+    /**
+     * Mock EventSource constructor returning the shared `mockEventSource` instance.
+     *
+     * @returns Shared mock EventSource instance.
+     */
+    function MockEventSourceConstructor(): typeof mockEventSource {
       return mockEventSource;
     }
     vi.stubGlobal('EventSource', MockEventSourceConstructor);

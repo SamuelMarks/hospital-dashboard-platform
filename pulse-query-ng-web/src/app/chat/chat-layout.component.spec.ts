@@ -1,15 +1,15 @@
+/**
+ * @fileoverview Unit tests for ChatLayoutComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ChatLayoutComponent } from './chat-layout.component';
 import { ChatStore } from './chat.store';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { BehaviorSubject, of } from 'rxjs';
 import { signal, Component, WritableSignal } from '@angular/core';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ConversationComponent } from './conversation/conversation.component';
 import { By } from '@angular/platform-browser';
-import { MatSidenav } from '@angular/material/sidenav';
-import { MatMenuTrigger } from '@angular/material/menu';
-import { OverlayContainer } from '@angular/cdk/overlay';
 import { readTemplate } from '../../test-utils/component-resources';
 import { createMockConversation } from '../../test-utils/mock-factories';
 import { ConversationResponse } from '../api-client';
@@ -19,12 +19,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
+/** Mock conversation component for unit testing. */
 @Component({
   selector: 'app-conversation',
   template: '',
 })
 class MockConv {}
 
+/** Mock query cart component for unit testing. */
 @Component({
   selector: 'app-query-cart',
   template: '',
@@ -46,7 +48,6 @@ describe('ChatLayoutComponent', () => {
     },
     mockCartService: { count: WritableSignal<number> },
     mockDialog: { open: ReturnType<typeof vi.fn> };
-  let overlay: OverlayContainer;
   let handsetState$: BehaviorSubject<{ matches: boolean }>;
 
   beforeEach(async () => {
@@ -72,7 +73,7 @@ describe('ChatLayoutComponent', () => {
     handsetState$ = new BehaviorSubject<{ matches: boolean }>({ matches: false });
 
     await TestBed.configureTestingModule({
-      imports: [ChatLayoutComponent, NoopAnimationsModule],
+      imports: [ChatLayoutComponent],
       providers: [
         { provide: BreakpointObserver, useValue: { observe: () => handsetState$.asObservable() } },
         { provide: QueryCartService, useValue: mockCartService },
@@ -94,7 +95,6 @@ describe('ChatLayoutComponent', () => {
     fixture = TestBed.createComponent(ChatLayoutComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
-    overlay = TestBed.inject(OverlayContainer);
   });
 
   it('should load history on init', () => {
@@ -104,7 +104,7 @@ describe('ChatLayoutComponent', () => {
   it('should show tabs with cart count', () => {
     const tabs = fixture.debugElement.queryAll(By.css('.mat-mdc-tab'));
     expect(tabs.length).toBe(2);
-    expect(tabs[1].nativeElement.textContent).toContain('5');
+    expect((tabs[1]?.nativeElement as HTMLElement | undefined)?.textContent).toContain('5');
   });
 
   it('should trigger delete via dialog', () => {
@@ -149,8 +149,8 @@ describe('ChatLayoutComponent', () => {
     ]);
     const groups = component.groupedHistory();
     expect(groups.length).toBe(2);
-    expect(groups[0].label).toBe('Today');
-    expect(groups[1].label).toBe('Previous');
+    expect(groups[0]?.label).toBe('Today');
+    expect(groups[1]?.label).toBe('Previous');
   });
 
   it('should return empty group if list is null', () => {
@@ -164,7 +164,7 @@ describe('ChatLayoutComponent', () => {
     expect(mockStore.renameConversation).not.toHaveBeenCalled();
 
     mockDialog.open.mockReturnValue({ afterClosed: () => of(null) });
-    component.renameChat(createMockConversation({ id: 'c1', title: '', updated_at: '' })); // test chat.title || '' fallback
+    component.renameChat(createMockConversation({ id: 'c1', title: '', updated_at: '' }));
     expect(mockStore.renameConversation).not.toHaveBeenCalled();
   });
 
@@ -179,17 +179,16 @@ describe('ChatLayoutComponent', () => {
     vi.spyOn(component, 'drawer').mockReturnValue({
       mode: 'over',
       close: closeOver,
-    } as unknown as MatSidenav);
+    });
     component.selectChat('c2');
     expect(mockStore.selectConversation).toHaveBeenCalledWith('c2');
     expect(closeOver).toHaveBeenCalled();
 
-    // test mode !== 'over'
     const closeSide = vi.fn();
     vi.spyOn(component, 'drawer').mockReturnValue({
       mode: 'side',
       close: closeSide,
-    } as unknown as MatSidenav);
+    });
     component.selectChat('c2');
     expect(closeSide).not.toHaveBeenCalled();
   });
@@ -199,7 +198,7 @@ describe('ChatLayoutComponent', () => {
     vi.spyOn(component, 'drawer').mockReturnValue({
       mode: 'over',
       close: closeOver,
-    } as unknown as MatSidenav);
+    });
     component.newChat();
     expect(mockStore.createNewChat).toHaveBeenCalled();
     expect(closeOver).toHaveBeenCalled();

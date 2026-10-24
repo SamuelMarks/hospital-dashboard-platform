@@ -27,6 +27,9 @@ class Role(str, enum.Enum):
   DATA_ANALYST = "DATA_ANALYST"
 
 
+UserRole = Role
+
+
 class User(Base):
   """
   SQLAlchemy model representing a system user.

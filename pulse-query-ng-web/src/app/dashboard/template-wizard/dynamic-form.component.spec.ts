@@ -3,12 +3,9 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { SimpleChange } from '@angular/core';
-import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
-import { DynamicFormComponent } from './dynamic-form.component';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { DynamicFormComponent, isJsonSchema } from './dynamic-form.component';
 import { By } from '@angular/platform-browser';
-import { FormControl } from '@angular/forms';
+import { MatDatepickerInputEvent } from '@angular/material/datepicker';
 
 describe('DynamicFormComponent', () => {
   let component: DynamicFormComponent;
@@ -20,48 +17,46 @@ describe('DynamicFormComponent', () => {
       name: { type: 'string', title: 'Full Name' },
       age: { type: 'integer', minimum: 18 },
       role: { type: 'string', enum: ['Admin', 'User'] },
-      active: { type: 'boolean' },
+      active: { type: 'boolean', description: 'Active flag' },
     },
     required: ['name'],
   };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DynamicFormComponent, NoopAnimationsModule],
+      imports: [DynamicFormComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DynamicFormComponent);
     component = fixture.componentInstance;
-    setInputSignal(component, 'jsonSchema', mockSchema);
-    component.ngOnChanges({ jsonSchema: new SimpleChange(null, mockSchema, true) });
+    fixture.componentRef.setInput('jsonSchema', mockSchema);
     fixture.detectChanges();
   });
 
-  it('should create controls based on schema', () => {
-    expect(component.form.contains('name')).toBe(true);
-    expect(component.form.contains('age')).toBe(true);
-    expect(component.fieldKeys().length).toBe(4);
+  it('validates JsonSchema objects with isJsonSchema type guard', () => {
+    expect(isJsonSchema(null)).toBe(false);
+    expect(isJsonSchema('str')).toBe(false);
+    expect(isJsonSchema({ type: 'object' })).toBe(true);
+    expect(isJsonSchema({ type: 'object', properties: null })).toBe(false);
+    expect(isJsonSchema({ type: 'object', properties: { a: { type: 'string' } } })).toBe(true);
+  });
+
+  it('should create fields based on schema', () => {
+    expect(component.fieldKeys()).toEqual(['name', 'age', 'role', 'active']);
+    expect(component.getValue('active')).toBe(false);
+    expect(component.getHelpAriaLabel('active')).toBe('Help info for Active');
+    expect(component.getHelpAriaLabel('name')).toBe('Help info for Full Name');
   });
 
   it('should apply required and min validators', () => {
-    // Fix: Double cast to handle AbstractControl vs FormControl overlap issues in tests
-    const nameCtrl = component.form.get('name');
-    if (!nameCtrl) {
-      throw new Error('Missing name control');
-    }
-    const typedNameCtrl = nameCtrl as unknown as FormControl<string>;
-    typedNameCtrl.setValue('');
-    expect(typedNameCtrl.valid).toBe(false);
-    expect(typedNameCtrl.hasError('required')).toBe(true);
+    component.setFieldValue('name', '');
+    expect(component.isValid()).toBe(false);
+    expect(component.hasError('name', 'required')).toBe(true);
 
-    const ageCtrl = component.form.get('age');
-    if (!ageCtrl) {
-      throw new Error('Missing age control');
-    }
-    const typedAgeCtrl = ageCtrl as unknown as FormControl<number>;
-    typedAgeCtrl.setValue(10);
-    expect(typedAgeCtrl.valid).toBe(false);
-    expect(typedAgeCtrl.hasError('min')).toBe(true);
+    component.setFieldValue('name', 'Alice');
+    component.setFieldValue('age', 10);
+    expect(component.isValid()).toBe(false);
+    expect(component.hasError('age', 'min')).toBe(true);
   });
 
   it('should apply max validator when defined', () => {
@@ -72,22 +67,40 @@ describe('DynamicFormComponent', () => {
         age: { type: 'integer', minimum: 18, maximum: 65 },
       },
     };
-    setInputSignal(component, 'jsonSchema', schemaWithMax);
-    component.ngOnChanges({ jsonSchema: new SimpleChange(mockSchema, schemaWithMax, false) });
+    fixture.componentRef.setInput('jsonSchema', schemaWithMax);
     fixture.detectChanges();
 
-    const ageCtrl = component.form.get('age');
-    if (!ageCtrl) {
-      throw new Error('Missing age control');
-    }
-    const typedAgeCtrl = ageCtrl as unknown as FormControl<number>;
-    typedAgeCtrl.setValue(70);
-    expect(typedAgeCtrl.hasError('max')).toBe(true);
+    component.setFieldValue('name', 'Alice');
+    component.setFieldValue('age', 70);
+    expect(component.hasError('age', 'max')).toBe(true);
+  });
+
+  it('should handle text and number DOM input events', () => {
+    const nameInput = document.createElement('input');
+    nameInput.value = 'Dr. Smith';
+    const nameEvent = new Event('input');
+    Object.defineProperty(nameEvent, 'target', { value: nameInput });
+    component.onTextOrNumberInput('name', nameEvent);
+    expect(component.getValue('name')).toBe('Dr. Smith');
+
+    const ageInput = document.createElement('input');
+    ageInput.value = '42';
+    const ageEvent = new Event('input');
+    Object.defineProperty(ageEvent, 'target', { value: ageInput });
+    component.onTextOrNumberInput('age', ageEvent);
+    expect(component.getValue('age')).toBe(42);
+
+    ageInput.value = '';
+    const emptyAgeEvent = new Event('input');
+    Object.defineProperty(emptyAgeEvent, 'target', { value: ageInput });
+    component.onTextOrNumberInput('age', emptyAgeEvent);
+    expect(component.getValue('age')).toBe('');
   });
 
   it('should render correct control types', () => {
-    expect(fixture.debugElement.query(By.css('mat-select'))).toBeTruthy(); // role enum
-    expect(fixture.debugElement.query(By.css('mat-checkbox'))).toBeTruthy(); // active bool
+    expect(fixture.debugElement.query(By.css('mat-select'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('mat-checkbox'))).toBeTruthy();
+    expect(fixture.debugElement.query(By.css('.help-icon-btn'))).toBeTruthy();
   });
 
   it('should emit value changes when valid', () =>
@@ -97,7 +110,7 @@ describe('DynamicFormComponent', () => {
         done();
       });
 
-      component.form.patchValue({ name: 'Test User' });
+      component.patchValues({ name: 'Test User' });
     }));
 
   it('should emit invalid status when required field missing', () =>
@@ -106,32 +119,27 @@ describe('DynamicFormComponent', () => {
         expect(status).toBe('INVALID');
         done();
       });
-      component.form.patchValue({ name: '' });
+      component.patchValues({ name: '' });
     }));
 
   it('should handle empty schema gracefully', () => {
     const emptySchema: Record<string, unknown> = { type: 'object' };
-    setInputSignal(component, 'jsonSchema', emptySchema);
-    component.ngOnChanges({ jsonSchema: new SimpleChange(mockSchema, emptySchema, false) });
+    fixture.componentRef.setInput('jsonSchema', emptySchema);
     fixture.detectChanges();
     expect(component.fieldKeys().length).toBe(0);
+    expect(component.values()).toEqual({});
+    expect(component.errorsMap()).toEqual({});
     expect(fixture.debugElement.query(By.css('.empty-state'))).toBeTruthy();
   });
 
-  it('should ignore ngOnChanges when jsonSchema is not provided', () => {
-    const rebuildSpy = vi.spyOn(component as unknown as { rebuildForm: () => void }, 'rebuildForm');
-    component.ngOnChanges({});
-    expect(rebuildSpy).not.toHaveBeenCalled();
-  });
-
   it('should handle null schema input', () => {
-    setInputSignal(component, 'jsonSchema', null);
-    component.ngOnChanges({ jsonSchema: new SimpleChange(mockSchema, null, false) });
+    fixture.componentRef.setInput('jsonSchema', null);
     fixture.detectChanges();
     expect(component.fieldKeys().length).toBe(0);
+    expect(component.parsedSchema()).toBeNull();
   });
 
-  it('should render date picker with hint', () => {
+  it('should render date picker with hint and handle dateChange', () => {
     const dateSchema: Record<string, unknown> = {
       type: 'object',
       properties: {
@@ -139,23 +147,21 @@ describe('DynamicFormComponent', () => {
       },
       required: ['start_date'],
     };
-    setInputSignal(component, 'jsonSchema', dateSchema);
-    component.ngOnChanges({ jsonSchema: new SimpleChange(mockSchema, dateSchema, false) });
+    fixture.componentRef.setInput('jsonSchema', dateSchema);
     fixture.detectChanges();
 
     expect(fixture.debugElement.query(By.css('mat-datepicker'))).toBeTruthy();
     const hint = fixture.debugElement.query(By.css('mat-hint'));
-    expect(hint.nativeElement.textContent).toContain('Pick a date');
+    expect((hint.nativeElement as HTMLElement).textContent).toContain('Pick a date');
+
+    const testDate = new Date('2026-05-01T00:00:00Z');
+    component.onDateChange('start_date', { value: testDate } as MatDatepickerInputEvent<Date>);
+    expect(component.getValue('start_date')).toBe(testDate);
   });
 
   it('should format labels and detect errors', () => {
     expect(component.formatLabel('patient_count')).toBe('Patient Count');
-    const ctrl = component.form.get('name');
-    if (!ctrl) {
-      throw new Error('Missing name control');
-    }
-    const typedCtrl = ctrl as unknown as FormControl<string>;
-    typedCtrl.setValue('');
+    component.setFieldValue('name', '');
     expect(component.hasError('name', 'required')).toBe(true);
   });
 
@@ -164,31 +170,25 @@ describe('DynamicFormComponent', () => {
     expect(component.hasError('missing', 'required')).toBe(false);
   });
 
-  it('should apply max validator when configured', () => {
+  it('should apply max validator and handle string number conversion in errorsMap', () => {
     const schema: Record<string, unknown> = {
       type: 'object',
       properties: {
-        score: { type: 'number', maximum: 5 },
+        score: { type: 'number', maximum: 5, default: 2 },
       },
     };
-    setInputSignal(component, 'jsonSchema', schema);
-    component.ngOnChanges({ jsonSchema: new SimpleChange(mockSchema, schema, false) });
+    fixture.componentRef.setInput('jsonSchema', schema);
     fixture.detectChanges();
 
-    const ctrl = component.form.get('score');
-    if (!ctrl) {
-      throw new Error('Missing score control');
-    }
-    const typedCtrl = ctrl as unknown as FormControl<number>;
-    typedCtrl.setValue(10);
-    expect(typedCtrl.hasError('max')).toBe(true);
+    expect(component.getValue('score')).toBe(2);
+    component.setFieldValue('score', '10');
+    expect(component.hasError('score', 'max')).toBe(true);
+
+    component.setFieldValue('score', 'not-a-number');
+    expect(component.hasError('score', 'max')).toBe(false);
   });
 
-  it('should return null for missing property', () => {
-    expect(component.getProperty('missing')).toBeNull();
-  });
-
-  it('should convert Date values to ISO strings', () =>
+  it('should convert Date values to ISO strings on emission', () =>
     new Promise<void>((done) => {
       const schema: Record<string, unknown> = {
         type: 'object',
@@ -197,8 +197,7 @@ describe('DynamicFormComponent', () => {
         },
         required: ['start_date'],
       };
-      setInputSignal(component, 'jsonSchema', schema);
-      component.ngOnChanges({ jsonSchema: new SimpleChange(mockSchema, schema, false) });
+      fixture.componentRef.setInput('jsonSchema', schema);
       fixture.detectChanges();
 
       component.formValueChange.subscribe((val) => {
@@ -206,22 +205,6 @@ describe('DynamicFormComponent', () => {
         done();
       });
 
-      component.form.patchValue({ start_date: new Date('2023-01-01T00:00:00Z') });
+      component.patchValues({ start_date: new Date('2023-01-01T00:00:00Z') });
     }));
 });
-
-function setInputSignal(component: object, key: string, value: unknown): void {
-  const record = component as Record<string, unknown>;
-  const current = record[key] as
-    { [SIGNAL]?: { applyValueToInputSignal?: (node: unknown, val: unknown) => void } } | undefined;
-  const node = current?.[SIGNAL];
-  if (node) {
-    if (typeof node.applyValueToInputSignal === 'function') {
-      node.applyValueToInputSignal(node, value);
-    } else {
-      signalSetFn(node as Parameters<typeof signalSetFn>[0], value as never);
-    }
-  } else {
-    record[key] = value;
-  }
-}

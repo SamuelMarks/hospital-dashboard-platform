@@ -12,7 +12,6 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -20,7 +19,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
  * Comprehensive unit tests for [BenchmarksViewModel], [BenchmarksUiState],
@@ -158,15 +156,22 @@ class BenchmarksViewModelTest {
         }
         val baseClient = createClient(engine)
 
-        // Subclass BenchmarksApi to return non-JsonElement values in Map<String, Any>
+        // Subclass BenchmarksApi to return custom Map<String, JsonElement> values
         val customApi = object : BenchmarksApi(baseUrl = "http://localhost", httpClient = baseClient) {
-            override suspend fun getSqlBenchmarksApiV1BenchmarksSqlGet(): HttpResponse<List<Map<String, Any>>> {
+            override suspend fun getSqlBenchmarksApiV1BenchmarksSqlGet(): HttpResponse<List<Map<String, kotlinx.serialization.json.JsonElement>>> {
                 val baseResp = super.getSqlBenchmarksApiV1BenchmarksSqlGet()
                 return HttpResponse(
                     response = baseResp.response,
-                    provider = object : io.healthplatform.pulsequery.api.infrastructure.BodyProvider<List<Map<String, Any>>> {
-                        override suspend fun body(response: io.ktor.client.statement.HttpResponse): List<Map<String, Any>> =
-                            listOf(mapOf("theme" to "RawTheme", "sql" to "SELECT 2"))
+                    provider = object : io.healthplatform.pulsequery.api.infrastructure.BodyProvider<List<Map<String, kotlinx.serialization.json.JsonElement>>> {
+                        override suspend fun body(
+                            response: io.ktor.client.statement.HttpResponse
+                        ): List<Map<String, kotlinx.serialization.json.JsonElement>> =
+                            listOf(
+                                mapOf(
+                                    "theme" to kotlinx.serialization.json.JsonPrimitive("RawTheme"),
+                                    "sql" to kotlinx.serialization.json.JsonPrimitive("SELECT 2")
+                                )
+                            )
                         override suspend fun <V : Any> typedBody(
                             response: io.ktor.client.statement.HttpResponse,
                             type: io.ktor.util.reflect.TypeInfo

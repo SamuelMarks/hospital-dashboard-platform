@@ -11,14 +11,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -307,5 +305,11 @@ class AuthViewModelTest {
         vmFail.register {}
         kotlinx.coroutines.delay(50)
         assertEquals("Registration failed", vmFail.state.value.errorMessage)
+
+        // PulseQueryError.Http.BadRequest directly
+        errToThrow = io.healthplatform.pulsequery.core.error.PulseQueryError.Http.BadRequest("bad request")
+        vmFail.register {}
+        kotlinx.coroutines.delay(50)
+        assertEquals("An account with this email already exists.", vmFail.state.value.errorMessage)
     }
 }

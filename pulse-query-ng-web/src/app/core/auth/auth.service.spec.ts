@@ -1,9 +1,9 @@
-import { safeStorage } from '../storage.utils';
 /**
  * @fileoverview Unit tests for AuthService.
  * Verifies session logic, storage interactions, and API chaining.
  */
 
+import { safeStorage } from '../storage.utils';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
 import { AuthService as AuthApiClient, Token, UserResponse } from '../../api-client';
@@ -127,7 +127,7 @@ describe('AuthService', () => {
     it('should throw error when no refresh token is stored', () =>
       new Promise<void>((done) => {
         service.refreshToken().subscribe({
-          error: (err) => {
+          error: (err: Error) => {
             expect(err.message).toBe('No refresh token available');
             done();
           },

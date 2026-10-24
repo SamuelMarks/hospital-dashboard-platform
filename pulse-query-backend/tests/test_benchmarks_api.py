@@ -141,5 +141,28 @@ async def test_post_and_stream_benchmark_progress() -> None:
       assert '"completed": 5' in response.text
       assert '"total": 10' in response.text
       assert '"current_model": "gemini-1.5"' in response.text
+
+      response_delayed = await client.get("/progress?poll_interval_seconds=0.001")
+      assert response_delayed.status_code == 200
   finally:
     app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_benchmark_telemetry_service_reset_and_default_not_found() -> None:
+  """Verify `BenchmarkTelemetryService.reset` and `read_benchmark_json_file` default 404 message."""
+  from pathlib import Path
+
+  from app.core.result import Err
+  from app.services.benchmark_telemetry_service import (
+    benchmark_telemetry_service,
+    read_benchmark_json_file,
+  )
+
+  benchmark_telemetry_service.update(True, 3, 5, "m1", "running", 10)
+  benchmark_telemetry_service.reset()
+  assert benchmark_telemetry_service.state["active"] is False
+  assert benchmark_telemetry_service.state["status"] == "idle"
+
+  res = read_benchmark_json_file(Path("/nonexistent/custom_bench.json"))
+  assert isinstance(res, Err)
+  assert "custom_bench.json" in res.error.message

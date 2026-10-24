@@ -1,21 +1,13 @@
 /**
  * @fileoverview Unit tests for VizPieComponent.
- * Includes manual mocking of @material/material-color-utilities to resolving import errors in JSDOM.
+ * Includes manual mocking of @material/material-color-utilities to resolve import errors in JSDOM.
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal, WritableSignal, PLATFORM_ID } from '@angular/core';
+import { PLATFORM_ID } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
 import { VizPieComponent } from './viz-pie.component';
-import { TableDataSet } from '../viz-table/viz-table.component';
-
-interface VizPiePrivate {
-  dataSet: WritableSignal<TableDataSet>;
-  config: WritableSignal<Record<string, unknown> | undefined>;
-  document: Document | null;
-  updatePaletteFomDom: () => void;
-}
 
 // MOCK: @material/material-color-utilities
 vi.mock('@material/material-color-utilities', () => ({
@@ -30,8 +22,6 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('VizPieComponent', () => {
   let component: VizPieComponent;
   let fixture: ComponentFixture<VizPieComponent>;
-  let dataSetSig: WritableSignal<TableDataSet>;
-  let configSig: WritableSignal<Record<string, unknown> | undefined>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -40,11 +30,8 @@ describe('VizPieComponent', () => {
 
     fixture = TestBed.createComponent(VizPieComponent);
     component = fixture.componentInstance;
-    dataSetSig = signal<TableDataSet>({ columns: [], data: [] });
-    configSig = signal<Record<string, unknown> | undefined>(undefined);
-    const priv = component as unknown as VizPiePrivate;
-    priv.dataSet = dataSetSig;
-    priv.config = configSig;
+    fixture.componentRef.setInput('dataSet', { columns: [], data: [] });
+    fixture.componentRef.setInput('config', undefined);
 
     fixture.detectChanges();
   });
@@ -61,14 +48,13 @@ describe('VizPieComponent', () => {
         { L: 'B', V: 50 },
       ],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const slices = component.slices();
     expect(slices.length).toBe(2);
-    expect(slices[0].percentage).toBe(50);
+    expect(slices[0]?.percentage).toBe(50);
 
-    // Check SVG generation
     const paths = fixture.debugElement.queryAll(By.css('path'));
     expect(paths.length).toBe(2);
   });
@@ -78,14 +64,13 @@ describe('VizPieComponent', () => {
       columns: ['L', 'V'],
       data: [{ L: 'A', V: 50 }],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const legendItem = fixture.debugElement.query(By.css('.legend-item'));
     expect(legendItem).toBeTruthy();
     expect(legendItem.attributes['tabindex']).toBe('0');
 
-    // Focus simulation
     legendItem.triggerEventHandler('focus', null);
     fixture.detectChanges();
     expect(component.activeSlice()).toBe('A');
@@ -96,7 +81,7 @@ describe('VizPieComponent', () => {
       columns: ['L', 'V'],
       data: [{ L: 'A', V: 50 }],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const path = fixture.debugElement.query(By.css('path'));
@@ -117,13 +102,13 @@ describe('VizPieComponent', () => {
       columns: ['name', 'amount'],
       data: [{ name: 'X', amount: 100 }],
     };
-    dataSetSig.set(data);
-    configSig.set({ xKey: 'name', yKey: 'amount' });
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.componentRef.setInput('config', { xKey: 'name', yKey: 'amount' });
     fixture.detectChanges();
 
     const slices = component.slices();
-    expect(slices[0].label).toBe('X');
-    expect(slices[0].percentage).toBe(100);
+    expect(slices[0]?.label).toBe('X');
+    expect(slices[0]?.percentage).toBe(100);
   });
 
   it('should render full circle for single slice', () => {
@@ -131,11 +116,11 @@ describe('VizPieComponent', () => {
       columns: ['L', 'V'],
       data: [{ L: 'Only', V: 100 }],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const slice = component.slices()[0];
-    expect(slice.path).toContain('A 1 1 0 1 1');
+    expect(slice?.path).toContain('A 1 1 0 1 1');
   });
 
   it('should mark slices active/inactive', () => {
@@ -149,7 +134,7 @@ describe('VizPieComponent', () => {
       columns: ['L', 'V'],
       data: [{ L: 'A', V: 50 }],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
     expect(component.accessibilityLabel()).toContain('slices');
   });
@@ -164,12 +149,12 @@ describe('VizPieComponent', () => {
       columns: ['Only'],
       data: [{ Only: 10 }],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const slice = component.slices()[0];
-    expect(slice.label).toBe('10');
-    expect(slice.percentage).toBe(100);
+    expect(slice?.label).toBe('10');
+    expect(slice?.percentage).toBe(100);
   });
 
   it('should clamp negative values to zero in totals', () => {
@@ -180,18 +165,16 @@ describe('VizPieComponent', () => {
         { L: 'B', V: 0 },
       ],
     };
-    dataSetSig.set(data);
+    fixture.componentRef.setInput('dataSet', data);
     fixture.detectChanges();
 
     const slices = component.slices();
-    expect(slices[0].percentage).toBe(0);
+    expect(slices[0]?.percentage).toBe(0);
   });
 
-  it('should no-op palette update when document missing', () => {
-    const priv = component as unknown as VizPiePrivate;
-    priv.document = null;
-    priv.updatePaletteFomDom();
-    expect(component['palette']()).toBeTruthy();
+  it('should update palette from DOM', () => {
+    component.updatePaletteFomDom();
+    expect(component.palette()).toBeTruthy();
   });
 
   it('should skip palette update when platform is not browser', async () => {
@@ -203,10 +186,9 @@ describe('VizPieComponent', () => {
 
     const serverFixture = TestBed.createComponent(VizPieComponent);
     const serverComponent = serverFixture.componentInstance;
-    const serverPriv = serverComponent as unknown as VizPiePrivate;
-    serverPriv.dataSet = signal<TableDataSet>({ columns: [], data: [] });
-    serverPriv.config = signal<Record<string, unknown> | undefined>(undefined);
-    const updateSpy = vi.spyOn(serverPriv, 'updatePaletteFomDom');
+    serverFixture.componentRef.setInput('dataSet', { columns: [], data: [] });
+    serverFixture.componentRef.setInput('config', undefined);
+    const updateSpy = vi.spyOn(serverComponent, 'updatePaletteFomDom');
     serverFixture.detectChanges();
 
     expect(updateSpy).not.toHaveBeenCalled();

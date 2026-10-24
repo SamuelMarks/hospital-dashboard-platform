@@ -7,7 +7,6 @@ import { signal } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { SystemDiagnosticsDialogComponent } from './system-diagnostics-dialog.component';
 import {
   ConnectionStatusService,
@@ -93,7 +92,7 @@ describe('SystemDiagnosticsDialogComponent', () => {
     mockDialogRef = { close: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [SystemDiagnosticsDialogComponent, NoopAnimationsModule],
+      imports: [SystemDiagnosticsDialogComponent],
       providers: [
         { provide: ConnectionStatusService, useValue: mockService },
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -174,12 +173,14 @@ describe('SystemDiagnosticsDialogComponent', () => {
     expect(component.hasDefaultData()).toBe(false);
     expect(component.isMockLlm()).toBe(true);
 
-    mockService.healthData.set({
-      postgres: null,
-      duckdb: null,
-      data: { has_default_data: false },
-      llm: { mock_mode: false },
-    } as unknown as SystemHealthResponse);
+    const partialHealth: SystemHealthResponse = {
+      ...mockHealthData,
+      data: { ...mockHealthData.data, has_default_data: false },
+      llm: { ...mockHealthData.llm, mock_mode: false },
+    };
+    Reflect.set(partialHealth, 'postgres', null);
+    Reflect.set(partialHealth, 'duckdb', null);
+    mockService.healthData.set(partialHealth);
     expect(component.pgStatus()).toBe('unknown');
     expect(component.duckStatus()).toBe('unknown');
     expect(component.hasDefaultData()).toBe(false);

@@ -125,7 +125,7 @@ describe('SimulationStore', () => {
 
     expect(mockApi.runSimulationApiV1SimulationRunPost).toHaveBeenCalledWith({
       demand_source_sql: 'SELECT mock',
-      capacity_parameters: expect.objectContaining({ ICU: 20 }),
+      capacity_parameters: expect.objectContaining({ ICU: 20 }) as unknown,
       constraints: [{ type: 'force_flow', service: 'Cardiology', unit: 'ICU', min: 5 }],
       affinity_overrides: {
         Cardiology: { ICU: 0.9, MedSurg: 0.4 },
@@ -141,7 +141,7 @@ describe('SimulationStore', () => {
 
     expect(mockApi.runSimulationApiV1SimulationRunPost).toHaveBeenCalledWith({
       demand_source_sql: store.demandSql(),
-      capacity_parameters: expect.any(Object),
+      capacity_parameters: expect.any(Object) as unknown,
       constraints: [],
     });
   });

@@ -17,32 +17,22 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for a copyable troubleshooting remediation step.
  *
  * @param title Step title or action description.
  * @param description Contextual explanation for why this step resolves the issue.
- * @param command 
+ * @param command
  */
 @Serializable
-
-data class TroubleshootingStep (
-
-    /* Step title or action description. */
+data class TroubleshootingStep(
+    // Step title or action description.
     @SerialName(value = "title") @Required val title: kotlin.String,
-
-    /* Contextual explanation for why this step resolves the issue. */
+    // Contextual explanation for why this step resolves the issue.
     @SerialName(value = "description") @Required val description: kotlin.String,
-
     @SerialName(value = "command") val command: kotlin.String? = null
-
-) {
-
-
-}
-
+)

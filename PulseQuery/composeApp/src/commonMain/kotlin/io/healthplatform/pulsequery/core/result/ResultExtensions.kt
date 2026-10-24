@@ -35,12 +35,17 @@ inline fun <T, R> Result<T>.flatMap(transform: (T) -> Result<R>): Result<R> =
  */
 suspend fun <T : Any> HttpResponse<T>.asResult(): Result<T> {
     return if (this.success) {
-        runCatching { this.body() }.recoverCatching { cause ->
-            throw PulseQueryError.Storage.SerializationFailure(
-                target = "HttpResponse body",
-                cause = cause
-            )
-        }
+        runCatching { this.body() }.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { cause ->
+                Result.failure(
+                    PulseQueryError.Storage.SerializationFailure(
+                        target = "HttpResponse body",
+                        cause = cause
+                    )
+                )
+            }
+        )
     } else {
         val errorDetail = this.response.bodyAsText()
         Result.failure(PulseQueryError.fromHttpStatus(this.status, errorDetail))
@@ -56,9 +61,12 @@ suspend fun <T : Any> HttpResponse<T>.asResult(): Result<T> {
  * @return [Result] containing the block value or converted [PulseQueryError].
  */
 inline fun <T> runCatchingPulse(block: () -> T): Result<T> {
-    return runCatching(block).recoverCatching { throwable ->
-        throw PulseQueryError.fromThrowable(throwable)
-    }
+    return runCatching(block).fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { throwable ->
+            Result.failure(PulseQueryError.fromThrowable(throwable))
+        }
+    )
 }
 
 /**
@@ -69,6 +77,7 @@ inline fun <T> runCatchingPulse(block: () -> T): Result<T> {
  * @param block Suspending code block to execute safely.
  * @return [Result] containing the block value or converted [PulseQueryError].
  */
+@Suppress("TooGenericExceptionCaught")
 suspend inline fun <T> runCatchingPulseAsync(crossinline block: suspend () -> T): Result<T> {
     return try {
         Result.success(block())

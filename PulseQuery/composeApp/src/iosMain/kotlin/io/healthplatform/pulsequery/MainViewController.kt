@@ -14,7 +14,7 @@ import platform.UIKit.UIViewController
  *
  * @return Configured [UIViewController] embedding the Compose root [App].
  */
-@Suppress("FunctionNaming")
+@Suppress("FunctionNaming", "ktlint:standard:function-naming")
 fun MainViewController(): UIViewController = ComposeUIViewController {
     AppContainer.initDatabase(IosDatabaseDriverFactory())
     App()

@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Schema for diagnostic warning items.
@@ -32,26 +31,15 @@ import kotlinx.serialization.encoding.*
  * @param timestamp ISO timestamp when warning was recorded.
  */
 @Serializable
-
-data class DiagnosticWarningSchema (
-
-    /* Unique code identifying the warning category. */
+data class DiagnosticWarningSchema(
+    // Unique code identifying the warning category.
     @SerialName(value = "code") @Required val code: kotlin.String,
-
-    /* Human-readable warning message. */
+    // Human-readable warning message.
     @SerialName(value = "message") @Required val message: kotlin.String,
-
-    /* Severity classification (e.g., info, warning, critical). */
+    // Severity classification (e.g., info, warning, critical).
     @SerialName(value = "severity") @Required val severity: kotlin.String,
-
-    /* Recommended troubleshooting action. */
+    // Recommended troubleshooting action.
     @SerialName(value = "remediation") @Required val remediation: kotlin.String,
-
-    /* ISO timestamp when warning was recorded. */
+    // ISO timestamp when warning was recorded.
     @SerialName(value = "timestamp") @Required val timestamp: kotlin.String
-
-) {
-
-
-}
-
+)

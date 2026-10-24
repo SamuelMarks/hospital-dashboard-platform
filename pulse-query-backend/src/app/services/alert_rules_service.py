@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,7 +86,7 @@ class AlertRulesService:
         AppError(
           code=ErrorCode.ALERT_RULE_NOT_FOUND,
           message="Alert rule not found",
-          status_code=status.HTTP_404_NOT_FOUND,
+          status_code=404,
         )
       )
     return Ok(rule)

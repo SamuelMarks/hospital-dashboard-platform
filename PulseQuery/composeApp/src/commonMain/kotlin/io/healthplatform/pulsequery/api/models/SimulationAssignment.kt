@@ -17,38 +17,26 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Single row in the optimization result.
  *
- * @param service 
- * @param unit 
- * @param patientCount 
+ * @param service
+ * @param unit
+ * @param patientCount
  * @param originalCount Count in this unit before optimization (if provided).
  * @param delta Net change (Proposed - Original).
  */
 @Serializable
-
-data class SimulationAssignment (
-
+data class SimulationAssignment(
     @SerialName(value = "Service") @Required val service: kotlin.String,
-
     @SerialName(value = "Unit") @Required val unit: kotlin.String,
-
     @SerialName(value = "Patient_Count") @Required val patientCount: kotlin.Double,
-
-    /* Count in this unit before optimization (if provided). */
+    // Count in this unit before optimization (if provided).
     @SerialName(value = "Original_Count") val originalCount: kotlin.Double? = (0.0).toDouble(),
-
-    /* Net change (Proposed - Original). */
+    // Net change (Proposed - Original).
     @SerialName(value = "Delta") val delta: kotlin.Double? = (0.0).toDouble()
-
-) {
-
-
-}
-
+)

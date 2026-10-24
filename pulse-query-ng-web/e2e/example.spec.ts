@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Smoke test verifying authenticated landing page rendering.
+ */
+
 import { test, expect } from './fixtures';
 
 test('dashboard should load for authenticated user', async ({ loggedInPage }) => {

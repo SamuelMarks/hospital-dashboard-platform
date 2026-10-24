@@ -1,3 +1,6 @@
+/**
+ * Network and backend system health monitoring repository module for PulseQuery.
+ */
 package io.healthplatform.pulsequery.network
 
 import io.healthplatform.pulsequery.api.apis.SystemApi

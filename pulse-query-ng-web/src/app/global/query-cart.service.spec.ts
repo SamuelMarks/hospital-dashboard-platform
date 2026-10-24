@@ -1,8 +1,13 @@
+/**
+ * @fileoverview Unit tests for QueryCartService.
+ */
+
 import { safeStorage } from '../core/storage.utils';
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { QueryCartService } from './query-cart.service';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
+import { vi } from 'vitest';
 
 const STORAGE_KEY = 'pulse-query-cart-v1';
 
@@ -48,9 +53,7 @@ describe('QueryCartService', () => {
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
-    const service = TestBed.inject(QueryCartService) as unknown as {
-      deriveTitle: (sql: string) => string;
-    };
+    const service = TestBed.inject(QueryCartService);
     expect(service.deriveTitle('   ')).toBe('Untitled Query');
   });
 
@@ -86,7 +89,7 @@ describe('QueryCartService', () => {
     const item = service.add('SELECT 1') as QueryCartItem;
 
     service.rename(item.id, 'New Name');
-    expect(service.items()[0].title).toBe('New Name');
+    expect(service.items()[0]?.title).toBe('New Name');
 
     service.remove(item.id);
     expect(service.items().length).toBe(0);
@@ -103,7 +106,7 @@ describe('QueryCartService', () => {
 
     service.rename(item.id, '   ');
 
-    expect(service.items()[0].title).toBe(originalTitle);
+    expect(service.items()[0]?.title).toBe(originalTitle);
   });
 
   it('should clear items', () => {
@@ -136,11 +139,11 @@ describe('QueryCartService', () => {
 
     const service = TestBed.inject(QueryCartService);
     expect(service.items().length).toBe(1);
-    expect(service.items()[0].id).toBe('q1');
+    expect(service.items()[0]?.id).toBe('q1');
   });
 
   it('should filter invalid items from storage', () => {
-    const stored: Array<Partial<QueryCartItem>> = [
+    const stored: Partial<QueryCartItem>[] = [
       { id: 'bad', title: 'Missing Kind', sql: 'SELECT 1', createdAt: '2024-01-01T00:00:00Z' },
     ];
     safeStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
@@ -180,9 +183,7 @@ describe('QueryCartService', () => {
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
-    const service = TestBed.inject(QueryCartService) as unknown as {
-      isValidItem: (item: unknown) => boolean;
-    };
+    const service = TestBed.inject(QueryCartService);
     expect(service.isValidItem(null)).toBe(false);
     expect(
       service.isValidItem({
@@ -257,9 +258,7 @@ describe('QueryCartService', () => {
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],
     });
 
-    const service = TestBed.inject(QueryCartService) as unknown as {
-      persistToStorage: (items: QueryCartItem[]) => void;
-    };
+    const service = TestBed.inject(QueryCartService);
     service.persistToStorage([
       {
         id: 'q5',
@@ -280,7 +279,7 @@ describe('QueryCartService', () => {
     });
 
     const service = TestBed.inject(QueryCartService);
-    const item = service.add(undefined as unknown as string);
+    const item = service.add(undefined);
 
     expect(item).toBeNull();
   });

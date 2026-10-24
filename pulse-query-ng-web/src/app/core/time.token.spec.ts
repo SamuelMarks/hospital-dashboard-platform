@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for the `DATE_NOW` injection token (`time.token.ts`).
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { DATE_NOW } from './time.token';
 import { describe, expect, it } from 'vitest';

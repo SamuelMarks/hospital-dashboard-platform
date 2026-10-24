@@ -3,7 +3,6 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
 import { PLATFORM_ID, signal } from '@angular/core';
 import { vi } from 'vitest';
@@ -13,6 +12,7 @@ import { OnboardingService, ONBOARDING_STEPS } from './onboarding.service';
 describe('OnboardingWizardComponent', () => {
   let component: OnboardingWizardComponent;
   let fixture: ComponentFixture<OnboardingWizardComponent>;
+  let hostEl: HTMLElement;
   let router: Router;
 
   const currentStepIndexSig = signal(0);
@@ -49,7 +49,7 @@ describe('OnboardingWizardComponent', () => {
     vi.clearAllMocks();
 
     await TestBed.configureTestingModule({
-      imports: [OnboardingWizardComponent, NoopAnimationsModule],
+      imports: [OnboardingWizardComponent],
       providers: [
         { provide: OnboardingService, useValue: mockOnboarding },
         { provide: PLATFORM_ID, useValue: 'browser' },
@@ -59,6 +59,7 @@ describe('OnboardingWizardComponent', () => {
 
     fixture = TestBed.createComponent(OnboardingWizardComponent);
     component = fixture.componentInstance;
+    hostEl = fixture.nativeElement as HTMLElement;
     router = TestBed.inject(Router);
     fixture.detectChanges();
   });
@@ -74,74 +75,74 @@ describe('OnboardingWizardComponent', () => {
   });
 
   it('should render the wizard card', () => {
-    expect(fixture.nativeElement.querySelector('[data-testid="onboarding-wizard"]')).toBeTruthy();
+    expect(hostEl.querySelector('[data-testid="onboarding-wizard"]')).toBeTruthy();
   });
 
   it('should display the current step title', () => {
-    const title = fixture.nativeElement.querySelector('.step-title');
-    expect(title?.textContent?.trim()).toBe(ONBOARDING_STEPS[0].title);
+    const title = hostEl.querySelector('.step-title');
+    expect(title?.textContent?.trim()).toBe(ONBOARDING_STEPS[0]?.title);
   });
 
   it('should display the current step description', () => {
-    const desc = fixture.nativeElement.querySelector('.step-description');
-    expect(desc?.textContent?.trim()).toBe(ONBOARDING_STEPS[0].description);
+    const desc = hostEl.querySelector('.step-description');
+    expect(desc?.textContent?.trim()).toBe(ONBOARDING_STEPS[0]?.description);
   });
 
   it('should display the step counter', () => {
-    const counter = fixture.nativeElement.querySelector('.step-counter');
+    const counter = hostEl.querySelector('.step-counter');
     expect(counter?.textContent).toContain('1');
     expect(counter?.textContent).toContain(ONBOARDING_STEPS.length.toString());
   });
 
   it('should render one dot per step', () => {
-    const dots = fixture.nativeElement.querySelectorAll('.dot');
+    const dots = hostEl.querySelectorAll('.dot');
     expect(dots.length).toBe(ONBOARDING_STEPS.length);
   });
 
   it('should mark the active dot', () => {
-    expect(fixture.nativeElement.querySelector('.dot.active')).toBeTruthy();
+    expect(hostEl.querySelector('.dot.active')).toBeTruthy();
   });
 
   it('should call onboarding.next() when Next button clicked', () => {
-    fixture.nativeElement.querySelector('[data-testid="next-button"]')?.click();
+    (hostEl.querySelector('[data-testid="next-button"]') as HTMLButtonElement | null)?.click();
     expect(mockOnboarding.next).toHaveBeenCalledTimes(1);
   });
 
   it('should call onboarding.prev() when Back button clicked', () => {
     hasPrevSig.set(true);
     fixture.detectChanges();
-    fixture.nativeElement.querySelector('[data-testid="prev-button"]')?.click();
+    (hostEl.querySelector('[data-testid="prev-button"]') as HTMLButtonElement | null)?.click();
     expect(mockOnboarding.prev).toHaveBeenCalledTimes(1);
   });
 
   it('should disable Back button on first step', () => {
     hasPrevSig.set(false);
     fixture.detectChanges();
-    const btn = fixture.nativeElement.querySelector('[data-testid="prev-button"]');
+    const btn = hostEl.querySelector('[data-testid="prev-button"]') as HTMLButtonElement | null;
     expect(btn?.disabled).toBe(true);
   });
 
   it('should call onboarding.skip() when skip button clicked', () => {
-    fixture.nativeElement.querySelector('[data-testid="skip-button"]')?.click();
+    (hostEl.querySelector('[data-testid="skip-button"]') as HTMLButtonElement | null)?.click();
     expect(mockOnboarding.skip).toHaveBeenCalledTimes(1);
   });
 
   it('should call onboarding.goToStep(1) when dot 1 is clicked', () => {
-    fixture.nativeElement.querySelector('[data-testid="step-dot-1"]')?.click();
+    (hostEl.querySelector('[data-testid="step-dot-1"]') as HTMLElement | null)?.click();
     expect(mockOnboarding.goToStep).toHaveBeenCalledWith(1);
   });
 
   it('should show "Get Started" on last step', () => {
     hasNextSig.set(false);
     fixture.detectChanges();
-    const btn = fixture.nativeElement.querySelector('[data-testid="next-button"]');
+    const btn = hostEl.querySelector('[data-testid="next-button"]');
     expect(btn?.textContent).toContain('Get Started');
   });
 
   it('should show "Next" when not on last step', () => {
     hasNextSig.set(true);
     fixture.detectChanges();
-    const btn = fixture.nativeElement.querySelector('[data-testid="next-button"]');
+    const btn = hostEl.querySelector('[data-testid="next-button"]');
     expect(btn?.textContent).toContain('Next');
   });
 
@@ -150,7 +151,7 @@ describe('OnboardingWizardComponent', () => {
     if (stepWithAction) {
       currentStepSig.set(stepWithAction);
       fixture.detectChanges();
-      const btn = fixture.nativeElement.querySelector('[data-testid="action-button"]');
+      const btn = hostEl.querySelector('[data-testid="action-button"]');
       expect(btn).toBeTruthy();
       expect(btn?.textContent?.trim()).toBe(stepWithAction.actionLabel);
     }
@@ -161,13 +162,16 @@ describe('OnboardingWizardComponent', () => {
     if (stepWithoutAction) {
       currentStepSig.set(stepWithoutAction);
       fixture.detectChanges();
-      expect(fixture.nativeElement.querySelector('[data-testid="action-button"]')).toBeNull();
+      expect(hostEl.querySelector('[data-testid="action-button"]')).toBeNull();
     }
   });
 
   it('navigateToAction() calls complete() and navigates to the action route', async () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const stepWithAction = ONBOARDING_STEPS.find((s) => s.actionRoute)!;
+    const stepWithAction = ONBOARDING_STEPS.find((s) => s.actionRoute);
+    if (!stepWithAction) {
+      throw new Error('Missing step with actionRoute');
+    }
     currentStepSig.set(stepWithAction);
     fixture.detectChanges();
 
@@ -179,24 +183,25 @@ describe('OnboardingWizardComponent', () => {
   });
 
   it('navigateToAction() does nothing when no actionRoute', () => {
-    currentStepSig.set({ ...ONBOARDING_STEPS[0], actionRoute: undefined });
+    const firstStep = ONBOARDING_STEPS[0];
+    if (firstStep) {
+      currentStepSig.set({ ...firstStep, actionRoute: undefined });
+    }
     fixture.detectChanges();
     component.navigateToAction();
     expect(mockOnboarding.complete).not.toHaveBeenCalled();
   });
 
   it('should have role="dialog" on overlay', () => {
-    expect(fixture.nativeElement.querySelector('.overlay')?.getAttribute('role')).toBe('dialog');
+    expect(hostEl.querySelector('.overlay')?.getAttribute('role')).toBe('dialog');
   });
 
   it('should have aria-modal="true" on overlay', () => {
-    expect(fixture.nativeElement.querySelector('.overlay')?.getAttribute('aria-modal')).toBe(
-      'true',
-    );
+    expect(hostEl.querySelector('.overlay')?.getAttribute('aria-modal')).toBe('true');
   });
 
   it('should have aria-label on skip button', () => {
-    const btn = fixture.nativeElement.querySelector('[data-testid="skip-button"]');
+    const btn = hostEl.querySelector('[data-testid="skip-button"]');
     expect(btn?.getAttribute('aria-label')).toBe('Skip onboarding');
   });
 

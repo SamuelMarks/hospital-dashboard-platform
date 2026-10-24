@@ -8,10 +8,9 @@ import { TemplateWizardComponent } from './template-wizard.component';
 import { AiService, DashboardsService, TemplatesService, TemplateResponse } from '../../api-client';
 import { TemplateConfigurationService } from '../template-configuration.service';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
-import { ReactiveFormsModule } from '@angular/forms';
 import { vi, type Mock } from 'vitest';
+import { readTemplate } from '../../../test-utils/component-resources';
 
 describe('TemplateWizardComponent', () => {
   let component: TemplateWizardComponent;
@@ -62,7 +61,7 @@ describe('TemplateWizardComponent', () => {
     mockDialogRef = { close: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [TemplateWizardComponent, NoopAnimationsModule, ReactiveFormsModule],
+      imports: [TemplateWizardComponent],
       schemas: [NO_ERRORS_SCHEMA],
       providers: [
         TemplateConfigurationService,
@@ -74,7 +73,11 @@ describe('TemplateWizardComponent', () => {
       ],
     })
       .overrideComponent(TemplateWizardComponent, {
-        set: { template: '<div></div>', schemas: [NO_ERRORS_SCHEMA] },
+        set: {
+          template: readTemplate('./template-wizard.component.html'),
+          templateUrl: undefined,
+          schemas: [NO_ERRORS_SCHEMA],
+        },
       })
       .compileComponents();
 
@@ -90,7 +93,10 @@ describe('TemplateWizardComponent', () => {
   it('should validate form and enable/disable next button', () => {
     expect(component.selectionValid()).toBe(false);
 
-    component.selectTemplate(mockTemplates[0]!);
+    const firstTemplate = mockTemplates[0];
+    if (firstTemplate) {
+      component.selectTemplate(firstTemplate);
+    }
     expect(component.selectionValid()).toBe(true);
 
     component.formModel.update((m) => ({ ...m, mode: 'custom', rawSql: '' }));
@@ -123,7 +129,10 @@ describe('TemplateWizardComponent', () => {
 
   it('should create widget with inferred template visualization on saveWidget()', () => {
     component.templates.set(mockTemplates);
-    component.selectTemplate(mockTemplates[0]!);
+    const firstTemplate = mockTemplates[0];
+    if (firstTemplate) {
+      component.selectTemplate(firstTemplate);
+    }
     component.finalSql.set('SELECT 1 GROUP BY d');
 
     component.saveWidget();
@@ -188,14 +197,18 @@ describe('TemplateWizardComponent', () => {
   it('should update search with debounce', () => {
     vi.useFakeTimers();
     const loadSpy = vi.spyOn(component, 'loadTemplates');
-    component.updateSearch({ target: { value: 'adm' } } as unknown as Event);
+    const input = document.createElement('input');
+    input.value = 'adm';
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
+    component.updateSearch(event);
     vi.advanceTimersByTime(300);
     expect(loadSpy).toHaveBeenCalledWith('adm');
     vi.useRealTimers();
   });
 
   it('should handle loadTemplates error', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     mockTemplatesApi.listTemplatesApiV1TemplatesGet.mockReturnValue(
       throwError(() => new Error('fail')),
@@ -254,37 +267,5 @@ describe('TemplateWizardComponent', () => {
   it('should close dialog without deleting anything on cancel()', () => {
     component.cancel();
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
-  });
-
-  it('should highlight SQL and sync scroll', () => {
-    component.finalSql.set("SELECT * FROM t WHERE a = 'x' AND b = 5");
-    const html = component.highlightedSql();
-    expect(html).toBeTruthy();
-
-    component.finalSql.set('');
-    expect(component.highlightedSql()).toBeTruthy();
-
-    const highlight = document.createElement('div');
-    highlight.classList.add('highlight-layer');
-    const parent = document.createElement('div');
-    parent.appendChild(highlight);
-    const textarea = document.createElement('textarea');
-    parent.appendChild(textarea);
-    textarea.scrollTop = 10;
-    textarea.scrollLeft = 5;
-
-    component.syncScroll({ target: textarea } as unknown as Event);
-    expect(highlight.scrollTop).toBe(10);
-    expect(highlight.scrollLeft).toBe(5);
-
-    const loneParent = document.createElement('div');
-    const loneTextarea = document.createElement('textarea');
-    loneParent.appendChild(loneTextarea);
-    component.syncScroll({ target: loneTextarea } as unknown as Event);
-  });
-
-  it('should cast results to table data', () => {
-    const res = { columns: ['a'], data: [{ a: 1 }] };
-    expect(component.asTableData(res)).toEqual(res);
   });
 });

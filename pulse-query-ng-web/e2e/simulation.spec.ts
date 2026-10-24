@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end What-If capacity simulation optimization tests.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Simulation Engine', () => {

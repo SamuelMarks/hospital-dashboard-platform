@@ -1,8 +1,11 @@
+/**
+ * @fileoverview Unit tests for DashboardCreateDialog.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DashboardCreateDialog } from './dashboard-create.dialog';
 import { DashboardsService, DashboardResponse } from '../api-client';
 import { MatDialogRef } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
@@ -18,7 +21,7 @@ describe('DashboardCreateDialog', () => {
     mockDialogRef = { close: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [DashboardCreateDialog, NoopAnimationsModule],
+      imports: [DashboardCreateDialog],
       providers: [
         { provide: DashboardsService, useValue: mockApi },
         { provide: MatDialogRef, useValue: mockDialogRef },

@@ -50,7 +50,10 @@ export default defineConfig({
       url: "http://127.0.0.1:8000/api/v1/openapi.json",
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
-      env: { USE_SQLITE_ALEMBIC: "1" },
+      env: {
+        USE_SQLITE_ALEMBIC: "1",
+        DUCKDB_PATH: "e2e_test.duckdb",
+      },
     },
     {
       command: "cd ../pulse-query-ng-web && npm start",

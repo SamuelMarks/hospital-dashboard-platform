@@ -17,37 +17,25 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Represents a specific rule for the solver. Example: Force 'Gen_Peds' into 'Nursery' with minimum 5 beds.
  *
  * @param type Constraint type (e.g., 'force_flow')
- * @param service 
- * @param unit 
- * @param min 
- * @param max 
+ * @param service
+ * @param unit
+ * @param min
+ * @param max
  */
 @Serializable
-
-data class ScenarioConstraint (
-
-    /* Constraint type (e.g., 'force_flow') */
+data class ScenarioConstraint(
+    // Constraint type (e.g., 'force_flow')
     @SerialName(value = "type") @Required val type: kotlin.String,
-
     @SerialName(value = "service") @Required val service: kotlin.String,
-
     @SerialName(value = "unit") @Required val unit: kotlin.String,
-
     @SerialName(value = "min") val min: kotlin.Double? = null,
-
     @SerialName(value = "max") val max: kotlin.Double? = null
-
-) {
-
-
-}
-
+)

@@ -55,7 +55,10 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
         document.body?.removeChild(anchor)
         URL.revokeObjectURL(objectUrl)
         "Downloaded $filename ($mimeType)"
-    }.recoverCatching { error ->
-        throw PulseQueryError.Storage.WriteFailure(filename, "DOM Blob", error)
-    }
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { error ->
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, "DOM Blob", error))
+        }
+    )
 }

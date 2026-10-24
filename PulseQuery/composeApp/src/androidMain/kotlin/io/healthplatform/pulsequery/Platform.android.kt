@@ -36,10 +36,20 @@ actual fun getDefaultLocalHost(): String {
     }
 }
 
+/**
+ * Determines whether the current Android runtime is executing inside an emulator.
+ *
+ * @return True if running on an emulator, false on physical hardware.
+ */
 private fun isRunningOnAndroidEmulator(): Boolean {
     return hasEmulatorBuildIdentity() || hasEmulatorProductOrHardware()
 }
 
+/**
+ * Checks [Build] identity properties (fingerprint, model, manufacturer, brand, device) for emulator markers.
+ *
+ * @return True if build identity matches known emulator patterns.
+ */
 private fun hasEmulatorBuildIdentity(): Boolean {
     val fingerprint = Build.FINGERPRINT.orEmpty()
     val model = Build.MODEL.orEmpty()
@@ -54,6 +64,11 @@ private fun hasEmulatorBuildIdentity(): Boolean {
         (brand.startsWith("generic") && device.startsWith("generic"))
 }
 
+/**
+ * Checks [Build.PRODUCT] and [Build.HARDWARE] properties for emulator markers.
+ *
+ * @return True if product or hardware matches known emulator patterns.
+ */
 private fun hasEmulatorProductOrHardware(): Boolean {
     val product = Build.PRODUCT.orEmpty()
     val hardware = Build.HARDWARE.orEmpty()
@@ -85,7 +100,10 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
     return runCatching {
         targetFile.writeBytes(bytes)
         targetFile.absolutePath
-    }.recoverCatching { error ->
-        throw PulseQueryError.Storage.WriteFailure(filename, targetFile.absolutePath, error)
-    }
+    }.fold(
+        onSuccess = { Result.success(it) },
+        onFailure = { error ->
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, targetFile.absolutePath, error))
+        }
+    )
 }

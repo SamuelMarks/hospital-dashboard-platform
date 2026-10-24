@@ -306,11 +306,25 @@ class AuthViewModel(
      * @return Formatted registration error string.
      */
     private fun formatRegistrationError(error: Throwable): String {
-        val msg = PulseQueryError.fromThrowable(error).messageOrDefault("Registration failed")
-        return if (msg.contains("400") || msg.contains("already registered", ignoreCase = true)) {
+        val pulseError = PulseQueryError.fromThrowable(error)
+        val msg = pulseError.messageOrDefault("Registration failed")
+        return if (isDuplicateRegistrationError(pulseError, msg)) {
             "An account with this email already exists."
         } else {
             msg
         }
+    }
+
+    /**
+     * Checks whether [pulseError] or its [msg] indicates an existing registered account.
+     *
+     * @param pulseError Normalized [PulseQueryError] instance.
+     * @param msg Fallback message string.
+     * @return True if the failure represents a duplicate registration conflict.
+     */
+    private fun isDuplicateRegistrationError(pulseError: PulseQueryError, msg: String): Boolean {
+        return pulseError is PulseQueryError.Http.BadRequest ||
+            msg.contains("400") ||
+            msg.contains("already registered", ignoreCase = true)
     }
 }

@@ -1,8 +1,11 @@
+/**
+ * @fileoverview Unit tests for PromptDialogComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PromptDialogComponent } from './prompt-dialog.component';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { By } from '@angular/platform-browser';
+import { createMockInputEvent } from '../../../../test-utils/mock-factories';
 import { vi } from 'vitest';
 
 describe('PromptDialogComponent', () => {
@@ -13,7 +16,7 @@ describe('PromptDialogComponent', () => {
   beforeEach(async () => {
     mockRef = { close: vi.fn() };
     await TestBed.configureTestingModule({
-      imports: [PromptDialogComponent, NoopAnimationsModule],
+      imports: [PromptDialogComponent],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: { title: 'Input', value: 'Init' } },
         { provide: MatDialogRef, useValue: mockRef },
@@ -27,9 +30,7 @@ describe('PromptDialogComponent', () => {
 
   it('should initialize with value', () => {
     expect(component.value()).toBe('Init');
-    expect(component.getEventValue({ target: { value: 'typed' } } as unknown as Event)).toBe(
-      'typed',
-    );
+    expect(component.getEventValue(createMockInputEvent('typed'))).toBe('typed');
   });
 
   it('should close with value on save', () => {
@@ -47,7 +48,7 @@ describe('PromptDialogComponent', () => {
   it('should handle missing optional data', async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [PromptDialogComponent, NoopAnimationsModule],
+      imports: [PromptDialogComponent],
       providers: [
         { provide: MAT_DIALOG_DATA, useValue: { title: 'Input', value: null } },
         { provide: MatDialogRef, useValue: mockRef },
@@ -63,7 +64,7 @@ describe('PromptDialogComponent', () => {
   it('should handle optional data like message', async () => {
     TestBed.resetTestingModule();
     await TestBed.configureTestingModule({
-      imports: [PromptDialogComponent, NoopAnimationsModule],
+      imports: [PromptDialogComponent],
       providers: [
         {
           provide: MAT_DIALOG_DATA,

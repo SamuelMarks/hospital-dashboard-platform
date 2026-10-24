@@ -33,13 +33,7 @@
       </mat-form-field>
     </div>
 
-    <button
-      i18n
-      mat-flat-button
-      color="primary"
-      (click)="run()"
-      [disabled]="isLoading() || !prompt().trim()"
-    >
+    <button i18n mat-flat-button (click)="run()" [disabled]="isLoading() || !prompt().trim()">
       @if (isLoading()) {
         <mat-progress-spinner
           mode="indeterminate"
@@ -96,7 +90,6 @@
               } @else {
                 <button
                   mat-stroked-button
-                  color="primary"
                   class="vote-btn"
                   [disabled]="votingCandidateId() !== null"
                   (click)="vote(cand.id)"

@@ -1,7 +1,15 @@
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.waitUntilAtLeastOneExists
+import androidx.compose.ui.test.waitUntilDoesNotExist
 import io.healthplatform.pulsequery.App
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
@@ -98,7 +106,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
         mockSystemStatus = HttpStatusCode.ServiceUnavailable
         setupMockEngine()
 
-        AppContainer.networkHealthRepository.refreshHealth()
+        kotlinx.coroutines.runBlocking { AppContainer.networkHealthRepository.checkHealth() }
 
         setContent {
             App()
@@ -126,7 +134,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
         mockSystemJson = degradedDatabaseResponse
         setupMockEngine()
 
-        AppContainer.networkHealthRepository.refreshHealth()
+        kotlinx.coroutines.runBlocking { AppContainer.networkHealthRepository.checkHealth() }
 
         setContent {
             MaterialTheme {
@@ -146,7 +154,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
         mockSystemJson = degradedDatabaseResponse
         setupMockEngine()
 
-        AppContainer.networkHealthRepository.refreshHealth()
+        kotlinx.coroutines.runBlocking { AppContainer.networkHealthRepository.checkHealth() }
 
         setContent {
             MaterialTheme {
@@ -165,7 +173,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
         mockSystemJson = degradedDatabaseResponse
         setupMockEngine()
 
-        AppContainer.networkHealthRepository.refreshHealth()
+        kotlinx.coroutines.runBlocking { AppContainer.networkHealthRepository.checkHealth() }
 
         setContent {
             MaterialTheme {

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for server application configuration (`app.config.server.ts`).
+ */
+
 import { appConfig } from './app.config';
 import { config } from './app.config.server';
 

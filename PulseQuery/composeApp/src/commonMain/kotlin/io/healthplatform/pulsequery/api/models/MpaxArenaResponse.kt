@@ -17,35 +17,22 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import io.healthplatform.pulsequery.api.models.MpaxArenaCandidate
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Response returned after executing an MPAX Arena scenario.
  *
- * @param experimentId 
- * @param mode 
- * @param candidates 
- * @param groundTruthMpax 
+ * @param experimentId
+ * @param mode
+ * @param candidates
+ * @param groundTruthMpax
  */
 @Serializable
-
-data class MpaxArenaResponse (
-
+data class MpaxArenaResponse(
     @SerialName(value = "experiment_id") @Required val experimentId: kotlin.String,
-
     @SerialName(value = "mode") @Required val mode: kotlin.String,
-
     @SerialName(value = "candidates") @Required val candidates: kotlin.collections.List<MpaxArenaCandidate>,
-
     @SerialName(value = "ground_truth_mpax") val groundTruthMpax: kotlinx.serialization.json.JsonElement? = null
-
-) {
-
-
-}
-
+)

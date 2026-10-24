@@ -12,5 +12,6 @@ plugins {
     alias(libs.plugins.kover) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.ktlint) apply false
-    id("com.github.ben-manes.versions") version "0.51.0"
+    alias(libs.plugins.dokka) apply false
+    alias(libs.plugins.versions)
 }

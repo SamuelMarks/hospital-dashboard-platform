@@ -17,7 +17,6 @@ import {
 } from '@angular/core';
 import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { By } from '@angular/platform-browser';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
 import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
@@ -44,59 +43,83 @@ vi.mock('@material/material-color-utilities', () => ({
   __esModule: true,
 }));
 
+/** Mock table visualization component. */
 @Component({
   selector: 'viz-table',
   template: '',
 })
 class MockVizTableComponent {
+  /** Dataset input. */
   readonly dataSet = input<unknown>();
+  /** Config input. */
   readonly config = input<unknown>();
 }
+/** Mock metric visualization component. */
 @Component({
   selector: 'viz-metric',
   template: '',
 })
 class MockVizMetricComponent {
+  /** Data input. */
   readonly data = input<unknown>();
+  /** Config input. */
   readonly config = input<unknown>();
 }
+/** Mock chart visualization component. */
 @Component({
   selector: 'viz-chart',
   template: '',
 })
 class MockVizChartComponent {
+  /** Dataset input. */
   readonly dataSet = input<unknown>();
+  /** Config input. */
   readonly config = input<unknown>();
 }
+/** Mock pie visualization component. */
 @Component({
   selector: 'viz-pie',
   template: '',
 })
 class MockVizPieComponent {
+  /** Dataset input. */
   readonly dataSet = input<unknown>();
 }
+/** Mock heatmap visualization component. */
 @Component({
   selector: 'viz-heatmap',
   template: '',
 })
 class MockVizHeatmapComponent {
+  /** Dataset input. */
   readonly dataSet = input<unknown>();
 }
+/** Mock scalar visualization component. */
 @Component({
   selector: 'viz-scalar',
   template: '',
 })
 class MockVizScalarComponent {
+  /** Data input. */
   readonly data = input<unknown>();
 }
+/** Mock markdown visualization component. */
 @Component({
   selector: 'viz-markdown',
   template: '',
 })
 class MockVizMarkdownComponent {
+  /** Content input. */
   readonly content = input<string | undefined>();
 }
 
+/**
+ * Sets a signal input property on a component instance in JIT test mode.
+ *
+ * @param component - Target component instance.
+ * @param key - Signal input property name.
+ * @param value - Value to assign to the input signal.
+ */
 function setInputSignal(component: object, key: string, value: unknown): void {
   const record = component as Record<string, unknown>;
   const current = record[key] as
@@ -171,7 +194,7 @@ describe('WidgetComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [WidgetComponent, NoopAnimationsModule],
+      imports: [WidgetComponent],
       providers: [
         { provide: DashboardStore, useValue: mockStore },
         { provide: DashboardsService, useValue: mockDashApi },
@@ -263,7 +286,7 @@ describe('WidgetComponent', () => {
 
     const errorState = fixture.debugElement.query(By.css('[data-testid="error-state"]'));
     expect(errorState).toBeTruthy();
-    expect(errorState.nativeElement.textContent).toContain('Syntax Error');
+    expect((errorState.nativeElement as HTMLElement).textContent).toContain('Syntax Error');
 
     const fixBtn = fixture.debugElement.query(By.css('[data-testid="btn-fix-query"]'));
     expect(fixBtn).toBeTruthy();

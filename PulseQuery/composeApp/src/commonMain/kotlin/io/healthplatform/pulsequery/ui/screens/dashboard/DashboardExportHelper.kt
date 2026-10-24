@@ -6,6 +6,7 @@ package io.healthplatform.pulsequery.ui.screens.dashboard
 
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.flatMap
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -33,7 +34,6 @@ class DashboardExportArtifact(
  * Helper object providing export capabilities for Dashboards in JSON, CSV, and PDF formats.
  */
 object DashboardExportHelper {
-
     /**
      * Fetches the exported dashboard data from the backend API wrapped in a [Result].
      *
@@ -51,25 +51,30 @@ object DashboardExportHelper {
             val response = dashboardsApi
                 .exportDashboardApiV1DashboardsDashboardIdExportGet(dashboardId, format)
             if (!response.success) {
-                throw PulseQueryError.fromHttpStatus(
-                    response.status,
-                    "Export failed with HTTP ${response.status}"
+                Result.failure(
+                    PulseQueryError.fromHttpStatus(
+                        response.status,
+                        "Export failed with HTTP ${response.status}"
+                    )
+                )
+            } else {
+                val content = response.response.bodyAsText()
+                val isCsv = format.equals("csv", ignoreCase = true)
+                val extension = if (isCsv) "csv" else "json"
+                val mime = if (isCsv) "text/csv" else "application/json"
+                val filename = "dashboard-$dashboardId.$extension"
+
+                Result.success(
+                    DashboardExportArtifact(
+                        format = format,
+                        content = content,
+                        bytes = content.encodeToByteArray(),
+                        filename = filename,
+                        mimeType = mime
+                    )
                 )
             }
-            val content = response.response.bodyAsText()
-            val isCsv = format.equals("csv", ignoreCase = true)
-            val extension = if (isCsv) "csv" else "json"
-            val mime = if (isCsv) "text/csv" else "application/json"
-            val filename = "dashboard-$dashboardId.$extension"
-
-            DashboardExportArtifact(
-                format = format,
-                content = content,
-                bytes = content.encodeToByteArray(),
-                filename = filename,
-                mimeType = mime
-            )
-        }
+        }.flatMap { it }
     }
 
     /**
@@ -87,21 +92,26 @@ object DashboardExportHelper {
             val response = dashboardsApi
                 .exportDashboardPdfApiV1DashboardsDashboardIdExportPdfGet(dashboardId)
             if (!response.success) {
-                throw PulseQueryError.fromHttpStatus(
-                    response.status,
-                    "PDF export failed with HTTP ${response.status}"
+                Result.failure(
+                    PulseQueryError.fromHttpStatus(
+                        response.status,
+                        "PDF export failed with HTTP ${response.status}"
+                    )
+                )
+            } else {
+                val bytes = response.response.body<ByteArray>()
+                val filename = "clinical-report-$dashboardId.pdf"
+
+                Result.success(
+                    DashboardExportArtifact(
+                        format = "pdf",
+                        bytes = bytes,
+                        filename = filename,
+                        mimeType = "application/pdf"
+                    )
                 )
             }
-            val bytes = response.response.body<ByteArray>()
-            val filename = "clinical-report-$dashboardId.pdf"
-
-            DashboardExportArtifact(
-                format = "pdf",
-                bytes = bytes,
-                filename = filename,
-                mimeType = "application/pdf"
-            )
-        }
+        }.flatMap { it }
     }
 
     /**
@@ -115,8 +125,11 @@ object DashboardExportHelper {
         return runCatchingPulse {
             AppContainer.keyValueStorage?.save("export_$filename", content)
             Unit
-        }.recoverCatching { error ->
-            throw PulseQueryError.Storage.WriteFailure(filename, "keyValueStorage", error)
-        }
+        }.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { error ->
+                Result.failure(PulseQueryError.Storage.WriteFailure(filename, "keyValueStorage", error))
+            }
+        )
     }
 }

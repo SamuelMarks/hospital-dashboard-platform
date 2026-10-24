@@ -17,7 +17,7 @@
 
         <div class="tab-column">
           <div class="history-header">
-            <button mat-stroked-button color="primary" class="w-full" (click)="newChat()">
+            <button mat-stroked-button class="w-full" (click)="newChat()">
               <mat-icon aria-hidden="true">add</mat-icon>
               <span i18n>New Chat</span>
             </button>
@@ -63,7 +63,7 @@
                       <span i18n>Rename</span>
                     </button>
                     <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
-                      <mat-icon aria-hidden="true" color="warn">delete</mat-icon>
+                      <mat-icon aria-hidden="true">delete</mat-icon>
                       <span i18n>Delete</span>
                     </button>
                   </mat-menu>
@@ -94,7 +94,7 @@
 
   <mat-sidenav-content class="chat-main relative flex flex-col h-full overflow-hidden">
     @if (isHandset()) {
-      <mat-toolbar color="primary" class="flex-none">
+      <mat-toolbar class="flex-none">
         <button
           mat-icon-button
           i18n-aria-label

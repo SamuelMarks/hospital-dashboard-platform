@@ -31,7 +31,7 @@ class KeyValueStorageTest {
     fun testSaveAndGetConfig() {
         storage.save("auth_token", "abc-123")
         val result = storage.get("auth_token")
-        
+
         assertEquals("abc-123", result, "Storage should return the exact value saved.")
     }
 
@@ -43,7 +43,7 @@ class KeyValueStorageTest {
         storage.save("theme", "dark")
         storage.remove("theme")
         val result = storage.get("theme")
-        
+
         assertNull(result, "Storage should return null after the key is deleted.")
     }
 }

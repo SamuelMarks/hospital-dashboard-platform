@@ -8,10 +8,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
@@ -47,7 +44,7 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
             }
         }
     }
-    
+
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testAdminScreenLoadError() = runComposeUiTest {
@@ -59,7 +56,7 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
             }
         }
     }
-    
+
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testAdminScreenSaveError() = runComposeUiTest {

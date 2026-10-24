@@ -125,8 +125,8 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** The form control for the ribbon. */
   readonly ribbonForm = form(this.formModel);
 
-  /** Flag to prevent emit loops while syncing from route */
-  private isSyncingFromRoute = false;
+  /** Flag to prevent emit loops while syncing from route. */
+  isSyncingFromRoute = false;
 
   /** Synchronizes global department and date range filter controls from route query parameters. */
   ngOnInit(): void {

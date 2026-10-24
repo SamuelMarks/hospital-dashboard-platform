@@ -1,18 +1,25 @@
+/**
+ * HTTP request configuration model encapsulating method, path, headers, and query parameters.
+ */
 package io.healthplatform.pulsequery.api.infrastructure
 
 /**
- * Defines a config object for a given request.
- * NOTE: This object doesn't include 'body' because it
- *       allows for caching of the constructed object
- *       for many request definitions.
- * NOTE: Headers is a Map<String,String> because rfc2616 defines
- *       multi-valued headers as csv-only.
+ * Defines a configuration object for a given HTTP request.
+ *
+ * @param T Type of the optional request body payload.
+ * @property method HTTP verb for the request.
+ * @property path Relative URL path on the API server.
+ * @property headers Mutable map of HTTP request headers.
+ * @property params Map of path/template parameters.
+ * @property query Mutable map of multi-valued URL query parameters.
+ * @property requiresAuthentication Whether the endpoint requires authentication credentials.
+ * @property body Optional request payload of type [T].
  */
 data class RequestConfig<T>(
     val method: RequestMethod,
     val path: String,
     val headers: MutableMap<String, String> = mutableMapOf(),
-    val params: MutableMap<String, Any> = mutableMapOf(),
+    val params: Map<String, String> = emptyMap(),
     val query: MutableMap<String, List<String>> = mutableMapOf(),
     val requiresAuthentication: Boolean,
     val body: T? = null

@@ -7,13 +7,7 @@
   </div>
 
   <div class="flex gap-2">
-    <button
-      i18n
-      mat-flat-button
-      color="primary"
-      (click)="store.runSimulation()"
-      [disabled]="store.isSimulating()"
-    >
+    <button i18n mat-flat-button (click)="store.runSimulation()" [disabled]="store.isSimulating()">
       @if (store.isSimulating()) {
         <mat-progress-spinner
           mode="indeterminate"
@@ -58,7 +52,7 @@
   <mat-card class="panel">
     <div class="flex justify-between items-center mb-4">
       <h3 i18n class="font-medium text-lg">Unit Capacities</h3>
-      <button i18n mat-button color="primary" (click)="addCapacity()">
+      <button i18n mat-button (click)="addCapacity()">
         <mat-icon aria-hidden="true">add</mat-icon> Add Unit
       </button>
     </div>
@@ -89,7 +83,6 @@
             mat-icon-button
             i18n-aria-label
             aria-label="Remove"
-            color="warn"
             (click)="removeCapacity($index)"
             i18n-matTooltip
             matTooltip="Remove"

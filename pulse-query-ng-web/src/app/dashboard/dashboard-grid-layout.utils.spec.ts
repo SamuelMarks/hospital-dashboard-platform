@@ -3,6 +3,9 @@
  */
 
 import {
+  buildHttpWidgetConfig,
+  buildSqlWidgetConfig,
+  buildTextWidgetConfig,
   findFirstAvailableSlot,
   hasGridCollision,
   offsetWidgetCoordinates,
@@ -10,6 +13,13 @@ import {
 } from './dashboard-grid-layout.utils';
 import { WidgetResponse } from '../api-client';
 
+/**
+ * Creates a test `WidgetResponse` with the given ID and configuration dictionary.
+ *
+ * @param id - Widget identifier.
+ * @param config - Widget configuration object.
+ * @returns Test `WidgetResponse` fixture.
+ */
 function makeWidget(id: string, config: Record<string, unknown>): WidgetResponse {
   return {
     id,
@@ -69,5 +79,25 @@ describe('dashboard-grid-layout.utils', () => {
     });
     expect(offsetWidgetCoordinates({})).toEqual({ x: 1, y: 1 });
     expect(offsetWidgetCoordinates({ x: 11, y: 0 })).toEqual({ x: 11, y: 1 });
+  });
+
+  it('builds strongly typed HTTP, Text, and SQL widget configs', () => {
+    expect(buildHttpWidgetConfig({ url: 'https://example.com', x: 1 })).toEqual({
+      url: 'https://example.com',
+      x: 1,
+    });
+    expect(buildHttpWidgetConfig({ x: 1 })).toEqual({ url: '', x: 1 });
+
+    expect(buildTextWidgetConfig({ content: 'hello', x: 2 })).toEqual({
+      content: 'hello',
+      x: 2,
+    });
+    expect(buildTextWidgetConfig({ x: 2 })).toEqual({ content: '', x: 2 });
+
+    expect(buildSqlWidgetConfig({ query: 'SELECT 1', x: 3 })).toEqual({
+      query: 'SELECT 1',
+      x: 3,
+    });
+    expect(buildSqlWidgetConfig({ x: 3 })).toEqual({ query: '', x: 3 });
   });
 });

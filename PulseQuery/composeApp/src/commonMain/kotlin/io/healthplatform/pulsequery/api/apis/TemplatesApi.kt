@@ -12,29 +12,46 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.TemplateCreate
 import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.api.models.TemplateUpdate
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/templates` reusable clinical SQL widget template CRUD endpoints.
+ */
 open class TemplatesApi : ApiClient {
 
+    /**
+     * Constructs a [TemplatesApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -42,21 +59,29 @@ open class TemplatesApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [TemplatesApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Create Template
      * Register a new analytics template in the system.  Args:     template_in (TemplateCreate): Validated template payload.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The persisted template object.
-     * @param templateCreate 
+     * @param templateCreate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun createTemplateApiV1TemplatesPost(templateCreate: TemplateCreate, token: kotlin.String? = null): HttpResponse<TemplateResponse> {
-
+    open suspend fun createTemplateApiV1TemplatesPost(
+        templateCreate: TemplateCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<TemplateResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = templateCreate
@@ -65,7 +90,7 @@ open class TemplatesApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/templates/",
             query = localVariableQuery,
@@ -80,27 +105,27 @@ open class TemplatesApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Delete Template
      * Hard delete a template from the registry.  Args:     template_id (UUID): The unique ID of the template.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Raises:     HTTPException: 404 if not found.
-     * @param templateId 
+     * @param templateId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
-    open suspend fun deleteTemplateApiV1TemplatesTemplateIdDelete(templateId: kotlin.String, token: kotlin.String? = null): HttpResponse<Unit> {
-
+    open suspend fun deleteTemplateApiV1TemplatesTemplateIdDelete(
+        templateId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<Unit> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.DELETE,
             "/api/v1/templates/{template_id}".replace("{" + "template_id" + "}", "$templateId"),
             query = localVariableQuery,
@@ -115,27 +140,28 @@ open class TemplatesApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Get Template
      * Retrieve details for a specific template.  Args:     template_id (UUID): The unique ID of the template.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The requested template.  Raises:     HTTPException: 404 if not found.
-     * @param templateId 
+     * @param templateId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getTemplateApiV1TemplatesTemplateIdGet(templateId: kotlin.String, token: kotlin.String? = null): HttpResponse<TemplateResponse> {
-
+    open suspend fun getTemplateApiV1TemplatesTemplateIdGet(
+        templateId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<TemplateResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/templates/{template_id}".replace("{" + "template_id" + "}", "$templateId"),
             query = localVariableQuery,
@@ -150,7 +176,6 @@ open class TemplatesApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * List Templates
      * Retrieve a list of available widget templates with filtering and pagination.  Args:     db (AsyncSession): Database session dependency.     category (Optional[str]): Filter templates by category name.     search (Optional[str]): Case-insensitive search term for title or description.     limit (int): Maximum number of records to return.     current_user (User): Authenticated user dependency.  Returns:     List[WidgetTemplate]: Filtered list of templates.
@@ -161,11 +186,15 @@ open class TemplatesApi : ApiClient {
      * @return kotlin.collections.List<TemplateResponse>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listTemplatesApiV1TemplatesGet(category: kotlin.String? = null, search: kotlin.String? = null, limit: kotlin.Int? = 30, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<TemplateResponse>> {
-
+    open suspend fun listTemplatesApiV1TemplatesGet(
+        category: kotlin.String? = null,
+        search: kotlin.String? = null,
+        limit: kotlin.Int? = 30,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<TemplateResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -175,7 +204,7 @@ open class TemplatesApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/templates/",
             query = localVariableQuery,
@@ -195,7 +224,10 @@ open class TemplatesApi : ApiClient {
         companion object : KSerializer<ListTemplatesApiV1TemplatesGetResponse> {
             private val serializer: KSerializer<List<TemplateResponse>> = serializer<List<TemplateResponse>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListTemplatesApiV1TemplatesGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListTemplatesApiV1TemplatesGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListTemplatesApiV1TemplatesGetResponse(serializer.deserialize(decoder))
         }
     }
@@ -203,14 +235,17 @@ open class TemplatesApi : ApiClient {
     /**
      * Update Template
      * Update an existing template&#39;s definition.  Args:     template_id (UUID): The unique ID of the template.     template_in (TemplateUpdate): Partial update payload.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The updated template.  Raises:     HTTPException: 404 if not found.
-     * @param templateId 
-     * @param templateUpdate 
+     * @param templateId
+     * @param templateUpdate
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun updateTemplateApiV1TemplatesTemplateIdPut(templateId: kotlin.String, templateUpdate: TemplateUpdate, token: kotlin.String? = null): HttpResponse<TemplateResponse> {
-
+    open suspend fun updateTemplateApiV1TemplatesTemplateIdPut(
+        templateId: kotlin.String,
+        templateUpdate: TemplateUpdate,
+        token: kotlin.String? = null
+    ): HttpResponse<TemplateResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = templateUpdate
@@ -219,7 +254,7 @@ open class TemplatesApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/templates/{template_id}".replace("{" + "template_id" + "}", "$templateId"),
             query = localVariableQuery,
@@ -233,7 +268,4 @@ open class TemplatesApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

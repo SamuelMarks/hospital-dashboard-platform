@@ -1,8 +1,8 @@
 /**
  * @fileoverview Dialog-based wizard for creating and configuring dashboard widgets.
  */
-import { Component, inject, signal, computed, OnInit, OnDestroy, effect } from '@angular/core';
-import { FormRoot, FormField, form, required } from '@angular/forms/signals';
+import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { form, required } from '@angular/forms/signals';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
@@ -12,16 +12,8 @@ import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { provideNativeDateAdapter } from '@angular/material/core';
-import { MatRadioModule } from '@angular/material/radio';
-import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
 
 // Core Imports
 import {
@@ -38,8 +30,13 @@ import { DashboardStore } from '../dashboard.store';
 // Component Imports
 import { SqlBuilderComponent } from '../../editors/sql-builder.component';
 import { HttpConfigComponent } from '../../editors/http-config.component';
-import { WidgetComponent } from '../../widget/widget.component';
 import { TextEditorComponent } from '../../editors/text-editor.component';
+import { WidgetBuilderMarketplaceStepComponent } from './widget-builder-marketplace-step.component';
+import { WidgetBuilderCustomSourceStepComponent } from './widget-builder-custom-source-step.component';
+import {
+  VisualizationOption,
+  WidgetBuilderVisualizeStepComponent,
+} from './widget-builder-visualize-step.component';
 
 /**
  * Data injected into the Widget Builder Dialog.
@@ -63,26 +60,18 @@ export interface WidgetBuilderData {
 @Component({
   selector: 'app-widget-builder',
   imports: [
-    FormRoot,
-    FormField,
     MatDialogModule,
     MatStepperModule,
     MatButtonModule,
     MatIconModule,
     MatTabsModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatChipsModule,
-    MatSelectModule,
-    MatTooltipModule,
     MatProgressSpinnerModule,
-    MatRadioModule,
-    MatCardModule,
-    MatDividerModule,
     SqlBuilderComponent,
     HttpConfigComponent,
-    WidgetComponent,
     TextEditorComponent,
+    WidgetBuilderMarketplaceStepComponent,
+    WidgetBuilderCustomSourceStepComponent,
+    WidgetBuilderVisualizeStepComponent,
   ],
   providers: [provideNativeDateAdapter()],
 
@@ -95,68 +84,6 @@ export interface WidgetBuilderData {
         width: 100vw;
         max-width: 1200px;
         background-color: var(--sys-background);
-      }
-
-      /* Template Grid */
-      .template-card {
-        border: 1px solid var(--sys-surface-border);
-        background-color: var(--sys-surface);
-        border-radius: 8px;
-        padding: 16px;
-        cursor: pointer;
-        transition: all 0.2s;
-        outline: none;
-        color: var(--sys-text-primary);
-      }
-      .template-card:hover {
-        background-color: var(--sys-hover);
-        border-color: var(--sys-primary);
-        transform: translateY(-2px);
-      }
-      .template-card.selected {
-        background-color: var(--sys-selected);
-        border-color: var(--sys-primary);
-        box-shadow: 0 0 0 1px var(--sys-primary);
-      }
-
-      /* Source Options */
-      .source-option {
-        border: 1px solid var(--sys-surface-border);
-        border-radius: 12px;
-        padding: 32px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        background-color: var(--sys-surface);
-        color: var(--sys-text-primary);
-      }
-      .source-option:hover {
-        background-color: var(--sys-hover);
-        border-color: var(--sys-primary);
-      }
-      .source-option.selected {
-        background-color: var(--sys-selected);
-        border-color: var(--sys-primary);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      }
-
-      /* Viz Selection */
-      .viz-option {
-        border: 1px solid var(--sys-surface-border);
-        border-radius: 4px;
-        padding: 8px;
-        text-align: center;
-        cursor: pointer;
-        color: var(--sys-text-secondary);
-        background-color: var(--sys-surface);
-      }
-      .viz-option:hover {
-        background-color: var(--sys-hover);
-      }
-      .viz-option.selected {
-        background-color: var(--sys-selected);
-        color: var(--sys-primary);
-        border-color: var(--sys-primary);
       }
 
       /* Dialog Header Override */
@@ -244,7 +171,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   });
 
   /** List of supported visualizations. */
-  readonly visualizations = [
+  readonly visualizations: VisualizationOption[] = [
     { id: 'table', icon: 'table_chart', label: $localize`Table` },
     { id: 'metric', icon: 'exposure_plus_1', label: $localize`Metric Card` },
     { id: 'bar_chart', icon: 'bar_chart', label: $localize`Bar Chart` },
@@ -261,6 +188,33 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    */
   getTemplateAriaLabel(t: TemplateResponse): string {
     return $localize`Select template: ${t.title}`;
+  }
+
+  /**
+   * Updates the widget title in `vizFormModel`.
+   *
+   * @param title - Updated widget title string.
+   */
+  updateTitle(title: string): void {
+    this.vizFormModel.update((m) => ({ ...m, title }));
+  }
+
+  /**
+   * Updates the selected X-axis column in `vizFormModel`.
+   *
+   * @param xKey - Selected X-axis column name or null.
+   */
+  updateXKey(xKey: string | null): void {
+    this.vizFormModel.update((m) => ({ ...m, xKey }));
+  }
+
+  /**
+   * Updates the selected Y-axis column in `vizFormModel`.
+   *
+   * @param yKey - Selected Y-axis column name or null.
+   */
+  updateYKey(yKey: string | null): void {
+    this.vizFormModel.update((m) => ({ ...m, yKey }));
   }
 
   /** Whether to show axis config options. */
@@ -311,24 +265,26 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /** Active Tab Index. */
   readonly selectedTab = signal(0);
 
-  /** Creates component with internal effects. */
-  constructor() {
-    // Title Sync Effect
-    effect(() => {
-      const val = this.vizFormModel().title;
-      const w = this.draftWidget();
-      if (w && w.title !== val) {
-        this.draftWidget.set({ ...w, title: val });
-      }
-    });
-
-    // Axis Sync Effect
-    effect(() => {
-      const xKey = this.vizFormModel().xKey;
-      const yKey = this.vizFormModel().yKey;
-      this.syncVizConfig(xKey, yKey);
-    });
-  }
+  /**
+   * Computed widget snapshot merging the active `draftWidget` with live `vizFormModel`
+   * title and axis column mappings (`xKey`, `yKey`) without side-effect mutations.
+   */
+  readonly previewWidget = computed<WidgetResponse | null>(() => {
+    const w = this.draftWidget();
+    if (!w) {
+      return null;
+    }
+    const formVal = this.vizFormModel();
+    return {
+      ...w,
+      title: formVal.title || w.title,
+      config: {
+        ...w.config,
+        xKey: formVal.xKey,
+        yKey: formVal.yKey,
+      },
+    };
+  });
 
   /** Loads initial widget templates and subscribes to debounced search query changes. */
   ngOnInit(): void {
@@ -475,7 +431,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    *
    * @param stepper - Optional Material stepper instance to advance on success.
    */
-  initializeDraft(stepper?: MatStepper): void {
+  initializeDraft(stepper?: Pick<MatStepper, 'next'>): void {
     this.isBusy.set(true);
 
     // Determine defaults
@@ -533,7 +489,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    *
    * @param stepper - Material stepper instance to advance once the query executes.
    */
-  runTemplateQuery(stepper: MatStepper): void {
+  runTemplateQuery(stepper: Pick<MatStepper, 'next'>): void {
     const w = this.draftWidget();
     const t = this.selectedTemplate();
     if (!w || !t) return;
@@ -562,7 +518,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    *
    * @param stepper - Material stepper instance to advance.
    */
-  validateDataPresence(stepper: MatStepper): void {
+  validateDataPresence(stepper: Pick<MatStepper, 'next'>): void {
     const id = this.draftWidgetId();
     if (id) this.store.refreshWidget(id);
     stepper.next();
@@ -634,7 +590,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   /** Persists widget to backend and closes. */
   saveAndClose(): void {
-    const w = this.draftWidget();
+    const w = this.previewWidget();
     if (!w) return;
 
     this.isBusy.set(true);

@@ -25,7 +25,7 @@ import sqlglot
 
 from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
-from app.database.duckdb import duckdb_manager
+from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
 from app.models.dashboard import Dashboard, DashboardShare, Widget
 from app.models.user import User
 from app.schemas.dashboard import (
@@ -35,6 +35,7 @@ from app.schemas.dashboard import (
   WidgetReorderRequest,
 )
 from app.schemas.execution import SqlRunnerResultDict
+from app.schemas.widget import WidgetCreate, WidgetUpdate
 from app.services.pdf_export import generate_clinical_pdf_report
 from app.services.provisioning import provisioning_service
 from app.services.runners.sql import DuckDBCursorProtocol, run_sql_widget
@@ -202,6 +203,217 @@ class DashboardService:
     finally:
       conn.close()
 
+  async def validate_sql_query_async(
+    self,
+    query: str,
+    accept_language: str | None = None,
+    conn_factory: ConnFactoryCallable | None = None,
+  ) -> AppResult[bool]:
+    """
+    Asynchronously validates a SQL query on a worker thread via `run_in_duckdb_thread`.
+
+    Args:
+        query (str): Raw SQL string to validate.
+        accept_language (str | None): Optional HTTP `Accept-Language` header.
+        conn_factory (ConnFactoryCallable | None): Optional connection factory override.
+
+    Returns:
+        AppResult[bool]: `Ok(True)` if valid or empty, else `Err(AppError)` with localized message.
+    """
+    return await run_in_duckdb_thread(self.validate_sql_query_result, query, accept_language, conn_factory)
+
+  async def update_dashboard_result(
+    self,
+    dashboard: Dashboard,
+    permission_level: str,
+    dashboard_update: DashboardCreate,
+    db: AsyncSession,
+  ) -> AppResult[Dashboard]:
+    """
+    Renames an authorized `dashboard` and persists the change.
+
+    Args:
+        dashboard (Dashboard): Authorized dashboard ORM model.
+        permission_level (str): Resolved access level (`OWNER` or `EDIT`).
+        dashboard_update (DashboardCreate): Updated name payload.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[Dashboard]: `Ok(Dashboard)` with `permission_level` populated.
+    """
+    dashboard.name = dashboard_update.name
+    await db.commit()
+    dashboard.permission_level = permission_level
+    return Ok(dashboard)
+
+  async def delete_dashboard_result(
+    self,
+    dashboard: Dashboard,
+    db: AsyncSession,
+  ) -> AppResult[bool]:
+    """
+    Deletes an authorized `dashboard` and commits the transaction.
+
+    Args:
+        dashboard (Dashboard): Authorized dashboard ORM model.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[bool]: `Ok(True)` once deleted.
+    """
+    await db.delete(dashboard)
+    await db.commit()
+    return Ok(True)
+
+  async def create_widget_result(
+    self,
+    dashboard_id: UUID,
+    widget_in: WidgetCreate,
+    current_user: User,
+    db: AsyncSession,
+    accept_language: str | None = None,
+    conn_factory: ConnFactoryCallable | None = None,
+  ) -> AppResult[Widget]:
+    """
+    Validates and creates a new widget attached to `dashboard_id`.
+
+    Args:
+        dashboard_id (UUID): Target dashboard UUID.
+        widget_in (WidgetCreate): Polymorphic widget creation payload.
+        current_user (User): Authenticated user.
+        db (AsyncSession): Active database session.
+        accept_language (str | None): Optional HTTP `Accept-Language` header.
+        conn_factory (ConnFactoryCallable | None): Optional DuckDB connection factory override.
+
+    Returns:
+        AppResult[Widget]: `Ok(Widget)` on success, or `Err(AppError)` on SQL validation failure.
+    """
+    if widget_in.type == "SQL":
+      val_res = await self.validate_sql_query_async(
+        widget_in.config.query,
+        accept_language or current_user.language_preference,
+        conn_factory=conn_factory,
+      )
+      if isinstance(val_res, Err):
+        return val_res
+
+    widget = Widget(
+      dashboard_id=dashboard_id,
+      title=widget_in.title,
+      type=widget_in.type,
+      visualization=widget_in.visualization,
+      config=widget_in.config.model_dump(mode="json"),
+    )
+    db.add(widget)
+    await db.commit()
+    return Ok(widget)
+
+  async def get_widget_by_id_result(
+    self,
+    widget_id: UUID,
+    current_user: User,
+    db: AsyncSession,
+    accept_language: str | None = None,
+  ) -> AppResult[Widget]:
+    """
+    Fetches a `Widget` by primary key, returning a localized `404` `AppError` if missing.
+
+    Args:
+        widget_id (UUID): Target widget UUID.
+        current_user (User): Requesting user model instance.
+        db (AsyncSession): Active database session.
+        accept_language (str | None): Optional HTTP `Accept-Language` header.
+
+    Returns:
+        AppResult[Widget]: `Ok(Widget)` if found, else `Err(AppError)`.
+    """
+    result = await db.execute(select(Widget).where(Widget.id == widget_id))
+    widget = result.scalars().first()
+    if not widget:
+      msg = get_translated_message(
+        accept_language or current_user.language_preference, "error.widget_not_found", "Widget not found"
+      )
+      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message=msg, status_code=404))
+    return Ok(widget)
+
+  async def update_widget_result(
+    self,
+    widget: Widget,
+    widget_in: WidgetUpdate,
+    current_user: User,
+    db: AsyncSession,
+    accept_language: str | None = None,
+    conn_factory: ConnFactoryCallable | None = None,
+  ) -> AppResult[Widget]:
+    """
+    Validates and applies partial updates to an authorized `widget`.
+
+    Args:
+        widget (Widget): Existing widget ORM instance.
+        widget_in (WidgetUpdate): Partial widget update payload.
+        current_user (User): Authenticated user.
+        db (AsyncSession): Active database session.
+        accept_language (str | None): Optional HTTP `Accept-Language` header.
+        conn_factory (ConnFactoryCallable | None): Optional DuckDB connection factory override.
+
+    Returns:
+        AppResult[Widget]: `Ok(Widget)` on success, or `Err(AppError)` on SQL validation failure.
+    """
+    if widget.type == "SQL" and widget_in.config and "query" in widget_in.config:
+      val_res = await self.validate_sql_query_async(
+        str(widget_in.config["query"]),
+        accept_language or current_user.language_preference,
+        conn_factory=conn_factory,
+      )
+      if isinstance(val_res, Err):
+        return val_res
+
+    update_data = widget_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+      setattr(widget, key, value)
+
+    await db.commit()
+    return Ok(widget)
+
+  async def delete_widget_result(
+    self,
+    widget: Widget,
+    db: AsyncSession,
+  ) -> AppResult[bool]:
+    """
+    Deletes an authorized `widget` and commits the transaction.
+
+    Args:
+        widget (Widget): Existing widget ORM instance.
+        db (AsyncSession): Active database session.
+
+    Returns:
+        AppResult[bool]: `Ok(True)` once deleted.
+    """
+    await db.delete(widget)
+    await db.commit()
+    return Ok(True)
+
+  def get_dashboard_widget_result(
+    self,
+    dashboard: Dashboard,
+    widget_id: UUID,
+  ) -> AppResult[Widget]:
+    """
+    Finds a specific `widget_id` inside `dashboard.widgets`, returning `AppResult[Widget]`.
+
+    Args:
+        dashboard (Dashboard): Loaded dashboard ORM instance with `widgets`.
+        widget_id (UUID): Target widget UUID within the dashboard.
+
+    Returns:
+        AppResult[Widget]: `Ok(Widget)` if present, else `Err(AppError)` with status 404.
+    """
+    widget = next((w for w in dashboard.widgets if w.id == widget_id), None)
+    if not widget:
+      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Widget not found", status_code=404))
+    return Ok(widget)
+
   async def list_user_dashboards(self, current_user: User, db: AsyncSession) -> list[Dashboard]:
     """
     Lists all dashboards owned by or shared with `current_user`.
@@ -233,6 +445,32 @@ class DashboardService:
 
     return owned_dashboards + shared_dashboards
 
+  async def _reload_dashboard_with_widgets_result(
+    self,
+    dashboard_id: UUID,
+    db: AsyncSession,
+    not_found_message: str = "Dashboard not found",
+  ) -> AppResult[Dashboard]:
+    """
+    Reloads a committed `Dashboard` with its `widgets` eagerly loaded and sets `permission_level = "OWNER"`.
+
+    Args:
+        dashboard_id (UUID): Target dashboard UUID.
+        db (AsyncSession): Active database session.
+        not_found_message (str): Error message if reload returns None.
+
+    Returns:
+        AppResult[Dashboard]: `Ok(Dashboard)` or `Err(AppError)` with status 404.
+    """
+    result = await db.execute(
+      select(Dashboard).where(Dashboard.id == dashboard_id).options(selectinload(Dashboard.widgets))
+    )
+    dashboard = result.scalars().first()
+    if not dashboard:
+      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message=not_found_message, status_code=404))
+    dashboard.permission_level = "OWNER"
+    return Ok(dashboard)
+
   async def create_dashboard_result(
     self,
     dashboard_in: DashboardCreate,
@@ -253,15 +491,7 @@ class DashboardService:
     new_dashboard = Dashboard(name=dashboard_in.name, owner_id=current_user.id)
     db.add(new_dashboard)
     await db.commit()
-
-    result = await db.execute(
-      select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
-    )
-    dashboard = result.scalars().first()
-    if not dashboard:
-      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Dashboard not found", status_code=404))
-    dashboard.permission_level = "OWNER"
-    return Ok(dashboard)
+    return await self._reload_dashboard_with_widgets_result(new_dashboard.id, db, "Dashboard not found")
 
   async def clone_dashboard_result(
     self,
@@ -295,17 +525,7 @@ class DashboardService:
       db.add(new_widget)
 
     await db.commit()
-
-    result = await db.execute(
-      select(Dashboard).where(Dashboard.id == new_dashboard.id).options(selectinload(Dashboard.widgets))
-    )
-    dashboard = result.scalars().first()
-    if not dashboard:
-      return Err(
-        AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Cloned dashboard could not be loaded", status_code=404)
-      )
-    dashboard.permission_level = "OWNER"
-    return Ok(dashboard)
+    return await self._reload_dashboard_with_widgets_result(new_dashboard.id, db, "Cloned dashboard could not be loaded")
 
   async def restore_default_dashboard_result(
     self,
@@ -324,17 +544,7 @@ class DashboardService:
     """
     dashboard = await provisioning_service.restore_defaults(db, current_user)
     await db.commit()
-
-    result = await db.execute(
-      select(Dashboard).where(Dashboard.id == dashboard.id).options(selectinload(Dashboard.widgets))
-    )
-    dash = result.scalars().first()
-    if not dash:
-      return Err(
-        AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Default dashboard could not be restored", status_code=404)
-      )
-    dash.permission_level = "OWNER"
-    return Ok(dash)
+    return await self._reload_dashboard_with_widgets_result(dashboard.id, db, "Default dashboard could not be restored")
 
   async def reorder_widgets(
     self,

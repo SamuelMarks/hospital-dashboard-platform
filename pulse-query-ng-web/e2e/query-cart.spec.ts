@@ -1,3 +1,7 @@
+/**
+ * @fileoverview End-to-end Query Cart workflow tests for saving ad-hoc SQL queries and provisioning widgets.
+ */
+
 import { test, expect } from './fixtures';
 
 test.describe('Query Cart', () => {
@@ -49,7 +53,7 @@ test.describe('Query Cart', () => {
     const cartList = loggedInPage.getByTestId('query-cart-list');
     await expect(cartList).toBeVisible({ timeout: 15000 });
 
-    const cartItem = cartList.locator('[data-testid^=\"cart-item-\"]').first();
+    const cartItem = cartList.locator('[data-testid^="cart-item-"]').first();
     await expect(cartItem).toBeVisible({ timeout: 15000 });
 
     // Add to dashboard

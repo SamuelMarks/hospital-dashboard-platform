@@ -17,24 +17,16 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Payload for voting on a candidate.
  *
- * @param candidateId 
+ * @param candidateId
  */
 @Serializable
-
-data class MessageVoteRequest (
-
+data class MessageVoteRequest(
     @SerialName(value = "candidate_id") @Required val candidateId: kotlin.String
-
-) {
-
-
-}
-
+)

@@ -10,10 +10,10 @@ import { config } from './app/app.config.server';
 /**
  * Bootstraps the root `App` component using the merged server `ApplicationConfig`.
  *
- * @param context - Angular SSR `BootstrapContext` for the current request.
+ * @param context - Optional Angular SSR `BootstrapContext` for the current request.
  * @returns Promise resolving to the bootstrapped `ApplicationRef`.
  */
-const bootstrap = (context: BootstrapContext): Promise<ApplicationRef> =>
+const bootstrap = (context?: BootstrapContext): Promise<ApplicationRef> =>
   bootstrapApplication(App, config, context);
 
 export default bootstrap;

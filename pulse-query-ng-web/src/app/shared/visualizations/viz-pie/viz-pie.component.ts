@@ -139,8 +139,8 @@ export class VizPieComponent {
   /** Signal tracking the label of the currently hovered or focused slice. */
   readonly activeSlice = signal<string | null>(null);
 
-  /** Internal signal storing the active hexadecimal color palette for slices. */
-  private readonly palette = signal<string[]>(['#1976d2', '#42a5f5', '#64b5f6']);
+  /** Reactive signal storing the active hexadecimal color palette for slices. */
+  readonly palette = signal<string[]>(['#1976d2', '#42a5f5', '#64b5f6']);
 
   /**
    * Registers a reactive effect to synchronize slice colors with the active Material 3 theme.
@@ -159,8 +159,7 @@ export class VizPieComponent {
   /**
    * Reads `--chart-color-*` CSS custom properties from the document root and updates `palette`.
    */
-  private updatePaletteFomDom(): void {
-    if (!this.document) return;
+  updatePaletteFomDom(): void {
     const style = getComputedStyle(this.document.documentElement);
     const p1 = style.getPropertyValue('--chart-color-1').trim();
     const p2 = style.getPropertyValue('--chart-color-2').trim();

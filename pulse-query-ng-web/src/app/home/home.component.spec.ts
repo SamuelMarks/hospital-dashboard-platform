@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for HomeComponent.
+ */
+
 import { provideHttpClient, withXhr } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -6,7 +10,6 @@ import { DashboardsService, DashboardResponse } from '../api-client';
 import { provideRouter, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError, Subject } from 'rxjs';
 import { signal } from '@angular/core';
 import { AskDataService } from '../global/ask-data.service';
@@ -15,7 +18,6 @@ import { ThemeService } from '../core/theme/theme.service';
 import { OnboardingService } from '../shared/components/onboarding/onboarding.service';
 import { readTemplate } from '../../test-utils/component-resources';
 import { PromptDialogComponent } from '../shared/components/dialogs/prompt-dialog.component';
-import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 import { DashboardCreateDialog } from './dashboard-create.dialog';
 import { vi } from 'vitest';
 
@@ -113,7 +115,7 @@ describe('HomeComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [HomeComponent, NoopAnimationsModule],
+      imports: [HomeComponent],
       providers: [
         provideRouter([]),
         provideHttpClient(withXhr()),

@@ -41,6 +41,9 @@ class DuckDbHealthSchema(BaseModel):
 class DataHealthSchema(BaseModel):
   """Schema for clinical dataset health and availability."""
 
+  status: str = Field(default="ready", description="Dataset readiness status: ready, empty, or critical.")
+  table_count: int = Field(default=0, description="Total number of clinical dataset tables.")
+  tables: list[str] = Field(default_factory=list, description="List of available clinical dataset tables.")
   has_default_data: bool = Field(description="True if default hospital_data.csv was found.")
   fallback_generated: bool = Field(description="True if synthetic fallback sample data was generated.")
   missing_files: list[str] = Field(default_factory=list, description="List of expected files not found.")
@@ -50,6 +53,8 @@ class DataHealthSchema(BaseModel):
 class TemplateHealthSchema(BaseModel):
   """Schema for template seeder pack health."""
 
+  status: str = Field(default="ready", description="Template registry readiness status: ready, empty, or critical.")
+  template_count: int = Field(default=0, description="Total number of templates present in the database.")
   templates_loaded: int = Field(description="Number of widget templates seeded into database.")
   has_templates: bool = Field(description="True if one or more templates are available.")
   missing_file: bool = Field(description="True if initial_templates.json was missing.")
@@ -66,11 +71,13 @@ class LlmHealthSchema(BaseModel):
 class SystemHealthResponse(BaseModel):
   """Schema for aggregated system health response."""
 
-  overall_status: str = Field(description="Overall health status: healthy, degraded, or critical.")
+  status: str = Field(default="healthy", description="Overall health status: healthy, degraded, unhealthy, or critical.")
+  overall_status: str = Field(description="Overall health status: healthy, degraded, unhealthy, or critical.")
   timestamp: str = Field(description="ISO timestamp of health assessment.")
   postgres: PostgresHealthSchema = Field(description="Relational database health.")
   duckdb: DuckDbHealthSchema = Field(description="OLAP analytics database health.")
   data: DataHealthSchema = Field(description="Data readiness and ingestion health.")
+  datasets: DataHealthSchema = Field(description="Clinical datasets readiness and row count health.")
   templates: TemplateHealthSchema = Field(description="Template registry health.")
   llm: LlmHealthSchema = Field(description="LLM provider configuration health.")
   warnings: list[DiagnosticWarningSchema] = Field(default_factory=list, description="Active diagnostic warnings.")

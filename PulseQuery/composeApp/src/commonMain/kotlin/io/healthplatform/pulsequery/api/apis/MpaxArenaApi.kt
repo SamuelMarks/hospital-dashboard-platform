@@ -12,28 +12,39 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.MpaxArenaRequest
 import io.healthplatform.pulsequery.api.models.MpaxArenaResponse
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
 
+/**
+ * REST client for `/api/v1/mpax_arena` competitive LLM vs mathematical bed optimization evaluation endpoints.
+ */
 open class MpaxArenaApi : ApiClient {
 
+    /**
+     * Constructs a [MpaxArenaApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -41,21 +52,29 @@ open class MpaxArenaApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [MpaxArenaApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Run Mpax Arena Mode
      * Executes an MPAX Arena evaluation mode. Modes: judge, translator, constraints, sql_vs_mpax, critic.
-     * @param mpaxArenaRequest 
+     * @param mpaxArenaRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MpaxArenaResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun runMpaxArenaModeApiV1MpaxArenaRunPost(mpaxArenaRequest: MpaxArenaRequest, token: kotlin.String? = null): HttpResponse<MpaxArenaResponse> {
-
+    open suspend fun runMpaxArenaModeApiV1MpaxArenaRunPost(
+        mpaxArenaRequest: MpaxArenaRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<MpaxArenaResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = mpaxArenaRequest
@@ -64,7 +83,7 @@ open class MpaxArenaApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/mpax_arena/run",
             query = localVariableQuery,
@@ -79,29 +98,30 @@ open class MpaxArenaApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Vote Mpax Arena Candidate
      * Records a winning vote for an LLM candidate in an MPAX Arena run.  Args:     run_id (str): UUID string identifying the MPAX Arena experiment.     candidate_id (str): UUID string identifying the candidate voted for.     current_user (User): Authenticated user session.     db (AsyncSession): Active transactional database session.  Returns:     MpaxArenaResponse: Updated experiment results with is_selected true for winning candidate.  Raises:     HTTPException: 404 if run or candidate not found, 500 on server failure.
-     * @param runId 
-     * @param candidateId 
+     * @param runId
+     * @param candidateId
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MpaxArenaResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(runId: kotlin.String, candidateId: kotlin.String, token: kotlin.String? = null): HttpResponse<MpaxArenaResponse> {
-
+    open suspend fun voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(
+        runId: kotlin.String,
+        candidateId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<MpaxArenaResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/mpax_arena/runs/{run_id}/candidates/{candidate_id}/vote".replace("{" + "run_id" + "}", "$runId").replace("{" + "candidate_id" + "}", "$candidateId"),
             query = localVariableQuery,
@@ -115,6 +135,4 @@ open class MpaxArenaApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
 }

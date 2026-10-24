@@ -5,7 +5,7 @@
  * overrides, and execution results via the generated OpenAPI `SimulationService`.
  */
 
-import { Injectable, signal, inject } from '@angular/core';
+import { Service, signal, inject } from '@angular/core';
 import {
   SimulationService as ApiSimulationService,
   ScenarioConstraint,
@@ -40,7 +40,7 @@ export interface AffinityOverrideEntry {
 /**
  * Signal-backed store managing What-If simulation state and solver execution.
  */
-@Injectable()
+@Service()
 export class SimulationStore {
   /** Generated OpenAPI client for simulation endpoints. */
   private readonly api = inject(ApiSimulationService);

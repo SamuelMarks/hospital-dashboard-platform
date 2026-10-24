@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for `adminGuard`.
+ */
+
 import { TestBed } from '@angular/core/testing';
 import { adminGuard } from './admin.guard';
 import { AuthService } from './auth.service';

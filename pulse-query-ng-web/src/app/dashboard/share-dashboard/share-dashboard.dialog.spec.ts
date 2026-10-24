@@ -1,10 +1,14 @@
+/**
+ * @fileoverview Unit tests for ShareDashboardDialog.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ShareDashboardDialog } from './share-dashboard.dialog';
 import { HttpClient } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { of, throwError } from 'rxjs';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMockInputEvent } from '../../../test-utils/mock-factories';
 
 describe('ShareDashboardDialog', () => {
   let component: ShareDashboardDialog;
@@ -35,7 +39,7 @@ describe('ShareDashboardDialog', () => {
     mockDialogRef = { close: vi.fn() };
 
     await TestBed.configureTestingModule({
-      imports: [ShareDashboardDialog, NoopAnimationsModule],
+      imports: [ShareDashboardDialog],
       providers: [
         { provide: HttpClient, useValue: mockHttp },
         { provide: MatDialogRef, useValue: mockDialogRef },
@@ -54,7 +58,7 @@ describe('ShareDashboardDialog', () => {
     fixture.detectChanges();
     expect(mockHttp.get).toHaveBeenCalledWith('/api/v1/dashboards/d1/shares');
     expect(component.shares().length).toBe(1);
-    expect(component.shares()[0].user_email).toBe('collab@hospital.org');
+    expect(component.shares()[0]?.user_email).toBe('collab@hospital.org');
   });
 
   it('should handle error when loading shares fails', () => {
@@ -75,7 +79,7 @@ describe('ShareDashboardDialog', () => {
     };
     mockHttp.post.mockReturnValue(of(newShare));
 
-    component.onEmailInput({ target: { value: 'doctor@hospital.org' } } as unknown as Event);
+    component.onEmailInput(createMockInputEvent('doctor@hospital.org'));
     component.roleInput.set('EDIT');
     component.addShare();
 
@@ -104,7 +108,7 @@ describe('ShareDashboardDialog', () => {
     component.addShare();
 
     expect(component.shares().length).toBe(1);
-    expect(component.shares()[0].permission_level).toBe('EDIT');
+    expect(component.shares()[0]?.permission_level).toBe('EDIT');
   });
 
   it('should do nothing if emailInput is blank', () => {
@@ -121,7 +125,6 @@ describe('ShareDashboardDialog', () => {
     expect(component.isSubmitting()).toBe(false);
     expect(component.errorMessage()).toBe('User not found');
 
-    // Fallback without detail
     mockHttp.post.mockReturnValue(throwError(() => ({})));
     component.emailInput.set('unknown2@hospital.org');
     component.addShare();
@@ -143,7 +146,6 @@ describe('ShareDashboardDialog', () => {
     component.revokeShare('s1');
     expect(component.errorMessage()).toBe('Cannot revoke');
 
-    // Fallback without detail
     mockHttp.delete.mockReturnValue(throwError(() => ({})));
     component.revokeShare('s1');
     expect(component.errorMessage()).toBe('Failed to revoke share');

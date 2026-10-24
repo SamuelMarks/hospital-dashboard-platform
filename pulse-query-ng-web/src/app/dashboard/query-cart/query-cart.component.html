@@ -38,7 +38,6 @@
         <!-- Click functionality for non-drag interaction -->
         <button
           mat-icon-button
-          color="primary"
           (click)="addToDashboard(item)"
           [disabled]="!dashboardId()"
           i18n-matTooltip
@@ -61,7 +60,6 @@
         </button>
         <button
           mat-icon-button
-          color="warn"
           (click)="remove(item)"
           i18n-matTooltip
           matTooltip="Remove"

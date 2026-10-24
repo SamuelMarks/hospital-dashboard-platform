@@ -12,33 +12,45 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ForgotPasswordRequest
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.PasswordResetResponse
 import io.healthplatform.pulsequery.api.models.RefreshTokenRequest
 import io.healthplatform.pulsequery.api.models.ResetPasswordRequest
 import io.healthplatform.pulsequery.api.models.Token
 import io.healthplatform.pulsequery.api.models.UserCreate
 import io.healthplatform.pulsequery.api.models.UserResponse
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.json.Json
 import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.json.Json
 
+/**
+ * REST client for `/api/v1/auth` OAuth2 login, token refresh, user registration, and password reset endpoints.
+ */
 open class AuthApi : ApiClient {
 
+    /**
+     * Constructs a [AuthApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -46,20 +58,27 @@ open class AuthApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [AuthApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Forgot Password
      * Generates a secure password reset token and dispatches reset instructions.  Args:     payload (ForgotPasswordRequest): Email address of requesting user.     db (AsyncSession): PostgreSQL async database session.     email_service (EmailNotificationService): Transactional email service dependency.  Returns:     PasswordResetResponse: Confirmation message (reset token omitted from response).
-     * @param forgotPasswordRequest 
+     * @param forgotPasswordRequest
      * @return PasswordResetResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun forgotPasswordApiV1AuthForgotPasswordPost(forgotPasswordRequest: ForgotPasswordRequest): HttpResponse<PasswordResetResponse> {
-
+    open suspend fun forgotPasswordApiV1AuthForgotPasswordPost(
+        forgotPasswordRequest: ForgotPasswordRequest
+    ): HttpResponse<PasswordResetResponse> {
         val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = forgotPasswordRequest
@@ -67,7 +86,7 @@ open class AuthApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/auth/forgot-password",
             query = localVariableQuery,
@@ -82,13 +101,11 @@ open class AuthApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Login Access Token
      * OAuth2 compatible token login, get an access token for future requests.  Args:     form_data (OAuth2PasswordRequestForm): Login credentials (username&#x3D;email).     db (AsyncSession): Database session.  Returns:     Token: Access token and type.
-     * @param username 
-     * @param password 
+     * @param username
+     * @param password
      * @param acceptLanguage  (optional)
      * @param grantType  (optional)
      * @param scope  (optional, default to "")
@@ -97,11 +114,18 @@ open class AuthApi : ApiClient {
      * @return Token
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun loginAccessTokenApiV1AuthLoginPost(username: kotlin.String, password: kotlin.String, acceptLanguage: kotlin.String? = null, grantType: kotlin.String? = null, scope: kotlin.String? = "", clientId: kotlin.String? = null, clientSecret: kotlin.String? = null): HttpResponse<Token> {
-
+    open suspend fun loginAccessTokenApiV1AuthLoginPost(
+        username: kotlin.String,
+        password: kotlin.String,
+        acceptLanguage: kotlin.String? = null,
+        grantType: kotlin.String? = null,
+        scope: kotlin.String? = "",
+        clientId: kotlin.String? = null,
+        clientSecret: kotlin.String? = null
+    ): HttpResponse<Token> {
         val localVariableAuthNames = listOf<String>()
 
-        val localVariableBody = 
+        val localVariableBody =
             ParametersBuilder().also {
                 grantType?.apply { it.append("grant_type", grantType.toString()) }
                 username?.apply { it.append("username", username.toString()) }
@@ -115,7 +139,7 @@ open class AuthApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/auth/login",
             query = localVariableQuery,
@@ -130,7 +154,6 @@ open class AuthApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Read Users Me
      * Fetch the current logged in user profile.
@@ -139,17 +162,16 @@ open class AuthApi : ApiClient {
      */
     @Suppress("UNCHECKED_CAST")
     open suspend fun readUsersMeApiV1AuthMeGet(token: kotlin.String? = null): HttpResponse<UserResponse> {
-
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/auth/me",
             query = localVariableQuery,
@@ -164,16 +186,14 @@ open class AuthApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Refresh Access Token
      * Rotates refresh token and issues a new access and refresh token pair.  Args:     payload (RefreshTokenRequest): Active refresh token.     db (AsyncSession): PostgreSQL async database session.  Returns:     Token: New rotated access and refresh tokens.  Raises:     HTTPException: 401 if refresh token is invalid, expired, or revoked.
-     * @param refreshTokenRequest 
+     * @param refreshTokenRequest
      * @return Token
      */
     @Suppress("UNCHECKED_CAST")
     open suspend fun refreshAccessTokenApiV1AuthRefreshPost(refreshTokenRequest: RefreshTokenRequest): HttpResponse<Token> {
-
         val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = refreshTokenRequest
@@ -181,7 +201,7 @@ open class AuthApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/auth/refresh",
             query = localVariableQuery,
@@ -196,18 +216,18 @@ open class AuthApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Register User
      * Register a new user in the system.  Steps: 1. Verify email uniqueness. 2. Create User record. 3. Flush session (to generate User ID). 4. Call Provisioning Service to create default dashboard/widgets. 5. Commit transaction.  Args:     user_in (UserCreate): The payload containing email and password.     db (AsyncSession): Database session.  Returns:     User: The newly created user object.  Raises:     HTTPException: If email already exists.
-     * @param userCreate 
+     * @param userCreate
      * @param acceptLanguage  (optional)
      * @return UserResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun registerUserApiV1AuthRegisterPost(userCreate: UserCreate, acceptLanguage: kotlin.String? = null): HttpResponse<UserResponse> {
-
+    open suspend fun registerUserApiV1AuthRegisterPost(
+        userCreate: UserCreate,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<UserResponse> {
         val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = userCreate
@@ -216,7 +236,7 @@ open class AuthApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/auth/register",
             query = localVariableQuery,
@@ -231,17 +251,16 @@ open class AuthApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Reset Password
      * Resets user account password and revokes existing sessions.  Args:     payload (ResetPasswordRequest): Reset token and new password.     db (AsyncSession): PostgreSQL async database session.  Returns:     PasswordResetResponse: Success confirmation message.  Raises:     HTTPException: 400 if reset token is invalid or expired.     HTTPException: 404 if the user cannot be located.
-     * @param resetPasswordRequest 
+     * @param resetPasswordRequest
      * @return PasswordResetResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun resetPasswordApiV1AuthResetPasswordPost(resetPasswordRequest: ResetPasswordRequest): HttpResponse<PasswordResetResponse> {
-
+    open suspend fun resetPasswordApiV1AuthResetPasswordPost(
+        resetPasswordRequest: ResetPasswordRequest
+    ): HttpResponse<PasswordResetResponse> {
         val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = resetPasswordRequest
@@ -249,7 +268,7 @@ open class AuthApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/auth/reset-password",
             query = localVariableQuery,
@@ -264,16 +283,13 @@ open class AuthApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Revoke Session
      * Revokes an active refresh token session.  Args:     payload (RefreshTokenRequest): Refresh token to revoke.     db (AsyncSession): PostgreSQL async database session.
-     * @param refreshTokenRequest 
+     * @param refreshTokenRequest
      * @return void
      */
     open suspend fun revokeSessionApiV1AuthRevokePost(refreshTokenRequest: RefreshTokenRequest): HttpResponse<Unit> {
-
         val localVariableAuthNames = listOf<String>()
 
         val localVariableBody = refreshTokenRequest
@@ -281,7 +297,7 @@ open class AuthApi : ApiClient {
         val localVariableQuery = mutableMapOf<String, List<String>>()
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.POST,
             "/api/v1/auth/revoke",
             query = localVariableQuery,
@@ -295,7 +311,4 @@ open class AuthApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

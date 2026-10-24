@@ -17,27 +17,18 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Status confirmation after password reset or email dispatch.
  *
- * @param message 
- * @param resetToken 
+ * @param message
+ * @param resetToken
  */
 @Serializable
-
-data class PasswordResetResponse (
-
+data class PasswordResetResponse(
     @SerialName(value = "message") @Required val message: kotlin.String,
-
     @SerialName(value = "reset_token") val resetToken: kotlin.String? = null
-
-) {
-
-
-}
-
+)

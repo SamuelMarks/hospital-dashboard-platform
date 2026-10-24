@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for SqlSnippetComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal, WritableSignal } from '@angular/core';
 import { SqlSnippetComponent } from './sql-snippet.component';
@@ -32,8 +36,8 @@ describe('SqlSnippetComponent', () => {
     let emittedSql = '';
     component.run.subscribe((s: string) => (emittedSql = s));
 
-    // Find Run button (it has mat-stroked-button and color accent in template)
-    const runBtn = fixture.debugElement.query(By.css('button[color="accent"]'));
+    // Find Run button (it has mat-stroked-button in template)
+    const runBtn = fixture.debugElement.query(By.css('button[mat-stroked-button]'));
     runBtn.triggerEventHandler('click', null);
     expect(emittedSql).toBe('SELECT * FROM table');
   });

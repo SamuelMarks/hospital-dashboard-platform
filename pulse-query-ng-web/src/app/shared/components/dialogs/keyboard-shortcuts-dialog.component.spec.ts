@@ -4,7 +4,6 @@
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { PLATFORM_ID } from '@angular/core';
 import { vi } from 'vitest';
@@ -31,6 +30,7 @@ vi.mock('@material/material-color-utilities', () => ({
 describe('KeyboardShortcutsDialogComponent', () => {
   let component: KeyboardShortcutsDialogComponent;
   let fixture: ComponentFixture<KeyboardShortcutsDialogComponent>;
+  let hostEl: HTMLElement;
 
   const mockDialogRef = { close: vi.fn() };
   const mockThemeService = {
@@ -46,7 +46,7 @@ describe('KeyboardShortcutsDialogComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [KeyboardShortcutsDialogComponent, NoopAnimationsModule],
+      imports: [KeyboardShortcutsDialogComponent],
       providers: [
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: ThemeService, useValue: mockThemeService },
@@ -59,6 +59,7 @@ describe('KeyboardShortcutsDialogComponent', () => {
 
     fixture = TestBed.createComponent(KeyboardShortcutsDialogComponent);
     component = fixture.componentInstance;
+    hostEl = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();
   });
 
@@ -67,34 +68,34 @@ describe('KeyboardShortcutsDialogComponent', () => {
   });
 
   it('should display the dialog title', () => {
-    const title = fixture.nativeElement.querySelector('h2');
+    const title = hostEl.querySelector('h2');
     expect(title?.textContent).toContain('Keyboard Shortcuts');
   });
 
   it('should display category headings', () => {
-    const headings = fixture.nativeElement.querySelectorAll('.category-title');
+    const headings = hostEl.querySelectorAll('.category-title');
     expect(headings.length).toBeGreaterThan(0);
   });
 
   it('should display shortcut rows', () => {
-    const rows = fixture.nativeElement.querySelectorAll('.shortcut-row');
+    const rows = hostEl.querySelectorAll('.shortcut-row');
     expect(rows.length).toBeGreaterThan(0);
   });
 
   it('should display description and keys for each shortcut', () => {
-    const row = fixture.nativeElement.querySelector('.shortcut-row');
+    const row = hostEl.querySelector('.shortcut-row');
     expect(row?.querySelector('.shortcut-description')).toBeTruthy();
     expect(row?.querySelector('.shortcut-keys')).toBeTruthy();
   });
 
   it('should have a close button with aria-label', () => {
-    const btn = fixture.nativeElement.querySelector('[data-testid="close-button"]');
+    const btn = hostEl.querySelector('[data-testid="close-button"]');
     expect(btn).toBeTruthy();
     expect(btn?.getAttribute('aria-label')).toBe('Close dialog');
   });
 
   it('should have a "Got it" button', () => {
-    const btn = fixture.nativeElement.querySelector('[data-testid="got-it-button"]');
+    const btn = hostEl.querySelector('[data-testid="got-it-button"]');
     expect(btn).toBeTruthy();
     expect(btn?.textContent?.trim()).toBe('Got it');
   });
@@ -141,6 +142,6 @@ describe('KeyboardShortcutsDialogComponent', () => {
     );
     const newFixture = TestBed.createComponent(KeyboardShortcutsDialogComponent);
     const cats = newFixture.componentInstance.categories();
-    expect(cats[0].label).toBe('custom_cat');
+    expect(cats[0]?.label).toBe('custom_cat');
   });
 });

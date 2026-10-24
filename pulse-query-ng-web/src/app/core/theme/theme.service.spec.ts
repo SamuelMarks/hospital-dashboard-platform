@@ -1,4 +1,3 @@
-import { safeStorage } from '../storage.utils';
 /**
  * @fileoverview Unit tests for ThemeService.
  * Includes manual mocking of @material/material-color-utilities.
@@ -6,6 +5,7 @@ import { safeStorage } from '../storage.utils';
  * instead of a partial mock to satisfy Angular's internal SharedStylesHost requirements.
  */
 
+import { safeStorage } from '../storage.utils';
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
@@ -36,7 +36,10 @@ describe('ThemeService', () => {
   const STORAGE_KEY_MODE = 'pulse_theme_mode';
   const STORAGE_KEY_SEED = 'pulse_theme_seed';
 
-  const createMatchMedia = (matches = false, query = '(prefers-color-scheme: dark)') => ({
+  const createMatchMedia = (
+    matches = false,
+    query = '(prefers-color-scheme: dark)',
+  ): MediaQueryList => ({
     matches,
     media: query,
     onchange: null,
@@ -76,7 +79,7 @@ describe('ThemeService', () => {
     if (originalMatchMedia) {
       window.matchMedia = originalMatchMedia;
     } else {
-      (window as unknown as { matchMedia: undefined }).matchMedia = undefined;
+      Reflect.set(window, 'matchMedia', undefined);
     }
   });
 

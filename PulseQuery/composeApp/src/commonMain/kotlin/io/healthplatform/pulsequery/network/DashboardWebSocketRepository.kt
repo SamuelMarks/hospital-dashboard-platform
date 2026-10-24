@@ -4,6 +4,8 @@
  */
 package io.healthplatform.pulsequery.network
 
+import io.healthplatform.pulsequery.core.result.runCatchingPulse
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.webSocketSession
@@ -139,17 +141,14 @@ class DashboardWebSocketRepository(
         activeDashboardId = dashboardId
 
         sessionJob = coroutineScope.launch {
-            try {
-                val client = httpClient ?: AppContainer.httpClient
-                val wsUrl = buildWebSocketUrl(dashboardId, token)
-                runCatching {
-                    val session = sessionFactory(client, wsUrl)
-                    listenToWebSocketSession(session)
-                }
-            } finally {
-                _isConnected.value = false
-                activeSession = null
+            val client = httpClient ?: AppContainer.httpClient
+            val wsUrl = buildWebSocketUrl(dashboardId, token)
+            runCatchingPulseAsync {
+                val session = sessionFactory(client, wsUrl)
+                listenToWebSocketSession(session)
             }
+            _isConnected.value = false
+            activeSession = null
         }
     }
 
@@ -167,6 +166,11 @@ class DashboardWebSocketRepository(
         return "$wsScheme://$cleanBase/api/v1/ws/dashboards/$dashboardId?token=$token"
     }
 
+    /**
+     * Consumes incoming frames from an active [CollaborationSocketSession] until closed.
+     *
+     * @param session Active WebSocket session.
+     */
     private suspend fun listenToWebSocketSession(session: CollaborationSocketSession) {
         activeSession = session
         _isConnected.value = true
@@ -177,8 +181,13 @@ class DashboardWebSocketRepository(
         }
     }
 
+    /**
+     * Decodes a raw WebSocket text frame into a [CollaborationEvent] via [Result] and updates state flows.
+     *
+     * @param text Raw JSON text frame received from the WebSocket channel.
+     */
     private suspend fun handleIncomingTextFrame(text: String) {
-        val event = runCatching { json.decodeFromString<CollaborationEvent>(text) }.getOrNull() ?: return
+        val event = runCatchingPulse { json.decodeFromString<CollaborationEvent>(text) }.getOrNull() ?: return
         when (event.type) {
             "USER_JOINED", "USER_LEFT" -> {
                 if (event.activeUsers.isNotEmpty()) {
@@ -199,7 +208,7 @@ class DashboardWebSocketRepository(
     suspend fun sendWidgetUpdate(widgetId: String) {
         val session = activeSession
         if (session != null) {
-            runCatching {
+            runCatchingPulseAsync {
                 val jsonMsg = json.encodeToString(
                     CollaborationEvent(type = "WIDGET_UPDATED", widgetId = widgetId)
                 )

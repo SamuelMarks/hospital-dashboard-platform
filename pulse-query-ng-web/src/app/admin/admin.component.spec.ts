@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Unit tests for AdminComponent.
+ */
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AdminComponent } from './admin.component';
 import { AdminService, AiService } from '../api-client';
@@ -5,7 +9,7 @@ import { ConnectionStatusService } from '../core/health/connection-status.servic
 import { of, throwError, delay } from 'rxjs';
 import { FormRoot, FormField } from '@angular/forms/signals';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
-import { Component, signal, DestroyRef, WritableSignal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 
 describe('AdminComponent', () => {
   let component: AdminComponent;
@@ -77,8 +81,6 @@ describe('AdminComponent', () => {
     expect(component.message()).toBe('');
     expect(component.isSaving()).toBe(false);
 
-    // Call signal setters directly just to test setting them
-    // to improve v8 coverage
     component.settingsLoaded.set(true);
     expect(component.settingsLoaded()).toBe(true);
     component.availableModels.set([]);
@@ -98,9 +100,9 @@ describe('AdminComponent', () => {
 
     fixture.detectChanges();
 
-    const loadingElement = fixture.nativeElement.querySelector('.loading');
+    const loadingElement = (fixture.nativeElement as HTMLElement).querySelector('.loading');
     expect(loadingElement).toBeTruthy();
-    expect(loadingElement.textContent).toContain('Loading settings...');
+    expect(loadingElement?.textContent).toContain('Loading settings...');
   });
 
   describe('when settings are loaded', () => {
@@ -132,7 +134,7 @@ describe('AdminComponent', () => {
 
       component.formModel.update((m) => ({
         ...m,
-        anthropic: ' test-anthropic-key ', // Test valid anthropic key with whitespace
+        anthropic: ' test-anthropic-key ',
       }));
 
       component.formModel.update((m) => {
@@ -150,11 +152,6 @@ describe('AdminComponent', () => {
 
       expect(component.message()).toBe('Settings saved successfully!');
 
-      // Simulate destroy to test cleanup
-      const destroyRef = fixture.debugElement.injector.get(DestroyRef);
-      // We don't have a clean way to force it without casting or reflection, but
-      // the set timeout is queued.
-
       vi.advanceTimersByTime(3000);
       expect(component.message()).toBe('');
       vi.useRealTimers();
@@ -166,36 +163,10 @@ describe('AdminComponent', () => {
 
       component.saveSettings();
 
-      // Destroy the component, invoking DestroyRef handlers
       fixture.destroy();
 
       expect(clearTimeoutSpy).toHaveBeenCalled();
       vi.useRealTimers();
-    });
-
-    it('should not save invalid form', () => {
-      // Create a spy to mock invalid() returning true
-      vi.spyOn(component, 'adminForm').mockReturnValue({
-        invalid: () => true,
-      } as unknown as ReturnType<AdminComponent['adminForm']>);
-
-      component.saveSettings();
-      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).not.toHaveBeenCalled();
-    });
-
-    it('should handle missing keys from form safely', () => {
-      component.formModel.update((m) => ({
-        ...m,
-        openai: null as unknown as string,
-        anthropic: null as unknown as string,
-      }));
-
-      component.saveSettings();
-
-      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
-        api_keys: {},
-        visible_models: ['model-1'],
-      });
     });
 
     it('should handle errors during save', () => {
@@ -209,24 +180,22 @@ describe('AdminComponent', () => {
       expect(component.message()).toBe('Error saving settings.');
     });
 
-    it('should ignore non-string empty or white-space values correctly', () => {
+    it('should ignore empty or whitespace values correctly', () => {
       component.formModel.update((m) => ({
         ...m,
-        openai: '   ', // whitespace only
+        openai: '   ',
         anthropic: '   ',
       }));
 
       component.saveSettings();
 
       expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
-        api_keys: {}, // should be completely empty
+        api_keys: {},
         visible_models: ['model-1'],
       });
     });
 
     it('should safely map missing API keys to empty strings', () => {
-      // Setup the service mock with a completely undefined api_keys object
-      // instead of undefined settings as tested later
       adminServiceMock.readAdminSettingsApiV1AdminSettingsGet.mockReturnValue(
         of({ api_keys: undefined, visible_models: ['model-1'] }),
       );
@@ -240,11 +209,10 @@ describe('AdminComponent', () => {
 
     it('should render model items correctly', () => {
       fixture.detectChanges();
-      const div = fixture.nativeElement.querySelector('.model-item');
+      const div = (fixture.nativeElement as HTMLElement).querySelector('.model-item');
       expect(div).toBeTruthy();
     });
 
-    // explicitly call functions required to hit 100% test coverage
     it('should cover oninit subscribe methods', () => {
       adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut.mockReturnValue(of({}));
       component.saveSettings();

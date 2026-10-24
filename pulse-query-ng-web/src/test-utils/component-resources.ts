@@ -9,46 +9,37 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import { basename, dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
+/** Directory containing the test-utils helper modules. */
 const testUtilsDir = dirname(fileURLToPath(import.meta.url));
-
-/**
- * Checks whether a directory path corresponds to the Angular application root.
- *
- * @param dir - Directory path to inspect.
- * @returns True if the directory contains both `src/app` and `package.json`.
- */
-function isAppRoot(dir: string): boolean {
-  return existsSync(join(dir, 'src', 'app')) && existsSync(join(dir, 'package.json'));
-}
-
-/**
- * Walks up the directory tree from `startDir` to locate the Angular project root.
- *
- * @param startDir - Initial directory path from which to search upward.
- * @returns Resolved application root directory path, or `undefined` if not found.
- */
-function findAppRoot(startDir: string): string | undefined {
-  let current = startDir;
-  while (true) {
-    if (isAppRoot(current)) {
-      return current;
-    }
-    const parent = dirname(current);
-
-    if (parent === current) {
-      return undefined;
-    }
-    current = parent;
-  }
-}
-
-const cwd = process.cwd();
-const nestedCwd = resolve(cwd, 'pulse-query-ng-web');
-const appRoot =
-  findAppRoot(testUtilsDir) ??
-  (isAppRoot(cwd) ? cwd : undefined) ??
-  (isAppRoot(nestedCwd) ? nestedCwd : cwd);
+/** Resolved Angular application root directory path (`pulse-query-ng-web`). */
+const appRoot = resolve(testUtilsDir, '..', '..');
+/** Resolved `src/` directory path within the Angular application root. */
 const srcRoot = resolve(appRoot, 'src');
+
+/**
+ * Recursively searches a directory tree for the first file matching `fileName`.
+ *
+ * @param rootDir - Root directory path to search within.
+ * @param fileName - Basename of the target file to locate.
+ * @returns Full path to the first matching file, or `undefined` when not found.
+ */
+export function findFirstFile(rootDir: string, fileName: string): string | undefined {
+  if (!existsSync(rootDir)) {
+    return undefined;
+  }
+  const entries = readdirSync(rootDir);
+  for (const entry of entries) {
+    const fullPath = join(rootDir, entry);
+    const stats = statSync(fullPath);
+    if (stats.isDirectory()) {
+      const found = findFirstFile(fullPath, fileName);
+      if (found) return found;
+    } else if (entry === fileName) {
+      return fullPath;
+    }
+  }
+  return undefined;
+}
 
 /**
  * Synchronous filesystem implementation of Angular's `ResourceLoader` for unit tests.
@@ -57,7 +48,7 @@ class FsResourceLoader extends ResourceLoader {
   /** Cache mapping requested template URLs to their loaded file contents. */
   private readonly cache = new Map<string, string>();
   /** Cache mapping file basenames to their resolved absolute filesystem paths. */
-  private readonly nameCache = new Map<string, string | null>();
+  readonly nameCache = new Map<string, string | null>();
 
   /**
    * Loads the content of a component template or stylesheet resource from disk.
@@ -66,8 +57,9 @@ class FsResourceLoader extends ResourceLoader {
    * @returns Raw UTF-8 text content of the template, or an empty string for stylesheets.
    */
   get(url: string): string {
-    if (this.cache.has(url)) {
-      return this.cache.get(url)!;
+    const cached = this.cache.get(url);
+    if (cached !== undefined) {
+      return cached;
     }
 
     if (url.endsWith('.scss') || url.endsWith('.sass')) {
@@ -103,31 +95,6 @@ class FsResourceLoader extends ResourceLoader {
   }
 }
 
-/**
- * Recursively searches a directory tree for the first file matching `fileName`.
- *
- * @param rootDir - Root directory path to search within.
- * @param fileName - Basename of the target file to locate.
- * @returns Full path to the first matching file, or `undefined` when not found.
- */
-function findFirstFile(rootDir: string, fileName: string): string | undefined {
-  if (!existsSync(rootDir)) {
-    return undefined;
-  }
-  const entries = readdirSync(rootDir);
-  for (const entry of entries) {
-    const fullPath = join(rootDir, entry);
-    const stats = statSync(fullPath);
-    if (stats.isDirectory()) {
-      const found = findFirstFile(fullPath, fileName);
-      if (found) return found;
-    } else if (entry === fileName) {
-      return fullPath;
-    }
-  }
-  return undefined;
-}
-
 /** Shared singleton instance of the filesystem resource loader. */
 export const resourceLoader = new FsResourceLoader();
 
@@ -136,8 +103,9 @@ export const resourceLoader = new FsResourceLoader();
  *
  * @returns Promise that resolves once all component templates are loaded.
  */
-export const resolveComponentResourcesForTests = () =>
-  resolveComponentResources((url) => Promise.resolve(resourceLoader.get(url)));
+export function resolveComponentResourcesForTests(): Promise<void> {
+  return resolveComponentResources((url) => Promise.resolve(resourceLoader.get(url)));
+}
 
 /**
  * Reads a template file synchronously by URL via the shared resource loader.
@@ -145,4 +113,6 @@ export const resolveComponentResourcesForTests = () =>
  * @param url - Relative path or filename of the template resource.
  * @returns UTF-8 string contents of the template file.
  */
-export const readTemplate = (url: string) => resourceLoader.get(url);
+export function readTemplate(url: string): string {
+  return resourceLoader.get(url);
+}

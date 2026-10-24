@@ -12,28 +12,45 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.BedCapacityAlert
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.serializer
 
+/**
+ * REST client for `/api/v1/analytics` live bed capacity alerts and LLM candidate output telemetry endpoints.
+ */
 open class AnalyticsApi : ApiClient {
 
+    /**
+     * Constructs a [AnalyticsApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -41,10 +58,16 @@ open class AnalyticsApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [AnalyticsApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Get Capacity Alerts
@@ -53,18 +76,19 @@ open class AnalyticsApi : ApiClient {
      * @return kotlin.collections.List<BedCapacityAlert>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun getCapacityAlertsApiV1AnalyticsAlertsGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<BedCapacityAlert>> {
-
+    open suspend fun getCapacityAlertsApiV1AnalyticsAlertsGet(
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<BedCapacityAlert>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/analytics/alerts",
             query = localVariableQuery,
@@ -84,7 +108,10 @@ open class AnalyticsApi : ApiClient {
         companion object : KSerializer<GetCapacityAlertsApiV1AnalyticsAlertsGetResponse> {
             private val serializer: KSerializer<List<BedCapacityAlert>> = serializer<List<BedCapacityAlert>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: GetCapacityAlertsApiV1AnalyticsAlertsGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: GetCapacityAlertsApiV1AnalyticsAlertsGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = GetCapacityAlertsApiV1AnalyticsAlertsGetResponse(serializer.deserialize(decoder))
         }
     }
@@ -98,11 +125,14 @@ open class AnalyticsApi : ApiClient {
      * @return kotlin.collections.List<LlmOutputAnalyticsRow>
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun listLlmOutputsApiV1AnalyticsLlmGet(limit: kotlin.Int? = 500, offset: kotlin.Int? = 0, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<LlmOutputAnalyticsRow>> {
-
+    open suspend fun listLlmOutputsApiV1AnalyticsLlmGet(
+        limit: kotlin.Int? = 500,
+        offset: kotlin.Int? = 0,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<LlmOutputAnalyticsRow>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -111,7 +141,7 @@ open class AnalyticsApi : ApiClient {
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/analytics/llm",
             query = localVariableQuery,
@@ -131,9 +161,11 @@ open class AnalyticsApi : ApiClient {
         companion object : KSerializer<ListLlmOutputsApiV1AnalyticsLlmGetResponse> {
             private val serializer: KSerializer<List<LlmOutputAnalyticsRow>> = serializer<List<LlmOutputAnalyticsRow>>()
             override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: ListLlmOutputsApiV1AnalyticsLlmGetResponse) = serializer.serialize(encoder, value.value)
+            override fun serialize(
+                encoder: Encoder,
+                value: ListLlmOutputsApiV1AnalyticsLlmGetResponse
+            ) = serializer.serialize(encoder, value.value)
             override fun deserialize(decoder: Decoder) = ListLlmOutputsApiV1AnalyticsLlmGetResponse(serializer.deserialize(decoder))
         }
     }
-
 }

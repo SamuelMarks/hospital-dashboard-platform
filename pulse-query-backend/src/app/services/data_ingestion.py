@@ -16,9 +16,11 @@ import csv
 from datetime import datetime, timedelta
 import logging
 import os
+from pathlib import Path
 import random
 import re
 
+from app.core.config import BACKEND_ROOT
 from app.core.diagnostics import (
   diagnostics_registry,
   format_missing_data_warning_banner,
@@ -27,9 +29,8 @@ from app.database.duckdb import DuckDBConnectionProtocol, duckdb_manager
 
 logger = logging.getLogger("data_ingestion")
 
-FILE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(FILE_DIR, "..", "..", ".."))
-DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+PROJECT_ROOT = str(BACKEND_ROOT)
+DATA_DIR = str(BACKEND_ROOT / "data")
 DEFAULT_CSV_FILENAME = "hospital_data.csv"
 DEFAULT_CSV_PATH = os.path.join(DATA_DIR, DEFAULT_CSV_FILENAME)
 
@@ -39,6 +40,15 @@ class DataIngestionService:
   Service responsible for synchronizing the flat-file data layer (CSVs)
   with the in-memory or persisted DuckDB instance.
   """
+
+  def __init__(self, data_dir: str | Path | None = None) -> None:
+    """
+    Initializes the data ingestion service with a resolved `data_dir` path.
+
+    Args:
+        data_dir (str | Path | None): Optional directory path override; defaults to `BACKEND_ROOT / "data"`.
+    """
+    self.data_dir: Path = Path(data_dir).resolve() if data_dir is not None else (BACKEND_ROOT / "data").resolve()
 
   @staticmethod
   def _sanitize_table_name(filename: str) -> str:
@@ -191,18 +201,25 @@ class DataIngestionService:
       logger.error(f"❌ Failed to generate synthetic clinical sample data: {e}")
 
   @classmethod
-  def _ingest_single_csv(cls, conn: DuckDBConnectionProtocol, filename: str) -> bool:
+  def _ingest_single_csv(
+    cls,
+    conn: DuckDBConnectionProtocol,
+    filename: str,
+    data_dir: str | None = None,
+  ) -> bool:
     """
-    Loads a single CSV file from `DATA_DIR` into DuckDB and creates standard indices.
+    Loads a single CSV file from `data_dir` (or `DATA_DIR`) into DuckDB and creates standard indices.
 
     Args:
         conn (DuckDBConnectionProtocol): Active DuckDB read-write connection.
-        filename (str): CSV filename inside `DATA_DIR`.
+        filename (str): CSV filename inside `data_dir`.
+        data_dir (str | None): Optional directory path override; defaults to `DATA_DIR`.
 
     Returns:
         bool: True if ingestion succeeded, False if an error occurred.
     """
-    filepath = os.path.join(DATA_DIR, filename)
+    target_dir = data_dir if data_dir is not None else DATA_DIR
+    filepath = os.path.join(target_dir, filename)
     safe_filepath = filepath.replace("'", "''")
     table_name = cls._sanitize_table_name(filename)
     safe_table = table_name.replace('"', '""')
@@ -257,20 +274,54 @@ class DataIngestionService:
       logger.warning(f"Could not create compatibility alias view: {view_err}")
 
   @classmethod
-  def ingest_all_csvs(cls) -> None:
+  def _finalize_ingested_tables(cls, ingested_tables: list[str]) -> list[str]:
+    """
+    Normalizes alias table names and updates `diagnostics_registry.data_status` after CSV ingestion.
+
+    Args:
+        ingested_tables (list[str]): Raw list of sanitized table names ingested in the batch.
+
+    Returns:
+        list[str]: Final list of available table names including compatibility aliases.
+    """
+    if "synthetic_hospital_data" in ingested_tables and "hospital_data" not in ingested_tables:
+      ingested_tables.append("hospital_data")
+    elif "hospital_data" in ingested_tables and "synthetic_hospital_data" not in ingested_tables:
+      ingested_tables.append("synthetic_hospital_data")
+
+    if "synthetic_hospital_data_transfers" in ingested_tables:
+      ingested_tables.append("Synthetic_hospital_data_transfers")
+      transfers_cnt = diagnostics_registry.data_status["row_counts"].get("synthetic_hospital_data_transfers", 0)
+      diagnostics_registry.data_status["row_counts"]["Synthetic_hospital_data_transfers"] = transfers_cnt
+
+    diagnostics_registry.data_status["tables"] = list(ingested_tables)
+    diagnostics_registry.data_status["table_count"] = len({t.lower() for t in ingested_tables})
+    diagnostics_registry.data_status["status"] = "ready" if ingested_tables else "empty"
+    return ingested_tables
+
+  @classmethod
+  def ingest_all_csvs(cls, data_dir: str | None = None) -> list[str]:
     """
     Scans the data directory and loads every `.csv` file into DuckDB as a table.
     Optimizes query performance by creating indices on key dimension columns.
+
+    Args:
+        data_dir (str | None): Optional directory path override; defaults to `DATA_DIR`.
+
+    Returns:
+        list[str]: List of ingested table names in DuckDB.
     """
-    logger.info(f"🚀 Starting Auto-Ingestion from {DATA_DIR}")
+    target_dir = data_dir if data_dir is not None else DATA_DIR
+    logger.info(f"🚀 Starting Auto-Ingestion from {target_dir}")
 
-    if not os.path.exists(DATA_DIR):
-      os.makedirs(DATA_DIR)
+    if not os.path.exists(target_dir):
+      os.makedirs(target_dir)
 
-    csv_files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".csv")]
+    csv_files = [f for f in os.listdir(target_dir) if f.lower().endswith(".csv")]
     if not csv_files:
-      cls.generate_sample_data(DEFAULT_CSV_PATH)
-      synthetic_path = os.path.join(DATA_DIR, "Synthetic_hospital_data.csv")
+      default_csv_path = os.path.join(target_dir, DEFAULT_CSV_FILENAME) if data_dir is not None else DEFAULT_CSV_PATH
+      cls.generate_sample_data(default_csv_path)
+      synthetic_path = os.path.join(target_dir, "Synthetic_hospital_data.csv")
       cls.generate_synthetic_sample_data(synthetic_path)
       csv_files = [DEFAULT_CSV_FILENAME, "Synthetic_hospital_data.csv"]
     elif DEFAULT_CSV_FILENAME in csv_files:
@@ -283,16 +334,19 @@ class DataIngestionService:
         remediation="Place hospital_data.csv in pulse-query-backend/data/.",
       )
 
+    ingested_tables: list[str] = []
     with duckdb_manager._write_lock:
       conn = duckdb_manager.get_connection()
       files_processed = 0
 
       try:
         for filename in csv_files:
-          if cls._ingest_single_csv(conn, filename):
+          if cls._ingest_single_csv(conn, filename, data_dir=target_dir):
             files_processed += 1
+            ingested_tables.append(cls._sanitize_table_name(filename))
 
         cls._ensure_alias_views(conn)
+        cls._finalize_ingested_tables(ingested_tables)
         logger.info(f"✅ Ingestion Complete. {files_processed} files processed.")
 
       except Exception as e:
@@ -305,6 +359,27 @@ class DataIngestionService:
         )
       finally:
         conn.close()
+
+    return ingested_tables
+
+  def ingest_data(self, data_dir: str | Path | None = None) -> list[str]:
+    """
+    Ingests CSV files from `data_dir` (or `self.data_dir`) into DuckDB and returns table names.
+
+    Args:
+        data_dir (str | Path | None): Optional directory path override.
+
+    Returns:
+        list[str]: List of ingested table names in DuckDB.
+    """
+    default_dir = str(BACKEND_ROOT / "data")
+    if data_dir is not None:
+      resolved_dir = str(Path(data_dir).resolve())
+    elif default_dir != DATA_DIR:
+      resolved_dir = DATA_DIR
+    else:
+      resolved_dir = str(self.data_dir)
+    return self.ingest_all_csvs(data_dir=resolved_dir)
 
 
 # Singleton instance

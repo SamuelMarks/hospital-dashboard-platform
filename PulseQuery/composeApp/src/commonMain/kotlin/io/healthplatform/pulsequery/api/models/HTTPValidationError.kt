@@ -17,25 +17,15 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ValidationError
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
- * 
  *
- * @param detail 
+ *
+ * @param detail
  */
 @Serializable
-
-data class HTTPValidationError (
-
+data class HTTPValidationError(
     @SerialName(value = "detail") val detail: kotlin.collections.List<ValidationError>? = null
-
-) {
-
-
-}
-
+)

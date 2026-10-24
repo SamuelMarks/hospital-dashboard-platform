@@ -1,12 +1,15 @@
-"""Tests for `MpaxArenaService` evaluation modes."""
+"""Tests for `MpaxArenaService` evaluation modes against real database persistence."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 
 import pytest
+import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import AppError, Err, ErrorCode, Ok
+from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
 from app.models.user import User
 from app.schemas.mpax_arena import MpaxArenaRequest
 from app.schemas.simulation import ScenarioResult, SimulationAssignment
@@ -24,53 +27,51 @@ def service() -> MpaxArenaService:
   return MpaxArenaService()
 
 
-@pytest.fixture
-def mock_user() -> User:
+@pytest_asyncio.fixture
+async def arena_user(db_session: AsyncSession) -> User:
   """
-  Returns a mock `User` instance with a valid UUID.
+  Creates and persists a real `User` in `db_session` for MPAX Arena runs.
+
+  Args:
+      db_session (AsyncSession): Active test database session.
 
   Returns:
-      User: User instance.
+      User: Persisted user entity.
   """
-  return User(id=uuid.uuid4(), email="arena@hospital.org", hashed_password="pw", is_active=True)
-
-
-@pytest.fixture
-def mock_db() -> MagicMock:
-  """
-  Returns a mock `AsyncSession` with synchronous `add` and async `commit`/`rollback`.
-
-  Returns:
-      MagicMock: Configured session mock.
-  """
-  db = MagicMock(spec=AsyncSession)
-  db.add = MagicMock()
-  db.commit = AsyncMock()
-  db.rollback = AsyncMock()
-  return db
+  user = User(id=uuid.uuid4(), email=f"arena_{uuid.uuid4()}@hospital.org", hashed_password="pw", is_active=True)
+  db_session.add(user)
+  await db_session.commit()
+  await db_session.refresh(user)
+  return user
 
 
 @pytest.mark.asyncio
-async def test_run_mpax_arena_invalid_mode(service: MpaxArenaService, mock_db: MagicMock, mock_user: User) -> None:
+async def test_run_mpax_arena_invalid_mode(
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
+) -> None:
   """
   Verifies `run_mpax_arena` raises `ValueError` and `run_mpax_arena_result` returns `Err(MPAX_INVALID_MODE)`.
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
   req = MpaxArenaRequest(prompt="Test", mode="invalid_mode")
-  res = await service.run_mpax_arena_result(req, mock_db, mock_user)
+  res = await service.run_mpax_arena_result(req, db_session, arena_user)
   assert isinstance(res, Err)
   assert res.error.code == ErrorCode.MPAX_INVALID_MODE
   with pytest.raises(ValueError, match="Unknown mode"):
-    await service.run_mpax_arena(req, mock_db, mock_user)
+    await service.run_mpax_arena(req, db_session, arena_user)
 
 
 @pytest.mark.asyncio
 async def test_run_mpax_arena_empty_prompt_and_mode_results(
-  service: MpaxArenaService, mock_db: MagicMock, mock_user: User
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
 ) -> None:
   """
   Verifies `run_mpax_arena_result` returns `Err(VALIDATION_ERROR)` for empty prompt or mode,
@@ -78,19 +79,21 @@ async def test_run_mpax_arena_empty_prompt_and_mode_results(
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
-  empty_prompt_res = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="  ", mode="judge"), mock_db, mock_user)
+  empty_prompt_res = await service.run_mpax_arena_result(
+    MpaxArenaRequest(prompt="  ", mode="judge"), db_session, arena_user
+  )
   assert isinstance(empty_prompt_res, Err)
   assert empty_prompt_res.error.code == ErrorCode.VALIDATION_ERROR
 
-  empty_mode_res = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="ok", mode=""), mock_db, mock_user)
+  empty_mode_res = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="ok", mode=""), db_session, arena_user)
   assert isinstance(empty_mode_res, Err)
   assert empty_mode_res.error.code == ErrorCode.VALIDATION_ERROR
 
   with patch.object(service, "_run_judge_mode", new=AsyncMock(side_effect=ValueError("Bad SQL"))):
-    val_err = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="ok", mode="judge"), mock_db, mock_user)
+    val_err = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="ok", mode="judge"), db_session, arena_user)
     assert isinstance(val_err, Err)
     assert val_err.error.code == ErrorCode.VALIDATION_ERROR
 
@@ -98,18 +101,22 @@ async def test_run_mpax_arena_empty_prompt_and_mode_results(
     patch.object(service, "_run_judge_mode", new=AsyncMock(side_effect=RuntimeError("Crash"))),
     pytest.raises(RuntimeError, match="MPAX Arena failed: Crash"),
   ):
-    await service.run_mpax_arena(MpaxArenaRequest(prompt="ok", mode="judge"), mock_db, mock_user)
+    await service.run_mpax_arena(MpaxArenaRequest(prompt="ok", mode="judge"), db_session, arena_user)
 
 
 @pytest.mark.asyncio
-async def test_run_judge_mode(service: MpaxArenaService, mock_db: MagicMock, mock_user: User) -> None:
+async def test_run_judge_mode(
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
+) -> None:
   """
-  Verifies `judge` mode fetches demand data, runs MPAX, and queries LLMs.
+  Verifies `judge` mode fetches demand data, runs MPAX, queries LLMs, and persists to `db_session`.
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
   req = MpaxArenaRequest(prompt="Test", mode="judge", demand_sql="SELECT 1")
 
@@ -124,11 +131,18 @@ async def test_run_judge_mode(service: MpaxArenaService, mock_db: MagicMock, moc
     nl = chr(10)
     mock_llm.return_value = [MagicMock(provider_name="m1", content=f"```sql{nl}SELECT 1{nl}```")]
 
-    res = await service.run_mpax_arena(req, mock_db, mock_user)
+    res = await service.run_mpax_arena(req, db_session, arena_user)
     assert res.mode == "judge"
     assert len(res.candidates) == 1
 
-  # Also verify Err from simulation_service propagates as ValueError / VALIDATION_ERROR
+  run_row = (
+    (await db_session.execute(select(MpaxArenaRun).where(MpaxArenaRun.id == uuid.UUID(res.experiment_id))))
+    .scalars()
+    .first()
+  )
+  assert run_row is not None
+  assert run_row.mode == "judge"
+
   with (
     patch.object(service, "_get_demand_data", return_value=[]),
     patch(
@@ -138,20 +152,24 @@ async def test_run_judge_mode(service: MpaxArenaService, mock_db: MagicMock, moc
       ),
     ),
   ):
-    err_res = await service.run_mpax_arena_result(req, mock_db, mock_user)
+    err_res = await service.run_mpax_arena_result(req, db_session, arena_user)
     assert isinstance(err_res, Err)
     assert "Judge sim error" in err_res.error.message
 
 
 @pytest.mark.asyncio
-async def test_run_translator_mode(service: MpaxArenaService, mock_db: MagicMock, mock_user: User) -> None:
+async def test_run_translator_mode(
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
+) -> None:
   """
-  Verifies `translator` mode runs MPAX and prompts LLMs to summarize the output.
+  Verifies `translator` mode runs MPAX, prompts LLMs to summarize the output, and persists to `db_session`.
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
   req = MpaxArenaRequest(prompt="Test", mode="translator")
 
@@ -164,7 +182,7 @@ async def test_run_translator_mode(service: MpaxArenaService, mock_db: MagicMock
   ):
     mock_llm.return_value = [MagicMock(provider_name="m1", content="Answer")]
 
-    res = await service.run_mpax_arena(req, mock_db, mock_user)
+    res = await service.run_mpax_arena(req, db_session, arena_user)
     assert res.mode == "translator"
     assert len(res.candidates) == 1
 
@@ -174,19 +192,23 @@ async def test_run_translator_mode(service: MpaxArenaService, mock_db: MagicMock
       return_value=Err(AppError(code=ErrorCode.VALIDATION_ERROR, message="Translator sim error", status_code=400))
     ),
   ):
-    err_res = await service.run_mpax_arena_result(req, mock_db, mock_user)
+    err_res = await service.run_mpax_arena_result(req, db_session, arena_user)
     assert isinstance(err_res, Err)
 
 
 @pytest.mark.asyncio
-async def test_run_constraints_mode(service: MpaxArenaService, mock_db: MagicMock, mock_user: User) -> None:
+async def test_run_constraints_mode(
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
+) -> None:
   """
   Verifies `constraints` mode parses LLM JSON capacity dictionaries and runs MPAX for each candidate.
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
   req = MpaxArenaRequest(prompt="Test", mode="constraints")
 
@@ -203,7 +225,7 @@ async def test_run_constraints_mode(service: MpaxArenaService, mock_db: MagicMoc
       "app.services.mpax_arena_service.simulation_service.run_scenario_async",
       new=AsyncMock(side_effect=[ok_sim, err_sim, ok_sim, ok_sim]),
     ):
-      res = await service.run_mpax_arena(req, mock_db, mock_user)
+      res = await service.run_mpax_arena(req, db_session, arena_user)
       assert res.mode == "constraints"
       assert len(res.candidates) == 4
       assert res.candidates[1].mpax_result is not None
@@ -211,14 +233,18 @@ async def test_run_constraints_mode(service: MpaxArenaService, mock_db: MagicMoc
 
 
 @pytest.mark.asyncio
-async def test_run_sql_vs_mpax_mode(service: MpaxArenaService, mock_db: MagicMock, mock_user: User) -> None:
+async def test_run_sql_vs_mpax_mode(
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
+) -> None:
   """
   Verifies `sql_vs_mpax` mode extracts SQL blocks from candidate responses alongside MPAX ground truth.
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
   req = MpaxArenaRequest(prompt="Test", mode="sql_vs_mpax")
 
@@ -236,7 +262,7 @@ async def test_run_sql_vs_mpax_mode(service: MpaxArenaService, mock_db: MagicMoc
       MagicMock(provider_name="m3", content=f"```sql{nl}SELECT 2{nl}```"),
     ]
 
-    res = await service.run_mpax_arena(req, mock_db, mock_user)
+    res = await service.run_mpax_arena(req, db_session, arena_user)
     assert res.mode == "sql_vs_mpax"
     assert len(res.candidates) == 3
     assert res.candidates[0].sql_snippet == "SELECT 1"
@@ -249,19 +275,23 @@ async def test_run_sql_vs_mpax_mode(service: MpaxArenaService, mock_db: MagicMoc
       return_value=Err(AppError(code=ErrorCode.VALIDATION_ERROR, message="SQL vs MPAX error", status_code=400))
     ),
   ):
-    err_res = await service.run_mpax_arena_result(req, mock_db, mock_user)
+    err_res = await service.run_mpax_arena_result(req, db_session, arena_user)
     assert isinstance(err_res, Err)
 
 
 @pytest.mark.asyncio
-async def test_run_critic_mode(service: MpaxArenaService, mock_db: MagicMock, mock_user: User) -> None:
+async def test_run_critic_mode(
+  service: MpaxArenaService,
+  db_session: AsyncSession,
+  arena_user: User,
+) -> None:
   """
-  Verifies `critic` mode evaluates LLM-proposed unit capacities with MPAX and computes overflow penalty scores.
+  Verifies `critic` mode evaluates LLM-proposed unit capacities with MPAX and persists scores to `db_session`.
 
   Args:
       service (MpaxArenaService): Service under test.
-      mock_db (MagicMock): Mock database session.
-      mock_user (User): Authenticated user fixture.
+      db_session (AsyncSession): Active test database session.
+      arena_user (User): Authenticated user fixture.
   """
   req = MpaxArenaRequest(prompt="Test", mode="critic")
 
@@ -286,11 +316,22 @@ async def test_run_critic_mode(service: MpaxArenaService, mock_db: MagicMock, mo
       "app.services.mpax_arena_service.simulation_service.run_scenario_async",
       new=AsyncMock(side_effect=[good_res, err_res, good_res, good_res]),
     ):
-      res = await service.run_mpax_arena(req, mock_db, mock_user)
+      res = await service.run_mpax_arena(req, db_session, arena_user)
       assert res.mode == "critic"
       assert len(res.candidates) == 4
       assert res.candidates[0].mpax_score == 90
       assert res.candidates[1].mpax_score == 0
+
+  cand_rows = (
+    (
+      await db_session.execute(
+        select(MpaxArenaCandidateRecord).where(MpaxArenaCandidateRecord.run_id == uuid.UUID(res.experiment_id))
+      )
+    )
+    .scalars()
+    .all()
+  )
+  assert len(cand_rows) == 4
 
 
 def test_get_demand_data_empty(service: MpaxArenaService) -> None:

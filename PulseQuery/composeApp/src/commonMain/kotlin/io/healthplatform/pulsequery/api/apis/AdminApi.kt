@@ -12,28 +12,39 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
 )
 
 package io.healthplatform.pulsequery.api.apis
 
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.AdminSettingsResponse
 import io.healthplatform.pulsequery.api.models.AdminSettingsUpdateRequest
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
-
-import io.healthplatform.pulsequery.api.infrastructure.*
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
 
+/**
+ * REST client for `/api/v1/admin/settings` administrative LLM provider configuration endpoints.
+ */
 open class AdminApi : ApiClient {
 
+    /**
+     * Constructs a [AdminApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
     constructor(
         baseUrl: String = ApiClient.BASE_URL,
         httpClientEngine: HttpClientEngine? = null,
@@ -41,10 +52,16 @@ open class AdminApi : ApiClient {
         jsonSerializer: Json = ApiClient.JSON_DEFAULT
     ) : super(baseUrl = baseUrl, httpClientEngine = httpClientEngine, httpClientConfig = httpClientConfig, jsonBlock = jsonSerializer)
 
+    /**
+     * Constructs a [AdminApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Read Admin Settings
@@ -54,11 +71,13 @@ open class AdminApi : ApiClient {
      * @return AdminSettingsResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun readAdminSettingsApiV1AdminSettingsGet(token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<AdminSettingsResponse> {
-
+    open suspend fun readAdminSettingsApiV1AdminSettingsGet(
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<AdminSettingsResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -66,7 +85,7 @@ open class AdminApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.GET,
             "/api/v1/admin/settings",
             query = localVariableQuery,
@@ -81,18 +100,20 @@ open class AdminApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Write Admin Settings
      * Update system-wide admin settings like API keys and visible models.
-     * @param adminSettingsUpdateRequest 
+     * @param adminSettingsUpdateRequest
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @param acceptLanguage  (optional)
      * @return AdminSettingsResponse
      */
     @Suppress("UNCHECKED_CAST")
-    open suspend fun writeAdminSettingsApiV1AdminSettingsPut(adminSettingsUpdateRequest: AdminSettingsUpdateRequest, token: kotlin.String? = null, acceptLanguage: kotlin.String? = null): HttpResponse<AdminSettingsResponse> {
-
+    open suspend fun writeAdminSettingsApiV1AdminSettingsPut(
+        adminSettingsUpdateRequest: AdminSettingsUpdateRequest,
+        token: kotlin.String? = null,
+        acceptLanguage: kotlin.String? = null
+    ): HttpResponse<AdminSettingsResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = adminSettingsUpdateRequest
@@ -102,7 +123,7 @@ open class AdminApi : ApiClient {
         val localVariableHeaders = mutableMapOf<String, String>()
         acceptLanguage?.apply { localVariableHeaders["Accept-Language"] = this.toString() }
 
-        val localVariableConfig = RequestConfig<kotlin.Any?>(
+        val localVariableConfig = RequestConfig<Unit>(
             RequestMethod.PUT,
             "/api/v1/admin/settings",
             query = localVariableQuery,
@@ -116,7 +137,4 @@ open class AdminApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

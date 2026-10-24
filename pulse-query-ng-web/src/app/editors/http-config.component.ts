@@ -201,10 +201,11 @@ export class HttpConfigComponent {
 
   /**
    * Parses the initial configuration into a form model.
-   * @param config The raw configuration object.
+   *
+   * @param config - The raw configuration object.
    * @returns The form model.
    */
-  private parseConfig(config: Record<string, unknown>): HttpConfigForm {
+  parseConfig(config: Record<string, unknown> | null): HttpConfigForm {
     if (!config)
       return { method: 'GET', url: '', forward_auth: false, body: '', params: [], headers: [] };
     let bodyText = '';
@@ -318,10 +319,11 @@ export class HttpConfigComponent {
 
   /**
    * Converts an array of KeyValuePairs to a Record object.
-   * @param arr The array of pairs.
+   *
+   * @param arr - The array of pairs.
    * @returns The resulting object.
    */
-  private arrToObj(arr: { key: string; value: string }[]): Record<string, string> {
+  arrToObj(arr: { key: string; value: string }[]): Record<string, string> {
     const obj: Record<string, string> = {};
     arr.forEach((i) => {
       if (i.key) obj[i.key] = i.value;

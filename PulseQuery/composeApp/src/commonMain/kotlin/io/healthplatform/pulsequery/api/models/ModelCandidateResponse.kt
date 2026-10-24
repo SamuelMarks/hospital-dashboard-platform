@@ -17,42 +17,28 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Public response schema for the frontend. Hides 'model_identifier' to maintain double-blind benchmarking.
  *
- * @param modelTag 
- * @param generatedSql 
- * @param id 
- * @param experimentId 
- * @param isSelected 
- * @param sqlHash 
- * @param latencyMs 
+ * @param modelTag
+ * @param generatedSql
+ * @param id
+ * @param experimentId
+ * @param isSelected
+ * @param sqlHash
+ * @param latencyMs
  */
 @Serializable
-
-data class ModelCandidateResponse (
-
+data class ModelCandidateResponse(
     @SerialName(value = "model_tag") @Required val modelTag: kotlin.String,
-
     @SerialName(value = "generated_sql") @Required val generatedSql: kotlin.String,
-
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "experiment_id") @Required val experimentId: kotlin.String,
-
     @SerialName(value = "is_selected") @Required val isSelected: kotlin.Boolean,
-
     @SerialName(value = "sql_hash") val sqlHash: kotlin.String? = null,
-
     @SerialName(value = "latency_ms") val latencyMs: kotlin.Int? = null
-
-) {
-
-
-}
-
+)

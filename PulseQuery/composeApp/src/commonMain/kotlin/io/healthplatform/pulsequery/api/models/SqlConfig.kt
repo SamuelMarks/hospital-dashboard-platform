@@ -17,10 +17,9 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
+import kotlinx.serialization.Required
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 
 /**
  * Configuration schema for SQL-type widgets. Enforces the presence of a SQL query string.  Attributes:     query (str): The raw SQL query to execute.     xKey (Optional[str]): Column name to mapping for X-Axis/Labels.     yKey (Optional[str]): Column name to mapping for Y-Axis/Values.
@@ -30,34 +29,21 @@ import kotlinx.serialization.encoding.*
  * @param y Grid Y position
  * @param w Grid Width (cols)
  * @param h Grid Height (rows)
- * @param xKey 
- * @param yKey 
+ * @param xKey
+ * @param yKey
  */
 @Serializable
-
-data class SqlConfig (
-
-    /* The raw SQL query to execute. */
+data class SqlConfig(
+    // The raw SQL query to execute.
     @SerialName(value = "query") @Required val query: kotlin.String,
-
-    /* Grid X position */
+    // Grid X position
     @SerialName(value = "x") val x: kotlin.Int? = 0,
-
-    /* Grid Y position */
+    // Grid Y position
     @SerialName(value = "y") val y: kotlin.Int? = 0,
-
-    /* Grid Width (cols) */
+    // Grid Width (cols)
     @SerialName(value = "w") val w: kotlin.Int? = 6,
-
-    /* Grid Height (rows) */
+    // Grid Height (rows)
     @SerialName(value = "h") val h: kotlin.Int? = 4,
-
     @SerialName(value = "xKey") val xKey: kotlin.String? = null,
-
     @SerialName(value = "yKey") val yKey: kotlin.String? = null
-
-) {
-
-
-}
-
+)

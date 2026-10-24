@@ -10,17 +10,22 @@ It acts as the central hub connecting:
 """
 
 import asyncio
+from collections.abc import Callable
 import logging
 from typing import Any
 from uuid import UUID
 
+import duckdb
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
 from app.models.feedback import ExperimentLog, ModelCandidate
 from app.models.user import User
+from app.schemas.ai import SQLExecutionRequest, SQLExecutionResponse
+from app.schemas.execution import SqlRunnerResultDict
 from app.schemas.feedback import ExperimentResponse, FeedbackUpdate
 from app.services.admin import get_admin_settings
 from app.services.llm_client import ArenaResponse, llm_client
@@ -28,16 +33,18 @@ from app.services.prompt_engineering.few_shot_rag import FewShotRAGStrategy
 from app.services.prompt_engineering.interfaces import PromptStrategy
 from app.services.prompt_engineering.macro_cot import MacroCoTStrategy
 from app.services.prompt_engineering.zero_shot import ZeroShotStrategy
+from app.services.runners.sql import DuckDBCursorProtocol, run_sql_widget
 from app.services.schema import schema_service
 from app.services.sql_utils import (
   extract_sql_from_markdown,
   process_global_filters as interpolate_global_filters,
-  sanitize_date_literal,
-  sanitize_string_literal,
   sql_fingerprint,
 )
 
 logger = logging.getLogger(__name__)
+
+SqlRunnerPreviewFn = Callable[[DuckDBCursorProtocol, dict[str, Any]], SqlRunnerResultDict]
+ConnFactoryPreviewFn = Callable[[], duckdb.DuckDBPyConnection]
 
 
 class SQLGeneratorService:
@@ -70,56 +77,6 @@ class SQLGeneratorService:
     if tag == "rag-few-shot":
       return FewShotRAGStrategy()
     return ZeroShotStrategy()
-
-  def _clean_sql_response(self, raw_response: str) -> str:
-    """
-    Sanitizes LLM output to extract pure SQL.
-
-    Args:
-        raw_response (str): The raw text output from the LLM.
-
-    Returns:
-        str: The clean SQL query string.
-    """
-    return extract_sql_from_markdown(raw_response)
-
-  def _sanitize_string_literal(self, value: object) -> str:
-    """
-    Sanitizes a string literal for safe SQL query injection by escaping single quotes.
-
-    Args:
-        value (object): The raw input value.
-
-    Returns:
-        str: Escaped string safe for SQL interpolation.
-    """
-    return sanitize_string_literal(value)
-
-  def _sanitize_date_literal(self, value: object, fallback: str = "") -> str:
-    """
-    Validates and sanitizes a date or timestamp input against ISO formatting.
-
-    Args:
-        value (object): The raw date input value.
-        fallback (str): The default value to return if validation fails.
-
-    Returns:
-        str: Sanitized date literal string.
-    """
-    return sanitize_date_literal(value, fallback)
-
-  def process_global_filters(self, sql: str, global_params: dict[str, Any] | None = None) -> str:
-    """
-    Injects global dashboard filter values into SQL placeholders safely.
-
-    Args:
-        sql (str): The SQL template containing `{{handlebars}}`.
-        global_params (dict[str, Any] | None): User selection (e.g., `{"dept": "Cardiology"}`).
-
-    Returns:
-        str: The executable SQL with values injected.
-    """
-    return interpolate_global_filters(sql, global_params)
 
   async def run_arena_experiment(
     self,
@@ -164,7 +121,7 @@ class SQLGeneratorService:
 
     for res in results:
       is_success = res.error is None and len(res.content) > 0
-      final_sql = self._clean_sql_response(res.content) if is_success else ""
+      final_sql = extract_sql_from_markdown(res.content) if is_success else ""
       sql_hash = sql_fingerprint(final_sql) if final_sql else None
       error_msg = res.error if res.error else ("Empty Response" if not is_success else None)
 
@@ -298,6 +255,78 @@ class SQLGeneratorService:
     await db.commit()
     await db.refresh(exp)
     return Ok(ExperimentResponse.model_validate(exp))
+
+  def _execute_preview_sync(
+    self,
+    runnable_sql: str,
+    max_rows: int | None,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+    conn_factory: ConnFactoryPreviewFn = duckdb_manager.get_readonly_connection,
+    sql_runner_fn: SqlRunnerPreviewFn = run_sql_widget,
+  ) -> SqlRunnerResultDict:
+    """
+    Synchronously executes a SQL preview query against DuckDB in a worker thread.
+
+    Args:
+        runnable_sql (str): Processed SQL string.
+        max_rows (int | None): Row limit for the preview.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+        conn_factory (ConnFactoryPreviewFn): Read-only DuckDB connection factory.
+        sql_runner_fn (SqlRunnerPreviewFn): SQL runner callable.
+
+    Returns:
+        SqlRunnerResultDict: Query execution result dictionary.
+    """
+    owns_conn = olap_conn is None
+    conn: duckdb.DuckDBPyConnection | None = None
+    try:
+      conn = olap_conn if olap_conn is not None else conn_factory()
+      cursor = conn.cursor()
+      return sql_runner_fn(cursor, {"query": runnable_sql, "max_rows": max_rows})
+    except Exception as e:
+      return {"data": [], "columns": [], "error": str(e)}
+    finally:
+      if owns_conn and conn:
+        conn.close()
+
+  async def execute_sql_preview_result(
+    self,
+    request: SQLExecutionRequest,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+    conn_factory: ConnFactoryPreviewFn = duckdb_manager.get_readonly_connection,
+    sql_runner_fn: SqlRunnerPreviewFn = run_sql_widget,
+  ) -> AppResult[SQLExecutionResponse]:
+    """
+    Validates, interpolates global filters, and executes a read-only SQL preview query.
+
+    Args:
+        request (SQLExecutionRequest): SQL query and optional global filter parameters.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+        conn_factory (ConnFactoryPreviewFn): Read-only DuckDB connection factory.
+        sql_runner_fn (SqlRunnerPreviewFn): SQL runner callable.
+
+    Returns:
+        AppResult[SQLExecutionResponse]: `Ok(SQLExecutionResponse)` or `Err(AppError)` if empty.
+    """
+    if not request.sql.strip():
+      return Err(
+        AppError(
+          code=ErrorCode.VALIDATION_ERROR,
+          message="SQL cannot be empty.",
+          status_code=400,
+        )
+      )
+
+    runnable_sql = interpolate_global_filters(request.sql, request.global_params or {})
+    res = await run_in_duckdb_thread(
+      self._execute_preview_sync,
+      runnable_sql,
+      request.max_rows,
+      olap_conn,
+      conn_factory,
+      sql_runner_fn,
+    )
+    return Ok(SQLExecutionResponse(**res))
 
 
 # Singleton instance

@@ -73,12 +73,17 @@ class DiagnosticsRegistry:
       "error": None,
     }
     self.data_status: dict[str, Any] = {
+      "status": "empty",
+      "table_count": 0,
+      "tables": [],
       "has_default_data": False,
       "fallback_generated": False,
       "missing_files": [],
       "row_counts": {},
     }
     self.template_status: dict[str, Any] = {
+      "status": "empty",
+      "template_count": 0,
       "templates_loaded": 0,
       "has_templates": False,
       "missing_file": False,
@@ -109,8 +114,22 @@ class DiagnosticsRegistry:
     self.warnings.clear()
     self.postgres_status = {"status": "unknown", "latency_ms": None, "details": None, "error": None}
     self.duckdb_status = {"status": "unknown", "path": None, "tables": {}, "total_tables": 0, "error": None}
-    self.data_status = {"has_default_data": False, "fallback_generated": False, "missing_files": [], "row_counts": {}}
-    self.template_status = {"templates_loaded": 0, "has_templates": False, "missing_file": False}
+    self.data_status = {
+      "status": "empty",
+      "table_count": 0,
+      "tables": [],
+      "has_default_data": False,
+      "fallback_generated": False,
+      "missing_files": [],
+      "row_counts": {},
+    }
+    self.template_status = {
+      "status": "empty",
+      "template_count": 0,
+      "templates_loaded": 0,
+      "has_templates": False,
+      "missing_file": False,
+    }
     self.llm_status = {"providers_count": 0, "mock_mode": True, "models": []}
 
   def get_summary(self) -> dict[str, Any]:
@@ -127,11 +146,13 @@ class DiagnosticsRegistry:
       overall = "degraded"
 
     return {
+      "status": overall,
       "overall_status": overall,
       "timestamp": datetime.now(timezone.utc).isoformat(),
       "postgres": self.postgres_status,
       "duckdb": self.duckdb_status,
       "data": self.data_status,
+      "datasets": self.data_status,
       "templates": self.template_status,
       "llm": self.llm_status,
       "warnings": [w.to_dict() for w in self.warnings],
