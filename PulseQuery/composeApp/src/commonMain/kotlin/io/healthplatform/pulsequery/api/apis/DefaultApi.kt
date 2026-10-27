@@ -72,7 +72,6 @@ open class DefaultApi : ApiClient {
      * Health check endpoint for the API root.
      * @return kotlin.collections.Map<kotlin.String, kotlin.String>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun rootGet(): HttpResponse<kotlin.collections.Map<kotlin.String, kotlin.String>> {
         val localVariableAuthNames = listOf<String>()
 

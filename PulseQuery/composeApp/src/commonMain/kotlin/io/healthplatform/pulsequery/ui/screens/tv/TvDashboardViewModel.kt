@@ -6,6 +6,8 @@ package io.healthplatform.pulsequery.ui.screens.tv
 
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.models.DashboardResponse
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -55,7 +57,7 @@ class TvDashboardViewModel(
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             runCatchingPulseAsync {
                 val res = currentDashboardsApi.listDashboardsApiV1DashboardsGet()
-                res.body().firstOrNull()
+                res.asResult().getOrThrow().firstOrNull()
             }.fold(
                 onSuccess = { db ->
                     _state.update {
@@ -70,7 +72,7 @@ class TvDashboardViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.messageOrDefault("Failed to load TV dashboard")
+                            errorMessage = e.messageOrDefault(UiErrorKey.LOAD_TV_DASHBOARD)
                         )
                     }
                 }

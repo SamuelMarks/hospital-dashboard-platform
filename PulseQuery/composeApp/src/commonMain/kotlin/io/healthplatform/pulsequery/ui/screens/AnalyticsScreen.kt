@@ -41,6 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
@@ -49,6 +53,11 @@ import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import io.healthplatform.pulsequery.ui.screens.analytics.AnalyticsViewModel
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.alert_rules
+import pulsequery.composeapp.generated.resources.bed_capacity_alert_rules
+import pulsequery.composeapp.generated.resources.bed_capacity_alert_rules_desc
+import pulsequery.composeapp.generated.resources.configure
+import pulsequery.composeapp.generated.resources.database_misconfiguration
 import pulsequery.composeapp.generated.resources.llm_analytics
 import pulsequery.composeapp.generated.resources.model_msg
 import pulsequery.composeapp.generated.resources.no_analytics_data
@@ -90,10 +99,15 @@ fun AnalyticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(Res.string.llm_analytics)) },
+                title = {
+                    Text(
+                        stringResource(Res.string.llm_analytics),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                },
                 actions = {
                     TextButton(onClick = onNavigateToAlertRules) {
-                        Text("Alert Rules")
+                        Text(stringResource(Res.string.alert_rules))
                     }
                     IconButton(onClick = { vm.loadAnalytics(fallbackError = unknownErrorMsg) }) {
                         Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.refresh))
@@ -113,7 +127,7 @@ fun AnalyticsScreen(
                     val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error
                         ?: "Database service is experiencing storage or configuration errors."
                     DatabaseErrorCard(
-                        title = "Database Misconfiguration",
+                        title = stringResource(Res.string.database_misconfiguration),
                         message = dbMsg,
                         onRetry = {
                             AppContainer.networkHealthRepository.refreshHealth()
@@ -123,7 +137,10 @@ fun AnalyticsScreen(
                     )
                 }
                 uiState.errorMessage != null -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+                    ) {
                         Text(text = uiState.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = { vm.loadAnalytics(fallbackError = unknownErrorMsg) }) {
@@ -153,18 +170,19 @@ fun AnalyticsScreen(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "Bed Capacity Alert Rules",
-                                            style = MaterialTheme.typography.titleMedium
+                                            text = stringResource(Res.string.bed_capacity_alert_rules),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            modifier = Modifier.semantics { heading() }
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = "Configure occupancy thresholds and automated alerting triggers.",
+                                            text = stringResource(Res.string.bed_capacity_alert_rules_desc),
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     TextButton(onClick = onNavigateToAlertRules) {
-                                        Text("Configure")
+                                        Text(stringResource(Res.string.configure))
                                     }
                                 }
                             }

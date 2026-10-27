@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Barrel export for generated OpenAPI model interfaces.
+ */
 export * from './admin-settings-response';
 export * from './admin-settings-update-request';
 export * from './alert-rule-create';
@@ -5,6 +8,7 @@ export * from './alert-rule-response';
 export * from './alert-rule-update';
 export * from './alert-severity';
 export * from './bed-capacity-alert';
+export * from './benchmark-scenario-schema';
 export * from './column-info';
 export * from './conversation-create';
 export * from './conversation-detail';
@@ -64,7 +68,9 @@ export * from './validation-error-loc-inner';
 export * from './widget-create-http';
 export * from './widget-create-sql';
 export * from './widget-create-text';
+export * from './widget-execution-payload';
 export * from './widget-in';
+export * from './widget-refresh-request';
 export * from './widget-reorder-item';
 export * from './widget-reorder-request';
 export * from './widget-response';

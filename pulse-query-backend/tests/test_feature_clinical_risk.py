@@ -13,30 +13,30 @@ calculating results using the SQL templates defined in the system.
 
 import json
 import os
-from typing import Any
 
 import duckdb
 import pytest
 
 from app.database.duckdb_init import create_hospital_macros
+from app.schemas.json_types import JsonObject
 
 # Path to the templates definition file
 DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
 
 
 @pytest.fixture
-def templates() -> list[dict[str, Any]]:
+def templates() -> list[JsonObject]:
   """
   Loads the template registry from the JSON file.
 
   Returns:
-      List[Dict[str, Any]]: The full list of template definitions.
+      list[JsonObject]: The full list of template definitions.
   """
   if not os.path.exists(DATA_FILE):
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
     return data
 
 
@@ -64,7 +64,7 @@ def clinical_db() -> duckdb.DuckDBPyConnection:
   return conn
 
 
-def test_conditional_overstay_risk_logic(clinical_db: duckdb.DuckDBPyConnection, templates: list[dict[str, Any]]) -> None:
+def test_conditional_overstay_risk_logic(clinical_db: duckdb.DuckDBPyConnection, templates: list[JsonObject]) -> None:
   """
   Verifies Theme 21: Conditional Overstay Risk.
 
@@ -99,7 +99,7 @@ def test_conditional_overstay_risk_logic(clinical_db: duckdb.DuckDBPyConnection,
   template = next((t for t in templates if t["title"] == "Conditional Overstay Risk"), None)
   assert template is not None, "Template 21 missing"
 
-  raw_sql = template["sql_template"]
+  raw_sql = str(template["sql_template"])
 
   # 3. Inject Parameters
   sql = raw_sql.replace("{{unit_pattern}}", "Cardiology").replace("{{current_days}}", "4").replace("{{target_days}}", "7")
@@ -113,7 +113,7 @@ def test_conditional_overstay_risk_logic(clinical_db: duckdb.DuckDBPyConnection,
   assert percentage == 50.0, f"Expected 50% probability, got {percentage}"
 
 
-def test_nicu_cliff_logic(clinical_db: duckdb.DuckDBPyConnection, templates: list[dict[str, Any]]) -> None:
+def test_nicu_cliff_logic(clinical_db: duckdb.DuckDBPyConnection, templates: list[JsonObject]) -> None:
   """
   Verifies Theme 28: The 'NICU Cliff'.
 
@@ -153,7 +153,7 @@ def test_nicu_cliff_logic(clinical_db: duckdb.DuckDBPyConnection, templates: lis
   template = next((t for t in templates if t["title"] == "The 'NICU Cliff'"), None)
   assert template is not None, "Template 28 missing"
 
-  sql = template["sql_template"]
+  sql = str(template["sql_template"])
 
   # 3. Execute (No handlebars in this template)
   result = clinical_db.execute(sql).fetchone()

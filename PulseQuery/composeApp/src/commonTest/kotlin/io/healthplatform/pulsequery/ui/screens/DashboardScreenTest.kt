@@ -189,4 +189,44 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
         onNodeWithTag("dashboard_grid").performScrollToNode(hasText("Table Widget"))
         onNodeWithText("Table Widget").assertExists()
     }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testWidgetElevatedCardNaturalTextExecutionAndEditDialog() = runComposeUiTest {
+        val nlWidget = io.healthplatform.pulsequery.api.models.WidgetResponse(
+            id = "w-nl",
+            dashboardId = "dash-1",
+            title = "Interactive NL Widget",
+            type = "SQL",
+            visualization = "table",
+            config = kotlinx.serialization.json.buildJsonObject {
+                put("query", kotlinx.serialization.json.JsonPrimitive("SELECT 1"))
+                put("allow_natural_text", kotlinx.serialization.json.JsonPrimitive(true))
+                put("processor", kotlinx.serialization.json.JsonPrimitive("ollama:llama3"))
+                put("natural_text_prompt", kotlinx.serialization.json.JsonPrimitive("Count patients"))
+            }
+        )
+        var executedPrompt: String? = null
+        setContent {
+            MaterialTheme {
+                WidgetElevatedCard(
+                    widget = nlWidget,
+                    renderState = io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState(
+                        allowNaturalText = true,
+                        processor = io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3"),
+                        naturalTextPrompt = "Count patients",
+                        generatedSql = "SELECT COUNT(*) FROM patients"
+                    ),
+                    onExecuteNaturalText = { executedPrompt = it }
+                )
+            }
+        }
+        waitForIdle()
+        onNodeWithText("Interactive NL Widget").assertExists()
+        onNodeWithText("ollama:llama3").assertExists()
+        onNodeWithTag("widget_natural_text_run_w-nl").performClick()
+        runOnIdle {
+            assertEquals("Count patients", executedPrompt)
+        }
+    }
 }

@@ -75,7 +75,6 @@ open class AnalyticsApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<BedCapacityAlert>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getCapacityAlertsApiV1AnalyticsAlertsGet(
         token: kotlin.String? = null
     ): HttpResponse<kotlin.collections.List<BedCapacityAlert>> {
@@ -124,7 +123,6 @@ open class AnalyticsApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<LlmOutputAnalyticsRow>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listLlmOutputsApiV1AnalyticsLlmGet(
         limit: kotlin.Int? = 500,
         offset: kotlin.Int? = 0,

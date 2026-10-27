@@ -2,7 +2,8 @@
  * @fileoverview Query Cart sidebar component displaying saved SQL snippets that can be
  * renamed, removed, or dragged onto a dashboard grid.
  */
-import { Component, input, inject, computed } from '@angular/core';
+import { Component, input, inject, computed, OnDestroy } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -169,7 +170,7 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
     `,
   ],
 })
-export class QueryCartComponent {
+export class QueryCartComponent implements OnDestroy {
   /** Service managing the persistent query cart state. */
   private readonly cart = inject(QueryCartService);
   /** Service provisioning dashboard widgets from query cart items. */
@@ -180,6 +181,11 @@ export class QueryCartComponent {
   private readonly snackBar = inject(MatSnackBar);
   /** Material dialog service for confirmation and rename modals. */
   private readonly dialog = inject(MatDialog);
+  /** Injected DOM document reference for focus restoration. */
+  private readonly document = inject(DOCUMENT);
+  /** Element that held focus before the QueryCart drawer or dialog was opened. */
+  private readonly initialTriggerElement: HTMLElement | null =
+    this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
 
   /** Optional target dashboard ID when rendered inside a dashboard editor. */
   readonly dashboardId = input<string | null>(null);
@@ -190,8 +196,26 @@ export class QueryCartComponent {
   /** Connected CDK drop list IDs for dragging cart items onto the dashboard grid. */
   readonly connectedDropLists = computed(() => ['dashboard-grid']);
 
+  /** Restores focus to the trigger button when the QueryCart drawer is destroyed/closed. */
+  ngOnDestroy(): void {
+    this.restoreFocus(this.initialTriggerElement);
+  }
+
+  /**
+   * Restores focus to the specified trigger element if available.
+   *
+   * @param trigger - HTML element to focus.
+   */
+  restoreFocus(trigger: HTMLElement | null): void {
+    if (trigger && typeof trigger.focus === 'function') {
+      trigger.focus();
+    }
+  }
+
   /** Prompts the user for confirmation and clears all items from the query cart. */
   clear(): void {
+    const trigger =
+      this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
     this.dialog
       .open(ConfirmDialogComponent, {
         data: {
@@ -199,10 +223,12 @@ export class QueryCartComponent {
           message: $localize`Remove all saved queries?`,
           isDestructive: true,
         },
+        restoreFocus: true,
       })
       .afterClosed()
       .subscribe((res) => {
         if (res) this.cart.clear();
+        this.restoreFocus(trigger);
       });
   }
 
@@ -221,6 +247,8 @@ export class QueryCartComponent {
    * @param item - The query cart item to rename.
    */
   rename(item: QueryCartItem): void {
+    const trigger =
+      this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
     this.dialog
       .open(PromptDialogComponent, {
         data: {
@@ -228,10 +256,12 @@ export class QueryCartComponent {
           value: item.title,
           label: $localize`Title`,
         },
+        restoreFocus: true,
       })
       .afterClosed()
       .subscribe((res) => {
         if (res) this.cart.rename(item.id, res);
+        this.restoreFocus(trigger);
       });
   }
 

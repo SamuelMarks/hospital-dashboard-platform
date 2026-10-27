@@ -11,11 +11,11 @@
 
 import { DATE_NOW } from '../core/time.token';
 import { LoggerService } from '../core/logging/logger.service';
-import { safeStorage } from '../core/storage.utils';
 import { extractApiErrorMessage } from '../core/error.utils';
 import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, retry } from 'rxjs/operators';
+import { ChatSseClientService } from './chat-sse-client.service';
 
 import {
   ChatService,
@@ -79,6 +79,8 @@ export class ChatStore implements OnDestroy {
   private readonly chatApi = inject(ChatService);
   /** Generated OpenAPI client for AI model discovery endpoints. */
   private readonly aiApi = inject(AiService);
+  /** Injectable SSE client service for real-time chat token streaming. */
+  private readonly sseClient = inject(ChatSseClientService);
   /** Internal writable signal holding the complete chat store state. */
   private readonly _state = signal<ChatState>(initialState);
   /** Subject emitting when the store is destroyed to cancel active subscriptions. */
@@ -266,72 +268,33 @@ export class ChatStore implements OnDestroy {
    */
   async streamResponse(conversationId: string, modelId?: string): Promise<void> {
     this.patch({ isStreaming: true, streamingMessageContent: '', error: null });
-    const url = `/api/v1/chat/stream/${conversationId}${modelId ? `?model_id=${encodeURIComponent(modelId)}` : ''}`;
     try {
-      const token = safeStorage.getItem('pulse_auth_token');
-      const headers: Record<string, string> = {
-        Accept: 'text/event-stream',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(url, { headers });
-      if (!response.ok) {
-        throw new Error(`Streaming failed with status: ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      if (!reader) throw new Error('Readable stream not supported');
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('data:')) {
-            try {
-              const data = JSON.parse(trimmed.substring(5).trim()) as {
-                event?: string;
-                token?: unknown;
-                message_id?: string;
-                content?: string;
-                sql_snippet?: string | null;
-              };
-              if (data.event === 'token' && typeof data.token === 'string') {
-                const current = this._state().streamingMessageContent || '';
-                this.patch({ streamingMessageContent: current + data.token });
-              } else if (data.event === 'done') {
-                const finalMsg: MessageResponse = {
-                  id: data.message_id || `msg-${this.dateNow().getTime()}`,
-                  conversation_id: conversationId,
-                  role: 'assistant',
-                  content: data.content || this._state().streamingMessageContent || '',
-                  sql_snippet: data.sql_snippet || null,
-                  created_at: this.dateNow().toISOString(),
-                  candidates: [],
-                };
-                this.patch({
-                  messages: [...this.messages(), finalMsg],
-                  streamingMessageContent: null,
-                  isStreaming: false,
-                });
-                return;
-              }
-            } catch {
-              // Ignore partial JSON chunks
-            }
+      await this.sseClient.consumeStream(
+        conversationId,
+        (data) => {
+          if (data.event === 'token') {
+            const current = this._state().streamingMessageContent || '';
+            this.patch({ streamingMessageContent: current + data.token });
+            return false;
           }
-        }
-      }
+          const finalMsg: MessageResponse = {
+            id: data.message_id || `msg-${this.dateNow().getTime()}`,
+            conversation_id: conversationId,
+            role: 'assistant',
+            content: data.content || this._state().streamingMessageContent || '',
+            sql_snippet: data.sql_snippet || null,
+            created_at: this.dateNow().toISOString(),
+            candidates: [],
+          };
+          this.patch({
+            messages: [...this.messages(), finalMsg],
+            streamingMessageContent: null,
+            isStreaming: false,
+          });
+          return true;
+        },
+        modelId,
+      );
       this.patch({ isStreaming: false });
     } catch (err: unknown) {
       this.patch({ isStreaming: false, streamingMessageContent: null });

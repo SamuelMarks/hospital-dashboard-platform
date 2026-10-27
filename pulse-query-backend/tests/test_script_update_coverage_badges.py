@@ -45,14 +45,19 @@ def test_read_percent_variants() -> None:
     ucb.read_percent(None)
 
 
-def test_run_handles_success_and_called_process_error() -> None:
-  """Verifies `run` executes subprocesses and handles `CalledProcessError` without crashing."""
+def test_run_handles_success_and_called_process_error(capsys: pytest.CaptureFixture[str]) -> None:
+  """Verifies `run` executes subprocesses, passes `cwd`, and logs non-zero exit codes."""
   with patch("subprocess.run") as mock_run:
-    ucb.run(["echo", "ok"], cwd=Path("."))
-    mock_run.assert_called_once()
+    ucb.run(["echo", "ok"], cwd=Path("/tmp"))
+    mock_run.assert_called_once_with(["echo", "ok"], cwd="/tmp", check=True)
+    out = capsys.readouterr().out
+    assert "+ echo ok" in out
 
-  with patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, ["bad"])):
+  with patch("subprocess.run", side_effect=subprocess.CalledProcessError(2, ["bad"])):
     ucb.run(["bad"], cwd=None)
+    err_out = capsys.readouterr().out
+    assert "+ bad" in err_out
+    assert "Warning: Command failed with exit code 2" in err_out
 
 
 def test_scan_for_coverage_bypasses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -109,7 +114,6 @@ def test_compute_doc_coverage_and_class_docs(tmp_path: Path, monkeypatch: pytest
   monkeypatch.setattr(ucb, "ROOT", tmp_path)
   monkeypatch.setattr(ucb, "APP_ROOT", app_dir)
 
-  # Empty directory -> 100.0%
   (app_dir / "__init__.py").write_text("", encoding="utf-8")
   pct_empty, missing_empty = ucb.compute_doc_coverage()
   assert pct_empty == 100.0
@@ -132,15 +136,19 @@ def test_compute_doc_coverage_and_class_docs(tmp_path: Path, monkeypatch: pytest
       "def undoc_fn():",
       "  pass",
       "",
+      "def _priv_fn():",
+      "  pass",
+      "",
       "def doc_fn():",
       '  """Doc."""',
       "  pass",
     ]
   )
   (app_dir / "mod.py").write_text(sample_code, encoding="utf-8")
+  (app_dir / "nodoc.py").write_text(f"x = 1{nl}", encoding="utf-8")
   pct, missing = ucb.compute_doc_coverage()
   assert pct < 100.0
-  assert len(missing) == 4
+  assert len(missing) == 5
 
   tree = ast.parse(f'class DocClass:{nl}  """Class doc."""{nl}  pass{nl}')
   cls_node = tree.body[0]
@@ -156,35 +164,77 @@ def test_replace_insert_and_update_readme(tmp_path: Path, monkeypatch: pytest.Mo
   readme = tmp_path / "README.md"
   monkeypatch.setattr(ucb, "README", readme)
 
-  # Case 1: README has no existing badges -> inserts at line 2
   readme.write_text(f"# Title{nl}{nl}Body text{nl}", encoding="utf-8")
   assert ucb.update_readme(100.0, 100.0) is True
   assert "![Test Coverage]" in readme.read_text(encoding="utf-8")
-  # Second call with same percentages returns False
   assert ucb.update_readme(100.0, 100.0) is False
 
-  # Case 2: README has an existing badge block -> inserts after badge block
   readme.write_text(f"# Title{nl}![Other](https://example.com){nl}{nl}Body{nl}", encoding="utf-8")
   assert ucb.update_readme(95.0, 90.0) is True
 
 
-def test_main_success_and_failure_branches() -> None:
-  """Verifies `main` staging and failure aggregation."""
+def test_scan_for_typing_and_reflection_smells(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verifies `scan_for_typing_and_reflection_smells` detects `Any`, `object`, `__dict__`, and `getattr`/`setattr`/`hasattr`."""
+  nl = chr(10)
+  src_dir = tmp_path / "src"
+  src_dir.mkdir(parents=True)
+  monkeypatch.setattr(ucb, "ROOT", tmp_path)
+
+  (src_dir / "clean.py").write_text(f"x: int = 1{nl}", encoding="utf-8")
+  assert ucb.scan_for_typing_and_reflection_smells([src_dir, tmp_path / "missing_dir"]) == []
+
+  (src_dir / "smelly.py").write_text(
+    f"from typing import Any, cast{nl}x: Any = getattr(1, 'real'){nl}y = cast(int, 1){nl}d = x.__dict__{nl}",
+    encoding="utf-8",
+  )
+  violations = ucb.scan_for_typing_and_reflection_smells([src_dir])
+  assert len(violations) == 4
+
+
+def test_main_success_and_failure_branches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verifies `main` and `run_cli_entrypoint` against an unmocked mini-project directory as well as failure paths."""
+  nl = chr(10)
+  app_dir = tmp_path / "pulse-query-backend" / "src" / "app"
+  scripts_dir = tmp_path / "scripts"
+  app_dir.mkdir(parents=True)
+  scripts_dir.mkdir(parents=True)
+  readme = tmp_path / "README.md"
+  readme.write_text(f"# Project{nl}{nl}Description{nl}", encoding="utf-8")
+  (app_dir / "clean_mod.py").write_text(
+    f'"""Module doc."""{nl}{nl}def greet() -> str:{nl}  """Returns greeting."""{nl}  return "hi"{nl}',
+    encoding="utf-8",
+  )
+
+  monkeypatch.setattr(ucb, "ROOT", tmp_path)
+  monkeypatch.setattr(ucb, "BACKEND", tmp_path / "pulse-query-backend")
+  monkeypatch.setattr(ucb, "APP_ROOT", app_dir)
+  monkeypatch.setattr(ucb, "WEB_APP_ROOT", tmp_path / "pulse-query-ng-web" / "src" / "app")
+  monkeypatch.setattr(ucb, "README", readme)
+
   with (
     patch.object(ucb, "compute_test_coverage", return_value=100.0),
-    patch.object(ucb, "compute_doc_coverage", return_value=(100.0, [])),
-    patch.object(ucb, "update_readme", return_value=True),
-    patch.object(ucb, "scan_for_coverage_bypasses", return_value=[]),
     patch.object(ucb, "run") as mock_run,
   ):
-    assert ucb.main(["--stage"]) == 0
-    mock_run.assert_called_once()
+    assert ucb.run_cli_entrypoint(["--stage"]) == 0
+    mock_run.assert_called_once_with(["git", "add", str(readme)], cwd=tmp_path)
+    assert "![Test Coverage]" in readme.read_text(encoding="utf-8")
+    assert "![Doc Coverage]" in readme.read_text(encoding="utf-8")
 
   with (
     patch.object(ucb, "compute_test_coverage", return_value=95.0),
     patch.object(ucb, "compute_doc_coverage", return_value=(90.0, ["mod.py: function foo"])),
     patch.object(ucb, "update_readme", return_value=False),
     patch.object(ucb, "scan_for_coverage_bypasses", return_value=["dirty.py:1"]),
-    pytest.raises(ucb.CoverageError, match="Forbidden coverage bypass"),
+    patch.object(ucb, "scan_for_typing_and_reflection_smells", return_value=["smelly.py:1 (Any)"]),
+  ):
+    assert ucb.run_cli_entrypoint([]) == 1
+
+  with (
+    patch.object(ucb, "compute_test_coverage", return_value=100.0),
+    patch.object(ucb, "compute_doc_coverage", return_value=(90.0, [])),
+    patch.object(ucb, "update_readme", return_value=False),
+    patch.object(ucb, "scan_for_coverage_bypasses", return_value=[]),
+    patch.object(ucb, "scan_for_typing_and_reflection_smells", return_value=[]),
+    pytest.raises(ucb.CoverageError, match="Doc coverage is 90%"),
   ):
     ucb.main([])

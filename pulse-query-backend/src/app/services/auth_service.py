@@ -12,8 +12,9 @@ from datetime import UTC, datetime, timedelta
 import logging
 from uuid import UUID
 
-from jose import jwt
+from jose import JWTError, jwt
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
@@ -171,7 +172,7 @@ class AuthService:
     """
     try:
       decoded = jwt.decode(payload.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except Exception:
+    except (JWTError, ValueError, TypeError, KeyError):
       return Err(
         AppError(
           code=ErrorCode.AUTH_INVALID_TOKEN,
@@ -279,7 +280,7 @@ class AuthService:
         return Ok(False)
       user_id = UUID(str(user_id_str))
       jti_str = str(jti)
-    except Exception as exc:
+    except (JWTError, ValueError, TypeError, KeyError) as exc:
       logger.debug(f"Session revocation skipped for invalid token: {exc}")
       return Err(
         AppError(
@@ -323,7 +324,7 @@ class AuthService:
     try:
       await email_service.send_password_reset_email(recipient=recipient, reset_token=reset_token)
       return Ok(True)
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, TypeError, SQLAlchemyError) as e:
       logger.error(f"Failed to dispatch password reset email: {e}")
       return Err(
         AppError(

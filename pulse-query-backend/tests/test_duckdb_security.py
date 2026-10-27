@@ -44,9 +44,33 @@ def test_duckdb_readonly_blocks_external_filesystem_access() -> None:
 
 
 def test_duckdb_in_memory_readonly_sandbox() -> None:
-  """Test that :memory: readonly mode is safely sandboxed."""
+  """Test that :memory: readonly mode is safely sandboxed against both external file reads and write queries."""
   manager = DuckDBManager(":memory:")
   conn = manager.get_readonly_connection()
+
+  res = conn.execute("SELECT 42 AS answer").fetchall()
+  assert res == [(42,)]
+  row_one = conn.execute("SELECT 7 AS lucky").fetchone()
+  assert row_one == (7,)
+
+  cur = conn.cursor()
+  assert cur.description is None
+  cur.execute("SELECT 1 AS col_a")
+  assert cur.description is not None
+  assert cur.fetchall() == [(1,)]
+  cur.execute("SELECT 2 AS col_b")
+  assert cur.fetchone() == (2,)
+  cur.close()
+
+  for write_sql in (
+    "CREATE TABLE hacked (id INT)",
+    "INSERT INTO safe_table VALUES (1)",
+    "DROP TABLE IF EXISTS safe_table",
+    "ATTACH 'other.db' AS other",
+    "COPY (SELECT 1) TO 'out.csv'",
+  ):
+    with pytest.raises(duckdb.InvalidInputException, match=r"(?i)read-only mode violation"):
+      conn.execute(write_sql)
 
   with pytest.raises(Exception, match=r"(?i)(disabled|permission|cannot access)") as excinfo:
     conn.execute("SELECT * FROM read_csv('/etc/hosts')")

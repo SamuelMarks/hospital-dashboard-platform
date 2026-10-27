@@ -20,25 +20,23 @@ Usage:
 
 import argparse
 import asyncio
+from collections.abc import Sequence
 import csv
+from datetime import UTC, datetime
 import json
 import logging
 import os
 import sys
 import traceback
+from typing import TypedDict
 import uuid
-from datetime import UTC, datetime
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock
-
-# Add src to path to allow imports
-sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
 from app.database.duckdb import duckdb_manager
 from app.database.duckdb_init import create_hospital_macros
 from app.models.feedback import ExperimentLog, ModelCandidate
 from app.models.user import User
-from app.services.sql_generator import sql_generator
+from app.schemas.json_types import JsonObject, SqlScalar
+from app.services.sql_generator import ExperimentSessionProtocol, sql_generator
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -47,6 +45,82 @@ logger = logging.getLogger("benchmark_runner")
 # Paths
 DATA_DIR = os.path.join(os.path.dirname(__file__), "../data")
 GOLD_FILE = os.path.join(DATA_DIR, "benchmark_gold.json")
+
+
+class BenchmarkEvaluationRowDict(TypedDict):
+  """
+  Typed dictionary representing a single benchmark evaluation CSV row.
+
+  Attributes:
+      Timestamp (str): ISO-8601 execution timestamp.
+      Theme (str): Analytical theme category.
+      Complexity (str): Complexity tier.
+      Strategy (str): Prompt engineering strategy tag.
+      Model (str): Evaluated LLM model tag.
+      LatencyMs (int): Generation latency in milliseconds.
+      Success (bool): True if candidate SQL output matched gold SQL output.
+      ExecError (bool): True if candidate SQL raised a DuckDB execution error.
+      ErrorMsg (str): Execution error message or empty string.
+      SQLHash (str): Normalized SQL SHA-256 fingerprint.
+      GeneratedSQL (str): Truncated candidate SQL snippet.
+  """
+
+  Timestamp: str
+  Theme: str
+  Complexity: str
+  Strategy: str
+  Model: str
+  LatencyMs: int
+  Success: bool
+  ExecError: bool
+  ErrorMsg: str
+  SQLHash: str
+  GeneratedSQL: str
+
+
+class InMemoryExperimentSession(ExperimentSessionProtocol):
+  """
+  Lightweight strongly typed in-memory session implementing `ExperimentSessionProtocol`
+  for offline benchmark runs without requiring `unittest.mock` or a live PostgreSQL server.
+  """
+
+  def __init__(self) -> None:
+    """Initializes the in-memory store for `ExperimentLog` and `ModelCandidate` entities."""
+    self.store: list[ExperimentLog | ModelCandidate] = []
+
+  def add(self, instance: ExperimentLog | ModelCandidate) -> None:
+    """
+    Stages an `ExperimentLog` or `ModelCandidate` entity in `self.store`.
+
+    Args:
+        instance (ExperimentLog | ModelCandidate): Entity to store.
+    """
+    self.store.append(instance)
+
+  async def flush(self) -> None:
+    """Assigns UUIDs and default selection flags to pending entities in `self.store`."""
+    for obj in self.store:
+      if not obj.id:
+        obj.id = uuid.uuid4()
+      if isinstance(obj, ModelCandidate) and obj.is_selected is None:
+        obj.is_selected = False
+
+  async def commit(self) -> None:
+    """Commits pending entities by delegating to `flush()`."""
+    await self.flush()
+
+  async def refresh(self, instance: ExperimentLog) -> None:
+    """
+    Populates `id`, `created_at`, and `candidates` on `instance` from `self.store`.
+
+    Args:
+        instance (ExperimentLog): Experiment log instance to refresh.
+    """
+    if not instance.id:
+      instance.id = uuid.uuid4()
+    if not instance.created_at:
+      instance.created_at = datetime.now(UTC)
+    instance.candidates = [c for c in self.store if isinstance(c, ModelCandidate) and c.experiment_id == instance.id]
 
 
 class BenchmarkRunner:
@@ -67,21 +141,20 @@ class BenchmarkRunner:
     self.dataset = self._load_dataset()
     self._init_duckdb()
 
-  def _load_dataset(self) -> list[dict[str, Any]]:
+  def _load_dataset(self) -> list[JsonObject]:
     """
     Loads the Gold Standard JSON.
 
     Returns:
-        List[Dict[str, Any]]: The list of test cases (minus metadata).
+        list[JsonObject]: The list of test cases (minus metadata).
     """
     if not os.path.exists(GOLD_FILE):
       logger.error(f"❌ Gold dataset not found at {GOLD_FILE}")
       sys.exit(1)
 
     with open(GOLD_FILE, "r", encoding="utf-8") as f:
-      data = json.load(f)
+      data: list[JsonObject] = json.load(f)
 
-    # Filter out metadata row
     return [r for r in data if "_meta" not in r]
 
   def _init_duckdb(self) -> None:
@@ -97,7 +170,7 @@ class BenchmarkRunner:
     except Exception as e:
       logger.warning(f"⚠️ Failed to init DuckDB (Data might be missing): {e}")
 
-  def _execute_sql(self, sql: str) -> tuple[list[Any] | None, str | None]:
+  def _execute_sql(self, sql: str) -> tuple[list[tuple[SqlScalar, ...]] | None, str | None]:
     """
     Executes SQL safely against the Read-Only engine.
 
@@ -105,7 +178,7 @@ class BenchmarkRunner:
         sql (str): The query to run.
 
     Returns:
-        Tuple: (ResultList, ErrorString)
+        tuple[list[tuple[SqlScalar, ...]] | None, str | None]: `(ResultList, ErrorString)`
         - ResultList is a list of tuples (rows).
         - ErrorString is the exception message if failed.
     """
@@ -122,7 +195,11 @@ class BenchmarkRunner:
     finally:
       conn.close()
 
-  def _compare_results(self, gold_rows: list[Any] | None, gen_rows: list[Any] | None) -> bool:
+  def _compare_results(
+    self,
+    gold_rows: Sequence[tuple[SqlScalar, ...]] | None,
+    gen_rows: Sequence[tuple[SqlScalar, ...]] | None,
+  ) -> bool:
     """
     Determines if two result sets are equivalent.
 
@@ -132,8 +209,8 @@ class BenchmarkRunner:
     3. Rounding for floats (tolerance 0.01).
 
     Args:
-        gold_rows: The ground truth data.
-        gen_rows: The candidate data.
+        gold_rows (Sequence[tuple[SqlScalar, ...]] | None): The ground truth data.
+        gen_rows (Sequence[tuple[SqlScalar, ...]] | None): The candidate data.
 
     Returns:
         bool: True if data is equivalent.
@@ -145,14 +222,14 @@ class BenchmarkRunner:
       return False
 
     if len(gold_rows) == 0:
-      return True  # Both empty = Match
+      return True
 
-    def normalize(row: tuple[Any, ...]) -> str:
+    def normalize(row: tuple[SqlScalar, ...]) -> str:
       """
       Formats a single result row tuple into a pipe-delimited string with rounded floats.
 
       Args:
-          row (tuple[Any, ...]): Database result row tuple.
+          row (tuple[SqlScalar, ...]): Database result row tuple.
 
       Returns:
           str: Normalized pipe-delimited row string.
@@ -165,84 +242,39 @@ class BenchmarkRunner:
 
     return gold_set == gen_set
 
-  def _create_mock_db(self) -> MagicMock:
+  def _create_mock_db(self) -> InMemoryExperimentSession:
     """
-    Creates an in-memory mock `AsyncSession` for offline benchmark execution.
+    Creates a strongly typed `InMemoryExperimentSession` for offline benchmark execution.
 
     Returns:
-        MagicMock: Configured mock database session.
+        InMemoryExperimentSession: Configured in-memory experiment session.
     """
-    mock_db = MagicMock()
-    db_store: list[Any] = []
-
-    def mock_add(obj: object) -> None:
-      """
-      Appends an ORM object to the in-memory mock session store.
-
-      Args:
-          obj (object): ORM instance to store.
-      """
-      db_store.append(obj)
-
-    mock_db.add.side_effect = mock_add
-
-    async def mock_flush() -> None:
-      """
-      Populates UUIDs and default flags on pending objects in `db_store`.
-      """
-      for obj in db_store:
-        if not getattr(obj, "id", None):
-          obj.id = uuid.uuid4()
-        if isinstance(obj, ModelCandidate) and getattr(obj, "is_selected", None) is None:
-          obj.is_selected = False
-
-    mock_db.flush = AsyncMock(side_effect=mock_flush)
-    mock_db.commit = AsyncMock(side_effect=mock_flush)
-
-    async def mock_refresh(instance: ExperimentLog | ModelCandidate) -> None:
-      """
-      Populates `id`, `created_at`, and `candidates` relationship on `instance`.
-
-      Args:
-          instance (ExperimentLog | ModelCandidate): ORM model instance being refreshed.
-      """
-      if not instance.id:
-        instance.id = uuid.uuid4()
-      if not getattr(instance, "created_at", None):
-        setattr(instance, "created_at", datetime.now(UTC))
-
-      if isinstance(instance, ExperimentLog):
-        instance.candidates = [
-          c for c in db_store if isinstance(c, ModelCandidate) and getattr(c, "experiment_id", None) == instance.id
-        ]
-
-    mock_db.refresh = AsyncMock(side_effect=mock_refresh)
-    return mock_db
+    return InMemoryExperimentSession()
 
   async def _evaluate_strategy_case(
     self,
-    case: dict[str, Any],
+    case: JsonObject,
     strategy: str,
-    gold_rows: list[Any] | None,
-    mock_db: MagicMock,
-    mock_user: User,
-  ) -> list[dict[str, Any]]:
+    gold_rows: Sequence[tuple[SqlScalar, ...]] | None,
+    session_db: ExperimentSessionProtocol,
+    bench_user: User,
+  ) -> list[BenchmarkEvaluationRowDict]:
     """
     Runs a single benchmark case for a given prompt strategy and evaluates candidate SQLs.
 
     Args:
-        case (dict[str, Any]): Gold benchmark test case dictionary.
+        case (JsonObject): Gold benchmark test case dictionary.
         strategy (str): Strategy identifier string.
-        gold_rows (list[Any] | None): Ground truth SQL result rows.
-        mock_db (MagicMock): Mock database session.
-        mock_user (User): Mock benchmark user.
+        gold_rows (Sequence[tuple[SqlScalar, ...]] | None): Ground truth SQL result rows.
+        session_db (ExperimentSessionProtocol): Experiment persistence session.
+        bench_user (User): Benchmark user entity.
 
     Returns:
-        list[dict[str, Any]]: List of evaluation result rows for this case and strategy.
+        list[BenchmarkEvaluationRowDict]: List of evaluation result rows for this case and strategy.
     """
-    rows_out: list[dict[str, Any]] = []
+    rows_out: list[BenchmarkEvaluationRowDict] = []
     experiment = await sql_generator.run_arena_experiment(
-      user_query=case["question"], db=mock_db, user=mock_user, strategy=strategy, dry_run=self.dry_run
+      user_query=str(case["question"]), db=session_db, user=bench_user, strategy=strategy, dry_run=self.dry_run
     )
 
     for candidate in experiment.candidates:
@@ -250,19 +282,20 @@ class BenchmarkRunner:
       gen_rows, gen_err = self._execute_sql(gen_sql)
       is_correct = self._compare_results(gold_rows, gen_rows) if not gen_err else False
 
+      nl = chr(10)
       rows_out.append(
         {
           "Timestamp": datetime.now().isoformat(),
-          "Theme": case["theme"],
-          "Complexity": case["complexity"],
+          "Theme": str(case["theme"]),
+          "Complexity": str(case["complexity"]),
           "Strategy": strategy,
           "Model": candidate.model_tag,
-          "LatencyMs": candidate.latency_ms,
+          "LatencyMs": int(candidate.latency_ms or 0),
           "Success": is_correct,
           "ExecError": bool(gen_err),
           "ErrorMsg": gen_err or "",
-          "SQLHash": getattr(candidate, "sql_hash", "") or "",
-          "GeneratedSQL": gen_sql.replace("\n", " ")[:100],
+          "SQLHash": candidate.sql_hash or "",
+          "GeneratedSQL": gen_sql.replace(nl, " ")[:100],
         }
       )
     return rows_out
@@ -272,12 +305,12 @@ class BenchmarkRunner:
     Main execution loop.
 
     Args:
-        strategies: List of strategies to test (e.g. ['zero-shot', 'rag-few-shot']).
+        strategies (list[str]): List of strategies to test (e.g. ['zero-shot', 'rag-few-shot']).
     """
-    results_log: list[dict[str, Any]] = []
-    mock_user = User(email="benchmarker@pulse.com", hashed_password="x")
-    mock_user.id = uuid.uuid4()
-    mock_db = self._create_mock_db()
+    results_log: list[BenchmarkEvaluationRowDict] = []
+    bench_user = User(email="benchmarker@pulse.com", hashed_password="x")
+    bench_user.id = uuid.uuid4()
+    session_db = self._create_mock_db()
 
     total_cases = len(self.dataset) * len(strategies)
     logger.info(
@@ -285,8 +318,8 @@ class BenchmarkRunner:
     )
 
     for case in self.dataset:
-      theme = case["theme"]
-      gold_rows, gold_err = self._execute_sql(case["gold_sql"])
+      theme = str(case["theme"])
+      gold_rows, gold_err = self._execute_sql(str(case["gold_sql"]))
       if gold_err:
         logger.error(f"❌ Gold SQL Failed for '{theme}': {gold_err}")
         continue
@@ -294,7 +327,7 @@ class BenchmarkRunner:
       for strategy in strategies:
         logger.info(f"   >> Processing '{theme}' with {strategy}...")
         try:
-          case_rows = await self._evaluate_strategy_case(case, strategy, gold_rows, mock_db, mock_user)
+          case_rows = await self._evaluate_strategy_case(case, strategy, gold_rows, session_db, bench_user)
           results_log.extend(case_rows)
         except Exception as e:
           logger.error(f"Error in benchmark loop: {e}")
@@ -302,12 +335,12 @@ class BenchmarkRunner:
 
     self._save_report(results_log)
 
-  def _save_report(self, results: list[dict[str, Any]]) -> None:
+  def _save_report(self, results: Sequence[BenchmarkEvaluationRowDict]) -> None:
     """
     Writes the results to a CSV file.
 
     Args:
-        results: List of result dictionaries.
+        results (Sequence[BenchmarkEvaluationRowDict]): List of result dictionaries.
     """
     if not results:
       logger.warning("No results to save.")
@@ -320,10 +353,10 @@ class BenchmarkRunner:
 
     logger.info(f"✅ Benchmark Complete. Report saved to {self.output_file}")
 
-    # Print simple summary
     success_count = sum(1 for r in results if r["Success"])
     total = len(results)
-    print(f"\nOverall Accuracy: {(success_count / total) * 100:.1f}% ({success_count}/{total})")
+    nl = chr(10)
+    print(f"{nl}Overall Accuracy: {(success_count / total) * 100:.1f}% ({success_count}/{total})")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -341,9 +374,6 @@ def main(argv: list[str] | None = None) -> None:
   )
 
   args = parser.parse_args(argv)
-
-  if sys.platform == "win32":  # pragma: no cover
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
   runner = BenchmarkRunner(dry_run=args.dry_run, output_file=args.output)
   asyncio.run(runner.run(strategies=args.strategies))

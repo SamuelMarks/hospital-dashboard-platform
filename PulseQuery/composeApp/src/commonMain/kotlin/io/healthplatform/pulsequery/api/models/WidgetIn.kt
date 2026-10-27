@@ -3,13 +3,38 @@
  */
 package io.healthplatform.pulsequery.api.models
 
+import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+/**
+ * Content-based polymorphic serializer for [WidgetIn] dispatching on the `"type"` JSON property.
+ */
+object WidgetInSerializer : JsonContentPolymorphicSerializer<WidgetIn>(WidgetIn::class) {
+    /**
+     * Selects the concrete [DeserializationStrategy] based on the `"type"` field in [element].
+     *
+     * @param element Parsed JSON payload.
+     * @return Concrete [WidgetIn] subtype serializer.
+     */
+    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<WidgetIn> {
+        val typeElement = element.jsonObject["type"] ?: return WidgetIn.Sql.serializer()
+        return when (typeElement.jsonPrimitive.content.uppercase()) {
+            "TEXT" -> WidgetIn.Text.serializer()
+            "HTTP" -> WidgetIn.Http.serializer()
+            else -> WidgetIn.Sql.serializer()
+        }
+    }
+}
 
 /**
  * Polymorphic base model for creating dashboard widgets.
  */
-@Serializable
+@Serializable(with = WidgetInSerializer::class)
 sealed class WidgetIn {
     /** Display title of the widget. */
     abstract val title: String

@@ -7,7 +7,6 @@ import { DatePipe, DOCUMENT } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { DragDropModule } from '@angular/cdk/drag-drop';
-import { Subscription } from 'rxjs';
 
 // Material & UI
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -32,7 +31,7 @@ import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { QueryCartProvisioningService } from './query-cart-provisioning.service';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../global/query-cart.models';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
-import { DashboardCollaborationService } from '../core/collaboration/dashboard-collaboration.service';
+import { DashboardCollaborationCoordinator } from './dashboard-collaboration-coordinator.service';
 import { DATE_NOW } from '../core/time.token';
 import { UndoRedoService } from '../core/undo/undo-redo.service';
 import { DeleteWidgetCommand } from '../core/undo/dashboard-commands';
@@ -100,8 +99,8 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
   /** Material snackbar service used to display status and undo toast notifications. */
   private readonly snackBar = inject(MatSnackBar);
-  /** Real-time WebSocket collaboration service for peer presence and widget updates. */
-  private readonly collaborationService = inject(DashboardCollaborationService);
+  /** Coordinator managing real-time WebSocket collaboration presence and remote widget refresh events. */
+  private readonly collaborationCoordinator = inject(DashboardCollaborationCoordinator);
   /** Undo/redo command history service for reversible widget mutations. */
   private readonly undoRedoService = inject(UndoRedoService);
   /** Injected clock function returning the current Date instance. */
@@ -110,8 +109,6 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   /** DestroyRef for cleaning up route subscriptions. */
   private readonly destroyRef = inject(DestroyRef);
-  /** Active subscription listening for remote peer widget refresh events. */
-  private widgetUpdateSub?: Subscription;
 
   /** Whether the app is in TV Mode (Kiosk). */
   readonly isTvMode = this.themeService.isTvMode;
@@ -123,12 +120,10 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
       if (id) {
         this.store.reset();
         this.store.loadDashboard(id);
-        this.collaborationService.connect(id);
+        this.collaborationCoordinator.connect(id, (widgetId) => {
+          this.store.refreshWidget(widgetId);
+        });
       }
-    });
-
-    this.widgetUpdateSub = this.collaborationService.remoteWidgetUpdates$.subscribe((widgetId) => {
-      this.store.refreshWidget(widgetId);
     });
 
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((qParams) => {
@@ -140,10 +135,9 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Unsubscribes from remote widget updates and disconnects the collaboration WebSocket. */
+  /** Disconnects the collaboration coordinator when the layout component is destroyed. */
   ngOnDestroy(): void {
-    this.widgetUpdateSub?.unsubscribe();
-    this.collaborationService.disconnect();
+    this.collaborationCoordinator.disconnect();
   }
 
   /**

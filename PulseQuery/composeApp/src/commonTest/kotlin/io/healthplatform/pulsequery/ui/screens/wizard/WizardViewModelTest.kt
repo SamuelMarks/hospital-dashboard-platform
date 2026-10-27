@@ -509,6 +509,8 @@ class WizardViewModelTest {
         }
 
         // Calling parameter/custom methods when state is TemplateSelection (early returns)
+        vm.loadAvailableProcessors()
+        kotlinx.coroutines.delay(50)
         vm.updateCustomWidgetTitle("ignored")
         vm.updateCustomWidgetContent("ignored")
         vm.updateCustomWidgetViz("ignored")
@@ -714,5 +716,124 @@ class WizardViewModelTest {
             vmNullFail.state.first { it is WizardState.Error }
         } as WizardState.Error
         assertEquals("Failed to create widget", errCreate.message)
+
+        // Test processor loading, mapModelInfoToProcessorSelection, and natural text mutations
+        val modelsJson = """
+            [
+              {"id":"SQL","name":"SQL [no model]","provider":"sql","is_local":true,"processor_type":"SQL"},
+              {"id":"ollama:llama3","name":"Llama 3","provider":"ollama","is_local":true,"processor_type":"OLLAMA"},
+              {"id":"openai:gpt-4o","name":"GPT-4o","provider":"openai","is_local":false,"processor_type":"ANY_LLM"}
+            ]
+        """.trimIndent()
+        val aiClientOk = HttpClient(MockEngine {
+            respond(
+                content = modelsJson,
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            )
+        }) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true; isLenient = true })
+            }
+        }
+        val aiApiOk = io.healthplatform.pulsequery.api.apis.AiApi(baseUrl = "http://localhost", httpClient = aiClientOk)
+
+        val vmWithAi = WizardViewModel(
+            dashboardId = "d-ai",
+            scope = this,
+            templatesApi = customTemplatesApi,
+            dashboardsApi = customDashboardsApi,
+            aiApi = aiApiOk
+        )
+        withTimeout(5000) {
+            vmWithAi.state.first { it is WizardState.TemplateSelection }
+        }
+
+        // Calling natural text mutations while in TemplateSelection (else branch)
+        vmWithAi.updateAllowNaturalText(true)
+        vmWithAi.selectProcessor(io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3"))
+        vmWithAi.updateNaturalTextPrompt("prompt")
+        vmWithAi.updatePlaceholderText("placeholder")
+
+        // In CustomWidgetConfiguration
+        vmWithAi.startCustomWidget("SQL")
+        vmWithAi.loadAvailableProcessors()
+        kotlinx.coroutines.delay(50)
+        vmWithAi.updateCustomWidgetTitle("NL SQL Widget")
+        vmWithAi.updateAllowNaturalText(true)
+        vmWithAi.selectProcessor(io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3"))
+        vmWithAi.updateNaturalTextPrompt("  Show ICU patients  ")
+        vmWithAi.updatePlaceholderText("  Ask question  ")
+        // With allowNaturalText=true on SQL widget, empty queryOrUrlOrContent is valid
+        vmWithAi.submitCustomWidget {}
+        withTimeout(5000) {
+            vmWithAi.state.first { it is WizardState.Success }
+        }
+
+        // In ParameterConfiguration
+        vmWithAi.selectTemplate(tplOther.copy(parametersSchema = null))
+        vmWithAi.updateVisualization("bar_chart")
+        vmWithAi.loadAvailableProcessors()
+        kotlinx.coroutines.delay(100)
+        vmWithAi.updateAllowNaturalText(true)
+        vmWithAi.selectProcessor(io.healthplatform.pulsequery.core.model.ProcessorId("openai:gpt-4o"))
+        vmWithAi.updateNaturalTextPrompt("  Count by ward  ")
+        vmWithAi.updatePlaceholderText("  Enter prompt  ")
+        vmWithAi.submitWidget {}
+        withTimeout(5000) {
+            vmWithAi.state.first { it is WizardState.Success }
+        }
+
+        // Test loadAvailableProcessors when SQL is omitted from response & when AI API fails
+        val aiClientNoSql = HttpClient(MockEngine {
+            respond(
+                content = """[{"id":"ollama/mistral","name":"","provider":"","is_local":false,"processor_type":"ANY_LLM"}]""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            )
+        }) {
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true; isLenient = true })
+            }
+        }
+        val vmNoSql = WizardViewModel(
+            dashboardId = "d-nosql",
+            scope = this,
+            templatesApi = customTemplatesApi,
+            dashboardsApi = customDashboardsApi,
+            aiApi = io.healthplatform.pulsequery.api.apis.AiApi(baseUrl = "http://localhost", httpClient = aiClientNoSql)
+        )
+        kotlinx.coroutines.delay(50)
+        vmNoSql.startCustomWidget("SQL")
+        assertEquals(2, (vmNoSql.state.value as WizardState.CustomWidgetConfiguration).availableProcessors.size)
+
+        val vmAiFail = WizardViewModel(
+            dashboardId = "d-aifail",
+            scope = this,
+            templatesApi = customTemplatesApi,
+            dashboardsApi = customDashboardsApi,
+            aiApi = io.healthplatform.pulsequery.api.apis.AiApi(baseUrl = "http://localhost", httpClient = nullFailClient)
+        )
+        kotlinx.coroutines.delay(50)
+        vmAiFail.startCustomWidget("SQL")
+        assertEquals(1, (vmAiFail.state.value as WizardState.CustomWidgetConfiguration).availableProcessors.size)
+
+        // Direct mapModelInfoToProcessorSelection coverage for remaining branches
+        val mSqlBlank = mapModelInfoToProcessorSelection(
+            io.healthplatform.pulsequery.api.models.ModelInfo(id = "other", name = "", provider = "", isLocal = false, processorType = "SQL")
+        )
+        assertEquals(io.healthplatform.pulsequery.core.model.ProcessorId.SQL_NO_MODEL, mSqlBlank.id)
+        val mOllamaPrefix = mapModelInfoToProcessorSelection(
+            io.healthplatform.pulsequery.api.models.ModelInfo(id = "ollama:phi3", name = "Phi3", provider = "custom", isLocal = false, processorType = "ANY_LLM")
+        )
+        assertEquals(io.healthplatform.pulsequery.core.model.ProcessorCategory.OLLAMA, mOllamaPrefix.category)
+        val mOllamaProvider = mapModelInfoToProcessorSelection(
+            io.healthplatform.pulsequery.api.models.ModelInfo(id = "phi3", name = "Phi3", provider = "ollama", isLocal = false, processorType = "ANY_LLM")
+        )
+        assertEquals(io.healthplatform.pulsequery.core.model.ProcessorCategory.OLLAMA, mOllamaProvider.category)
+        val mLocal = mapModelInfoToProcessorSelection(
+            io.healthplatform.pulsequery.api.models.ModelInfo(id = "local:m", name = "Loc", provider = "loc", isLocal = true, processorType = "ANY_LLM")
+        )
+        assertEquals(io.healthplatform.pulsequery.core.model.ProcessorCategory.OLLAMA, mLocal.category)
     }
 }

@@ -148,4 +148,167 @@
     <string name="affinity_score">Affinity Score</string>
     <string name="no_constraints_added">No custom constraints added.</string>
     <string name="no_affinities_added">No affinity overrides added.</string>
+
+    <!-- Processor Selection & Natural Text Widgets -->
+    <string name="processor_label">Query Processor (Model or SQL)</string>
+    <string name="processor_sql_no_model">SQL [no model]</string>
+    <string name="processor_group_ollama">Ollama Models (Local)</string>
+    <string name="processor_group_any_llm">Configured any-llm Models</string>
+    <string name="select_processor_content_desc">Select query processor model or SQL</string>
+    <string name="allow_natural_text_label">Allow user natural text input</string>
+    <string name="allow_natural_text_desc">Allow dashboard users to enter natural text or SQL processed by the selected model</string>
+    <string name="natural_text_prompt_label">Default Natural Text Prompt</string>
+    <string name="natural_text_placeholder_label">Input Placeholder</string>
+    <string name="natural_text_placeholder_default">Ask in natural language...</string>
+    <string name="sql_input_placeholder_default">Enter DuckDB SQL query...</string>
+    <string name="run_natural_text_button">Run</string>
+    <string name="generated_sql_label">SQL: %1$s</string>
+    <string name="processed_by_model_msg">Processed by %1$s</string>
+
+    <!-- UserManagementScreen & AdminScreen -->
+    <string name="users_action">Users</string>
+    <string name="staff_user_management">Staff User Management</string>
+    <string name="staff_user_management_desc">Assign roles (Physician, Charge Nurse, Analyst) and toggle account status.</string>
+    <string name="user_management">User Management</string>
+    <string name="navigate_back">Navigate back</string>
+    <string name="search_users_by_email">Search users by email...</string>
+    <string name="search">Search</string>
+    <string name="all_roles">All Roles</string>
+    <string name="no_users_found">No users found matching filter criteria.</string>
+    <string name="user_active">Active</string>
+    <string name="user_suspended">Suspended</string>
+    <string name="change_role">Change Role</string>
+    <string name="user_id_label">ID: %1$s</string>
+    <string name="user_role_label">Role: %1$s</string>
+
+    <!-- AlertRulesScreen -->
+    <string name="alert_rules">Alert Rules</string>
+    <string name="refresh_rules">Refresh Rules</string>
+    <string name="add_rule">Add Rule</string>
+    <string name="no_alert_rules_configured">No alert rules configured</string>
+    <string name="create_rule">Create Rule</string>
+    <string name="configured_occupancy_thresholds">Configured Occupancy Thresholds</string>
+    <string name="edit_rule">Edit Rule</string>
+    <string name="delete_rule">Delete Rule</string>
+    <string name="edit_alert_rule">Edit Alert Rule</string>
+    <string name="create_alert_rule">Create Alert Rule</string>
+    <string name="unit_category">Unit Category</string>
+    <string name="occupancy_threshold_pct">Occupancy Threshold (%)</string>
+    <string name="severity">Severity</string>
+    <string name="severity_info">Info</string>
+    <string name="severity_warning">Warning</string>
+    <string name="severity_critical">Critical</string>
+    <string name="active_evaluation">Active Evaluation</string>
+    <string name="saving">Saving...</string>
+    <string name="save_changes">Save Changes</string>
+
+    <!-- RegisterScreen & LoginScreen -->
+    <string name="create_an_account">Create an Account</string>
+    <string name="sign_up_subtitle">Sign up for Pulse Query Clinical Analytics</string>
+    <string name="email_address">Email Address</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="show_password">Show password</string>
+    <string name="register_account">Register Account</string>
+    <string name="already_have_account_sign_in">Already have an account? Sign In</string>
+    <string name="register_button">Register</string>
+    <string name="already_have_account_log_in">Already have an account? Log In</string>
+    <string name="need_an_account_register">Need an account? Register</string>
+
+    <!-- Wizard Custom Authoring -->
+    <string name="custom_widget_builder">Custom Widget Builder</string>
+    <string name="creation_source">Creation Source</string>
+    <string name="source_templates">Templates</string>
+    <string name="source_custom_sql">+ Custom SQL</string>
+    <string name="source_custom_http">+ Custom HTTP</string>
+    <string name="source_custom_text">+ Note / Text</string>
+    <string name="search_templates_input">Search templates input</string>
+    <string name="http_verb">HTTP Verb</string>
+    <string name="visualization_format">Visualization Format</string>
+    <string name="endpoint_url_label">Endpoint URL (e.g. https://api.hospital.org/v1/metrics)</string>
+    <string name="markdown_content_label">Markdown Content / Notes</string>
+    <string name="sql_query_label">SQL Query</string>
+
+    <!-- Dashboard, Share, Export, Cart, & Save Query -->
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="query_cart">Query Cart</string>
+    <string name="share_dashboard">Share Dashboard</string>
+    <string name="export_dashboard">Export Dashboard</string>
+    <string name="export_pdf_report">Clinical PDF Report</string>
+    <string name="export_csv_snapshot">CSV Data Snapshot</string>
+    <string name="export_json_snapshot">JSON Layout Snapshot</string>
+    <string name="move_up">Move Up</string>
+    <string name="move_down">Move Down</string>
+    <string name="edit_widget">Edit Widget</string>
+    <string name="save_query">Save Query</string>
+    <string name="add_to_cart">Add to Cart</string>
+    <string name="stage_to_cart">Stage to Cart</string>
+    <string name="stage">Stage</string>
+    <string name="vote_as_best">Vote as Best</string>
+    <string name="assistant_streaming">Assistant (Streaming...)</string>
+    <string name="hide_variations">Hide Variations</string>
+    <string name="winner_badge">Winner</string>
+    <string name="save_analytical_query">Save Analytical Query</string>
+    <string name="dashboard_widget_dest">Dashboard Widget</string>
+    <string name="template_library_dest">Template Library</string>
+    <string name="title_label">Title</string>
+    <string name="category_label">Category</string>
+    <string name="description_label">Description</string>
+    <string name="clear_all">Clear All</string>
+    <string name="remove_from_cart">Remove from cart</string>
+    <string name="done">Done</string>
+
+    <!-- Simulation, MPAX Arena, Benchmarks, & Analytics -->
+    <string name="delete_constraint">Delete constraint</string>
+    <string name="delete_affinity">Delete affinity</string>
+    <string name="confirm_add_constraint">Confirm Add Constraint</string>
+    <string name="confirm_add_affinity">Confirm Add Affinity</string>
+    <string name="bed_occupancy_comparison_table">Bed occupancy comparison table</string>
+    <string name="mpax_arena_title">MPAX Arena: Model Competition</string>
+    <string name="mpax_arena_prompt_label">Clinical Optimization Scenario Prompt</string>
+    <string name="evaluation_mode_label">Evaluation Mode</string>
+    <string name="evaluating_models">Evaluating Models...</string>
+    <string name="run_arena_competition">Run Arena Competition</string>
+    <string name="mpax_arena_empty_prompt">Submit a prompt to benchmark and compare candidate models.</string>
+    <string name="selected_winner">Selected Winner</string>
+    <string name="voting_in_progress">Voting...</string>
+    <string name="ai_optimization_benchmarks">AI &amp; Optimization Benchmarks</string>
+    <string name="refresh_benchmarks">Refresh Benchmarks</string>
+    <string name="no_sql_benchmarks">No SQL benchmarks available.</string>
+    <string name="no_mpax_benchmarks">No MPAX benchmarks available.</string>
+    <string name="simulate_in_arena">Simulate in Arena</string>
+    <string name="bed_capacity_alert_rules">Bed Capacity Alert Rules</string>
+    <string name="bed_capacity_alert_rules_desc">Configure occupancy thresholds and automated alerting triggers.</string>
+    <string name="configure">Configure</string>
+
+    <!-- TV, Wear, FilterRibbon, & SystemErrorComponents -->
+    <string name="tv_wallboard">TV Wallboard</string>
+    <string name="clinical_status_wallboard">Clinical Status Wallboard</string>
+    <string name="tv_live_view_subtitle">Hospital Operations Telemetry • Live View</string>
+    <string name="exit_wallboard">Exit Wallboard</string>
+    <string name="no_telemetry_widgets">No telemetry widgets active on this board.</string>
+    <string name="live_telemetry_feed">Live Telemetry Feed</string>
+    <string name="press_ok_to_inspect">Press OK to inspect</string>
+    <string name="use_dpad_to_select">Use D-pad to select</string>
+    <string name="wearable_header">Wearable Header</string>
+    <string name="pulse_watch">Pulse Watch</string>
+    <string name="hospital_census_upper">HOSPITAL CENSUS</string>
+    <string name="wear_census_summary_desc">Census: %1$d% Occupied, %2$d Open Beds</string>
+    <string name="wear_occupancy_percent">%1$d%</string>
+    <string name="wear_open_beds">%1$d Beds Open</string>
+    <string name="wear_active_alerts">ACTIVE ALERTS (%1$d)</string>
+    <string name="refresh_wear_data">Refresh Wear Data</string>
+    <string name="all_units_nominal">All units nominal</string>
+    <string name="exit_button">Exit</string>
+    <string name="filter_ribbon">Filter Ribbon</string>
+    <string name="department_all">Department: All</string>
+    <string name="time_all">Time: All</string>
+    <string name="clear_filters">Clear Filters</string>
+    <string name="offline_indicator">Offline indicator</string>
+    <string name="backend_inaccessible">Backend Inaccessible</string>
+    <string name="backend_inaccessible_desc">Cannot reach Pulse Query server. Check network or server status.</string>
+    <string name="database_error">Database error</string>
+    <string name="database_misconfiguration">Database Misconfiguration</string>
+    <string name="retry_query">Retry Query</string>
 </resources>

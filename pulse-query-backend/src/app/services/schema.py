@@ -10,6 +10,8 @@ actual data structure.
 import asyncio
 from typing import Protocol, TypedDict
 
+import duckdb
+
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import DuckDBConnectionProtocol, duckdb_manager
 
@@ -183,7 +185,7 @@ class SchemaService:
 
       return Ok(nl.join(schema_lines) + domain_logic + macros_doc + functions_doc + examples_doc)
 
-    except Exception as e:
+    except (duckdb.Error, RuntimeError, ValueError, TypeError, OSError) as e:
       return Err(
         AppError(
           code=ErrorCode.DATABASE_UNAVAILABLE,

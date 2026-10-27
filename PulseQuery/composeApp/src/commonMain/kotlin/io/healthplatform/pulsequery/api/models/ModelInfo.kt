@@ -22,17 +22,19 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Information about a configured LLM in the Arena.
+ * Information about a configured LLM or SQL processor in the platform.
  *
- * @param id
- * @param name
- * @param provider
- * @param isLocal
+ * @param id Unique processor identifier (e.g. `'SQL'`, `'ollama:llama3'`, `'openai/gpt-4o'`).
+ * @param name Human-readable display label.
+ * @param provider Provider slug (`'sql'`, `'ollama'`, `'openai'`, etc.).
+ * @param isLocal True if the processor executes locally.
+ * @param processorType High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`).
  */
 @Serializable
 data class ModelInfo(
     @SerialName(value = "id") @Required val id: kotlin.String,
     @SerialName(value = "name") @Required val name: kotlin.String,
     @SerialName(value = "provider") @Required val provider: kotlin.String,
-    @SerialName(value = "is_local") @Required val isLocal: kotlin.Boolean
+    @SerialName(value = "is_local") @Required val isLocal: kotlin.Boolean,
+    @SerialName(value = "processor_type") val processorType: kotlin.String = "ANY_LLM"
 )

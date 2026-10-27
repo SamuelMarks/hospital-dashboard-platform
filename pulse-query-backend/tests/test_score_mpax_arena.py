@@ -5,8 +5,7 @@ Verifies mathematical correctness, edge case handling, and scoring accuracy
 for Judge, Constraints, SQL vs MPAX, and Critic evaluation modes.
 """
 
-from typing import Any
-
+from app.schemas.json_types import JsonObject
 from scripts.score_mpax_arena import (
   extract_json_from_text,
   score_constraints_mode,
@@ -32,7 +31,7 @@ def test_extract_json_from_text_invalid() -> None:
 
 def test_score_judge_mode_exact_match() -> None:
   """Verifies 100% score when candidate text matches MPAX truth perfectly."""
-  truth: dict[str, Any] = {
+  truth: JsonObject = {
     "assignments": [
       {"Unit": "ICU", "Patient_Count": 5},
       {"Unit": "MedSurg", "Patient_Count": 10},
@@ -45,7 +44,7 @@ def test_score_judge_mode_exact_match() -> None:
 
 def test_score_judge_mode_degraded_and_invalid() -> None:
   """Verifies penalization for allocation errors and handling of missing JSON."""
-  truth: dict[str, Any] = {
+  truth: JsonObject = {
     "assignments": [
       {"Unit": "ICU", "Patient_Count": 5},
       {"unit": "MedSurg", "count": 10},
@@ -69,13 +68,13 @@ def test_score_judge_mode_degraded_and_invalid() -> None:
 
 def test_score_constraints_mode() -> None:
   """Verifies evaluation of constraint performance and overflow penalty."""
-  expected: dict[str, Any] = {"expected_overflow": 2}
+  expected: JsonObject = {"expected_overflow": 2}
 
   # Status error
   assert score_constraints_mode(expected, {"status": "error"}) == 0.0
 
   # Exact match
-  candidate_ok: dict[str, Any] = {
+  candidate_ok: JsonObject = {
     "status": "success",
     "assignments": [
       {"Unit": "ICU", "Patient_Count": 5},
@@ -85,14 +84,14 @@ def test_score_constraints_mode() -> None:
   assert score_constraints_mode(expected, candidate_ok) == 100.0
 
   # Penalty applied: overflow = 4 vs expected 2 -> error 2 -> 100 - 40 = 60
-  candidate_err: dict[str, Any] = {
+  candidate_err: JsonObject = {
     "status": "success",
     "assignments": [{"Unit": "Overflow", "Patient_Count": 4}],
   }
   assert score_constraints_mode(expected, candidate_err) == 60.0
 
   # Massive error bounded at 0.0
-  candidate_huge_err: dict[str, Any] = {
+  candidate_huge_err: JsonObject = {
     "status": "success",
     "assignments": [{"Unit": "Overflow", "Patient_Count": 50}],
   }
@@ -101,13 +100,13 @@ def test_score_constraints_mode() -> None:
 
 def test_score_sql_vs_mpax_mode_exact_match() -> None:
   """Verifies exact SQL match against ground truth yields top score."""
-  truth: dict[str, Any] = {
+  truth: JsonObject = {
     "assignments": [
       {"Unit": "ICU", "Patient_Count": 10},
       {"Unit": "MedSurg", "Patient_Count": 20},
     ]
   }
-  sql_result: dict[str, Any] = {
+  sql_result: JsonObject = {
     "data": [
       {"department": "ICU", "volume": 10},
       {"target_unit": "MedSurg", "census": 20},
@@ -120,7 +119,7 @@ def test_score_sql_vs_mpax_mode_exact_match() -> None:
 
 def test_score_sql_vs_mpax_mode_error_and_empty() -> None:
   """Verifies handling of SQL execution errors and malformed result payloads."""
-  truth: dict[str, Any] = {"assignments": [{"Unit": "ICU", "Patient_Count": 10}]}
+  truth: JsonObject = {"assignments": [{"Unit": "ICU", "Patient_Count": 10}]}
 
   # Error reported
   assert score_sql_vs_mpax_mode(truth, {"error": "Syntax Error", "data": []}) == 0.0
@@ -135,21 +134,21 @@ def test_score_sql_vs_mpax_mode_error_and_empty() -> None:
   assert score_sql_vs_mpax_mode(truth, {"data": ["invalid_row"]}) == 0.0
 
   # Fallback to assignments key
-  sql_assignments: dict[str, Any] = {"assignments": [{"unit_category": "ICU", "patients": "invalid_num"}]}
+  sql_assignments: JsonObject = {"assignments": [{"unit_category": "ICU", "patients": "invalid_num"}]}
   score_inv = score_sql_vs_mpax_mode(truth, sql_assignments)
   assert score_inv >= 0.0
 
 
 def test_score_sql_vs_mpax_mode_degraded_and_zero_demand() -> None:
   """Verifies score degradation for partial mismatches and handling of zero demand."""
-  truth: dict[str, Any] = {
+  truth: JsonObject = {
     "assignments": [
       {"Unit": "ICU", "Patient_Count": 10},
       {"Unit": "MedSurg", "Patient_Count": 10},
     ]
   }
   # Partial mismatch
-  sql_result: dict[str, Any] = {
+  sql_result: JsonObject = {
     "data": [
       {"unit": "ICU", "count": 8},
       {"unit": "MedSurg", "count": 12},
@@ -159,7 +158,7 @@ def test_score_sql_vs_mpax_mode_degraded_and_zero_demand() -> None:
   assert 0.0 < score < 100.0
 
   # Truth with zero demand
-  zero_truth: dict[str, Any] = {"assignments": []}
+  zero_truth: JsonObject = {"assignments": []}
   assert score_sql_vs_mpax_mode(zero_truth, {"data": [{"unit": "ICU", "count": 5}]}) == 0.0
 
 
@@ -167,3 +166,29 @@ def test_score_critic_mode() -> None:
   """Verifies floating-point conversion of critic scores."""
   assert score_critic_mode(95) == 95.0
   assert score_critic_mode(0) == 0.0
+
+
+def test_score_modes_with_typed_mpax_solver_models() -> None:
+  """Verifies scoring functions accept `MpaxSolverTruth` and `MpaxSolverErrorPayload` directly."""
+  from app.schemas.mpax_arena import MpaxAssignmentRow, MpaxSolverErrorPayload, MpaxSolverTruth
+
+  truth_model = MpaxSolverTruth(
+    status="OPTIMAL",
+    assignments=[
+      MpaxAssignmentRow(Service="Cardiology", Unit="ICU", Patient_Count=5.0),
+      MpaxAssignmentRow(Service="Neurology", Unit="MedSurg", Patient_Count=10.0),
+    ],
+  )
+  err_model = MpaxSolverErrorPayload(message="infeasible")
+
+  assert score_judge_mode(truth_model, '{"ICU": 5, "MedSurg": 10}') == 100.0
+  assert score_judge_mode(err_model, '{"ICU": 5}') < 100.0
+  assert score_constraints_mode({"expected_overflow": 0}, truth_model) == 100.0
+  assert score_constraints_mode({"expected_overflow": 0}, err_model) == 0.0
+  assert (
+    score_sql_vs_mpax_mode(
+      truth_model,
+      {"data": [{"unit": "ICU", "count": 5}, {"unit": "MedSurg", "count": 10}]},
+    )
+    == 100.0
+  )

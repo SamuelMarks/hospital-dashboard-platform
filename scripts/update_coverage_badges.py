@@ -21,10 +21,50 @@ TEST_BADGE_ALT = "Test Coverage"
 DOC_BADGE_ALT = "Doc Coverage"
 
 _BYPASS_RE = re.compile(r"(istanbul\s+ignore|v8\s+ignore|pragma:\s*no\s*cover)", re.IGNORECASE)
+_FORBIDDEN_REFLECTION_FUNCS = frozenset({"getattr", "setattr", "hasattr"})
+_FORBIDDEN_TYPE_NAMES = frozenset({"Any", "object"})
 
 
 class CoverageError(RuntimeError):
   """Raised when coverage is missing or below the required threshold."""
+
+
+def scan_for_typing_and_reflection_smells(scan_dirs: Iterable[Path] | None = None) -> list[str]:
+  """
+  Scans Python ASTs for forbidden `Any`/`object` usages, `__dict__` reflection,
+  `typing.cast`, and `getattr`/`setattr`/`hasattr` calls.
+
+  Args:
+      scan_dirs (Iterable[Path] | None): Optional directories to scan (defaults to backend src, scripts, tests, and root scripts).
+
+  Returns:
+      list[str]: List of relative file paths and line numbers with typing or reflection violations.
+  """
+  target_dirs = (
+    list(scan_dirs)
+    if scan_dirs is not None
+    else [BACKEND / "src", BACKEND / "scripts", BACKEND / "tests", ROOT / "scripts"]
+  )
+  violations: list[str] = []
+  for folder in target_dirs:
+    if not folder.exists():
+      continue
+    for py_path in folder.rglob("*.py"):
+      tree = ast.parse(py_path.read_text(encoding="utf-8"))
+      rel = py_path.relative_to(ROOT)
+      has_typing_cast = any(
+        isinstance(n, ast.ImportFrom) and n.module == "typing" and any(a.name == "cast" for a in n.names)
+        for n in ast.walk(tree)
+      )
+      for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id in _FORBIDDEN_TYPE_NAMES:
+          violations.append(f"{rel}:{node.lineno} ({node.id})")
+        elif isinstance(node, ast.Attribute) and node.attr == "__dict__":
+          violations.append(f"{rel}:{node.lineno} (__dict__)")
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+          if node.func.id in _FORBIDDEN_REFLECTION_FUNCS or (has_typing_cast and node.func.id == "cast"):
+            violations.append(f"{rel}:{node.lineno} ({node.func.id})")
+  return violations
 
 
 def scan_for_coverage_bypasses() -> list[str]:
@@ -120,12 +160,12 @@ def badge_url(label: str, value: float) -> str:
   return f"https://img.shields.io/badge/{label}-{encoded_value}-{badge_color(value)}"
 
 
-def read_percent(value: object) -> float:
+def read_percent(value: str | int | float | None) -> float:
   """
   Normalizes a raw JSON coverage percentage value into a `float`.
 
   Args:
-      value (object): Raw JSON value (`str`, `int`, `float`, or `None`).
+      value (str | int | float | None): Raw JSON value (`str`, `int`, `float`, or `None`).
 
   Returns:
       float: Parsed percentage value.
@@ -133,7 +173,7 @@ def read_percent(value: object) -> float:
   Raises:
       CoverageError: If `value` is `None` or not convertible to `float`.
   """
-  if isinstance(value, (int, float)):
+  if isinstance(value, (int, float)) and not isinstance(value, bool):
     return float(value)
   if isinstance(value, str):
     cleaned = value.strip().rstrip("%")
@@ -364,6 +404,9 @@ def main(argv: list[str] | None = None) -> int:
   bypasses = scan_for_coverage_bypasses()
   if bypasses:
     failures.append(f"Forbidden coverage bypass comments found in: {', '.join(bypasses)}")
+  smells = scan_for_typing_and_reflection_smells()
+  if smells:
+    failures.append(f"Forbidden typing/reflection constructs found in: {', '.join(smells)}")
   if test_percent < 100:
     failures.append(f"Test coverage is {format_percent(test_percent)}%")
   if doc_percent < 100:
@@ -379,9 +422,22 @@ def main(argv: list[str] | None = None) -> int:
   return 0
 
 
-if __name__ == "__main__":  # pragma: no cover
+def run_cli_entrypoint(argv: list[str] | None = None) -> int:
+  """
+  Executes `main(argv)` and converts `CoverageError` into exit code `1`.
+
+  Args:
+      argv (list[str] | None): Optional CLI arguments list.
+
+  Returns:
+      int: Exit code (`0` on success, `1` on `CoverageError`).
+  """
   try:
-    raise SystemExit(main())
+    return main(argv)
   except CoverageError as exc:
     print(f"Coverage check failed: {exc}")
-    raise SystemExit(1) from exc
+    return 1
+
+
+if __name__ == "__main__":
+  raise SystemExit(run_cli_entrypoint())

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,11 +13,18 @@ import { MessageCandidateResponse } from './message-candidate-response';
  * API Response model for a persisted Message.
  */
 export interface MessageResponse {
+  /** Property `content`. */
   content: string;
+  /** Property `id`. */
   id: string;
+  /** Property `conversation_id`. */
   conversation_id: string;
+  /** Property `role`. */
   role: string;
+  /** Property `sql_snippet`. */
   sql_snippet?: string | null;
+  /** Property `created_at`. */
   created_at: string;
-  candidates?: Array<MessageCandidateResponse>;
+  /** Property `candidates`. */
+  candidates?: MessageCandidateResponse[];
 }

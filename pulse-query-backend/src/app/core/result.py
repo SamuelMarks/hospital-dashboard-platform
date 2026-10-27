@@ -8,12 +8,14 @@ represent failures explicitly without relying on untyped exception control flow.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Generic, Never, TypeVar
 
 from fastapi import HTTPException
+
+from app.schemas.json_types import JsonValue
 
 T = TypeVar("T")
 U = TypeVar("U")
@@ -74,13 +76,39 @@ class AppError:
       code (ErrorCode): Canonical domain error classification.
       message (str): Human-readable description of the error.
       status_code (int): Corresponding HTTP status code for API translation.
-      details (dict[str, str]): Optional structured diagnostic key-value pairs.
+      details (Mapping[str, JsonValue]): Optional structured diagnostic key-value pairs.
   """
 
   code: ErrorCode
   message: str
   status_code: int = 400
-  details: dict[str, str] = field(default_factory=dict)
+  details: Mapping[str, JsonValue] = field(default_factory=dict)
+
+  @classmethod
+  def from_exception(
+    cls,
+    exc: BaseException,
+    default_code: ErrorCode = ErrorCode.INTERNAL_ERROR,
+    status_code: int = 400,
+  ) -> AppError:
+    """
+    Constructs a structured `AppError` from a caught Python `BaseException`.
+
+    Args:
+        exc (BaseException): Caught exception instance.
+        default_code (ErrorCode): Domain `ErrorCode` to assign.
+        status_code (int): HTTP status code associated with the error.
+
+    Returns:
+        AppError: Structured domain error with exception class metadata.
+    """
+    exc_type_name = type(exc).__name__
+    return cls(
+      code=default_code,
+      message=str(exc) or exc_type_name,
+      status_code=status_code,
+      details={"exception_type": exc_type_name},
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,12 +164,12 @@ class Ok(Generic[T]):
     """
     return Ok(op(self.value))
 
-  def map_err(self, op: Callable[[Any], F]) -> Ok[T]:
+  def map_err(self, op: Callable[[Never], F]) -> Ok[T]:
     """
     Maps a `Result[T, E]` to `Result[T, F]`, leaving `Ok` untouched.
 
     Args:
-        op (Callable[[Any], F]): Error transformation function (unused for `Ok`).
+        op (Callable[[Never], F]): Error transformation function (unused for `Ok`).
 
     Returns:
         Ok[T]: `Ok(self.value)`.
@@ -202,12 +230,12 @@ class Err(Generic[E]):
     """
     return default
 
-  def map(self, op: Callable[[Any], U]) -> Err[E]:
+  def map(self, op: Callable[[Never], U]) -> Err[E]:
     """
     Leaves the `Err` value untouched when mapping over the success type.
 
     Args:
-        op (Callable[[Any], U]): Success transformation function (unused for `Err`).
+        op (Callable[[Never], U]): Success transformation function (unused for `Err`).
 
     Returns:
         Err[E]: `Err(self.error)`.
@@ -226,12 +254,12 @@ class Err(Generic[E]):
     """
     return Err(op(self.error))
 
-  def and_then(self, op: Callable[[Any], Result[U, E]]) -> Err[E]:
+  def and_then(self, op: Callable[[Never], Result[U, E]]) -> Err[E]:
     """
     Short-circuits a chained operation, propagating the existing `Err`.
 
     Args:
-        op (Callable[[Any], Result[U, E]]): Continuation function (unused for `Err`).
+        op (Callable[[Never], Result[U, E]]): Continuation function (unused for `Err`).
 
     Returns:
         Err[E]: `Err(self.error)`.

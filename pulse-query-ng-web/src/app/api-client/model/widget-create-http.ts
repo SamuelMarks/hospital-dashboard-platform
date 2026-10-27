@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,7 +13,9 @@ import { HttpConfig } from './http-config';
  * Payload for creating an HTTP Widget. Strictly enforces `type=\"HTTP\"` and `config` matching HttpConfig.
  */
 export interface WidgetCreateHttp {
+  /** Property `title`. */
   title: string;
+  /** Property `type`. */
   type: WidgetCreateHttp.TypeEnum;
   /**
    * Visualization ID (e.g. \'table\', \'metric\')
@@ -25,8 +27,10 @@ export interface WidgetCreateHttp {
   config: HttpConfig;
 }
 export namespace WidgetCreateHttp {
+  /** Generated OpenAPI type definition. */
   export const TypeEnum = {
     Http: 'HTTP',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum];
 }

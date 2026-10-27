@@ -6,6 +6,10 @@
  */
 package io.healthplatform.pulsequery.core.error
 
+import io.ktor.client.network.sockets.ConnectTimeoutException
+import io.ktor.client.network.sockets.SocketTimeoutException
+import io.ktor.client.plugins.HttpRequestTimeoutException
+
 /**
  * Root sealed class representing domain-specific failure modes in PulseQuery.
  * Extends [Throwable] so instances can be encapsulated directly inside [Result.failure].
@@ -307,10 +311,12 @@ sealed class PulseQueryError(
          * @return Wrapped or converted [PulseQueryError].
          */
         fun fromThrowable(throwable: Throwable): PulseQueryError {
-            return if (throwable is PulseQueryError) {
-                throwable
-            } else {
-                General(throwable.message ?: "Unknown error occurred", throwable)
+            return when (throwable) {
+                is PulseQueryError -> throwable
+                is HttpRequestTimeoutException,
+                is ConnectTimeoutException,
+                is SocketTimeoutException -> Network.Timeout(cause = throwable)
+                else -> General(throwable.message ?: "Unknown error occurred", throwable)
             }
         }
     }

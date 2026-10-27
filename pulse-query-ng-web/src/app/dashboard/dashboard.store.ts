@@ -2,14 +2,16 @@
  * @fileoverview Centralized reactive state store for Hospital Dashboards and Widgets.
  *
  * Delegates grid sorting and coordinate calculation to `dashboard-grid-layout.utils.ts`,
- * offline snapshot persistence to `DashboardOfflineCacheService`, and HTTP error message
- * extraction to `extractApiErrorMessage` (`error.utils.ts`).
+ * filter persistence/comparison to `DashboardFilterPersistenceService`, layout undo/redo
+ * history to `DashboardLayoutHistoryService`, offline snapshot persistence to
+ * `DashboardOfflineCacheService`, and HTTP error message extraction to `extractApiErrorMessage`.
  */
 
 import { DATE_NOW } from '../core/time.token';
-import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { DestroyRef, signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Subject, of, timer, Subscription } from 'rxjs';
+import { EMPTY, Subject, of, timer } from 'rxjs';
 import { switchMap, catchError, takeUntil, tap, filter, finalize } from 'rxjs/operators';
 import {
   DashboardsService,
@@ -18,8 +20,6 @@ import {
   WidgetResponse,
   WidgetIn,
 } from '../api-client';
-import { UndoRedoService } from '../core/undo/undo-redo.service';
-import { ReorderWidgetsCommand, AddWidgetCommand } from '../core/undo/dashboard-commands';
 import { extractApiErrorMessage } from '../core/error.utils';
 import {
   buildHttpWidgetConfig,
@@ -28,8 +28,16 @@ import {
   offsetWidgetCoordinates,
   sortWidgetsByOrder,
 } from './dashboard-grid-layout.utils';
+import { DashboardFilterPersistenceService } from './dashboard-filter-persistence.service';
+import { DashboardLayoutHistoryService } from './dashboard-layout-history.service';
 import { DashboardOfflineCacheService } from './dashboard-offline-cache.service';
-import { WidgetExecutionPayload } from './dashboard.models';
+import {
+  extractWidgetExecutionPayload,
+  GlobalFilterParams,
+  parseDashboardExecutionMap,
+  WidgetExecutionPayload,
+  WidgetLayoutPatch,
+} from './dashboard.models';
 
 /**
  * Immutable state snapshot managed by `DashboardStore`.
@@ -48,7 +56,7 @@ export interface DashboardState {
   /** Latest user-facing error message, or `null` if healthy. */
   error: string | null;
   /** Global filter parameters injected into SQL widgets (`department`, `date_range`, etc.). */
-  globalParams: Record<string, unknown>;
+  globalParams: GlobalFilterParams;
   /** Whether the dashboard layout is currently in drag-and-drop edit mode. */
   isEditMode: boolean;
   /** UUID of the currently keyboard-focused widget, or `null`. */
@@ -85,6 +93,9 @@ export class DashboardStore implements OnDestroy {
   /** Injected clock factory returning the current `Date`. */
   private readonly dateNow = inject(DATE_NOW);
 
+  /** Angular DestroyRef for declarative RxJS stream teardown. */
+  private readonly destroyRef = inject(DestroyRef);
+
   /** Generated OpenAPI client for dashboard and widget CRUD operations. */
   private readonly dashboardApi = inject(DashboardsService);
 
@@ -94,8 +105,11 @@ export class DashboardStore implements OnDestroy {
   /** Angular router used when navigating to newly restored default dashboards. */
   private readonly router = inject(Router);
 
-  /** Undo/redo command stack service. */
-  private readonly undoRedoService = inject(UndoRedoService);
+  /** Service managing global filter persistence and equality checks. */
+  private readonly filterPersistence = inject(DashboardFilterPersistenceService);
+
+  /** Service managing layout undo/redo command execution. */
+  private readonly layoutHistory = inject(DashboardLayoutHistoryService);
 
   /** Offline snapshot cache service backed by `localStorage`. */
   private readonly offlineCache = inject(DashboardOfflineCacheService);
@@ -112,8 +126,8 @@ export class DashboardStore implements OnDestroy {
   /** Stream emitted when the store is destroyed. */
   private readonly destroy$ = new Subject<void>();
 
-  /** Active subscription for periodic background polling. */
-  private pollingSub?: Subscription;
+  /** Stream controlling whether periodic background polling is active (`true`) or stopped (`false`). */
+  private readonly pollingControl$ = new Subject<boolean>();
 
   /** Read-only view of the complete `DashboardState`. */
   readonly state = this._state.asReadonly();
@@ -159,22 +173,24 @@ export class DashboardStore implements OnDestroy {
   });
 
   /**
-   * Initializes the reactive refresh pipeline and starts background auto-refresh polling.
+   * Initializes the reactive refresh and polling pipelines and starts background auto-refresh polling.
    */
   constructor() {
     this.setupRefreshPipeline();
+    this.setupPollingPipeline();
     this.startPolling();
   }
 
   /**
-   * Cancels all active subscriptions and stops polling when the store is destroyed.
+   * Cancels all active streams and stops polling when the store is destroyed.
    */
   ngOnDestroy(): void {
+    this.stopPolling();
     this.dashboardSwitch$.next();
     this.dashboardSwitch$.complete();
     this.destroy$.next();
     this.destroy$.complete();
-    this.stopPolling();
+    this.pollingControl$.complete();
   }
 
   /**
@@ -193,6 +209,7 @@ export class DashboardStore implements OnDestroy {
     this.refreshTrigger$
       .pipe(
         takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
         tap(() => this.patch({ isLoading: true, error: null })),
         switchMap(() => {
           const dash = this._state().dashboard;
@@ -217,7 +234,7 @@ export class DashboardStore implements OnDestroy {
       )
       .subscribe((result) => {
         if (result) {
-          const nextDataMap = result as Record<string, WidgetExecutionPayload>;
+          const nextDataMap = parseDashboardExecutionMap(result);
           const now = this.dateNow();
           this.patch({
             isLoading: false,
@@ -235,14 +252,15 @@ export class DashboardStore implements OnDestroy {
   }
 
   /**
-   * Starts the periodic background timer that triggers refreshes when auto-refresh is enabled.
+   * Sets up the reactive background polling pipeline controlled by `pollingControl$` and `takeUntilDestroyed`.
    */
-  startPolling(): void {
-    this.stopPolling();
-    this.pollingSub = timer(DEFAULT_REFRESH_RATE, DEFAULT_REFRESH_RATE)
+  private setupPollingPipeline(): void {
+    this.pollingControl$
       .pipe(
+        switchMap((active) => (active ? timer(DEFAULT_REFRESH_RATE, DEFAULT_REFRESH_RATE) : EMPTY)),
         filter(() => this._state().isAutoRefreshEnabled && !this._state().isEditMode),
         takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
         this.refreshTrigger$.next();
@@ -250,10 +268,17 @@ export class DashboardStore implements OnDestroy {
   }
 
   /**
-   * Unsubscribes the periodic background polling timer if active.
+   * Starts or restarts the periodic background timer that triggers refreshes when auto-refresh is enabled.
+   */
+  startPolling(): void {
+    this.pollingControl$.next(true);
+  }
+
+  /**
+   * Stops the periodic background polling timer.
    */
   private stopPolling(): void {
-    this.pollingSub?.unsubscribe();
+    this.pollingControl$.next(false);
   }
 
   /**
@@ -266,7 +291,11 @@ export class DashboardStore implements OnDestroy {
     this.patch({ isLoading: true, error: null, focusedWidgetId: null });
     this.dashboardApi
       .getDashboardApiV1DashboardsDashboardIdGet(dashboardId)
-      .pipe(takeUntil(this.dashboardSwitch$), takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.dashboardSwitch$),
+        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (res) => {
           this.patch({
@@ -343,19 +372,92 @@ export class DashboardStore implements OnDestroy {
 
     this.dashboardApi
       .createWidgetApiV1DashboardsDashboardIdWidgetsPost(dash.id, payload)
-      .pipe(takeUntil(this.dashboardSwitch$), takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.dashboardSwitch$),
+        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (realWidget: WidgetResponse) => {
           const updatedWidgets = this.widgets().map((w) => (w.id === tempId ? realWidget : w));
           this.patch({ widgets: updatedWidgets });
           this.refreshWidget(realWidget.id);
-          this.undoRedoService.execute(
-            new AddWidgetCommand(realWidget, this.dashboardApi, this, this.dateNow()),
-          );
+          this.layoutHistory.recordWidgetAddition(realWidget, this);
         },
         error: (err: unknown) => {
           this.handleError(err);
           this.optimisticRemoveWidget(tempId);
+        },
+      });
+  }
+
+  /**
+   * Optimistically updates a widget's layout configuration (`x`, `y`, `w`, `h`, `order`, etc.)
+   * and persists the change to the backend, rolling back on API failure.
+   *
+   * @param widgetId - Target widget UUID.
+   * @param layoutPatch - Partial config key-value pairs to merge into the widget's config.
+   */
+  updateWidgetLayout(widgetId: string, layoutPatch: WidgetLayoutPatch): void {
+    const previousWidgets = [...this._state().widgets];
+    const target = previousWidgets.find((w) => w.id === widgetId);
+    if (!target) return;
+
+    const mergedConfig: Record<string, unknown> = {
+      ...target.config,
+      ...layoutPatch,
+    };
+    const optimisticWidgets = previousWidgets.map((w) =>
+      w.id === widgetId ? { ...w, config: mergedConfig } : w,
+    );
+    this.patch({ widgets: optimisticWidgets, error: null });
+
+    this.dashboardApi
+      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(widgetId, { config: mergedConfig })
+      .pipe(
+        takeUntil(this.dashboardSwitch$),
+        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (updated: WidgetResponse) => {
+          if (updated && updated.id) {
+            this.patch({
+              widgets: this._state().widgets.map((w) => (w.id === widgetId ? updated : w)),
+            });
+          }
+        },
+        error: (err: unknown) => {
+          this.patch({ widgets: previousWidgets });
+          this.handleError(err);
+        },
+      });
+  }
+
+  /**
+   * Optimistically deletes a widget by ID and persists deletion to the backend,
+   * rolling back the removed widget if the API call fails.
+   *
+   * @param widgetId - UUID of the widget to delete.
+   */
+  deleteWidget(widgetId: string): void {
+    const target = this._state().widgets.find((w) => w.id === widgetId);
+    if (!target) return;
+
+    this.optimisticRemoveWidget(widgetId);
+    this.patch({ error: null });
+
+    this.dashboardApi
+      .deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(widgetId)
+      .pipe(
+        takeUntil(this.dashboardSwitch$),
+        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        error: (err: unknown) => {
+          this.optimisticRestoreWidget(target);
+          this.handleError(err);
         },
       });
   }
@@ -367,7 +469,7 @@ export class DashboardStore implements OnDestroy {
     this.patch({ isLoading: true, error: null });
     this.dashboardApi
       .restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost()
-      .pipe(takeUntil(this.destroy$))
+      .pipe(takeUntil(this.destroy$), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (newDash: DashboardResponse) => {
           this.router.navigate(['/dashboard', newDash.id]).then(() => {
@@ -406,20 +508,19 @@ export class DashboardStore implements OnDestroy {
   }
 
   /**
-   * Updates global SQL filter parameters and triggers a dashboard refresh if values changed.
+   * Updates global SQL filter parameters, persists them via `DashboardFilterPersistenceService`,
+   * and triggers a dashboard refresh if values changed.
    *
    * @param params - Map of global filter key-value pairs.
    */
-  setGlobalParams(params: Record<string, unknown>): void {
+  setGlobalParams(params: GlobalFilterParams): void {
     const current = this._state().globalParams;
-    const keysA = Object.keys(current);
-    const keysB = Object.keys(params);
-
-    const hasChanged =
-      keysA.length !== keysB.length || keysB.some((key) => current[key] !== params[key]);
-
-    if (hasChanged) {
+    if (!this.filterPersistence.areFiltersEqual(current, params)) {
       this.patch({ globalParams: params });
+      const dash = this._state().dashboard;
+      if (dash) {
+        this.filterPersistence.saveFilters(dash.id, params);
+      }
       this.refreshTrigger$.next();
     }
   }
@@ -432,12 +533,19 @@ export class DashboardStore implements OnDestroy {
   }
 
   /**
-   * Refreshes query execution data for a single widget.
+   * Refreshes query execution data for a single widget, optionally passing natural text and processor overrides.
    *
    * @param widgetId - Unique UUID of the widget to refresh.
    * @param forceRefresh - Whether to bypass cached results.
+   * @param options - Optional natural text prompt/SQL and processor ID (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).
+   * @param options.naturalText - Optional natural language prompt or SQL query string.
+   * @param options.processor - Optional processor identifier (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).
    */
-  refreshWidget(widgetId: string, forceRefresh = false): void {
+  refreshWidget(
+    widgetId: string,
+    forceRefresh = false,
+    options?: { naturalText?: string; processor?: string },
+  ): void {
     const dash = this.dashboard();
     if (!dash || !widgetId) return;
 
@@ -445,15 +553,38 @@ export class DashboardStore implements OnDestroy {
     currentLoading.add(widgetId);
     this.patch({ loadingWidgetIds: currentLoading, error: null });
 
-    this.executionApi
-      .refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
-        dash.id,
-        widgetId,
-        forceRefresh,
-      )
+    const call$ =
+      options && (options.naturalText !== undefined || options.processor !== undefined)
+        ? this.executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
+            dash.id,
+            widgetId,
+            forceRefresh,
+            undefined,
+            undefined,
+            undefined,
+            'body',
+            false,
+            {
+              ...(options.naturalText !== undefined ? { naturalText: options.naturalText } : {}),
+              ...(options.processor !== undefined ? { processor: options.processor } : {}),
+              requestBody: {
+                ...this._state().globalParams,
+                ...(options.naturalText !== undefined ? { natural_text: options.naturalText } : {}),
+                ...(options.processor !== undefined ? { processor: options.processor } : {}),
+              },
+            },
+          )
+        : this.executionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
+            dash.id,
+            widgetId,
+            forceRefresh,
+          );
+
+    call$
       .pipe(
         takeUntil(this.dashboardSwitch$),
         takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
         finalize(() => {
           const updatedLoading = new Set(this._state().loadingWidgetIds);
           updatedLoading.delete(widgetId);
@@ -466,7 +597,7 @@ export class DashboardStore implements OnDestroy {
             const currentData: Record<string, WidgetExecutionPayload> = {
               ...this._state().dataMap,
             };
-            const widgetPayload = (result as Record<string, WidgetExecutionPayload>)[widgetId];
+            const widgetPayload = extractWidgetExecutionPayload(result, widgetId);
             currentData[widgetId] = widgetPayload;
             this.patch({
               dataMap: currentData,
@@ -500,30 +631,20 @@ export class DashboardStore implements OnDestroy {
   }
 
   /**
-   * Reorders widgets from `previousIndex` to `currentIndex` via an undoable `ReorderWidgetsCommand`.
+   * Reorders widgets from `previousIndex` to `currentIndex` via `DashboardLayoutHistoryService`.
    *
    * @param previousIndex - Starting index in `sortedWidgets()`.
    * @param currentIndex - Target index in `sortedWidgets()`.
    */
   updateWidgetOrder(previousIndex: number, currentIndex: number): void {
     const currentDashboard = this.dashboard();
-    if (!currentDashboard || previousIndex === currentIndex) return;
-
-    const previousWidgets = [...this.sortedWidgets()];
-    const sorted = [...previousWidgets];
-    const [movedWidget] = sorted.splice(previousIndex, 1);
-    if (!movedWidget) return;
-    sorted.splice(currentIndex, 0, movedWidget);
-
-    this.undoRedoService.execute(
-      new ReorderWidgetsCommand(
-        currentDashboard.id,
-        previousWidgets,
-        sorted,
-        this.dashboardApi,
-        this,
-        this.dateNow(),
-      ),
+    if (!currentDashboard) return;
+    this.layoutHistory.reorderWidgets(
+      currentDashboard.id,
+      this.sortedWidgets(),
+      previousIndex,
+      currentIndex,
+      this,
     );
   }
 

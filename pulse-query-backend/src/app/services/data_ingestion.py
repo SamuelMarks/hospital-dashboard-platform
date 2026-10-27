@@ -20,6 +20,8 @@ from pathlib import Path
 import random
 import re
 
+import duckdb
+
 from app.core.config import BACKEND_ROOT
 from app.core.diagnostics import (
   diagnostics_registry,
@@ -80,8 +82,8 @@ class DataIngestionService:
     nl = chr(10)
     banner = format_missing_data_warning_banner(DEFAULT_CSV_FILENAME, filepath, rows)
     logger.warning(f"{nl}{banner}")
-    diagnostics_registry.data_status["fallback_generated"] = True
-    diagnostics_registry.data_status["has_default_data"] = False
+    diagnostics_registry.data_status.fallback_generated = True
+    diagnostics_registry.data_status.has_default_data = False
     diagnostics_registry.add_warning(
       code="MISSING_DEFAULT_DATA",
       message=f"Default clinical data '{DEFAULT_CSV_FILENAME}' was missing; generated fallback dataset with {rows} rows.",
@@ -242,11 +244,11 @@ class DataIngestionService:
         logger.info("       Using Index: Entry_Point")
 
       count = conn.execute(f'SELECT count(*) FROM "{safe_table}"').fetchone()
-      row_count = int(count[0]) if count else 0
+      row_count = int(str(count[0])) if count and count[0] is not None else 0
       logger.info(f"       ✅ Loaded {row_count} rows.")
-      diagnostics_registry.data_status["row_counts"][table_name] = row_count
+      diagnostics_registry.data_status.row_counts[table_name] = row_count
       return True
-    except Exception as e:
+    except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as e:
       logger.error(f"       ❌ Failed to load {filename}: {e}")
       diagnostics_registry.add_warning(
         code="CSV_INGESTION_FAILED",
@@ -259,7 +261,8 @@ class DataIngestionService:
   @classmethod
   def _ensure_alias_views(cls, conn: DuckDBConnectionProtocol) -> None:
     """
-    Creates compatibility alias views between `synthetic_hospital_data` and `hospital_data`.
+    Creates compatibility alias views between `synthetic_hospital_data` and `hospital_data`,
+    as well as `patient_admissions` and `incoming_patients` convenience views.
 
     Args:
         conn (DuckDBConnectionProtocol): Active DuckDB read-write connection.
@@ -270,7 +273,22 @@ class DataIngestionService:
         conn.execute('CREATE VIEW "hospital_data" AS SELECT * FROM "synthetic_hospital_data"')
       elif "hospital_data" in existing_tables and "synthetic_hospital_data" not in existing_tables:
         conn.execute('CREATE VIEW "synthetic_hospital_data" AS SELECT * FROM "hospital_data"')
-    except Exception as view_err:
+
+      source_table = (
+        "synthetic_hospital_data"
+        if "synthetic_hospital_data" in existing_tables
+        else ("hospital_data" if "hospital_data" in existing_tables else None)
+      )
+      if source_table == "synthetic_hospital_data":
+        if "patient_admissions" not in existing_tables:
+          conn.execute('CREATE OR REPLACE VIEW "patient_admissions" AS SELECT * FROM "synthetic_hospital_data"')
+        if "incoming_patients" not in existing_tables:
+          conn.execute(
+            'CREATE OR REPLACE VIEW "incoming_patients" AS '
+            "SELECT Clinical_Service AS service, Location AS unit, COUNT(*) AS count "
+            'FROM "synthetic_hospital_data" WHERE Clinical_Service IS NOT NULL GROUP BY 1, 2'
+          )
+    except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as view_err:
       logger.warning(f"Could not create compatibility alias view: {view_err}")
 
   @classmethod
@@ -291,12 +309,12 @@ class DataIngestionService:
 
     if "synthetic_hospital_data_transfers" in ingested_tables:
       ingested_tables.append("Synthetic_hospital_data_transfers")
-      transfers_cnt = diagnostics_registry.data_status["row_counts"].get("synthetic_hospital_data_transfers", 0)
-      diagnostics_registry.data_status["row_counts"]["Synthetic_hospital_data_transfers"] = transfers_cnt
+      transfers_cnt = diagnostics_registry.data_status.row_counts.get("synthetic_hospital_data_transfers", 0)
+      diagnostics_registry.data_status.row_counts["Synthetic_hospital_data_transfers"] = transfers_cnt
 
-    diagnostics_registry.data_status["tables"] = list(ingested_tables)
-    diagnostics_registry.data_status["table_count"] = len({t.lower() for t in ingested_tables})
-    diagnostics_registry.data_status["status"] = "ready" if ingested_tables else "empty"
+    diagnostics_registry.data_status.tables = list(ingested_tables)
+    diagnostics_registry.data_status.table_count = len({t.lower() for t in ingested_tables})
+    diagnostics_registry.data_status.status = "ready" if ingested_tables else "empty"
     return ingested_tables
 
   @classmethod
@@ -325,7 +343,8 @@ class DataIngestionService:
       cls.generate_synthetic_sample_data(synthetic_path)
       csv_files = [DEFAULT_CSV_FILENAME, "Synthetic_hospital_data.csv"]
     elif DEFAULT_CSV_FILENAME in csv_files:
-      diagnostics_registry.data_status["has_default_data"] = True
+      diagnostics_registry.data_status.has_default_data = True
+      diagnostics_registry.data_status.fallback_generated = False
     else:
       diagnostics_registry.add_warning(
         code="DEFAULT_HOSPITAL_DATA_MISSING",
@@ -349,7 +368,7 @@ class DataIngestionService:
         cls._finalize_ingested_tables(ingested_tables)
         logger.info(f"✅ Ingestion Complete. {files_processed} files processed.")
 
-      except Exception as e:
+      except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as e:
         logger.critical(f"❌ Fatal error during ingestion: {e}")
         diagnostics_registry.add_warning(
           code="FATAL_INGESTION_ERROR",

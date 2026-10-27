@@ -61,7 +61,7 @@ class ApiClientAuthTest {
 
         suspend fun callRawRequest(
             requestConfig: RequestConfig<Unit>,
-            body: Any?,
+            body: String?,
             authNames: List<String>
         ) = request(requestConfig, body, authNames)
     }

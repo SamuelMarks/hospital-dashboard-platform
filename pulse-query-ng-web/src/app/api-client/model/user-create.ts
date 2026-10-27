@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,7 +12,10 @@
  * Payload for registering a new user.
  */
 export interface UserCreate {
+  /** Property `email`. */
   email: string;
+  /** Property `password`. */
   password: string;
+  /** Property `language_preference`. */
   language_preference?: string;
 }

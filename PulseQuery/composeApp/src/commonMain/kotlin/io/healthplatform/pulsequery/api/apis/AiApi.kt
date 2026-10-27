@@ -79,7 +79,6 @@ open class AiApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return SQLExecutionResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun executeSqlPreviewApiV1AiExecutePost(
         sqLExecutionRequest: SQLExecutionRequest,
         token: kotlin.String? = null
@@ -114,7 +113,6 @@ open class AiApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ExperimentResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun generateSqlComparisonApiV1AiGeneratePost(
         sqLGenerationRequest: SQLGenerationRequest,
         token: kotlin.String? = null
@@ -144,15 +142,18 @@ open class AiApi : ApiClient {
 
     /**
      * List Available Models
-     * Returns the list of currently configured LLMs available for the Arena.
+     * Returns the list of currently configured LLMs and processors available for the Arena or Widgets.
      * @param showAll  (optional, default to false)
      * @param token JWT token query parameter for direct browser downloads (optional)
+     * @param includeSql Whether to include the SQL [no model] processor option (optional, default to false)
+     * @param discoverOllama Whether to dynamically query Ollama /api/tags (optional, default to false)
      * @return kotlin.collections.List<ModelInfo>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listAvailableModelsApiV1AiModelsGet(
         showAll: kotlin.Boolean? = false,
-        token: kotlin.String? = null
+        token: kotlin.String? = null,
+        includeSql: kotlin.Boolean? = false,
+        discoverOllama: kotlin.Boolean? = false
     ): HttpResponse<kotlin.collections.List<ModelInfo>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -161,6 +162,8 @@ open class AiApi : ApiClient {
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         showAll?.apply { localVariableQuery["show_all"] = listOf("$showAll") }
+        includeSql?.apply { localVariableQuery["include_sql"] = listOf("$includeSql") }
+        discoverOllama?.apply { localVariableQuery["discover_ollama"] = listOf("$discoverOllama") }
         token?.apply { localVariableQuery["token"] = listOf("$token") }
         val localVariableHeaders = mutableMapOf<String, String>()
 

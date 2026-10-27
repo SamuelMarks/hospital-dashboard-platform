@@ -70,7 +70,6 @@ open class SimulationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ScenarioResult
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun runSimulationApiV1SimulationRunPost(
         scenarioRunRequest: ScenarioRunRequest,
         token: kotlin.String? = null

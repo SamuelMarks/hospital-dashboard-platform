@@ -152,7 +152,7 @@ async def test_get_capacity_alerts_fallback_and_duckdb_exception(client: AsyncCl
   """Test capacity alerts fallback rules and graceful exception handling when DuckDB is inaccessible."""
   from unittest.mock import patch
 
-  with patch("app.api.routers.analytics.duckdb_manager.get_readonly_connection", side_effect=Exception("DB Down")):
+  with patch("app.api.routers.analytics.duckdb_manager.get_readonly_connection", side_effect=RuntimeError("DB Down")):
     res = await client.get("/api/v1/analytics/alerts")
     assert res.status_code == 200
     assert res.json() == []

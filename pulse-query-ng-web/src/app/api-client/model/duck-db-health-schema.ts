@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -16,14 +16,16 @@ export interface DuckDbHealthSchema {
    * Storage and query engine status (e.g. ready, error).
    */
   status: string;
+  /** Property `path`. */
   path?: string | null;
   /**
    * Map of table names to row counts.
    */
-  tables?: { [key: string]: number };
+  tables?: Record<string, number>;
   /**
    * Total number of registered analytics tables.
    */
   total_tables?: number;
+  /** Property `error`. */
   error?: string | null;
 }

@@ -33,6 +33,109 @@
             />
           </mat-form-field>
         </div>
+        <div class="key-item">
+          <mat-form-field appearance="outline" class="full-width-field" subscriptSizing="dynamic">
+            <mat-label i18n>Ollama API Base URL</mat-label>
+            <input
+              matInput
+              data-testid="input-ollama-base"
+              [value]="ollamaApiBase()"
+              (input)="ollamaApiBase.set(getEventValue($event))"
+              placeholder="http://localhost:11434"
+              i18n-placeholder
+            />
+          </mat-form-field>
+        </div>
+
+        <h4 i18n class="text-sm font-semibold mt-4 mb-2">Additional Mozilla any-llm Providers</h4>
+        <div class="flex gap-2 mb-2">
+          <input
+            type="text"
+            data-testid="input-new-provider-slug"
+            class="px-2 py-1 text-xs rounded border flex-1"
+            [value]="newProviderSlug()"
+            (input)="newProviderSlug.set(getEventValue($event))"
+            placeholder="Provider (e.g. groq, mistral, gemini)"
+            i18n-placeholder
+            i18n-aria-label
+            aria-label="any-llm provider name"
+          />
+          <input
+            type="password"
+            data-testid="input-new-provider-key"
+            class="px-2 py-1 text-xs rounded border flex-1"
+            [value]="newProviderKey()"
+            (input)="newProviderKey.set(getEventValue($event))"
+            placeholder="API Key"
+            i18n-placeholder
+            i18n-aria-label
+            aria-label="any-llm provider API key"
+          />
+          <button
+            i18n
+            mat-stroked-button
+            type="button"
+            data-testid="btn-add-provider-key"
+            (click)="addCustomProviderKey()"
+          >
+            Add Key
+          </button>
+        </div>
+        @for (entry of customProviderEntries(); track entry[0]) {
+          <div class="flex items-center justify-between text-xs py-1">
+            <span
+              ><strong>{{ entry[0] }}</strong
+              >: ••••••••</span
+            >
+            <button
+              i18n
+              mat-button
+              type="button"
+              data-testid="btn-remove-provider-key"
+              (click)="removeCustomProviderKey(entry[0])"
+            >
+              Remove
+            </button>
+          </div>
+        }
+
+        <h4 i18n class="text-sm font-semibold mt-4 mb-2">Configured any-llm &amp; Ollama Models</h4>
+        <div class="flex gap-2 mb-2">
+          <input
+            type="text"
+            data-testid="input-new-model-spec"
+            class="px-2 py-1 text-xs rounded border flex-1"
+            [value]="newModelSpec()"
+            (input)="newModelSpec.set(getEventValue($event))"
+            placeholder="provider:model (e.g. ollama:llama3, groq:mixtral-8x7b)"
+            i18n-placeholder
+            i18n-aria-label
+            aria-label="any-llm model identifier"
+          />
+          <button
+            i18n
+            mat-stroked-button
+            type="button"
+            data-testid="btn-add-configured-model"
+            (click)="addConfiguredModel()"
+          >
+            Add Model
+          </button>
+        </div>
+        @for (spec of configuredModels(); track spec) {
+          <div class="flex items-center justify-between text-xs py-1">
+            <span class="font-mono">{{ spec }}</span>
+            <button
+              i18n
+              mat-button
+              type="button"
+              data-testid="btn-remove-configured-model"
+              (click)="removeConfiguredModel(spec)"
+            >
+              Remove
+            </button>
+          </div>
+        }
       </mat-card>
 
       <mat-card class="section">

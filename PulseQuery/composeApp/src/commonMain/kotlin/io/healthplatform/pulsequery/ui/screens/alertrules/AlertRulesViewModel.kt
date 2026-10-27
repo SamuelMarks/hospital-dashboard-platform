@@ -9,6 +9,10 @@ import io.healthplatform.pulsequery.api.models.AlertRuleCreate
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
 import io.healthplatform.pulsequery.api.models.AlertSeverity
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.AlertRuleId
+import io.healthplatform.pulsequery.core.model.ClinicalRole
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -61,7 +65,7 @@ class AlertRulesViewModel(
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             runCatchingPulseAsync {
-                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().body()
+                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult().getOrThrow()
             }.fold(
                 onSuccess = { list ->
                     _state.update { it.copy(rules = list, isLoading = false, errorMessage = null) }
@@ -70,7 +74,7 @@ class AlertRulesViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.messageOrDefault("Failed to load alert rules")
+                            errorMessage = e.messageOrDefault(UiErrorKey.LOAD_ALERT_RULES)
                         )
                     }
                 }
@@ -79,24 +83,42 @@ class AlertRulesViewModel(
     }
 
     /**
-     * Deletes an alert rule by [ruleId] and reloads the rule list on success.
+     * Deletes an alert rule by ID and reloads the rule list on success.
      *
-     * @param ruleId UUID of the alert rule to delete.
+     * @param ruleId Identifier of the rule to delete.
      */
     fun deleteRule(ruleId: String) {
         scope.launch {
             runCatchingPulseAsync {
-                currentAlertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId)
+                currentAlertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId).asResult().getOrThrow()
             }.fold(
                 onSuccess = {
                     loadRules()
                 },
                 onFailure = { e ->
-                    _state.update { it.copy(errorMessage = e.messageOrDefault("Failed to delete rule")) }
+                    _state.update { it.copy(errorMessage = e.messageOrDefault(UiErrorKey.DELETE_ALERT_RULE)) }
                 }
             )
         }
     }
+
+    /**
+     * Deletes an alert rule by strongly typed [AlertRuleId].
+     *
+     * @param ruleId Target [AlertRuleId].
+     */
+    fun deleteRule(ruleId: AlertRuleId) {
+        deleteRule(ruleId.value)
+    }
+
+    /**
+     * Checks whether a user with the specified [ClinicalRole] is permitted to mutate alert rules.
+     *
+     * @param role User's [ClinicalRole].
+     * @return True when [role] is [ClinicalRole.ADMIN] or [ClinicalRole.PHYSICIAN].
+     */
+    fun canModifyRules(role: ClinicalRole): Boolean =
+        role == ClinicalRole.ADMIN || role == ClinicalRole.PHYSICIAN
 
     /**
      * Clears any active dialog error message.
@@ -139,7 +161,7 @@ class AlertRulesViewModel(
                         severity = severity,
                         isActive = true
                     )
-                )
+                ).asResult().getOrThrow()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(isSaving = false, dialogError = null) }
@@ -150,7 +172,7 @@ class AlertRulesViewModel(
                     _state.update {
                         it.copy(
                             isSaving = false,
-                            dialogError = e.messageOrDefault("Creation failed")
+                            dialogError = e.messageOrDefault(UiErrorKey.CREATE_ALERT_RULE)
                         )
                     }
                 }
@@ -197,7 +219,7 @@ class AlertRulesViewModel(
                         severity = severity,
                         isActive = isActive
                     )
-                )
+                ).asResult().getOrThrow()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(isSaving = false, dialogError = null) }
@@ -208,7 +230,7 @@ class AlertRulesViewModel(
                     _state.update {
                         it.copy(
                             isSaving = false,
-                            dialogError = e.messageOrDefault("Update failed")
+                            dialogError = e.messageOrDefault(UiErrorKey.UPDATE_ALERT_RULE)
                         )
                     }
                 }

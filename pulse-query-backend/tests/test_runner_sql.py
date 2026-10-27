@@ -3,12 +3,12 @@ Tests for the SQL Runner Service Integration.
 Verifies query execution flow and error handling from the Database layer.
 """
 
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from app.core.result import AppError, Err, ErrorCode
+from app.schemas.json_types import JsonObject
 from app.services.runners import sql as sql_runner
 from app.services.runners.sql import run_sql_widget, run_sql_widget_async
 
@@ -86,7 +86,7 @@ def test_run_sql_widget_execution_error() -> None:
 def test_run_sql_widget_missing_query() -> None:
   """Ensure missing SQL returns an error payload."""
   mock_cursor = MagicMock()
-  config: dict[str, Any] = {}
+  config: JsonObject = {}
 
   result = run_sql_widget(mock_cursor, config)
 

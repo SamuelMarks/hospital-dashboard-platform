@@ -1,13 +1,13 @@
 """Admin configuration settings."""
 
 import uuid
-from typing import Any
 
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.postgres import Base
+from app.schemas.json_types import JsonValue
 
 
 class AdminSetting(Base):
@@ -19,7 +19,7 @@ class AdminSetting(Base):
 
   id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
   setting_key: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
-  setting_value: Mapped[Any] = mapped_column(JSONB, nullable=True)
+  setting_value: Mapped[JsonValue] = mapped_column(JSONB, nullable=True)
 
   def __repr__(self) -> str:
     """Return distinct string representation."""

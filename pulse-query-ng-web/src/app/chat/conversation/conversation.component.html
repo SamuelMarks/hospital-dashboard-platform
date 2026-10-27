@@ -30,7 +30,14 @@
 
             <div class="candidates-grid">
               @for (cand of msg.candidates; track cand.id) {
-                <div class="candidate-item mat-elevation-z2">
+                <div
+                  class="candidate-item mat-elevation-z2"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-pressed]="cand.is_selected || false"
+                  (keydown.enter)="vote(msg.id, cand.id)"
+                  (keydown.space)="vote(msg.id, cand.id); $event.preventDefault()"
+                >
                   <div class="candidate-meta">
                     <span class="model-tag">{{ cand.model_name }}</span>
                     @if (sqlGroupCount(msg, cand) > 1) {

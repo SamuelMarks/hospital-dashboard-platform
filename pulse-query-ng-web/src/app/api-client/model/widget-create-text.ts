@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,7 +13,9 @@ import { TextConfig } from './text-config';
  * Payload for creating a Text Widget. Strictly enforces `type=\"TEXT\"` and `config` matching TextConfig.
  */
 export interface WidgetCreateText {
+  /** Property `title`. */
   title: string;
+  /** Property `type`. */
   type: WidgetCreateText.TypeEnum;
   /**
    * Fixed visualization ID for text.
@@ -25,12 +27,16 @@ export interface WidgetCreateText {
   config: TextConfig;
 }
 export namespace WidgetCreateText {
+  /** Generated OpenAPI type definition. */
   export const TypeEnum = {
     Text: 'TEXT',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum];
+  /** Generated OpenAPI type definition. */
   export const VisualizationEnum = {
     Markdown: 'markdown',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type VisualizationEnum = (typeof VisualizationEnum)[keyof typeof VisualizationEnum];
 }

@@ -8,6 +8,7 @@ import {
   buildTextWidgetConfig,
   findFirstAvailableSlot,
   hasGridCollision,
+  interpolateSqlTemplate,
   offsetWidgetCoordinates,
   sortWidgetsByOrder,
 } from './dashboard-grid-layout.utils';
@@ -99,5 +100,14 @@ describe('dashboard-grid-layout.utils', () => {
       x: 3,
     });
     expect(buildSqlWidgetConfig({ x: 3 })).toEqual({ query: '', x: 3 });
+  });
+
+  it('interpolates {{param}} placeholders in SQL templates', () => {
+    expect(
+      interpolateSqlTemplate('SELECT * FROM t WHERE dept = {{ dept }} AND limit = {{lim}}', {
+        dept: "'ICU'",
+        lim: 10,
+      }),
+    ).toBe("SELECT * FROM t WHERE dept = 'ICU' AND limit = 10");
   });
 });

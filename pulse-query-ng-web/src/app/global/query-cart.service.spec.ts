@@ -7,6 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { QueryCartService } from './query-cart.service';
 import { QUERY_CART_ITEM_KIND, type QueryCartItem } from './query-cart.models';
+import { createMockQueryCartItem } from '../../test-utils/mock-factories';
 import { vi } from 'vitest';
 
 const STORAGE_KEY = 'pulse-query-cart-v1';
@@ -123,13 +124,12 @@ describe('QueryCartService', () => {
 
   it('should load items from storage in browser mode', () => {
     const stored: QueryCartItem[] = [
-      {
+      createMockQueryCartItem({
         id: 'q1',
         title: 'Saved',
         sql: 'SELECT 1',
         createdAt: '2024-01-01T00:00:00Z',
-        kind: QUERY_CART_ITEM_KIND,
-      },
+      }),
     ];
     safeStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
 

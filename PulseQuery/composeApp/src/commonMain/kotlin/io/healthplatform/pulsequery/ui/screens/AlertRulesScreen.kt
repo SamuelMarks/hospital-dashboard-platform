@@ -50,12 +50,38 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.api.models.AlertSeverity
 import io.healthplatform.pulsequery.ui.screens.alertrules.AlertRulesViewModel
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.active_evaluation
+import pulsequery.composeapp.generated.resources.add_rule
+import pulsequery.composeapp.generated.resources.alert_rules
+import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.configured_occupancy_thresholds
+import pulsequery.composeapp.generated.resources.create_alert_rule
+import pulsequery.composeapp.generated.resources.create_rule
+import pulsequery.composeapp.generated.resources.delete_rule
+import pulsequery.composeapp.generated.resources.edit_alert_rule
+import pulsequery.composeapp.generated.resources.edit_rule
+import pulsequery.composeapp.generated.resources.no_alert_rules_configured
+import pulsequery.composeapp.generated.resources.occupancy_threshold_pct
+import pulsequery.composeapp.generated.resources.refresh_rules
+import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.save
+import pulsequery.composeapp.generated.resources.save_changes
+import pulsequery.composeapp.generated.resources.saving
+import pulsequery.composeapp.generated.resources.severity
+import pulsequery.composeapp.generated.resources.severity_critical
+import pulsequery.composeapp.generated.resources.severity_info
+import pulsequery.composeapp.generated.resources.severity_warning
+import pulsequery.composeapp.generated.resources.unit_category
 
 /**
  * Screen displaying and managing clinical alert rules for hospital occupancy.
@@ -83,16 +109,16 @@ fun AlertRulesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Alert Rules") },
+                title = { Text(stringResource(Res.string.alert_rules)) },
                 actions = {
                     IconButton(onClick = { vm.loadRules() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh Rules")
+                        Icon(Icons.Filled.Refresh, contentDescription = stringResource(Res.string.refresh_rules))
                     }
                     IconButton(onClick = {
                         vm.clearDialogError()
                         showCreateDialog = true
                     }) {
-                        Icon(Icons.Filled.Add, contentDescription = "Add Rule")
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(Res.string.add_rule))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -109,16 +135,19 @@ fun AlertRulesScreen(
             when {
                 uiState.isLoading -> CircularProgressIndicator()
                 uiState.errorMessage != null -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+                    ) {
                         Text(text = uiState.errorMessage.orEmpty(), color = MaterialTheme.colorScheme.error)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { vm.loadRules() }) { Text("Retry") }
+                        Button(onClick = { vm.loadRules() }) { Text(stringResource(Res.string.retry)) }
                     }
                 }
                 uiState.rules.isEmpty() -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            "No alert rules configured",
+                            stringResource(Res.string.no_alert_rules_configured),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -127,7 +156,7 @@ fun AlertRulesScreen(
                             vm.clearDialogError()
                             showCreateDialog = true
                         }) {
-                            Text("Create Rule")
+                            Text(stringResource(Res.string.create_rule))
                         }
                     }
                 }
@@ -138,7 +167,7 @@ fun AlertRulesScreen(
                     ) {
                         item {
                             Text(
-                                "Configured Occupancy Thresholds",
+                                stringResource(Res.string.configured_occupancy_thresholds),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.semantics { heading() }
                             )
@@ -226,14 +255,14 @@ fun AlertRuleCard(
                 IconButton(onClick = onEdit) {
                     Icon(
                         Icons.Filled.Edit,
-                        contentDescription = "Edit Rule",
+                        contentDescription = stringResource(Res.string.edit_rule),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete Rule",
+                        contentDescription = stringResource(Res.string.delete_rule),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -270,20 +299,20 @@ fun EditAlertRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Alert Rule") },
+        title = { Text(stringResource(Res.string.edit_alert_rule)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = unitCategory,
                     onValueChange = { unitCategory = it },
-                    label = { Text("Unit Category") },
+                    label = { Text(stringResource(Res.string.unit_category)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = thresholdText,
                     onValueChange = { thresholdText = it },
-                    label = { Text("Occupancy Threshold (%)") },
+                    label = { Text(stringResource(Res.string.occupancy_threshold_pct)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -292,22 +321,22 @@ fun EditAlertRuleDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Severity", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(Res.string.severity), style = MaterialTheme.typography.bodyMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         FilterChip(
                             selected = severity == AlertSeverity.INFO,
                             onClick = { severity = AlertSeverity.INFO },
-                            label = { Text("Info") }
+                            label = { Text(stringResource(Res.string.severity_info)) }
                         )
                         FilterChip(
                             selected = severity == AlertSeverity.WARNING,
                             onClick = { severity = AlertSeverity.WARNING },
-                            label = { Text("Warning") }
+                            label = { Text(stringResource(Res.string.severity_warning)) }
                         )
                         FilterChip(
                             selected = severity == AlertSeverity.CRITICAL,
                             onClick = { severity = AlertSeverity.CRITICAL },
-                            label = { Text("Critical") }
+                            label = { Text(stringResource(Res.string.severity_critical)) }
                         )
                     }
                 }
@@ -316,7 +345,7 @@ fun EditAlertRuleDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Active Evaluation", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(Res.string.active_evaluation), style = MaterialTheme.typography.bodyMedium)
                     Switch(
                         checked = isActive,
                         onCheckedChange = { isActive = it }
@@ -341,12 +370,12 @@ fun EditAlertRuleDialog(
                 },
                 enabled = !uiState.isSaving
             ) {
-                Text(if (uiState.isSaving) "Saving..." else "Save Changes")
+                Text(if (uiState.isSaving) stringResource(Res.string.saving) else stringResource(Res.string.save_changes))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !uiState.isSaving) {
-                Text("Cancel")
+                Text(stringResource(Res.string.cancel))
             }
         }
     )
@@ -377,20 +406,20 @@ fun CreateAlertRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create Alert Rule") },
+        title = { Text(stringResource(Res.string.create_alert_rule)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = unitCategory,
                     onValueChange = { unitCategory = it },
-                    label = { Text("Unit Category") },
+                    label = { Text(stringResource(Res.string.unit_category)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = thresholdText,
                     onValueChange = { thresholdText = it },
-                    label = { Text("Occupancy Threshold (%)") },
+                    label = { Text(stringResource(Res.string.occupancy_threshold_pct)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -411,12 +440,12 @@ fun CreateAlertRuleDialog(
                 },
                 enabled = !uiState.isSaving
             ) {
-                Text(if (uiState.isSaving) "Saving..." else "Save")
+                Text(if (uiState.isSaving) stringResource(Res.string.saving) else stringResource(Res.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !uiState.isSaving) {
-                Text("Cancel")
+                Text(stringResource(Res.string.cancel))
             }
         }
     )

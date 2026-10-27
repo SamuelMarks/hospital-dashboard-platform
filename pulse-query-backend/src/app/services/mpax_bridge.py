@@ -7,19 +7,34 @@ It includes robust handling for "Surge" scenarios by injecting virtual overflow 
 """
 
 import asyncio
+from collections.abc import Mapping, Sequence
 import json
 import logging
-from typing import Any, Callable, TypedDict, cast
+import os
+from typing import Protocol, TypedDict
 
 import jax
 import jax.numpy as jnp
 import numpy as np
+import numpy.typing as npt
 from mpax import create_lp, r2HPDHG
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.schemas.json_types import JsonObject, JsonValue
+from app.schemas.mpax_arena import MpaxAssignmentRow, MpaxSolverTruth
+from app.schemas.simulation import DemandRow, ScenarioConstraint
 
-# Enable 64-bit precision for optimization numerical stability
-cast(Callable[[str, bool], None], getattr(jax.config, "update"))("jax_enable_x64", True)
+
+class JaxConfigProtocol(Protocol):
+  """Structural protocol for `jax.config` with typed `update` method."""
+
+  def update(self, name: str, val: bool) -> None:
+    """Updates a JAX configuration flag."""
+
+
+os.environ.setdefault("JAX_ENABLE_X64", "True")
+_jax_cfg: JaxConfigProtocol = jax.config
+_jax_cfg.update("jax_enable_x64", True)
 
 logger = logging.getLogger("mpax_bridge")
 
@@ -98,10 +113,10 @@ class MpaxBridgeService:
           val = affinities.get(s, {}).get(u, 0.5)
           c_list.append(-1.0 * val)
 
-    A_rows: list[np.ndarray[Any, Any]] = []
+    A_rows: list[npt.NDArray[np.float64]] = []
     b_vals: list[float] = []
     for s_idx, service in enumerate(services):
-      row = np.zeros(num_vars)
+      row = np.zeros(num_vars, dtype=np.float64)
       for u_idx in range(num_units):
         row[self._get_var_index(s_idx, u_idx, num_units)] = 1.0
       A_rows.append(row)
@@ -128,13 +143,13 @@ class MpaxBridgeService:
     """
     num_units = len(units)
     num_vars = num_services * num_units
-    G_rows: list[np.ndarray[Any, Any]] = []
+    G_rows: list[npt.NDArray[np.float64]] = []
     h_vals: list[float] = []
 
     for u_idx, unit in enumerate(units):
       if unit == "Overflow":
         continue
-      row = np.zeros(num_vars)
+      row = np.zeros(num_vars, dtype=np.float64)
       for s_idx in range(num_services):
         row[self._get_var_index(s_idx, u_idx, num_units)] = -1.0
       G_rows.append(row)
@@ -184,7 +199,7 @@ class MpaxBridgeService:
     units: list[str],
     demands: dict[str, float],
     capacities: dict[str, float],
-    constraints: list[dict[str, Any]],
+    constraints: Sequence[Mapping[str, JsonValue]],
   ) -> tuple[jnp.ndarray, jnp.ndarray, str | None]:
     """
     Validates capacity and custom `force_flow` rules and computes variable bounds `(l_bound, u_bound)`.
@@ -194,7 +209,7 @@ class MpaxBridgeService:
         units (list[str]): Ordered unit names.
         demands (dict[str, float]): Service demand map.
         capacities (dict[str, float]): Unit capacity map.
-        constraints (list[dict[str, Any]]): Custom constraint rule dictionaries.
+        constraints (Sequence[Mapping[str, JsonValue]]): Custom constraint rule dictionaries.
 
     Returns:
         tuple[jnp.ndarray, jnp.ndarray, str | None]: `(l_bound, u_bound, error_message_or_none)`.
@@ -220,8 +235,10 @@ class MpaxBridgeService:
         continue
       s_name = str(rule.get("service", ""))
       u_name = str(rule.get("unit", ""))
-      min_val = float(rule.get("min", 0.0))
-      max_val = float(rule.get("max", float("inf")))
+      raw_min = rule.get("min", 0.0)
+      min_val = float(raw_min) if isinstance(raw_min, (int, float, str)) else 0.0
+      raw_max = rule.get("max", float("inf"))
+      max_val = float(raw_max) if isinstance(raw_max, (int, float, str)) else float("inf")
 
       if min_val > max_val:
         return (
@@ -252,7 +269,7 @@ class MpaxBridgeService:
     self,
     services: list[str],
     units: list[str],
-    solution_flat: np.ndarray[Any, Any],
+    solution_flat: npt.NDArray[np.float64],
   ) -> list[MpaxAssignmentItem]:
     """
     Formats the flattened primal solution vector into `MpaxAssignmentItem` dictionaries.
@@ -260,7 +277,7 @@ class MpaxBridgeService:
     Args:
         services (list[str]): Ordered clinical service names.
         units (list[str]): Ordered unit names.
-        solution_flat (np.ndarray[Any, Any]): 1D NumPy array of solved variable values.
+        solution_flat (npt.NDArray[np.float64]): 1D NumPy array of solved variable values.
 
     Returns:
         list[MpaxAssignmentItem]: Filtered list of non-zero patient allocations.
@@ -274,76 +291,162 @@ class MpaxBridgeService:
           assignments.append({"Service": service, "Unit": unit, "Patient_Count": round(val, 2)})
     return assignments
 
-  def solve_unit_assignment_result(
+  def _solve_parsed_inputs_result(
     self,
-    demand_json: str,
-    capacity_json: str,
-    affinity_json: str,
-    constraints_json: str | None = None,
+    demands: dict[str, float],
+    capacities: dict[str, float],
+    affinities: dict[str, dict[str, float]],
+    constraints: Sequence[Mapping[str, JsonValue]],
   ) -> AppResult[list[MpaxAssignmentItem]]:
     """
-    Executes the MPAX linear programming solver and returns a strongly typed `AppResult`.
+    Executes the MPAX linear programming solver on pre-parsed Python mappings.
 
     Args:
-        demand_json (str): JSON string mapping Service Name to Patient Count.
-        capacity_json (str): JSON string mapping Unit Name to Bed Count.
-        affinity_json (str): JSON string mapping Service -> Unit -> Score.
-        constraints_json (str | None): Optional JSON list of constraint rules.
+        demands (dict[str, float]): Service demand map.
+        capacities (dict[str, float]): Unit capacity map.
+        affinities (dict[str, dict[str, float]]): Service-to-unit affinity map.
+        constraints (Sequence[Mapping[str, JsonValue]]): Constraint rule mappings.
+
+    Returns:
+        AppResult[list[MpaxAssignmentItem]]: `Ok(assignments)` or `Err(AppError)`.
+    """
+    services = sorted(list(demands.keys()))
+    real_units = sorted(list(capacities.keys()))
+    units = real_units + ["Overflow"]
+
+    if len(services) * len(units) == 0:
+      logger.warning("Optimization input dimensions are zero.")
+      return Ok([])
+
+    c, A, b = self._build_cost_and_equality(services, units, demands, affinities)
+    G, h = self._build_capacity_constraints(len(services), units, capacities)
+    l_bound, u_bound, err_msg = self._apply_flow_constraints(services, units, demands, capacities, constraints)
+    if err_msg is not None:
+      return Err(
+        AppError(
+          code=ErrorCode.SIMULATION_INFEASIBLE,
+          message=err_msg,
+          status_code=422,
+        )
+      )
+
+    lp = create_lp(c, A, b, G, h, l_bound, u_bound, use_sparse_matrix=False)
+    solver = r2HPDHG(eps_abs=1e-3, eps_rel=1e-3, verbose=False, jit=True)
+    result = solver.optimize(lp)
+
+    if result.primal_solution is None:
+      return Err(
+        AppError(
+          code=ErrorCode.SIMULATION_INFEASIBLE,
+          message="Optimization solver determined the scenario constraints are mathematically infeasible or failed to converge.",
+          status_code=422,
+        )
+      )
+
+    solution_flat = np.array(result.primal_solution)
+    if np.isnan(solution_flat).any() or np.isinf(solution_flat).any():
+      return Err(
+        AppError(
+          code=ErrorCode.SIMULATION_INVALID_DATA,
+          message="Solver produced invalid non-finite values (NaN or Inf).",
+          status_code=400,
+        )
+      )
+
+    return Ok(self._extract_assignments(services, units, solution_flat))
+
+  def solve_unit_assignment_typed(
+    self,
+    demand: Sequence[DemandRow] | Mapping[str, float],
+    capacity: Mapping[str, float],
+    affinity: Mapping[str, Mapping[str, float]],
+    constraints: Sequence[ScenarioConstraint] | None = None,
+  ) -> AppResult[MpaxSolverTruth]:
+    """
+    Executes the MPAX linear programming solver directly from typed domain models without JSON serialization.
+
+    Args:
+        demand (Sequence[DemandRow] | Mapping[str, float]): Typed demand rows or service-to-count mapping.
+        capacity (Mapping[str, float]): Unit capacity mapping.
+        affinity (Mapping[str, Mapping[str, float]]): Nested service-to-unit affinity mapping.
+        constraints (Sequence[ScenarioConstraint] | None): Optional typed constraint models.
+
+    Returns:
+        AppResult[MpaxSolverTruth]: `Ok(MpaxSolverTruth)` or `Err(AppError)`.
+    """
+    demands_dict: dict[str, float] = {}
+    if isinstance(demand, Mapping):
+      for svc, cnt in demand.items():
+        demands_dict[str(svc)] = float(cnt)
+    else:
+      for row in demand:
+        demands_dict[row.service] = demands_dict.get(row.service, 0.0) + row.count
+
+    capacities_dict: dict[str, float] = {str(u): float(v) for u, v in capacity.items()}
+    affinities_dict: dict[str, dict[str, float]] = {
+      str(s): {str(u): float(val) for u, val in unit_map.items()} for s, unit_map in affinity.items()
+    }
+    constraint_dicts: list[JsonObject] = [c.model_dump(exclude_none=True) for c in (constraints or [])]
+
+    solved_res = self.solve_unit_assignment_result(
+      demand_json=demands_dict,
+      capacity_json=capacities_dict,
+      affinity_json=affinities_dict,
+      constraints_json=constraint_dicts,
+    )
+    if isinstance(solved_res, Err):
+      return solved_res
+
+    rows = [
+      MpaxAssignmentRow(
+        Service=item["Service"],
+        Unit=item["Unit"],
+        Patient_Count=item["Patient_Count"],
+      )
+      for item in solved_res.value
+    ]
+    return Ok(MpaxSolverTruth(status="OPTIMAL", assignments=rows))
+
+  def solve_unit_assignment_result(
+    self,
+    demand_json: str | Mapping[str, float],
+    capacity_json: str | Mapping[str, float],
+    affinity_json: str | Mapping[str, Mapping[str, float]],
+    constraints_json: str | Sequence[Mapping[str, JsonValue]] | None = None,
+  ) -> AppResult[list[MpaxAssignmentItem]]:
+    """
+    Executes the MPAX linear programming solver from JSON strings or pre-parsed mappings and returns `AppResult`.
+
+    Args:
+        demand_json (str | Mapping[str, float]): JSON string or mapping of Service Name to Patient Count.
+        capacity_json (str | Mapping[str, float]): JSON string or mapping of Unit Name to Bed Count.
+        affinity_json (str | Mapping[str, Mapping[str, float]]): JSON string or nested mapping of Service -> Unit -> Score.
+        constraints_json (str | Sequence[Mapping[str, JsonValue]] | None): Optional JSON list or sequence of constraint rules.
 
     Returns:
         AppResult[list[MpaxAssignmentItem]]: `Ok(assignments)` or `Err(AppError)`.
     """
     try:
-      demands: dict[str, float] = json.loads(demand_json)
-      capacities: dict[str, float] = json.loads(capacity_json)
-      affinities: dict[str, dict[str, float]] = json.loads(affinity_json)
-      constraints: list[dict[str, Any]] = json.loads(constraints_json) if constraints_json else []
-
-      services = sorted(list(demands.keys()))
-      real_units = sorted(list(capacities.keys()))
-      units = real_units + ["Overflow"]
-
-      if len(services) * len(units) == 0:
-        logger.warning("Optimization input dimensions are zero.")
-        return Ok([])
-
-      c, A, b = self._build_cost_and_equality(services, units, demands, affinities)
-      G, h = self._build_capacity_constraints(len(services), units, capacities)
-      l_bound, u_bound, err_msg = self._apply_flow_constraints(services, units, demands, capacities, constraints)
-      if err_msg is not None:
-        return Err(
-          AppError(
-            code=ErrorCode.SIMULATION_INFEASIBLE,
-            message=err_msg,
-            status_code=422,
-          )
-        )
-
-      lp = create_lp(c, A, b, G, h, l_bound, u_bound, use_sparse_matrix=False)
-      solver = r2HPDHG(eps_abs=1e-3, eps_rel=1e-3, verbose=False, jit=True)
-      result = solver.optimize(lp)
-
-      if result.primal_solution is None:
-        return Err(
-          AppError(
-            code=ErrorCode.SIMULATION_INFEASIBLE,
-            message="Optimization solver determined the scenario constraints are mathematically infeasible or failed to converge.",
-            status_code=422,
-          )
-        )
-
-      solution_flat = np.array(result.primal_solution)
-      if np.isnan(solution_flat).any() or np.isinf(solution_flat).any():
-        return Err(
-          AppError(
-            code=ErrorCode.SIMULATION_INVALID_DATA,
-            message="Solver produced invalid non-finite values (NaN or Inf).",
-            status_code=400,
-          )
-        )
-
-      return Ok(self._extract_assignments(services, units, solution_flat))
-
+      demands: dict[str, float] = (
+        json.loads(demand_json) if isinstance(demand_json, str) else {str(k): float(v) for k, v in demand_json.items()}
+      )
+      capacities: dict[str, float] = (
+        json.loads(capacity_json)
+        if isinstance(capacity_json, str)
+        else {str(k): float(v) for k, v in capacity_json.items()}
+      )
+      affinities: dict[str, dict[str, float]] = (
+        json.loads(affinity_json)
+        if isinstance(affinity_json, str)
+        else {str(s): {str(u): float(val) for u, val in u_map.items()} for s, u_map in affinity_json.items()}
+      )
+      if constraints_json is None:
+        constraints: Sequence[Mapping[str, JsonValue]] = []
+      elif isinstance(constraints_json, str):
+        constraints = json.loads(constraints_json) if constraints_json else []
+      else:
+        constraints = constraints_json
+      return self._solve_parsed_inputs_result(demands, capacities, affinities, constraints)
     except Exception as e:
       logger.error(f"Optimization Failure: {e}", exc_info=True)
       return Err(

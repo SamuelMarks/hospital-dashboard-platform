@@ -74,7 +74,6 @@ open class SchemaApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<TableInfo>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getDatabaseSchemaApiV1SchemaGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<TableInfo>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 

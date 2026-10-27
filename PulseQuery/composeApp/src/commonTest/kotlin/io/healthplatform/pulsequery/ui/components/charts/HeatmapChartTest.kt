@@ -66,4 +66,32 @@ class HeatmapChartTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
 
         onNodeWithText("Insufficient matrix dimensions for heatmap (requires at least 3 columns).").assertExists()
     }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testHeatmapChartMultiColumnBottleneckSelection() = runComposeUiTest {
+        val bottleneckCols = listOf("Clinical_Service", "hour_of_day", "admits", "discharges", "net_bottleneck")
+        val bottleneckRows = listOf(listOf("Cardiology", "6", "100", "20", "80"))
+
+        setContent {
+            MaterialTheme {
+                HeatmapChart(columns = bottleneckCols, rows = bottleneckRows)
+            }
+        }
+        onNodeWithText("80").assertExists()
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testHeatmapChartMultiColumnLastIndexFallback() = runComposeUiTest {
+        val extraCols = listOf("Service", "Hour", "Admits", "Discharges", "CustomScore")
+        val extraRows = listOf(listOf("Cardiology", "6", "100", "20", "55"))
+
+        setContent {
+            MaterialTheme {
+                HeatmapChart(columns = extraCols, rows = extraRows)
+            }
+        }
+        onNodeWithText("55").assertExists()
+    }
 }

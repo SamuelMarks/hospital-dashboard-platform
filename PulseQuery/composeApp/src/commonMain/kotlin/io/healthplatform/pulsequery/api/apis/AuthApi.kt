@@ -75,7 +75,6 @@ open class AuthApi : ApiClient {
      * @param forgotPasswordRequest
      * @return PasswordResetResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun forgotPasswordApiV1AuthForgotPasswordPost(
         forgotPasswordRequest: ForgotPasswordRequest
     ): HttpResponse<PasswordResetResponse> {
@@ -113,7 +112,6 @@ open class AuthApi : ApiClient {
      * @param clientSecret  (optional)
      * @return Token
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun loginAccessTokenApiV1AuthLoginPost(
         username: kotlin.String,
         password: kotlin.String,
@@ -160,7 +158,6 @@ open class AuthApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return UserResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun readUsersMeApiV1AuthMeGet(token: kotlin.String? = null): HttpResponse<UserResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -192,7 +189,6 @@ open class AuthApi : ApiClient {
      * @param refreshTokenRequest
      * @return Token
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun refreshAccessTokenApiV1AuthRefreshPost(refreshTokenRequest: RefreshTokenRequest): HttpResponse<Token> {
         val localVariableAuthNames = listOf<String>()
 
@@ -223,7 +219,6 @@ open class AuthApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return UserResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun registerUserApiV1AuthRegisterPost(
         userCreate: UserCreate,
         acceptLanguage: kotlin.String? = null
@@ -257,7 +252,6 @@ open class AuthApi : ApiClient {
      * @param resetPasswordRequest
      * @return PasswordResetResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun resetPasswordApiV1AuthResetPasswordPost(
         resetPasswordRequest: ResetPasswordRequest
     ): HttpResponse<PasswordResetResponse> {

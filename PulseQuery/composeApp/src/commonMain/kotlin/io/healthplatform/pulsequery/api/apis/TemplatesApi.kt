@@ -77,7 +77,6 @@ open class TemplatesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createTemplateApiV1TemplatesPost(
         templateCreate: TemplateCreate,
         token: kotlin.String? = null
@@ -147,7 +146,6 @@ open class TemplatesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getTemplateApiV1TemplatesTemplateIdGet(
         templateId: kotlin.String,
         token: kotlin.String? = null
@@ -185,7 +183,6 @@ open class TemplatesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<TemplateResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listTemplatesApiV1TemplatesGet(
         category: kotlin.String? = null,
         search: kotlin.String? = null,
@@ -240,7 +237,6 @@ open class TemplatesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateTemplateApiV1TemplatesTemplateIdPut(
         templateId: kotlin.String,
         templateUpdate: TemplateUpdate,

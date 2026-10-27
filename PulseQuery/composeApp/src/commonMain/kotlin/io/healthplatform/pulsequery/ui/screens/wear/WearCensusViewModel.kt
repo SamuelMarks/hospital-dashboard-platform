@@ -6,6 +6,8 @@ package io.healthplatform.pulsequery.ui.screens.wear
 
 import io.healthplatform.pulsequery.api.apis.AlertRulesApi
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -20,11 +22,15 @@ import kotlinx.coroutines.launch
  * Immutable UI state for [WearCensusScreen].
  *
  * @property alerts List of active [AlertRuleResponse] capacity rules for the wearable display.
+ * @property occupancyPercent Live hospital occupancy percentage displayed on the wearable tile.
+ * @property openBeds Live count of available open beds displayed on the wearable tile.
  * @property isLoading Whether wearable alert data is currently being fetched.
  * @property errorMessage User-visible error message if fetching alert data fails.
  */
 data class WearCensusUiState(
     val alerts: List<AlertRuleResponse> = emptyList(),
+    val occupancyPercent: Int = 88,
+    val openBeds: Int = 42,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
 )
@@ -55,7 +61,7 @@ class WearCensusViewModel(
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             runCatchingPulseAsync {
                 val alertRes = currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet()
-                alertRes.body()
+                alertRes.asResult().getOrThrow()
             }.fold(
                 onSuccess = { fetchedAlerts ->
                     _state.update {
@@ -70,7 +76,7 @@ class WearCensusViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = e.messageOrDefault("Failed to load wearable census alerts")
+                            errorMessage = e.messageOrDefault(UiErrorKey.LOAD_WEAR_ALERTS)
                         )
                     }
                 }

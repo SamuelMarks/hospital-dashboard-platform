@@ -12,9 +12,8 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.api.deps import get_current_user
-from app.core.result import Ok
+from app.core.result import AppError, Err, ErrorCode, Ok
 from app.main import app
-from app.services.simulation_service import SimulationInfeasibleError
 
 SIMULATION_URL = "/api/v1/simulation"
 
@@ -105,15 +104,21 @@ async def test_run_simulation_legacy_2col_sql() -> None:
 
 @pytest.mark.asyncio
 async def test_run_simulation_handles_infeasible_constraint_error() -> None:
-  """`SimulationInfeasibleError` / `SIMULATION_INFEASIBLE` should map to HTTP 422 with diagnostic detail."""
+  """`SIMULATION_INFEASIBLE` should map to HTTP 422 with diagnostic detail."""
   mock_user = MagicMock()
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   payload = {"demand_source_sql": "SELECT 1", "capacity_parameters": {}}
 
   with patch(
-    "app.services.simulation_service.SimulationService._fetch_demand_payload",
-    side_effect=SimulationInfeasibleError("Infeasible constraint: minimum flow (50.0) exceeds maximum flow (10.0)"),
+    "app.services.simulation_service.SimulationService._fetch_demand_payload_result",
+    return_value=Err(
+      AppError(
+        code=ErrorCode.SIMULATION_INFEASIBLE,
+        message="Infeasible constraint: minimum flow (50.0) exceeds maximum flow (10.0)",
+        status_code=422,
+      )
+    ),
   ):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
       res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
@@ -126,13 +131,22 @@ async def test_run_simulation_handles_infeasible_constraint_error() -> None:
 
 @pytest.mark.asyncio
 async def test_run_simulation_handles_value_error() -> None:
-  """`ValueError` / `SIMULATION_INVALID_DATA` should map to 400."""
+  """`SIMULATION_INVALID_DATA` should map to 400."""
   mock_user = MagicMock()
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   payload = {"demand_source_sql": "SELECT 1", "capacity_parameters": {}}
 
-  with patch("app.services.simulation_service.SimulationService._fetch_demand_payload", side_effect=ValueError("bad")):
+  with patch(
+    "app.services.simulation_service.SimulationService._fetch_demand_payload_result",
+    return_value=Err(
+      AppError(
+        code=ErrorCode.SIMULATION_INVALID_DATA,
+        message="Failed to execute demand query: bad",
+        status_code=400,
+      )
+    ),
+  ):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
       res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
 
@@ -144,13 +158,22 @@ async def test_run_simulation_handles_value_error() -> None:
 
 @pytest.mark.asyncio
 async def test_run_simulation_handles_generic_error() -> None:
-  """Generic runtime errors should map to 500."""
+  """Generic `INTERNAL_ERROR` results should map to 500."""
   mock_user = MagicMock()
   app.dependency_overrides[get_current_user] = lambda: mock_user
 
   payload = {"demand_source_sql": "SELECT 1", "capacity_parameters": {}}
 
-  with patch("app.services.simulation_service.SimulationService._fetch_demand_payload", side_effect=RuntimeError("boom")):
+  with patch(
+    "app.services.simulation_service.SimulationService.run_scenario_result",
+    return_value=Err(
+      AppError(
+        code=ErrorCode.INTERNAL_ERROR,
+        message="Simulation Failed: boom",
+        status_code=500,
+      )
+    ),
+  ):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
       res = await ac.post(f"{SIMULATION_URL}/run", json=payload)
 

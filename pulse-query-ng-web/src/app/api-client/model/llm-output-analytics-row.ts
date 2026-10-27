@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,25 +12,41 @@
  * Flattened analytics row for LLM candidate outputs.
  */
 export interface LlmOutputAnalyticsRow {
+  /** Property `source`. */
   source: LlmOutputAnalyticsRow.SourceEnum;
+  /** Property `candidate_id`. */
   candidate_id: string;
+  /** Property `assistant_message_id`. */
   assistant_message_id?: string | null;
+  /** Property `conversation_id`. */
   conversation_id?: string | null;
+  /** Property `conversation_title`. */
   conversation_title?: string | null;
+  /** Property `user_id`. */
   user_id: string;
+  /** Property `user_email`. */
   user_email: string;
+  /** Property `query_text`. */
   query_text?: string | null;
+  /** Property `prompt_strategy`. */
   prompt_strategy?: string | null;
+  /** Property `llm`. */
   llm: string;
+  /** Property `sql_snippet`. */
   sql_snippet?: string | null;
+  /** Property `sql_hash`. */
   sql_hash?: string | null;
+  /** Property `is_selected`. */
   is_selected: boolean;
+  /** Property `created_at`. */
   created_at: string;
 }
 export namespace LlmOutputAnalyticsRow {
+  /** Generated OpenAPI type definition. */
   export const SourceEnum = {
     Chat: 'chat',
     Ai: 'ai',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type SourceEnum = (typeof SourceEnum)[keyof typeof SourceEnum];
 }

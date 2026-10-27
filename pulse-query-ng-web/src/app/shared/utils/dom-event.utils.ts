@@ -6,6 +6,9 @@
  * @returns Current string value of the target form control, or an empty string if unavailable.
  */
 export function extractEventInputValue(event: Event): string {
-  const target = event.target as { value?: unknown } | null;
-  return typeof target?.value === 'string' ? target.value : '';
+  const target: unknown = event.target;
+  if (typeof target === 'object' && target !== null && 'value' in target) {
+    return typeof target.value === 'string' ? target.value : '';
+  }
+  return '';
 }

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Payload for updating conversation metadata (e.g. rename).
  */
 export interface ConversationUpdate {
+  /** Property `title`. */
   title: string;
 }

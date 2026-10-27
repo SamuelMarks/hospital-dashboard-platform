@@ -6,8 +6,59 @@ midnight census timestamps, widget table summaries, and author attribution
 without requiring heavy external C-dependencies. Supports dynamic multi-page pagination.
 """
 
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+
+from app.schemas.json_types import JsonValue, SqlRow
+
+
+@dataclass(frozen=True, slots=True)
+class WidgetPdfSnapshot:
+  """
+  Strongly typed snapshot of a dashboard widget for PDF report rendering.
+
+  Attributes:
+      title (str): Display title of the widget.
+      type (str): Widget execution type (`'SQL'`, `'HTTP'`, `'TEXT'`).
+      data (Sequence[SqlRow]): Tabular rows executed for the widget.
+      error (str | None): Optional error message if widget execution failed.
+  """
+
+  title: str = "Untitled Widget"
+  type: str = "SQL"
+  data: Sequence[SqlRow] = field(default_factory=list)
+  error: str | None = None
+
+
+type WidgetPdfInput = WidgetPdfSnapshot | Mapping[str, JsonValue | Sequence[SqlRow]]
+
+
+def _coerce_widget_snapshot(widget: WidgetPdfInput) -> WidgetPdfSnapshot:
+  """
+  Normalizes a `WidgetPdfSnapshot` or legacy dictionary snapshot into a `WidgetPdfSnapshot`.
+
+  Args:
+      widget (WidgetPdfInput): Widget snapshot instance or dictionary.
+
+  Returns:
+      WidgetPdfSnapshot: Normalized immutable widget snapshot.
+  """
+  if isinstance(widget, WidgetPdfSnapshot):
+    return widget
+  raw_title = widget.get("title")
+  title = str(raw_title) if raw_title is not None else "Untitled Widget"
+  raw_type = widget.get("type")
+  w_type = str(raw_type) if raw_type is not None else "SQL"
+  raw_data = widget.get("data")
+  rows: list[SqlRow] = (
+    [{str(k): v for k, v in row.items()} for row in raw_data if isinstance(row, dict)]
+    if isinstance(raw_data, Sequence) and not isinstance(raw_data, (str, bytes))
+    else []
+  )
+  raw_err = widget.get("error")
+  err = str(raw_err) if raw_err else None
+  return WidgetPdfSnapshot(title=title, type=w_type, data=rows, error=err)
 
 
 def _escape_pdf_text(text: str) -> str:
@@ -90,38 +141,35 @@ def _build_page_footer(
   return commands
 
 
-def _render_widget_block(widget: dict[str, Any], y_pos: int) -> tuple[list[str], int]:
+def _render_widget_block(widget: WidgetPdfInput, y_pos: int) -> tuple[list[str], int]:
   """
   Builds PDF drawing commands for a single widget summary block and returns updated `y_pos`.
 
   Args:
-      widget (dict[str, Any]): Widget snapshot dictionary (`title`, `type`, `data`, `error`).
+      widget (WidgetPdfInput): Widget snapshot (`WidgetPdfSnapshot` or mapping).
       y_pos (int): Starting vertical coordinate in PDF points.
 
   Returns:
       tuple[list[str], int]: Tuple of `(pdf_commands, next_y_pos)`.
   """
+  snap = _coerce_widget_snapshot(widget)
   cmds: list[str] = []
-  title = widget.get("title", "Untitled Widget")
-  w_type = widget.get("type", "SQL")
-  escaped_w_title = _escape_pdf_text(f"Widget: {title} [{w_type}]")
+  escaped_w_title = _escape_pdf_text(f"Widget: {snap.title} [{snap.type}]")
   cmds.append(f"BT /F1 11 Tf 50 {y_pos} Td ({escaped_w_title}) Tj ET")
   y_pos -= 15
 
-  rows = widget.get("data", [])
-  if isinstance(rows, list) and rows:
-    first_row = rows[0]
-    if isinstance(first_row, dict):
-      col_names = list(first_row.keys())[:5]
-      header_str = " | ".join(f"{k}: {first_row[k]}" for k in col_names)
-      escaped_row = _escape_pdf_text(f"Sample: {header_str}")
-      cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_row}) Tj ET")
-      y_pos -= 14
-      escaped_summary = _escape_pdf_text(f"Total Records: {len(rows)}")
-      cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_summary}) Tj ET")
-      y_pos -= 16
-  elif widget.get("error"):
-    escaped_err = _escape_pdf_text(f"Status: Error - {widget['error']}")
+  if snap.data:
+    first_row = snap.data[0]
+    col_names = list(first_row.keys())[:5]
+    header_str = " | ".join(f"{k}: {first_row[k]}" for k in col_names)
+    escaped_row = _escape_pdf_text(f"Sample: {header_str}")
+    cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_row}) Tj ET")
+    y_pos -= 14
+    escaped_summary = _escape_pdf_text(f"Total Records: {len(snap.data)}")
+    cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_summary}) Tj ET")
+    y_pos -= 16
+  elif snap.error:
+    escaped_err = _escape_pdf_text(f"Status: Error - {snap.error}")
     cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_err}) Tj ET")
     y_pos -= 16
   else:
@@ -132,10 +180,82 @@ def _render_widget_block(widget: dict[str, Any], y_pos: int) -> tuple[list[str],
   return cmds, y_pos
 
 
+class PdfDocumentBuilder:
+  """
+  Deterministic PDF-1.4 document builder that assembles page content streams,
+  catalog/font objects, and cross-reference (`xref`) byte-offset tables.
+  """
+
+  def __init__(self) -> None:
+    """Initializes an empty list of encoded page content streams."""
+    self._page_streams: list[bytes] = []
+
+  def add_page_commands(self, commands: Sequence[str]) -> None:
+    """
+    Encodes a sequence of PDF drawing commands into a Latin-1 page stream.
+
+    Args:
+        commands (Sequence[str]): Ordered PDF operators for a single page.
+    """
+    self._page_streams.append(("\n".join(commands) + "\n").encode("latin1"))
+
+  def build_bytes(self) -> bytes:
+    """
+    Serializes all added pages into a complete, standards-compliant PDF-1.4 binary stream.
+
+    Returns:
+        bytes: Complete PDF document starting with `%PDF-1.4` and ending with `%%EOF`.
+    """
+    total_pages = len(self._page_streams)
+    page_ids = [4 + 2 * i for i in range(total_pages)]
+    kids_str = " ".join(f"{pid} 0 R" for pid in page_ids)
+
+    objects: list[bytes] = [
+      b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+      f"2 0 obj\n<< /Type /Pages /Kids [{kids_str}] /Count {total_pages} >>\nendobj\n".encode("latin1"),
+      b"3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+    ]
+
+    for i, p_bytes in enumerate(self._page_streams):
+      page_id = 4 + 2 * i
+      content_id = 5 + 2 * i
+      p_len = len(p_bytes)
+
+      page_obj = (
+        f"{page_id} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+        f"/Contents {content_id} 0 R /Resources << /Font << /F1 3 0 R >> >> >>\nendobj\n".encode("latin1")
+      )
+      content_obj = (
+        f"{content_id} 0 obj\n<< /Length {p_len} >>\nstream\n".encode("latin1") + p_bytes + b"\nendstream\nendobj\n"
+      )
+      objects.append(page_obj)
+      objects.append(content_obj)
+
+    header = b"%PDF-1.4\n"
+    body = b""
+    xref: list[int] = [0]
+    offset = len(header)
+    for obj in objects:
+      xref.append(offset)
+      body += obj
+      offset += len(obj)
+
+    xref_offset = offset
+    xref_table = f"xref\n0 {len(xref)}\n0000000000 65535 f \n".encode("latin1")
+    for off in xref[1:]:
+      xref_table += f"{off:010d} 00000 n \n".encode("latin1")
+
+    trailer = f"trailer\n<< /Size {len(xref)} /Root 1 0 R >>\nstartxref\\n{xref_offset}\\n%%EOF\\n".replace(
+      "\\n", "\n"
+    ).encode("latin1")
+
+    return header + body + xref_table + trailer
+
+
 def generate_clinical_pdf_report(
   dashboard_name: str,
   author_email: str,
-  widgets_data: list[dict[str, Any]],
+  widgets_data: Sequence[WidgetPdfInput],
   census_timestamp: datetime | None = None,
 ) -> bytes:
   """
@@ -144,7 +264,7 @@ def generate_clinical_pdf_report(
   Args:
       dashboard_name (str): Title of the exported dashboard.
       author_email (str): Email address of clinician or administrator exporting the report.
-      widgets_data (list[dict[str, Any]]): List of widget data snapshots including titles, types, and rows.
+      widgets_data (Sequence[WidgetPdfInput]): Sequence of widget data snapshots including titles, types, and rows.
       census_timestamp (datetime | None): Optional midnight census timestamp; defaults to current UTC time.
 
   Returns:
@@ -154,14 +274,14 @@ def generate_clinical_pdf_report(
     census_timestamp = datetime.now(UTC)
 
   formatted_time = census_timestamp.strftime("%Y-%m-%d %H:%M:%S UTC")
+  normalized_widgets = [_coerce_widget_snapshot(w) for w in widgets_data]
 
-  pages_widget_groups: list[list[dict[str, Any]]] = []
-  current_group: list[dict[str, Any]] = []
+  pages_widget_groups: list[list[WidgetPdfSnapshot]] = []
+  current_group: list[WidgetPdfSnapshot] = []
   current_y = 655
 
-  for widget in widgets_data:
-    rows = widget.get("data", [])
-    w_height = 45 if isinstance(rows, list) and rows else 31
+  for widget in normalized_widgets:
+    w_height = 45 if widget.data else 31
 
     if current_y - w_height < 80 and current_group:
       pages_widget_groups.append(current_group)
@@ -174,7 +294,7 @@ def generate_clinical_pdf_report(
   pages_widget_groups.append(current_group if current_group else [])
 
   total_pages = len(pages_widget_groups)
-  page_streams: list[bytes] = []
+  builder = PdfDocumentBuilder()
 
   for p_idx, group in enumerate(pages_widget_groups):
     header_cmds, y_pos = _build_page_header(dashboard_name, author_email, formatted_time, p_idx)
@@ -185,55 +305,6 @@ def generate_clinical_pdf_report(
       cmds.extend(w_cmds)
 
     cmds.extend(_build_page_footer(formatted_time, p_idx, total_pages))
-    page_streams.append(("\n".join(cmds) + "\n").encode("latin1"))
+    builder.add_page_commands(cmds)
 
-  # Assemble Multi-Page PDF-1.4 Structure
-  # Object IDs:
-  # 1: Catalog
-  # 2: Pages
-  # 3: Font
-  # For each page i (0 to N-1):
-  #   Page obj ID: 4 + 2*i
-  #   Contents obj ID: 5 + 2*i
-  page_ids = [4 + 2 * i for i in range(total_pages)]
-  kids_str = " ".join(f"{pid} 0 R" for pid in page_ids)
-
-  objects: list[bytes] = [
-    b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-    f"2 0 obj\n<< /Type /Pages /Kids [{kids_str}] /Count {total_pages} >>\nendobj\n".encode("latin1"),
-    b"3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-  ]
-
-  for i in range(total_pages):
-    page_id = 4 + 2 * i
-    content_id = 5 + 2 * i
-    p_bytes = page_streams[i]
-    p_len = len(p_bytes)
-
-    page_obj = (
-      f"{page_id} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-      f"/Contents {content_id} 0 R /Resources << /Font << /F1 3 0 R >> >> >>\nendobj\n".encode("latin1")
-    )
-    content_obj = (
-      f"{content_id} 0 obj\n<< /Length {p_len} >>\nstream\n".encode("latin1") + p_bytes + b"\nendstream\nendobj\n"
-    )
-    objects.append(page_obj)
-    objects.append(content_obj)
-
-  header = b"%PDF-1.4\n"
-  body = b""
-  xref: list[int] = [0]
-  offset = len(header)
-  for obj in objects:
-    xref.append(offset)
-    body += obj
-    offset += len(obj)
-
-  xref_offset = offset
-  xref_table = f"xref\n0 {len(xref)}\n0000000000 65535 f \n".encode("latin1")
-  for off in xref[1:]:
-    xref_table += f"{off:010d} 00000 n \n".encode("latin1")
-
-  trailer = f"trailer\n<< /Size {len(xref)} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n".encode("latin1")
-
-  return header + body + xref_table + trailer
+  return builder.build_bytes()

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -8,7 +8,6 @@
  * Do not edit the class manually.
  */
 import { WidgetCreateSql } from './widget-create-sql';
-import { TextConfig } from './text-config';
 import { WidgetCreateHttp } from './widget-create-http';
 import { WidgetCreateText } from './widget-create-text';
 

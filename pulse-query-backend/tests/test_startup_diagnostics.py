@@ -4,7 +4,6 @@ Unit tests for backend startup diagnostics and configuration hygiene.
 
 import os
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import duckdb
@@ -45,18 +44,23 @@ def test_diagnostics_registry_methods() -> None:
   """DiagnosticsRegistry should manage warnings and summarize overall health."""
   reg = DiagnosticsRegistry()
   assert reg.get_summary()["overall_status"] == "healthy"
+  assert reg.postgres_status.to_dict()["status"] == "unknown"
+  assert reg.duckdb_status.to_dict()["status"] == "unknown"
+  assert reg.data_status.to_dict()["status"] == "empty"
+  assert reg.template_status.to_dict()["status"] == "empty"
+  assert reg.llm_status.to_dict()["mock_mode"] is True
 
   reg.add_warning("W1", "Warning 1")
   reg.add_warning("W1", "Warning 1")
   assert len(reg.warnings) == 1
   assert reg.get_summary()["overall_status"] == "degraded"
 
-  reg.postgres_status["status"] = "error"
+  reg.postgres_status.status = "error"
   assert reg.get_summary()["overall_status"] == "critical"
 
   reg.clear()
   assert len(reg.warnings) == 0
-  assert reg.postgres_status["status"] == "unknown"
+  assert reg.postgres_status.status == "unknown"
 
 
 def test_format_error_banners() -> None:
@@ -85,12 +89,12 @@ def test_check_configuration_hygiene() -> None:
     """Stub settings object with default insecure `SECRET_KEY` and empty `LLM_SWARM`."""
 
     SECRET_KEY = "CHANGEME_IN_PROD_SUPER_SECRET_KEY"
-    LLM_SWARM: list[Any] = []
+    LLM_SWARM: list[dict[str, str]] = []
 
   warnings = check_configuration_hygiene(_InsecureNoSwarm())
   assert any("Insecure default SECRET_KEY" in w for w in warnings)
   assert any("No cloud LLM API keys" in w for w in warnings)
-  assert diagnostics_registry.llm_status["mock_mode"] is True
+  assert diagnostics_registry.llm_status.mock_mode is True
 
   class _CustomSettings:
     """Stub settings object with custom production `SECRET_KEY` and populated `LLM_SWARM`."""
@@ -100,43 +104,19 @@ def test_check_configuration_hygiene() -> None:
 
   warnings_secure = check_configuration_hygiene(_CustomSettings())
   assert not warnings_secure
-  assert diagnostics_registry.llm_status["mock_mode"] is False
+  assert diagnostics_registry.llm_status.mock_mode is False
 
 
 @pytest.mark.asyncio
 async def test_validate_postgres_connection_success(monkeypatch: pytest.MonkeyPatch) -> None:
   """`validate_postgres_connection` should record connected status on valid query."""
+  from tests.typed_test_doubles import ExcTb, ExcType, ExcVal, TypedAsyncContextManager
+
   dummy_conn = AsyncMock()
   dummy_conn.execute = AsyncMock()
 
-  class _DummyContext:
-    """Stub async context manager yielding `dummy_conn`."""
-
-    async def __aenter__(self) -> AsyncMock:
-      """
-      Enters context and returns `dummy_conn`.
-
-      Returns:
-          AsyncMock: Mock connection.
-      """
-      return dummy_conn
-
-    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
-      """
-      Exits context without suppressing exceptions.
-
-      Args:
-          exc_type (object): Exception type if raised.
-          exc (object): Exception instance if raised.
-          tb (object): Traceback if raised.
-
-      Returns:
-          bool: Always False.
-      """
-      return False
-
   dummy_engine = MagicMock()
-  dummy_engine.connect.return_value = _DummyContext()
+  dummy_engine.connect.return_value = TypedAsyncContextManager(dummy_conn)
 
   import app.database.postgres as pg_mod
 
@@ -145,11 +125,13 @@ async def test_validate_postgres_connection_success(monkeypatch: pytest.MonkeyPa
   res = await validate_postgres_connection(raise_on_error=False)
   assert res["status"] == "connected"
   assert res["error"] is None
+  _ = (ExcType, ExcVal, ExcTb)
 
 
 @pytest.mark.asyncio
 async def test_validate_postgres_connection_failure(monkeypatch: pytest.MonkeyPatch) -> None:
   """`validate_postgres_connection` should catch errors and raise when configured."""
+  from tests.typed_test_doubles import ExcTb, ExcType, ExcVal
 
   class _FailingContext:
     """Stub async context manager that raises `ConnectionRefusedError` on enter."""
@@ -163,18 +145,19 @@ async def test_validate_postgres_connection_failure(monkeypatch: pytest.MonkeyPa
       """
       raise ConnectionRefusedError("Connection refused by host")
 
-    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+    async def __aexit__(self, exc_type: ExcType, exc: ExcVal, tb: ExcTb) -> bool:
       """
       Exits context without suppressing exceptions.
 
       Args:
-          exc_type (object): Exception type if raised.
-          exc (object): Exception instance if raised.
-          tb (object): Traceback if raised.
+          exc_type (ExcType): Exception type if raised.
+          exc (ExcVal): Exception instance if raised.
+          tb (ExcTb): Traceback if raised.
 
       Returns:
           bool: Always False.
       """
+      _ = (exc_type, exc, tb)
       return False
 
   dummy_engine = MagicMock()
@@ -186,7 +169,7 @@ async def test_validate_postgres_connection_failure(monkeypatch: pytest.MonkeyPa
 
   res = await validate_postgres_connection(raise_on_error=False)
   assert res["status"] == "error"
-  assert "Connection refused" in res["error"]
+  assert "Connection refused" in str(res["error"])
 
   with pytest.raises(DatabaseConfigurationError):
     await validate_postgres_connection(raise_on_error=True)
@@ -218,23 +201,24 @@ def test_validate_duckdb_storage_parent_dir_creation_failure(monkeypatch: pytest
   """`validate_duckdb_storage` should report error when directory creation fails."""
   mgr = DuckDBManager("/nonexistent_forbidden_dir_12345/data.duckdb")
 
-  def _failing_makedirs(_path: object, **_kwargs: object) -> None:
+  def _failing_makedirs(_path: str | Path, exist_ok: bool = False) -> None:
     """
     Simulates a `PermissionError` when creating parent directories.
 
     Args:
-        _path (object): Target directory path.
-        **_kwargs (object): Keyword arguments.
+        _path (str | Path): Target directory path.
+        exist_ok (bool): Exist-ok flag.
 
     Raises:
         PermissionError: Always raised.
     """
+    _ = exist_ok
     raise PermissionError("Access denied")
 
   monkeypatch.setattr(os, "makedirs", _failing_makedirs)
   res = mgr.validate_duckdb_storage()
   assert res["status"] == "error"
-  assert "Cannot create database parent directory" in res["error"]
+  assert "Cannot create database parent directory" in str(res["error"])
 
 
 def test_validate_duckdb_storage_connection_exception(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -256,7 +240,7 @@ def test_validate_duckdb_storage_connection_exception(monkeypatch: pytest.Monkey
   monkeypatch.setattr(mgr, "get_connection", _failing_get_conn)
   res = mgr.validate_duckdb_storage()
   assert res["status"] == "error"
-  assert "File is locked" in res["error"]
+  assert "File is locked" in str(res["error"])
 
 
 def test_validate_duckdb_storage_table_count_fallback(monkeypatch: pytest.MonkeyPatch) -> None:

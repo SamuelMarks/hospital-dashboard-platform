@@ -12,8 +12,10 @@ import { HttpConfig, SqlConfig, TextConfig, WidgetResponse } from '../api-client
  */
 export function sortWidgetsByOrder(widgets: readonly WidgetResponse[]): WidgetResponse[] {
   return [...widgets].sort((a, b) => {
-    const orderA = (a.config?.['order'] as number) || 0;
-    const orderB = (b.config?.['order'] as number) || 0;
+    const rawA = a.config?.['order'];
+    const rawB = b.config?.['order'];
+    const orderA = typeof rawA === 'number' ? rawA : 0;
+    const orderB = typeof rawB === 'number' ? rawB : 0;
     return orderA - orderB;
   });
 }
@@ -92,12 +94,33 @@ export function offsetWidgetCoordinates(
   maxColIndex = 11,
 ): Record<string, unknown> {
   const newConfig = structuredClone(config);
-  const currentX = (newConfig['x'] as number) || 0;
-  const currentY = (newConfig['y'] as number) || 0;
+  const rawX = newConfig['x'];
+  const rawY = newConfig['y'];
+  const currentX = typeof rawX === 'number' ? rawX : 0;
+  const currentY = typeof rawY === 'number' ? rawY : 0;
 
   newConfig['x'] = Math.min(maxColIndex, currentX + 1);
   newConfig['y'] = currentY + 1;
   return newConfig;
+}
+
+/**
+ * Interpolates `{{param}}` placeholders in a SQL template string with values from `params`.
+ *
+ * @param sqlTemplate - SQL template string containing `{{key}}` placeholders.
+ * @param params - Key-value map of parameter values to substitute.
+ * @returns Interpolated SQL query string.
+ */
+export function interpolateSqlTemplate(
+  sqlTemplate: string,
+  params: Readonly<Record<string, unknown>>,
+): string {
+  let sql = sqlTemplate;
+  for (const key of Object.keys(params)) {
+    const val = params[key];
+    sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
+  }
+  return sql;
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,9 +12,14 @@
  * Payload for updating an existing template. Partial fields allowed.
  */
 export interface TemplateUpdate {
+  /** Property `title`. */
   title?: string | null;
+  /** Property `description`. */
   description?: string | null;
+  /** Property `sql_template`. */
   sql_template?: string | null;
+  /** Property `category`. */
   category?: string | null;
-  parameters_schema?: { [key: string]: any } | null;
+  /** Property `parameters_schema`. */
+  parameters_schema?: Record<string, unknown> | null;
 }

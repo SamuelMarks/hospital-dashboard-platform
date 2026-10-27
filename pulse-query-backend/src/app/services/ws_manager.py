@@ -6,10 +6,30 @@ widget updates, collaborator presence, and layout adjustments.
 """
 
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Any
+from typing import TypedDict
 
 from fastapi import WebSocket
+
+from app.schemas.json_types import JsonValue
+
+
+class CollaboratorMetadataDict(TypedDict):
+  """
+  Typed dictionary representing an active WebSocket collaborator profile.
+
+  Attributes:
+      user_id (str): Connected user's unique identifier.
+      email (str): Connected user's email address.
+      role (str): Clinical or administrative role.
+      connected_at (str): ISO-8601 UTC connection timestamp.
+  """
+
+  user_id: str
+  email: str
+  role: str
+  connected_at: str
 
 
 class DashboardConnectionManager:
@@ -20,7 +40,7 @@ class DashboardConnectionManager:
   def __init__(self) -> None:
     """Initialize empty connection and metadata registries."""
     self.active_connections: dict[str, list[WebSocket]] = defaultdict(list)
-    self.connection_metadata: dict[WebSocket, dict[str, Any]] = {}
+    self.connection_metadata: dict[WebSocket, CollaboratorMetadataDict] = {}
 
   async def connect(
     self,
@@ -43,7 +63,7 @@ class DashboardConnectionManager:
     await websocket.accept()
     self.active_connections[dashboard_id].append(websocket)
     now_iso = datetime.now(UTC).isoformat()
-    meta: dict[str, Any] = {
+    meta: CollaboratorMetadataDict = {
       "user_id": user_id,
       "email": email,
       "role": role,
@@ -61,7 +81,7 @@ class DashboardConnectionManager:
       },
     )
 
-  def disconnect(self, dashboard_id: str, websocket: WebSocket) -> dict[str, Any] | None:
+  def disconnect(self, dashboard_id: str, websocket: WebSocket) -> CollaboratorMetadataDict | None:
     """
     Removes a disconnected WebSocket from active dashboard registry.
 
@@ -70,7 +90,7 @@ class DashboardConnectionManager:
         websocket (WebSocket): Disconnected WebSocket.
 
     Returns:
-        dict[str, Any] | None: Disconnected collaborator metadata if tracked, else None.
+        CollaboratorMetadataDict | None: Disconnected collaborator metadata if tracked, else None.
     """
     user_meta = self.connection_metadata.pop(websocket, None)
     if dashboard_id in self.active_connections:
@@ -80,7 +100,7 @@ class DashboardConnectionManager:
         del self.active_connections[dashboard_id]
     return user_meta
 
-  def get_active_users(self, dashboard_id: str) -> list[dict[str, Any]]:
+  def get_active_users(self, dashboard_id: str) -> list[CollaboratorMetadataDict]:
     """
     Retrieves the list of distinct active collaborator metadata dictionaries.
 
@@ -88,7 +108,7 @@ class DashboardConnectionManager:
         dashboard_id (str): Target dashboard ID.
 
     Returns:
-        list[dict[str, Any]]: List of collaborator profiles currently online.
+        list[CollaboratorMetadataDict]: List of collaborator profiles currently online.
     """
     sockets = self.active_connections.get(dashboard_id, [])
     return [self.connection_metadata[ws] for ws in sockets if ws in self.connection_metadata]
@@ -96,7 +116,7 @@ class DashboardConnectionManager:
   async def broadcast(
     self,
     dashboard_id: str,
-    message: dict[str, Any],
+    message: Mapping[str, JsonValue | CollaboratorMetadataDict | list[CollaboratorMetadataDict]],
     sender: WebSocket | None = None,
   ) -> None:
     """
@@ -104,7 +124,8 @@ class DashboardConnectionManager:
 
     Args:
         dashboard_id (str): Dashboard identifier.
-        message (dict[str, Any]): JSON-serializable message dictionary.
+        message (Mapping[str, JsonValue | CollaboratorMetadataDict | list[CollaboratorMetadataDict]]):
+            JSON-serializable message dictionary.
         sender (WebSocket | None): Optional socket to exclude from broadcast. Defaults to None.
     """
     if dashboard_id not in self.active_connections:

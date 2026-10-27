@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -16,6 +16,7 @@ export interface TroubleshootingStep {
    * Step title or action description.
    */
   title: string;
+  /** Property `command`. */
   command?: string | null;
   /**
    * Contextual explanation for why this step resolves the issue.

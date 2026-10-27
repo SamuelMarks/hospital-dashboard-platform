@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Barrel export for generated OpenAPI Angular services.
+ */
 export * from './admin.service';
 import { AdminService } from './admin.service';
 export * from './admin-users.service';

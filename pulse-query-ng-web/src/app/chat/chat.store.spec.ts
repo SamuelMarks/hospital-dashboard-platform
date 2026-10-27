@@ -531,6 +531,8 @@ describe('ChatStore', () => {
           controller.enqueue(
             encoder.encode(`comment: ignore
 data: {bad json
+data: 42
+data: {"no_event":true}
 `),
           );
           controller.enqueue(
@@ -539,7 +541,7 @@ data: {bad json
 `),
           );
           controller.enqueue(
-            encoder.encode(`data: {"event":"done"}
+            encoder.encode(`data: {"event":"done","sql_snippet":null}
 `),
           );
           controller.close();

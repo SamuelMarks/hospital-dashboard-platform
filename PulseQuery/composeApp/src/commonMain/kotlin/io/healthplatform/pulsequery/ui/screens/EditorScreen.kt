@@ -55,11 +55,13 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.add_to_cart
 import pulsequery.composeapp.generated.resources.enter_sql_query_here
 import pulsequery.composeapp.generated.resources.execute
 import pulsequery.composeapp.generated.resources.execution_failed_msg
 import pulsequery.composeapp.generated.resources.query
 import pulsequery.composeapp.generated.resources.results_rows
+import pulsequery.composeapp.generated.resources.save_query
 import pulsequery.composeapp.generated.resources.sql_editor
 import pulsequery.composeapp.generated.resources.sql_error_msg
 
@@ -98,12 +100,15 @@ fun EditorScreen(
                         onClick = { showSaveDialog = true },
                         enabled = uiState.sqlQuery.isNotBlank()
                     ) {
-                        Icon(Icons.Filled.Save, contentDescription = "Save Query")
+                        Icon(
+                            Icons.Filled.Save,
+                            contentDescription = stringResource(Res.string.save_query)
+                        )
                     }
                     TextButton(
                         onClick = { vm.stageToCart() }
                     ) {
-                        Text("Add to Cart")
+                        Text(stringResource(Res.string.add_to_cart))
                     }
                 }
             )

@@ -6,16 +6,22 @@ Security is primarily enforced by the Database Connection itself (Read-Only Mode
 We perform basic syntax checking but defer execution policy to DuckDB.
 """
 
-import asyncio
-from collections.abc import Sequence
-import logging
-from typing import Any, Protocol
+from __future__ import annotations
 
+import asyncio
+from collections.abc import Mapping, Sequence
+import logging
+from typing import Protocol
+
+import duckdb
+import duckdb.sqltypes as sqltypes
 import sqlglot
 from sqlglot import exp
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.database.duckdb import DuckDBFetchableProtocol
 from app.schemas.execution import SqlRunnerPayload, SqlRunnerResultDict
+from app.schemas.json_types import JsonValue, SqlRow, SqlScalar
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +32,10 @@ _FORBIDDEN_AST_TYPES: tuple[type[exp.Expression], ...] = (
   exp.Insert,
   exp.Alter,
   exp.Create,
+  exp.Command,
+  exp.Copy,
+  exp.Attach,
+  exp.Detach,
 )
 
 
@@ -35,10 +45,10 @@ class DuckDBCursorProtocol(Protocol):
   """
 
   @property
-  def description(self) -> Sequence[Sequence[Any]] | None:
+  def description(self) -> Sequence[Sequence[SqlScalar | sqltypes.DuckDBPyType]] | None:
     """Column metadata sequence for the most recent query result."""
 
-  def execute(self, query: str) -> object:
+  def execute(self, query: str) -> DuckDBFetchableProtocol | duckdb.DuckDBPyConnection | None:
     """
     Executes a SQL query string on the cursor.
 
@@ -46,18 +56,18 @@ class DuckDBCursorProtocol(Protocol):
         query (str): SQL query string to execute.
 
     Returns:
-        object: Cursor or execution result.
+        DuckDBFetchableProtocol | duckdb.DuckDBPyConnection | None: Cursor or execution result.
     """
 
-  def fetchall(self) -> list[tuple[Any, ...]]:
+  def fetchall(self) -> list[tuple[SqlScalar, ...]]:
     """
     Fetches all remaining rows from the last executed query.
 
     Returns:
-        list[tuple[Any, ...]]: Sequence of row tuples.
+        list[tuple[SqlScalar, ...]]: Sequence of row tuples.
     """
 
-  def fetchmany(self, size: int = 1) -> list[tuple[Any, ...]]:
+  def fetchmany(self, size: int = 1) -> list[tuple[SqlScalar, ...]]:
     """
     Fetches up to `size` rows from the last executed query.
 
@@ -65,7 +75,7 @@ class DuckDBCursorProtocol(Protocol):
         size (int): Maximum number of rows to fetch.
 
     Returns:
-        list[tuple[Any, ...]]: Sequence of row tuples.
+        list[tuple[SqlScalar, ...]]: Sequence of row tuples.
     """
 
 
@@ -142,18 +152,19 @@ def validate_query_ast(query: str) -> None:
     raise SQLSecurityError(res.error.message)
 
 
-def execute_sql_result(cursor: DuckDBCursorProtocol, config: dict[str, Any]) -> AppResult[SqlRunnerPayload]:
+def execute_sql_result(cursor: DuckDBCursorProtocol, config: Mapping[str, JsonValue]) -> AppResult[SqlRunnerPayload]:
   """
   Executes a SQL query against a DuckDB cursor and returns a strongly typed `AppResult[SqlRunnerPayload]`.
 
   Args:
       cursor (DuckDBCursorProtocol): Active DuckDB cursor object.
-      config (dict[str, Any]): Widget configuration dictionary containing `query` and optional `max_rows`.
+      config (Mapping[str, JsonValue]): Widget configuration dictionary containing `query` and optional `max_rows`.
 
   Returns:
       AppResult[SqlRunnerPayload]: `Ok(SqlRunnerPayload)` on success, or `Err(AppError)` on validation/execution failure.
   """
-  query: str = str(config.get("query", "")).strip()
+  raw_query = config.get("query", "")
+  query: str = str(raw_query).strip() if raw_query is not None else ""
   if not query:
     return Err(
       AppError(
@@ -174,8 +185,12 @@ def execute_sql_result(cursor: DuckDBCursorProtocol, config: dict[str, Any]) -> 
     if cursor.description:
       columns: list[str] = [str(desc[0]) for desc in cursor.description]
       max_rows = config.get("max_rows")
-      rows = cursor.fetchmany(max_rows) if isinstance(max_rows, int) and max_rows > 0 else cursor.fetchall()
-      results: list[dict[str, Any]] = [dict(zip(columns, row, strict=False)) for row in rows]
+      rows = (
+        cursor.fetchmany(max_rows)
+        if isinstance(max_rows, int) and not isinstance(max_rows, bool) and max_rows > 0
+        else cursor.fetchall()
+      )
+      results: list[SqlRow] = [dict(zip(columns, row, strict=False)) for row in rows]
       return Ok(SqlRunnerPayload(data=results, columns=columns))
     return Ok(SqlRunnerPayload(data=[], columns=[]))
   except Exception as e:
@@ -190,13 +205,13 @@ def execute_sql_result(cursor: DuckDBCursorProtocol, config: dict[str, Any]) -> 
     )
 
 
-def run_sql_widget(cursor: DuckDBCursorProtocol, config: dict[str, Any]) -> SqlRunnerResultDict:
+def run_sql_widget(cursor: DuckDBCursorProtocol, config: Mapping[str, JsonValue]) -> SqlRunnerResultDict:
   """
   Executes a SQL query within a protected environment.
 
   Args:
       cursor (DuckDBCursorProtocol): An active DuckDB standard cursor object.
-      config (dict[str, Any]): The configuration dictionary containing the `query`.
+      config (Mapping[str, JsonValue]): The configuration dictionary containing the `query`.
 
   Returns:
       SqlRunnerResultDict: Execution result containing `data`, `columns`, and `error`.
@@ -215,13 +230,13 @@ def run_sql_widget(cursor: DuckDBCursorProtocol, config: dict[str, Any]) -> SqlR
   }
 
 
-async def run_sql_widget_async(cursor: DuckDBCursorProtocol, config: dict[str, Any]) -> SqlRunnerResultDict:
+async def run_sql_widget_async(cursor: DuckDBCursorProtocol, config: Mapping[str, JsonValue]) -> SqlRunnerResultDict:
   """
   Asynchronously executes a SQL widget query in a worker thread via `asyncio.to_thread`.
 
   Args:
       cursor (DuckDBCursorProtocol): Active DuckDB cursor object.
-      config (dict[str, Any]): Widget configuration dictionary.
+      config (Mapping[str, JsonValue]): Widget configuration dictionary.
 
   Returns:
       SqlRunnerResultDict: Execution result dictionary containing `data`, `columns`, and `error`.

@@ -7,6 +7,10 @@ package io.healthplatform.pulsequery.ui.screens.mpax
 import io.healthplatform.pulsequery.api.apis.MpaxArenaApi
 import io.healthplatform.pulsequery.api.models.MpaxArenaCandidate
 import io.healthplatform.pulsequery.api.models.MpaxArenaRequest
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.CandidateId
+import io.healthplatform.pulsequery.core.model.MpaxArenaEvaluationMode
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -18,9 +22,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Available evaluation modes for MPAX Arena.
+ * Available evaluation modes for MPAX Arena derived from [MpaxArenaEvaluationMode].
  */
-val MPAX_ARENA_MODES: List<String> = listOf("critic", "translator", "constraints", "sql_vs_mpax")
+val MPAX_ARENA_MODES: List<String> = listOf(
+    MpaxArenaEvaluationMode.CRITIC.wireValue,
+    MpaxArenaEvaluationMode.TRANSLATOR.wireValue,
+    MpaxArenaEvaluationMode.CONSTRAINTS.wireValue,
+    MpaxArenaEvaluationMode.SQL_VS_MPAX.wireValue
+)
 
 /**
  * State container for the MPAX Arena UI screen.
@@ -36,7 +45,7 @@ val MPAX_ARENA_MODES: List<String> = listOf("critic", "translator", "constraints
  */
 data class MpaxArenaUiState(
     val prompt: String = "Optimize bed capacity during an influx of emergency ICU admissions.",
-    val selectedMode: String = "critic",
+    val selectedMode: String = MpaxArenaEvaluationMode.CRITIC.wireValue,
     val isRunning: Boolean = false,
     val isVoting: Boolean = false,
     val experimentId: String? = null,
@@ -96,7 +105,7 @@ class MpaxArenaViewModel(
                     prompt = current.prompt,
                     mode = current.selectedMode
                 )
-                currentMpaxArenaApi.runMpaxArenaModeApiV1MpaxArenaRunPost(req).body()
+                currentMpaxArenaApi.runMpaxArenaModeApiV1MpaxArenaRunPost(req).asResult().getOrThrow()
             }.fold(
                 onSuccess = { response ->
                     _state.update {
@@ -112,7 +121,7 @@ class MpaxArenaViewModel(
                     _state.update {
                         it.copy(
                             isRunning = false,
-                            errorMessage = e.messageOrDefault("Failed to execute MPAX Arena evaluation")
+                            errorMessage = e.messageOrDefault(UiErrorKey.EXECUTE_MPAX_ARENA)
                         )
                     }
                 }
@@ -133,7 +142,7 @@ class MpaxArenaViewModel(
                 currentMpaxArenaApi.voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(
                     runId = expId,
                     candidateId = candidateId
-                ).body()
+                ).asResult().getOrThrow()
             }.fold(
                 onSuccess = { updated ->
                     _state.update {
@@ -148,11 +157,20 @@ class MpaxArenaViewModel(
                     _state.update {
                         it.copy(
                             isVoting = false,
-                            errorMessage = e.messageOrDefault("Failed to record candidate vote")
+                            errorMessage = e.messageOrDefault(UiErrorKey.RECORD_CANDIDATE_VOTE)
                         )
                     }
                 }
             )
         }
+    }
+
+    /**
+     * Casts a persistent winning vote for an LLM candidate using a strongly typed [CandidateId].
+     *
+     * @param candidateId Strongly typed [CandidateId] of the winning candidate.
+     */
+    fun voteCandidate(candidateId: CandidateId) {
+        voteCandidate(candidateId.value)
     }
 }

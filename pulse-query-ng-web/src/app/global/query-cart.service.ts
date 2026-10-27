@@ -152,13 +152,17 @@ export class QueryCartService {
     if (!item || typeof item !== 'object') {
       return false;
     }
-    const candidate = item as Partial<QueryCartItem>;
     return (
-      typeof candidate.id === 'string' &&
-      typeof candidate.title === 'string' &&
-      typeof candidate.sql === 'string' &&
-      typeof candidate.createdAt === 'string' &&
-      candidate.kind === QUERY_CART_ITEM_KIND
+      'id' in item &&
+      typeof item.id === 'string' &&
+      'title' in item &&
+      typeof item.title === 'string' &&
+      'sql' in item &&
+      typeof item.sql === 'string' &&
+      'createdAt' in item &&
+      typeof item.createdAt === 'string' &&
+      'kind' in item &&
+      item.kind === QUERY_CART_ITEM_KIND
     );
   }
 }

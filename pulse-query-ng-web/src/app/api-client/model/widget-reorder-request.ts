@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,5 +13,6 @@ import { WidgetReorderItem } from './widget-reorder-item';
  * Bulk update payload for persisting drag-and-drop results.
  */
 export interface WidgetReorderRequest {
-  items: Array<WidgetReorderItem>;
+  /** Property `items`. */
+  items: WidgetReorderItem[];
 }

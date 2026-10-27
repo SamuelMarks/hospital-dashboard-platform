@@ -9,10 +9,10 @@ are correctly represented in the persisted data structure.
 
 import json
 import os
-from typing import Any
 
 import pytest
 
+from app.schemas.json_types import JsonObject
 from app.services.template_seeder import DATA_FILE
 
 # Complete list of 30 expected questions
@@ -53,21 +53,21 @@ EXPECTED_TITLES = {
 
 
 @pytest.fixture
-def content_pack() -> list[dict[str, Any]]:
+def content_pack() -> list[JsonObject]:
   """Load the JSON file from disk."""
   if not os.path.exists(DATA_FILE):
     pytest.fail(f"Content Pack JSON missing at: {DATA_FILE}")
 
   with open(DATA_FILE, "r", encoding="utf-8") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
     return data
 
 
-def test_full_catalog_presence(content_pack: list[dict[str, Any]]) -> None:
+def test_full_catalog_presence(content_pack: list[JsonObject]) -> None:
   """
   Verify that ALL 30 templates are present in the JSON file.
   """
-  present_titles = {t["title"] for t in content_pack}
+  present_titles = {str(t["title"]) for t in content_pack}
   missing = EXPECTED_TITLES - present_titles
 
   # Print missing for easier debugging if assertion fails
@@ -78,7 +78,7 @@ def test_full_catalog_presence(content_pack: list[dict[str, Any]]) -> None:
   assert len(present_titles) >= 30
 
 
-def test_batch_b_sql_complexity(content_pack: list[dict[str, Any]]) -> None:
+def test_batch_b_sql_complexity(content_pack: list[JsonObject]) -> None:
   """
   Targeted validation for complex SQL patterns introduced in Batch B.
   Verifies that placeholders are correctly structured for:
@@ -88,23 +88,23 @@ def test_batch_b_sql_complexity(content_pack: list[dict[str, Any]]) -> None:
   """
   # Case 1: Midnight vs Noon (Subqueries)
   q20 = next(t for t in content_pack if t["title"] == "Midnight vs. Noon")
-  assert "SELECT COUNT(*)" in q20["sql_template"]
-  assert "INTERVAL 12 HOUR" in q20["sql_template"], "Missing Interval Logic in Q20"
+  assert "SELECT COUNT(*)" in str(q20["sql_template"])
+  assert "INTERVAL 12 HOUR" in str(q20["sql_template"]), "Missing Interval Logic in Q20"
 
   # Case 2: Overflow Predictor (Join + Logic)
   q29 = next(t for t in content_pack if t["title"] == "Overflow Predictor")
-  assert "{{primary_unit}}" in q29["sql_template"]
-  assert "{{service}}" in q29["sql_template"]
-  assert "PROBABILITY" in q29["sql_template"], "Q29 should use PROBABILITY macro"
+  assert "{{primary_unit}}" in str(q29["sql_template"])
+  assert "{{service}}" in str(q29["sql_template"])
+  assert "PROBABILITY" in str(q29["sql_template"]), "Q29 should use PROBABILITY macro"
 
   # Case 3: Paired Bottlenecks (Dynamic CTEs)
   q26 = next(t for t in content_pack if t["title"] == "Paired Bottlenecks")
-  assert "{{unit_1}}" in q26["sql_template"]
-  assert "{{unit_2}}" in q26["sql_template"]
-  assert "{{cap_1}}" in q26["sql_template"]
+  assert "{{unit_1}}" in str(q26["sql_template"])
+  assert "{{unit_2}}" in str(q26["sql_template"])
+  assert "{{cap_1}}" in str(q26["sql_template"])
 
 
-def test_schema_completeness(content_pack: list[dict[str, Any]]) -> None:
+def test_schema_completeness(content_pack: list[JsonObject]) -> None:
   """
   Verify parameters_schema exists and is valid for all entries.
   Specific check for Overflow Predictor which has 3 params.
@@ -112,11 +112,15 @@ def test_schema_completeness(content_pack: list[dict[str, Any]]) -> None:
   for t in content_pack:
     assert "parameters_schema" in t, f"{t['title']} missing schema"
     schema = t["parameters_schema"]
+    assert isinstance(schema, dict)
     assert "type" in schema
     assert schema["type"] == "object"
 
   q29 = next(t for t in content_pack if t["title"] == "Overflow Predictor")
-  props = q29["parameters_schema"]["properties"]
+  q29_schema = q29["parameters_schema"]
+  assert isinstance(q29_schema, dict)
+  props = q29_schema["properties"]
+  assert isinstance(props, dict)
   assert "primary_unit" in props
   assert "service" in props
   assert "capacity" in props

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -29,7 +29,8 @@ export interface AlertRuleResponse {
    * Active status flag
    */
   is_active?: boolean;
+  /** Property `id`. */
   id: string;
+  /** Property `created_at`. */
   created_at: string;
 }
-export namespace AlertRuleResponse {}

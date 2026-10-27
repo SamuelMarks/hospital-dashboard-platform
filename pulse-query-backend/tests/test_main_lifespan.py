@@ -3,60 +3,45 @@ Tests for the FastAPI lifespan hook.
 """
 
 import asyncio
-import contextlib
+from collections.abc import Callable
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.engine import Connection
 
 from app.core.diagnostics import diagnostics_registry
+from app.database.postgres import Base
 import app.main as main_module
+from tests.typed_test_doubles import ExcTb, ExcType, ExcVal, TypedAsyncContextManager, TypedSyncContextManager
+
+
+class _DummyConn:
+  """Stub async database connection supporting `run_sync`."""
+
+  def __init__(self) -> None:
+    """Initializes the list of recorded `run_sync` callables."""
+    self.synced_fns: list[Callable[[Connection], None]] = []
+
+  async def run_sync(self, fn: Callable[[Connection], None]) -> None:
+    """
+    Records `fn` to verify `Base.metadata.create_all` was invoked.
+
+    Args:
+        fn (Callable[[Connection], None]): Synchronous DDL callable.
+    """
+    self.synced_fns.append(fn)
 
 
 @pytest.mark.asyncio
 async def test_lifespan_invokes_startup_and_shutdown(monkeypatch: pytest.MonkeyPatch) -> None:
   """Lifespan should run startup steps and dispose engine on shutdown."""
-
-  class _DummyConn:
-    """Stub async database connection supporting `run_sync`."""
-
-    async def run_sync(self, _fn: object) -> None:
-      """
-      No-op `run_sync` hook.
-
-      Args:
-          _fn (object): Synchronous callable.
-      """
-      return
-
-  class _DummyBegin:
-    """Stub async context manager returned by `engine.begin()`."""
-
-    async def __aenter__(self) -> _DummyConn:
-      """
-      Enters the transaction context and returns `_DummyConn`.
-
-      Returns:
-          _DummyConn: Stub connection.
-      """
-      return _DummyConn()
-
-    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
-      """
-      Exits the transaction context without suppressing exceptions.
-
-      Args:
-          exc_type (object): Exception type if raised.
-          exc (object): Exception instance if raised.
-          tb (object): Traceback if raised.
-
-      Returns:
-          bool: Always False.
-      """
-      return False
-
+  dummy_conn = _DummyConn()
   dummy_engine = MagicMock()
-  dummy_engine.begin.return_value = _DummyBegin()
+  dummy_engine.begin.return_value = TypedAsyncContextManager(dummy_conn)
   dummy_engine.dispose = AsyncMock()
+  sync_cm = TypedSyncContextManager(dummy_conn)
+  with sync_cm as entered_sync:
+    assert entered_sync is dummy_conn
 
   dummy_validate_pg = AsyncMock(return_value={"status": "connected"})
   dummy_validate_duckdb = MagicMock(return_value={"status": "ready"})
@@ -74,6 +59,7 @@ async def test_lifespan_invokes_startup_and_shutdown(monkeypatch: pytest.MonkeyP
   async with main_module.lifespan(main_module.app):
     pass
 
+  assert dummy_conn.synced_fns == [Base.metadata.create_all]
   dummy_validate_pg.assert_awaited_once_with(raise_on_error=False)
   assert dummy_validate_duckdb.call_count == 2
   dummy_engine.begin.assert_called_once()
@@ -86,47 +72,9 @@ async def test_lifespan_invokes_startup_and_shutdown(monkeypatch: pytest.MonkeyP
 @pytest.mark.asyncio
 async def test_lifespan_scheduled_background_ingest(monkeypatch: pytest.MonkeyPatch) -> None:
   """Lifespan should spawn and cancel background ingestion task when AUTO_INGEST_INTERVAL_MINUTES > 0."""
-
-  class _DummyConn:
-    """Stub async database connection supporting `run_sync`."""
-
-    async def run_sync(self, _fn: object) -> None:
-      """
-      No-op `run_sync` hook.
-
-      Args:
-          _fn (object): Synchronous callable.
-      """
-      return
-
-  class _DummyBegin:
-    """Stub async context manager returned by `engine.begin()`."""
-
-    async def __aenter__(self) -> _DummyConn:
-      """
-      Enters the transaction context and returns `_DummyConn`.
-
-      Returns:
-          _DummyConn: Stub connection.
-      """
-      return _DummyConn()
-
-    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
-      """
-      Exits the transaction context without suppressing exceptions.
-
-      Args:
-          exc_type (object): Exception type if raised.
-          exc (object): Exception instance if raised.
-          tb (object): Traceback if raised.
-
-      Returns:
-          bool: Always False.
-      """
-      return False
-
+  dummy_conn = _DummyConn()
   dummy_engine = MagicMock()
-  dummy_engine.begin.return_value = _DummyBegin()
+  dummy_engine.begin.return_value = TypedAsyncContextManager(dummy_conn)
   dummy_engine.dispose = AsyncMock()
 
   dummy_validate_pg = AsyncMock(return_value={"status": "connected"})
@@ -141,13 +89,27 @@ async def test_lifespan_scheduled_background_ingest(monkeypatch: pytest.MonkeyPa
   monkeypatch.setattr(main_module, "init_duckdb_on_startup", MagicMock())
   monkeypatch.setattr(main_module, "settings", MagicMock(AUTO_INGEST_INTERVAL_MINUTES=1))
 
-  async with main_module.lifespan(main_module.app):
-    await asyncio.sleep(0.01)
+  real_sleep = asyncio.sleep
+  tick_event = asyncio.Event()
 
-  cancelled_task = asyncio.create_task(main_module._background_ingest_loop(1))
-  cancelled_task.cancel()
-  with contextlib.suppress(asyncio.CancelledError):
-    await cancelled_task
+  async def _fast_bg_sleep(_seconds: float) -> None:
+    """
+    Advances the background ingestion timer immediately and sets `tick_event`.
+
+    Args:
+        _seconds (float): Requested sleep interval in seconds.
+    """
+    tick_event.set()
+    await real_sleep(0.005)
+
+  monkeypatch.setattr(asyncio, "sleep", _fast_bg_sleep)
+
+  async with main_module.lifespan(main_module.app):
+    await asyncio.wait_for(tick_event.wait(), timeout=1.0)
+    await real_sleep(0.01)
+
+  # Startup called ingest_all_csvs once, and background task called it at least once more
+  assert mock_ingest.call_count >= 2
 
 
 @pytest.mark.asyncio
@@ -209,7 +171,7 @@ async def test_lifespan_handles_postgres_schema_init_error(monkeypatch: pytest.M
       """Raise error on enter."""
       raise RuntimeError("schema init failed")
 
-    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+    async def __aexit__(self, exc_type: ExcType, exc: ExcVal, tb: ExcTb) -> bool:
       """Exit context."""
       _ = (exc_type, exc, tb)
       return False

@@ -1,12 +1,15 @@
 """Tests for benchmarks API router."""
 
-from unittest.mock import MagicMock, mock_open, patch
+import json
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 import uuid
 
-import pytest
 from httpx import ASGITransport, AsyncClient
+import pytest
 
 from app.api.deps import get_current_user
+from app.api.routers import benchmarks as benchmarks_router
 from app.main import app
 from app.models.user import User
 
@@ -14,72 +17,69 @@ BASE_URL = "http://testserver/api/v1/benchmarks"
 
 
 @pytest.mark.asyncio
-async def test_get_sql_benchmarks_success() -> None:
-  """Verify `GET /sql` returns parsed SQL benchmark items."""
-  mock_data = '[{"theme": "test"}]'
-  with (
-    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
-    patch("builtins.open", mock_open(read_data=mock_data)),
-  ):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-      response = await client.get("/sql")
-      assert response.status_code == 200
-      assert response.json() == [{"theme": "test"}]
+async def test_get_sql_benchmarks_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /sql` returns parsed SQL benchmark items from a real temporary JSON file."""
+  gold_file = tmp_path / "benchmark_gold.json"
+  gold_file.write_text(json.dumps([{"theme": "test", "question": "Count ICU", "gold_sql": "SELECT 1"}]), encoding="utf-8")
+  monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
+
+  async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+    response = await client.get("/sql")
+    assert response.status_code == 200
+    assert response.json() == [{"theme": "test", "question": "Count ICU", "gold_sql": "SELECT 1"}]
 
 
 @pytest.mark.asyncio
-async def test_get_sql_benchmarks_not_found() -> None:
-  """Verify `GET /sql` returns 404 when benchmark file is missing."""
-  with patch("app.api.routers.benchmarks.Path.exists", return_value=False):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-      response = await client.get("/sql")
-      assert response.status_code == 404
-      assert "not found" in response.json()["detail"]
+async def test_get_sql_benchmarks_not_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /sql` returns 404 when benchmark file is missing in `DATA_DIR`."""
+  monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
+  async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+    response = await client.get("/sql")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_get_sql_benchmarks_read_error() -> None:
-  """Verify `GET /sql` returns 500 when reading the benchmark file raises an error."""
-  with (
-    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
-    patch("builtins.open", side_effect=Exception("Read error")),
-  ):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-      response = await client.get("/sql")
-      assert response.status_code == 500
-      assert "Read error" in response.json()["detail"]
+async def test_get_sql_benchmarks_read_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /sql` returns 500 when the benchmark file contains malformed JSON."""
+  gold_file = tmp_path / "benchmark_gold.json"
+  gold_file.write_text("{malformed json", encoding="utf-8")
+  monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
+  async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+    response = await client.get("/sql")
+    assert response.status_code == 500
+    assert "Error reading benchmarks" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_success() -> None:
-  """Verify `GET /mpax` returns parsed MPAX benchmark scenario items."""
-  mock_data = '[{"scenario": "test"}]'
-  with (
-    patch("app.api.routers.benchmarks.Path.exists", return_value=True),
-    patch("builtins.open", mock_open(read_data=mock_data)),
-  ):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-      response = await client.get("/mpax")
-      assert response.status_code == 200
-      assert response.json() == [{"scenario": "test"}]
+async def test_get_mpax_benchmarks_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /mpax` returns parsed MPAX benchmark scenario items from a real temporary JSON file."""
+  mpax_file = tmp_path / "mpax_benchmark_scenarios.json"
+  mpax_file.write_text(json.dumps([{"scenario": "test", "theme": "Capacity"}]), encoding="utf-8")
+  monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
+
+  async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+    response = await client.get("/mpax")
+    assert response.status_code == 200
+    assert response.json() == [{"scenario": "test", "theme": "Capacity"}]
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_not_found() -> None:
-  """Verify `GET /mpax` returns 404 when scenario file is missing."""
-  with patch("app.api.routers.benchmarks.Path.exists", return_value=False):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-      response = await client.get("/mpax")
-      assert response.status_code == 404
-      assert "not found" in response.json()["detail"]
+async def test_get_mpax_benchmarks_not_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /mpax` returns 404 when scenario file is missing in `DATA_DIR`."""
+  monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
+  async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
+    response = await client.get("/mpax")
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
 async def test_get_mpax_benchmarks_read_error() -> None:
-  """Verify `GET /mpax` returns 500 when reading the scenario file raises an error."""
+  """Verify `GET /mpax` returns 500 when reading the scenario file raises an OS error."""
   with (
     patch("app.api.routers.benchmarks.Path.exists", return_value=True),
-    patch("builtins.open", side_effect=Exception("Read error")),
+    patch("builtins.open", side_effect=OSError("Read error")),
   ):
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
       response = await client.get("/mpax")

@@ -8,18 +8,18 @@ Verifies:
 """
 
 import builtins
-from typing import Any
 from unittest.mock import mock_open
 
 import pytest
 
+from app.schemas.json_types import JsonObject
 from app.services.prompt_engineering.few_shot_rag import (
   FewShotRAGStrategy,
   TemplateRetriever,
 )
 
 # Mock Data for deterministic testing
-MOCK_TEMPLATES: list[dict[str, Any]] = [
+MOCK_TEMPLATES: list[JsonObject] = [
   {
     "title": "Predictive Availability",
     "description": "Calculate probability of bed availability on Sunday",

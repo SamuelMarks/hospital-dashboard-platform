@@ -9,7 +9,9 @@ import { MatStepper } from '@angular/material/stepper';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { WidgetBuilderComponent } from './widget-builder.component';
+import { LOCAL_DRAFT_WIDGET_ID } from './widget-builder.store';
 import {
+  AiService,
   DashboardsService,
   ExecutionService,
   TemplatesService,
@@ -17,6 +19,10 @@ import {
   TemplateResponse,
 } from '../../api-client';
 import { DashboardStore } from '../dashboard.store';
+import {
+  ProcessorCatalogService,
+  SQL_NO_MODEL_OPTION,
+} from '../../shared/services/processor-catalog.service';
 import { SqlBuilderComponent } from '../../editors/sql-builder.component';
 import { HttpConfigComponent } from '../../editors/http-config.component';
 import { TextEditorComponent } from '../../editors/text-editor.component';
@@ -51,6 +57,9 @@ describe('WidgetBuilderComponent', () => {
   let mockExecApi: {
     refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
   };
+  let mockAiApi: {
+    executeSqlPreviewApiV1AiExecutePost: ReturnType<typeof vi.fn>;
+  };
   let mockTplApi: {
     listTemplatesApiV1TemplatesGet: ReturnType<typeof vi.fn>;
   };
@@ -75,6 +84,11 @@ describe('WidgetBuilderComponent', () => {
         .fn()
         .mockReturnValue(of({ 'draft-1': { data: 'test' } })),
     };
+    mockAiApi = {
+      executeSqlPreviewApiV1AiExecutePost: vi
+        .fn()
+        .mockReturnValue(of({ columns: ['A', 'B'], data: [{ A: 1, B: 2 }], error: null })),
+    };
     mockTplApi = {
       listTemplatesApiV1TemplatesGet: vi.fn().mockReturnValue(of([MOCK_TEMPLATE])),
     };
@@ -91,8 +105,19 @@ describe('WidgetBuilderComponent', () => {
       providers: [
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ExecutionService, useValue: mockExecApi },
+        { provide: AiService, useValue: mockAiApi },
         { provide: TemplatesService, useValue: mockTplApi },
         { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1' } },
       ],
@@ -125,6 +150,8 @@ describe('WidgetBuilderComponent', () => {
     expect(component).toBeTruthy();
     expect(mockTplApi.listTemplatesApiV1TemplatesGet).toHaveBeenCalled();
     expect(component.templates().length).toBe(1);
+    expect(component.visualizations.some((v) => v.id === 'pie_chart')).toBe(true);
+    expect(component.visualizations.some((v) => v.id === 'line_chart')).toBe(true);
   });
 
   it('should sync local controls with previewWidget state on value changes', () => {
@@ -159,18 +186,21 @@ describe('WidgetBuilderComponent', () => {
     expect(component.draftWidget()).toBeNull();
   });
 
-  it('ngOnDestroy should unsubscribe and handle draft cleanup logic if needed', () => {
-    component.draftWidget.set(MOCK_DRAFT);
-    mockDialogRef.getState.mockReturnValue(0);
-    expect(() => component.ngOnDestroy()).not.toThrow();
+  it('DestroyRef should tear down searchQuery subscription when fixture is destroyed', () => {
+    vi.useFakeTimers();
+    fixture.destroy();
+    mockTplApi.listTemplatesApiV1TemplatesGet.mockClear();
+    const input = document.createElement('input');
+    input.value = 'after-destroy';
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
+    component.updateSearch(event);
+    vi.advanceTimersByTime(300);
+    vi.useRealTimers();
+    expect(mockTplApi.listTemplatesApiV1TemplatesGet).not.toHaveBeenCalled();
   });
 
-  it('ngOnDestroy should do nothing if called before ngOnInit', () => {
-    const uninit = TestBed.runInInjectionContext(() => new WidgetBuilderComponent());
-    expect(() => uninit.ngOnDestroy()).not.toThrow();
-  });
-
-  it('updateSearch should trigger search$', () => {
+  it('updateSearch should trigger debounced searchQuery signal', () => {
     vi.useFakeTimers();
     const input = document.createElement('input');
     input.value = 'search term';
@@ -233,24 +263,22 @@ describe('WidgetBuilderComponent', () => {
     expect(component.finalSql()).toBe('');
   });
 
-  it('renderPreview should replace params in sql template and call executeDraft', () => {
+  it('renderPreview should replace params in sql template and call single-query preview execution', () => {
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
     component.draftWidget.set(MOCK_DRAFT);
     component.renderPreview();
     expect(component.finalSql()).toBe('SELECT 123 FROM table');
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'draft-1',
-      { config: { query: 'SELECT 123 FROM table' } },
-    );
-    expect(mockExecApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost).toHaveBeenCalled();
+    expect(mockAiApi.executeSqlPreviewApiV1AiExecutePost).toHaveBeenCalledWith({
+      sql: 'SELECT 123 FROM table',
+    });
   });
 
   it('executeDraft should handle execution error', () => {
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
     component.draftWidget.set(MOCK_DRAFT);
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(
       throwError(() => new Error('error')),
     );
     component.renderPreview();
@@ -269,100 +297,55 @@ describe('WidgetBuilderComponent', () => {
     expect(component.templateFormValid()).toBe(false);
   });
 
-  it('initializeDraft should handle template mode', () => {
+  it('initializeDraft should keep draft in client memory across template, SQL, HTTP, and TEXT modes', () => {
     const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.activeMode.set('template');
     component.selectedTemplate.set(MOCK_TEMPLATE);
-    vi.useFakeTimers();
     component.initializeDraft(mockStepper);
-    vi.advanceTimersByTime(150);
-    vi.useRealTimers();
-
-    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
-      'd1',
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).not.toHaveBeenCalled();
+    expect(component.draftWidget()).toEqual(
       expect.objectContaining({
+        id: LOCAL_DRAFT_WIDGET_ID,
         title: 'Admissions',
         type: 'SQL',
         config: { query: 'SELECT {{param}} FROM table' },
       }),
     );
     expect(mockStepper.next).toHaveBeenCalled();
-  });
 
-  it('initializeDraft should handle custom SQL mode', () => {
     component.activeMode.set('custom');
+    component.selectedTemplate.set(null);
     component.selectedCustomType.set('SQL');
     component.initializeDraft();
-    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
-      'd1',
-      expect.objectContaining({
-        type: 'SQL',
-        config: { query: 'SELECT * FROM hospital_data LIMIT 5' },
-      }),
-    );
-  });
+    expect(component.draftWidget()?.config).toEqual({
+      query: 'SELECT * FROM hospital_data LIMIT 5',
+    });
 
-  it('initializeDraft should handle custom HTTP mode', () => {
-    component.activeMode.set('custom');
     component.selectedCustomType.set('HTTP');
     component.initializeDraft();
-    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
-      'd1',
-      expect.objectContaining({
-        type: 'HTTP',
-        visualization: 'metric',
-        config: { url: 'https://example.com', method: 'GET' },
-      }),
-    );
-  });
+    expect(component.draftWidget()?.visualization).toBe('metric');
 
-  it('initializeDraft should handle custom TEXT mode', () => {
-    component.activeMode.set('custom');
     component.selectedCustomType.set('TEXT');
     component.initializeDraft();
-    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
-      'd1',
-      expect.objectContaining({
-        type: 'TEXT',
-        visualization: 'markdown',
-        config: {
-          content: `### New Text Widget
-Edit this content.`,
-        },
-      }),
-    );
-  });
-
-  it('initializeDraft should log error if creation fails', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
-      throwError(() => new Error('err')),
-    );
-    component.activeMode.set('custom');
-    component.selectedCustomType.set('SQL');
-    component.initializeDraft();
-    expect(consoleSpy).toHaveBeenCalledWith('Draft creation failed', expect.any(Error));
-    consoleSpy.mockRestore();
+    expect(component.draftWidget()?.visualization).toBe('markdown');
   });
 
   it('runTemplateQuery should do nothing if no draft or template', () => {
     const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(null);
     component.runTemplateQuery(mockStepper);
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+    expect(mockAiApi.executeSqlPreviewApiV1AiExecutePost).not.toHaveBeenCalled();
   });
 
-  it('runTemplateQuery should compile sql, execute update and call stepper next', () => {
+  it('runTemplateQuery should compile sql, execute single-query preview and call stepper next', () => {
     const mockStepper: Pick<MatStepper, 'next'> = { next: vi.fn() };
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
     component.runTemplateQuery(mockStepper);
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'draft-1',
-      { config: { query: 'SELECT 123 FROM table' } },
-    );
-    expect(mockStore.refreshWidget).toHaveBeenCalledWith('draft-1');
+    expect(mockAiApi.executeSqlPreviewApiV1AiExecutePost).toHaveBeenCalledWith({
+      sql: 'SELECT 123 FROM table',
+    });
     expect(mockStepper.next).toHaveBeenCalled();
   });
 
@@ -371,7 +354,7 @@ Edit this content.`,
     component.draftWidget.set(MOCK_DRAFT);
     component.selectedTemplate.set(MOCK_TEMPLATE);
     component.templateParams.set({ param: '123' });
-    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(
       throwError(() => new Error('err')),
     );
     component.runTemplateQuery(mockStepper);
@@ -394,61 +377,48 @@ Edit this content.`,
     expect(mockStepper.next).toHaveBeenCalled();
   });
 
-  it('onSqlChange should update draft config query', () => {
+  it('onSqlChange, onConfigChange, onContentChange, and updateVizType update draftWidget', () => {
     component.draftWidget.set(MOCK_DRAFT);
     component.onSqlChange('SELECT 2');
     expect(component.draftWidget()?.config['query']).toBe('SELECT 2');
-  });
 
-  it('onSqlChange should do nothing if no draft', () => {
-    component.draftWidget.set(null);
-    component.onSqlChange('SELECT 2');
-    expect(component.draftWidget()).toBeNull();
-  });
-
-  it('onConfigChange should update draft config', () => {
-    component.draftWidget.set(MOCK_DRAFT);
     component.onConfigChange({ url: 'http://test' });
     expect(component.draftWidget()?.config['url']).toBe('http://test');
-  });
 
-  it('onConfigChange should do nothing if no draft', () => {
-    component.draftWidget.set(null);
-    component.onConfigChange({ url: 'http://test' });
-    expect(component.draftWidget()).toBeNull();
-  });
-
-  it('onContentChange should update draft config content', () => {
-    component.draftWidget.set(MOCK_DRAFT);
     component.onContentChange('content');
     expect(component.draftWidget()?.config['content']).toBe('content');
-  });
 
-  it('onContentChange should do nothing if no draft', () => {
-    component.draftWidget.set(null);
-    component.onContentChange('content');
-    expect(component.draftWidget()).toBeNull();
-  });
-
-  it('updateVizType should update draft visualization', () => {
-    component.draftWidget.set(MOCK_DRAFT);
     component.updateVizType('bar_chart');
     expect(component.draftWidget()?.visualization).toBe('bar_chart');
-  });
 
-  it('updateVizType should do nothing if no draft', () => {
     component.draftWidget.set(null);
+    component.onSqlChange('SELECT 2');
+    component.onConfigChange({ url: 'http://test' });
+    component.onContentChange('content');
     component.updateVizType('bar_chart');
     expect(component.draftWidget()).toBeNull();
   });
 
-  it('saveWidget should do nothing if no draft widget', () => {
+  it('saveWidget creates new widget for local draft or updates existing server widget and closes dialog', () => {
     component.draftWidget.set(null);
     component.saveWidget();
+    component.saveAndClose();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
-  });
 
-  it('saveWidget should update widget and close dialog', () => {
+    // Persisting in-memory draft calls createWidget
+    component.selectCustomType('SQL');
+    component.initializeDraft();
+    component.updateTitle('New Local Widget');
+    component.saveWidget();
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'd1',
+      expect.objectContaining({
+        title: 'New Local Widget',
+        type: 'SQL',
+      }),
+    );
+
+    // Persisting existing server widget calls updateWidget
     component.draftWidget.set(MOCK_DRAFT);
     component.updateTitle('New Title');
     fixture.detectChanges();
@@ -472,23 +442,27 @@ Edit this content.`,
       throwError(() => new Error('err')),
     );
     component.saveWidget();
-    expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error));
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to save widget', expect.any(Error));
     consoleSpy.mockRestore();
   });
 
-  it('cancel should close dialog without draft', () => {
-    component.draftWidget.set(null);
+  it('cancel should close dialog without deleting local draft, and delete server draft if present', () => {
+    component.selectCustomType('SQL');
+    component.initializeDraft();
     component.cancel();
+    expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).not.toHaveBeenCalled();
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
-  });
 
-  it('cancel should delete draft and close dialog', () => {
     component.draftWidget.set(MOCK_DRAFT);
     component.cancel();
     expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).toHaveBeenCalledWith(
       'draft-1',
     );
-    expect(mockDialogRef.close).toHaveBeenCalledWith(false);
+
+    Object.defineProperty(document, 'activeElement', { value: null, configurable: true });
+    const f2 = TestBed.createComponent(WidgetBuilderComponent);
+    f2.componentInstance.restoreTriggerFocus();
+    delete (document as unknown as Record<string, unknown>)['activeElement'];
   });
 
   it('asTableData should return normalized table data object or default', () => {
@@ -505,6 +479,7 @@ Edit this content.`,
   it('should compute showAxesConfig, isPie, availableColumns, and dataConfigured branches', () => {
     component.draftWidget.set(null);
     component.selectedTemplate.set(null);
+    component.executionResult.set(null);
     expect(component.paramsSchema()).toEqual({});
     expect(component.currentType()).toBe('SQL');
     expect(component.showAxesConfig()).toBe(false);
@@ -520,7 +495,7 @@ Edit this content.`,
     expect(component.currentType()).toBe('TEXT');
     expect(component.showAxesConfig()).toBe(false);
 
-    component.draftWidget.set({ ...MOCK_DRAFT, type: 'SQL', visualization: 'pie' });
+    component.draftWidget.set({ ...MOCK_DRAFT, type: 'SQL', visualization: 'pie_chart' });
     expect(component.showAxesConfig()).toBe(true);
     expect(component.isPie()).toBe(true);
     expect(component.availableColumns()).toEqual(['A', 'B']);
@@ -535,17 +510,30 @@ Edit this content.`,
     expect(component.dataConfigured()).toBe(true);
   });
 
-  it('executeDraft should handle no draftId', () => {
-    component.draftWidget.set(null);
-    component.selectedTemplate.set(MOCK_TEMPLATE);
-    component.renderPreview();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
-  });
+  it('should update natural text and processor settings in previewWidget', () => {
+    component.draftWidget.set({
+      id: 'w-nl',
+      dashboard_id: 'd1',
+      title: 'Draft',
+      type: 'SQL',
+      visualization: 'table',
+      config: { query: 'SELECT 1' },
+    });
+    component.updateAllowNaturalText(true);
+    component.updateProcessor('ollama:llama3');
+    component.updateNaturalTextPrompt('  Count patients  ');
+    component.updatePlaceholderText('  Enter question  ');
 
-  it('should do nothing on title changes if no draft', () => {
-    component.draftWidget.set(null);
-    component.updateTitle('Another Title');
-    fixture.detectChanges();
-    expect(component.draftWidget()).toBeNull();
+    const preview = component.previewWidget();
+    expect(preview?.config['allow_natural_text']).toBe(true);
+    expect(preview?.config['processor']).toBe('ollama:llama3');
+    expect(preview?.config['natural_text_prompt']).toBe('Count patients');
+    expect(preview?.config['placeholder_text']).toBe('Enter question');
+
+    component.updateNaturalTextPrompt('   ');
+    component.updatePlaceholderText('');
+    const previewEmpty = component.previewWidget();
+    expect(previewEmpty?.config['natural_text_prompt']).toBeUndefined();
+    expect(previewEmpty?.config['placeholder_text']).toBeUndefined();
   });
 });

@@ -81,17 +81,23 @@ def test_readonly_connection_retries_on_lock(monkeypatch: pytest.MonkeyPatch) ->
   manager = DuckDBManager("dummy.duckdb")
   attempts = 0
 
-  def _fake_connect(*_args: object, **_kwargs: object) -> MagicMock:
+  def _fake_connect(
+    database: str = ":memory:",
+    read_only: bool = False,
+    config: dict[str, str] | None = None,
+  ) -> MagicMock:
     """
     Simulates transient lock on first connect attempt and returns `fake_conn` on retry.
 
     Args:
-        *_args (object): Positional arguments.
-        **_kwargs (object): Keyword arguments.
+        database (str): Database file path or `:memory:`.
+        read_only (bool): Read-only flag.
+        config (dict[str, str] | None): DuckDB connection configuration dict.
 
     Returns:
         MagicMock: Mock DuckDB connection.
     """
+    _ = (database, read_only, config)
     nonlocal attempts
     attempts += 1
     if attempts == 1:
@@ -142,7 +148,9 @@ async def test_duckdb_udf_available_across_multiple_readonly_connections_and_thr
   rw_conn.execute("CREATE TABLE t (x INT); INSERT INTO t VALUES (1);")
   rw_conn.close()
 
-  def _query_udf() -> list[dict[str, object]]:
+  from app.schemas.json_types import JsonObject
+
+  def _query_udf() -> list[JsonObject]:
     """Opens a read-only connection, invokes `OPTIMIZE_ASSIGNMENTS`, and returns parsed JSON rows."""
     ro_conn = manager.get_readonly_connection()
     try:
@@ -150,7 +158,7 @@ async def test_duckdb_udf_available_across_multiple_readonly_connections_and_thr
         "SELECT OPTIMIZE_ASSIGNMENTS('{\"Cardio\": 5}', '{\"ICU\": 10}', '{\"Cardio\": {\"ICU\": 1.0}}', '[]')"
       ).fetchone()
       assert row is not None
-      parsed: list[dict[str, object]] = json.loads(row[0])
+      parsed: list[JsonObject] = json.loads(row[0])
       return parsed
     finally:
       ro_conn.close()

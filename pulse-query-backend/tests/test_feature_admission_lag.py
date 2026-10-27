@@ -8,21 +8,22 @@ the *First* appearance in the Census.
 from collections.abc import Generator
 import json
 import os
-from typing import Any
 
 import duckdb
 import pytest
+
+from app.schemas.json_types import JsonObject
 
 DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
 
 
 @pytest.fixture
-def admission_lag_template() -> dict[str, Any]:
+def admission_lag_template() -> JsonObject:
   """Loads the 'Admission Lag' template definition from `initial_templates.json`."""
   if not os.path.exists(DATA_FILE):
     pytest.fail(f"Templates file not found at {DATA_FILE}")
   with open(DATA_FILE, "r") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
   tmpl = next((t for t in data if t["title"] == "Admission Lag"), None)
   assert tmpl is not None
   return dict(tmpl)
@@ -68,12 +69,12 @@ def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
 
 
 def test_admission_lag_first_appearance_logic(
-  db_conn: duckdb.DuckDBPyConnection, admission_lag_template: dict[str, Any]
+  db_conn: duckdb.DuckDBPyConnection, admission_lag_template: JsonObject
 ) -> None:
   """
   Verifies that the SQL aggregates by Visit_ID to find the first census event.
   """
-  sql = admission_lag_template["sql_template"]
+  sql = str(admission_lag_template["sql_template"])
   results = db_conn.execute(sql).fetchall()
 
   assert len(results) == 1

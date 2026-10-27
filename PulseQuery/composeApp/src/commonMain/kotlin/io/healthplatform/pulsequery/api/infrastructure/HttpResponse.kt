@@ -3,7 +3,9 @@
  */
 package io.healthplatform.pulsequery.api.infrastructure
 
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.ktor.client.call.body
 import io.ktor.http.Headers
 import io.ktor.http.isSuccess
 import io.ktor.util.reflect.TypeInfo
@@ -41,7 +43,7 @@ open class HttpResponse<T : Any>(
      *
      * @return [Result] containing the deserialized body [T] or a [io.healthplatform.pulsequery.core.error.PulseQueryError].
      */
-    suspend fun safeBody(): Result<T> = runCatchingPulseAsync { body() }
+    suspend fun safeBody(): Result<T> = asResult()
 
     /**
      * Deserializes the response payload into an explicit target [type].
@@ -104,7 +106,7 @@ interface BodyProvider<T : Any> {
 }
 
 /**
- * [BodyProvider] implementation backed by Ktor's `response.call.body(TypeInfo)` pipeline.
+ * [BodyProvider] implementation backed by Ktor's `response.body(TypeInfo)` pipeline.
  *
  * @param T Expected deserialized body type.
  * @property type Reflection [TypeInfo] for [T].
@@ -116,9 +118,8 @@ class TypedBodyProvider<T : Any>(private val type: TypeInfo) : BodyProvider<T> {
      * @param response Ktor HTTP response statement.
      * @return Deserialized instance of [T].
      */
-    @Suppress("UNCHECKED_CAST")
     override suspend fun body(response: io.ktor.client.statement.HttpResponse): T =
-        response.call.body(type) as T
+        response.body(type)
 
     /**
      * Deserializes the response body using the supplied [type].
@@ -128,9 +129,8 @@ class TypedBodyProvider<T : Any>(private val type: TypeInfo) : BodyProvider<T> {
      * @param type Ktor [TypeInfo] metadata for [V].
      * @return Deserialized instance of [V].
      */
-    @Suppress("UNCHECKED_CAST")
     override suspend fun <V : Any> typedBody(response: io.ktor.client.statement.HttpResponse, type: TypeInfo): V =
-        response.call.body(type) as V
+        response.body(type)
 }
 
 /**

@@ -77,7 +77,6 @@ open class AlertRulesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createAlertRuleApiV1AnalyticsAlertRulesPost(
         alertRuleCreate: AlertRuleCreate,
         token: kotlin.String? = null
@@ -112,7 +111,6 @@ open class AlertRulesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createAlertRuleApiV1AnalyticsAlertRulesPost_0(
         alertRuleCreate: AlertRuleCreate,
         token: kotlin.String? = null
@@ -182,7 +180,6 @@ open class AlertRulesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getAlertRuleApiV1AnalyticsAlertRulesRuleIdGet(
         ruleId: kotlin.String,
         token: kotlin.String? = null
@@ -217,7 +214,6 @@ open class AlertRulesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<AlertRuleResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listAlertRulesApiV1AnalyticsAlertRulesGet(
         token: kotlin.String? = null
     ): HttpResponse<kotlin.collections.List<AlertRuleResponse>> {
@@ -264,7 +260,6 @@ open class AlertRulesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<AlertRuleResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listAlertRulesApiV1AnalyticsAlertRulesGet_0(
         token: kotlin.String? = null
     ): HttpResponse<kotlin.collections.List<AlertRuleResponse>> {
@@ -313,7 +308,6 @@ open class AlertRulesApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(
         ruleId: kotlin.String,
         alertRuleUpdate: AlertRuleUpdate,

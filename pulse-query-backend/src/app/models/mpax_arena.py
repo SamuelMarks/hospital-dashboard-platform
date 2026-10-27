@@ -3,7 +3,6 @@ SQLAlchemy persistence models for MPAX Arena runs and candidate voting.
 """
 
 from datetime import datetime
-from typing import Any
 import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
@@ -11,6 +10,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.schemas.json_types import JsonObject
 
 
 class MpaxArenaRun(Base):
@@ -22,7 +22,7 @@ class MpaxArenaRun(Base):
       user_id (uuid.UUID): Foreign key referencing the user who initiated the run.
       prompt (str): Clinical question or scenario prompt.
       mode (str): Evaluation mode (judge, translator, constraints, sql_vs_mpax, critic).
-      ground_truth_mpax (dict | None): Optional ground-truth solver output artifact.
+      ground_truth_mpax (JsonObject | None): Optional ground-truth solver output artifact.
       created_at (datetime): Timestamp when the scenario was executed.
       candidates (list[MpaxArenaCandidateRecord]): Candidate evaluation records.
   """
@@ -33,7 +33,7 @@ class MpaxArenaRun(Base):
   user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
   prompt: Mapped[str] = mapped_column(Text, nullable=False)
   mode: Mapped[str] = mapped_column(String(50), nullable=False)
-  ground_truth_mpax: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+  ground_truth_mpax: Mapped[JsonObject | None] = mapped_column(JSONB, nullable=True)
   created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
   candidates: Mapped[list["MpaxArenaCandidateRecord"]] = relationship(
@@ -59,7 +59,7 @@ class MpaxArenaCandidateRecord(Base):
       content (str): Complete response text from the model.
       sql_snippet (str | None): Extracted SQL code block if available.
       mpax_score (int | None): Mathematical solver feasibility score.
-      mpax_result (dict | None): Serialized solver allocation payload.
+      mpax_result (JsonObject | None): Serialized solver allocation payload.
       is_winner (bool): Flag indicating whether user voted for this candidate.
       run (MpaxArenaRun): Parent arena run entity.
   """
@@ -74,7 +74,7 @@ class MpaxArenaCandidateRecord(Base):
   content: Mapped[str] = mapped_column(Text, nullable=False)
   sql_snippet: Mapped[str | None] = mapped_column(Text, nullable=True)
   mpax_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
-  mpax_result: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+  mpax_result: Mapped[JsonObject | None] = mapped_column(JSONB, nullable=True)
   is_winner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
   run: Mapped["MpaxArenaRun"] = relationship("MpaxArenaRun", back_populates="candidates")

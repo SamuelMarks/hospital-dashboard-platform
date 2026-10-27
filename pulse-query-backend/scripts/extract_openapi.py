@@ -10,14 +10,9 @@ running actively on a specific port.
 import argparse
 import json
 import os
-import sys
-from typing import Any
-
-# Ensure backend modules are resolvable by adding the 'src' directory to sys.path
-# Structure: pulse-query-backend/scripts/extract_openapi.py -> ../src -> pulse-query-backend/src
-sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
 
 from app.main import app
+from app.schemas.json_types import JsonObject
 
 
 def extract_openapi(output_path: str) -> None:
@@ -34,7 +29,7 @@ def extract_openapi(output_path: str) -> None:
   print("🔍 Extracting OpenAPI schema from FastAPI app...")
 
   # Get the raw schema dictionary
-  openapi_data: dict[str, Any] = app.openapi()
+  openapi_data: JsonObject = app.openapi()
 
   # Ensure directory exists
   output_dir = os.path.dirname(output_path)

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -23,9 +23,9 @@ export interface DataHealthSchema {
   /**
    * List of expected files not found.
    */
-  missing_files?: Array<string>;
+  missing_files?: string[];
   /**
    * Row count per ingested dataset.
    */
-  row_counts?: { [key: string]: number };
+  row_counts?: Record<string, number>;
 }

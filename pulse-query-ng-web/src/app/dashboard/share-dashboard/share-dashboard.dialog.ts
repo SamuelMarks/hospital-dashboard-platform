@@ -13,6 +13,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 
 /**
  * Data payload injected into [ShareDashboardDialog].
@@ -105,7 +106,7 @@ export class ShareDashboardDialog implements OnInit {
    * @param event - DOM input event from the email field.
    */
   onEmailInput(event: Event): void {
-    this.emailInput.set((event.target as HTMLInputElement).value);
+    this.emailInput.set(extractEventInputValue(event));
   }
 
   /**

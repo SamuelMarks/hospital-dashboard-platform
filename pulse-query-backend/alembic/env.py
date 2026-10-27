@@ -10,12 +10,14 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.core.config import settings
 from app.database.postgres import Base, register_sqlite_type_compilers
+from app.models import register_orm_models
 
 config = context.config
 
 if config.config_file_name is not None:
   fileConfig(config.config_file_name)
 
+register_orm_models()
 target_metadata = Base.metadata
 register_sqlite_type_compilers()
 

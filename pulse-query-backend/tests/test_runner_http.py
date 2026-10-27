@@ -3,8 +3,6 @@ Tests for the HTTP Runner Service.
 Verifies GET/POST functionality, header forwarding, error handling, and timeouts.
 """
 
-from typing import Any
-
 import httpx
 import pytest
 import respx
@@ -30,18 +28,21 @@ async def test_run_http_widget_success_get() -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_http_widget_success_post_with_auth() -> None:
-  """Test a POST request with body and forwarded auth token."""
+async def test_run_http_widget_post_with_auth() -> None:
+  """Test a POST request with JSON body and Auth Token forwarding."""
+  from app.schemas.json_types import JsonObject
+
   target_url = "https://api.example.com/update"
   token = "secret-token-123"
-  req_body = {"key": "value"}
+  req_body: JsonObject = {"key": "value"}
 
   with respx.mock:
     route = respx.post(target_url).mock(return_value=Response(201, json={"created": True}))
-    config = {"url": target_url, "method": "POST", "body": req_body}
+    config: JsonObject = {"url": target_url, "method": "POST", "body": req_body}
     result = await run_http_widget(config, forward_auth_token=token)
 
     assert result["status"] == 201
+    assert isinstance(result["data"], dict)
     assert result["data"]["created"] is True
 
     params = route.calls.last.request
@@ -66,8 +67,10 @@ async def test_run_http_widget_timeout() -> None:
   target_url = "https://slow.api.com"
 
   with respx.mock:
+    from app.schemas.json_types import JsonObject
+
     respx.get(target_url).mock(side_effect=TimeoutError("Simulated Timeout"))
-    config = {"url": target_url, "timeout": 1.0}
+    config: JsonObject = {"url": target_url, "timeout": 1.0}
     result = await run_http_widget(config)
 
     assert result["status"] in [0, 408, 500]
@@ -101,13 +104,16 @@ async def test_run_http_widget_non_json_response() -> None:
     result = await run_http_widget(config)
 
     assert result["status"] == 200
+    assert isinstance(result["data"], dict)
     assert result["data"]["raw_content"] == "Plain Success"
 
 
 @pytest.mark.asyncio
 async def test_run_http_widget_exception_safety() -> None:
   """Test that unexpected non-string URL types or dispatch exceptions are caught safely."""
-  config: dict[str, Any] = {"url": 12345}
+  from app.schemas.json_types import JsonObject
+
+  config: JsonObject = {"url": 12345}
   result = await run_http_widget(config)
 
   assert result["status"] == 500
@@ -151,8 +157,10 @@ async def test_run_http_widget_respects_existing_auth_header() -> None:
   target_url = "https://api.example.com/secure"
 
   with respx.mock:
+    from app.schemas.json_types import JsonObject
+
     route = respx.get(target_url).mock(return_value=Response(200, json={"ok": True}))
-    config = {"url": target_url, "headers": {"Authorization": "Bearer existing"}}
+    config: JsonObject = {"url": target_url, "headers": {"Authorization": "Bearer existing"}}
     result = await run_http_widget(config, forward_auth_token="new-token")
 
     assert result["status"] == 200

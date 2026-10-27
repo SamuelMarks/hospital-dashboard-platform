@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,7 +12,10 @@
  * Response model containing SQL execution results.
  */
 export interface SQLExecutionResponse {
-  data: Array<{ [key: string]: any }>;
-  columns: Array<string>;
+  /** Property `data`. */
+  data: Record<string, unknown>[];
+  /** Property `columns`. */
+  columns: string[];
+  /** Property `error`. */
   error?: string | null;
 }

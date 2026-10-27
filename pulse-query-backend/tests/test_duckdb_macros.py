@@ -9,12 +9,12 @@ and Sparse Date Handling (Date Spines).
 
 from collections.abc import Generator
 import datetime
-from typing import Any
 
 import duckdb
 import pytest
 
 from app.database.duckdb_init import create_hospital_macros
+from app.schemas.json_types import SqlScalar
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   conn.close()
 
 
-def _fetch_row(conn: duckdb.DuckDBPyConnection, query: str) -> tuple[Any, ...]:
+def _fetch_row(conn: duckdb.DuckDBPyConnection, query: str) -> tuple[SqlScalar, ...]:
   """
   Executes `query` on `conn` and asserts a non-None row tuple is returned.
 
@@ -40,7 +40,7 @@ def _fetch_row(conn: duckdb.DuckDBPyConnection, query: str) -> tuple[Any, ...]:
       query (str): SQL query string.
 
   Returns:
-      tuple[Any, ...]: First row tuple.
+      tuple[SqlScalar, ...]: First row tuple.
   """
   row = conn.execute(query).fetchone()
   assert row is not None
@@ -72,7 +72,9 @@ def test_macro_correlation_matrix(db_conn: duckdb.DuckDBPyConnection) -> None:
   db_conn.execute("INSERT INTO corr_test VALUES (1, 2), (2, 4), (3, 6)")
 
   row = _fetch_row(db_conn, "SELECT CORRELATION_MATRIX(a, b) FROM corr_test")
-  assert abs(row[0] - 1.0) < 0.0001
+  val = row[0]
+  assert isinstance(val, (int, float))
+  assert abs(float(val) - 1.0) < 0.0001
 
 
 def test_macro_weekend_lag(db_conn: duckdb.DuckDBPyConnection) -> None:

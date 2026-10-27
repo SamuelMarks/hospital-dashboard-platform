@@ -9,6 +9,7 @@ These macros allow the Text-to-SQL AI and the Human Analyst to write cleaner que
 without repeating complex mathematical formulas (e.g., Z-Scores or Window overlaps).
 """
 
+from collections.abc import Callable
 import contextlib
 import logging
 from typing import Protocol
@@ -16,7 +17,7 @@ from typing import Protocol
 import duckdb
 import duckdb.sqltypes as sqltypes
 
-from app.database.duckdb import duckdb_manager
+from app.database.duckdb import DuckDBFetchableProtocol, duckdb_manager
 from app.services.mpax_bridge import mpax_bridge
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class DuckDBMacroConnProtocol(Protocol):
   Structural protocol for a DuckDB connection supporting macro `execute` and UDF `create_function`.
   """
 
-  def execute(self, query: str) -> object:
+  def execute(self, query: str) -> DuckDBFetchableProtocol | None:
     """
     Executes a SQL DDL/macro statement.
 
@@ -35,19 +36,30 @@ class DuckDBMacroConnProtocol(Protocol):
         query (str): SQL statement string.
 
     Returns:
-        object: Execution result or cursor.
+        DuckDBFetchableProtocol | None: Execution result or cursor.
     """
 
-  def create_function(self, *args: object, **kwargs: object) -> object:
+  def create_function(
+    self,
+    name: str,
+    function: Callable[..., str],
+    parameters: list[sqltypes.DuckDBPyType] | None = None,
+    return_type: sqltypes.DuckDBPyType | None = None,
+    *,
+    side_effects: bool = False,
+  ) -> DuckDBFetchableProtocol | None:
     """
     Registers a Python callable as a DuckDB scalar UDF.
 
     Args:
-        *args (object): Positional UDF arguments.
-        **kwargs (object): Keyword UDF configuration arguments.
+        name (str): SQL function identifier.
+        function (Callable[..., str]): Python callable implementation.
+        parameters (list[sqltypes.DuckDBPyType] | None): Parameter DuckDB types.
+        return_type (sqltypes.DuckDBPyType | None): Return DuckDB type.
+        side_effects (bool): Whether the UDF has side effects.
 
     Returns:
-        object: Connection or registration handle.
+        DuckDBFetchableProtocol | None: Connection or registration handle.
     """
 
 
@@ -175,7 +187,7 @@ def create_hospital_macros(conn: DuckDBMacroConnProtocol | duckdb.DuckDBPyConnec
     logger.info("✅ DuckDB Statistical Macros (Dynamic Shift) & MPAX Solver UDF registered successfully.")
 
   except Exception as e:
-    logger.error(f"❌ Failed to register DuckDB macros: {e}")
+    logger.error(f"❌ Failed to register DuckDB macros ({type(e).__name__}): {e}")
 
 
 def init_duckdb_on_startup() -> None:

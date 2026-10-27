@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Root barrel export for the generated OpenAPI Angular client.
+ */
 export * from './api/api';
 export * from './model/models';
 export * from './variables';

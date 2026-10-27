@@ -6,7 +6,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AskDataComponent } from './ask-data.component';
 import { AskDataService } from './ask-data.service';
 import { QueryCartService } from './query-cart.service';
-import { DashboardsService, DashboardResponse, WidgetResponse } from '../api-client';
+import { DashboardsService, WidgetResponse } from '../api-client';
 import { AuthService } from '../core/auth/auth.service';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
@@ -21,6 +21,7 @@ import {
 } from '@angular/core';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { readTemplate } from '../../test-utils/component-resources';
+import { createMockDashboard } from '../../test-utils/mock-factories';
 import { vi } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -141,16 +142,18 @@ describe('AskDataComponent', () => {
   describe('Initialization', () => {
     it('should Create new scratchpad if none exist', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
-        of([{ id: 'other', name: 'Other Dash', owner_id: 'u1' } as DashboardResponse]),
+        of([createMockDashboard({ id: 'other', name: 'Other Dash', owner_id: 'u1' })]),
       );
 
       mockDashApi.createDashboardApiV1DashboardsPost.mockReturnValue(
-        of({
-          id: MOCK_DASH_ID,
-          name: 'Scratchpad (Temp)',
-          owner_id: 'u1',
-          widgets: [],
-        } as DashboardResponse),
+        of(
+          createMockDashboard({
+            id: MOCK_DASH_ID,
+            name: 'Scratchpad (Temp)',
+            owner_id: 'u1',
+            widgets: [],
+          }),
+        ),
       );
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
         of(makeWidget({ id: MOCK_WIDGET_ID })),
@@ -173,11 +176,12 @@ describe('AskDataComponent', () => {
     it('should use existing scratchpad if one exists without widgets', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
         of([
-          {
+          createMockDashboard({
             id: MOCK_DASH_ID,
             name: 'Scratchpad (Temp)',
             owner_id: 'u1',
-          } as DashboardResponse,
+            widgets: [],
+          }),
         ]),
       );
       mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost.mockReturnValue(
@@ -201,12 +205,12 @@ describe('AskDataComponent', () => {
     it('should use existing scratchpad if one exists with the AdHoc Query widget', () => {
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
         of([
-          {
+          createMockDashboard({
             id: MOCK_DASH_ID,
             name: 'Scratchpad (Temp)',
             owner_id: 'u1',
             widgets: [makeWidget({ id: MOCK_WIDGET_ID, title: 'AdHoc Query' })],
-          } as DashboardResponse,
+          }),
         ]),
       );
 
@@ -285,12 +289,12 @@ describe('AskDataComponent', () => {
       // First authenticate to get a context
       mockDashApi.listDashboardsApiV1DashboardsGet.mockReturnValue(
         of([
-          {
+          createMockDashboard({
             id: MOCK_DASH_ID,
             name: 'Scratchpad (Temp)',
             owner_id: 'u1',
             widgets: [makeWidget({ id: MOCK_WIDGET_ID, title: 'AdHoc Query' })],
-          } as DashboardResponse,
+          }),
         ]),
       );
 

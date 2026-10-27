@@ -17,25 +17,28 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Configuration schema for SQL-type widgets. Enforces the presence of a SQL query string.  Attributes:     query (str): The raw SQL query to execute.     xKey (Optional[str]): Column name to mapping for X-Axis/Labels.     yKey (Optional[str]): Column name to mapping for Y-Axis/Values.
+ * Configuration schema for SQL-type widgets (including natural-text-enabled SQL widgets).
  *
  * @param query The raw SQL query to execute.
  * @param x Grid X position
  * @param y Grid Y position
  * @param w Grid Width (cols)
  * @param h Grid Height (rows)
- * @param xKey
- * @param yKey
+ * @param xKey Column for X-Axis/Labels
+ * @param yKey Column for Y-Axis/Values
+ * @param allowNaturalText Whether the widget allows the user to enter natural text on the dashboard.
+ * @param processor Processor identifier (`'SQL'` [no model], `'ollama:<model>'`, or `'<provider>:<model>'`).
+ * @param naturalTextPrompt Default or saved natural text prompt for this widget.
+ * @param placeholderText Optional placeholder shown in the widget's natural text input.
  */
 @Serializable
 data class SqlConfig(
     // The raw SQL query to execute.
-    @SerialName(value = "query") @Required val query: kotlin.String,
+    @SerialName(value = "query") val query: kotlin.String = "",
     // Grid X position
     @SerialName(value = "x") val x: kotlin.Int? = 0,
     // Grid Y position
@@ -45,5 +48,9 @@ data class SqlConfig(
     // Grid Height (rows)
     @SerialName(value = "h") val h: kotlin.Int? = 4,
     @SerialName(value = "xKey") val xKey: kotlin.String? = null,
-    @SerialName(value = "yKey") val yKey: kotlin.String? = null
+    @SerialName(value = "yKey") val yKey: kotlin.String? = null,
+    @SerialName(value = "allow_natural_text") val allowNaturalText: kotlin.Boolean = false,
+    @SerialName(value = "processor") val processor: kotlin.String = "SQL",
+    @SerialName(value = "natural_text_prompt") val naturalTextPrompt: kotlin.String? = null,
+    @SerialName(value = "placeholder_text") val placeholderText: kotlin.String? = null
 )

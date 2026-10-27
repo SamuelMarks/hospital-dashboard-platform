@@ -137,7 +137,10 @@ class UserManagementViewModelTest {
             viewModel.state.first { it !is UserManagementUiState.Loading }
         }
 
-        viewModel.updateRole("u1", "ADMIN")
+        viewModel.updateRole(
+            io.healthplatform.pulsequery.core.model.UserId("u1"),
+            io.healthplatform.pulsequery.core.model.ClinicalRole.ADMIN
+        )
 
         val updatedState = withTimeout(5000) {
             viewModel.state.first {
@@ -147,6 +150,11 @@ class UserManagementViewModelTest {
 
         assertIs<UserManagementUiState.Success>(updatedState)
         assertEquals("ADMIN", updatedState.users[0].role)
+
+        viewModel.setRoleFilter(io.healthplatform.pulsequery.core.model.ClinicalRole.ADMIN)
+        assertEquals("ADMIN", (viewModel.state.value as UserManagementUiState.Success).selectedRole)
+        viewModel.setRoleFilter(null)
+        assertNull((viewModel.state.value as UserManagementUiState.Success).selectedRole)
     }
 
     @Test

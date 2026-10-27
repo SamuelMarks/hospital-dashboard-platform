@@ -228,6 +228,20 @@ async def test_arena_handles_malformed_response(mock_swarm_settings: None) -> No
     class BadResponse:
       """Stub completion response lacking a `choices` attribute."""
 
+    class NullContentChoice:
+      """Stub choice whose `message.content` is None."""
+
+      def __init__(self) -> None:
+        """Initializes message with None content."""
+        self.message = MagicMock(content=None)
+
+    class NullContentResponse:
+      """Stub completion response with a choice whose message content is None."""
+
+      def __init__(self) -> None:
+        """Initializes choices list with `NullContentChoice`."""
+        self.choices = [NullContentChoice()]
+
     with patch("app.services.llm_client.run_in_threadpool") as mock_thread:
       mock_thread.return_value = BadResponse()
 
@@ -236,6 +250,12 @@ async def test_arena_handles_malformed_response(mock_swarm_settings: None) -> No
       )
 
       assert result.error == "Malformed response structure"
+
+      mock_thread.return_value = NullContentResponse()
+      result_null = await arena._generate_single(
+        arena.swarm[0], [{"role": "user", "content": "hi"}], temperature=0.0, max_tokens=10, stop=None
+      )
+      assert result_null.error == "Malformed response structure"
 
 
 @pytest.mark.asyncio
@@ -254,3 +274,201 @@ async def test_arena_wraps_unhandled_coroutine_errors(mock_swarm_settings: None)
 
       assert len(results) == 2
       assert all(res.error is not None and "Critical Client Error" in res.error for res in results)
+
+
+def test_llm_client_helpers_and_configured_models(mock_swarm_settings: None) -> None:
+  """Verifies helper functions and `configured_models` initialization/deduplication in `LLMArenaClient`."""
+  _ = mock_swarm_settings
+  from app.services.llm_client import (
+    _infer_processor_type,
+    _normalize_ollama_root_url,
+    _parse_configured_model_entry,
+  )
+
+  assert _normalize_ollama_root_url("http://localhost:11434/v1/") == "http://localhost:11434"
+  assert _normalize_ollama_root_url("http://localhost:11434") == "http://localhost:11434"
+  assert _parse_configured_model_entry("   ") is None
+  assert _parse_configured_model_entry("no-separator") is None
+  assert _parse_configured_model_entry("openai:") is None
+  assert _parse_configured_model_entry("ollama:llama3|Llama 3 Local") == ("ollama", "llama3", "Llama 3 Local")
+  assert _parse_configured_model_entry("groq/mixtral") == ("groq", "mixtral", "mixtral (groq)")
+  assert _infer_processor_type("sql", "SQL", True) == "SQL"
+  assert _infer_processor_type("ollama", "ollama:llama3", True) == "OLLAMA"
+  assert _infer_processor_type("openai", "openai/gpt-4o", False) == "ANY_LLM"
+
+  with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
+    arena = LLMArenaClient()
+    admin_cfg = AdminSettingsResponse(
+      api_keys={"groq": "g-key"},
+      visible_models=[],
+      configured_models=[
+        "groq:mixtral-8x7b|Mixtral 8x7B",
+        "ollama:llama3.2",
+        "openai/m1",  # duplicate of existing swarm entry
+        "invalid_entry",
+      ],
+      ollama_api_base="http://localhost:11434/v1",
+    )
+    arena.reload_swarm(admin_cfg)
+    models = arena.get_available_models(
+      admin_settings=AdminSettingsResponse(
+        api_keys={},
+        visible_models=[],
+        configured_models=["cohere:command-r", "groq:mixtral-8x7b", "bad"],
+      ),
+      include_sql=True,
+    )
+    ids = [m.id for m in models]
+    assert ids[0] == "SQL"
+    assert "cohere:command-r" in ids
+
+
+@pytest.mark.asyncio
+async def test_discover_ollama_models_and_processors_async(mock_swarm_settings: None) -> None:
+  """Verifies `discover_ollama_models_result` and `get_available_processors_async` across all branches."""
+  _ = mock_swarm_settings
+  from app.core.result import Err, Ok
+
+  with patch("app.services.llm_client.AnyLLM.create", return_value=MagicMock()):
+    arena = LLMArenaClient()
+
+    # 1. Successful discovery with mock http_client
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+      "models": [{"name": "llama3:latest"}, {"name": "llama3:latest"}, {"name": ""}, "not-a-dict"]
+    }
+    mock_http.get.return_value = mock_resp
+
+    res_ok = await arena.discover_ollama_models_result(
+      ollama_api_base="http://localhost:11434/v1",
+      http_client=mock_http,
+    )
+    assert isinstance(res_ok, Ok)
+    assert len(res_ok.value) == 2
+    assert res_ok.value[0].id == "ollama:llama3:latest"
+    assert res_ok.value[0].processor_type == "OLLAMA"
+
+    # Deduplication in get_available_processors_async
+    processors = await arena.get_available_processors_async(
+      admin_settings=AdminSettingsResponse(
+        api_keys={},
+        visible_models=[],
+        configured_models=["ollama:llama3:latest"],
+      ),
+      include_sql=True,
+      discover_ollama=True,
+      http_client=mock_http,
+    )
+    proc_ids = [p.id for p in processors]
+    assert proc_ids[0] == "SQL"
+    assert proc_ids.count("ollama:llama3:latest") == 1
+
+    # 2. Non-200 HTTP status
+    mock_resp_500 = MagicMock()
+    mock_resp_500.status_code = 500
+    mock_http.get.return_value = mock_resp_500
+    res_err_status = await arena.discover_ollama_models_result(http_client=mock_http)
+    assert isinstance(res_err_status, Err)
+
+    # 3. Network exception with owned httpx.AsyncClient
+    with patch("app.services.llm_client.httpx.AsyncClient") as mock_client_cls:
+      owned_instance = AsyncMock()
+      owned_instance.get.side_effect = RuntimeError("connection refused")
+      mock_client_cls.return_value = owned_instance
+      res_err_exc = await arena.discover_ollama_models_result()
+      assert isinstance(res_err_exc, Err)
+      owned_instance.aclose.assert_awaited_once()
+
+    # 4. get_available_processors_async when discovery fails or discover_ollama=False
+    processors_fallback = await arena.get_available_processors_async(
+      include_sql=False,
+      discover_ollama=True,
+      http_client=mock_http,
+    )
+    assert len(processors_fallback) >= 1
+
+    processors_no_disc = await arena.get_available_processors_async(
+      include_sql=True,
+      discover_ollama=False,
+    )
+    assert processors_no_disc[0].id == "SQL"
+
+
+@pytest.mark.asyncio
+async def test_dynamic_combatant_creation_in_arena(mock_swarm_settings: None) -> None:
+  """Verifies `_build_dynamic_combatant` and on-demand model execution in `generate_arena_competition`."""
+  _ = mock_swarm_settings
+  with patch("app.services.llm_client.AnyLLM.create") as mock_create:
+    mock_client = MagicMock()
+    mock_resp = MagicMock()
+    mock_resp.choices = [MagicMock(message=MagicMock(content="SELECT 42"))]
+    mock_create.return_value = mock_client
+
+    arena = LLMArenaClient()
+    assert arena._build_dynamic_combatant("invalid") is None
+
+    with patch("app.services.llm_client.run_in_threadpool", return_value=mock_resp):
+      res_matched = await arena.generate_arena_competition(
+        [{"role": "user", "content": "count"}],
+        target_model_ids=[arena.swarm[0]["id"]],
+      )
+      assert len(res_matched) == 1
+
+      res = await arena.generate_arena_competition(
+        [{"role": "user", "content": "count"}],
+        target_model_ids=["ollama:qwen2.5-coder"],
+      )
+      assert len(res) == 1
+      assert res[0].content == "SELECT 42"
+
+    # When AnyLLM.create raises inside _build_dynamic_combatant, it falls back to FallbackMockProvider
+    mock_create.side_effect = RuntimeError("init error")
+    dyn = arena._build_dynamic_combatant("custom:model")
+    assert dyn is not None
+    assert dyn["id"] == "custom:model"
+
+
+def test_stream_chunk_protocol_and_extract_chunk_delta() -> None:
+  """Verifies `StreamChunkProtocol` runtime conformance and `_extract_chunk_delta` branches."""
+  from app.services.llm_client import StreamChunkProtocol, _extract_chunk_delta
+
+  class _Delta:
+    """Stub streaming delta with `content`."""
+
+    def __init__(self, content: str | None) -> None:
+      """Initializes delta content."""
+      self.content = content
+
+  class _StreamChoice:
+    """Stub choice with `delta`."""
+
+    def __init__(self, delta: _Delta | None) -> None:
+      """Initializes choice delta."""
+      self.delta = delta
+
+  class _TextChoice:
+    """Stub legacy choice with `text`."""
+
+    def __init__(self, text: str | None) -> None:
+      """Initializes choice text."""
+      self.text = text
+
+  class _Chunk:
+    """Stub completion chunk implementing `StreamChunkProtocol`."""
+
+    def __init__(self, choices: list[_StreamChoice | _TextChoice]) -> None:
+      """Initializes chunk choices."""
+      self.choices = choices
+
+  chunk_stream = _Chunk([_StreamChoice(_Delta("SELECT "))])
+  assert isinstance(chunk_stream, StreamChunkProtocol)
+  assert _extract_chunk_delta(chunk_stream) == "SELECT "
+
+  chunk_text = _Chunk([_TextChoice("FROM ")])
+  assert isinstance(chunk_text, StreamChunkProtocol)
+  assert _extract_chunk_delta(chunk_text) == "FROM "
+
+  chunk_empty = _Chunk([])
+  assert _extract_chunk_delta(chunk_empty) is None

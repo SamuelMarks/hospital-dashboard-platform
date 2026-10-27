@@ -41,8 +41,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.DashboardShareCreate
 import io.healthplatform.pulsequery.api.models.DashboardShareResponse
+import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.done
+import pulsequery.composeapp.generated.resources.share_dashboard
 
 /**
  * State representation for the Dashboard Sharing Dialog.
@@ -114,16 +121,17 @@ fun DashboardShareContent(
     fun loadShares() {
         coroutineScope.launch {
             state = state.copy(isLoading = true, errorMessage = null)
-            runCatching {
+            runCatchingPulseAsync {
                 AppContainer.dashboardsApi
                     .listDashboardSharesApiV1DashboardsDashboardIdSharesGet(dashboardId)
-                    .body()
+                    .asResult()
+                    .getOrThrow()
             }.fold(
                 onSuccess = { shares ->
                     state = state.copy(isLoading = false, shares = shares)
                 },
                 onFailure = { e ->
-                    state = state.copy(isLoading = false, errorMessage = e.message ?: "Failed to load shares")
+                    state = state.copy(isLoading = false, errorMessage = e.messageOrDefault("Failed to load shares"))
                 }
             )
         }
@@ -136,20 +144,22 @@ fun DashboardShareContent(
         if (state.inviteEmail.isBlank()) return
         coroutineScope.launch {
             state = state.copy(isLoading = true, errorMessage = null)
-            runCatching {
+            runCatchingPulseAsync {
                 val req = DashboardShareCreate(
                     userEmail = state.inviteEmail.trim(),
                     permissionLevel = state.invitePermission
                 )
                 AppContainer.dashboardsApi
                     .shareDashboardApiV1DashboardsDashboardIdSharesPost(dashboardId, req)
+                    .asResult()
+                    .getOrThrow()
             }.fold(
                 onSuccess = {
                     state = state.copy(inviteEmail = "")
                     loadShares()
                 },
                 onFailure = { e ->
-                    state = state.copy(isLoading = false, errorMessage = e.message ?: "Failed to share dashboard")
+                    state = state.copy(isLoading = false, errorMessage = e.messageOrDefault("Failed to share dashboard"))
                 }
             )
         }
@@ -163,15 +173,17 @@ fun DashboardShareContent(
     fun revokeShare(shareId: String) {
         coroutineScope.launch {
             state = state.copy(isLoading = true, errorMessage = null)
-            runCatching {
+            runCatchingPulseAsync {
                 AppContainer.dashboardsApi
                     .deleteDashboardShareApiV1DashboardsDashboardIdSharesShareIdDelete(dashboardId, shareId)
+                    .asResult()
+                    .getOrThrow()
             }.fold(
                 onSuccess = {
                     loadShares()
                 },
                 onFailure = { e ->
-                    state = state.copy(isLoading = false, errorMessage = e.message ?: "Failed to revoke share")
+                    state = state.copy(isLoading = false, errorMessage = e.messageOrDefault("Failed to revoke share"))
                 }
             )
         }
@@ -286,7 +298,7 @@ fun DashboardShareContent(
         Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(Res.string.done))
             }
         }
     }

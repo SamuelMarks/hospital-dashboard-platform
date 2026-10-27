@@ -178,7 +178,7 @@ export class AskDataComponent implements OnDestroy {
       next: (dashboards: DashboardResponse[]) => {
         const existing = dashboards.find((d) => d.name === this.SCRATCHPAD_NAME);
         if (existing) {
-          this.ensureWidget(existing.id, existing.widgets || []);
+          this.ensureWidget(existing.id, existing.widgets);
         } else {
           this.createDashboard();
         }

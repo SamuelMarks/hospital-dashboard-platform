@@ -11,12 +11,13 @@ This approach leverages the model's ability to perform pattern matching and
 analogy, significantly reducing syntax errors for complex queries.
 """
 
+from collections.abc import Sequence
 import json
 import os
 import re
-from typing import Any
 
 from app.core.config import BACKEND_ROOT
+from app.schemas.json_types import JsonObject
 from app.services.prompt_engineering.interfaces import PromptStrategy
 
 DATA_FILE_PATH = str(BACKEND_ROOT / "data" / "initial_templates.json")
@@ -44,29 +45,31 @@ class TemplateRetriever:
   and the tokens found in the Template's Title, Description, and Category.
   """
 
-  def __init__(self, templates_source: list[dict[str, Any]] | None = None) -> None:
+  def __init__(self, templates_source: Sequence[JsonObject] | None = None) -> None:
     """
     Initialize the retriever.
 
     Args:
-        templates_source: Optional list of template dictionaries to use.
+        templates_source (Sequence[JsonObject] | None): Optional list of template dictionaries to use.
                           If None, attempts to load from disk (initial_templates.json).
     """
-    self.templates = templates_source if templates_source is not None else self._load_templates_from_disk()
+    self.templates: list[JsonObject] = (
+      list(templates_source) if templates_source is not None else self._load_templates_from_disk()
+    )
     self._stop_words = {"the", "a", "an", "of", "in", "for", "to", "is", "what", "show", "me"}
 
-  def _load_templates_from_disk(self) -> list[dict[str, Any]]:
+  def _load_templates_from_disk(self) -> list[JsonObject]:
     """
     Loads the template registry from the JSON file system.
 
     Returns:
-        List[Dict[str, Any]]: The list of template objects, or empty list on failure.
+        list[JsonObject]: The list of template objects, or empty list on failure.
     """
     if not os.path.exists(DATA_FILE_PATH):
       return []
     try:
       with open(DATA_FILE_PATH, "r", encoding="utf-8") as f:
-        data: list[dict[str, Any]] = json.load(f)
+        data: list[JsonObject] = json.load(f)
         return data
     except Exception:
       return []
@@ -117,7 +120,7 @@ class TemplateRetriever:
         List[Dict[str, str]]: A list of simplified objects containing 'question' and 'sql'.
     """
     query_tokens = self._tokenize(user_query)
-    scored_candidates: list[tuple[float, dict[str, Any]]] = []
+    scored_candidates: list[tuple[float, JsonObject]] = []
 
     for t in self.templates:
       # Create a "Document" from Title, Desc, and Category for matching
@@ -131,11 +134,11 @@ class TemplateRetriever:
     # Sort descending by score
     scored_candidates.sort(key=lambda x: x[0], reverse=True)
 
-    results = []
+    results: list[dict[str, str]] = []
     for _, tmpl in scored_candidates[:limit]:
-      results.append(
-        {"question": tmpl.get("description") or tmpl.get("title", "Unknown"), "sql": tmpl.get("sql_template", "")}
-      )
+      q_val = tmpl.get("description") or tmpl.get("title") or "Unknown"
+      sql_val = tmpl.get("sql_template") or ""
+      results.append({"question": str(q_val), "sql": str(sql_val)})
 
     return results
 

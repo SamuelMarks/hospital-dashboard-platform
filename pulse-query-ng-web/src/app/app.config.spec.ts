@@ -14,8 +14,10 @@ import { BASE_PATH, Configuration } from './api-client';
 import { environment } from '../environments/environment';
 import { AuthService } from './core/auth/auth.service';
 import { APP_INITIALIZER, ErrorHandler } from '@angular/core';
+import { TitleStrategy } from '@angular/router';
+import { MatPaginatorIntl } from '@angular/material/paginator';
 import { GlobalErrorHandler } from './core/error/global-error.handler';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { A11yTitleStrategy } from './core/accessibility/a11y-title-strategy';
 import { vi } from 'vitest';
 
 describe('AppConfig', () => {
@@ -30,26 +32,20 @@ describe('AppConfig', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [HttpClientTestingModule],
-      providers: [
-        { provide: AuthService, useValue: mockAuthService },
-        { provide: BASE_PATH, useValue: environment.apiUrl },
-        { provide: Configuration, useFactory: apiConfigFactory },
-        { provide: ErrorHandler, useClass: GlobalErrorHandler },
-        {
-          provide: APP_INITIALIZER,
-          useFactory: initializeAuth,
-          deps: [AuthService],
-          multi: true,
-        },
-      ],
+      providers: [...appConfig.providers, { provide: AuthService, useValue: mockAuthService }],
     });
   });
 
-  it('should provide the correct BASE_PATH from environment', () => {
+  it('should provide the correct BASE_PATH and TitleStrategy from appConfig', () => {
     const expectedUrl = environment.apiUrl;
     const basePath = TestBed.inject(BASE_PATH);
     expect(basePath).toBe(expectedUrl);
+
+    const titleStrategy = TestBed.inject(TitleStrategy);
+    expect(titleStrategy).toBeInstanceOf(A11yTitleStrategy);
+
+    const paginatorIntl = TestBed.inject(MatPaginatorIntl);
+    expect(paginatorIntl.itemsPerPageLabel).toBe('Items per page:');
   });
 
   it('should provide a configured API Configuration class via factory', () => {

@@ -1,10 +1,12 @@
 /**
  * @fileoverview Dialog-based wizard for creating and configuring dashboard widgets.
+ *
+ * Delegates reactive wizard state, template marketplace search, client-memory draft
+ * configuration, and single-query preview execution (`/api/v1/ai/execute`) to `WidgetBuilderStore`.
  */
-import { Component, inject, signal, computed, OnInit, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { form, required } from '@angular/forms/signals';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
 // Material Imports
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -16,18 +18,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { provideNativeDateAdapter } from '@angular/material/core';
 
 // Core Imports
-import {
-  DashboardsService,
-  ExecutionService,
-  TemplatesService,
-  TemplateResponse,
-  WidgetIn,
-  WidgetUpdate,
-  WidgetResponse,
-} from '../../api-client';
+import { TemplateResponse } from '../../api-client';
 import { DashboardStore } from '../dashboard.store';
+import { ProcessorCatalogService } from '../../shared/services/processor-catalog.service';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 
-// Component Imports
+// Component & Store Imports
 import { SqlBuilderComponent } from '../../editors/sql-builder.component';
 import { HttpConfigComponent } from '../../editors/http-config.component';
 import { TextEditorComponent } from '../../editors/text-editor.component';
@@ -37,6 +33,7 @@ import {
   VisualizationOption,
   WidgetBuilderVisualizeStepComponent,
 } from './widget-builder-visualize-step.component';
+import { WidgetBuilderStore } from './widget-builder.store';
 
 /**
  * Data injected into the Widget Builder Dialog.
@@ -50,12 +47,6 @@ export interface WidgetBuilderData {
  * Widget Builder Component.
  *
  * A dialog-based wizard for creating and configuring new dashboard widgets.
- * Supports:
- * - Template Selection from Marketplace.
- * - Custom SQL Entry.
- * - HTTP Widget Configuration.
- * - Static Text/Markdown.
- * - Live Preview.
  */
 @Component({
   selector: 'app-widget-builder',
@@ -73,8 +64,8 @@ export interface WidgetBuilderData {
     WidgetBuilderCustomSourceStepComponent,
     WidgetBuilderVisualizeStepComponent,
   ],
-  providers: [provideNativeDateAdapter()],
-
+  providers: [provideNativeDateAdapter(), WidgetBuilderStore],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './widget-builder.component.html',
   styles: [
     `
@@ -95,90 +86,102 @@ export interface WidgetBuilderData {
     `,
   ],
 })
-export class WidgetBuilderComponent implements OnInit, OnDestroy {
+export class WidgetBuilderComponent implements OnInit {
   /** Injected data containing dashboard context. */
   readonly data = inject<WidgetBuilderData>(MAT_DIALOG_DATA);
   /** Reference to the hosting dialog. */
   private readonly dialogRef = inject(MatDialogRef<WidgetBuilderComponent>);
-  /** Dashboard API Client. */
-  private readonly dashboardApi = inject(DashboardsService);
-  /** Template API Client. */
-  private readonly templatesApi = inject(TemplatesService);
-  /** Execution API Client. */
-  private readonly execApi = inject(ExecutionService);
+  /** Extracted wizard state and preview execution store. */
+  readonly builderStore = inject(WidgetBuilderStore);
   /** Centralized reactive state store for the active hospital dashboard. */
   readonly store = inject(DashboardStore);
+  /** Processor catalog service providing `SQL [no model]`, Ollama models, and `any-llm` models. */
+  readonly processorCatalog = inject(ProcessorCatalogService);
+  /** Injected DOM document reference for focus restoration. */
+  private readonly document = inject(DOCUMENT);
+  /** Element that held focus before the WidgetBuilder dialog opened. */
+  private readonly triggerElement: HTMLElement | null =
+    this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
 
   /** Active wizard mode (Template vs Custom). */
-  readonly activeMode = signal<'template' | 'custom' | null>(null);
+  readonly activeMode = this.builderStore.activeMode;
   /** Currently selected template object. */
-  readonly selectedTemplate = signal<TemplateResponse | null>(null);
+  readonly selectedTemplate = this.builderStore.selectedTemplate;
   /** Currently selected custom type. */
-  readonly selectedCustomType = signal<'SQL' | 'HTTP' | 'TEXT' | null>(null);
-  /** The temporary widget being configured. */
-  readonly draftWidget = signal<WidgetResponse | null>(null);
+  readonly selectedCustomType = this.builderStore.selectedCustomType;
+  /** The temporary widget being configured in client memory. */
+  readonly draftWidget = this.builderStore.draftWidget;
+  /** Whether the widget allows the user to enter natural text on the dashboard. */
+  readonly allowNaturalText = this.builderStore.allowNaturalText;
+  /** Selected processor ID (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`). */
+  readonly selectedProcessor = this.builderStore.selectedProcessor;
+  /** Default or saved natural text prompt for this widget. */
+  readonly naturalTextPrompt = this.builderStore.naturalTextPrompt;
+  /** Optional custom placeholder text for the widget's natural text input. */
+  readonly placeholderText = this.builderStore.placeholderText;
 
   /** List of available templates. */
-  readonly templates = signal<TemplateResponse[]>([]);
+  readonly templates = this.builderStore.templates;
   /** Template loading state. */
-  readonly loadingTemplates = signal(false);
+  readonly loadingTemplates = this.builderStore.loadingTemplates;
   /** Global busy/saving state. */
-  readonly isBusy = signal(false);
+  readonly isBusy = this.builderStore.isBusy;
   /** Filter categories for templates. */
-  readonly categories = signal<string[]>([
-    'Operational',
-    'Clinical',
-    'Capacity',
-    'Financial',
-    'Flow',
-  ]);
+  readonly categories = this.builderStore.categories;
   /** Currently active category filter. */
-  readonly selectedCategory = signal<string | null>(null);
+  readonly selectedCategory = this.builderStore.selectedCategory;
+  /** Reactive search query signal. */
+  readonly searchQuery = this.builderStore.searchQuery;
 
   /** ID of the selected template. */
-  readonly selectedTemplateId = computed(() => this.selectedTemplate()?.id);
+  readonly selectedTemplateId = this.builderStore.selectedTemplateId;
   /** ID of the current draft widget. */
-  readonly draftWidgetId = computed(() => this.draftWidget()?.id);
+  readonly draftWidgetId = this.builderStore.draftWidgetId;
   /** Parameters schema from selected template. */
-  readonly paramsSchema = computed(() => this.selectedTemplate()?.parameters_schema || {});
-
-  /**
-   * Computed property to resolve the current widget type active in the builder.
-   * This bridges the gap between `draftWidget().type` and the template's requirements.
-   */
-  readonly currentType = computed(() => this.draftWidget()?.type || 'SQL');
-
-  /**
-   * Alias for template usage to match `selectedType()` calls in HTML.
-   */
-  readonly selectedType = this.currentType;
+  readonly paramsSchema = this.builderStore.paramsSchema;
+  /** Current widget type active in the builder. */
+  readonly currentType = this.builderStore.currentType;
+  /** Alias for template usage to match `selectedType()` calls in HTML. */
+  readonly selectedType = this.builderStore.selectedType;
 
   /** Parameter values for template injection. */
-  readonly templateParams = signal<Record<string, unknown>>({});
+  readonly templateParams = this.builderStore.templateParams;
   /** Validity of the parameter form. */
-  readonly templateFormValid = signal(true);
-
+  readonly templateFormValid = this.builderStore.templateFormValid;
   /** Signal model for visual configurations. */
-  readonly vizFormModel = signal({
-    title: '',
-    xKey: null as string | null,
-    yKey: null as string | null,
-  });
+  readonly vizFormModel = this.builderStore.vizFormModel;
 
   /** Signal form root for visualize step. */
   readonly vizForm = form(this.vizFormModel, (f) => {
     required(f.title);
   });
 
-  /** List of supported visualizations. */
-  readonly visualizations: VisualizationOption[] = [
-    { id: 'table', icon: 'table_chart', label: $localize`Table` },
-    { id: 'metric', icon: 'exposure_plus_1', label: $localize`Metric Card` },
-    { id: 'bar_chart', icon: 'bar_chart', label: $localize`Bar Chart` },
-    { id: 'pie', icon: 'pie_chart', label: $localize`Pie Chart` },
-    { id: 'heatmap', icon: 'grid_on', label: $localize`Heatmap` },
-    { id: 'scalar', icon: 'speed', label: $localize`Gauge` },
-  ];
+  /** Canonical list of supported visualizations. */
+  readonly visualizations: VisualizationOption[] = this.builderStore.visualizations;
+  /** Whether to show axis config options. */
+  readonly showAxesConfig = this.builderStore.showAxesConfig;
+  /** Whether visualization is Pie chart. */
+  readonly isPie = this.builderStore.isPie;
+  /** Available columns from execution result. */
+  readonly availableColumns = this.builderStore.availableColumns;
+  /** Whether data config step is valid. */
+  readonly dataConfigured = this.builderStore.dataConfigured;
+  /** Final compiled SQL string. */
+  readonly finalSql = this.builderStore.finalSql;
+  /** Latest single-query execution result. */
+  readonly executionResult = this.builderStore.executionResult;
+  /** Strongly typed computed table dataset derived from `executionResult`. */
+  readonly previewTableData = this.builderStore.previewTableData;
+  /** Active Tab Index. */
+  readonly selectedTab = this.builderStore.selectedTab;
+  /** Computed widget snapshot merging `draftWidget` with `vizFormModel`. */
+  readonly previewWidget = this.builderStore.previewWidget;
+
+  /** Loads initial widget templates and available processors. */
+  ngOnInit(): void {
+    this.loadTemplates();
+    this.processorCatalog.loadProcessors();
+  }
 
   /**
    * Returns a localized accessible label for a template card.
@@ -217,92 +220,40 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
     this.vizFormModel.update((m) => ({ ...m, yKey }));
   }
 
-  /** Whether to show axis config options. */
-  readonly showAxesConfig = computed(() => {
-    if (this.draftWidget()?.type === 'TEXT') return false;
-    const viz = this.draftWidget()?.visualization;
-    return ['bar_chart', 'pie', 'line_graph'].includes(viz || '');
-  });
-
-  /** Whether visualization is Pie chart. */
-  readonly isPie = computed(() => this.draftWidget()?.visualization === 'pie');
-
-  /** Available columns from execution result. */
-  readonly availableColumns = computed(() => {
-    const id = this.draftWidgetId();
-    if (!id) return [];
-    const res = this.store.dataMap()[id];
-    return ((res as Record<string, unknown> | undefined)?.['columns'] || []) as string[];
-  });
-
-  /** Whether data config step is valid. */
-  readonly dataConfigured = computed(() => {
-    return this.activeMode() === 'template' ? this.templateFormValid() : true;
-  });
-
-  /** Final compiled SQL string. */
-  readonly finalSql = signal('');
-  /** Latest execution result. */
-  readonly executionResult = signal<{
-    error?: string;
-    columns?: string[];
-    data?: Record<string, unknown>[];
-  } | null>(null);
-
-  /** Strongly typed computed table dataset derived from `executionResult`. */
-  readonly previewTableData = computed(() => {
-    const res = this.executionResult();
-    return {
-      columns: res?.columns ?? [],
-      data: res?.data ?? [],
-    };
-  });
-
-  /** Search stream subject. */
-  private search$ = new Subject<string>();
-  /** RXJS Subscription container. */
-  private sub?: Subscription;
-  /** Active Tab Index. */
-  readonly selectedTab = signal(0);
-
   /**
-   * Computed widget snapshot merging the active `draftWidget` with live `vizFormModel`
-   * title and axis column mappings (`xKey`, `yKey`) without side-effect mutations.
+   * Updates whether the widget allows natural text entry on the dashboard.
+   *
+   * @param allowed - True if interactive natural text entry is enabled.
    */
-  readonly previewWidget = computed<WidgetResponse | null>(() => {
-    const w = this.draftWidget();
-    if (!w) {
-      return null;
-    }
-    const formVal = this.vizFormModel();
-    return {
-      ...w,
-      title: formVal.title || w.title,
-      config: {
-        ...w.config,
-        xKey: formVal.xKey,
-        yKey: formVal.yKey,
-      },
-    };
-  });
-
-  /** Loads initial widget templates and subscribes to debounced search query changes. */
-  ngOnInit(): void {
-    this.loadTemplates();
-    this.sub = this.search$
-      .pipe(debounceTime(300), distinctUntilChanged())
-      .subscribe((v) => this.loadTemplates(v));
+  updateAllowNaturalText(allowed: boolean): void {
+    this.allowNaturalText.set(allowed);
   }
 
-  /** Cleanup on destroy. */
-  ngOnDestroy(): void {
-    this.sub?.unsubscribe();
-    const draft = this.draftWidget();
-    // If closed without explicit save/close event, we rely on backend cleanup?
-    // In this architecture, drafts persist until explicitly saved or deleted.
-    if (draft && !this.dialogRef.getState()) {
-      // Optional cleanup logic
-    }
+  /**
+   * Updates the selected processor (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).
+   *
+   * @param processor - Selected processor ID.
+   */
+  updateProcessor(processor: string): void {
+    this.selectedProcessor.set(processor);
+  }
+
+  /**
+   * Updates the default natural text prompt for the widget.
+   *
+   * @param prompt - Natural text prompt string.
+   */
+  updateNaturalTextPrompt(prompt: string): void {
+    this.naturalTextPrompt.set(prompt);
+  }
+
+  /**
+   * Updates the placeholder text for the widget's natural text input.
+   *
+   * @param placeholder - Placeholder text string.
+   */
+  updatePlaceholderText(placeholder: string): void {
+    this.placeholderText.set(placeholder);
   }
 
   /**
@@ -311,7 +262,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    * @param e - The DOM input event from the search field.
    */
   updateSearch(e: Event): void {
-    this.search$.next((e.target as HTMLInputElement).value);
+    this.builderStore.setSearchQuery(extractEventInputValue(e));
   }
 
   /**
@@ -320,8 +271,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    * @param cat - The category name to toggle.
    */
   toggleCategory(cat: string): void {
-    this.selectedCategory.update((c) => (c === cat ? null : cat));
-    this.loadTemplates();
+    this.builderStore.toggleCategory(cat);
   }
 
   /**
@@ -330,11 +280,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    * @param search - Optional search query string.
    */
   loadTemplates(search?: string): void {
-    this.loadingTemplates.set(true);
-    this.templatesApi
-      .listTemplatesApiV1TemplatesGet(this.selectedCategory() || undefined, search)
-      .pipe(finalize(() => this.loadingTemplates.set(false)))
-      .subscribe((t) => this.templates.set(t));
+    this.builderStore.loadTemplates(search);
   }
 
   /**
@@ -343,9 +289,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    * @param t - The selected template response object.
    */
   selectTemplate(t: TemplateResponse): void {
-    this.selectedTemplate.set(t);
-    this.activeMode.set('template');
-    this.selectedCustomType.set(null);
+    this.builderStore.selectTemplate(t);
   }
 
   /**
@@ -354,59 +298,17 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
    * @param type - The custom widget type ('SQL', 'HTTP', or 'TEXT').
    */
   selectCustomType(type: 'SQL' | 'HTTP' | 'TEXT'): void {
-    this.selectedCustomType.set(type);
-    this.activeMode.set('custom');
-    this.selectedTemplate.set(null);
+    this.builderStore.selectCustomType(type);
   }
 
   /** Validates parameters based on mode. */
   parseParams(): void {
-    if (this.activeMode() !== 'template') {
-      this.templateParams.set({});
-      this.templateFormValid.set(true);
-    }
+    this.builderStore.parseParams();
   }
 
-  /** Compiles template SQL with parameters. */
+  /** Compiles template SQL with parameters and executes single-query preview. */
   renderPreview(): void {
-    const t = this.selectedTemplate();
-    if (!t) return;
-
-    let sql = t.sql_template;
-    const values = this.templateParams();
-
-    Object.keys(values).forEach((key) => {
-      const val = values[key];
-      sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(val));
-    });
-
-    this.finalSql.set(sql);
-    this.executeDraft(sql);
-  }
-
-  /**
-   * Updates the draft widget's SQL query and refreshes the dashboard execution result.
-   *
-   * @param sql - The compiled SQL query string to execute.
-   */
-  private executeDraft(sql: string): void {
-    const draftId = this.draftWidgetId();
-    if (!draftId) return;
-
-    this.isBusy.set(true);
-    this.dashboardApi
-      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(draftId, { config: { query: sql } })
-      .subscribe({
-        next: () => {
-          this.execApi
-            .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.data.dashboardId, undefined)
-            .pipe(finalize(() => this.isBusy.set(false)))
-            .subscribe((resMap: Record<string, unknown>) => {
-              this.executionResult.set(resMap[draftId] as Record<string, unknown>);
-            });
-        },
-        error: () => this.isBusy.set(false),
-      });
+    this.builderStore.renderPreview();
   }
 
   /**
@@ -417,6 +319,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   handleFormChange(values: Record<string, unknown>): void {
     this.templateParams.set(values);
   }
+
   /**
    * Updates the validity state of the dynamic template parameter form.
    *
@@ -427,101 +330,30 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Initializes the draft widget on the server and advances the wizard stepper.
+   * Initializes the draft widget in client memory and advances the wizard stepper.
    *
-   * @param stepper - Optional Material stepper instance to advance on success.
+   * @param stepper - Optional Material stepper instance to advance.
    */
   initializeDraft(stepper?: Pick<MatStepper, 'next'>): void {
-    this.isBusy.set(true);
-
-    // Determine defaults
-    let title = $localize`New Widget`;
-    let type = this.selectedCustomType() || 'SQL';
-    let config: Record<string, unknown> = {};
-    let visualization = 'table';
-
-    const selectedTemplate = this.selectedTemplate();
-    if (selectedTemplate) {
-      title = selectedTemplate.title;
-      type = 'SQL';
-      config = { query: selectedTemplate.sql_template };
-    } else {
-      if (type === 'SQL') {
-        config = { query: 'SELECT * FROM hospital_data LIMIT 5' };
-      } else if (type === 'HTTP') {
-        config = { url: 'https://example.com', method: 'GET' };
-        visualization = 'metric';
-      } else {
-        config = { content: '### New Text Widget\nEdit this content.' };
-        visualization = 'markdown';
-        title = $localize`Text Block`;
-      }
-    }
-
-    let payload: WidgetIn;
-    if (type === 'SQL') {
-      payload = { title, type: 'SQL', visualization, config: config as never };
-    } else if (type === 'HTTP') {
-      payload = { title, type: 'HTTP', visualization, config: config as never };
-    } else {
-      payload = { title, type: 'TEXT', visualization: 'markdown', config: config as never };
-    }
-
-    this.dashboardApi
-      .createWidgetApiV1DashboardsDashboardIdWidgetsPost(this.data.dashboardId, payload)
-      .pipe(finalize(() => this.isBusy.set(false)))
-      .subscribe({
-        next: (w) => {
-          this.draftWidget.set(w);
-          this.vizFormModel.update((m) => ({ ...m, title: w.title }));
-          setTimeout(() => {
-            if (stepper) {
-              stepper.next();
-            }
-          }, 100);
-        },
-        error: (e) => console.error('Draft creation failed', e),
-      });
+    this.builderStore.initializeDraft(this.data.dashboardId, stepper);
   }
 
   /**
-   * Injects template parameters into the SQL template, updates the draft widget, and advances the stepper.
+   * Injects template parameters into the SQL template, runs single-query preview, and advances the stepper.
    *
    * @param stepper - Material stepper instance to advance once the query executes.
    */
   runTemplateQuery(stepper: Pick<MatStepper, 'next'>): void {
-    const w = this.draftWidget();
-    const t = this.selectedTemplate();
-    if (!w || !t) return;
-
-    this.isBusy.set(true);
-
-    let sql = t.sql_template;
-    const params = this.templateParams();
-    Object.keys(params).forEach((key) => {
-      sql = sql.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), String(params[key]));
-    });
-
-    const update: WidgetUpdate = { config: { query: sql } };
-    this.dashboardApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(w.id, update).subscribe({
-      next: () => {
-        this.store.refreshWidget(w.id);
-        this.isBusy.set(false);
-        stepper.next();
-      },
-      error: () => this.isBusy.set(false),
-    });
+    this.builderStore.runTemplateQuery(stepper);
   }
 
   /**
-   * Refreshes the draft widget's data and advances the stepper to the visualization step.
+   * Validates or previews the draft widget's data and advances the stepper to the visualization step.
    *
    * @param stepper - Material stepper instance to advance.
    */
   validateDataPresence(stepper: Pick<MatStepper, 'next'>): void {
-    const id = this.draftWidgetId();
-    if (id) this.store.refreshWidget(id);
-    stepper.next();
+    this.builderStore.validateDataPresence(stepper);
   }
 
   /**
@@ -557,7 +389,7 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
   /**
    * Updates the selected visualization type ID on the draft widget.
    *
-   * @param id - The visualization type identifier (e.g., 'table', 'bar_chart').
+   * @param id - The visualization type identifier (e.g., 'table', 'bar_chart', 'pie_chart').
    */
   updateVizType(id: string): void {
     const w = this.draftWidget();
@@ -590,36 +422,26 @@ export class WidgetBuilderComponent implements OnInit, OnDestroy {
 
   /** Persists widget to backend and closes. */
   saveAndClose(): void {
-    const w = this.previewWidget();
-    if (!w) return;
-
-    this.isBusy.set(true);
-
-    const update: WidgetUpdate = {
-      title: this.vizFormModel().title,
-      visualization: w.visualization,
-      config: w.config,
-    };
-
-    this.dashboardApi
-      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(w.id, update)
-      .pipe(finalize(() => this.isBusy.set(false)))
-      .subscribe({
-        next: () => {
-          this.draftWidget.set(null);
-          this.dialogRef.close(true);
-        },
-        error: (e) => console.error(e),
-      });
+    this.builderStore.saveAndClose(this.data.dashboardId, () => {
+      this.dialogRef.close(true);
+      this.restoreTriggerFocus();
+    });
   }
 
-  /** Cancels creation process. */
+  /** Cancels creation process and restores focus to the trigger button. */
   cancel(): void {
-    const id = this.draftWidgetId();
-    if (id) {
-      this.dashboardApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(id).subscribe();
-    }
+    this.builderStore.cancelDraft();
     this.dialogRef.close(false);
+    this.restoreTriggerFocus();
+  }
+
+  /**
+   * Restores keyboard focus to the trigger element that opened the dialog.
+   */
+  restoreTriggerFocus(): void {
+    if (this.triggerElement && typeof this.triggerElement.focus === 'function') {
+      this.triggerElement.focus();
+    }
   }
 
   /**

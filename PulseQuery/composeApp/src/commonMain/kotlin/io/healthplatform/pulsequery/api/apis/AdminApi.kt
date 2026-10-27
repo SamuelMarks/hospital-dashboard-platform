@@ -70,7 +70,6 @@ open class AdminApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return AdminSettingsResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun readAdminSettingsApiV1AdminSettingsGet(
         token: kotlin.String? = null,
         acceptLanguage: kotlin.String? = null
@@ -108,7 +107,6 @@ open class AdminApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return AdminSettingsResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun writeAdminSettingsApiV1AdminSettingsPut(
         adminSettingsUpdateRequest: AdminSettingsUpdateRequest,
         token: kotlin.String? = null,

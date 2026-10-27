@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import security
+from app.core.result import Err, ErrorCode, Ok
 from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
 from app.models.user import User
 from app.schemas.mpax_arena import MpaxArenaCandidate, MpaxArenaRequest, MpaxArenaResponse
@@ -48,7 +49,7 @@ def test_mpax_arena_models_repr() -> None:
 @pytest.mark.asyncio
 async def test_vote_candidate_success(db_session: AsyncSession) -> None:
   """
-  Verifies `vote_candidate` updates the winning candidate and resets siblings in `db_session`.
+  Verifies `vote_candidate_result` updates the winning candidate and resets siblings in `db_session`.
 
   Args:
       db_session (AsyncSession): Active test database session.
@@ -89,11 +90,12 @@ async def test_vote_candidate_success(db_session: AsyncSession) -> None:
   db_session.add_all([run_record, cand1, cand2])
   await db_session.commit()
 
-  res = await mpax_arena_service.vote_candidate(str(run_id), str(cand1_id), db_session, user)
+  res = await mpax_arena_service.vote_candidate_result(str(run_id), str(cand1_id), db_session, user)
+  assert isinstance(res, Ok)
 
-  assert res.experiment_id == str(run_id)
-  winner = next(c for c in res.candidates if c.id == str(cand1_id))
-  loser = next(c for c in res.candidates if c.id == str(cand2_id))
+  assert res.value.experiment_id == str(run_id)
+  winner = next(c for c in res.value.candidates if c.id == str(cand1_id))
+  loser = next(c for c in res.value.candidates if c.id == str(cand2_id))
   assert winner.is_selected is True
   assert loser.is_selected is False
 
@@ -126,14 +128,15 @@ async def test_vote_candidate_blocks_cross_user_tampering(db_session: AsyncSessi
   db_session.add_all([run, cand])
   await db_session.commit()
 
-  with pytest.raises(ValueError, match="MPAX Arena run not found"):
-    await mpax_arena_service.vote_candidate(str(run_id), str(cand_id), db_session, user_b)
+  res = await mpax_arena_service.vote_candidate_result(str(run_id), str(cand_id), db_session, user_b)
+  assert isinstance(res, Err)
+  assert res.error.code == ErrorCode.MPAX_RUN_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_vote_candidate_invalid_uuids(db_session: AsyncSession) -> None:
   """
-  Verifies `vote_candidate` raises `ValueError` when IDs are invalid UUIDs.
+  Verifies `vote_candidate_result` returns `Err(MPAX_RUN_NOT_FOUND)` when IDs are invalid UUIDs.
 
   Args:
       db_session (AsyncSession): Active test database session.
@@ -142,17 +145,19 @@ async def test_vote_candidate_invalid_uuids(db_session: AsyncSession) -> None:
   db_session.add(user)
   await db_session.commit()
 
-  with pytest.raises(ValueError, match="Invalid UUID format"):
-    await mpax_arena_service.vote_candidate("not-a-uuid", str(uuid.uuid4()), db_session, user)
+  res1 = await mpax_arena_service.vote_candidate_result("not-a-uuid", str(uuid.uuid4()), db_session, user)
+  assert isinstance(res1, Err)
+  assert res1.error.code == ErrorCode.MPAX_RUN_NOT_FOUND
 
-  with pytest.raises(ValueError, match="Invalid UUID format"):
-    await mpax_arena_service.vote_candidate(str(uuid.uuid4()), "not-a-uuid", db_session, user)
+  res2 = await mpax_arena_service.vote_candidate_result(str(uuid.uuid4()), "not-a-uuid", db_session, user)
+  assert isinstance(res2, Err)
+  assert res2.error.code == ErrorCode.MPAX_RUN_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_vote_candidate_run_not_found(db_session: AsyncSession) -> None:
   """
-  Verifies `vote_candidate` raises `ValueError` when run does not exist in `db_session`.
+  Verifies `vote_candidate_result` returns `Err(MPAX_RUN_NOT_FOUND)` when run does not exist in `db_session`.
 
   Args:
       db_session (AsyncSession): Active test database session.
@@ -161,14 +166,15 @@ async def test_vote_candidate_run_not_found(db_session: AsyncSession) -> None:
   db_session.add(user)
   await db_session.commit()
 
-  with pytest.raises(ValueError, match="MPAX Arena run not found"):
-    await mpax_arena_service.vote_candidate(str(uuid.uuid4()), str(uuid.uuid4()), db_session, user)
+  res = await mpax_arena_service.vote_candidate_result(str(uuid.uuid4()), str(uuid.uuid4()), db_session, user)
+  assert isinstance(res, Err)
+  assert res.error.code == ErrorCode.MPAX_RUN_NOT_FOUND
 
 
 @pytest.mark.asyncio
 async def test_vote_candidate_not_in_run(db_session: AsyncSession) -> None:
   """
-  Verifies `vote_candidate` raises `ValueError` when candidate ID is not among run candidates.
+  Verifies `vote_candidate_result` returns `Err(MPAX_CANDIDATE_NOT_FOUND)` when candidate ID is not among run candidates.
 
   Args:
       db_session (AsyncSession): Active test database session.
@@ -197,20 +203,21 @@ async def test_vote_candidate_not_in_run(db_session: AsyncSession) -> None:
   db_session.add_all([run_record, cand1])
   await db_session.commit()
 
-  with pytest.raises(ValueError, match="Candidate not found in this MPAX Arena run"):
-    await mpax_arena_service.vote_candidate(str(run_id), str(other_cand_id), db_session, user)
+  res = await mpax_arena_service.vote_candidate_result(str(run_id), str(other_cand_id), db_session, user)
+  assert isinstance(res, Err)
+  assert res.error.code == ErrorCode.MPAX_CANDIDATE_NOT_FOUND
 
-  # Also verify unexpected DB exception during vote_candidate raises RuntimeError
   failing_db = MagicMock(spec=AsyncSession)
   failing_db.execute = AsyncMock(side_effect=RuntimeError("DB connection lost"))
-  with pytest.raises(RuntimeError, match="MPAX Arena voting failed: DB connection lost"):
-    await mpax_arena_service.vote_candidate(str(run_id), str(cand1_id), failing_db, user)
+  db_err = await mpax_arena_service.vote_candidate_result(str(run_id), str(cand1_id), failing_db, user)
+  assert isinstance(db_err, Err)
+  assert db_err.error.code == ErrorCode.INTERNAL_ERROR
 
 
 @pytest.mark.asyncio
 async def test_run_mpax_arena_persists_run(db_session: AsyncSession) -> None:
   """
-  Verifies `run_mpax_arena` commits `MpaxArenaRun` and `MpaxArenaCandidateRecord` entities to `db_session`.
+  Verifies `run_mpax_arena_result` commits `MpaxArenaRun` and `MpaxArenaCandidateRecord` entities to `db_session`.
 
   Args:
       db_session (AsyncSession): Active test database session.
@@ -237,13 +244,13 @@ async def test_run_mpax_arena_persists_run(db_session: AsyncSession) -> None:
     ],
   )
 
-  with patch.object(mpax_arena_service, "_run_judge_mode", new_callable=AsyncMock) as mock_judge:
-    mock_judge.return_value = mock_response
+  with patch.object(mpax_arena_service._strategies["judge"], "execute", new_callable=AsyncMock) as mock_judge:
+    mock_judge.return_value = Ok(mock_response)
 
     req = MpaxArenaRequest(prompt="Test prompt", mode="judge")
-    res = await mpax_arena_service.run_mpax_arena(req, db_session, user)
-
-    assert res.experiment_id == exp_id
+    res = await mpax_arena_service.run_mpax_arena_result(req, db_session, user)
+    assert isinstance(res, Ok)
+    assert res.value.experiment_id == exp_id
 
   saved_run = (
     (await db_session.execute(select(MpaxArenaRun).where(MpaxArenaRun.id == uuid.UUID(exp_id)))).scalars().first()
@@ -254,7 +261,7 @@ async def test_run_mpax_arena_persists_run(db_session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_run_mpax_arena_persistence_failure_recovers() -> None:
-  """Verifies `run_mpax_arena` rolls back gracefully if DB persistence fails."""
+  """Verifies `run_mpax_arena_result` rolls back gracefully if DB persistence fails."""
   mock_db = MagicMock(spec=AsyncSession)
   mock_db.add = MagicMock()
   mock_db.commit = AsyncMock(side_effect=RuntimeError("DB constraint error"))
@@ -270,11 +277,11 @@ async def test_run_mpax_arena_persistence_failure_recovers() -> None:
     candidates=[],
   )
 
-  with patch.object(mpax_arena_service, "_run_translator_mode", new_callable=AsyncMock) as mock_trans:
-    mock_trans.return_value = mock_response
+  with patch.object(mpax_arena_service._strategies["translator"], "execute", new_callable=AsyncMock) as mock_trans:
+    mock_trans.return_value = Ok(mock_response)
 
     req = MpaxArenaRequest(prompt="Test prompt", mode="translator")
-    res = await mpax_arena_service.run_mpax_arena(req, mock_db, mock_user)
-
-    assert res.experiment_id == exp_id
+    res = await mpax_arena_service.run_mpax_arena_result(req, mock_db, mock_user)
+    assert isinstance(res, Ok)
+    assert res.value.experiment_id == exp_id
     mock_db.rollback.assert_awaited_once()

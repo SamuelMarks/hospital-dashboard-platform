@@ -233,5 +233,30 @@ class EditorViewModelTest {
             description = "Desc"
         )
         assertTrue(saveFallbackTemplate.isSuccess)
+
+        val failEngine = MockEngine { throw IllegalStateException("Network down") }
+        val failClient = createClient(failEngine)
+        val vmFail = EditorViewModel(
+            scope = this,
+            dashboardsApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(baseUrl = "http://localhost", httpClient = failClient),
+            templatesApi = io.healthplatform.pulsequery.api.apis.TemplatesApi(baseUrl = "http://localhost", httpClient = failClient)
+        )
+        assertTrue(vmFail.loadAvailableDashboards().isFailure)
+        assertTrue(
+            vmFail.saveQuery(
+                destination = SaveQueryDestination.DASHBOARD_WIDGET,
+                title = "W",
+                sql = "SELECT 1",
+                dashboardId = "d1"
+            ).isFailure
+        )
+        assertTrue(
+            vmFail.saveQuery(
+                destination = SaveQueryDestination.TEMPLATE,
+                title = "T",
+                sql = "SELECT 1",
+                dashboardId = null
+            ).isFailure
+        )
     }
 }

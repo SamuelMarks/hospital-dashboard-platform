@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,8 +13,12 @@ import { MpaxArenaCandidate } from './mpax-arena-candidate';
  * Response returned after executing an MPAX Arena scenario.
  */
 export interface MpaxArenaResponse {
+  /** Property `experiment_id`. */
   experiment_id: string;
+  /** Property `mode`. */
   mode: string;
-  ground_truth_mpax?: Record<string, any> | null;
-  candidates: Array<MpaxArenaCandidate>;
+  /** Property `ground_truth_mpax`. */
+  ground_truth_mpax?: Record<string, unknown> | null;
+  /** Property `candidates`. */
+  candidates: MpaxArenaCandidate[];
 }

@@ -57,6 +57,48 @@ sealed interface ChatStreamEvent {
 }
 
 /**
+ * Enumerated discriminator types for Server-Sent Event packets in Chat Arena streaming.
+ *
+ * @property wireValue Raw wire discriminator string.
+ */
+@Serializable
+enum class SseEventType(val wireValue: String) {
+    /** Stream initialization packet. */
+    @SerialName("start")
+    START("start"),
+
+    /** Incremental token chunk packet. */
+    @SerialName("token")
+    TOKEN("token"),
+
+    /** Stream completion packet. */
+    @SerialName("done")
+    DONE("done"),
+
+    /** Stream error packet. */
+    @SerialName("error")
+    ERROR("error"),
+
+    /** Unrecognized or heartbeat SSE event. */
+    @SerialName("unknown")
+    UNKNOWN("unknown");
+
+    /**
+     * Companion utilities for resolving [SseEventType] from raw wire strings.
+     */
+    companion object {
+        /**
+         * Resolves an [SseEventType] from [raw], defaulting to [UNKNOWN].
+         *
+         * @param raw Raw event discriminator string.
+         * @return Matching [SseEventType].
+         */
+        fun fromWire(raw: String): SseEventType =
+            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+/**
  * Raw JSON payload deserialized from Server-Sent Event data packets.
  *
  * @property event The event discriminator ("start", "token", "done", "error").
@@ -79,7 +121,11 @@ data class SsePacket(
     @SerialName("sql_snippet")
     val sqlSnippet: String? = null,
     val error: String? = null
-)
+) {
+    /** Strongly typed [SseEventType] resolved from [event]. */
+    val eventType: SseEventType
+        get() = SseEventType.fromWire(event)
+}
 
 /**
  * Repository orchestrating Server-Sent Events token streaming for chat.
@@ -201,16 +247,16 @@ class ChatStreamingRepository(
      * @return Corresponding [ChatStreamEvent] or null for unrecognized heartbeats.
      */
     private fun mapPacketToEvent(packet: SsePacket, fallbackConversationId: String): ChatStreamEvent? {
-        return when (packet.event) {
-            "start" -> ChatStreamEvent.StreamStarted(packet.conversationId ?: fallbackConversationId)
-            "token" -> packet.token?.let { ChatStreamEvent.TokenChunk(it) }
-            "done" -> ChatStreamEvent.StreamDone(
+        return when (packet.eventType) {
+            SseEventType.START -> ChatStreamEvent.StreamStarted(packet.conversationId ?: fallbackConversationId)
+            SseEventType.TOKEN -> packet.token?.let { ChatStreamEvent.TokenChunk(it) }
+            SseEventType.DONE -> ChatStreamEvent.StreamDone(
                 messageId = packet.messageId ?: "",
                 content = packet.content ?: "",
                 sqlSnippet = packet.sqlSnippet
             )
-            "error" -> ChatStreamEvent.StreamError(packet.error ?: "Streaming failed")
-            else -> null
+            SseEventType.ERROR -> ChatStreamEvent.StreamError(packet.error ?: "Streaming failed")
+            SseEventType.UNKNOWN -> null
         }
     }
 }

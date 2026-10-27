@@ -234,10 +234,12 @@ export class ToolbarComponent {
     }
   }
 
-  /** Opens the multi-step Widget Builder dialog for the active dashboard. */
+  /** Opens the multi-step Widget Builder dialog for the active dashboard and restores trigger focus on close. */
   openWidgetBuilder(): void {
     const currentDash = this.store.dashboard();
     if (!currentDash) return;
+    const triggerEl =
+      this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
     const ref = this.dialog.open(WidgetBuilderComponent, {
       data: { dashboardId: currentDash.id },
       width: '1200px',
@@ -245,9 +247,13 @@ export class ToolbarComponent {
       height: '90vh',
       panelClass: 'no-padding-dialog',
       disableClose: true,
+      restoreFocus: true,
     });
     ref.afterClosed().subscribe((res: boolean) => {
       if (res) this.store.loadDashboard(currentDash.id);
+      if (triggerEl && typeof triggerEl.focus === 'function') {
+        triggerEl.focus();
+      }
     });
   }
 

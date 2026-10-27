@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Payload requesting a time-bound password reset token.
  */
 export interface ForgotPasswordRequest {
+  /** Property `email`. */
   email: string;
 }

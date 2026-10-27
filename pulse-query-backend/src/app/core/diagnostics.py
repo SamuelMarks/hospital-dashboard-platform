@@ -6,14 +6,252 @@ detect missing initial datasets or templates, generate human-friendly startup
 diagnostic banners, and maintain an in-memory health registry.
 """
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import logging
-from typing import Any
+from typing import Protocol, TypedDict
 
+from app.core.config import SwarmConfigDict
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.schemas.json_types import JsonObject, JsonPrimitive
 
 logger = logging.getLogger("diagnostics")
+
+
+class SettingsProtocol(Protocol):
+  """
+  Structural protocol representing the application settings inspected during startup hygiene checks.
+  """
+
+  @property
+  def SECRET_KEY(self) -> str:
+    """Application secret key."""
+
+  @property
+  def LLM_SWARM(self) -> Sequence[SwarmConfigDict | Mapping[str, JsonPrimitive]]:
+    """Configured LLM swarm combatant mappings."""
+
+
+class PostgresStatusDict(TypedDict):
+  """Typed dictionary for PostgreSQL connectivity status."""
+
+  status: str
+  latency_ms: float | int | None
+  details: str | None
+  error: str | None
+
+
+class DuckDbStatusDict(TypedDict):
+  """Typed dictionary for DuckDB storage health status."""
+
+  status: str
+  path: str | None
+  tables: dict[str, int]
+  total_tables: int
+  error: str | None
+
+
+class DataStatusDict(TypedDict):
+  """Typed dictionary for CSV data ingestion status."""
+
+  status: str
+  table_count: int
+  tables: list[str]
+  has_default_data: bool
+  fallback_generated: bool
+  missing_files: list[str]
+  row_counts: dict[str, int]
+
+
+class TemplateStatusDict(TypedDict):
+  """Typed dictionary for template seeding status."""
+
+  status: str
+  template_count: int
+  templates_loaded: int
+  has_templates: bool
+  missing_file: bool
+
+
+class LlmStatusDict(TypedDict):
+  """Typed dictionary for LLM swarm configuration status."""
+
+  providers_count: int
+  mock_mode: bool
+  models: list[str]
+
+
+@dataclass
+class PostgresDiagnosticState:
+  """
+  Strongly typed diagnostic state model for PostgreSQL connectivity.
+
+  Attributes:
+      status (str): Connection status ("unknown", "connected", "error").
+      latency_ms (float | int | None): Round-trip query latency in milliseconds.
+      details (str | None): Human-readable connection description.
+      error (str | None): Error message if connection failed.
+  """
+
+  status: str = "unknown"
+  latency_ms: float | int | None = None
+  details: str | None = None
+  error: str | None = None
+
+  def to_dict(self) -> PostgresStatusDict:
+    """
+    Serializes the PostgreSQL diagnostic state into a `PostgresStatusDict`.
+
+    Returns:
+        PostgresStatusDict: Dictionary representation of PostgreSQL health.
+    """
+    return {
+      "status": self.status,
+      "latency_ms": self.latency_ms,
+      "details": self.details,
+      "error": self.error,
+    }
+
+
+@dataclass
+class DuckDBDiagnosticState:
+  """
+  Strongly typed diagnostic state model for DuckDB storage health.
+
+  Attributes:
+      status (str): Storage health status ("unknown", "ready", "error").
+      path (str | None): Path to the DuckDB file or `:memory:`.
+      tables (dict[str, int]): Mapping of table names to row counts.
+      total_tables (int): Total number of tables discovered.
+      error (str | None): Error message if storage validation failed.
+  """
+
+  status: str = "unknown"
+  path: str | None = None
+  tables: dict[str, int] = field(default_factory=dict)
+  total_tables: int = 0
+  error: str | None = None
+
+  def to_dict(self) -> DuckDbStatusDict:
+    """
+    Serializes the DuckDB diagnostic state into a `DuckDbStatusDict`.
+
+    Returns:
+        DuckDbStatusDict: Dictionary representation of DuckDB storage health.
+    """
+    return {
+      "status": self.status,
+      "path": self.path,
+      "tables": dict(self.tables),
+      "total_tables": self.total_tables,
+      "error": self.error,
+    }
+
+
+@dataclass
+class DataDiagnosticState:
+  """
+  Strongly typed diagnostic state model for CSV clinical data ingestion.
+
+  Attributes:
+      status (str): Dataset population status ("empty", "ready", "critical").
+      table_count (int): Number of distinct ingested tables.
+      tables (list[str]): List of ingested table names.
+      has_default_data (bool): True if the default clinical dataset was loaded.
+      fallback_generated (bool): True if synthetic fallback data was generated.
+      missing_files (list[str]): List of missing expected CSV filenames.
+      row_counts (dict[str, int]): Mapping of table names to ingested row counts.
+  """
+
+  status: str = "empty"
+  table_count: int = 0
+  tables: list[str] = field(default_factory=list)
+  has_default_data: bool = False
+  fallback_generated: bool = False
+  missing_files: list[str] = field(default_factory=list)
+  row_counts: dict[str, int] = field(default_factory=dict)
+
+  def to_dict(self) -> DataStatusDict:
+    """
+    Serializes the dataset ingestion diagnostic state into a `DataStatusDict`.
+
+    Returns:
+        DataStatusDict: Dictionary representation of clinical dataset health.
+    """
+    return {
+      "status": self.status,
+      "table_count": self.table_count,
+      "tables": list(self.tables),
+      "has_default_data": self.has_default_data,
+      "fallback_generated": self.fallback_generated,
+      "missing_files": list(self.missing_files),
+      "row_counts": dict(self.row_counts),
+    }
+
+
+@dataclass
+class TemplateDiagnosticState:
+  """
+  Strongly typed diagnostic state model for widget template seeding.
+
+  Attributes:
+      status (str): Seeding status ("empty", "ready", "critical").
+      template_count (int): Total templates present in the database.
+      templates_loaded (int): Number of templates processed during seeding.
+      has_templates (bool): True if at least one template is available.
+      missing_file (bool): True if `initial_templates.json` was missing on disk.
+  """
+
+  status: str = "empty"
+  template_count: int = 0
+  templates_loaded: int = 0
+  has_templates: bool = False
+  missing_file: bool = False
+
+  def to_dict(self) -> TemplateStatusDict:
+    """
+    Serializes the template seeding diagnostic state into a `TemplateStatusDict`.
+
+    Returns:
+        TemplateStatusDict: Dictionary representation of template seeding health.
+    """
+    return {
+      "status": self.status,
+      "template_count": self.template_count,
+      "templates_loaded": self.templates_loaded,
+      "has_templates": self.has_templates,
+      "missing_file": self.missing_file,
+    }
+
+
+@dataclass
+class LlmDiagnosticState:
+  """
+  Strongly typed diagnostic state model for LLM swarm configuration.
+
+  Attributes:
+      providers_count (int): Number of configured LLM swarm combatants.
+      mock_mode (bool): True if no live LLM keys are configured.
+      models (list[str]): Names of configured LLM combatants.
+  """
+
+  providers_count: int = 0
+  mock_mode: bool = True
+  models: list[str] = field(default_factory=list)
+
+  def to_dict(self) -> LlmStatusDict:
+    """
+    Serializes the LLM swarm diagnostic state into an `LlmStatusDict`.
+
+    Returns:
+        LlmStatusDict: Dictionary representation of LLM swarm health.
+    """
+    return {
+      "providers_count": self.providers_count,
+      "mock_mode": self.mock_mode,
+      "models": list(self.models),
+    }
 
 
 @dataclass
@@ -57,42 +295,13 @@ class DiagnosticsRegistry:
   """
 
   def __init__(self) -> None:
-    """Initializes an empty diagnostics registry."""
+    """Initializes an empty diagnostics registry with strongly typed state models."""
     self.warnings: list[DiagnosticWarning] = []
-    self.postgres_status: dict[str, Any] = {
-      "status": "unknown",
-      "latency_ms": None,
-      "details": None,
-      "error": None,
-    }
-    self.duckdb_status: dict[str, Any] = {
-      "status": "unknown",
-      "path": None,
-      "tables": {},
-      "total_tables": 0,
-      "error": None,
-    }
-    self.data_status: dict[str, Any] = {
-      "status": "empty",
-      "table_count": 0,
-      "tables": [],
-      "has_default_data": False,
-      "fallback_generated": False,
-      "missing_files": [],
-      "row_counts": {},
-    }
-    self.template_status: dict[str, Any] = {
-      "status": "empty",
-      "template_count": 0,
-      "templates_loaded": 0,
-      "has_templates": False,
-      "missing_file": False,
-    }
-    self.llm_status: dict[str, Any] = {
-      "providers_count": 0,
-      "mock_mode": True,
-      "models": [],
-    }
+    self.postgres_status: PostgresDiagnosticState = PostgresDiagnosticState()
+    self.duckdb_status: DuckDBDiagnosticState = DuckDBDiagnosticState()
+    self.data_status: DataDiagnosticState = DataDiagnosticState()
+    self.template_status: TemplateDiagnosticState = TemplateDiagnosticState()
+    self.llm_status: LlmDiagnosticState = LlmDiagnosticState()
 
   def add_warning(self, code: str, message: str, severity: str = "warning", remediation: str = "") -> None:
     """
@@ -112,35 +321,21 @@ class DiagnosticsRegistry:
   def clear(self) -> None:
     """Clears all accumulated warnings and resets registry statuses."""
     self.warnings.clear()
-    self.postgres_status = {"status": "unknown", "latency_ms": None, "details": None, "error": None}
-    self.duckdb_status = {"status": "unknown", "path": None, "tables": {}, "total_tables": 0, "error": None}
-    self.data_status = {
-      "status": "empty",
-      "table_count": 0,
-      "tables": [],
-      "has_default_data": False,
-      "fallback_generated": False,
-      "missing_files": [],
-      "row_counts": {},
-    }
-    self.template_status = {
-      "status": "empty",
-      "template_count": 0,
-      "templates_loaded": 0,
-      "has_templates": False,
-      "missing_file": False,
-    }
-    self.llm_status = {"providers_count": 0, "mock_mode": True, "models": []}
+    self.postgres_status = PostgresDiagnosticState()
+    self.duckdb_status = DuckDBDiagnosticState()
+    self.data_status = DataDiagnosticState()
+    self.template_status = TemplateDiagnosticState()
+    self.llm_status = LlmDiagnosticState()
 
-  def get_summary(self) -> dict[str, Any]:
+  def get_summary(self) -> JsonObject:
     """
     Constructs a comprehensive system health summary dictionary.
 
     Returns:
-        dict[str, Any]: Consolidated snapshot of all component diagnostics.
+        JsonObject: Consolidated snapshot of all component diagnostics.
     """
     overall = "healthy"
-    if self.postgres_status.get("status") == "error" or self.duckdb_status.get("status") == "error":
+    if self.postgres_status.status == "error" or self.duckdb_status.status == "error":
       overall = "critical"
     elif self.warnings:
       overall = "degraded"
@@ -149,13 +344,59 @@ class DiagnosticsRegistry:
       "status": overall,
       "overall_status": overall,
       "timestamp": datetime.now(timezone.utc).isoformat(),
-      "postgres": self.postgres_status,
-      "duckdb": self.duckdb_status,
-      "data": self.data_status,
-      "datasets": self.data_status,
-      "templates": self.template_status,
-      "llm": self.llm_status,
-      "warnings": [w.to_dict() for w in self.warnings],
+      "postgres": {
+        "status": self.postgres_status.status,
+        "latency_ms": self.postgres_status.latency_ms,
+        "details": self.postgres_status.details,
+        "error": self.postgres_status.error,
+      },
+      "duckdb": {
+        "status": self.duckdb_status.status,
+        "path": self.duckdb_status.path,
+        "tables": {k: v for k, v in self.duckdb_status.tables.items()},
+        "total_tables": self.duckdb_status.total_tables,
+        "error": self.duckdb_status.error,
+      },
+      "data": {
+        "status": self.data_status.status,
+        "table_count": self.data_status.table_count,
+        "tables": list(self.data_status.tables),
+        "has_default_data": self.data_status.has_default_data,
+        "fallback_generated": self.data_status.fallback_generated,
+        "missing_files": list(self.data_status.missing_files),
+        "row_counts": {k: v for k, v in self.data_status.row_counts.items()},
+      },
+      "datasets": {
+        "status": self.data_status.status,
+        "table_count": self.data_status.table_count,
+        "tables": list(self.data_status.tables),
+        "has_default_data": self.data_status.has_default_data,
+        "fallback_generated": self.data_status.fallback_generated,
+        "missing_files": list(self.data_status.missing_files),
+        "row_counts": {k: v for k, v in self.data_status.row_counts.items()},
+      },
+      "templates": {
+        "status": self.template_status.status,
+        "template_count": self.template_status.template_count,
+        "templates_loaded": self.template_status.templates_loaded,
+        "has_templates": self.template_status.has_templates,
+        "missing_file": self.template_status.missing_file,
+      },
+      "llm": {
+        "providers_count": self.llm_status.providers_count,
+        "mock_mode": self.llm_status.mock_mode,
+        "models": list(self.llm_status.models),
+      },
+      "warnings": [
+        {
+          "code": w.code,
+          "message": w.message,
+          "severity": w.severity,
+          "remediation": w.remediation,
+          "timestamp": w.timestamp,
+        }
+        for w in self.warnings
+      ],
     }
 
 
@@ -288,12 +529,12 @@ def format_missing_template_warning_banner(file_path: str) -> str:
   return "\n".join(lines)
 
 
-def check_configuration_hygiene(settings_obj: object) -> list[str]:
+def check_configuration_hygiene(settings_obj: SettingsProtocol) -> list[str]:
   """
   Validates application configuration for development defaults or missing critical keys.
 
   Args:
-      settings_obj (object): Application settings object.
+      settings_obj (SettingsProtocol): Application settings object conforming to `SettingsProtocol`.
 
   Returns:
       list[str]: List of identified warning messages.
@@ -301,7 +542,7 @@ def check_configuration_hygiene(settings_obj: object) -> list[str]:
   warnings_found: list[str] = []
 
   # Check SECRET_KEY
-  secret_key = getattr(settings_obj, "SECRET_KEY", "")
+  secret_key = settings_obj.SECRET_KEY
   if secret_key == "CHANGEME_IN_PROD_SUPER_SECRET_KEY":
     msg = "Insecure default SECRET_KEY in use ('CHANGEME_IN_PROD_SUPER_SECRET_KEY'). Change in .env for production."
     warnings_found.append(msg)
@@ -314,14 +555,14 @@ def check_configuration_hygiene(settings_obj: object) -> list[str]:
     logger.warning(f"⚠️ [CONFIG WARNING]: {msg}")
 
   # Check LLM configuration
-  swarm = getattr(settings_obj, "LLM_SWARM", [])
-  diagnostics_registry.llm_status["providers_count"] = len(swarm)
-  diagnostics_registry.llm_status["models"] = [item.get("name", item.get("model", "unknown")) for item in swarm]
+  swarm = settings_obj.LLM_SWARM
+  diagnostics_registry.llm_status.providers_count = len(swarm)
+  diagnostics_registry.llm_status.models = [str(item.get("name", item.get("model", "unknown"))) for item in swarm]
 
   if not swarm:
     msg = "No cloud LLM API keys or local LLMs configured. Text-to-SQL AI queries will run in mock mode."
     warnings_found.append(msg)
-    diagnostics_registry.llm_status["mock_mode"] = True
+    diagnostics_registry.llm_status.mock_mode = True
     diagnostics_registry.add_warning(
       code="NO_LLM_CONFIGURED",
       message=msg,
@@ -330,22 +571,22 @@ def check_configuration_hygiene(settings_obj: object) -> list[str]:
     )
     logger.info(f"ℹ️ [CONFIG INFO]: {msg}")
   else:
-    diagnostics_registry.llm_status["mock_mode"] = False
+    diagnostics_registry.llm_status.mock_mode = False
 
   return warnings_found
 
 
-def check_configuration_hygiene_result(settings_obj: object) -> AppResult[list[str]]:
+def check_configuration_hygiene_result(settings_obj: SettingsProtocol) -> AppResult[list[str]]:
   """
   Validates application configuration and returns an explicit `AppResult[list[str]]`.
 
   Args:
-      settings_obj (object): Application settings object.
+      settings_obj (SettingsProtocol): Application settings object conforming to `SettingsProtocol`.
 
   Returns:
       AppResult[list[str]]: `Ok(warnings)` if `SECRET_KEY` is non-empty, or `Err(AppError)` with `CONFIGURATION_ERROR`.
   """
-  secret_key = str(getattr(settings_obj, "SECRET_KEY", "") or "").strip()
+  secret_key = str(settings_obj.SECRET_KEY or "").strip()
   if not secret_key:
     return Err(
       AppError(

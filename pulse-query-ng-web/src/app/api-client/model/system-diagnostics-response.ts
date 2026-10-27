@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -21,9 +21,9 @@ export interface SystemDiagnosticsResponse {
   /**
    * Environment variables and runtime parameters.
    */
-  environment_checks: { [key: string]: any };
+  environment_checks: Record<string, unknown>;
   /**
    * Curated troubleshooting steps.
    */
-  troubleshooting_guides?: Array<TroubleshootingStep>;
+  troubleshooting_guides?: TroubleshootingStep[];
 }

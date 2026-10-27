@@ -38,7 +38,7 @@ fun createHttpClient(
     tokenProvider: () -> String?
 ): HttpClient {
     val config: io.ktor.client.HttpClientConfig<*>.() -> Unit = {
-        expectSuccess = true
+        expectSuccess = false
 
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000

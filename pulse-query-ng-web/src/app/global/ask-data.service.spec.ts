@@ -3,6 +3,7 @@
  */
 
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { AskDataService } from './ask-data.service';
 
 describe('AskDataService', () => {
@@ -29,13 +30,37 @@ describe('AskDataService', () => {
     expect(service.isOpen()).toBe(false);
   });
 
-  it('should toggle state', () => {
-    // Initial False -> True
+  it('should toggle state and restore focus to trigger element on close', () => {
+    const btn = document.createElement('button');
+    document.body.appendChild(btn);
+    btn.focus();
+    const focusSpy = vi.spyOn(btn, 'focus');
+
+    // Initial False -> True (captures activeElement)
     service.toggle();
     expect(service.isOpen()).toBe(true);
 
-    // True -> False
+    // True -> False (restores focus to btn)
     service.toggle();
     expect(service.isOpen()).toBe(false);
+    expect(focusSpy).toHaveBeenCalled();
+
+    // Explicit trigger element
+    service.open(btn);
+    expect(service.isOpen()).toBe(true);
+    service.close();
+    expect(focusSpy).toHaveBeenCalledTimes(2);
+
+    // Null trigger element
+    service.open(null);
+    service.close();
+
+    // Non-HTMLElement activeElement branch
+    Object.defineProperty(document, 'activeElement', { value: null, configurable: true });
+    service.open();
+    service.close();
+    delete (document as unknown as Record<string, unknown>)['activeElement'];
+
+    document.body.removeChild(btn);
   });
 });

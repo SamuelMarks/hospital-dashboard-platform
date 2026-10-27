@@ -70,7 +70,6 @@ open class SystemApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return SystemDiagnosticsResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getSystemDiagnosticsApiV1SystemDiagnosticsGet(token: kotlin.String? = null): HttpResponse<SystemDiagnosticsResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
@@ -102,7 +101,6 @@ open class SystemApi : ApiClient {
      * @param strict If true, returns HTTP 503 when critical components (PostgreSQL/DuckDB) are failing. (optional, default to false)
      * @return SystemHealthResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getSystemHealthApiV1SystemHealthGet(strict: kotlin.Boolean? = false): HttpResponse<SystemHealthResponse> {
         val localVariableAuthNames = listOf<String>()
 
@@ -135,7 +133,6 @@ open class SystemApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return ReingestResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun triggerReingestApiV1SystemReingestPost(
         token: kotlin.String? = null,
         acceptLanguage: kotlin.String? = null

@@ -88,7 +88,7 @@
         </div>
 
         <!-- 3. Result Table -->
-        <div class="result-container">
+        <div class="result-container" role="status" aria-live="polite">
           <div class="viz-scroll-wrapper">
             @if (latestResult(); as res) {
               <viz-table [dataSet]="res" class="h-full block w-full"></viz-table>

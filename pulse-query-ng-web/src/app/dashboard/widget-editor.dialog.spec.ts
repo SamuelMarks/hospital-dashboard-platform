@@ -11,8 +11,13 @@ import { By } from '@angular/platform-browser';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { DashboardStore } from './dashboard.store';
+import {
+  ProcessorCatalogService,
+  SQL_NO_MODEL_OPTION,
+} from '../shared/services/processor-catalog.service';
 import { of } from 'rxjs';
 import { readTemplate } from '../../test-utils/component-resources';
+import { createMockInputEvent } from '../../test-utils/mock-factories';
 import { vi } from 'vitest';
 
 /** Mock SQL builder component for unit testing `WidgetEditorDialog`. */
@@ -91,6 +96,32 @@ describe('WidgetEditorDialog', () => {
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([
+              {
+                id: 'ollama:llama3',
+                name: 'Llama 3',
+                provider: 'ollama',
+                isLocal: true,
+                category: 'OLLAMA',
+              },
+            ]),
+            anyLlmProcessors: signal([
+              {
+                id: 'openai:gpt-4o',
+                name: 'GPT-4o',
+                provider: 'openai',
+                isLocal: false,
+                category: 'ANY_LLM',
+              },
+            ]),
+            loadProcessors: vi.fn(),
+          },
+        },
       ],
     })
       .overrideComponent(WidgetEditorDialog, {
@@ -130,16 +161,25 @@ describe('WidgetEditorDialog', () => {
     expect(component.yKey()).toBe('y');
   });
 
-  it('should default xKey/yKey to null when config missing', () => {
-    const noConfigWidget: WidgetResponse = { ...sqlWidget };
-    Reflect.deleteProperty(noConfigWidget, 'config');
+  it('should default xKey/yKey to null when config keys are absent', () => {
+    const emptyConfigWidget: WidgetResponse = { ...sqlWidget, config: {} };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
-        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: noConfigWidget } },
+        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: emptyConfigWidget } },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
       ],
     });
 
@@ -147,6 +187,10 @@ describe('WidgetEditorDialog', () => {
 
     expect(inst.xKey()).toBeNull();
     expect(inst.yKey()).toBeNull();
+    expect(inst.allowNaturalText()).toBe(false);
+    expect(inst.processor()).toBe('SQL');
+    expect(inst.naturalTextPrompt()).toBe('');
+    expect(inst.placeholderText()).toBe('');
   });
 
   it('should compute mapping helpers and columns', () => {
@@ -174,6 +218,16 @@ describe('WidgetEditorDialog', () => {
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
       ],
     });
 
@@ -188,8 +242,8 @@ describe('WidgetEditorDialog', () => {
     expect(component.supportsMapping()).toBe(false);
   });
 
-  it('should report mapping unsupported when visualization is missing', () => {
-    Reflect.set(component.data.widget, 'visualization', undefined);
+  it('should report mapping unsupported when visualization is empty string', () => {
+    component.data.widget.visualization = '';
     fixture.detectChanges();
     expect(component.supportsMapping()).toBe(false);
   });
@@ -259,9 +313,8 @@ describe('WidgetEditorDialog', () => {
     expect(message).toBeTruthy();
   });
 
-  it('should save settings when config missing', () => {
-    const widgetWithoutConfig: WidgetResponse = { ...sqlWidget };
-    Reflect.deleteProperty(widgetWithoutConfig, 'config');
+  it('should save settings when config is empty', () => {
+    const widgetWithoutConfig: WidgetResponse = { ...sqlWidget, config: {} };
     const freshDash: DashboardResponse = {
       id: 'd1',
       name: 'Dash',
@@ -319,5 +372,76 @@ describe('WidgetEditorDialog', () => {
         config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) as unknown,
       }),
     );
+  });
+
+  it('should initialize and persist natural text and processor settings', () => {
+    const nlWidget: WidgetResponse = {
+      ...sqlWidget,
+      config: {
+        query: 'SELECT 1',
+        allow_natural_text: true,
+        processor: 'ollama:llama3',
+        natural_text_prompt: 'Initial prompt',
+        placeholder_text: 'Custom placeholder',
+      },
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: nlWidget } },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
+      ],
+    });
+
+    const nlInst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
+    nlInst.ngOnInit();
+
+    expect(nlInst.allowNaturalText()).toBe(true);
+    expect(nlInst.processor()).toBe('ollama:llama3');
+    expect(nlInst.naturalTextPrompt()).toBe('Initial prompt');
+    expect(nlInst.placeholderText()).toBe('Custom placeholder');
+
+    const fakeEvent = createMockInputEvent('Updated prompt');
+    expect(nlInst.getEventValue(fakeEvent)).toBe('Updated prompt');
+    nlInst.naturalTextPrompt.set('Updated prompt');
+    nlInst.placeholderText.set('Updated placeholder');
+
+    const freshDash: DashboardResponse = {
+      id: 'd1',
+      name: 'Dash',
+      owner_id: 'u1',
+      widgets: [nlWidget],
+    };
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
+    nlInst.saveSettings();
+
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({
+        config: expect.objectContaining({
+          allow_natural_text: true,
+          processor: 'ollama:llama3',
+          natural_text_prompt: 'Updated prompt',
+          placeholder_text: 'Updated placeholder',
+        }) as unknown,
+      }),
+    );
+
+    // Also test when prompt and placeholder are blank
+    nlInst.naturalTextPrompt.set('  ');
+    nlInst.placeholderText.set('');
+    nlInst.saveSettings();
   });
 });

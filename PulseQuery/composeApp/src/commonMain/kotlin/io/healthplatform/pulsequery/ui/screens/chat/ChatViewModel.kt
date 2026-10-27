@@ -11,6 +11,12 @@ import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.api.models.MessageVoteRequest
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.CandidateId
+import io.healthplatform.pulsequery.core.model.ConversationId
+import io.healthplatform.pulsequery.core.model.MessageAuthorRole
+import io.healthplatform.pulsequery.core.model.MessageId
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -88,7 +94,7 @@ class ChatViewModel(
     fun loadConversations() {
         scope.launch {
             runCatchingPulseAsync {
-                currentChatApi.listConversationsApiV1ConversationsGet().body()
+                currentChatApi.listConversationsApiV1ConversationsGet().asResult().getOrThrow()
             }.fold(
                 onSuccess = { list ->
                     val currentActive = _state.value.activeConversation
@@ -109,7 +115,7 @@ class ChatViewModel(
                     }
                 },
                 onFailure = { e ->
-                    val msg = "Failed to load conversations: ${e.messageOrDefault("Unknown error")}"
+                    val msg = "Failed to load conversations: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -148,13 +154,13 @@ class ChatViewModel(
             runCatchingPulseAsync {
                 currentChatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
                     conversationId = active.id
-                ).body()
+                ).asResult().getOrThrow()
             }.fold(
                 onSuccess = { msgs ->
                     _state.update { it.copy(messages = msgs, errorMessage = null) }
                 },
                 onFailure = { e ->
-                    val msg = "Failed to load messages: ${e.messageOrDefault("Unknown error")}"
+                    val msg = "Failed to load messages: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -180,7 +186,7 @@ class ChatViewModel(
     fun deleteConversation(id: String) {
         scope.launch {
             runCatchingPulseAsync {
-                currentChatApi.deleteConversationApiV1ConversationsConversationIdDelete(id)
+                currentChatApi.deleteConversationApiV1ConversationsConversationIdDelete(id).asResult().getOrThrow()
             }.fold(
                 onSuccess = {
                     if (_state.value.activeConversation?.id == id) {
@@ -189,7 +195,7 @@ class ChatViewModel(
                     loadConversations()
                 },
                 onFailure = { e ->
-                    val msg = "Failed to delete conversation: ${e.messageOrDefault("Unknown error")}"
+                    val msg = "Failed to delete conversation: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -216,7 +222,7 @@ class ChatViewModel(
                             title = textToSend.take(20),
                             message = textToSend
                         )
-                    ).body()
+                    ).asResult().getOrThrow()
                     val created = ConversationResponse(
                         id = detail.id,
                         userId = detail.userId,
@@ -236,14 +242,14 @@ class ChatViewModel(
                     currentChatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
                         conversationId = active.id,
                         messageCreate = MessageCreate(content = textToSend)
-                    )
+                    ).asResult().getOrThrow()
                     active
                 }
 
                 streamTokensForConversation(targetConv.id)
                 loadMessages()
             }.onFailure { e ->
-                val msg = "Failed to send message: ${e.messageOrDefault("Unknown error")}"
+                val msg = "Failed to send message: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
                 _state.update { it.copy(errorMessage = msg, streamingCandidateText = null) }
                 _notifications.tryEmit(msg)
             }
@@ -293,14 +299,14 @@ class ChatViewModel(
                     conversationId = active.id,
                     messageId = messageId,
                     messageVoteRequest = MessageVoteRequest(candidateId = candidateId)
-                )
+                ).asResult().getOrThrow()
             }.fold(
                 onSuccess = {
                     _notifications.tryEmit("Vote recorded successfully")
                     loadMessages()
                 },
                 onFailure = { e ->
-                    val msg = e.messageOrDefault("Failed to record vote")
+                    val msg = e.messageOrDefault(UiErrorKey.RECORD_VOTE)
                     _state.update { it.copy(errorMessage = msg) }
                     _notifications.tryEmit(msg)
                 }
@@ -309,7 +315,7 @@ class ChatViewModel(
     }
 
     /**
-     * Stages a generated SQL query to the global query cart.
+     * Stages a generated SQL candidate to the global [QueryCartRepository].
      *
      * @param title Descriptive title for the staged query.
      * @param sql Raw SQL query string.
@@ -318,4 +324,32 @@ class ChatViewModel(
         queryCartRepository.addQuery(title, sql)
         _notifications.tryEmit("Query staged to cart")
     }
-}
+
+    /**
+     * Deletes a conversation by strongly typed [ConversationId] and refreshes the conversation list.
+     *
+     * @param conversationId Target [ConversationId].
+     */
+    fun deleteConversation(conversationId: ConversationId) {
+        deleteConversation(conversationId.value)
+    }
+
+    /**
+     * Submits a vote for a specific LLM candidate using strongly typed [MessageId] and [CandidateId].
+     *
+     * @param messageId Parent [MessageId].
+     * @param candidateId Selected [CandidateId].
+     */
+    fun voteCandidate(messageId: MessageId, candidateId: CandidateId) {
+        voteCandidate(messageId.value, candidateId.value)
+    }
+
+    /**
+     * Filters the current conversation's messages by strongly typed [MessageAuthorRole].
+     *
+     * @param role Target [MessageAuthorRole] (`USER`, `ASSISTANT`, or `SYSTEM`).
+     * @return List of messages authored by [role].
+     */
+    fun messagesByRole(role: MessageAuthorRole): List<MessageResponse> =
+        _state.value.messages.filter { MessageAuthorRole.fromWire(it.role) == role }
+    }

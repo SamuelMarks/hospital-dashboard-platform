@@ -25,7 +25,7 @@ async def chat_user(db_session: AsyncSession) -> AsyncGenerator[User, None]:
   Creates a test user and overrides `get_current_user` for the duration of the test.
 
   Args:
-      db_session (Any): Active test database session.
+      db_session (AsyncSession): Active test database session.
 
   Yields:
       User: Created test user instance.
@@ -507,17 +507,29 @@ async def test_chat_conversation_creation_title_variants(
 
   res_list: list[list[ArenaResponse]] = [[ArenaResponse("m1", "m1-v", "SEL 1", 100, None)], []]
 
-  def se(*_args: object, **_kwargs: object) -> list[ArenaResponse]:
+  def se(
+    messages: list[dict[str, str]] | None = None,
+    temperature: float = 0.0,
+    max_tokens: int = 512,
+    stop: list[str] | None = None,
+    target_model_ids: list[str] | None = None,
+    admin_settings: None = None,
+  ) -> list[ArenaResponse]:
     """
     Side-effect helper popping canned `ArenaResponse` lists for sequential calls.
 
     Args:
-        *_args (object): Ignored positional arguments.
-        **_kwargs (object): Ignored keyword arguments.
+        messages (list[dict[str, str]] | None): Conversation messages.
+        temperature (float): Sampling temperature.
+        max_tokens (int): Maximum completion tokens.
+        stop (list[str] | None): Optional stop sequences.
+        target_model_ids (list[str] | None): Target model identifiers.
+        admin_settings (None): Optional admin settings.
 
     Returns:
         list[ArenaResponse]: Next canned response list or empty list.
     """
+    _ = (messages, temperature, max_tokens, stop, target_model_ids, admin_settings)
     if res_list:
       return res_list.pop(0)
     return []

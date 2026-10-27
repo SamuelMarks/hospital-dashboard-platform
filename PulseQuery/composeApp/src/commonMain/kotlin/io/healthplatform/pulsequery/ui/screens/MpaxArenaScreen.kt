@@ -45,11 +45,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.MpaxArenaCandidate
 import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaViewModel
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.evaluating_models
+import pulsequery.composeapp.generated.resources.evaluation_mode_label
+import pulsequery.composeapp.generated.resources.mpax_arena_empty_prompt
+import pulsequery.composeapp.generated.resources.mpax_arena_prompt_label
+import pulsequery.composeapp.generated.resources.mpax_arena_title
+import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.run_arena_competition
+import pulsequery.composeapp.generated.resources.selected_winner
+import pulsequery.composeapp.generated.resources.vote_as_best
+import pulsequery.composeapp.generated.resources.voting_in_progress
 import io.healthplatform.pulsequery.ui.screens.mpax.MPAX_ARENA_MODES as ViewModelMpaxArenaModes
 import io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaUiState as ViewModelMpaxArenaUiState
 
@@ -94,7 +110,12 @@ fun MpaxArenaScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("MPAX Arena: Model Competition") }
+                title = {
+                    Text(
+                        stringResource(Res.string.mpax_arena_title),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                }
             )
         },
         modifier = modifier.fillMaxSize()
@@ -108,7 +129,7 @@ fun MpaxArenaScreen(
             OutlinedTextField(
                 value = uiState.prompt,
                 onValueChange = { vm.updatePrompt(it) },
-                label = { Text("Clinical Optimization Scenario Prompt") },
+                label = { Text(stringResource(Res.string.mpax_arena_prompt_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
@@ -117,9 +138,10 @@ fun MpaxArenaScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Evaluation Mode",
+                text = stringResource(Res.string.evaluation_mode_label),
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.semantics { heading() }
             )
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -149,11 +171,11 @@ fun MpaxArenaScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Evaluating Models...")
+                    Text(stringResource(Res.string.evaluating_models))
                 } else {
                     Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Run Arena Competition")
+                    Text(stringResource(Res.string.run_arena_competition))
                 }
             }
 
@@ -162,7 +184,10 @@ fun MpaxArenaScreen(
             uiState.errorMessage?.let { err ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
@@ -172,7 +197,7 @@ fun MpaxArenaScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(onClick = { vm.runArena() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.retry))
                         }
                     }
                 }
@@ -184,14 +209,16 @@ fun MpaxArenaScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Submit a prompt to benchmark and compare candidate models.",
+                        text = stringResource(Res.string.mpax_arena_empty_prompt),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(uiState.candidates, key = { it.id }) { candidate ->
@@ -298,11 +325,17 @@ fun MpaxCandidateCard(
                     FilledTonalButton(onClick = {}) {
                         Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Selected Winner")
+                        Text(stringResource(Res.string.selected_winner))
                     }
                 } else {
                     OutlinedButton(onClick = onVote, enabled = !isVoting) {
-                        Text(if (isVoting) "Voting..." else "Vote as Best")
+                        Text(
+                            if (isVoting) {
+                                stringResource(Res.string.voting_in_progress)
+                            } else {
+                                stringResource(Res.string.vote_as_best)
+                            }
+                        )
                     }
                 }
             }

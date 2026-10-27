@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,8 +12,11 @@
  * Single row in the optimization result.
  */
 export interface SimulationAssignment {
+  /** Property `Service`. */
   Service: string;
+  /** Property `Unit`. */
   Unit: string;
+  /** Property `Patient_Count`. */
   Patient_Count: number;
   /**
    * Count in this unit before optimization (if provided).

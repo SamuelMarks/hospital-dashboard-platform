@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,6 +12,8 @@
  * Payload for sending a message from the User. Role is implicitly \'user\'.
  */
 export interface MessageCreate {
+  /** Property `content`. */
   content: string;
-  target_models?: Array<string> | null;
+  /** Property `target_models`. */
+  target_models?: string[] | null;
 }

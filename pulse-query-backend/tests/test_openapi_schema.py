@@ -50,13 +50,17 @@ def test_openapi_contains_critical_paths() -> None:
   assert "WidgetResponse" in components
 
   # 3. Check Return Type for Refresh (The map)
-  # FastAPI usually wraps basic responses or uses additionalProperties for Dicts.
-  # We ensure the structure definition exists.
-  # Note: Pydantic v2 might name it explicitly or inline it.
-  # Validating the path operation reference is usually sufficient coverage.
   operation = paths[refresh_path]["post"]
   assert "responses" in operation
   assert "200" in operation["responses"]
+
+  # 4. Verify every APIRoute under /api/v1 is present in the generated OpenAPI specification
+  from fastapi.routing import APIRoute
+
+  for route in app.routes:
+    if isinstance(route, APIRoute) and route.include_in_schema and route.path.startswith("/api/v1"):
+      normalized_path = route.path.rstrip("/") if route.path != "/api/v1/" else route.path
+      assert route.path in paths or normalized_path in paths
 
 
 def test_openapi_version_matches() -> None:

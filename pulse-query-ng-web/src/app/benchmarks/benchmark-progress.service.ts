@@ -25,6 +25,27 @@ export interface BenchmarkProgress {
 }
 
 /**
+ * Type guard verifying whether an unknown parsed JSON payload conforms to `BenchmarkProgress`.
+ *
+ * @param raw - Unknown parsed JSON payload.
+ * @returns True if `raw` contains all required `BenchmarkProgress` fields with valid types.
+ */
+export function isBenchmarkProgress(raw: unknown): raw is BenchmarkProgress {
+  if (!raw || typeof raw !== 'object') {
+    return false;
+  }
+  const candidate = raw as Record<string, unknown>;
+  return (
+    typeof candidate['active'] === 'boolean' &&
+    typeof candidate['completed'] === 'number' &&
+    typeof candidate['total'] === 'number' &&
+    typeof candidate['current_model'] === 'string' &&
+    typeof candidate['status'] === 'string' &&
+    typeof candidate['eta_seconds'] === 'number'
+  );
+}
+
+/**
  * Service managing EventSource connections to the benchmark progress stream.
  */
 @Service()
@@ -50,9 +71,11 @@ export class BenchmarkProgressService {
 
       es.onmessage = (event: MessageEvent<string>) => {
         try {
-          const data = JSON.parse(event.data) as BenchmarkProgress;
-          this.progress.set(data);
-          observer.next(data);
+          const parsed: unknown = JSON.parse(event.data);
+          if (isBenchmarkProgress(parsed)) {
+            this.progress.set(parsed);
+            observer.next(parsed);
+          }
         } catch {
           // Ignore parse errors on keep-alive or heartbeat frames
         }

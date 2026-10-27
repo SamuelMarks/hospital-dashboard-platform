@@ -6,8 +6,11 @@ import {
   createMockCandidate,
   createMockConversation,
   createMockDashboard,
+  createMockHttpErrorResponse,
   createMockInputEvent,
   createMockMessage,
+  createMockQueryCartItem,
+  createMockRouterStateSnapshot,
   createMockTargetEvent,
   createMockUser,
   createMockWidget,
@@ -49,5 +52,22 @@ describe('mock-factories', () => {
     const targetEvt = createMockTargetEvent(null, 'change');
     expect(targetEvt.target).toBeNull();
     expect(targetEvt.type).toBe('change');
+  });
+
+  it('creates mock query cart items, router state snapshots, and HTTP error responses', () => {
+    expect(createMockQueryCartItem().id).toBe('qc-1');
+    expect(createMockQueryCartItem({ title: 'Custom Cart' }).title).toBe('Custom Cart');
+
+    const snapshot = createMockRouterStateSnapshot('/analytics', 'Analytics');
+    expect(snapshot.url).toBe('/analytics');
+    expect(snapshot.root.title).toBe('Analytics');
+    expect(snapshot.toString()).toContain('/analytics');
+
+    const defaultSnapshot = createMockRouterStateSnapshot();
+    expect(defaultSnapshot.url).toBe('/');
+
+    const httpErr = createMockHttpErrorResponse(404, 'Not found');
+    expect(httpErr.status).toBe(404);
+    expect(httpErr.error).toEqual({ detail: 'Not found' });
   });
 });

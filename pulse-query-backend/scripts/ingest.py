@@ -10,12 +10,8 @@ Usage:
 """
 
 import logging
-import os
 from pathlib import Path
 import sys
-
-# Ensure backend modules are resolvable
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from app.core.config import settings
 from app.database.duckdb import duckdb_manager

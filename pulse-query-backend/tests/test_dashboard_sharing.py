@@ -310,6 +310,24 @@ async def test_shared_dashboard_execution(
   res_fake_widget = await client.post(f"/api/v1/dashboards/{dash.id}/widgets/{uuid.uuid4()}/refresh")
   assert res_fake_widget.status_code == 404
 
+  from app.core.result import Ok
+  from app.services.dashboard_collaborators import PermissionLevelEnum
+  from app.services.dashboard_service import dashboard_service
+
+  assert PermissionLevelEnum.from_str("OWNER") == PermissionLevelEnum.OWNER
+  assert PermissionLevelEnum.from_str("EDIT") == PermissionLevelEnum.EDIT
+  assert PermissionLevelEnum.from_str("VIEW") == PermissionLevelEnum.VIEW
+  assert PermissionLevelEnum.from_str("unknown") == PermissionLevelEnum.VIEW
+
+  access_res = await dashboard_service.get_dashboard_with_access_result(
+    dashboard_id=dash.id,
+    current_user=owner,
+    db=db_session,
+    required_level="OWNER",
+  )
+  assert isinstance(access_res, Ok)
+  assert access_res.value[1] == "OWNER"
+
   from app.main import app
 
   app.dependency_overrides.pop(get_current_user, None)

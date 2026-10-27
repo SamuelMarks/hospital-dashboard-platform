@@ -43,10 +43,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksViewModel
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.ai_optimization_benchmarks
+import pulsequery.composeapp.generated.resources.no_mpax_benchmarks
+import pulsequery.composeapp.generated.resources.no_sql_benchmarks
+import pulsequery.composeapp.generated.resources.refresh_benchmarks
+import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.simulate_in_arena
+import pulsequery.composeapp.generated.resources.unknown_error
 import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksUiState as ViewModelBenchmarksUiState
 import io.healthplatform.pulsequery.ui.screens.benchmarks.MpaxBenchmarkItem as ViewModelMpaxBenchmarkItem
 import io.healthplatform.pulsequery.ui.screens.benchmarks.SqlBenchmarkItem as ViewModelSqlBenchmarkItem
@@ -111,10 +124,18 @@ fun BenchmarksScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AI & Optimization Benchmarks") },
+                title = {
+                    Text(
+                        stringResource(Res.string.ai_optimization_benchmarks),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                },
                 actions = {
                     IconButton(onClick = { vm.loadBenchmarks() }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Refresh Benchmarks")
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = stringResource(Res.string.refresh_benchmarks)
+                        )
                     }
                 }
             )
@@ -152,22 +173,25 @@ fun BenchmarksScreen(
                         CircularProgressIndicator()
                     }
                     uiState.errorMessage != null -> {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+                        ) {
                             Text(
-                                text = uiState.errorMessage ?: "Unknown error",
+                                text = uiState.errorMessage ?: stringResource(Res.string.unknown_error),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(onClick = { vm.loadBenchmarks() }) {
-                                Text("Retry")
+                                Text(stringResource(Res.string.retry))
                             }
                         }
                     }
                     uiState.selectedTabIndex == 0 -> {
                         if (uiState.sqlBenchmarks.isEmpty()) {
                             Text(
-                                text = "No SQL benchmarks available.",
+                                text = stringResource(Res.string.no_sql_benchmarks),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -185,7 +209,7 @@ fun BenchmarksScreen(
                     else -> {
                         if (uiState.mpaxBenchmarks.isEmpty()) {
                             Text(
-                                text = "No MPAX benchmarks available.",
+                                text = stringResource(Res.string.no_mpax_benchmarks),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -325,7 +349,7 @@ fun MpaxBenchmarkCard(
                 onClick = { onSimulateMpax(item.description.ifBlank { item.title }) },
                 modifier = Modifier.align(Alignment.End)
             ) {
-                Text("Simulate in Arena")
+                Text(stringResource(Res.string.simulate_in_arena))
             }
         }
     }

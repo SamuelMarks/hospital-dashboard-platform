@@ -1704,7 +1704,7 @@
       "delete": {
         "tags": ["dashboards"],
         "summary": "Delete Dashboard Share",
-        "description": "Revokes a dashboard share. Only the dashboard owner can revoke shares.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    share_id (UUID): Specific share record ID to delete.\n    current_user (User): Authenticated owner.\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.",
+        "description": "Revokes a dashboard share. Only the dashboard owner can revoke shares.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    share_id (UUID): Share ID to revoke.\n    current_user (User): Authenticated user (must be owner).\n    db (AsyncSession): Database session.\n    accept_language (str | None): Language preference header.",
         "operationId": "delete_dashboard_share_api_v1_dashboards__dashboard_id__shares__share_id__delete",
         "security": [
           {
@@ -1788,7 +1788,7 @@
       "post": {
         "tags": ["execution"],
         "summary": "Refresh Dashboard",
-        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects `global_params` into SQL queries before execution.\n\nArgs:\n    dashboard_id (UUID): ID of the target dashboard to refresh.\n    current_user (User): Authenticated user requesting the refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Authorization header for token forwarding.\n    accept_language (str | None): Preferred response language header.\n    global_params (dict[str, Any]): Global filter parameters for queries.\n\nReturns:\n    dict[UUID, Any]: Map of widget UUID to execution results.",
+        "description": "Refreshes data for ALL widgets in a specific dashboard.\nInjects `global_params` into SQL queries before execution.\n\nArgs:\n    dashboard_id (UUID): ID of the target dashboard to refresh.\n    current_user (User): Authenticated user requesting the refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Authorization header for token forwarding.\n    accept_language (str | None): Preferred response language header.\n    global_params (JsonObject): Global filter parameters for queries.\n\nReturns:\n    dict[UUID, WidgetCachePayload]: Map of widget UUID to execution results.",
         "operationId": "refresh_dashboard_api_v1_dashboards__dashboard_id__refresh_post",
         "security": [
           {
@@ -1861,10 +1861,8 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "additionalProperties": true,
-                "default": {},
-                "title": "Global Params"
+                "$ref": "#/components/schemas/JsonObject-Input",
+                "default": {}
               }
             }
           }
@@ -1876,7 +1874,31 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/SqlExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/HttpExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TextExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "kind",
+                      "mapping": {
+                        "sql": "#/components/schemas/SqlExecutionPayload",
+                        "http": "#/components/schemas/HttpExecutionPayload",
+                        "text": "#/components/schemas/TextExecutionPayload",
+                        "error": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    }
+                  },
                   "propertyNames": {
                     "format": "uuid"
                   },
@@ -1902,7 +1924,7 @@
       "post": {
         "tags": ["execution"],
         "summary": "Refresh Widget",
-        "description": "Refreshes data for a SINGLE widget.\nSupports `?force_refresh=true` to bypass cache and optional `global_params` body.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_id (UUID): Target widget ID within the dashboard.\n    current_user (User): Authenticated user requesting refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Optional authorization header for forwarding.\n    accept_language (str | None): Preferred response language header.\n    force_refresh (bool): Whether to bypass query cache.\n    global_params (dict[str, Any] | None): Optional global filter parameters.\n\nReturns:\n    dict[UUID, Any]: Dictionary mapping widget ID to query execution payload.",
+        "description": "Refreshes data for a SINGLE widget.\nSupports `?force_refresh=true` to bypass cache, optional `natural_text` and `processor`\n(either as query params or inside `WidgetRefreshRequest`), and optional global filter parameters.\n\nArgs:\n    dashboard_id (UUID): Target dashboard ID.\n    widget_id (UUID): Target widget ID within the dashboard.\n    current_user (User): Authenticated user requesting refresh.\n    db (AsyncSession): PostgreSQL async database session.\n    authorization (str | None): Optional authorization header for forwarding.\n    accept_language (str | None): Preferred response language header.\n    force_refresh (bool): Whether to bypass query cache.\n    natural_text (str | None): Optional user-entered natural text or SQL query.\n    processor (str | None): Optional processor override (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).\n    refresh_request (WidgetRefreshRequest | None): Optional strongly typed widget refresh request body.\n\nReturns:\n    dict[UUID, WidgetCachePayload]: Dictionary mapping widget ID to query execution payload.",
         "operationId": "refresh_widget_api_v1_dashboards__dashboard_id__widgets__widget_id__refresh_post",
         "security": [
           {
@@ -1938,6 +1960,38 @@
               "type": "boolean",
               "default": false,
               "title": "Force Refresh"
+            }
+          },
+          {
+            "name": "natural_text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Natural Text"
+            }
+          },
+          {
+            "name": "processor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Processor"
             }
           },
           {
@@ -1997,14 +2051,13 @@
               "schema": {
                 "anyOf": [
                   {
-                    "type": "object",
-                    "additionalProperties": true
+                    "$ref": "#/components/schemas/WidgetRefreshRequest"
                   },
                   {
                     "type": "null"
                   }
                 ],
-                "title": "Global Params"
+                "title": "Refresh Request"
               }
             }
           }
@@ -2016,7 +2069,31 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true,
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/SqlExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/HttpExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TextExecutionPayload"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    ],
+                    "discriminator": {
+                      "propertyName": "kind",
+                      "mapping": {
+                        "sql": "#/components/schemas/SqlExecutionPayload",
+                        "http": "#/components/schemas/HttpExecutionPayload",
+                        "text": "#/components/schemas/TextExecutionPayload",
+                        "error": "#/components/schemas/ErrorExecutionPayload"
+                      }
+                    }
+                  },
                   "propertyNames": {
                     "format": "uuid"
                   },
@@ -2042,7 +2119,7 @@
       "get": {
         "tags": ["ai"],
         "summary": "List Available Models",
-        "description": "Returns the list of currently configured LLMs available for the Arena.\n\nArgs:\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n    show_all (bool): Whether to bypass admin model visibility filtering.\n\nReturns:\n    list[ModelInfo]: List of configured LLM combatants.",
+        "description": "Returns the list of currently configured LLMs and processors available for the Arena or Widgets.\n\nArgs:\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n    show_all (bool): Whether to bypass admin model visibility filtering.\n    include_sql (bool): Whether to include the `'SQL'` (`SQL [no model]`) processor option.\n    discover_ollama (bool): Whether to dynamically query Ollama `/api/tags` for local models.\n\nReturns:\n    list[ModelInfo]: List of configured LLM combatants and/or SQL processor.",
         "operationId": "list_available_models_api_v1_ai_models_get",
         "security": [
           {
@@ -2058,6 +2135,26 @@
               "type": "boolean",
               "default": false,
               "title": "Show All"
+            }
+          },
+          {
+            "name": "include_sql",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Include Sql"
+            }
+          },
+          {
+            "name": "discover_ollama",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Discover Ollama"
             }
           },
           {
@@ -2326,7 +2423,7 @@
       "get": {
         "tags": ["templates"],
         "summary": "List Templates",
-        "description": "Retrieve a list of available widget templates with filtering and pagination.\n\nArgs:\n    db (AsyncSession): Database session dependency.\n    category (Optional[str]): Filter templates by category name.\n    search (Optional[str]): Case-insensitive search term for title or description.\n    limit (int): Maximum number of records to return.\n    current_user (User): Authenticated user dependency.\n\nReturns:\n    List[WidgetTemplate]: Filtered list of templates.",
+        "description": "Retrieve a list of available widget templates with filtering and pagination.\n\nArgs:\n    db (AsyncSession): Database session dependency.\n    category (str | None): Filter templates by category name.\n    search (str | None): Case-insensitive search term for title or description.\n    limit (int): Maximum number of records to return.\n    current_user (User): Authenticated user dependency.\n\nReturns:\n    list[WidgetTemplate]: Filtered list of templates.",
         "operationId": "list_templates_api_v1_templates__get",
         "security": [
           {
@@ -5217,7 +5314,7 @@
       "post": {
         "tags": ["mpax_arena"],
         "summary": "Run Mpax Arena Mode",
-        "description": "Executes an MPAX Arena evaluation mode.\nModes: judge, translator, constraints, sql_vs_mpax, critic.",
+        "description": "Executes an MPAX Arena evaluation mode.\nModes: judge, translator, constraints, sql_vs_mpax, critic.\n\nArgs:\n    request (MpaxArenaRequest): Arena evaluation mode and scenario configuration.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active transactional database session.\n\nReturns:\n    MpaxArenaResponse: Evaluated candidate responses and ground-truth MPAX output.",
         "operationId": "run_mpax_arena_mode_api_v1_mpax_arena_run_post",
         "security": [
           {
@@ -5282,7 +5379,7 @@
       "post": {
         "tags": ["mpax_arena"],
         "summary": "Vote Mpax Arena Candidate",
-        "description": "Records a winning vote for an LLM candidate in an MPAX Arena run.\n\nArgs:\n    run_id (str): UUID string identifying the MPAX Arena experiment.\n    candidate_id (str): UUID string identifying the candidate voted for.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active transactional database session.\n\nReturns:\n    MpaxArenaResponse: Updated experiment results with is_selected true for winning candidate.\n\nRaises:\n    HTTPException: 404 if run or candidate not found, 500 on server failure.",
+        "description": "Records a winning vote for an LLM candidate in an MPAX Arena run.\n\nArgs:\n    run_id (str): UUID string identifying the MPAX Arena experiment.\n    candidate_id (str): UUID string identifying the candidate voted for.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active transactional database session.\n\nReturns:\n    MpaxArenaResponse: Updated experiment results with is_selected true for winning candidate.",
         "operationId": "vote_mpax_arena_candidate_api_v1_mpax_arena_runs__run_id__candidates__candidate_id__vote_post",
         "security": [
           {
@@ -5355,7 +5452,7 @@
       "get": {
         "tags": ["benchmarks"],
         "summary": "Get Sql Benchmarks",
-        "description": "Returns the gold standard text-to-SQL benchmarks.\n\nReturns:\n    list[dict[str, Any]]: Parsed benchmark list from benchmark_gold.json.\n\nRaises:\n    HTTPException: 404 if file missing, 500 if reading or JSON parsing fails.",
+        "description": "Returns the gold standard text-to-SQL benchmarks.\n\nReturns:\n    list[BenchmarkScenarioSchema]: Parsed benchmark list from benchmark_gold.json.",
         "operationId": "get_sql_benchmarks_api_v1_benchmarks_sql_get",
         "responses": {
           "200": {
@@ -5364,8 +5461,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/BenchmarkScenarioSchema"
                   },
                   "type": "array",
                   "title": "Response Get Sql Benchmarks Api V1 Benchmarks Sql Get"
@@ -5380,7 +5476,7 @@
       "get": {
         "tags": ["benchmarks"],
         "summary": "Get Mpax Benchmarks",
-        "description": "Returns the generated MPAX what-if scenarios.\n\nReturns:\n    list[dict[str, Any]]: Parsed MPAX benchmark scenario items.\n\nRaises:\n    HTTPException: 404 if file missing, 500 if reading or JSON parsing fails.",
+        "description": "Returns the generated MPAX what-if scenarios.\n\nReturns:\n    list[BenchmarkScenarioSchema]: Parsed MPAX benchmark scenario items.",
         "operationId": "get_mpax_benchmarks_api_v1_benchmarks_mpax_get",
         "responses": {
           "200": {
@@ -5389,8 +5485,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/BenchmarkScenarioSchema"
                   },
                   "type": "array",
                   "title": "Response Get Mpax Benchmarks Api V1 Benchmarks Mpax Get"
@@ -5405,7 +5500,7 @@
       "post": {
         "tags": ["benchmarks"],
         "summary": "Post Benchmark Progress",
-        "description": "Updates the benchmark progress telemetry state (Admin only).\n\nArgs:\n    payload (BenchmarkProgressUpdateRequest): Telemetry progress fields.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    dict[str, Any]: Updated telemetry state snapshot.",
+        "description": "Updates the benchmark progress telemetry state (Admin only).\n\nArgs:\n    payload (BenchmarkProgressUpdateRequest): Telemetry progress fields.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    BenchmarkTelemetryStateDict: Updated telemetry state snapshot.",
         "operationId": "post_benchmark_progress_api_v1_benchmarks_progress_post",
         "security": [
           {
@@ -5464,9 +5559,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Post Benchmark Progress Api V1 Benchmarks Progress Post"
+                  "$ref": "#/components/schemas/BenchmarkTelemetryStateDict"
                 }
               }
             }
@@ -5486,14 +5579,36 @@
       "get": {
         "tags": ["benchmarks"],
         "summary": "Stream Benchmark Progress",
-        "description": "Server-Sent Events (SSE) endpoint providing real-time telemetry on active benchmark runs.\n\nReturns:\n    StreamingResponse: SSE stream emitting live benchmark progress events.",
+        "description": "Server-Sent Events (SSE) endpoint providing real-time telemetry on active benchmark runs.\n\nArgs:\n    poll_interval_seconds (float): Optional delay after emitting a telemetry frame.\n\nReturns:\n    StreamingResponse: SSE stream emitting live benchmark progress events.",
         "operationId": "stream_benchmark_progress_api_v1_benchmarks_progress_get",
+        "parameters": [
+          {
+            "name": "poll_interval_seconds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "default": 0.0,
+              "title": "Poll Interval Seconds"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -5504,7 +5619,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Check aggregate system health and database readiness",
-        "description": "Queries live health states for PostgreSQL, DuckDB, data ingestion, and LLM configuration.\n\nArgs:\n    strict (bool): Whether to return HTTP 503 on critical errors.\n\nReturns:\n    SystemHealthResponse: Consolidated system health model.\n\nRaises:\n    HTTPException: If strict is True and overall_status is critical.",
+        "description": "Queries live health states for PostgreSQL, DuckDB, data ingestion, templates, and LLM configuration.\nReturns HTTP 503 Service Unavailable with the full SystemHealthResponse payload whenever\n`summary.status != \"healthy\"`.\n\nArgs:\n    response (Response): FastAPI response object for setting status code 503 when unhealthy.\n    strict (bool): Whether to require populated datasets and templates.\n\nReturns:\n    SystemHealthResponse: Consolidated system health model.",
         "operationId": "get_system_health_api_v1_system_health_get",
         "parameters": [
           {
@@ -5513,11 +5628,11 @@
             "required": false,
             "schema": {
               "type": "boolean",
-              "description": "If true, returns HTTP 503 when critical components (PostgreSQL/DuckDB) are failing.",
-              "default": false,
+              "description": "If true, requires clinical datasets and templates to be populated.",
+              "default": true,
               "title": "Strict"
             },
-            "description": "If true, returns HTTP 503 when critical components (PostgreSQL/DuckDB) are failing."
+            "description": "If true, requires clinical datasets and templates to be populated."
           }
         ],
         "responses": {
@@ -5548,7 +5663,7 @@
       "get": {
         "tags": ["system"],
         "summary": "Detailed system diagnostics and troubleshooting guides",
-        "description": "Provides in-depth diagnostics, environment checks, and actionable troubleshooting guides.\nRequires an authenticated user session.\n\nArgs:\n    current_user (User): The authenticated user making the request.\n\nReturns:\n    SystemDiagnosticsResponse: Detailed diagnostic summary with copyable fix commands.",
+        "description": "Provides in-depth diagnostics, environment checks, and actionable troubleshooting guides.\nRequires an authenticated user session.\n\nArgs:\n    response (Response): FastAPI response object for setting no-store cache headers.\n    current_user (User): The authenticated user making the request.\n\nReturns:\n    SystemDiagnosticsResponse: Detailed diagnostic summary with copyable fix commands.",
         "operationId": "get_system_diagnostics_api_v1_system_diagnostics_get",
         "security": [
           {
@@ -5711,12 +5826,29 @@
             },
             "type": "array",
             "title": "Visible Models"
+          },
+          "configured_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Configured Models"
+          },
+          "ollama_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ollama Api Base"
           }
         },
         "type": "object",
-        "required": ["api_keys", "visible_models"],
         "title": "AdminSettingsResponse",
-        "description": "Response schema containing the currently configured admin settings."
+        "description": "Response schema containing the currently configured admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str]): Additional `provider/model` or `provider:model` entries registered for `any-llm`.\n    ollama_api_base (str | None): Optional custom Ollama base URL override."
       },
       "AdminSettingsUpdateRequest": {
         "properties": {
@@ -5733,12 +5865,36 @@
             },
             "type": "array",
             "title": "Visible Models"
+          },
+          "configured_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configured Models"
+          },
+          "ollama_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ollama Api Base"
           }
         },
         "type": "object",
-        "required": ["api_keys", "visible_models"],
         "title": "AdminSettingsUpdateRequest",
-        "description": "Request schema for updating admin settings."
+        "description": "Request schema for updating admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str] | None): Optional list of `any-llm` model identifiers (`provider/model`).\n    ollama_api_base (str | None): Optional custom Ollama base URL override."
       },
       "AlertRuleCreate": {
         "properties": {
@@ -5904,8 +6060,15 @@
             "title": "Threshold Percentage"
           },
           "severity": {
-            "type": "string",
-            "enum": ["INFO", "WARNING", "CRITICAL"],
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AlertSeverity"
+              },
+              {
+                "type": "string",
+                "enum": ["INFO", "WARNING", "CRITICAL"]
+              }
+            ],
             "title": "Severity"
           },
           "message": {
@@ -5970,6 +6133,172 @@
         ],
         "title": "BenchmarkProgressUpdateRequest",
         "description": "Request payload for updating active benchmark execution progress telemetry."
+      },
+      "BenchmarkScenarioSchema": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Theme"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          },
+          "gold_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gold Sql"
+          },
+          "complexity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complexity"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          },
+          "scenario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario"
+          },
+          "demand_data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JsonObject-Output"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Demand Data"
+          },
+          "base_capacity": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Capacity"
+          },
+          "expected_metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Metrics"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "BenchmarkScenarioSchema",
+        "description": "Strongly typed Pydantic schema for a Text-to-SQL or MPAX What-If benchmark scenario entry.\n\nAttributes:\n    id (str | None): Optional scenario UUID string.\n    theme (str | None): Analytical or clinical optimization theme name.\n    question (str | None): Natural language clinical question (SQL benchmark).\n    gold_sql (str | None): Ground-truth DuckDB SQL query (SQL benchmark).\n    complexity (str | None): Complexity tier (`'Low'`, `'Medium'`, `'High'`, `'Easy'`, `'Hard'`).\n    prompt (str | None): Natural language scenario prompt (MPAX benchmark).\n    scenario (str | None): Optional scenario identifier or summary label.\n    demand_data (list[JsonObject] | None): List of clinical service demand objects.\n    base_capacity (dict[str, float] | None): Unit capacity dictionary.\n    expected_metrics (dict[str, float] | None): Expected demand/capacity/overflow metrics."
+      },
+      "BenchmarkTelemetryStateDict": {
+        "properties": {
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "completed": {
+            "type": "integer",
+            "title": "Completed"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "current_model": {
+            "type": "string",
+            "title": "Current Model"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "eta_seconds": {
+            "type": "integer",
+            "title": "Eta Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "active",
+          "completed",
+          "total",
+          "current_model",
+          "status",
+          "eta_seconds"
+        ],
+        "title": "BenchmarkTelemetryStateDict",
+        "description": "Typed dictionary representing real-time benchmark execution progress state.\n\nAttributes:\n    active (bool): Whether a benchmark run is currently executing.\n    completed (int): Number of benchmark scenarios completed.\n    total (int): Total number of scenarios in the test matrix.\n    current_model (str): Currently evaluated LLM model tag.\n    status (str): Current execution phase description.\n    eta_seconds (int): Estimated remaining seconds to completion."
       },
       "Body_login_access_token_api_v1_auth_login_post": {
         "properties": {
@@ -6291,6 +6620,26 @@
       },
       "DataHealthSchema": {
         "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Dataset readiness status: ready, empty, or critical.",
+            "default": "ready"
+          },
+          "table_count": {
+            "type": "integer",
+            "title": "Table Count",
+            "description": "Total number of clinical dataset tables.",
+            "default": 0
+          },
+          "tables": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tables",
+            "description": "List of available clinical dataset tables."
+          },
           "has_default_data": {
             "type": "boolean",
             "title": "Has Default Data",
@@ -6322,6 +6671,25 @@
         "required": ["has_default_data", "fallback_generated"],
         "title": "DataHealthSchema",
         "description": "Schema for clinical dataset health and availability."
+      },
+      "DatabaseSummarySchema": {
+        "properties": {
+          "postgres": {
+            "type": "boolean",
+            "title": "Postgres",
+            "description": "True if PostgreSQL is connected and reachable.",
+            "default": true
+          },
+          "duckdb": {
+            "type": "boolean",
+            "title": "Duckdb",
+            "description": "True if DuckDB analytics storage is ready.",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "DatabaseSummarySchema",
+        "description": "Schema for boolean connectivity summary across PostgreSQL and DuckDB."
       },
       "DiagnosticWarningSchema": {
         "properties": {
@@ -6406,6 +6774,93 @@
         "required": ["status"],
         "title": "DuckDbHealthSchema",
         "description": "Schema for DuckDB analytics engine status."
+      },
+      "ErrorExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "error",
+            "title": "Kind",
+            "default": "error"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SqlRow"
+                    },
+                    {
+                      "$ref": "#/components/schemas/JsonValue-Output"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "$ref": "#/components/schemas/JsonValue-Output"
+              }
+            ],
+            "title": "Data"
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns"
+          },
+          "generated_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated Sql"
+          },
+          "processor_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor Used"
+          },
+          "natural_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "required": ["error"],
+        "title": "ErrorExecutionPayload",
+        "description": "Strongly typed Pydantic model for a widget execution error payload.\n\nAttributes:\n    kind (Literal[\"error\"]): Discriminator tag identifying an execution error payload.\n    error (str): Human-readable execution error message.\n    data (list[SqlRow | JsonValue] | JsonValue): Optional empty data array for client compatibility.\n    columns (list[str] | None): Optional empty columns array for client compatibility.\n    generated_sql (str | None): Optional generated SQL snippet if available.\n    processor_used (str | None): Optional processor identifier used.\n    natural_text (str | None): Optional natural language input processed."
       },
       "ExperimentResponse": {
         "properties": {
@@ -6513,7 +6968,7 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "HttpConfig": {
+      "HttpConfig-Input": {
         "properties": {
           "x": {
             "type": "integer",
@@ -6576,13 +7031,7 @@
             "description": "Query Parameters"
           },
           "body": {
-            "anyOf": [
-              {},
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body",
+            "$ref": "#/components/schemas/JsonValue-Input",
             "description": "JSON Body payload"
           },
           "meta_forward_auth": {
@@ -6619,7 +7068,218 @@
         "type": "object",
         "required": ["url"],
         "title": "HttpConfig",
-        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (Dict[str, str]): Custom request headers.\n    params (Dict[str, str]): URL Query parameters.\n    body (Optional[Any]): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (Optional[str]): key path for X-Axis/Labels.\n    yKey (Optional[str]): key path for Y-Axis/Values."
+        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (dict[str, str]): Custom request headers.\n    params (dict[str, str]): URL Query parameters.\n    body (JsonValue): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (str | None): key path for X-Axis/Labels.\n    yKey (str | None): key path for Y-Axis/Values."
+      },
+      "HttpConfig-Output": {
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "X",
+            "description": "Grid X position",
+            "default": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Y",
+            "description": "Grid Y position",
+            "default": 0
+          },
+          "w": {
+            "type": "integer",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "W",
+            "description": "Grid Width (cols)",
+            "default": 6
+          },
+          "h": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "H",
+            "description": "Grid Height (rows)",
+            "default": 4
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2083,
+            "minLength": 1,
+            "format": "uri",
+            "title": "Url",
+            "description": "The fully qualified target URL."
+          },
+          "method": {
+            "type": "string",
+            "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+            "title": "Method",
+            "description": "HTTP Method",
+            "default": "GET"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Headers",
+            "description": "Request Headers"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Params",
+            "description": "Query Parameters"
+          },
+          "body": {
+            "$ref": "#/components/schemas/JsonValue-Output",
+            "description": "JSON Body payload"
+          },
+          "meta_forward_auth": {
+            "type": "boolean",
+            "title": "Meta Forward Auth",
+            "description": "If true, forwards the user's JWT to the target.",
+            "default": false
+          },
+          "xKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xkey",
+            "description": "JSON path for X-Axis/Labels"
+          },
+          "yKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ykey",
+            "description": "JSON path for Y-Axis/Values"
+          }
+        },
+        "type": "object",
+        "required": ["url"],
+        "title": "HttpConfig",
+        "description": "Configuration schema for HTTP-type widgets.\nEnforces the presence of a valid URL and standard HTTP properties.\n\nAttributes:\n    url (HttpUrl): The fully qualified target URL.\n    method (str): HTTP Verb (GET, POST, etc.).\n    headers (dict[str, str]): Custom request headers.\n    params (dict[str, str]): URL Query parameters.\n    body (JsonValue): JSON Body for mutation requests.\n    meta_forward_auth (bool): If True, the backend forwards the user's JWT.\n    xKey (str | None): key path for X-Axis/Labels.\n    yKey (str | None): key path for Y-Axis/Values."
+      },
+      "HttpExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "http",
+            "title": "Kind",
+            "default": "http"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JsonValue-Output"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Status",
+            "default": 200
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "HttpExecutionPayload",
+        "description": "Strongly typed Pydantic model for an HTTP widget execution payload.\n\nAttributes:\n    kind (Literal[\"http\"]): Discriminator tag identifying an HTTP widget execution payload.\n    data (JsonValue): Parsed JSON or raw text payload returned by the target HTTP endpoint.\n    status (int | str): HTTP status code (or status label).\n    error (str | None): Error message if the HTTP request failed, else None."
+      },
+      "JsonObject-Input": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonValue-Input"
+        },
+        "type": "object"
+      },
+      "JsonObject-Output": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonValue-Output"
+        },
+        "type": "object"
+      },
+      "JsonPrimitive": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "JsonValue-Input": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonPrimitive"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
+            "type": "object"
+          }
+        ]
+      },
+      "JsonValue-Output": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonPrimitive"
+          },
+          {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            },
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            },
+            "type": "object"
+          }
+        ]
       },
       "LlmHealthSchema": {
         "properties": {
@@ -7008,12 +7668,18 @@
           "is_local": {
             "type": "boolean",
             "title": "Is Local"
+          },
+          "processor_type": {
+            "type": "string",
+            "enum": ["SQL", "OLLAMA", "ANY_LLM"],
+            "title": "Processor Type",
+            "default": "ANY_LLM"
           }
         },
         "type": "object",
         "required": ["id", "name", "provider", "is_local"],
         "title": "ModelInfo",
-        "description": "Information about a configured LLM in the Arena."
+        "description": "Information about a configured LLM or SQL processor in the platform.\n\nAttributes:\n    id (str): Unique processor identifier (e.g. `'SQL'`, `'ollama/llama3'`, `'openai/gpt-4o'`).\n    name (str): Human-readable display label (e.g. `'SQL [no model]'`, `'GPT-4o'`).\n    provider (str): Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'anthropic'`, etc.).\n    is_local (bool): True if the processor executes locally (DuckDB SQL or local Ollama).\n    processor_type (ProcessorType): High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`)."
       },
       "MpaxArenaCandidate": {
         "properties": {
@@ -7036,7 +7702,15 @@
           },
           "mpax_result": {
             "anyOf": [
-              {},
+              {
+                "$ref": "#/components/schemas/MpaxSolverTruth"
+              },
+              {
+                "$ref": "#/components/schemas/MpaxSolverErrorPayload"
+              },
+              {
+                "$ref": "#/components/schemas/JsonObject-Output"
+              },
               {
                 "type": "null"
               }
@@ -7125,7 +7799,15 @@
           },
           "ground_truth_mpax": {
             "anyOf": [
-              {},
+              {
+                "$ref": "#/components/schemas/MpaxSolverTruth"
+              },
+              {
+                "$ref": "#/components/schemas/MpaxSolverErrorPayload"
+              },
+              {
+                "$ref": "#/components/schemas/JsonObject-Output"
+              },
               {
                 "type": "null"
               }
@@ -7144,6 +7826,93 @@
         "required": ["experiment_id", "mode", "candidates"],
         "title": "MpaxArenaResponse",
         "description": "Response returned after executing an MPAX Arena scenario."
+      },
+      "MpaxAssignmentRow": {
+        "properties": {
+          "Service": {
+            "type": "string",
+            "title": "Service"
+          },
+          "Unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "Patient_Count": {
+            "type": "number",
+            "title": "Patient Count"
+          }
+        },
+        "type": "object",
+        "required": ["Service", "Unit", "Patient_Count"],
+        "title": "MpaxAssignmentRow",
+        "description": "Single patient-flow assignment row produced by the MPAX optimization solver.\n\nAttributes:\n    Service (str): Clinical service name.\n    Unit (str): Hospital nursing unit name.\n    Patient_Count (float): Optimized number of assigned patients."
+      },
+      "MpaxSolverErrorPayload": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "error",
+            "title": "Status",
+            "default": "error"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": ["message"],
+        "title": "MpaxSolverErrorPayload",
+        "description": "Structured error payload when an LLM candidate's constraints fail JSON parsing or solver execution.\n\nAttributes:\n    status (Literal[\"error\"]): Fixed `'error'` status discriminator.\n    message (str): Detailed validation or solver failure message."
+      },
+      "MpaxSolverTruth": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "objective_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objective Value"
+          },
+          "assignments": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MpaxAssignmentRow"
+                },
+                {
+                  "$ref": "#/components/schemas/SimulationAssignment"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Assignments",
+            "default": []
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": ["status"],
+        "title": "MpaxSolverTruth",
+        "description": "Ground-truth or candidate optimization outcome returned by the MPAX solver.\n\nAttributes:\n    status (str): Solver completion status (`'OPTIMAL'`, `'FEASIBLE'`, `'INFEASIBLE'`, `'ERROR'`, `'success'`).\n    objective_value (float | None): Optimal objective value if solved.\n    assignments (list[MpaxAssignmentRow | SimulationAssignment]): List of unit-service patient assignments.\n    message (str | None): Optional diagnostic or infeasibility explanation."
       },
       "PasswordResetResponse": {
         "properties": {
@@ -7294,9 +8063,7 @@
             "default": 100
           },
           "global_params": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Global Params"
+            "$ref": "#/components/schemas/JsonObject-Input"
           }
         },
         "type": "object",
@@ -7308,8 +8075,7 @@
         "properties": {
           "data": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/SqlRow"
             },
             "type": "array",
             "title": "Data"
@@ -7493,7 +8259,7 @@
         "type": "object",
         "required": ["Service", "Unit", "Patient_Count"],
         "title": "SimulationAssignment",
-        "description": "Single row in the optimization result."
+        "description": "Single row in the optimization result.\n\nProvides both PEP 8 snake_case accessors (`service`, `unit`, `patient_count`,\n`original_count`, `delta`) and wire-compatible PascalCase fields (`Service`,\n`Unit`, `Patient_Count`, `Original_Count`, `Delta`)."
       },
       "SqlConfig": {
         "properties": {
@@ -7527,8 +8293,14 @@
             "default": 4
           },
           "query": {
-            "type": "string",
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Query",
             "description": "The raw SQL query to execute."
           },
@@ -7555,12 +8327,178 @@
             ],
             "title": "Ykey",
             "description": "Column for Y-Axis/Values"
+          },
+          "allow_natural_text": {
+            "type": "boolean",
+            "title": "Allow Natural Text",
+            "description": "Whether the widget allows the user to enter natural text on the dashboard.",
+            "default": false
+          },
+          "processor": {
+            "type": "string",
+            "title": "Processor",
+            "description": "Processor identifier: 'SQL' [no model], 'ollama:<model>', or '<any-llm-provider>:<model>'.",
+            "default": "SQL"
+          },
+          "natural_text_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text Prompt",
+            "description": "Default or saved natural text prompt for this widget."
+          },
+          "placeholder_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placeholder Text",
+            "description": "Optional placeholder shown in the widget's natural text input."
           }
         },
         "type": "object",
-        "required": ["query"],
         "title": "SqlConfig",
-        "description": "Configuration schema for SQL-type widgets.\nEnforces the presence of a SQL query string.\n\nAttributes:\n    query (str): The raw SQL query to execute.\n    xKey (Optional[str]): Column name to mapping for X-Axis/Labels.\n    yKey (Optional[str]): Column name to mapping for Y-Axis/Values."
+        "description": "Configuration schema for SQL-type widgets (including natural-text-enabled SQL widgets).\n\nAttributes:\n    query (str | None): The raw SQL query to execute (optional when `allow_natural_text=True`).\n    xKey (str | None): Column name mapping for X-Axis/Labels.\n    yKey (str | None): Column name mapping for Y-Axis/Values.\n    allow_natural_text (bool): Whether the widget renders a natural text input on the dashboard.\n    processor (str): Processor identifier (`'SQL'` [no model], `'ollama:<model>'`, or `'<provider>:<model>'`).\n    natural_text_prompt (str | None): Default or saved natural text prompt for this widget.\n    placeholder_text (str | None): Optional placeholder shown in the widget's natural text input."
+      },
+      "SqlExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "sql",
+            "title": "Kind",
+            "default": "sql"
+          },
+          "data": {
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SqlRow"
+                },
+                {
+                  "$ref": "#/components/schemas/JsonValue-Output"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "generated_sql": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated Sql"
+          },
+          "processor_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor Used"
+          },
+          "natural_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "SqlExecutionPayload",
+        "description": "Strongly typed Pydantic model for a SQL widget execution payload.\n\nAttributes:\n    kind (Literal[\"sql\"]): Discriminator tag identifying a SQL widget execution payload.\n    data (list[SqlRow | JsonValue]): List of row dictionaries returned by DuckDB.\n    columns (list[str]): Ordered list of column names.\n    error (str | None): Error message if SQL execution failed, else None.\n    generated_sql (str | None): Optional generated or executed SQL string.\n    processor_used (str | None): Optional processor identifier used.\n    natural_text (str | None): Optional natural language input processed."
+      },
+      "SqlRow": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "$ref": "#/components/schemas/SqlScalar"
+            },
+            {
+              "$ref": "#/components/schemas/JsonValue-Output"
+            }
+          ]
+        },
+        "type": "object"
+      },
+      "SqlScalar": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "type": "string",
+            "format": "date"
+          },
+          {
+            "type": "string",
+            "format": "time"
+          },
+          {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+          },
+          {
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "SystemDiagnosticsResponse": {
         "properties": {
@@ -7569,9 +8507,7 @@
             "description": "Current system health summary."
           },
           "environment_checks": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Environment Checks",
+            "$ref": "#/components/schemas/JsonObject-Output",
             "description": "Environment variables and runtime parameters."
           },
           "troubleshooting_guides": {
@@ -7590,15 +8526,25 @@
       },
       "SystemHealthResponse": {
         "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Overall health status: healthy, degraded, unhealthy, or critical.",
+            "default": "healthy"
+          },
           "overall_status": {
             "type": "string",
             "title": "Overall Status",
-            "description": "Overall health status: healthy, degraded, or critical."
+            "description": "Overall health status: healthy, degraded, unhealthy, or critical."
           },
           "timestamp": {
             "type": "string",
             "title": "Timestamp",
             "description": "ISO timestamp of health assessment."
+          },
+          "database": {
+            "$ref": "#/components/schemas/DatabaseSummarySchema",
+            "description": "Boolean connectivity summary for PostgreSQL and DuckDB."
           },
           "postgres": {
             "$ref": "#/components/schemas/PostgresHealthSchema",
@@ -7611,6 +8557,10 @@
           "data": {
             "$ref": "#/components/schemas/DataHealthSchema",
             "description": "Data readiness and ingestion health."
+          },
+          "datasets": {
+            "$ref": "#/components/schemas/DataHealthSchema",
+            "description": "Clinical datasets readiness and row count health."
           },
           "templates": {
             "$ref": "#/components/schemas/TemplateHealthSchema",
@@ -7636,6 +8586,7 @@
           "postgres",
           "duckdb",
           "data",
+          "datasets",
           "templates",
           "llm"
         ],
@@ -7691,9 +8642,7 @@
             "title": "Category"
           },
           "parameters_schema": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Parameters Schema",
+            "$ref": "#/components/schemas/JsonObject-Input",
             "description": "JSON Schema definition for dynamic form generation."
           }
         },
@@ -7704,6 +8653,18 @@
       },
       "TemplateHealthSchema": {
         "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Template registry readiness status: ready, empty, or critical.",
+            "default": "ready"
+          },
+          "template_count": {
+            "type": "integer",
+            "title": "Template Count",
+            "description": "Total number of templates present in the database.",
+            "default": 0
+          },
           "templates_loaded": {
             "type": "integer",
             "title": "Templates Loaded",
@@ -7728,7 +8689,9 @@
       "TemplateInstantiateRequest": {
         "properties": {
           "parameters": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue-Input"
+            },
             "type": "object",
             "title": "Parameters",
             "description": "Runtime parameter values keyed by placeholder name."
@@ -7736,7 +8699,7 @@
         },
         "type": "object",
         "title": "TemplateInstantiateRequest",
-        "description": "Request payload for instantiating a SQL template with user-supplied parameters.\n\nAttributes:\n    parameters (dict[str, Any]): Runtime parameter key-value overrides to inject."
+        "description": "Request payload for instantiating a SQL template with user-supplied parameters.\n\nAttributes:\n    parameters (dict[str, JsonValue]): Runtime parameter key-value overrides to inject."
       },
       "TemplateInstantiateResponse": {
         "properties": {
@@ -7793,9 +8756,7 @@
             "title": "Category"
           },
           "parameters_schema": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Parameters Schema",
+            "$ref": "#/components/schemas/JsonObject-Output",
             "description": "JSON Schema definition for dynamic form generation."
           },
           "id": {
@@ -7858,14 +8819,12 @@
           "parameters_schema": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Parameters Schema"
+            ]
           }
         },
         "type": "object",
@@ -7913,6 +8872,41 @@
         "required": ["content"],
         "title": "TextConfig",
         "description": "Configuration schema for Static Text/Markdown widgets.\n\nAttributes:\n    content (str): The static text content (Markdown supported)."
+      },
+      "TextExecutionPayload": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "text",
+            "title": "Kind",
+            "default": "text"
+          },
+          "status": {
+            "type": "string",
+            "const": "success",
+            "title": "Status",
+            "default": "success"
+          },
+          "data": {
+            "type": "null",
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "TextExecutionPayload",
+        "description": "Strongly typed Pydantic model for a static TEXT/Markdown widget execution payload.\n\nAttributes:\n    kind (Literal[\"text\"]): Discriminator tag identifying a static text widget payload.\n    status (Literal[\"success\"]): Fixed success status string.\n    data (None): Always None for static text widgets.\n    error (str | None): Always None for static text widgets."
       },
       "Token": {
         "properties": {
@@ -8114,7 +9108,7 @@
             "description": "Visualization ID (e.g. 'table', 'metric')"
           },
           "config": {
-            "$ref": "#/components/schemas/HttpConfig",
+            "$ref": "#/components/schemas/HttpConfig-Input",
             "description": "HTTP-specific configuration"
           }
         },
@@ -8181,6 +9175,121 @@
         "title": "WidgetCreateText",
         "description": "Payload for creating a Text Widget.\nStrictly enforces `type=\"TEXT\"` and `config` matching TextConfig."
       },
+      "WidgetRefreshRequest": {
+        "properties": {
+          "global_params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject-Input"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional global dashboard filter parameters dictionary."
+          },
+          "natural_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Natural Text",
+            "description": "Optional user-entered natural language prompt or raw SQL query."
+          },
+          "processor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processor",
+            "description": "Optional processor override ('SQL', 'ollama:<model>', or '<provider>:<model>')."
+          },
+          "dept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dept",
+            "description": "Optional clinical department filter."
+          },
+          "department": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Department",
+            "description": "Optional department filter."
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service",
+            "description": "Optional clinical service filter."
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date",
+            "description": "Optional start date filter (YYYY-MM-DD)."
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date",
+            "description": "Optional end date filter (YYYY-MM-DD)."
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit",
+            "description": "Optional hospital unit filter."
+          }
+        },
+        "additionalProperties": true,
+        "type": "object",
+        "title": "WidgetRefreshRequest",
+        "description": "Strongly typed request payload for refreshing a single widget (`POST /dashboards/{id}/widgets/{wid}/refresh`).\n\nAttributes:\n    global_params (JsonObject | None): Optional nested global filter parameters dictionary.\n    natural_text (str | None): Optional user-entered natural language prompt or raw SQL query.\n    processor (str | None): Optional processor override (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).\n    dept (str | None): Optional clinical department filter shorthand.\n    department (str | None): Optional department filter shorthand.\n    service (str | None): Optional clinical service filter shorthand.\n    start_date (str | None): Optional start date filter shorthand (`YYYY-MM-DD`).\n    end_date (str | None): Optional end date filter shorthand (`YYYY-MM-DD`).\n    unit (str | None): Optional hospital unit filter shorthand."
+      },
       "WidgetReorderItem": {
         "properties": {
           "id": {
@@ -8239,8 +9348,20 @@
             "title": "Visualization"
           },
           "config": {
-            "additionalProperties": true,
-            "type": "object",
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject-Output"
+              },
+              {
+                "$ref": "#/components/schemas/SqlConfig"
+              },
+              {
+                "$ref": "#/components/schemas/HttpConfig-Output"
+              },
+              {
+                "$ref": "#/components/schemas/TextConfig"
+              }
+            ],
             "title": "Config"
           },
           "id": {
@@ -8293,19 +9414,17 @@
           "config": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/JsonObject-Input"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Config"
+            ]
           }
         },
         "type": "object",
         "title": "WidgetUpdate",
-        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a loose dict for config, but individual fields\nare validated if matched.\n\nAttributes:\n    title (Optional[str]): New title.\n    visualization (Optional[str]): New visualization type.\n    config (Optional[Dict]): Partial configuration updates."
+        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a typed JSON object for config, and individual fields\nare validated if matched.\n\nAttributes:\n    title (str | None): New title.\n    visualization (str | None): New visualization type.\n    config (JsonObject | None): Partial configuration updates."
       }
     },
     "securitySchemes": {

@@ -395,14 +395,18 @@ class ChatViewModelTest {
             title = "ICU"
         )
         val engineListAndVote = MockEngine { req ->
-            if (req.method == HttpMethod.Post) {
-                respond(
+            when {
+                req.method == HttpMethod.Post -> respond(
                     content = msg1Json,
                     status = HttpStatusCode.OK,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
-            } else {
-                respond(
+                req.url.encodedPath.endsWith("/conversations") -> respond(
+                    content = "[$conv1Json]",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                else -> respond(
                     content = "[$msg1Json]",
                     status = HttpStatusCode.OK,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -416,9 +420,22 @@ class ChatViewModelTest {
         )
         vmVote.selectConversation(conv)
         kotlinx.coroutines.delay(50)
-        vmVote.voteCandidate("m-1", "cand-1")
+        assertEquals(
+            1,
+            vmVote.messagesByRole(io.healthplatform.pulsequery.core.model.MessageAuthorRole.ASSISTANT).size
+        )
+        assertEquals(
+            0,
+            vmVote.messagesByRole(io.healthplatform.pulsequery.core.model.MessageAuthorRole.USER).size
+        )
+        vmVote.voteCandidate(
+            io.healthplatform.pulsequery.core.model.MessageId("m-1"),
+            io.healthplatform.pulsequery.core.model.CandidateId("cand-1")
+        )
         kotlinx.coroutines.delay(50)
         assertNull(vmVote.state.value.errorMessage)
+        vmVote.deleteConversation(io.healthplatform.pulsequery.core.model.ConversationId("c-1"))
+        kotlinx.coroutines.delay(50)
 
         // Vote failure with message and null message
         var errMsg: String? = "Vote failed"

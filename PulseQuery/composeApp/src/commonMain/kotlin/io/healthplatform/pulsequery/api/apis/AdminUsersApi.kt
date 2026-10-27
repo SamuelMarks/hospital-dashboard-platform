@@ -81,7 +81,6 @@ open class AdminUsersApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.collections.List<UserResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listUsersApiV1AdminUsersGet(
         limit: kotlin.Int? = 50,
         offset: kotlin.Int? = 0,
@@ -143,7 +142,6 @@ open class AdminUsersApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.collections.List<UserResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listUsersApiV1AdminUsersGet_0(
         limit: kotlin.Int? = 50,
         offset: kotlin.Int? = 0,
@@ -203,7 +201,6 @@ open class AdminUsersApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return UserResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateUserRoleApiV1AdminUsersUserIdRolePut(
         userId: kotlin.String,
         userRoleUpdate: UserRoleUpdate,
@@ -243,7 +240,6 @@ open class AdminUsersApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return UserResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateUserStatusApiV1AdminUsersUserIdStatusPut(
         userId: kotlin.String,
         userStatusUpdate: UserStatusUpdate,

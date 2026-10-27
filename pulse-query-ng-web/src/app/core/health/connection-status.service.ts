@@ -230,26 +230,42 @@ export class ConnectionStatusService {
     this.isChecking.set(true);
     const url = `${this.baseUrl}/api/v1/system/health`;
 
-    return this.http.get<SystemHealthResponse>(url).pipe(
-      tap((res) => {
-        this.isChecking.set(false);
-        this.isBackendReachable.set(true);
-        this.cancelRetryCountdown();
-        this.healthData.set(res);
-        this.activeWarnings.set(res.warnings || []);
+    return this.http
+      .get<SystemHealthResponse>(url, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      })
+      .pipe(
+        tap((res) => {
+          this.isChecking.set(false);
+          this.isBackendReachable.set(true);
+          this.cancelRetryCountdown();
+          this.healthData.set(res);
+          this.activeWarnings.set(res.warnings || []);
 
-        const isPgHealthy = res.postgres?.status === 'connected';
-        const isDuckHealthy = res.duckdb?.status === 'ready';
-        this.isDatabaseHealthy.set(isPgHealthy && isDuckHealthy);
+          const isPgHealthy = res.postgres?.status === 'connected';
+          const isDuckHealthy = res.duckdb?.status === 'ready';
+          this.isDatabaseHealthy.set(isPgHealthy && isDuckHealthy);
 
-        this.overallStatus.set(res.overall_status);
-      }),
-      catchError(() => {
-        this.isChecking.set(false);
-        this.markBackendUnreachable();
-        return of(null);
-      }),
-    );
+          const isDataReady =
+            res.data?.has_default_data === true &&
+            res.data?.fallback_generated === false &&
+            res.templates?.has_templates !== false;
+          const resolvedStatus =
+            res.overall_status === 'degraded' && isPgHealthy && isDuckHealthy && isDataReady
+              ? 'healthy'
+              : res.overall_status;
+          this.overallStatus.set(resolvedStatus);
+        }),
+        catchError(() => {
+          this.isChecking.set(false);
+          this.markBackendUnreachable();
+          return of(null);
+        }),
+      );
   }
 
   /**
@@ -301,7 +317,13 @@ export class ConnectionStatusService {
    */
   getDiagnostics(): Observable<SystemDiagnosticsResponse> {
     const url = `${this.baseUrl}/api/v1/system/diagnostics`;
-    return this.http.get<SystemDiagnosticsResponse>(url);
+    return this.http.get<SystemDiagnosticsResponse>(url, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    });
   }
 
   /**

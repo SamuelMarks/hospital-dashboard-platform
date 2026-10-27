@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,7 +13,9 @@ import { SqlConfig } from './sql-config';
  * Payload for creating a SQL Widget. Strictly enforces `type=\"SQL\"` and `config` matching SqlConfig.
  */
 export interface WidgetCreateSql {
+  /** Property `title`. */
   title: string;
+  /** Property `type`. */
   type: WidgetCreateSql.TypeEnum;
   /**
    * Visualization ID (e.g. \'table\', \'bar_chart\')
@@ -25,8 +27,10 @@ export interface WidgetCreateSql {
   config: SqlConfig;
 }
 export namespace WidgetCreateSql {
+  /** Generated OpenAPI type definition. */
   export const TypeEnum = {
     Sql: 'SQL',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type TypeEnum = (typeof TypeEnum)[keyof typeof TypeEnum];
 }

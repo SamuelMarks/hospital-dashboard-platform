@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,8 +12,12 @@
  * Request payload for executing an MPAX vs LLM comparison.
  */
 export interface MpaxArenaRequest {
+  /** Property `prompt`. */
   prompt: string;
+  /** Property `mode`. */
   mode: string;
+  /** Property `demand_sql`. */
   demand_sql?: string | null;
-  base_capacity?: { [key: string]: number } | null;
+  /** Property `base_capacity`. */
+  base_capacity?: Record<string, number> | null;
 }

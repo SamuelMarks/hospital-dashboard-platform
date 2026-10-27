@@ -106,4 +106,30 @@ describe('VizHeatmapComponent', () => {
       expect(color).toContain('var(--sys-error)');
     }
   });
+
+  it('should select net_bottleneck or last column when more than 3 columns exist', () => {
+    const bottleneckData = {
+      columns: ['Clinical_Service', 'hour_of_day', 'admits', 'discharges', 'net_bottleneck'],
+      data: [
+        {
+          Clinical_Service: 'Cardiology',
+          hour_of_day: 6,
+          admits: 100,
+          discharges: 20,
+          net_bottleneck: 80,
+        },
+      ],
+    };
+    fixture.componentRef.setInput('dataSet', bottleneckData);
+    fixture.detectChanges();
+    expect(component.matrix()?.max).toBe(80);
+
+    const multiColData = {
+      columns: ['svc', 'hr', 'admits', 'discharges', 'delta_score'],
+      data: [{ svc: 'Cardiology', hr: 6, admits: 100, discharges: 20, delta_score: 42 }],
+    };
+    fixture.componentRef.setInput('dataSet', multiColData);
+    fixture.detectChanges();
+    expect(component.matrix()?.max).toBe(42);
+  });
 });

@@ -193,7 +193,7 @@ class DashboardViewModelTest {
         assertNull(vm.state.value.filterTimeRange)
 
         // selectDashboard
-        val active = vm.state.value.activeDashboard!!
+        val active = assertNotNull(vm.state.value.activeDashboard)
         vm.selectDashboard(active)
         kotlinx.coroutines.delay(50)
 
@@ -307,13 +307,13 @@ class DashboardViewModelTest {
 
         // Refresh failure when cache is empty -> populates errorMessage on WidgetRenderState
         failRefresh = true
-        vm.selectDashboard(vm.state.value.activeDashboard!!)
+        vm.selectDashboard(assertNotNull(vm.state.value.activeDashboard))
         kotlinx.coroutines.delay(50)
         assertEquals("Refresh failed", vm.state.value.widgetDataMap["w-sql"]?.errorMessage)
 
         // Refresh failure with null exception message when cache is empty
         val engineRefreshNull = MockEngine { req ->
-            if (req.url.encodedPath.endsWith("/refresh")) throw RuntimeException(null as String?)
+            if (req.url.encodedPath.endsWith("/refresh")) throw RuntimeException()
             respond(
                 content = dashboardJson,
                 status = HttpStatusCode.OK,
@@ -333,7 +333,7 @@ class DashboardViewModelTest {
 
         // Now populate cache (including valid JSON, invalid JSON, and another widget so cached list is non-empty when w-sql is absent)
         cache.cacheWidget("w-sql", "d-1", """{"data":[{"dept":"ER","cnt":5}]}""")
-        vm.selectDashboard(vm.state.value.activeDashboard!!)
+        vm.selectDashboard(assertNotNull(vm.state.value.activeDashboard))
         kotlinx.coroutines.delay(50)
         assertTrue(vm.state.value.isOfflineSnapshot)
         assertEquals(listOf("ER" to 5f), vm.state.value.widgetDataMap["w-sql"]?.data)
@@ -400,7 +400,7 @@ class DashboardViewModelTest {
             scope = this,
             dashboardsApi = DashboardsApi(
                 baseUrl = "http://localhost",
-                httpClient = createClient(MockEngine { throw RuntimeException(null as String?) })
+                httpClient = createClient(MockEngine { throw RuntimeException() })
             ),
             widgetCacheProvider = { null }
         )
@@ -456,6 +456,27 @@ class DashboardViewModelTest {
         assertEquals(listOf("Unknown" to 0f), emptyRowParsed.data)
         val emptyRowWithConfig = vm.parseWidgetExecutionElement(widgetUnmatchedKeys, emptyRowObj)
         assertEquals(listOf("Unknown" to 0f), emptyRowWithConfig.data)
+
+        // Multi-column result where column 1 is a string and column 2 is numeric (e.g., Throughput Velocity)
+        val multiColObj = Json.parseToJsonElement(
+            """{"data": [{"activity_date": "2077-09-03", "Location": "PCU_Mixed_D", "total_churn": 437}]}"""
+        )
+        val multiColParsed = vm.parseWidgetExecutionElement(widgetNoKeys, multiColObj)
+        assertEquals(listOf("2077-09-03" to 437f), multiColParsed.data)
+
+        // Multi-column result where column 1 is a non-JsonPrimitive object and column 2 is numeric
+        val nonPrimColObj = Json.parseToJsonElement(
+            """{"data": [{"c1": "a", "c2": {}, "c3": 99}]}"""
+        )
+        val nonPrimColParsed = vm.parseWidgetExecutionElement(widgetNoKeys, nonPrimColObj)
+        assertEquals(listOf("a" to 99f), nonPrimColParsed.data)
+
+        // Multi-column result where all remaining columns are non-numeric strings
+        val allStringColsObj = Json.parseToJsonElement(
+            """{"data": [{"c1": "a", "c2": "b", "c3": "c"}]}"""
+        )
+        val allStringParsed = vm.parseWidgetExecutionElement(widgetNoKeys, allStringColsObj)
+        assertEquals(listOf("a" to 0f), allStringParsed.data)
     }
 
     @Test
@@ -465,7 +486,7 @@ class DashboardViewModelTest {
         var failReorder = false
         val engine = MockEngine { req ->
             when {
-                req.method == HttpMethod.Post && req.url.encodedPath.endsWith("/dashboards") -> respond(
+                req.method == HttpMethod.Post && req.url.encodedPath.trimEnd('/').endsWith("/dashboards") -> respond(
                     content = """{"id":"d-2","name":"New","owner_id":"u-1","widgets":[]}""",
                     status = HttpStatusCode.Created,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
@@ -567,6 +588,16 @@ class DashboardViewModelTest {
         assertEquals("SELECT 1", (vm.buildWidgetInFromResponse(sqlW2) as WidgetIn.Sql).config.query)
         assertEquals("SELECT 1", (vm.buildWidgetInFromResponse(sqlW3) as WidgetIn.Sql).config.query)
 
+        val jsonSer = Json { ignoreUnknownKeys = true }
+        val decodedText = jsonSer.decodeFromString<WidgetIn>("""{"type":"TEXT","title":"T","visualization":"markdown","config":{"content":"hi"}}""")
+        val decodedHttp = jsonSer.decodeFromString<WidgetIn>("""{"type":"HTTP","title":"H","visualization":"table","config":{"url":"https://api"}}""")
+        val decodedSql = jsonSer.decodeFromString<WidgetIn>("""{"type":"SQL","title":"S","visualization":"table","config":{"query":"SELECT 1"}}""")
+        val decodedNoType = jsonSer.decodeFromString<WidgetIn>("""{"title":"S","visualization":"table","config":{"query":"SELECT 1"}}""")
+        assertTrue(decodedText is WidgetIn.Text)
+        assertTrue(decodedHttp is WidgetIn.Http)
+        assertTrue(decodedSql is WidgetIn.Sql)
+        assertTrue(decodedNoType is WidgetIn.Sql)
+
         // deleteWidgetWithUndo, undo, redo
         vm.deleteWidgetWithUndo(sqlW1)
         kotlinx.coroutines.delay(50)
@@ -644,5 +675,112 @@ class DashboardViewModelTest {
         assertEquals("Failed to delete widget: Unknown error", vm.state.value.errorMessage)
 
         vm.reorderWidget(0, 1)
+    }
+
+    @Test
+    fun testExecuteWidgetNaturalTextBranches() = kotlinx.coroutines.runBlocking {
+        var failRefreshWidget = false
+        var omitWidgetPayload = false
+        val engine = MockEngine { req ->
+            when {
+                req.url.encodedPath.contains("/widgets/") && req.url.encodedPath.endsWith("/refresh") -> {
+                    if (failRefreshWidget) throw IllegalStateException("LLM error")
+                    val body = if (omitWidgetPayload) {
+                        "{}"
+                    } else {
+                        """{"w-sql":{"data":[{"dept":"ICU","cnt":99}],"columns":["dept","cnt"],"generated_sql":"SELECT 'ICU' AS dept, 99 AS cnt","processor_used":"ollama:llama3","natural_text":"Show ICU"}}"""
+                    }
+                    respond(
+                        content = body,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+                req.url.encodedPath.endsWith("/refresh") -> respond(
+                    content = refreshJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                else -> respond(
+                    content = dashboardJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+        }
+        val client = createClient(engine)
+        val vm = DashboardViewModel(
+            scope = this,
+            dashboardsApi = DashboardsApi(baseUrl = "http://localhost", httpClient = client),
+            executionApi = ExecutionApi(baseUrl = "http://localhost", httpClient = client)
+        )
+
+        // Guard when activeDashboard is null
+        vm.executeWidgetNaturalText("w-sql", "Show ICU")
+
+        // Guard when activeDashboard has widgets = null
+        vm.selectDashboard(DashboardResponse(id = "d-nw", name = "NW", ownerId = "u-1", widgets = null))
+        kotlinx.coroutines.delay(20)
+        vm.executeWidgetNaturalText("w-sql", "Show ICU")
+
+        vm.loadDashboards()
+        kotlinx.coroutines.delay(50)
+
+        // Guard when widgetId not found or blank text
+        vm.executeWidgetNaturalText("missing-id", "Show ICU")
+        vm.executeWidgetNaturalText("w-sql", "   ")
+
+        // Also test when widgetId is not in widgetDataMap initially (by clearing map via a widget with no initial data)
+        val nlWidgetConfigured = WidgetResponse(
+            id = "w-nl-cfg",
+            dashboardId = "d-1",
+            title = "NL Cfg",
+            type = "SQL",
+            visualization = "table",
+            config = buildJsonObject {
+                put("allow_natural_text", JsonPrimitive(true))
+                put("processor", JsonPrimitive("ollama:llama3"))
+                put("natural_text_prompt", JsonPrimitive("Default prompt"))
+            }
+        )
+        val parsedCfg = vm.parseWidgetExecutionElement(nlWidgetConfigured, JsonObject(emptyMap()))
+        assertTrue(parsedCfg.allowNaturalText)
+        assertEquals("ollama:llama3", parsedCfg.processor.value)
+        assertEquals("Default prompt", parsedCfg.naturalTextPrompt)
+
+        // Success with processorOverride
+        vm.executeWidgetNaturalText(
+            "w-sql",
+            "Show ICU",
+            io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3")
+        )
+        kotlinx.coroutines.delay(50)
+        val stateAfterOk = assertNotNull(vm.state.value.widgetDataMap["w-sql"])
+        assertEquals("SELECT 'ICU' AS dept, 99 AS cnt", stateAfterOk.generatedSql)
+        assertEquals("ollama:llama3", stateAfterOk.processor.value)
+        assertEquals("Show ICU", stateAfterOk.naturalTextPrompt)
+        assertTrue(stateAfterOk.allowNaturalText)
+
+        // Success when payload omits widget key
+        omitWidgetPayload = true
+        vm.executeWidgetNaturalText("w-sql", "Show ICU")
+        kotlinx.coroutines.delay(50)
+        assertFalse(assertNotNull(vm.state.value.widgetDataMap["w-sql"]).isExecutingNaturalText)
+
+        // Failure path (and when widgetDataMap does not contain the target widget ID)
+        failRefreshWidget = true
+        vm.selectDashboard(
+            DashboardResponse(
+                id = "d-1",
+                name = "Exec",
+                ownerId = "u-1",
+                widgets = listOf(
+                    WidgetResponse("Unmapped", "SQL", "table", JsonObject(emptyMap()), "w-unmapped", "d-1")
+                )
+            )
+        )
+        vm.executeWidgetNaturalText("w-unmapped", "Show ICU")
+        kotlinx.coroutines.delay(50)
+        assertEquals("LLM error", assertNotNull(vm.state.value.widgetDataMap["w-unmapped"]).errorMessage)
     }
 }

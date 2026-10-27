@@ -70,7 +70,6 @@ open class MpaxArenaApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MpaxArenaResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun runMpaxArenaModeApiV1MpaxArenaRunPost(
         mpaxArenaRequest: MpaxArenaRequest,
         token: kotlin.String? = null
@@ -106,7 +105,6 @@ open class MpaxArenaApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MpaxArenaResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun voteMpaxArenaCandidateApiV1MpaxArenaRunsRunIdCandidatesCandidateIdVotePost(
         runId: kotlin.String,
         candidateId: kotlin.String,

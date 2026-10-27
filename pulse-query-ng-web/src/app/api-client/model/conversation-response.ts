@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,9 +12,14 @@
  * API Response model for a Conversation metadata wrapper.
  */
 export interface ConversationResponse {
+  /** Property `title`. */
   title?: string | null;
+  /** Property `id`. */
   id: string;
+  /** Property `user_id`. */
   user_id: string;
+  /** Property `created_at`. */
   created_at: string;
+  /** Property `updated_at`. */
   updated_at: string;
 }

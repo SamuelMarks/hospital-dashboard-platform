@@ -142,6 +142,10 @@ describe('VizMetricComponent', () => {
     fixture.detectChanges();
     expect(component.displayValue()).toBe(12);
 
+    fixture.componentRef.setInput('data', { columns: ['Status'], data: [{ Status: 'OK' }] });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('OK');
+
     fixture.componentRef.setInput('data', { a: 7, b: 'x' });
     fixture.detectChanges();
     expect(component.displayValue()).toBe(7);
@@ -265,6 +269,12 @@ describe('VizMetricComponent', () => {
     expect(component.displayValue()).toBe('-');
 
     fixture.componentRef.setInput('data', { data: [{}] });
+    fixture.detectChanges();
+    expect(component.displayValue()).toBe('-');
+
+    const sparseRows: Record<string, unknown>[] = [];
+    sparseRows.length = 1;
+    fixture.componentRef.setInput('data', { data: sparseRows });
     fixture.detectChanges();
     expect(component.displayValue()).toBe('-');
   });

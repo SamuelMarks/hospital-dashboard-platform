@@ -135,15 +135,18 @@ export class VizMetricComponent {
     if ('value' in d && !Array.isArray(d)) return d.value ?? '-';
 
     if (Array.isArray(d.data) && d.data.length > 0) {
-      const firstRow = d.data[0] as Record<string, unknown>;
+      const firstRow = d.data[0] || {};
       const keys = Object.keys(firstRow);
-      return keys.length > 0 ? (firstRow[keys[0] as string] as string | number) : '-';
+      if (keys.length === 0) return '-';
+      const cellVal = firstRow[String(keys[0])];
+      return typeof cellVal === 'number' ? cellVal : String(cellVal);
     }
 
     if (!Array.isArray(d)) {
       const keys = Object.keys(d);
       for (const k of keys) {
-        if (typeof d[k] === 'number') return d[k] as number;
+        const val = d[k];
+        if (typeof val === 'number') return val;
       }
     }
     return '-';
@@ -156,7 +159,7 @@ export class VizMetricComponent {
     const d = this.data();
     if (!d || typeof d !== 'object') return '';
     if (Array.isArray(d.data) && Array.isArray(d.columns) && d.columns.length > 0) {
-      return d.columns[0] as string;
+      return String(d.columns[0]);
     }
     if ('label' in d) return d.label ?? '';
     return '';
@@ -183,8 +186,10 @@ export class VizMetricComponent {
   /** Computed boolean indicating whether the sparkline series finishes higher than or equal to its start. */
   readonly isTrendUp = computed(() => {
     const series = this.trendSeries();
-    if (series.length < 2) return true;
-    return (series[series.length - 1] as number) >= (series[0] as number);
+    const first = series[0];
+    const last = series[series.length - 1];
+    if (first === undefined || last === undefined || series.length < 2) return true;
+    return last >= first;
   });
 
   /** Computed SVG path command (`d` attribute) for the sparkline stroke, or `null` when insufficient points exist. */

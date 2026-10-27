@@ -2,9 +2,8 @@
 Tests for schema service error handling.
 """
 
-from typing import Any
-
 from app.database.duckdb import DuckDBFetchableProtocol
+from app.schemas.json_types import SqlScalar
 from app.services.schema import SchemaService
 
 
@@ -46,21 +45,21 @@ class _FailingManager:
 class _EmptyResult:
   """Stub DuckDB query result returning an empty list."""
 
-  def fetchall(self) -> list[tuple[Any, ...]]:
+  def fetchall(self) -> list[tuple[SqlScalar, ...]]:
     """
     Returns an empty list of rows.
 
     Returns:
-        list[tuple[Any, ...]]: Empty list.
+        list[tuple[SqlScalar, ...]]: Empty list.
     """
     return []
 
-  def fetchone(self) -> tuple[Any, ...] | None:
+  def fetchone(self) -> tuple[SqlScalar, ...] | None:
     """
     Returns None for an empty result set.
 
     Returns:
-        tuple[Any, ...] | None: Always None.
+        tuple[SqlScalar, ...] | None: Always None.
     """
     return None
 
@@ -100,30 +99,30 @@ class _EmptySchemaManager:
 class _RowsResult:
   """Stub DuckDB query result returning pre-configured row tuples."""
 
-  def __init__(self, rows: list[tuple[Any, ...]]) -> None:
+  def __init__(self, rows: list[tuple[SqlScalar, ...]]) -> None:
     """
     Initializes the result stub with `rows`.
 
     Args:
-        rows (list[tuple[Any, ...]]): List of row tuples.
+        rows (list[tuple[SqlScalar, ...]]): List of row tuples.
     """
     self._rows = rows
 
-  def fetchall(self) -> list[tuple[Any, ...]]:
+  def fetchall(self) -> list[tuple[SqlScalar, ...]]:
     """
     Returns a copy of `self._rows`.
 
     Returns:
-        list[tuple[Any, ...]]: Stored row tuples.
+        list[tuple[SqlScalar, ...]]: Stored row tuples.
     """
     return list(self._rows)
 
-  def fetchone(self) -> tuple[Any, ...] | None:
+  def fetchone(self) -> tuple[SqlScalar, ...] | None:
     """
     Returns the first row tuple or None.
 
     Returns:
-        tuple[Any, ...] | None: First row tuple or None.
+        tuple[SqlScalar, ...] | None: First row tuple or None.
     """
     return self._rows[0] if self._rows else None
 

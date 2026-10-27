@@ -5,6 +5,8 @@ package io.healthplatform.pulsequery.core.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.jvm.JvmInline
 
 /**
@@ -272,17 +274,25 @@ enum class WidgetHttpMethod(val wireValue: String) {
  */
 @Serializable
 enum class MpaxArenaEvaluationMode(val wireValue: String) {
+    /** Evaluate candidate critic analysis of mathematical optimization outputs. */
+    @SerialName("critic")
+    CRITIC("critic"),
+
+    /** Translate natural-language clinical constraints into linear programming inputs. */
+    @SerialName("translator")
+    TRANSLATOR("translator"),
+
+    /** Evaluate linear programming constraint formulation and overflow penalties. */
+    @SerialName("constraints")
+    CONSTRAINTS("constraints"),
+
     /** Compare SQL generation vs MPAX mathematical optimization. */
     @SerialName("sql_vs_mpax")
     SQL_VS_MPAX("sql_vs_mpax"),
 
-    /** Evaluate prompt sensitivity across candidate models. */
-    @SerialName("prompt_sensitivity")
-    PROMPT_SENSITIVITY("prompt_sensitivity"),
-
-    /** Stress-test linear programming constraint satisfaction. */
-    @SerialName("constraint_stress")
-    CONSTRAINT_STRESS("constraint_stress");
+    /** Judge mode scoring candidate allocations against MPAX ground truth. */
+    @SerialName("judge")
+    JUDGE("judge");
 
     /**
      * Companion utilities for resolving [MpaxArenaEvaluationMode] from wire strings.
@@ -418,3 +428,185 @@ data class ChartDataPoint(
     val label: String,
     val value: Float
 )
+
+/**
+ * Strongly typed wrapper for a query processor identifier (`"SQL"`, `"ollama:<model>"`, or `"<provider>:<model>"`).
+ *
+ * @property value Underlying processor identifier string.
+ */
+@JvmInline
+@Serializable
+value class ProcessorId(val value: String) {
+    /**
+     * Companion constants for [ProcessorId].
+     */
+    companion object {
+        /** Canonical processor identifier representing direct DuckDB SQL execution without an LLM. */
+        val SQL_NO_MODEL = ProcessorId("SQL")
+    }
+}
+
+/**
+ * High-level processor category for grouping options in model/processor dropdowns.
+ *
+ * @property wireValue Backend wire representation (`"SQL"`, `"OLLAMA"`, or `"ANY_LLM"`).
+ */
+@Serializable
+enum class ProcessorCategory(val wireValue: String) {
+    /** Direct DuckDB SQL execution without any LLM model. */
+    @SerialName("SQL")
+    SQL("SQL"),
+
+    /** Locally hosted or discovered Ollama model. */
+    @SerialName("OLLAMA")
+    OLLAMA("OLLAMA"),
+
+    /** Model configured via Mozilla `any-llm` PyPI SDK. */
+    @SerialName("ANY_LLM")
+    ANY_LLM("ANY_LLM");
+
+    /**
+     * Companion utilities for resolving [ProcessorCategory] from wire strings.
+     */
+    companion object {
+        /**
+         * Resolves a [ProcessorCategory] matching [raw] case-insensitively, defaulting to [ANY_LLM].
+         *
+         * @param raw Raw wire string.
+         * @return Matching [ProcessorCategory].
+         */
+        fun fromWire(raw: String): ProcessorCategory =
+            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: ANY_LLM
+    }
+}
+
+/**
+ * Strongly typed descriptor for a selectable query processor option in UI dropdowns.
+ *
+ * @property id Strongly typed [ProcessorId].
+ * @property displayName Human-readable label shown in the dropdown.
+ * @property provider Provider slug (`"sql"`, `"ollama"`, `"openai"`, `"anthropic"`, etc.).
+ * @property category Grouping [ProcessorCategory].
+ * @property isLocal True when executed locally (DuckDB SQL or local Ollama).
+ */
+@Serializable
+data class ProcessorSelectionOption(
+    val id: ProcessorId,
+    val displayName: String,
+    val provider: String,
+    val category: ProcessorCategory,
+    val isLocal: Boolean
+) {
+    /**
+     * Companion defaults for [ProcessorSelectionOption].
+     */
+    companion object {
+        /** Default built-in `SQL [no model]` processor option. */
+        val SQL_DEFAULT = ProcessorSelectionOption(
+            id = ProcessorId.SQL_NO_MODEL,
+            displayName = "SQL [no model]",
+            provider = "sql",
+            category = ProcessorCategory.SQL,
+            isLocal = true
+        )
+    }
+}
+
+/**
+ * Strongly typed representation of a dashboard widget's configuration dictionary.
+ */
+sealed interface TypedWidgetConfig {
+    /**
+     * Strongly typed configuration for a `SQL` widget.
+     *
+     * @property query SQL query string.
+     * @property allowNaturalText True when interactive natural-text or SQL entry is enabled.
+     * @property processor Active [ProcessorId] for query generation or execution.
+     * @property naturalTextPrompt Default or latest natural-language prompt string.
+     * @property xKey Optional explicit X-axis column name.
+     * @property yKey Optional explicit Y-axis column name.
+     */
+    data class Sql(
+        val query: String,
+        val allowNaturalText: Boolean = false,
+        val processor: ProcessorId = ProcessorId.SQL_NO_MODEL,
+        val naturalTextPrompt: String = "",
+        val xKey: String? = null,
+        val yKey: String? = null
+    ) : TypedWidgetConfig
+
+    /**
+     * Strongly typed configuration for an `HTTP` widget.
+     *
+     * @property url Target HTTP endpoint URL.
+     * @property method HTTP request method string.
+     */
+    data class Http(
+        val url: String,
+        val method: String = "GET"
+    ) : TypedWidgetConfig
+
+    /**
+     * Strongly typed configuration for a `TEXT` (Markdown) widget.
+     *
+     * @property content Markdown body text.
+     */
+    data class Text(
+        val content: String
+    ) : TypedWidgetConfig
+}
+
+/**
+ * Extracts a string primitive property from [config], returning null if absent or non-primitive.
+ *
+ * @param config JSON object to read from.
+ * @param key Property name.
+ * @return Extracted string value or null.
+ */
+fun readJsonConfigString(config: JsonObject, key: String): String? =
+    (config[key] as? JsonPrimitive)?.content
+
+/**
+ * Parses a [JsonObject] widget configuration into a [TypedWidgetConfig.Sql] metadata structure.
+ *
+ * @param config Raw widget configuration JSON object.
+ * @return Strongly typed [TypedWidgetConfig.Sql] instance.
+ */
+fun extractWidgetSqlConfig(config: JsonObject): TypedWidgetConfig.Sql {
+    val allowNl = readJsonConfigString(config, "allow_natural_text") == "true"
+    val rawProc = readJsonConfigString(config, "processor")?.takeIf { it.isNotBlank() } ?: "SQL"
+    val prompt = readJsonConfigString(config, "natural_text_prompt").orEmpty()
+    val query = readJsonConfigString(config, "query").orEmpty()
+    val xKey = readJsonConfigString(config, "xKey")
+    val yKey = readJsonConfigString(config, "yKey")
+    return TypedWidgetConfig.Sql(
+        query = query,
+        allowNaturalText = allowNl,
+        processor = ProcessorId(rawProc),
+        naturalTextPrompt = prompt,
+        xKey = xKey,
+        yKey = yKey
+    )
+}
+
+/**
+ * Parses a raw [config] [JsonObject] into a sealed [TypedWidgetConfig] based on [type].
+ *
+ * @param type Wire widget type string (`"SQL"`, `"HTTP"`, or `"TEXT"`).
+ * @param config Raw widget configuration JSON object.
+ * @return Parsed [TypedWidgetConfig] variant.
+ */
+fun parseTypedWidgetConfig(type: String, config: JsonObject): TypedWidgetConfig =
+    when (WidgetSourceType.fromWire(type)) {
+        WidgetSourceType.TEXT -> {
+            val body = readJsonConfigString(config, "content")
+                ?: readJsonConfigString(config, "text").orEmpty()
+            TypedWidgetConfig.Text(content = body)
+        }
+        WidgetSourceType.HTTP -> {
+            val url = readJsonConfigString(config, "url").orEmpty()
+            val method = readJsonConfigString(config, "method") ?: "GET"
+            TypedWidgetConfig.Http(url = url, method = method)
+        }
+        WidgetSourceType.SQL -> extractWidgetSqlConfig(config)
+    }

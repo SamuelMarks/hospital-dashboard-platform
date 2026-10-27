@@ -26,15 +26,7 @@ export default defineConfig({
       provider: 'v8',
       all: true,
       include: ['src/**/*.ts'],
-      exclude: [
-        'src/**/*.spec.ts',
-        'src/app/api-client/**',
-        'src/test-setup.ts',
-        'src/main.server.ts',
-        'src/app/app.config.server.ts',
-        'src/app/app.routes.server.ts',
-        '**/*.d.ts',
-      ],
+      exclude: ['src/**/*.spec.ts', 'src/app/api-client/**', 'src/test-setup.ts', '**/*.d.ts'],
       reporter: ['text', 'html'],
       reportOnFailure: true,
       thresholds: {

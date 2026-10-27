@@ -53,6 +53,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.clinical_status_wallboard
+import pulsequery.composeapp.generated.resources.exit_wallboard
+import pulsequery.composeapp.generated.resources.live_telemetry_feed
+import pulsequery.composeapp.generated.resources.no_telemetry_widgets
+import pulsequery.composeapp.generated.resources.press_ok_to_inspect
+import pulsequery.composeapp.generated.resources.tv_live_view_subtitle
+import pulsequery.composeapp.generated.resources.tv_wallboard
+import pulsequery.composeapp.generated.resources.use_dpad_to_select
 
 /**
  * TV Wallboard dashboard screen optimized for passive 10-foot nursing station displays,
@@ -97,13 +107,14 @@ fun TvDashboardScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Tv,
-                        contentDescription = "TV Wallboard",
+                        contentDescription = stringResource(Res.string.tv_wallboard),
                         tint = Color(0xFF4CAF50),
                         modifier = Modifier.size(40.dp)
                     )
                     Column {
                         Text(
-                            text = uiState.activeDashboard?.name ?: "Clinical Status Wallboard",
+                            text = uiState.activeDashboard?.name
+                                ?: stringResource(Res.string.clinical_status_wallboard),
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontSize = 32.sp,
                                 fontWeight = FontWeight.Bold
@@ -112,7 +123,7 @@ fun TvDashboardScreen(
                             modifier = Modifier.semantics { heading() }
                         )
                         Text(
-                            text = "Hospital Operations Telemetry • Live View",
+                            text = stringResource(Res.string.tv_live_view_subtitle),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color(0xFF90A4AE)
                         )
@@ -120,7 +131,7 @@ fun TvDashboardScreen(
                 }
                 SuggestionChip(
                     onClick = onExit,
-                    label = { Text("Exit Wallboard", color = Color.White) },
+                    label = { Text(stringResource(Res.string.exit_wallboard), color = Color.White) },
                     colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFF1E293B))
                 )
             }
@@ -146,7 +157,11 @@ fun TvDashboardScreen(
                     val widgets = uiState.activeDashboard?.widgets ?: emptyList()
                     if (widgets.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No telemetry widgets active on this board.", color = Color.White, fontSize = 24.sp)
+                            Text(
+                                stringResource(Res.string.no_telemetry_widgets),
+                                color = Color.White,
+                                fontSize = 24.sp
+                            )
                         }
                     } else {
                         TvWidgetCarousel(widgets = widgets)
@@ -249,7 +264,7 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Live Telemetry Feed",
+                    text = stringResource(Res.string.live_telemetry_feed),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color(0xFF64748B)
                 )
@@ -261,7 +276,11 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (isFocused) "Press OK to inspect" else "Use D-pad to select",
+                    text = if (isFocused) {
+                        stringResource(Res.string.press_ok_to_inspect)
+                    } else {
+                        stringResource(Res.string.use_dpad_to_select)
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isFocused) Color(0xFF4CAF50) else Color(0xFF475569)
                 )

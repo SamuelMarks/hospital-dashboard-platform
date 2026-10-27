@@ -31,6 +31,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.clear_filters
+import pulsequery.composeapp.generated.resources.department_all
+import pulsequery.composeapp.generated.resources.filter_ribbon
+import pulsequery.composeapp.generated.resources.time_all
 
 /**
  * Standard clinical departments for dashboard scoping.
@@ -92,7 +98,7 @@ fun FilterRibbon(
         ) {
             Icon(
                 imageVector = Icons.Default.FilterList,
-                contentDescription = "Filter Ribbon",
+                contentDescription = stringResource(Res.string.filter_ribbon),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(18.dp)
             )
@@ -102,7 +108,7 @@ fun FilterRibbon(
                 FilterChip(
                     selected = activeDepartment != null && activeDepartment != "All Departments",
                     onClick = { showDeptMenu = true },
-                    label = { Text(activeDepartment ?: "Department: All") }
+                    label = { Text(activeDepartment ?: stringResource(Res.string.department_all)) }
                 )
                 DropdownMenu(
                     expanded = showDeptMenu,
@@ -126,7 +132,7 @@ fun FilterRibbon(
                 FilterChip(
                     selected = activeTimeRange != null && activeTimeRange != "All Time",
                     onClick = { showTimeMenu = true },
-                    label = { Text(activeTimeRange ?: "Time: All") }
+                    label = { Text(activeTimeRange ?: stringResource(Res.string.time_all)) }
                 )
                 DropdownMenu(
                     expanded = showTimeMenu,
@@ -155,7 +161,7 @@ fun FilterRibbon(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Clear,
-                        contentDescription = "Clear Filters",
+                        contentDescription = stringResource(Res.string.clear_filters),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(16.dp)
                     )

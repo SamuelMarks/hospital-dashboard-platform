@@ -6,7 +6,22 @@ Separates the definition of the environment (Capacity, Constraints) from
 the data source (Demand SQL), allowing mix-and-match analysis.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class DemandRow(BaseModel):
+  """
+  Typed demand row representing clinical service demand and optional current unit baseline.
+
+  Attributes:
+      service (str): Clinical service identifier.
+      count (float): Patient demand count.
+      unit (str | None): Optional current unit where patients are located.
+  """
+
+  service: str
+  count: float
+  unit: str | None = None
 
 
 class ScenarioConstraint(BaseModel):
@@ -40,15 +55,56 @@ class ScenarioRunRequest(BaseModel):
 class SimulationAssignment(BaseModel):
   """
   Single row in the optimization result.
+
+  Provides both PEP 8 snake_case accessors (`service`, `unit`, `patient_count`,
+  `original_count`, `delta`) and wire-compatible PascalCase fields (`Service`,
+  `Unit`, `Patient_Count`, `Original_Count`, `Delta`).
   """
 
-  Service: str
-  Unit: str
-  Patient_Count: float
+  model_config = ConfigDict(populate_by_name=True)
+
+  Service: str = Field(..., validation_alias="Service", serialization_alias="Service")
+  Unit: str = Field(..., validation_alias="Unit", serialization_alias="Unit")
+  Patient_Count: float = Field(..., validation_alias="Patient_Count", serialization_alias="Patient_Count")
 
   # Diff/Delta Fields
-  Original_Count: float = Field(0.0, description="Count in this unit before optimization (if provided).")
-  Delta: float = Field(0.0, description="Net change (Proposed - Original).")
+  Original_Count: float = Field(
+    0.0,
+    validation_alias="Original_Count",
+    serialization_alias="Original_Count",
+    description="Count in this unit before optimization (if provided).",
+  )
+  Delta: float = Field(
+    0.0,
+    validation_alias="Delta",
+    serialization_alias="Delta",
+    description="Net change (Proposed - Original).",
+  )
+
+  @property
+  def service(self) -> str:
+    """Returns the clinical service name in snake_case."""
+    return self.Service
+
+  @property
+  def unit(self) -> str:
+    """Returns the hospital unit name in snake_case."""
+    return self.Unit
+
+  @property
+  def patient_count(self) -> float:
+    """Returns the optimized patient count in snake_case."""
+    return self.Patient_Count
+
+  @property
+  def original_count(self) -> float:
+    """Returns the baseline original count in snake_case."""
+    return self.Original_Count
+
+  @property
+  def delta(self) -> float:
+    """Returns the net patient count delta in snake_case."""
+    return self.Delta
 
 
 class ScenarioResult(BaseModel):

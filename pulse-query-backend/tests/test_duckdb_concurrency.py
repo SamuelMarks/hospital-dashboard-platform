@@ -9,12 +9,27 @@ import concurrent.futures
 import contextlib
 import os
 import tempfile
-from typing import Any
+from typing import TypedDict
 
 from app.database.duckdb import DuckDBManager
 
 
-def _run_worker_query(db_path: str, thread_idx: int) -> dict[str, Any]:
+class WorkerQueryResultDict(TypedDict):
+  """
+  Typed summary returned by each concurrent worker query.
+
+  Attributes:
+      worker_id (int): Thread identifier index.
+      rows (int): Number of rows returned.
+      success (bool): Whether execution succeeded.
+  """
+
+  worker_id: int
+  rows: int
+  success: bool
+
+
+def _run_worker_query(db_path: str, thread_idx: int) -> WorkerQueryResultDict:
   """
   Worker task executing analytical queries over an isolated readonly connection.
 
@@ -23,7 +38,7 @@ def _run_worker_query(db_path: str, thread_idx: int) -> dict[str, Any]:
       thread_idx (int): Thread identifier index.
 
   Returns:
-      dict[str, Any]: Execution result summary with thread index and row count.
+      WorkerQueryResultDict: Execution result summary with thread index and row count.
   """
   manager = DuckDBManager(db_path=db_path)
   conn = manager.get_readonly_connection()

@@ -8,10 +8,59 @@ frontend rendering.
 """
 
 import re
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.schemas.json_types import JsonObject, JsonPrimitive, JsonValue
+
+
+class JsonSchemaProperty(BaseModel):
+  """
+  Typed JSON Schema Draft-7 property definition for dynamic template form parameters.
+
+  Attributes:
+      type (str): JSON Schema primitive type (`'string'`, `'number'`, `'integer'`, `'boolean'`).
+      title (str | None): Human-readable field label.
+      description (str | None): Field helper text.
+      default (JsonPrimitive): Default parameter value.
+      enum (list[JsonPrimitive] | None): Optional enumerated allowed values.
+  """
+
+  type: str = "string"
+  title: str | None = None
+  description: str | None = None
+  default: JsonPrimitive = None
+  enum: list[JsonPrimitive] | None = None
+
+  model_config = ConfigDict(extra="allow")
+
+
+class JsonSchemaDefinition(BaseModel):
+  """
+  Strongly typed JSON Schema Draft-7 object definition for template parameters.
+
+  Attributes:
+      type (str): Schema root type, defaulting to `'object'`.
+      properties (dict[str, JsonSchemaProperty | JsonObject]): Map of parameter names to property schemas.
+      required (list[str]): List of required parameter names.
+  """
+
+  type: str = "object"
+  properties: dict[str, JsonSchemaProperty | JsonObject] = Field(default_factory=dict)
+  required: list[str] = Field(default_factory=list)
+
+  model_config = ConfigDict(extra="allow")
+
+
+def _default_parameters_schema() -> JsonObject:
+  """
+  Returns the default empty JSON Schema Draft-7 object dictionary.
+
+  Returns:
+      JsonObject: Default JSON Schema dictionary `{"type": "object", "properties": {}}`.
+  """
+  return {"type": "object", "properties": {}}
 
 
 class TemplateBase(BaseModel):
@@ -23,7 +72,7 @@ class TemplateBase(BaseModel):
       description (str | None): Helper text for the user.
       sql_template (str): The raw DuckDB SQL logic with Handlebars {{variables}}.
       category (str): The thematic grouping tag.
-      parameters_schema (dict[str, Any]): A valid JSON Schema object defining
+      parameters_schema (JsonObject): A valid JSON Schema object defining
           the expected inputs. This schema drives the frontend dynamic form.
   """
 
@@ -32,8 +81,8 @@ class TemplateBase(BaseModel):
   sql_template: str = Field(..., description="SQL with {{handlebars}} placeholders")
   category: str = Field(..., min_length=2)
 
-  parameters_schema: dict[str, Any] = Field(
-    default_factory=lambda: {"type": "object", "properties": {}},
+  parameters_schema: JsonObject = Field(
+    default_factory=_default_parameters_schema,
     description="JSON Schema definition for dynamic form generation.",
   )
 
@@ -81,7 +130,7 @@ class TemplateUpdate(BaseModel):
   description: str | None = None
   sql_template: str | None = None
   category: str | None = None
-  parameters_schema: dict[str, Any] | None = None
+  parameters_schema: JsonObject | None = None
 
 
 class TemplateResponse(TemplateBase):
@@ -100,10 +149,10 @@ class TemplateInstantiateRequest(BaseModel):
   Request payload for instantiating a SQL template with user-supplied parameters.
 
   Attributes:
-      parameters (dict[str, Any]): Runtime parameter key-value overrides to inject.
+      parameters (dict[str, JsonValue]): Runtime parameter key-value overrides to inject.
   """
 
-  parameters: dict[str, Any] = Field(
+  parameters: dict[str, JsonValue] = Field(
     default_factory=dict,
     description="Runtime parameter values keyed by placeholder name.",
   )

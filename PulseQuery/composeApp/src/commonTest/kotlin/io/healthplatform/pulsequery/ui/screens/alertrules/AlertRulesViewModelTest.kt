@@ -132,7 +132,10 @@ class AlertRulesViewModelTest {
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engine))
         )
-        vm.deleteRule("r-1")
+        assertTrue(vm.canModifyRules(io.healthplatform.pulsequery.core.model.ClinicalRole.ADMIN))
+        assertTrue(vm.canModifyRules(io.healthplatform.pulsequery.core.model.ClinicalRole.PHYSICIAN))
+        assertFalse(vm.canModifyRules(io.healthplatform.pulsequery.core.model.ClinicalRole.ANALYST))
+        vm.deleteRule(io.healthplatform.pulsequery.core.model.AlertRuleId("r-1"))
         kotlinx.coroutines.delay(50)
         assertEquals(1, deleteCount)
         assertTrue(vm.state.value.rules.isEmpty())

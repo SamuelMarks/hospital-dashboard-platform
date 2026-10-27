@@ -13,7 +13,6 @@ It handles:
 import logging
 import re
 import uuid
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.dashboard import Dashboard, Widget
 from app.models.template import WidgetTemplate
 from app.models.user import User
+from app.schemas.json_types import JsonObject
 from app.services.sql_utils import interpolate_template_parameters
 
 logger = logging.getLogger(__name__)
@@ -197,9 +197,9 @@ class ProvisioningService:
 
     return "table"
 
-  def _build_config(self, template: WidgetTemplate, viz_type: str) -> dict[str, Any]:
+  def _build_config(self, template: WidgetTemplate, viz_type: str) -> JsonObject:
     """
-    Constructs the widget configuration object.
+    Constructs the widget configuration dictionary.
     Injects default parameter values into the SQL to ensure it executes without user input.
 
     Args:
@@ -207,8 +207,9 @@ class ProvisioningService:
         viz_type (str): The determined visualization type.
 
     Returns:
-        Dict[str, Any]: Configuration dictionary for the Widget model.
+        JsonObject: Configuration dictionary for the Widget model.
     """
+    _ = viz_type
     processed_sql = interpolate_template_parameters(
       template.sql_template,
       template.parameters_schema if isinstance(template.parameters_schema, dict) else None,

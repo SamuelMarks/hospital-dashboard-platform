@@ -2,11 +2,17 @@
 Tests for PostgreSQL dependency helpers and SQLite compatibility type compilers.
 """
 
+from types import TracebackType
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app.database import postgres
+from app.models import register_orm_models
+
+type ExcType = type[BaseException] | None
+type ExcVal = BaseException | None
+type ExcTb = TracebackType | None
 
 
 class _DummyContext:
@@ -30,19 +36,43 @@ class _DummyContext:
     """
     return self._session
 
-  async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+  async def __aexit__(self, exc_type: ExcType, exc: ExcVal, tb: ExcTb) -> bool:
     """
     Exits the async context without suppressing exceptions.
 
     Args:
-        exc_type (object): Exception type if raised.
-        exc (object): Exception instance if raised.
-        tb (object): Traceback object if raised.
+        exc_type (ExcType): Exception type if raised.
+        exc (ExcVal): Exception instance if raised.
+        tb (ExcTb): Traceback if raised.
 
     Returns:
         bool: Always False so exceptions propagate.
     """
+    _ = (exc_type, exc, tb)
     return False
+
+
+def test_register_orm_models() -> None:
+  """Verifies `register_orm_models` returns all registered SQLAlchemy declarative model classes."""
+  models = register_orm_models()
+  model_names = {cls.__name__ for cls in models}
+  assert {
+    "AdminSetting",
+    "AlertRule",
+    "Conversation",
+    "Dashboard",
+    "DashboardShare",
+    "ExperimentLog",
+    "Message",
+    "MessageCandidate",
+    "ModelCandidate",
+    "MpaxArenaCandidateRecord",
+    "MpaxArenaRun",
+    "RefreshToken",
+    "User",
+    "Widget",
+    "WidgetTemplate",
+  }.issubset(model_names)
 
 
 @pytest.mark.asyncio
@@ -63,8 +93,8 @@ async def test_get_db_yields_and_closes(monkeypatch: pytest.MonkeyPatch) -> None
 def test_sqlite_type_compilers() -> None:
   """Verifies `compile_jsonb_sqlite`, `compile_uuid_sqlite`, and `register_sqlite_type_compilers`."""
   postgres.register_sqlite_type_compilers()
-  assert postgres.compile_jsonb_sqlite(object(), object()) == "JSON"
-  assert postgres.compile_uuid_sqlite(object(), object()) == "TEXT"
+  assert postgres.compile_jsonb_sqlite() == "JSON"
+  assert postgres.compile_uuid_sqlite() == "TEXT"
 
 
 @pytest.mark.asyncio
@@ -111,6 +141,7 @@ async def test_validate_postgres_duckdb_and_config_results(monkeypatch: pytest.M
     """Dummy settings test double with a blank SECRET_KEY."""
 
     SECRET_KEY = "   "
+    LLM_SWARM: list[dict[str, str]] = []
 
   cfg_err = check_configuration_hygiene_result(_EmptySecretSettings())
   assert isinstance(cfg_err, Err)

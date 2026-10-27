@@ -2,6 +2,8 @@
  * @fileoverview Strongly typed mock factories for Angular unit and integration tests.
  */
 
+import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import {
   ConversationResponse,
   DashboardResponse,
@@ -10,6 +12,7 @@ import {
   UserResponse,
   WidgetResponse,
 } from '../app/api-client';
+import { QUERY_CART_ITEM_KIND, type QueryCartItem } from '../app/global/query-cart.models';
 
 /**
  * Creates a strongly typed `WidgetResponse` fixture with sensible defaults.
@@ -145,4 +148,53 @@ export function createMockTargetEvent(target: unknown, eventType = 'input'): Eve
   const event = new Event(eventType);
   Object.defineProperty(event, 'target', { value: target });
   return event;
+}
+
+/**
+ * Creates a strongly typed `QueryCartItem` fixture with sensible defaults.
+ *
+ * @param overrides - Partial query cart item properties to override defaults.
+ * @returns Complete `QueryCartItem` test fixture.
+ */
+export function createMockQueryCartItem(overrides: Partial<QueryCartItem> = {}): QueryCartItem {
+  return {
+    id: 'qc-1',
+    title: 'Sample Query',
+    sql: 'SELECT 1',
+    createdAt: '2026-01-01T00:00:00Z',
+    kind: QUERY_CART_ITEM_KIND,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates a strongly typed `RouterStateSnapshot` fixture without untyped object casts.
+ *
+ * @param url - Active router URL string (defaults to `'/'`).
+ * @param title - Optional route title string.
+ * @returns Strongly typed `RouterStateSnapshot` test double.
+ */
+export function createMockRouterStateSnapshot(url = '/', title?: string): RouterStateSnapshot {
+  const root = new ActivatedRouteSnapshot();
+  Object.defineProperty(root, 'title', { value: title, configurable: true });
+  return {
+    url,
+    root,
+    toString: () => `RouterStateSnapshot(url="${url}")`,
+  };
+}
+
+/**
+ * Creates a real `HttpErrorResponse` instance for testing API error branches.
+ *
+ * @param status - HTTP status code (e.g. `400`, `404`, `500`).
+ * @param detail - Error detail string or structured error payload.
+ * @returns Configured `HttpErrorResponse` instance.
+ */
+export function createMockHttpErrorResponse(status: number, detail: string): HttpErrorResponse {
+  return new HttpErrorResponse({
+    status,
+    statusText: 'Error',
+    error: { detail },
+  });
 }

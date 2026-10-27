@@ -3,41 +3,41 @@ Extended tests for the data ingestion service.
 """
 
 from pathlib import Path
-from typing import Any
 
 import duckdb
 import pytest
 
+from app.schemas.json_types import SqlScalar
 from app.services import data_ingestion
 
 
 class _FakeResult:
   """Stub DuckDB query result returning pre-configured row tuples."""
 
-  def __init__(self, rows: list[tuple[Any, ...]]) -> None:
+  def __init__(self, rows: list[tuple[SqlScalar, ...]]) -> None:
     """
     Initializes the fake result with `rows`.
 
     Args:
-        rows (list[tuple[Any, ...]]): Sequence of result tuples.
+        rows (list[tuple[SqlScalar, ...]]): Sequence of result tuples.
     """
     self._rows = rows
 
-  def fetchall(self) -> list[tuple[Any, ...]]:
+  def fetchall(self) -> list[tuple[SqlScalar, ...]]:
     """
     Returns all rows as a list.
 
     Returns:
-        list[tuple[Any, ...]]: Stored row tuples.
+        list[tuple[SqlScalar, ...]]: Stored row tuples.
     """
     return list(self._rows)
 
-  def fetchone(self) -> tuple[Any, ...] | None:
+  def fetchone(self) -> tuple[SqlScalar, ...] | None:
     """
     Returns the first row tuple or None if empty.
 
     Returns:
-        tuple[Any, ...] | None: First row tuple or None.
+        tuple[SqlScalar, ...] | None: First row tuple or None.
     """
     return self._rows[0] if self._rows else None
 
@@ -107,17 +107,20 @@ def test_generate_sample_data_handles_io_error(monkeypatch: pytest.MonkeyPatch, 
   """IO errors during sample generation should not raise."""
   target = tmp_path / "sample.csv"
 
-  def _boom(*_args: object, **_kwargs: object) -> None:
+  def _boom(file: str, mode: str = "w", newline: str = "", encoding: str = "utf-8") -> None:
     """
     Simulates an `OSError` when opening a file for writing.
 
     Args:
-        *_args (object): Positional arguments.
-        **_kwargs (object): Keyword arguments.
+        file (str): Target file path.
+        mode (str): File open mode.
+        newline (str): Newline handling string.
+        encoding (str): Text encoding.
 
     Raises:
         OSError: Always raised.
     """
+    _ = (file, mode, newline, encoding)
     raise OSError("nope")
 
   monkeypatch.setattr(data_ingestion, "open", _boom)
@@ -230,17 +233,20 @@ def test_generate_synthetic_sample_data_handles_io_error(monkeypatch: pytest.Mon
   """IO errors during synthetic sample generation should be caught safely."""
   target = tmp_path / "synthetic.csv"
 
-  def _boom(*_args: object, **_kwargs: object) -> None:
+  def _boom(file: str, mode: str = "w", newline: str = "", encoding: str = "utf-8") -> None:
     """
     Simulates an `OSError` when opening the synthetic CSV for writing.
 
     Args:
-        *_args (object): Positional arguments.
-        **_kwargs (object): Keyword arguments.
+        file (str): Target file path.
+        mode (str): File open mode.
+        newline (str): Newline handling string.
+        encoding (str): Text encoding.
 
     Raises:
         OSError: Always raised.
     """
+    _ = (file, mode, newline, encoding)
     raise OSError("cannot write")
 
   monkeypatch.setattr(data_ingestion, "open", _boom)

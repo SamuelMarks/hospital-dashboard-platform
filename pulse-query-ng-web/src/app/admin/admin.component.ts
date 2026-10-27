@@ -9,8 +9,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
-import { AdminService, AiService, ModelInfo } from '../api-client';
+import { AdminService, AdminSettingsUpdateRequest, AiService, ModelInfo } from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin } from 'rxjs';
 
@@ -105,6 +106,77 @@ export class AdminComponent implements OnInit {
   message = signal<string>('');
   /** Whether a settings save operation is currently in progress. */
   isSaving = signal<boolean>(false);
+  /** Additional `any-llm` provider API keys (e.g. `groq`, `mistral`, `gemini`, `cohere`). */
+  customProviderKeys = signal<Record<string, string>>({});
+  /** Configured `any-llm` model identifiers (`provider:model`). */
+  configuredModels = signal<string[]>([]);
+  /** Optional custom Ollama base URL override. */
+  ollamaApiBase = signal<string>('');
+  /** New custom `any-llm` provider slug input. */
+  newProviderSlug = signal<string>('');
+  /** New custom `any-llm` provider API key input. */
+  newProviderKey = signal<string>('');
+  /** New `any-llm` model (`provider:model`) input. */
+  newModelSpec = signal<string>('');
+
+  /** Computed list of custom `any-llm` provider key entries. */
+  readonly customProviderEntries = computed(() => Object.entries(this.customProviderKeys()));
+
+  /**
+   * Extracts string value from a DOM input event.
+   *
+   * @param event - DOM input event.
+   * @returns Extracted string value.
+   */
+  getEventValue(event: Event): string {
+    return extractEventInputValue(event);
+  }
+
+  /**
+   * Adds or updates a custom Mozilla `any-llm` provider API key entry.
+   */
+  addCustomProviderKey(): void {
+    const slug = this.newProviderSlug().trim().toLowerCase();
+    const key = this.newProviderKey().trim();
+    if (!slug || !key) return;
+    this.customProviderKeys.update((curr) => ({ ...curr, [slug]: key }));
+    this.newProviderSlug.set('');
+    this.newProviderKey.set('');
+  }
+
+  /**
+   * Removes a custom `any-llm` provider API key entry.
+   *
+   * @param provider - Provider slug to remove.
+   */
+  removeCustomProviderKey(provider: string): void {
+    this.customProviderKeys.update((curr) => {
+      const next = { ...curr };
+      delete next[provider];
+      return next;
+    });
+  }
+
+  /**
+   * Adds a new `provider:model` specification to `configuredModels`.
+   */
+  addConfiguredModel(): void {
+    const spec = this.newModelSpec().trim();
+    if (!spec || (!spec.includes(':') && !spec.includes('/'))) return;
+    if (!this.configuredModels().includes(spec)) {
+      this.configuredModels.update((curr) => [...curr, spec]);
+    }
+    this.newModelSpec.set('');
+  }
+
+  /**
+   * Removes a configured `any-llm` model specification.
+   *
+   * @param spec - Model specification string to remove.
+   */
+  removeConfiguredModel(spec: string): void {
+    this.configuredModels.update((curr) => curr.filter((m) => m !== spec));
+  }
 
   /** Reactive signal model backing the admin settings form. */
   formModel = signal({
@@ -166,9 +238,20 @@ export class AdminComponent implements OnInit {
       .subscribe(({ settings, models }) => {
         this.availableModels.set(models);
 
+        const rawKeys = settings.api_keys || {};
+        const extraKeys: Record<string, string> = {};
+        for (const [k, v] of Object.entries(rawKeys)) {
+          if (k !== 'openai' && k !== 'anthropic') {
+            extraKeys[k] = v;
+          }
+        }
+        this.customProviderKeys.set(extraKeys);
+        this.configuredModels.set(settings.configured_models || []);
+        this.ollamaApiBase.set(settings.ollama_api_base || '');
+
         this.formModel.set({
-          openai: settings.api_keys?.['openai'] || '',
-          anthropic: settings.api_keys?.['anthropic'] || '',
+          openai: rawKeys['openai'] || '',
+          anthropic: rawKeys['anthropic'] || '',
           models: models.map((model) => settings.visible_models.includes(model.id)),
         });
 
@@ -181,7 +264,7 @@ export class AdminComponent implements OnInit {
     this.isSaving.set(true);
 
     const formValue = this.formModel();
-    const finalKeys: Record<string, string> = {};
+    const finalKeys: Record<string, string> = { ...this.customProviderKeys() };
 
     if (formValue.openai.trim()) {
       finalKeys['openai'] = formValue.openai.trim();
@@ -194,11 +277,19 @@ export class AdminComponent implements OnInit {
       .filter((_, index) => formValue.models[index])
       .map((model) => model.id);
 
+    const payload: AdminSettingsUpdateRequest = {
+      api_keys: finalKeys,
+      visible_models: selectedModels,
+    };
+    if (this.configuredModels().length > 0) {
+      payload.configured_models = this.configuredModels();
+    }
+    if (this.ollamaApiBase().trim()) {
+      payload.ollama_api_base = this.ollamaApiBase().trim();
+    }
+
     this.adminService
-      .writeAdminSettingsApiV1AdminSettingsPut({
-        api_keys: finalKeys,
-        visible_models: selectedModels,
-      })
+      .writeAdminSettingsApiV1AdminSettingsPut(payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {

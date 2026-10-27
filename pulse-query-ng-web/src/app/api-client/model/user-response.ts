@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,10 +12,16 @@
  * Public representation of a user returned by the API.
  */
 export interface UserResponse {
+  /** Property `id`. */
   id: string;
+  /** Property `email`. */
   email: string;
+  /** Property `is_active`. */
   is_active: boolean;
+  /** Property `is_admin`. */
   is_admin: boolean;
+  /** Property `role`. */
   role?: string;
+  /** Property `language_preference`. */
   language_preference: string;
 }

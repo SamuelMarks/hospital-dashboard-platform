@@ -32,8 +32,11 @@ describe('RegisterComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create with default form state', () => {
     expect(component).toBeTruthy();
+    expect(component.isLoading()).toBe(false);
+    expect(component.hidePassword()).toBe(true);
+    expect(component.errorMessage()).toBeNull();
   });
 
   it('should validate matching passwords', () => {

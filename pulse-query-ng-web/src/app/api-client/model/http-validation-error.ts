@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -9,6 +9,8 @@
  */
 import { ValidationError } from './validation-error';
 
+/** Generated OpenAPI model interface. */
 export interface HTTPValidationError {
-  detail?: Array<ValidationError>;
+  /** Property `detail`. */
+  detail?: ValidationError[];
 }

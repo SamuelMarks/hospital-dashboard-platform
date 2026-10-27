@@ -10,11 +10,29 @@ import uuid
 
 from jose import jwt
 from passlib.context import CryptContext
+from pydantic import BaseModel
 
 from app.core.config import settings
 
 # Setup password context (Argon2 is robust)
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
+
+
+class JwtPayload(BaseModel):
+  """
+  Typed JWT claims payload structure.
+
+  Attributes:
+      sub (str | None): Subject identifier (user UUID or email).
+      type (str | None): Optional token type classifier (`'refresh'`, `'reset'`).
+      jti (str | None): Optional unique JWT identifier.
+      exp (int | float | datetime | None): Expiration timestamp.
+  """
+
+  sub: str | None = None
+  type: str | None = None
+  jti: str | None = None
+  exp: int | float | datetime | None = None
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -121,10 +139,10 @@ def verify_password_reset_token(token: str) -> str | None:
       str | None: The user email if token is valid and of type 'reset', otherwise None.
   """
   try:
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    if payload.get("type") != "reset":
+    raw_claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    payload = JwtPayload.model_validate(raw_claims)
+    if payload.type != "reset":
       return None
-    sub = payload.get("sub")
-    return str(sub) if sub is not None else None
+    return payload.sub if payload.sub else None
   except Exception:
     return None

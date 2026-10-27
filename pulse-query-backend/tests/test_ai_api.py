@@ -72,6 +72,39 @@ async def test_list_available_models_all() -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_available_models_with_sql_and_ollama_discovery() -> None:
+  """Verifies GET /models?include_sql=true&discover_ollama=true delegates to `get_available_processors_async`."""
+  mock_user = AsyncMock()
+  app.dependency_overrides[get_current_user] = lambda: mock_user
+
+  with (
+    patch("app.api.routers.ai.llm_client.get_available_processors_async", new_callable=AsyncMock) as mock_proc,
+    patch("app.api.routers.ai.get_admin_settings", return_value=None),
+  ):
+    mock_proc.return_value = [
+      {"id": "SQL", "name": "SQL [no model]", "provider": "sql", "is_local": True, "processor_type": "SQL"},
+      {
+        "id": "ollama:llama3",
+        "name": "Ollama: llama3",
+        "provider": "ollama",
+        "is_local": True,
+        "processor_type": "OLLAMA",
+      },
+    ]
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as ac:
+      response = await ac.get(f"{AI_MODELS_ENDPOINT}?include_sql=true&discover_ollama=true")
+
+  assert response.status_code == 200
+  data = response.json()
+  assert len(data) == 2
+  assert data[0]["id"] == "SQL"
+  assert data[1]["id"] == "ollama:llama3"
+
+  app.dependency_overrides = {}
+
+
+@pytest.mark.asyncio
 async def test_generate_sql_success() -> None:
   """Test the happy path for Text-to-SQL generation via Arena."""
   mock_prompt = "Show me all patients"

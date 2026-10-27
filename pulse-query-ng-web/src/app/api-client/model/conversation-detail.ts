@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,10 +13,16 @@ import { MessageResponse } from './message-response';
  * Detailed view including message history.
  */
 export interface ConversationDetail {
+  /** Property `title`. */
   title?: string | null;
+  /** Property `id`. */
   id: string;
+  /** Property `user_id`. */
   user_id: string;
+  /** Property `created_at`. */
   created_at: string;
+  /** Property `updated_at`. */
   updated_at: string;
-  messages?: Array<MessageResponse>;
+  /** Property `messages`. */
+  messages?: MessageResponse[];
 }

@@ -22,6 +22,8 @@ _FALLBACK_MESSAGES: dict[str, dict[str, str]] = {
     "error.candidate_not_found": "Candidate not found",
     "error.simulation_failed": "Simulation Failed",
     "error.invalid_sql": "Invalid SQL syntax.",
+    "error.invalid_processor": "Invalid processor identifier. Expected 'SQL' or '<provider>:<model>'.",
+    "error.natural_text_generation_failed": "Failed to generate SQL from natural text.",
   },
   "es": {
     "error.invalid_credentials": "Correo o contraseña incorrectos",
@@ -35,6 +37,8 @@ _FALLBACK_MESSAGES: dict[str, dict[str, str]] = {
     "error.candidate_not_found": "Candidato no encontrado",
     "error.simulation_failed": "Simulación fallida",
     "error.invalid_sql": "Sintaxis SQL inválida.",
+    "error.invalid_processor": "Identificador de procesador inválido. Se esperaba 'SQL' o '<proveedor>:<modelo>'.",
+    "error.natural_text_generation_failed": "Error al generar SQL a partir de texto natural.",
   },
 }
 

@@ -3,7 +3,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -14,7 +14,11 @@ from app.core.result import unwrap_or_raise_http
 from app.models.user import User
 from app.services.benchmark_telemetry_service import (
   DATA_DIR,
+  BenchmarkScenarioSchema,
   BenchmarkTelemetryService,
+  BenchmarkTelemetryStateDict,
+  MpaxBenchmarkScenarioEntry,
+  SqlBenchmarkEntry,
   benchmark_telemetry_service,
   read_benchmark_json_file as _read_json_file,
   update_benchmark_progress,
@@ -36,37 +40,37 @@ class BenchmarkProgressUpdateRequest(BaseModel):
   eta_seconds: int = 0
 
 
-@router.get("/sql", response_model=list[dict[str, Any]])
-async def get_sql_benchmarks() -> list[dict[str, Any]]:
+@router.get("/sql", response_model=list[BenchmarkScenarioSchema], response_model_exclude_unset=True)
+async def get_sql_benchmarks() -> list[BenchmarkScenarioSchema]:
   """
   Returns the gold standard text-to-SQL benchmarks.
 
   Returns:
-      list[dict[str, Any]]: Parsed benchmark list from benchmark_gold.json.
+      list[BenchmarkScenarioSchema]: Parsed benchmark list from benchmark_gold.json.
   """
   file_path = Path(DATA_DIR) / "benchmark_gold.json"
   res = await asyncio.to_thread(_read_json_file, file_path, "SQL benchmarks not found.")
   return unwrap_or_raise_http(res)
 
 
-@router.get("/mpax", response_model=list[dict[str, Any]])
-async def get_mpax_benchmarks() -> list[dict[str, Any]]:
+@router.get("/mpax", response_model=list[BenchmarkScenarioSchema], response_model_exclude_unset=True)
+async def get_mpax_benchmarks() -> list[BenchmarkScenarioSchema]:
   """
   Returns the generated MPAX what-if scenarios.
 
   Returns:
-      list[dict[str, Any]]: Parsed MPAX benchmark scenario items.
+      list[BenchmarkScenarioSchema]: Parsed MPAX benchmark scenario items.
   """
   file_path = Path(DATA_DIR) / "mpax_benchmark_scenarios.json"
   res = await asyncio.to_thread(_read_json_file, file_path, "MPAX benchmarks not found.")
   return unwrap_or_raise_http(res)
 
 
-@router.post("/progress", response_model=dict[str, Any])
+@router.post("/progress", response_model=BenchmarkTelemetryStateDict)
 async def post_benchmark_progress(
   payload: BenchmarkProgressUpdateRequest,
   current_user: Annotated[User, Depends(require_admin)],
-) -> dict[str, Any]:
+) -> BenchmarkTelemetryStateDict:
   """
   Updates the benchmark progress telemetry state (Admin only).
 
@@ -75,7 +79,7 @@ async def post_benchmark_progress(
       current_user (User): Authenticated administrator.
 
   Returns:
-      dict[str, Any]: Updated telemetry state snapshot.
+      BenchmarkTelemetryStateDict: Updated telemetry state snapshot.
   """
   _ = current_user
   update_benchmark_progress(
@@ -124,7 +128,10 @@ async def stream_benchmark_progress(poll_interval_seconds: float = 0.0) -> Strea
 __all__ = [
   "DATA_DIR",
   "BenchmarkProgressUpdateRequest",
+  "BenchmarkScenarioSchema",
   "BenchmarkTelemetryService",
+  "MpaxBenchmarkScenarioEntry",
+  "SqlBenchmarkEntry",
   "benchmark_telemetry_service",
   "get_mpax_benchmarks",
   "get_sql_benchmarks",

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,7 +12,10 @@
  * Payload for starting a new conversation. If \'message\' is provided, the conversation is initialized with it.
  */
 export interface ConversationCreate {
+  /** Property `title`. */
   title?: string | null;
+  /** Property `message`. */
   message?: string | null;
-  target_models?: Array<string> | null;
+  /** Property `target_models`. */
+  target_models?: string[] | null;
 }

@@ -5,6 +5,8 @@ package io.healthplatform.pulsequery.ui.screens.wizard
 
 import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.model.ProcessorId
+import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
 
 /**
  * Representation of an individual dynamic parameter field extracted from a template's schema.
@@ -59,6 +61,11 @@ sealed class WizardState {
      * @property parameterFields Extracted dynamic fields based on parameters_schema.
      * @property parameterValues Current user-entered values mapped by parameter key.
      * @property fieldErrors Map of parameter key or field name to validation error message.
+     * @property availableProcessors List of selectable query processors (`SQL [no model]`, Ollama, `any-llm`).
+     * @property allowNaturalText Whether the widget allows user natural text input on the dashboard.
+     * @property selectedProcessor Selected [ProcessorId] for the widget.
+     * @property naturalTextPrompt Default natural text prompt for the widget.
+     * @property placeholderText Optional custom placeholder text for the widget's natural text input.
      */
     data class ParameterConfiguration(
         val template: TemplateResponse,
@@ -66,7 +73,12 @@ sealed class WizardState {
         val visualization: String,
         val parameterFields: List<ParameterField>,
         val parameterValues: Map<String, String>,
-        val fieldErrors: Map<String, String> = emptyMap()
+        val fieldErrors: Map<String, String> = emptyMap(),
+        val availableProcessors: List<ProcessorSelectionOption> = listOf(ProcessorSelectionOption.SQL_DEFAULT),
+        val allowNaturalText: Boolean = false,
+        val selectedProcessor: ProcessorId = ProcessorId.SQL_NO_MODEL,
+        val naturalTextPrompt: String = "",
+        val placeholderText: String = ""
     ) : WizardState()
 
     /**
@@ -78,6 +90,11 @@ sealed class WizardState {
      * @property queryOrUrlOrContent Query text, endpoint URL, or Markdown text content.
      * @property httpMethod HTTP Verb for HTTP widgets (e.g., GET, POST).
      * @property fieldErrors Map of field validation error messages.
+     * @property availableProcessors List of selectable query processors (`SQL [no model]`, Ollama, `any-llm`).
+     * @property allowNaturalText Whether the widget allows user natural text input on the dashboard.
+     * @property selectedProcessor Selected [ProcessorId] for the widget.
+     * @property naturalTextPrompt Default natural text prompt for the widget.
+     * @property placeholderText Optional custom placeholder text for the widget's natural text input.
      */
     data class CustomWidgetConfiguration(
         val creationType: String,
@@ -85,7 +102,12 @@ sealed class WizardState {
         val visualization: String = "table",
         val queryOrUrlOrContent: String = "",
         val httpMethod: String = "GET",
-        val fieldErrors: Map<String, String> = emptyMap()
+        val fieldErrors: Map<String, String> = emptyMap(),
+        val availableProcessors: List<ProcessorSelectionOption> = listOf(ProcessorSelectionOption.SQL_DEFAULT),
+        val allowNaturalText: Boolean = false,
+        val selectedProcessor: ProcessorId = ProcessorId.SQL_NO_MODEL,
+        val naturalTextPrompt: String = "",
+        val placeholderText: String = ""
     ) : WizardState()
 
     /**

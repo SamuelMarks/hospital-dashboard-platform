@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -16,8 +16,12 @@ export interface ScenarioConstraint {
    * Constraint type (e.g., \'force_flow\')
    */
   type: string;
+  /** Property `service`. */
   service: string;
+  /** Property `unit`. */
   unit: string;
+  /** Property `min`. */
   min?: number | null;
+  /** Property `max`. */
   max?: number | null;
 }

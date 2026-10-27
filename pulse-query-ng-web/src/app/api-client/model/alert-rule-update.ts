@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,9 +13,12 @@ import { AlertSeverity } from './alert-severity';
  * Payload for updating an existing clinical alert rule with partial attributes.  Attributes:     unit_category (str | None): Updated unit or department category.     threshold_percentage (float | None): Updated trigger percentage.     severity (AlertSeverity | None): Updated severity classification.     is_active (bool | None): Updated active evaluation flag.
  */
 export interface AlertRuleUpdate {
+  /** Property `unit_category`. */
   unit_category?: string | null;
+  /** Property `threshold_percentage`. */
   threshold_percentage?: number | null;
+  /** Property `severity`. */
   severity?: AlertSeverity | null;
+  /** Property `is_active`. */
   is_active?: boolean | null;
 }
-export namespace AlertRuleUpdate {}

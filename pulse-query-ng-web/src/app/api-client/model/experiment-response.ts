@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,10 +13,16 @@ import { ModelCandidateResponse } from './model-candidate-response';
  * Return schema containing the UUID and list of anonymous candidates.
  */
 export interface ExperimentResponse {
+  /** Property `prompt_text`. */
   prompt_text: string;
+  /** Property `prompt_strategy`. */
   prompt_strategy?: string | null;
+  /** Property `id`. */
   id: string;
+  /** Property `user_id`. */
   user_id: string;
+  /** Property `created_at`. */
   created_at: string;
-  candidates?: Array<ModelCandidateResponse>;
+  /** Property `candidates`. */
+  candidates?: ModelCandidateResponse[];
 }

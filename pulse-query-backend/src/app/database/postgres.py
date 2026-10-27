@@ -8,29 +8,40 @@ type compilers, and dependency helper used by FastAPI routes.
 from collections.abc import AsyncGenerator
 import logging
 import time
-from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql.compiler import TypeCompiler
+from sqlalchemy.sql.type_api import TypeEngine
 
 from app.core.config import settings
-from app.core.diagnostics import diagnostics_registry, format_postgres_error_banner
+from app.core.diagnostics import (
+  PostgresDiagnosticState,
+  PostgresStatusDict,
+  diagnostics_registry,
+  format_postgres_error_banner,
+)
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.schemas.json_types import JsonValue
 
 logger = logging.getLogger(__name__)
 
 
-def compile_jsonb_sqlite(_type: object, _compiler: object, **_kw: object) -> str:
+def compile_jsonb_sqlite(
+  _type: TypeEngine[JsonValue] | JSONB | None = None,
+  _compiler: TypeCompiler | None = None,
+  **_kw: str | int | bool | None,
+) -> str:
   """
   Compiles PostgreSQL JSONB columns to SQLite JSON type.
 
   Args:
-      _type (object): SQLAlchemy column type instance.
-      _compiler (object): SQLite type compiler instance.
-      **_kw (object): Additional compiler keyword arguments.
+      _type (TypeEngine[JsonValue] | JSONB | None): SQLAlchemy column type instance.
+      _compiler (TypeCompiler | None): SQLite type compiler instance.
+      **_kw (str | int | bool | None): Additional compiler keyword arguments.
 
   Returns:
       str: SQLite column type string `"JSON"`.
@@ -38,14 +49,18 @@ def compile_jsonb_sqlite(_type: object, _compiler: object, **_kw: object) -> str
   return "JSON"
 
 
-def compile_uuid_sqlite(_type: object, _compiler: object, **_kw: object) -> str:
+def compile_uuid_sqlite(
+  _type: TypeEngine[str] | UUID[str] | None = None,
+  _compiler: TypeCompiler | None = None,
+  **_kw: str | int | bool | None,
+) -> str:
   """
   Compiles PostgreSQL UUID columns to SQLite TEXT type.
 
   Args:
-      _type (object): SQLAlchemy column type instance.
-      _compiler (object): SQLite type compiler instance.
-      **_kw (object): Additional compiler keyword arguments.
+      _type (TypeEngine[str] | UUID[str] | None): SQLAlchemy column type instance.
+      _compiler (TypeCompiler | None): SQLite type compiler instance.
+      **_kw (str | int | bool | None): Additional compiler keyword arguments.
 
   Returns:
       str: SQLite column type string `"TEXT"`.
@@ -72,7 +87,7 @@ class DatabaseConfigurationError(RuntimeError):
   """Raised when PostgreSQL database is misconfigured or inaccessible during startup."""
 
 
-async def validate_postgres_connection(raise_on_error: bool = False) -> dict[str, Any]:
+async def validate_postgres_connection(raise_on_error: bool = False) -> PostgresStatusDict:
   """
   Verifies connectivity to the PostgreSQL instance and records diagnostic status.
 
@@ -80,7 +95,7 @@ async def validate_postgres_connection(raise_on_error: bool = False) -> dict[str
       raise_on_error (bool): Whether to raise DatabaseConfigurationError on connection failure.
 
   Returns:
-      dict[str, Any]: Diagnostic dictionary with status, latency_ms, and error details.
+      PostgresStatusDict: Diagnostic dictionary with status, latency_ms, and error details.
 
   Raises:
       DatabaseConfigurationError: If connection fails and raise_on_error is True.
@@ -90,13 +105,13 @@ async def validate_postgres_connection(raise_on_error: bool = False) -> dict[str
     async with engine.connect() as conn:
       await conn.execute(text("SELECT 1"))
     latency = round((time.perf_counter() - start_time) * 1000, 2)
-    diagnostics_registry.postgres_status = {
-      "status": "connected",
-      "latency_ms": latency,
-      "details": f"PostgreSQL responding at {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}",
-      "error": None,
-    }
-    return diagnostics_registry.postgres_status
+    diagnostics_registry.postgres_status = PostgresDiagnosticState(
+      status="connected",
+      latency_ms=latency,
+      details=f"PostgreSQL responding at {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}",
+      error=None,
+    )
+    return diagnostics_registry.postgres_status.to_dict()
   except Exception as e:
     latency = round((time.perf_counter() - start_time) * 1000, 2)
     error_str = str(e)
@@ -108,12 +123,12 @@ async def validate_postgres_connection(raise_on_error: bool = False) -> dict[str
       error_message=error_str,
     )
     logger.error(f"\n{banner}")
-    diagnostics_registry.postgres_status = {
-      "status": "error",
-      "latency_ms": latency,
-      "details": f"Failed connecting to {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}",
-      "error": error_str,
-    }
+    diagnostics_registry.postgres_status = PostgresDiagnosticState(
+      status="error",
+      latency_ms=latency,
+      details=f"Failed connecting to {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}",
+      error=error_str,
+    )
     diagnostics_registry.add_warning(
       code="POSTGRES_UNAVAILABLE",
       message=f"PostgreSQL connection failed: {error_str}",
@@ -124,15 +139,15 @@ async def validate_postgres_connection(raise_on_error: bool = False) -> dict[str
       raise DatabaseConfigurationError(
         f"PostgreSQL database connection failed for {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}: {error_str}"
       ) from e
-    return diagnostics_registry.postgres_status
+    return diagnostics_registry.postgres_status.to_dict()
 
 
-async def validate_postgres_connection_result() -> AppResult[dict[str, Any]]:
+async def validate_postgres_connection_result() -> AppResult[PostgresStatusDict]:
   """
   Verifies PostgreSQL connectivity and returns an explicit `AppResult` wrapping the status dictionary.
 
   Returns:
-      AppResult[dict[str, Any]]: `Ok(status)` when connected, or `Err(AppError)` with `POSTGRES_UNAVAILABLE`.
+      AppResult[PostgresStatusDict]: `Ok(status)` when connected, or `Err(AppError)` with `POSTGRES_UNAVAILABLE`.
   """
   status_dict = await validate_postgres_connection(raise_on_error=False)
   if status_dict.get("status") == "error":
@@ -141,7 +156,12 @@ async def validate_postgres_connection_result() -> AppResult[dict[str, Any]]:
         code=ErrorCode.POSTGRES_UNAVAILABLE,
         message=str(status_dict.get("error") or "PostgreSQL unavailable"),
         status_code=503,
-        details=status_dict,
+        details={
+          "status": status_dict.get("status"),
+          "latency_ms": status_dict.get("latency_ms"),
+          "details": status_dict.get("details"),
+          "error": status_dict.get("error"),
+        },
       )
     )
   return Ok(status_dict)

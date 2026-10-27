@@ -54,6 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,15 +65,21 @@ import io.healthplatform.pulsequery.ui.screens.chat.ChatViewModel
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.ask_a_query
+import pulsequery.composeapp.generated.resources.assistant_streaming
 import pulsequery.composeapp.generated.resources.close
 import pulsequery.composeapp.generated.resources.conversations_history
 import pulsequery.composeapp.generated.resources.delete
+import pulsequery.composeapp.generated.resources.hide_variations
 import pulsequery.composeapp.generated.resources.history
 import pulsequery.composeapp.generated.resources.new_chat
 import pulsequery.composeapp.generated.resources.new_conversation
 import pulsequery.composeapp.generated.resources.send
+import pulsequery.composeapp.generated.resources.stage
+import pulsequery.composeapp.generated.resources.stage_to_cart
 import pulsequery.composeapp.generated.resources.start_a_new_conversation
 import pulsequery.composeapp.generated.resources.untitled
+import pulsequery.composeapp.generated.resources.vote_as_best
+import pulsequery.composeapp.generated.resources.winner_badge
 
 /**
  * Main chat interface for querying the system using natural language.
@@ -127,7 +136,9 @@ fun ChatScreen(
                     text = err,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
                 )
             }
 
@@ -170,11 +181,14 @@ fun ChatScreen(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant
                             ),
                             shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .semantics { liveRegion = LiveRegionMode.Polite }
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = "Assistant (Streaming...)",
+                                    text = stringResource(Res.string.assistant_streaming),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -330,7 +344,7 @@ fun ChatBubble(
                             onClick = { onStageToCart("Chat Query", snippet) },
                             modifier = Modifier.align(Alignment.End)
                         ) {
-                            Text("Stage to Cart")
+                            Text(stringResource(Res.string.stage_to_cart))
                         }
                     }
                 }
@@ -340,7 +354,11 @@ fun ChatBubble(
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(onClick = { showCandidates = !showCandidates }) {
                         Text(
-                            text = if (showCandidates) "Hide Variations" else "${candidateList.size} Model Variations",
+                            text = if (showCandidates) {
+                                stringResource(Res.string.hide_variations)
+                            } else {
+                                "${candidateList.size} Model Variations"
+                            },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.tertiary
                         )
@@ -367,7 +385,11 @@ fun ChatBubble(
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Text(
-                                                text = if (candidate.isSelected) "Winner" else "",
+                                                text = if (candidate.isSelected) {
+                                                    stringResource(Res.string.winner_badge)
+                                                } else {
+                                                    ""
+                                                },
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.tertiary
                                             )
@@ -388,12 +410,12 @@ fun ChatBubble(
                                         ) {
                                             if (!candSql.isNullOrBlank() && onStageToCart != null) {
                                                 TextButton(onClick = { onStageToCart("${candidate.modelName} SQL", candSql) }) {
-                                                    Text("Stage")
+                                                    Text(stringResource(Res.string.stage))
                                                 }
                                             }
                                             if (onVoteCandidate != null) {
                                                 Button(onClick = { onVoteCandidate(candidate.id) }) {
-                                                    Text("Vote as Best")
+                                                    Text(stringResource(Res.string.vote_as_best))
                                                 }
                                             }
                                         }

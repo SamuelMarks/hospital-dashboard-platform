@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,6 +12,12 @@
  * Request schema for updating admin settings.
  */
 export interface AdminSettingsUpdateRequest {
-  api_keys: { [key: string]: string };
-  visible_models: Array<string>;
+  /** Property `api_keys`. */
+  api_keys: Record<string, string>;
+  /** Property `visible_models`. */
+  visible_models: string[];
+  /** Property `configured_models`. */
+  configured_models?: string[] | null;
+  /** Property `ollama_api_base`. */
+  ollama_api_base?: string | null;
 }

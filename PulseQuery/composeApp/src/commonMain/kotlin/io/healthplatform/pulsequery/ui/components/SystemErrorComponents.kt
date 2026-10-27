@@ -28,7 +28,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.backend_inaccessible
+import pulsequery.composeapp.generated.resources.backend_inaccessible_desc
+import pulsequery.composeapp.generated.resources.database_error
+import pulsequery.composeapp.generated.resources.offline_indicator
+import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.retry_query
 
 /**
  * Banner composable displayed at the top of the mobile screen when the backend API is unreachable.
@@ -46,7 +57,9 @@ fun BackendOfflineBanner(
     Surface(
         color = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { liveRegion = LiveRegionMode.Assertive }
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -59,18 +72,18 @@ fun BackendOfflineBanner(
             ) {
                 Icon(
                     imageVector = Icons.Default.CloudOff,
-                    contentDescription = "Offline indicator",
+                    contentDescription = stringResource(Res.string.offline_indicator),
                     tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Backend Inaccessible",
+                        text = stringResource(Res.string.backend_inaccessible),
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
-                        text = "Cannot reach Pulse Query server. Check network or server status.",
+                        text = stringResource(Res.string.backend_inaccessible_desc),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer
                     )
@@ -96,11 +109,11 @@ fun BackendOfflineBanner(
                 } else {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Retry",
+                        contentDescription = stringResource(Res.string.retry),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Retry")
+                    Text(stringResource(Res.string.retry))
                 }
             }
         }
@@ -127,6 +140,7 @@ fun DatabaseErrorCard(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp)
+            .semantics { liveRegion = LiveRegionMode.Assertive }
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -135,7 +149,7 @@ fun DatabaseErrorCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Default.ErrorOutline,
-                    contentDescription = "Database error",
+                    contentDescription = stringResource(Res.string.database_error),
                     tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -166,7 +180,7 @@ fun DatabaseErrorCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Retry Query")
+                    Text(stringResource(Res.string.retry_query))
                 }
             }
         }

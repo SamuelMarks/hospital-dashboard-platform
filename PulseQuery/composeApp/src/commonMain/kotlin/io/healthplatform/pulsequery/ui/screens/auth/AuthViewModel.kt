@@ -7,6 +7,7 @@ package io.healthplatform.pulsequery.ui.screens.auth
 import io.healthplatform.pulsequery.api.apis.AuthApi
 import io.healthplatform.pulsequery.api.models.UserCreate
 import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -179,16 +180,19 @@ class AuthViewModel(
             clientId = null,
             clientSecret = null
         )
-        AppContainer.currentToken = tokenResponse.body().accessToken
+        AppContainer.currentToken = tokenResponse.asResult().getOrThrow().accessToken
 
         val meResponse = currentAuthApi.readUsersMeApiV1AuthMeGet()
-        if (meResponse.success) {
-            AppContainer.currentUser = meResponse.body()
-            _state.update { it.copy(isLoading = false, errorMessage = null) }
-            onLoginSuccess()
-        } else {
-            _state.update { it.copy(isLoading = false, errorMessage = errFetchProfile) }
-        }
+        meResponse.asResult().fold(
+            onSuccess = { user ->
+                AppContainer.currentUser = user
+                _state.update { it.copy(isLoading = false, errorMessage = null) }
+                onLoginSuccess()
+            },
+            onFailure = {
+                _state.update { it.copy(isLoading = false, errorMessage = errFetchProfile) }
+            }
+        )
     }
 
     /**
@@ -281,22 +285,25 @@ class AuthViewModel(
     ) {
         val req = UserCreate(email = email, password = password)
         val res = currentAuthApi.registerUserApiV1AuthRegisterPost(req)
-        if (!res.success) {
-            val displayMsg = if (res.status == 400) {
-                "An account with this email already exists."
-            } else {
-                "Registration failed (Error ${res.status})."
+        res.asResult().fold(
+            onSuccess = {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        successMessage = "Account created successfully! Please sign in."
+                    )
+                }
+                onRegisterSuccess()
+            },
+            onFailure = {
+                val displayMsg = if (res.status == 400) {
+                    "An account with this email already exists."
+                } else {
+                    "Registration failed (Error ${res.status})."
+                }
+                _state.update { it.copy(isLoading = false, errorMessage = displayMsg) }
             }
-            _state.update { it.copy(isLoading = false, errorMessage = displayMsg) }
-            return
-        }
-        _state.update {
-            it.copy(
-                isLoading = false,
-                successMessage = "Account created successfully! Please sign in."
-            )
-        }
-        onRegisterSuccess()
+        )
     }
 
     /**

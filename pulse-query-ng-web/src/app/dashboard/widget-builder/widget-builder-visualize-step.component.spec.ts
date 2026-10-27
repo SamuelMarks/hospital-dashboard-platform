@@ -82,5 +82,45 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Label Column');
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Size Column');
+
+    // Test natural-text toggle, processor options, and prompt inputs
+    fixture.componentRef.setInput('processors', [
+      {
+        id: 'ollama:llama3',
+        name: 'Llama 3',
+        provider: 'ollama',
+        isLocal: true,
+        category: 'OLLAMA',
+      },
+      {
+        id: 'openai:gpt-4o',
+        name: 'GPT-4o',
+        provider: 'openai',
+        isLocal: false,
+        category: 'ANY_LLM',
+      },
+    ]);
+    fixture.componentRef.setInput('allowNaturalText', true);
+    fixture.detectChanges();
+
+    expect(component.sqlOptions().length).toBe(1);
+    expect(component.ollamaOptions().length).toBe(1);
+    expect(component.anyLlmOptions().length).toBe(1);
+
+    const promptSpy = vi.spyOn(component.naturalTextPromptChange, 'emit');
+    const placeholderSpy = vi.spyOn(component.placeholderTextChange, 'emit');
+    const promptInput = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="input-natural-text-prompt"]',
+    ) as HTMLInputElement;
+    promptInput.value = 'Count admissions';
+    promptInput.dispatchEvent(new Event('input'));
+    expect(promptSpy).toHaveBeenCalledWith('Count admissions');
+
+    const placeholderInput = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="input-placeholder-text"]',
+    ) as HTMLInputElement;
+    placeholderInput.value = 'Ask here...';
+    placeholderInput.dispatchEvent(new Event('input'));
+    expect(placeholderSpy).toHaveBeenCalledWith('Ask here...');
   });
 });

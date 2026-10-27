@@ -59,79 +59,89 @@
     </div>
   }
 
-  @if (result(); as res) {
-    <div class="results-grid">
-      @if (res.ground_truth_mpax) {
-        <mat-card
-          class="mpax-panel p-4 border"
-          style="
-            background-color: var(--sys-primary-container);
-            color: var(--sys-on-primary-container);
-            border-color: var(--sys-surface-border);
-          "
-        >
-          <h3 i18n class="font-bold mb-2">MPAX Ground Truth</h3>
-          <pre class="text-xs overflow-auto">{{ res.ground_truth_mpax | json }}</pre>
-        </mat-card>
-      }
-
-      <div class="candidates-grid mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-        @for (cand of res.candidates; track cand.id) {
-          <mat-card class="candidate-panel p-4" [class.winner]="cand.is_selected">
-            <div class="flex items-center justify-between mb-2">
-              <h3 class="font-bold">{{ cand.model_name }}</h3>
-              @if (cand.is_selected) {
-                <span
-                  class="winner-badge px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded"
-                  i18n
-                >
-                  Winner
-                </span>
-              } @else {
-                <button
-                  mat-stroked-button
-                  class="vote-btn"
-                  [disabled]="votingCandidateId() !== null"
-                  (click)="vote(cand.id)"
-                  i18n
-                >
-                  Vote for Candidate
-                </button>
-              }
-            </div>
-
-            @if (cand.mpax_score !== null && cand.mpax_score !== undefined) {
-              <div
-                class="mb-4 p-2 rounded"
-                style="background-color: var(--sys-surface-variant); color: var(--sys-on-surface)"
-              >
-                <strong i18n>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
-              </div>
-            }
-
-            @if (cand.sql_snippet) {
-              <app-sql-snippet class="mb-4 block" [sql]="cand.sql_snippet"></app-sql-snippet>
-            }
-
-            <viz-markdown [content]="cand.content"></viz-markdown>
-
-            @if (cand.mpax_result) {
-              <div
-                class="mt-4 p-2 border rounded"
-                style="
-                  background-color: var(--sys-surface-variant);
-                  border-color: var(--sys-surface-border);
-                "
-              >
-                <h4 i18n class="font-bold text-xs mb-1" style="color: var(--sys-text-secondary)">
-                  Generated MPAX Result
-                </h4>
-                <pre class="text-xs overflow-auto">{{ cand.mpax_result | json }}</pre>
-              </div>
-            }
+  <div role="status" aria-live="polite">
+    @if (result(); as res) {
+      <div class="results-grid">
+        @if (res.ground_truth_mpax) {
+          <mat-card
+            class="mpax-panel p-4 border"
+            style="
+              background-color: var(--sys-primary-container);
+              color: var(--sys-on-primary-container);
+              border-color: var(--sys-surface-border);
+            "
+          >
+            <h3 i18n class="font-bold mb-2">MPAX Ground Truth</h3>
+            <pre class="text-xs overflow-auto">{{ res.ground_truth_mpax | json }}</pre>
           </mat-card>
         }
+
+        <div class="candidates-grid mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          @for (cand of res.candidates; track cand.id) {
+            <mat-card
+              class="candidate-panel p-4"
+              [class.winner]="cand.is_selected"
+              role="button"
+              tabindex="0"
+              [attr.aria-pressed]="cand.is_selected || false"
+              (keydown.enter)="vote(cand.id)"
+              (keydown.space)="vote(cand.id); $event.preventDefault()"
+            >
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="font-bold">{{ cand.model_name }}</h3>
+                @if (cand.is_selected) {
+                  <span
+                    class="winner-badge px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded"
+                    i18n
+                  >
+                    Winner
+                  </span>
+                } @else {
+                  <button
+                    mat-stroked-button
+                    class="vote-btn"
+                    [disabled]="votingCandidateId() !== null"
+                    (click)="vote(cand.id)"
+                    i18n
+                  >
+                    Vote for Candidate
+                  </button>
+                }
+              </div>
+
+              @if (cand.mpax_score !== null && cand.mpax_score !== undefined) {
+                <div
+                  class="mb-4 p-2 rounded"
+                  style="background-color: var(--sys-surface-variant); color: var(--sys-on-surface)"
+                >
+                  <strong i18n>MPAX Feasibility Score:</strong> {{ cand.mpax_score }}
+                </div>
+              }
+
+              @if (cand.sql_snippet) {
+                <app-sql-snippet class="mb-4 block" [sql]="cand.sql_snippet"></app-sql-snippet>
+              }
+
+              <viz-markdown [content]="cand.content"></viz-markdown>
+
+              @if (cand.mpax_result) {
+                <div
+                  class="mt-4 p-2 border rounded"
+                  style="
+                    background-color: var(--sys-surface-variant);
+                    border-color: var(--sys-surface-border);
+                  "
+                >
+                  <h4 i18n class="font-bold text-xs mb-1" style="color: var(--sys-text-secondary)">
+                    Generated MPAX Result
+                  </h4>
+                  <pre class="text-xs overflow-auto">{{ cand.mpax_result | json }}</pre>
+                </div>
+              }
+            </mat-card>
+          }
+        </div>
       </div>
-    </div>
-  }
+    }
+  </div>
 </div>

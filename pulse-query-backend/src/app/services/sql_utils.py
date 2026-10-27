@@ -6,21 +6,23 @@ identical queries across different LLMs for analytics and UI grouping,
 as well as SQL-injection-safe placeholder substitution.
 """
 
+from collections.abc import Mapping
 import hashlib
 import re
-from typing import Any
 
 import sqlglot
+
+from app.schemas.json_types import JsonValue, SqlScalar
 
 _DEF_DIALECT = "duckdb"
 
 
-def sanitize_string_literal(value: object) -> str:
+def sanitize_string_literal(value: SqlScalar | JsonValue) -> str:
   """
   Sanitizes a string literal for safe SQL query injection by escaping single quotes.
 
   Args:
-      value (object): The raw input value.
+      value (SqlScalar | JsonValue): The raw input value.
 
   Returns:
       str: Escaped string safe for SQL interpolation.
@@ -30,12 +32,12 @@ def sanitize_string_literal(value: object) -> str:
   return str(value).replace("'", "''")
 
 
-def sanitize_date_literal(value: object, fallback: str = "") -> str:
+def sanitize_date_literal(value: SqlScalar | JsonValue, fallback: str = "") -> str:
   """
   Validates and sanitizes a date or timestamp input against ISO formatting.
 
   Args:
-      value (object): The raw date input value.
+      value (SqlScalar | JsonValue): The raw date input value.
       fallback (str): The default value to return if validation fails.
 
   Returns:
@@ -49,21 +51,22 @@ def sanitize_date_literal(value: object, fallback: str = "") -> str:
   return fallback
 
 
-def process_global_filters(sql: str, global_params: dict[str, Any] | None = None) -> str:
+def process_global_filters(sql: str, global_params: Mapping[str, JsonValue] | None = None) -> str:
   """
   Injects global dashboard filter values into SQL placeholders safely.
   Allows a single query to be reused across different departments/dates.
 
   Args:
       sql (str): The SQL template containing `{{global_*}}` handlebars.
-      global_params (dict[str, Any] | None): User selection (e.g., `{"dept": "Cardiology"}`).
+      global_params (Mapping[str, JsonValue] | None): User selection (e.g., `{"dept": "Cardiology"}`).
 
   Returns:
       str: The executable SQL with values injected.
   """
   params = global_params or {}
   processed_sql = sql
-  service_raw = params.get("dept")
+  raw_dept = params.get("dept") or params.get("department")
+  service_raw = raw_dept if raw_dept and str(raw_dept).strip() not in ("All", "All Departments", "null", "None") else None
 
   if "{{global_service}}" in processed_sql:
     if service_raw:
@@ -117,8 +120,8 @@ def extract_sql_from_markdown(text: str) -> str:
 
 def interpolate_template_parameters(
   raw_sql: str,
-  parameters_schema: dict[str, Any] | None = None,
-  param_overrides: dict[str, Any] | None = None,
+  parameters_schema: Mapping[str, JsonValue] | None = None,
+  param_overrides: Mapping[str, JsonValue] | None = None,
 ) -> str:
   """
   Substitutes `{{key}}` and `{{ key }}` handlebars placeholders in a SQL template
@@ -126,23 +129,23 @@ def interpolate_template_parameters(
 
   Args:
       raw_sql (str): SQL template containing `{{param}}` placeholders.
-      parameters_schema (dict[str, Any] | None): JSON Schema describing template parameters.
-      param_overrides (dict[str, Any] | None): Explicit parameter key-value overrides.
+      parameters_schema (Mapping[str, JsonValue] | None): JSON Schema describing template parameters.
+      param_overrides (Mapping[str, JsonValue] | None): Explicit parameter key-value overrides.
 
   Returns:
       str: Processed SQL query string with placeholders replaced.
   """
   processed_sql = raw_sql or ""
-  resolved_values: dict[str, Any] = {}
+  resolved_values: dict[str, JsonValue] = {}
 
-  if isinstance(parameters_schema, dict):
+  if isinstance(parameters_schema, Mapping):
     properties = parameters_schema.get("properties", {})
-    if isinstance(properties, dict):
+    if isinstance(properties, Mapping):
       for key, details in properties.items():
-        if isinstance(details, dict) and details.get("default") is not None:
+        if isinstance(details, Mapping) and details.get("default") is not None:
           resolved_values[key] = details.get("default")
 
-  if isinstance(param_overrides, dict):
+  if isinstance(param_overrides, Mapping):
     for key, val in param_overrides.items():
       if val is not None:
         resolved_values[key] = val

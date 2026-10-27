@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,7 +12,10 @@
  * Request model for executing SQL and returning a preview result.
  */
 export interface SQLExecutionRequest {
+  /** Property `sql`. */
   sql: string;
+  /** Property `max_rows`. */
   max_rows?: number | null;
-  global_params?: { [key: string]: any };
+  /** Property `global_params`. */
+  global_params?: Record<string, unknown>;
 }

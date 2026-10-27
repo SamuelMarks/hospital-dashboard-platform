@@ -10,9 +10,9 @@ It acts as the central hub connecting:
 """
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import logging
-from typing import Any
+from typing import Protocol
 from uuid import UUID
 
 import duckdb
@@ -27,6 +27,7 @@ from app.models.user import User
 from app.schemas.ai import SQLExecutionRequest, SQLExecutionResponse
 from app.schemas.execution import SqlRunnerResultDict
 from app.schemas.feedback import ExperimentResponse, FeedbackUpdate
+from app.schemas.json_types import JsonValue
 from app.services.admin import get_admin_settings
 from app.services.llm_client import ArenaResponse, llm_client
 from app.services.prompt_engineering.few_shot_rag import FewShotRAGStrategy
@@ -43,8 +44,36 @@ from app.services.sql_utils import (
 
 logger = logging.getLogger(__name__)
 
-SqlRunnerPreviewFn = Callable[[DuckDBCursorProtocol, dict[str, Any]], SqlRunnerResultDict]
+SqlRunnerPreviewFn = Callable[[DuckDBCursorProtocol, Mapping[str, JsonValue]], SqlRunnerResultDict]
 ConnFactoryPreviewFn = Callable[[], duckdb.DuckDBPyConnection]
+
+
+class ExperimentSessionProtocol(Protocol):
+  """
+  Structural protocol representing an async session capable of persisting `ExperimentLog` and `ModelCandidate` items.
+  """
+
+  def add(self, instance: ExperimentLog | ModelCandidate) -> None:
+    """
+    Stages an `ExperimentLog` or `ModelCandidate` entity in the session.
+
+    Args:
+        instance (ExperimentLog | ModelCandidate): Entity to stage.
+    """
+
+  async def flush(self) -> None:
+    """Flushes pending entities to assign primary keys."""
+
+  async def commit(self) -> None:
+    """Commits the current transaction."""
+
+  async def refresh(self, instance: ExperimentLog) -> None:
+    """
+    Refreshes `instance` attributes and relationships.
+
+    Args:
+        instance (ExperimentLog): Experiment log entity to refresh.
+    """
 
 
 class SQLGeneratorService:
@@ -81,7 +110,7 @@ class SQLGeneratorService:
   async def run_arena_experiment(
     self,
     user_query: str,
-    db: AsyncSession,
+    db: AsyncSession | ExperimentSessionProtocol,
     user: User,
     strategy: str = "zero-shot",
     dry_run: bool = False,
@@ -91,7 +120,7 @@ class SQLGeneratorService:
 
     Args:
         user_query (str): The natural language question.
-        db (AsyncSession): Database session for logging.
+        db (AsyncSession | ExperimentSessionProtocol): Database session for logging.
         user (User): Authenticated user.
         strategy (str): The prompt engineering technique to use.
         dry_run (bool): If True, skips LLM call and returns mock.
@@ -110,7 +139,7 @@ class SQLGeneratorService:
       results = [ArenaResponse("MockModel", "mock/v1", f"SELECT 1; -- {actual_strategy_name}", 10, None)]
     else:
       logger.info(f"Broadcast [{actual_strategy_name}]: '{user_query[:30]}...' to {len(self.llm.swarm)} models.")
-      admin_settings = await get_admin_settings(db)
+      admin_settings = await get_admin_settings(db) if isinstance(db, AsyncSession) else None
       results = await self.llm.generate_arena_competition(
         messages=messages, temperature=0.1, max_tokens=600, admin_settings=admin_settings
       )
@@ -142,6 +171,81 @@ class SQLGeneratorService:
     await db.refresh(experiment)
 
     return ExperimentResponse.model_validate(experiment)
+
+  async def generate_sql_for_processor_result(
+    self,
+    prompt: str,
+    processor: str,
+    db: AsyncSession,
+    strategy: str = "zero-shot",
+  ) -> AppResult[str]:
+    """
+    Generates a read-only SQL query from `prompt` using the specified `processor` (`'SQL'` or LLM model ID).
+
+    Args:
+        prompt (str): User-supplied natural language prompt or raw SQL string.
+        processor (str): Selected processor (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`).
+        db (AsyncSession): Active async database session for admin settings resolution.
+        strategy (str): Prompt engineering strategy tag.
+
+    Returns:
+        AppResult[str]: `Ok(sql_string)` on success, or `Err(AppError)` on failure.
+    """
+    clean_prompt = (prompt or "").strip()
+    if not clean_prompt:
+      return Err(
+        AppError(
+          code=ErrorCode.VALIDATION_ERROR,
+          message="Natural text prompt cannot be empty.",
+          status_code=400,
+        )
+      )
+
+    clean_proc = (processor or "SQL").strip()
+    if clean_proc.upper() == "SQL":
+      return Ok(extract_sql_from_markdown(clean_prompt))
+
+    strategy_impl = self._get_strategy_implementation(strategy)
+    schema_context = await asyncio.to_thread(self.schema_svc.get_schema_context_string)
+    messages = strategy_impl.build_messages(clean_prompt, schema_context)
+    admin_settings = await get_admin_settings(db)
+
+    results = await self.llm.generate_arena_competition(
+      messages=messages,
+      temperature=0.0,
+      max_tokens=600,
+      target_model_ids=[clean_proc],
+      admin_settings=admin_settings,
+    )
+    if not results:
+      return Err(
+        AppError(
+          code=ErrorCode.LLM_PROVIDER_ERROR,
+          message=f"Processor '{clean_proc}' is not available or could not be initialized.",
+          status_code=400,
+        )
+      )
+
+    first_res = results[0]
+    if first_res.error:
+      return Err(
+        AppError(
+          code=ErrorCode.LLM_PROVIDER_ERROR,
+          message=f"Model '{clean_proc}' failed to generate SQL: {first_res.error}",
+          status_code=502,
+        )
+      )
+
+    generated_sql = extract_sql_from_markdown(first_res.content)
+    if not generated_sql:
+      return Err(
+        AppError(
+          code=ErrorCode.LLM_PROVIDER_ERROR,
+          message=f"Model '{clean_proc}' returned an empty SQL response.",
+          status_code=502,
+        )
+      )
+    return Ok(generated_sql)
 
   async def run_arena_experiment_result(
     self,

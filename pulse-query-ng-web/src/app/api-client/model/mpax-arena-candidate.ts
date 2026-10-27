@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,11 +12,18 @@
  * Individual LLM candidate result in an MPAX Arena experiment.
  */
 export interface MpaxArenaCandidate {
+  /** Property `id`. */
   id: string;
+  /** Property `model_name`. */
   model_name: string;
+  /** Property `content`. */
   content: string;
+  /** Property `is_selected`. */
   is_selected?: boolean;
-  mpax_result?: Record<string, any> | null;
+  /** Property `mpax_result`. */
+  mpax_result?: Record<string, unknown> | null;
+  /** Property `mpax_score`. */
   mpax_score?: number | null;
+  /** Property `sql_snippet`. */
   sql_snippet?: string | null;
 }

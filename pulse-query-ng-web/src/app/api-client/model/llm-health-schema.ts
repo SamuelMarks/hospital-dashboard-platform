@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -23,5 +23,5 @@ export interface LlmHealthSchema {
   /**
    * List of active model display names.
    */
-  models?: Array<string>;
+  models?: string[];
 }

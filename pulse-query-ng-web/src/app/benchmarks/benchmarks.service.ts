@@ -7,6 +7,30 @@ import { BenchmarksService as GeneratedBenchmarksService } from '../api-client';
 import { Observable } from 'rxjs';
 
 /**
+ * Metadata header object optionally present in benchmark JSON datasets.
+ */
+export interface BenchmarkMeta {
+  /** Dataset schema version or description. */
+  version?: string;
+  /** Optional description of the benchmark suite. */
+  description?: string;
+  /** Additional metadata properties. */
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+/**
+ * Service demand row entry within an MPAX benchmark scenario.
+ */
+export interface DemandDataRow {
+  /** Clinical service name. */
+  Service: string;
+  /** Patient demand count for the service. */
+  Count: number;
+  /** Optional current unit name when 3-column demand is used. */
+  Unit?: string;
+}
+
+/**
  * Gold-standard Text-to-SQL benchmark entry returned by `/api/v1/benchmarks/sql`.
  */
 export interface SqlBenchmark {
@@ -19,7 +43,7 @@ export interface SqlBenchmark {
   /** Ground-truth DuckDB SQL query. */
   gold_sql?: string;
   /** Optional metadata header entry. */
-  _meta?: unknown;
+  _meta?: BenchmarkMeta;
 }
 
 /**
@@ -35,7 +59,7 @@ export interface MpaxBenchmark {
   /** Natural language clinical optimization prompt. */
   prompt?: string;
   /** Structured service demand records. */
-  demand_data?: unknown[];
+  demand_data?: DemandDataRow[];
   /** Baseline unit bed capacities. */
   base_capacity?: Record<string, number>;
   /** Expected total demand, capacity, and overflow metrics. */
@@ -56,7 +80,7 @@ export class BenchmarksService {
    * @returns Observable emitting the array of `SqlBenchmark` items.
    */
   getSqlBenchmarks(): Observable<SqlBenchmark[]> {
-    return this.api.getSqlBenchmarksApiV1BenchmarksSqlGet() as Observable<SqlBenchmark[]>;
+    return this.api.getSqlBenchmarksApiV1BenchmarksSqlGet();
   }
 
   /**
@@ -65,6 +89,6 @@ export class BenchmarksService {
    * @returns Observable emitting the array of `MpaxBenchmark` items.
    */
   getMpaxBenchmarks(): Observable<MpaxBenchmark[]> {
-    return this.api.getMpaxBenchmarksApiV1BenchmarksMpaxGet() as Observable<MpaxBenchmark[]>;
+    return this.api.getMpaxBenchmarksApiV1BenchmarksMpaxGet();
   }
 }

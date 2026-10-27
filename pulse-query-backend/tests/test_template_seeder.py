@@ -14,6 +14,7 @@ from app.core.diagnostics import diagnostics_registry
 from app.models.template import WidgetTemplate
 from app.services import template_seeder
 from app.services.template_seeder import TemplateSeeder
+from tests.typed_test_doubles import ExcTb, ExcType, ExcVal
 
 
 class _RealSessionContext:
@@ -37,14 +38,14 @@ class _RealSessionContext:
     """
     return self._session
 
-  async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
+  async def __aexit__(self, exc_type: ExcType, exc: ExcVal, tb: ExcTb) -> bool:
     """
     Exits the async context without suppressing exceptions.
 
     Args:
-        exc_type (object): Exception type if raised.
-        exc (object): Exception instance if raised.
-        tb (object): Traceback if raised.
+        exc_type (ExcType): Exception type if raised.
+        exc (ExcVal): Exception instance if raised.
+        tb (ExcTb): Traceback if raised.
 
     Returns:
         bool: Always False.
@@ -58,8 +59,8 @@ async def test_seed_defaults_skips_missing_file(tmp_path: Path) -> None:
   """Missing content pack should short-circuit, update diagnostics_registry, and not raise."""
   missing_file = tmp_path / "missing_templates.json"
   await TemplateSeeder.seed_defaults(data_file=missing_file)
-  assert diagnostics_registry.template_status["missing_file"] is True
-  assert diagnostics_registry.template_status["templates_loaded"] == 0
+  assert diagnostics_registry.template_status.missing_file is True
+  assert diagnostics_registry.template_status.templates_loaded == 0
 
 
 @pytest.mark.asyncio
@@ -69,8 +70,14 @@ async def test_seed_defaults_handles_invalid_json(tmp_path: Path) -> None:
   bad_file.write_text("{invalid", encoding="utf-8")
 
   await TemplateSeeder.seed_defaults(data_file=bad_file)
-  assert diagnostics_registry.template_status["has_templates"] is False
+  assert diagnostics_registry.template_status.has_templates is False
   assert any(w.code == "CORRUPTED_TEMPLATE_PACK" for w in diagnostics_registry.warnings)
+
+  empty_file = tmp_path / "empty.json"
+  empty_file.write_text("[]", encoding="utf-8")
+  await TemplateSeeder.seed_defaults(data_file=empty_file, db=AsyncMock(spec=AsyncSession))
+  assert diagnostics_registry.template_status.status == "empty"
+  assert any(w.code == "EMPTY_TEMPLATE_PACK" for w in diagnostics_registry.warnings)
 
 
 @pytest.mark.asyncio
@@ -107,8 +114,8 @@ async def test_seed_defaults_idempotent_insert_and_update_against_real_db(
 
   # 1. Seed using injected `db=db_session`
   await TemplateSeeder.seed_defaults(data_file=seed_file, db=db_session)
-  assert diagnostics_registry.template_status["templates_loaded"] == 2
-  assert diagnostics_registry.template_status["has_templates"] is True
+  assert diagnostics_registry.template_status.templates_loaded == 2
+  assert diagnostics_registry.template_status.has_templates is True
 
   rows = (
     (
@@ -204,5 +211,58 @@ async def test_template_seeder_instance_and_postgres_view_branch(tmp_path: Path,
   pg_bind = MagicMock()
   pg_bind.dialect.name = "postgresql"
   pg_mock_db.bind = pg_bind
+  pg_mock_db.get_bind = MagicMock(return_value=pg_bind)
   await TemplateSeeder._ensure_templates_view(pg_mock_db)
   pg_mock_db.execute.assert_awaited_once()
+
+  # Test get_bind exception fallback branch on _ensure_templates_view
+  unbound_mock_db = AsyncMock()
+  unbound_mock_db.get_bind = MagicMock(side_effect=RuntimeError("unbound session"))
+  await TemplateSeeder._ensure_templates_view(unbound_mock_db)
+  unbound_mock_db.execute.assert_awaited_once()
+
+
+def test_isolated_subprocess_mapper_configuration_and_seed_script(tmp_path: Path) -> None:
+  """
+  Verifies that importing `app.services.template_seeder` or running `scripts/seed_templates.py`
+  in a fresh Python interpreter registers all dependent SQLAlchemy ORM mappers (including `User`
+  and `Dashboard`) and executes idempotent seeding without `InvalidRequestError`.
+  """
+  import os
+  import subprocess
+  import sys
+
+  backend_root = Path(__file__).resolve().parents[1]
+  sqlite_db = tmp_path / "isolated_seed.db"
+  env = os.environ.copy()
+  env["PYTHONPATH"] = str(backend_root / "src")
+  env["DATABASE_URL"] = f"sqlite+aiosqlite:///{sqlite_db}"
+
+  code = (
+    "import asyncio\n"
+    "from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine\n"
+    "from sqlalchemy.orm import configure_mappers\n"
+    "from app.database.postgres import Base\n"
+    "from app.services.template_seeder import template_seeder\n"
+    "import scripts.seed_templates as seed_mod\n"
+    "configure_mappers()\n"
+    "async def _init():\n"
+    f"  eng = create_async_engine('sqlite+aiosqlite:///{sqlite_db}')\n"
+    "  async with eng.begin() as conn:\n"
+    "    await conn.run_sync(Base.metadata.create_all)\n"
+    "  seed_mod.AsyncSessionLocal = async_sessionmaker(eng, class_=AsyncSession, expire_on_commit=False)\n"
+    "  count1 = await seed_mod.seed_templates()\n"
+    "  count2 = await seed_mod.seed_templates()\n"
+    "  assert count1 >= 30 and count2 == count1\n"
+    "  await eng.dispose()\n"
+    "asyncio.run(_init())\n"
+  )
+  proc = subprocess.run(
+    [sys.executable, "-c", code],
+    cwd=str(backend_root),
+    env=env,
+    capture_output=True,
+    text=True,
+    check=False,
+  )
+  assert proc.returncode == 0, f"Isolated seed failed:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"

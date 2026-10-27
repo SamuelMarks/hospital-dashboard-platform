@@ -13,6 +13,7 @@ import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
 import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.TemplateCreate
 import io.healthplatform.pulsequery.api.models.WidgetIn
+import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
@@ -92,7 +93,7 @@ class EditorViewModel(
             _state.update { it.copy(isLoading = true, errorMessage = null, result = null) }
             runCatchingPulseAsync {
                 val req = SQLExecutionRequest(sql = currentSql, maxRows = 50)
-                currentAiApi.executeSqlPreviewApiV1AiExecutePost(req).body()
+                currentAiApi.executeSqlPreviewApiV1AiExecutePost(req).asResult().getOrThrow()
             }.fold(
                 onSuccess = { res ->
                     _state.update { it.copy(result = res, isLoading = false, errorMessage = null) }
@@ -100,7 +101,7 @@ class EditorViewModel(
                 onFailure = { e ->
                     _state.update {
                         it.copy(
-                            errorMessage = errorPrefix + e.messageOrDefault("Unknown error"),
+                            errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR),
                             isLoading = false
                         )
                     }

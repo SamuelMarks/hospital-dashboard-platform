@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,11 +12,18 @@
  * Public response schema for the frontend. Hides \'model_identifier\' to maintain double-blind benchmarking.
  */
 export interface ModelCandidateResponse {
+  /** Property `model_tag`. */
   model_tag: string;
+  /** Property `generated_sql`. */
   generated_sql: string;
+  /** Property `sql_hash`. */
   sql_hash?: string | null;
+  /** Property `latency_ms`. */
   latency_ms?: number | null;
+  /** Property `id`. */
   id: string;
+  /** Property `experiment_id`. */
   experiment_id: string;
+  /** Property `is_selected`. */
   is_selected: boolean;
 }

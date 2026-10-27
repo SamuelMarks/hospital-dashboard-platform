@@ -6,7 +6,7 @@
 # ## Usage
 # ./test.sh [--unit-mock|--mock-cloud|--dry-run] [--live-cloud] [--local|-l] [--run-remote-tests|-t] [provider]
 
-set -eu
+set -feu
 
 if [ "${SCRIPT_NAME-}" ]; then
     THIS_FILE="${SCRIPT_NAME}"
@@ -22,14 +22,15 @@ fi
 
 case "${STACK+x}" in
     *':'"${THIS_FILE}"':'*)
-        printf '[STOP]     processing "%s"
-' "${THIS_FILE}" >&2
+        printf '[STOP]     processing "%s"\n' "${THIS_FILE}" >&2
         if (return 0 2>/dev/null); then return; else exit 0; fi ;;
-    *) ;;
+    *) printf '[CONTINUE] processing "%s"\n' "${THIS_FILE}" >&2 ;;
 esac
 export STACK="${STACK:-}${THIS_FILE}"':'
+SCRIPT_DIR=$(cd -- "$(dirname -- "${THIS_FILE}")" && pwd)
+: "${LIBSCRIPT_ROOT_DIR:=$(d="$SCRIPT_DIR"; while [ ! -f "$d/libscript.sh" ]; do n="${d%/*}"; [ -z "$n" ] && n="/"; [ "$d" = "$n" ] && break; d="$n"; done; if [ -f "$d/libscript.sh" ]; then printf '%s\n' "$d"; elif [ -d "$HOME/repos/libscript" ]; then printf '%s\n' "$HOME/repos/libscript"; else printf '%s\n' "$d"; fi)}"
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$SCRIPT_DIR"
 
 # ## load_env_defaults
 # Loads key=value defaults from `.env` without overwriting existing environment variables.
@@ -48,7 +49,7 @@ load_env_defaults() {
             _VAL="${_VAL%"$_DQ"}"
             _VAL="${_VAL#"$_SQ"}"
             _VAL="${_VAL%"$_SQ"}"
-            eval "_CUR=\${$_KEY:-}"
+            eval "_CUR=\${$_KEY:-}" # libscript-allow-eval
             if [ -z "$_CUR" ]; then
                 export "$_KEY=$_VAL"
             fi

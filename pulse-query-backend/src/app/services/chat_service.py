@@ -16,7 +16,9 @@ import logging
 import re
 from uuid import UUID
 
+import httpx
 from sqlalchemy import and_, desc, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 import sqlglot
@@ -71,7 +73,7 @@ def extract_and_validate_chat_sql(text: str | None) -> str | None:
       try:
         if _is_valid_sql_block(candidate_sql):
           return candidate_sql
-      except Exception as e:
+      except (sqlglot.errors.SqlglotError, ValueError, TypeError, RuntimeError) as e:
         logger.warning(f"Explicit SQL block failed validation: {e}")
 
   generic_matches: list[str] = re.findall(r"```(?:[a-zA-Z0-9_-]+)?\s+(.*?)\s*```", text, re.DOTALL)
@@ -81,7 +83,7 @@ def extract_and_validate_chat_sql(text: str | None) -> str | None:
       try:
         if _is_valid_sql_block(candidate_sql):
           return candidate_sql
-      except Exception:
+      except (sqlglot.errors.SqlglotError, ValueError, TypeError, RuntimeError):
         continue
 
   return None
@@ -161,7 +163,7 @@ class ChatService:
         return [ArenaResponse("System", "error", "I apologize, no models responded.", 0, "All providers failed")]
       return responses
 
-    except Exception as e:
+    except (httpx.HTTPError, SQLAlchemyError, RuntimeError, ValueError, TypeError, OSError) as e:
       logger.error(f"LLM Generation Failed: {e}")
       return [ArenaResponse("System", "error", "I apologize, but I am unable to process your request.", 0, str(e))]
 

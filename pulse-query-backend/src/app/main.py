@@ -40,8 +40,11 @@ from app.core.diagnostics import check_configuration_hygiene, diagnostics_regist
 from app.database.duckdb import duckdb_manager
 from app.database.duckdb_init import init_duckdb_on_startup
 from app.database.postgres import Base, engine, validate_postgres_connection
+from app.models import register_orm_models
 from app.services.data_ingestion import data_ingestion_service
 from app.services.template_seeder import TemplateSeeder
+
+register_orm_models()
 
 
 async def _background_ingest_loop(interval_minutes: int) -> None:
@@ -204,19 +207,24 @@ def root() -> dict[str, str]:
   return {"message": "Hospital Analytics Platform API is running"}
 
 
-def setup_static_files(app_instance: FastAPI) -> None:
+def setup_static_files(app_instance: FastAPI, dist_candidates: list[Path] | None = None) -> None:
   """Configure static file serving if DEBUG is enabled and build assets exist.
 
   Args:
-      app_instance: The FastAPI application instance to configure.
+      app_instance (FastAPI): The FastAPI application instance to configure.
+      dist_candidates (list[Path] | None): Optional candidate build directories to inspect.
   """
   if os.environ.get("DEBUG"):
-    dist_candidates = [
-      Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web" / "browser",
-      Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web",
-      Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist",
-    ]
-    dist_path = next((p for p in dist_candidates if p.exists()), None)
+    candidates = (
+      dist_candidates
+      if dist_candidates is not None
+      else [
+        Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web" / "browser",
+        Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist" / "pulse-query-ng-web",
+        Path(__file__).resolve().parents[3] / "pulse-query-ng-web" / "dist",
+      ]
+    )
+    dist_path = next((p for p in candidates if p.exists()), None)
     if dist_path:
       logger.info("DEBUG mode enabled. Serving static frontend from %s", dist_path)
       app_instance.mount("/", StaticFiles(directory=str(dist_path), html=True), name="static")

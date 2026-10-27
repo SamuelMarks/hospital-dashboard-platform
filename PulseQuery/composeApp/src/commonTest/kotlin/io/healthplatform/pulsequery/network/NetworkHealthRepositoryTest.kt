@@ -1,5 +1,6 @@
 package io.healthplatform.pulsequery.network
 
+import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -146,6 +147,7 @@ class NetworkHealthRepositoryTest {
 
         val result = repository.checkHealth()
         assertFalse(result.isSuccess)
+        assertTrue(result.exceptionOrNull() is PulseQueryError)
         assertFalse(repository.isOnline.value)
         assertFalse(repository.isDatabaseHealthy.value)
         assertNotNull(repository.lastError.value)

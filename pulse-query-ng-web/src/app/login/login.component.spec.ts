@@ -55,9 +55,12 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
   };
 
-  it('should create', () => {
+  it('should create with default unauthenticated state', () => {
     createComponent();
     expect(component).toBeTruthy();
+    expect(component.isLoading()).toBe(false);
+    expect(component.hidePassword()).toBe(true);
+    expect(component.errorMessage()).toBeNull();
   });
 
   it('should call AuthService and navigate on success', () => {

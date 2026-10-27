@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,16 +12,20 @@
  * API Response model for a Template. Include database ID.
  */
 export interface TemplateResponse {
+  /** Property `title`. */
   title: string;
+  /** Property `description`. */
   description?: string | null;
   /**
    * SQL with {{handlebars}} placeholders
    */
   sql_template: string;
+  /** Property `category`. */
   category: string;
   /**
    * JSON Schema definition for dynamic form generation.
    */
-  parameters_schema?: { [key: string]: any };
+  parameters_schema?: Record<string, unknown>;
+  /** Property `id`. */
   id: string;
 }

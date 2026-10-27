@@ -27,12 +27,9 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
 
-// CodeMirror Imports
-import { EditorState, Compartment } from '@codemirror/state';
-import { EditorView, basicSetup } from 'codemirror';
-import { sql, PostgreSQL } from '@codemirror/lang-sql';
-import { keymap } from '@codemirror/view';
-import { defaultKeymap } from '@codemirror/commands';
+// CodeMirror Adapter
+import { EditorView } from 'codemirror';
+import { SqlCodeMirrorAdapter } from './sql-codemirror.adapter';
 
 // Material
 import { MatTabsModule } from '@angular/material/tabs';
@@ -188,8 +185,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly editorHost = viewChild<ElementRef<HTMLDivElement>>('editorHost');
   /** Active CodeMirror 6 EditorView instance mounted inside `editorHost`. */
   editorView?: Pick<EditorView, 'state' | 'dispatch' | 'focus' | 'destroy'> | null;
-  /** CodeMirror compartment managing dynamic SQL dialect and schema completion extensions. */
-  private languageConf = new Compartment();
+  /** Adapter encapsulating CodeMirror 6 state, theme, and SQL schema autocomplete extensions. */
+  private readonly codeMirrorAdapter = new SqlCodeMirrorAdapter();
 
   /** Seeds `currentSql` and `selectedTabIndex` from the component's initial input bindings. */
   ngOnInit(): void {
@@ -216,93 +213,13 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     const host = this.editorHost();
     if (!host) return;
 
-    // Initial state setup with default SQL language
-    const startState = EditorState.create({
-      doc: this.currentSql(),
-      extensions: [
-        basicSetup,
-        keymap.of(defaultKeymap),
-
-        // Use Compartment to wrap SQL extension for future updates
-        this.languageConf.of(sql({ dialect: PostgreSQL })),
-
-        // oneDark has contrast issues. We use our own styling or a high-contrast theme.
-        EditorView.theme(
-          {
-            '&': { height: '100%', backgroundColor: '#1e1e1e', color: '#f8f8f2' },
-            '.cm-content': { caretColor: '#f8f8f2' },
-            '.cm-scroller': { overflow: 'auto' },
-            '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#f8f8f2' },
-            '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
-              { backgroundColor: '#3a3d41' },
-            '.cm-panels': { backgroundColor: '#2d2d30', color: '#f8f8f2' },
-            '.cm-panels.cm-panels-top': { borderBottom: '2px solid black' },
-            '.cm-panels.cm-panels-bottom': { borderTop: '2px solid black' },
-            '.cm-searchMatch': {
-              backgroundColor: '#72a1ff59',
-              outline: '1px solid #457dff',
-            },
-            '.cm-searchMatch.cm-searchMatch-selected': {
-              backgroundColor: '#6199ff2f',
-            },
-            '.cm-activeLine': { backgroundColor: '#6699ff0b' },
-            '.cm-selectionMatch': { backgroundColor: '#aafe661a' },
-            '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
-              backgroundColor: '#bad0f847',
-            },
-            '.cm-gutters': {
-              backgroundColor: '#1e1e1e',
-              color: '#858585',
-              border: 'none',
-            },
-            '.cm-activeLineGutter': {
-              backgroundColor: '#2c313a',
-            },
-            '.cm-foldPlaceholder': {
-              backgroundColor: 'transparent',
-              border: 'none',
-              color: '#ddd',
-            },
-            '.cm-tooltip': {
-              border: 'none',
-              backgroundColor: '#252526',
-            },
-            '.cm-tooltip .cm-tooltip-arrow:before': {
-              borderTopColor: 'transparent',
-              borderBottomColor: 'transparent',
-            },
-            '.cm-tooltip .cm-tooltip-arrow:after': {
-              borderTopColor: '#252526',
-              borderBottomColor: '#252526',
-            },
-            '.cm-tooltip-autocomplete': {
-              '& > ul > li[aria-selected]': {
-                backgroundColor: '#094771',
-                color: 'white',
-              },
-            },
-          },
-          { dark: true },
-        ),
-
-        // Accessibility Fix: Add aria-label to the contenteditable area
-        EditorView.contentAttributes.of({
-          'aria-label': 'SQL Editor',
-        }),
-
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            const newCode = update.state.doc.toString();
-            this.currentSql.set(newCode);
-          }
-        }),
-      ],
-    });
-
-    this.editorView = new EditorView({
-      state: startState,
-      parent: host.nativeElement,
-    });
+    this.editorView = this.codeMirrorAdapter.createEditor(
+      host.nativeElement,
+      this.currentSql(),
+      (newCode) => {
+        this.currentSql.set(newCode);
+      },
+    );
   }
 
   /** Fetches database schema metadata and reconfigures CodeMirror SQL autocomplete. */
@@ -310,19 +227,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.schemaApi.getDatabaseSchemaApiV1SchemaGet().subscribe({
       next: (tables) => {
         if (!this.editorView) return;
-        const schemaConfig: Record<string, string[]> = {};
-        tables.forEach((t) => {
-          schemaConfig[t.table_name] = t.columns.map((c) => c.name);
-        });
-        this.editorView.dispatch({
-          effects: this.languageConf.reconfigure(
-            sql({
-              dialect: PostgreSQL,
-              schema: schemaConfig,
-              upperCaseKeywords: true,
-            }),
-          ),
-        });
+        this.codeMirrorAdapter.reconfigureSchemaAutocomplete(this.editorView, tables);
       },
       error: (err) => console.warn('Failed to load schema for autocomplete', err),
     });
@@ -336,13 +241,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   insertParam(key: string): void {
     const token = `{{${key}}}`;
     if (this.editorView) {
-      const state = this.editorView.state;
-      const range = state.selection.main;
-      this.editorView.dispatch({
-        changes: { from: range.from, to: range.to, insert: token },
-        selection: { anchor: range.from + token.length },
-      });
-      this.editorView.focus();
+      this.codeMirrorAdapter.insertTokenAtCursor(this.editorView, token);
     } else {
       this.currentSql.update((current) => current + ' ' + token);
     }

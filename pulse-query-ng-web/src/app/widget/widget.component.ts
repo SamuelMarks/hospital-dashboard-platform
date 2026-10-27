@@ -3,7 +3,7 @@
  * visualization (table, chart, metric, pie, heatmap, scalar, markdown), skeleton loading states,
  * safe-mode error recovery, and widget toolbar actions.
  */
-import { Component, input, output, inject, computed } from '@angular/core';
+import { Component, input, output, inject, computed, linkedSignal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 
 import { DashboardStore } from '../dashboard/dashboard.store';
 import { WidgetResponse, DashboardsService, WidgetUpdate } from '../api-client';
@@ -23,66 +24,24 @@ import {
 import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
 import { ConfirmDialogComponent } from '../shared/components/dialogs/confirm-dialog.component';
 
-import {
-  VizTableComponent,
-  TableDataSet,
-} from '../shared/visualizations/viz-table/viz-table.component';
-import {
-  VizMetricComponent,
-  MetricData,
-} from '../shared/visualizations/viz-metric/viz-metric.component';
-import {
-  VizChartComponent,
-  ChartConfig,
-} from '../shared/visualizations/viz-chart/viz-chart.component';
+import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
+import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
+import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.component';
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
-import {
-  VizScalarComponent,
-  ScalarData,
-} from '../shared/visualizations/viz-scalar/viz-scalar.component';
+import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { serializeTableToCsv, triggerBlobDownload } from '../shared/utils/csv-export.utils';
-
-/**
- * Narrowing adapter converting a raw execution result dictionary to `TableDataSet`.
- *
- * @param raw - Raw execution result dictionary or null/undefined.
- * @returns Typed `TableDataSet` representation.
- */
-function toTableDataSet(raw: Record<string, unknown> | null | undefined): TableDataSet {
-  return raw as never as TableDataSet;
-}
-
-/**
- * Narrowing adapter converting a raw execution result dictionary to `MetricData | null`.
- *
- * @param raw - Raw execution result dictionary or null/undefined.
- * @returns Typed `MetricData | null` representation.
- */
-function toMetricData(raw: Record<string, unknown> | null | undefined): MetricData | null {
-  return raw as never as MetricData | null;
-}
-
-/**
- * Narrowing adapter converting a raw execution result dictionary to `ScalarData | null`.
- *
- * @param raw - Raw execution result dictionary or null/undefined.
- * @returns Typed `ScalarData | null` representation.
- */
-function toScalarData(raw: Record<string, unknown> | null | undefined): ScalarData | null {
-  return raw as never as ScalarData | null;
-}
-
-/**
- * Narrowing adapter converting a widget configuration dictionary to `ChartConfig`.
- *
- * @param config - Raw widget configuration dictionary.
- * @returns Typed `ChartConfig` representation.
- */
-function toChartConfig(config: Record<string, unknown>): ChartConfig {
-  return config as never as ChartConfig;
-}
+import {
+  extractExecutionErrorMessage,
+  extractMarkdownContent,
+  extractTabularExportRows,
+  narrowRecordPayload,
+  parseChartConfig,
+  parseMetricData,
+  parseScalarData,
+  parseTableDataSet,
+} from './widget-data.guards';
 
 /**
  * Renders a single dashboard widget card with dynamic visualization switching and error recovery.
@@ -298,8 +257,8 @@ export class WidgetComponent {
   /** Whether this specific widget is currently refreshing its data. */
   readonly isLoadingLocal = computed(() => this.store.isWidgetLoading()(this.widgetInput().id));
   /** Raw execution result payload for this widget from the dashboard store. */
-  readonly rawResult = computed(
-    () => this.store.dataMap()[this.widgetInput().id] as Record<string, unknown> | null,
+  readonly rawResult = computed(() =>
+    narrowRecordPayload(this.store.dataMap()[this.widgetInput().id]),
   );
   /** Signal indicating whether the parent dashboard is in edit mode. */
   readonly isEditMode = this.store.isEditMode;
@@ -311,12 +270,7 @@ export class WidgetComponent {
   );
 
   /** Execution error message extracted from the widget's latest result payload, if any. */
-  readonly errorMessage = computed(() => {
-    const res = this.rawResult();
-    return res && (res as Record<string, unknown>)['error']
-      ? ((res as Record<string, unknown>)['error'] as string)
-      : null;
-  });
+  readonly errorMessage = computed(() => extractExecutionErrorMessage(this.rawResult()));
 
   /** Whether the widget error indicates a missing DuckDB table. */
   readonly isMissingTableError = computed(() => {
@@ -349,15 +303,80 @@ export class WidgetComponent {
   });
 
   /** Execution result typed as a `TableDataSet` for tabular and chart visualizations. */
-  readonly typedDataAsTable = computed(() => toTableDataSet(this.rawResult()));
+  readonly typedDataAsTable = computed(() => parseTableDataSet(this.rawResult()));
   /** Execution result typed as `MetricData` for KPI metric visualizations. */
-  readonly typedDataAsMetric = computed(() => toMetricData(this.rawResult()));
+  readonly typedDataAsMetric = computed(() => parseMetricData(this.rawResult()));
   /** Execution result typed as `ScalarData` for scalar gauge visualizations. */
-  readonly typedDataAsScalar = computed(() => toScalarData(this.rawResult()));
+  readonly typedDataAsScalar = computed(() => parseScalarData(this.rawResult()));
   /** Visualization configuration dictionary extracted from the widget model. */
-  readonly chartConfig = computed(() => toChartConfig(this.widgetInput().config));
+  readonly chartConfig = computed(() => parseChartConfig(this.widgetInput().config));
   /** Markdown content string extracted from the widget configuration. */
-  readonly markdownContent = computed(() => this.widgetInput().config['content'] as string);
+  readonly markdownContent = computed(() => extractMarkdownContent(this.widgetInput().config));
+
+  /** Whether this widget is configured to accept interactive natural text input on the dashboard. */
+  readonly allowsNaturalText = computed(() =>
+    Boolean(this.widgetInput().config?.['allow_natural_text']),
+  );
+
+  /** Configured processor identifier (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`). */
+  readonly configuredProcessor = computed(() => {
+    const raw: unknown = this.widgetInput().config?.['processor'];
+    return typeof raw === 'string' && raw.length > 0 ? raw : 'SQL';
+  });
+
+  /** Active processor identifier bound to the widget's interactive execution bar. */
+  readonly activeProcessor = linkedSignal<string>(() => this.configuredProcessor());
+
+  /** Current user-entered natural text (or SQL) inside the widget input bar. */
+  readonly naturalTextInput = linkedSignal<string>(() => {
+    const raw: unknown = this.widgetInput().config?.['natural_text_prompt'];
+    return typeof raw === 'string' ? raw : '';
+  });
+
+  /** Placeholder text displayed in the widget's natural text input field. */
+  readonly placeholderText = computed(() => {
+    const custom: unknown = this.widgetInput().config?.['placeholder_text'];
+    if (typeof custom === 'string' && custom.trim().length > 0) {
+      return custom;
+    }
+    return this.activeProcessor() === 'SQL'
+      ? $localize`Enter DuckDB SQL query...`
+      : $localize`Ask in natural language...`;
+  });
+
+  /** SQL query generated by the LLM or executed directly during the latest natural-text execution. */
+  readonly generatedSql = computed(() => {
+    const raw: unknown = this.rawResult()?.['generated_sql'];
+    return typeof raw === 'string' && raw.length > 0 ? raw : null;
+  });
+
+  /** Processor identifier used for the most recent execution. */
+  readonly processorUsed = computed(() => {
+    const raw: unknown = this.rawResult()?.['processor_used'];
+    return typeof raw === 'string' && raw.length > 0 ? raw : this.activeProcessor();
+  });
+
+  /**
+   * Updates `naturalTextInput` from a DOM input event.
+   *
+   * @param event - DOM input event from the natural text field.
+   */
+  updateNaturalTextInput(event: Event): void {
+    this.naturalTextInput.set(extractEventInputValue(event));
+  }
+
+  /**
+   * Submits the current `naturalTextInput` to the backend via `DashboardStore.refreshWidget`
+   * using `activeProcessor()`.
+   */
+  submitNaturalText(): void {
+    const text = this.naturalTextInput().trim();
+    if (!text) return;
+    this.store.refreshWidget(this.widgetInput().id, true, {
+      naturalText: text,
+      processor: this.activeProcessor(),
+    });
+  }
 
   /** Triggers an immediate data refresh for this widget. */
   manualRefresh(): void {
@@ -396,7 +415,7 @@ export class WidgetComponent {
    * @param event - Keyboard event triggered by pressing Escape.
    */
   onEscape(event: Event): void {
-    (event as KeyboardEvent).stopPropagation();
+    event.stopPropagation();
     if (this.isFocused()) {
       this.store.setFocusedWidget(null);
     } else if (this.isEditMode()) {
@@ -447,8 +466,7 @@ export class WidgetComponent {
    * Exports the widget's current tabular dataset to a downloadable CSV file.
    */
   exportWidgetData(): void {
-    const res = this.rawResult();
-    const raw = res && Array.isArray(res['data']) ? (res['data'] as Record<string, unknown>[]) : [];
+    const raw = extractTabularExportRows(this.rawResult());
     const csvContent = serializeTableToCsv(raw);
     if (!csvContent) return;
 

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -9,8 +9,12 @@
  */
 import { ValidationErrorLocInner } from './validation-error-loc-inner';
 
+/** Generated OpenAPI model interface. */
 export interface ValidationError {
-  loc: Array<ValidationErrorLocInner>;
+  /** Property `loc`. */
+  loc: ValidationErrorLocInner[];
+  /** Property `msg`. */
   msg: string;
+  /** Property `type`. */
   type: string;
 }

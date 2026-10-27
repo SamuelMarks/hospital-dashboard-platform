@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -23,5 +23,5 @@ export interface ReingestResponse {
   /**
    * Updated table row counts.
    */
-  tables?: { [key: string]: number };
+  tables?: Record<string, number>;
 }

@@ -6,21 +6,24 @@ Unlike standard widget execution, this service performs a multi-step process:
 1. Executes raw SQL to fetch live clinical demand.
 2. Transforms tabular SQL results into the JSON structure required by the Solver.
 3. Injects user-defined capacity/constraint parameters.
-4. Executes the Solver (which includes virtual Overflow logic).
+4. Executes the Solver (which includes virtual Overflow logic) via `AppResult`.
 5. Calculates Deltas to show the user exactly where patients moved.
 """
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 import json
 import logging
-from typing import Any
 
 import duckdb
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import duckdb_manager
+from app.schemas.json_types import JsonValue
+from app.schemas.mpax_arena import MpaxAssignmentRow
 from app.schemas.simulation import (
+  DemandRow,
   ScenarioResult,
   ScenarioRunRequest,
   SimulationAssignment,
@@ -30,13 +33,24 @@ from app.services.mpax_bridge import MpaxAssignmentItem, mpax_bridge
 logger = logging.getLogger("simulation_service")
 
 
-class SimulationInfeasibleError(ValueError):
-  """Raised when an optimization scenario is mathematically infeasible or contains contradictory constraints."""
+class MpaxBridgeErrorPayload(BaseModel):
+  """
+  Validated schema for an error object returned by the MPAX solver bridge.
+
+  Attributes:
+      error (str): Solver error message.
+  """
+
+  error: str
+
+
+type MpaxBridgeRawResult = list[MpaxAssignmentItem] | MpaxBridgeErrorPayload
+MPAX_BRIDGE_RAW_ADAPTER: TypeAdapter[MpaxBridgeRawResult] = TypeAdapter(MpaxBridgeRawResult)
 
 
 class SimulationService:
   """
-  Service for running transient "What-If" optimization scenarios.
+  Service for running transient "What-If" optimization scenarios using explicit `AppResult` flows.
   """
 
   def run_scenario_result(
@@ -55,58 +69,27 @@ class SimulationService:
         AppResult[ScenarioResult]: `Ok(ScenarioResult)` on success, or `Err(AppError)` on failure.
     """
     logger.info("Starting Simulation Scenario Run")
-    try:
-      demand_json, current_state = self._fetch_demand_payload(
-        request.demand_source_sql,
-        olap_conn=olap_conn,
-      )
-      capacity_json = json.dumps(request.capacity_parameters)
-      constraints_json = json.dumps([c.model_dump() for c in request.constraints])
-      affinity_json = json.dumps(request.affinity_overrides)
+    demand_res = self._fetch_demand_payload_result(
+      request.demand_source_sql,
+      olap_conn=olap_conn,
+    )
+    if isinstance(demand_res, Err):
+      return demand_res
 
-      solver_res = mpax_bridge.solve_unit_assignment_result(
-        demand_json=demand_json,
-        capacity_json=capacity_json,
-        affinity_json=affinity_json,
-        constraints_json=constraints_json,
-      )
-      if isinstance(solver_res, Err):
-        return solver_res
+    demand_payload, current_state = demand_res.value
+    demand_map: dict[str, float] = json.loads(demand_payload) if isinstance(demand_payload, str) else dict(demand_payload)
 
-      parsed_assignments = self._diff_assignments(solver_res.value, current_state)
-      return Ok(ScenarioResult(assignments=parsed_assignments, status="success"))
-    except SimulationInfeasibleError as e:
-      return Err(AppError(code=ErrorCode.SIMULATION_INFEASIBLE, message=str(e), status_code=422))
-    except ValueError as e:
-      return Err(AppError(code=ErrorCode.SIMULATION_INVALID_DATA, message=str(e), status_code=400))
-    except Exception as e:
-      return Err(AppError(code=ErrorCode.INTERNAL_ERROR, message=f"Simulation Failed: {e!s}", status_code=500))
+    solver_res = mpax_bridge.solve_unit_assignment_typed(
+      demand=demand_map,
+      capacity=request.capacity_parameters,
+      affinity=request.affinity_overrides,
+      constraints=request.constraints,
+    )
+    if isinstance(solver_res, Err):
+      return solver_res
 
-  def run_scenario(
-    self,
-    request: ScenarioRunRequest,
-    olap_conn: duckdb.DuckDBPyConnection | None = None,
-  ) -> ScenarioResult:
-    """
-    Executes a simulation based on the provided configuration, unwrapping `run_scenario_result`.
-
-    Args:
-        request (ScenarioRunRequest): The scenario definition.
-        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
-
-    Returns:
-        ScenarioResult: The optimal allocation of patients to beds including differentials.
-
-    Raises:
-        SimulationInfeasibleError: When constraints are mathematically infeasible.
-        ValueError: When demand SQL or solver inputs are invalid.
-    """
-    res = self.run_scenario_result(request, olap_conn=olap_conn)
-    if isinstance(res, Ok):
-      return res.value
-    if res.error.code == ErrorCode.SIMULATION_INFEASIBLE:
-      raise SimulationInfeasibleError(res.error.message)
-    raise ValueError(res.error.message)
+    parsed_assignments = self._diff_assignments(solver_res.value.assignments, current_state)
+    return Ok(ScenarioResult(assignments=parsed_assignments, status="success"))
 
   async def run_scenario_async(
     self,
@@ -125,23 +108,21 @@ class SimulationService:
     """
     return await asyncio.to_thread(self.run_scenario_result, request, olap_conn)
 
-  def _fetch_demand_payload(
+  def _fetch_demand_typed_result(
     self,
     query: str,
     olap_conn: duckdb.DuckDBPyConnection | None = None,
-  ) -> tuple[str, dict[tuple[str, str], float]]:
+  ) -> AppResult[tuple[list[DemandRow], dict[tuple[str, str], float]]]:
     """
-    Executes the SQL query and prepares data for both the Solver and the Diff engine.
+    Executes the SQL query and returns typed `DemandRow` models and baseline unit counts without JSON serialization.
 
     Args:
         query (str): The SQL query string to run against DuckDB.
         olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
 
     Returns:
-        tuple[str, dict[tuple[str, str], float]]: Tuple of `(demand_json_str, current_state_map)`.
-
-    Raises:
-        ValueError: If executing the demand query fails.
+        AppResult[tuple[list[DemandRow], dict[tuple[str, str], float]]]:
+            `Ok((demand_rows, current_state_map))` or `Err(AppError)`.
     """
     try:
       owns_conn = olap_conn is None
@@ -153,38 +134,71 @@ class SimulationService:
         if owns_conn:
           conn.close()
 
-      demand_totals: dict[str, float] = {}
+      demand_rows: list[DemandRow] = []
       current_state: dict[tuple[str, str], float] = {}
 
       for row in rows:
         if len(row) == 2:
           service = str(row[0])
-          count = float(row[1])
-          demand_totals[service] = demand_totals.get(service, 0.0) + count
+          raw_cnt = row[1]
+          count = float(str(raw_cnt)) if raw_cnt is not None else 0.0
+          demand_rows.append(DemandRow(service=service, count=count))
         elif len(row) >= 3:
           service = str(row[0])
           unit = str(row[1])
-          count = float(row[2])
-          demand_totals[service] = demand_totals.get(service, 0.0) + count
+          raw_cnt = row[2]
+          count = float(str(raw_cnt)) if raw_cnt is not None else 0.0
+          demand_rows.append(DemandRow(service=service, count=count, unit=unit))
           key = (service, unit)
           current_state[key] = current_state.get(key, 0.0) + count
 
-      return json.dumps(demand_totals), current_state
+      return Ok((demand_rows, current_state))
 
-    except Exception as e:
+    except (duckdb.Error, ValueError, TypeError, RuntimeError, OSError) as e:
       logger.error(f"Error fetching simulation demand: {e}")
-      raise ValueError(f"Failed to execute demand query: {e!s}") from e
+      return Err(
+        AppError(
+          code=ErrorCode.SIMULATION_INVALID_DATA,
+          message=f"Failed to execute demand query: {e!s}",
+          status_code=400,
+        )
+      )
+
+  def _fetch_demand_payload_result(
+    self,
+    query: str,
+    olap_conn: duckdb.DuckDBPyConnection | None = None,
+  ) -> AppResult[tuple[str, dict[tuple[str, str], float]]]:
+    """
+    Executes the SQL query and prepares data for both the Solver and the Diff engine.
+
+    Args:
+        query (str): The SQL query string to run against DuckDB.
+        olap_conn (duckdb.DuckDBPyConnection | None): Optional injected DuckDB connection.
+
+    Returns:
+        AppResult[tuple[str, dict[tuple[str, str], float]]]: `Ok((demand_json_str, current_state_map))`
+            or `Err(AppError)` if executing the demand query fails.
+    """
+    typed_res = self._fetch_demand_typed_result(query, olap_conn=olap_conn)
+    if isinstance(typed_res, Err):
+      return typed_res
+    demand_rows, current_state = typed_res.value
+    demand_totals: dict[str, float] = {}
+    for row in demand_rows:
+      demand_totals[row.service] = demand_totals.get(row.service, 0.0) + row.count
+    return Ok((json.dumps(demand_totals), current_state))
 
   def _diff_assignments(
     self,
-    items: Sequence[MpaxAssignmentItem | dict[str, Any]],
+    items: Sequence[MpaxAssignmentRow | SimulationAssignment | MpaxAssignmentItem | Mapping[str, JsonValue]],
     current_state: dict[tuple[str, str], float],
   ) -> list[SimulationAssignment]:
     """
     Computes `SimulationAssignment` items and eviction deltas from solved allocations.
 
     Args:
-        items (Sequence[MpaxAssignmentItem | dict[str, Any]]): Solved service-to-unit allocations.
+        items (Sequence[MpaxAssignmentRow | SimulationAssignment | MpaxAssignmentItem | Mapping[str, JsonValue]]): Solved allocations.
         current_state (dict[tuple[str, str], float]): Baseline `(Service, Unit) -> OriginalCount` map.
 
     Returns:
@@ -194,9 +208,15 @@ class SimulationService:
     processed_keys: set[tuple[str, str]] = set()
 
     for item in items:
-      service = str(item.get("Service", ""))
-      unit = str(item.get("Unit", ""))
-      new_count = float(item.get("Patient_Count", 0))
+      if isinstance(item, (MpaxAssignmentRow, SimulationAssignment)):
+        service = item.Service
+        unit = item.Unit
+        new_count = item.Patient_Count
+      else:
+        service = str(item.get("Service", ""))
+        unit = str(item.get("Unit", ""))
+        raw_new = item.get("Patient_Count", 0)
+        new_count = float(raw_new) if isinstance(raw_new, (int, float, str)) and not isinstance(raw_new, bool) else 0.0
 
       key = (service, unit)
       processed_keys.add(key)
@@ -230,34 +250,41 @@ class SimulationService:
 
   def _parse_and_diff_result(
     self, raw_json: str, current_state: dict[tuple[str, str], float]
-  ) -> list[SimulationAssignment]:
+  ) -> AppResult[list[SimulationAssignment]]:
     """
-    Parses a raw solver JSON string and delegates to `_diff_assignments`.
+    Parses a raw solver JSON string and delegates to `_diff_assignments`, returning `AppResult`.
 
     Args:
         raw_json (str): JSON string from solver.
         current_state (dict[tuple[str, str], float]): Map of `(Service, Unit) -> OriginalCount`.
 
     Returns:
-        list[SimulationAssignment]: List of allocation results with change metrics.
-
-    Raises:
-        SimulationInfeasibleError: When the solver JSON contains an infeasibility error.
-        ValueError: When the solver JSON is malformed or contains a data error.
+        AppResult[list[SimulationAssignment]]: `Ok(assignments)` or `Err(AppError)` with
+            `SIMULATION_INFEASIBLE` (422) or `SIMULATION_INVALID_DATA` (400).
     """
     try:
-      data = json.loads(raw_json)
-      if isinstance(data, dict) and "error" in data:
-        err_msg = str(data["error"])
+      parsed = MPAX_BRIDGE_RAW_ADAPTER.validate_json(raw_json)
+      if isinstance(parsed, MpaxBridgeErrorPayload):
+        err_msg = parsed.error
         if "infeasible" in err_msg.lower() or "exceeds" in err_msg.lower():
-          raise SimulationInfeasibleError(err_msg)
-        raise ValueError(err_msg)
-      return self._diff_assignments(data, current_state)
-    except SimulationInfeasibleError:
-      raise
-    except Exception as e:
+          return Err(AppError(code=ErrorCode.SIMULATION_INFEASIBLE, message=err_msg, status_code=422))
+        return Err(
+          AppError(
+            code=ErrorCode.SIMULATION_INVALID_DATA,
+            message="Solver returned invalid data.",
+            status_code=400,
+          )
+        )
+      return Ok(self._diff_assignments(parsed, current_state))
+    except (ValidationError, json.JSONDecodeError, ValueError, TypeError, RuntimeError) as e:
       logger.error(f"Error parsing simulation result: {e}")
-      raise ValueError("Solver returned invalid data.") from e
+      return Err(
+        AppError(
+          code=ErrorCode.SIMULATION_INVALID_DATA,
+          message="Solver returned invalid data.",
+          status_code=400,
+        )
+      )
 
 
 # Singleton Instance

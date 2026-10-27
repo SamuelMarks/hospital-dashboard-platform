@@ -11,7 +11,7 @@
     </button>
   </div>
 
-  <mat-dialog-content class="flex-grow !p-0 overflow-hidden">
+  <mat-dialog-content class="flex-grow !p-0 overflow-hidden" role="status" aria-live="polite">
     <mat-stepper
       [linear]="true"
       #stepper
@@ -151,10 +151,19 @@
           [xKey]="vizFormModel().xKey"
           [yKey]="vizFormModel().yKey"
           [previewWidget]="previewWidget()"
+          [allowNaturalText]="allowNaturalText()"
+          [selectedProcessor]="selectedProcessor()"
+          [naturalTextPrompt]="naturalTextPrompt()"
+          [placeholderText]="placeholderText()"
+          [processors]="processorCatalog.processors()"
           (titleChange)="updateTitle($event)"
           (vizTypeChange)="updateVizType($event)"
           (xKeyChange)="updateXKey($event)"
           (yKeyChange)="updateYKey($event)"
+          (allowNaturalTextChange)="updateAllowNaturalText($event)"
+          (processorChange)="updateProcessor($event)"
+          (naturalTextPromptChange)="updateNaturalTextPrompt($event)"
+          (placeholderTextChange)="updatePlaceholderText($event)"
         ></app-widget-builder-visualize-step>
         <div
           class="p-4 border-t flex justify-end gap-2 fixed-bottom"

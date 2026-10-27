@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,7 +12,10 @@
  * Represents a single widget\'s new position.
  */
 export interface WidgetReorderItem {
+  /** Property `id`. */
   id: string;
+  /** Property `order`. */
   order: number;
+  /** Property `group`. */
   group?: string | null;
 }

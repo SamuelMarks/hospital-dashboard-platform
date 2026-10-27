@@ -218,16 +218,20 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
     encoding="utf-8",
   )
   loop = asyncio.get_running_loop()
-  spawned_tasks: list[asyncio.Task[None]] = []
+  spawned_tasks: list[asyncio.Task[int]] = []
 
-  def _spawn_coro(coro: Coroutine[object, object, None]) -> None:
+  def _spawn_coro(coro: Coroutine[None, None, int]) -> int:
     """
     Schedules `coro` on the active event loop so `main()` executes the real coroutine.
 
     Args:
-        coro (Coroutine[object, object, None]): Coroutine passed to `asyncio.run`.
+        coro (Coroutine[None, None, int]): Coroutine passed to `asyncio.run`.
+
+    Returns:
+        int: Stubbed template count >= 10 so `main()` does not exit early.
     """
     spawned_tasks.append(loop.create_task(coro))
+    return 10
 
   with (
     patch.object(seed_templates_mod, "DATA_FILE", str(cli_file)),
@@ -247,7 +251,7 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
   assert cli_row.sql_template == "SELECT 42"
 
   with (
-    patch.object(seed_templates_mod, "seed_templates", return_value=0),
+    patch.object(seed_templates_mod, "seed_templates", new=MagicMock(return_value=0)),
     patch("scripts.seed_templates.asyncio.run", return_value=0),
   ):
     with pytest.raises(SystemExit) as exc_seed:

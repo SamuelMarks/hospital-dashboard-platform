@@ -172,6 +172,23 @@ describe('VizPieComponent', () => {
     expect(slices[0]?.percentage).toBe(0);
   });
 
+  it('should automatically select the first numeric column when column 1 is a string', () => {
+    const data = {
+      columns: ['dt', 'Clinical_Service', 'cnt'],
+      data: [
+        { dt: '2077-01-01', Clinical_Service: 'Cardiology', cnt: 60 },
+        { dt: '2077-01-02', Clinical_Service: 'Neurology', cnt: 40 },
+      ],
+    };
+    fixture.componentRef.setInput('dataSet', data);
+    fixture.detectChanges();
+
+    const slices = component.slices();
+    expect(slices.length).toBe(2);
+    expect(slices[0]?.percentage).toBe(60);
+    expect(slices[1]?.percentage).toBe(40);
+  });
+
   it('should update palette from DOM', () => {
     component.updatePaletteFomDom();
     expect(component.palette()).toBeTruthy();

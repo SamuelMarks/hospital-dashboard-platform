@@ -2,7 +2,7 @@
 Dashboards API Router.
 
 Handles CRUD operations for Dashboards, Widgets, Collaborator Shares, and Exports
-by delegating domain logic to `DashboardService`.
+by delegating domain logic to `DashboardService` and its composed collaborator services.
 """
 
 import asyncio
@@ -32,54 +32,8 @@ from app.services.runners.sql import run_sql_widget
 
 router = APIRouter()
 
-
-async def get_dashboard_with_access(
-  dashboard_id: UUID,
-  current_user: User,
-  db: AsyncSession,
-  required_level: str = "VIEW",
-  accept_language: str | None = None,
-) -> tuple[Dashboard, str]:
-  """
-  Verifies that the user has the required access level to the dashboard.
-
-  Args:
-      dashboard_id (UUID): Target dashboard ID.
-      current_user (User): Requesting user.
-      db (AsyncSession): Database session.
-      required_level (str): Minimum required permission ('VIEW', 'EDIT', 'OWNER').
-      accept_language (str | None): Language preference.
-
-  Returns:
-      tuple[Dashboard, str]: The dashboard and the resolved permission level ('OWNER', 'EDIT', 'VIEW').
-  """
-  res = await dashboard_service.get_dashboard_with_access_result(
-    dashboard_id=dashboard_id,
-    current_user=current_user,
-    db=db,
-    required_level=required_level,
-    accept_language=accept_language,
-  )
-  return unwrap_or_raise_http(res)
-
-
+get_dashboard_with_access = deps.get_dashboard_with_access
 _get_dashboard_with_access = get_dashboard_with_access
-
-
-def _validate_sql_query(query: str, accept_language: str | None = None) -> None:
-  """
-  Performs a 'Dry Run' of the SQL query using DuckDB's PREPARE statement.
-
-  Args:
-      query (str): The raw SQL string.
-      accept_language (str | None): Optional HTTP `Accept-Language` header for localized error messages.
-  """
-  res = dashboard_service.validate_sql_query_result(
-    query,
-    accept_language=accept_language,
-    conn_factory=duckdb_manager.get_readonly_connection,
-  )
-  unwrap_or_raise_http(res)
 
 
 @router.get("/", response_model=list[DashboardResponse])
@@ -266,7 +220,7 @@ async def create_widget(
       Widget: Created widget model.
   """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language)
-  res = await dashboard_service.create_widget_result(
+  res = await dashboard_service.widget_service.create_widget_result(
     dashboard_id=dashboard_id,
     widget_in=widget_in,
     current_user=current_user,
@@ -299,12 +253,14 @@ async def update_widget(
       Widget: Updated widget model.
   """
   widget = unwrap_or_raise_http(
-    await dashboard_service.get_widget_by_id_result(widget_id, current_user, db, accept_language=accept_language)
+    await dashboard_service.widget_service.get_widget_by_id_result(
+      widget_id, current_user, db, accept_language=accept_language
+    )
   )
   await _get_dashboard_with_access(
     widget.dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
-  res = await dashboard_service.update_widget_result(
+  res = await dashboard_service.widget_service.update_widget_result(
     widget=widget,
     widget_in=widget_in,
     current_user=current_user,
@@ -332,12 +288,14 @@ async def delete_widget(
       accept_language (str | None): Language preference header.
   """
   widget = unwrap_or_raise_http(
-    await dashboard_service.get_widget_by_id_result(widget_id, current_user, db, accept_language=accept_language)
+    await dashboard_service.widget_service.get_widget_by_id_result(
+      widget_id, current_user, db, accept_language=accept_language
+    )
   )
   await _get_dashboard_with_access(
     widget.dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language
   )
-  res = await dashboard_service.delete_widget_result(widget, db)
+  res = await dashboard_service.widget_service.delete_widget_result(widget, db)
   unwrap_or_raise_http(res)
 
 
@@ -363,7 +321,8 @@ async def reorder_widgets(
       dict[str, int]: Count of updated widgets.
   """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="EDIT", accept_language=accept_language)
-  return await dashboard_service.reorder_widgets(dashboard_id, request, db)
+  res = await dashboard_service.widget_service.reorder_widgets(dashboard_id, request, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.get("/{dashboard_id}/export")
@@ -391,13 +350,14 @@ async def export_dashboard(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
 
-  content, media_type, filename = await asyncio.to_thread(
-    dashboard_service.build_dashboard_export_content,
+  export_res = await asyncio.to_thread(
+    dashboard_service.export_service.build_dashboard_export_content,
     dashboard,
     format,
     duckdb_manager.get_readonly_connection,
     run_sql_widget,
   )
+  content, media_type, filename = unwrap_or_raise_http(export_res)
   return Response(
     content=content,
     media_type=media_type,
@@ -432,16 +392,17 @@ async def export_widget(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
 
-  widget = unwrap_or_raise_http(dashboard_service.get_dashboard_widget_result(dashboard, widget_id))
+  widget = unwrap_or_raise_http(dashboard_service.widget_service.get_dashboard_widget_result(dashboard, widget_id))
 
-  content, media_type, filename = await asyncio.to_thread(
-    dashboard_service.build_widget_export_content,
+  export_res = await asyncio.to_thread(
+    dashboard_service.export_service.build_widget_export_content,
     dashboard,
     widget,
     format,
     duckdb_manager.get_readonly_connection,
     run_sql_widget,
   )
+  content, media_type, filename = unwrap_or_raise_http(export_res)
   return Response(
     content=content,
     media_type=media_type,
@@ -472,12 +433,13 @@ async def export_dashboard_pdf(
     dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language
   )
 
-  pdf_bytes, filename = await dashboard_service.build_dashboard_pdf_async(
+  pdf_res = await dashboard_service.export_service.build_dashboard_pdf_async(
     dashboard=dashboard,
     author_email=current_user.email,
     conn_factory=duckdb_manager.get_readonly_connection,
     sql_runner_fn=run_sql_widget,
   )
+  pdf_bytes, filename = unwrap_or_raise_http(pdf_res)
 
   return Response(
     content=pdf_bytes,
@@ -510,7 +472,7 @@ async def share_dashboard(
   await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
   )
-  res = await dashboard_service.share_dashboard_result(dashboard_id, share_in, current_user, db)
+  res = await dashboard_service.share_service.share_dashboard_result(dashboard_id, share_in, current_user, db)
   return unwrap_or_raise_http(res)
 
 
@@ -534,7 +496,8 @@ async def list_dashboard_shares(
       list[DashboardShareResponse]: List of active shares.
   """
   await _get_dashboard_with_access(dashboard_id, current_user, db, required_level="VIEW", accept_language=accept_language)
-  return await dashboard_service.list_dashboard_shares(dashboard_id, db)
+  res = await dashboard_service.share_service.list_dashboard_shares(dashboard_id, db)
+  return unwrap_or_raise_http(res)
 
 
 @router.delete("/{dashboard_id}/shares/{share_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -550,13 +513,13 @@ async def delete_dashboard_share(
 
   Args:
       dashboard_id (UUID): Target dashboard ID.
-      share_id (UUID): Specific share record ID to delete.
-      current_user (User): Authenticated owner.
+      share_id (UUID): Share ID to revoke.
+      current_user (User): Authenticated user (must be owner).
       db (AsyncSession): Database session.
       accept_language (str | None): Language preference header.
   """
   await _get_dashboard_with_access(
     dashboard_id, current_user, db, required_level="OWNER", accept_language=accept_language
   )
-  res = await dashboard_service.delete_dashboard_share_result(dashboard_id, share_id, db)
+  res = await dashboard_service.share_service.delete_dashboard_share_result(dashboard_id, share_id, db)
   unwrap_or_raise_http(res)

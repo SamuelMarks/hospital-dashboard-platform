@@ -36,6 +36,17 @@ import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.DashboardResponse
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.category_label
+import pulsequery.composeapp.generated.resources.dashboard_widget_dest
+import pulsequery.composeapp.generated.resources.description_label
+import pulsequery.composeapp.generated.resources.save
+import pulsequery.composeapp.generated.resources.save_analytical_query
+import pulsequery.composeapp.generated.resources.saving
+import pulsequery.composeapp.generated.resources.template_library_dest
+import pulsequery.composeapp.generated.resources.title_label
 
 /**
  * Destination options for saving an ad-hoc clinical query.
@@ -105,7 +116,7 @@ fun SaveQueryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Save Analytical Query") },
+        title = { Text(stringResource(Res.string.save_analytical_query)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -115,19 +126,19 @@ fun SaveQueryDialog(
                     FilterChip(
                         selected = destination == SaveQueryDestination.DASHBOARD_WIDGET,
                         onClick = { destination = SaveQueryDestination.DASHBOARD_WIDGET },
-                        label = { Text("Dashboard Widget") }
+                        label = { Text(stringResource(Res.string.dashboard_widget_dest)) }
                     )
                     FilterChip(
                         selected = destination == SaveQueryDestination.TEMPLATE,
                         onClick = { destination = SaveQueryDestination.TEMPLATE },
-                        label = { Text("Template Library") }
+                        label = { Text(stringResource(Res.string.template_library_dest)) }
                     )
                 }
 
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title") },
+                    label = { Text(stringResource(Res.string.title_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -188,14 +199,14 @@ fun SaveQueryDialog(
                     OutlinedTextField(
                         value = category,
                         onValueChange = { category = it },
-                        label = { Text("Category") },
+                        label = { Text(stringResource(Res.string.category_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = { Text("Description") },
+                        label = { Text(stringResource(Res.string.description_label)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -243,12 +254,12 @@ fun SaveQueryDialog(
                 },
                 enabled = !isSaving
             ) {
-                Text(if (isSaving) "Saving..." else "Save")
+                Text(if (isSaving) stringResource(Res.string.saving) else stringResource(Res.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isSaving) {
-                Text("Cancel")
+                Text(stringResource(Res.string.cancel))
             }
         }
     )

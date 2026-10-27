@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,6 +12,8 @@
  * Status confirmation after password reset or email dispatch.
  */
 export interface PasswordResetResponse {
+  /** Property `message`. */
   message: string;
+  /** Property `reset_token`. */
   reset_token?: string | null;
 }

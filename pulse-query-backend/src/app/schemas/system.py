@@ -5,8 +5,9 @@ Defines schemas for reporting system health, database connectivity,
 storage diagnostics, and configuration warnings.
 """
 
-from typing import Any
 from pydantic import BaseModel, Field
+
+from app.schemas.json_types import JsonObject
 
 
 class DiagnosticWarningSchema(BaseModel):
@@ -68,12 +69,23 @@ class LlmHealthSchema(BaseModel):
   models: list[str] = Field(default_factory=list, description="List of active model display names.")
 
 
+class DatabaseSummarySchema(BaseModel):
+  """Schema for boolean connectivity summary across PostgreSQL and DuckDB."""
+
+  postgres: bool = Field(default=True, description="True if PostgreSQL is connected and reachable.")
+  duckdb: bool = Field(default=True, description="True if DuckDB analytics storage is ready.")
+
+
 class SystemHealthResponse(BaseModel):
   """Schema for aggregated system health response."""
 
   status: str = Field(default="healthy", description="Overall health status: healthy, degraded, unhealthy, or critical.")
   overall_status: str = Field(description="Overall health status: healthy, degraded, unhealthy, or critical.")
   timestamp: str = Field(description="ISO timestamp of health assessment.")
+  database: DatabaseSummarySchema = Field(
+    default_factory=DatabaseSummarySchema,
+    description="Boolean connectivity summary for PostgreSQL and DuckDB.",
+  )
   postgres: PostgresHealthSchema = Field(description="Relational database health.")
   duckdb: DuckDbHealthSchema = Field(description="OLAP analytics database health.")
   data: DataHealthSchema = Field(description="Data readiness and ingestion health.")
@@ -95,7 +107,7 @@ class SystemDiagnosticsResponse(BaseModel):
   """Schema for comprehensive system diagnostics and troubleshooting guides."""
 
   health: SystemHealthResponse = Field(description="Current system health summary.")
-  environment_checks: dict[str, Any] = Field(description="Environment variables and runtime parameters.")
+  environment_checks: JsonObject = Field(description="Environment variables and runtime parameters.")
   troubleshooting_guides: list[TroubleshootingStep] = Field(
     default_factory=list, description="Curated troubleshooting steps."
   )

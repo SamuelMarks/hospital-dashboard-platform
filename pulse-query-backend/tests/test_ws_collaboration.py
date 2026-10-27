@@ -188,7 +188,7 @@ async def test_dashboard_websocket_endpoint_access_denied() -> None:
 
   # Err(AppError) from permission check
   with patch(
-    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result",
+    "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
     return_value=Err(AppError(code=ErrorCode.AUTHORIZATION_ERROR, message="Permission denied", status_code=403)),
   ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
@@ -196,7 +196,7 @@ async def test_dashboard_websocket_endpoint_access_denied() -> None:
 
   # Generic exception from permission check
   with patch(
-    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result",
+    "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
     side_effect=RuntimeError("Access denied"),
   ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
@@ -227,7 +227,8 @@ async def test_dashboard_websocket_endpoint_full_lifecycle() -> None:
   db.execute.return_value = mock_result
 
   with patch(
-    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+    "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
+    return_value=Ok((MagicMock(), "VIEW")),
   ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
 
@@ -259,7 +260,8 @@ async def test_dashboard_websocket_endpoint_generic_exception() -> None:
   db.execute.return_value = mock_result
 
   with patch(
-    "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+    "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
+    return_value=Ok((MagicMock(), "VIEW")),
   ):
     await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
 
@@ -293,7 +295,8 @@ async def test_dashboard_websocket_endpoint_untracked_disconnect_branches() -> N
 
   with (
     patch(
-      "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+      "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
+      return_value=Ok((MagicMock(), "VIEW")),
     ),
     patch("app.api.routers.ws.ws_manager.disconnect", return_value=None),
   ):
@@ -307,8 +310,62 @@ async def test_dashboard_websocket_endpoint_untracked_disconnect_branches() -> N
 
   with (
     patch(
-      "app.api.routers.ws.dashboard_service.get_dashboard_with_access_result", return_value=Ok((MagicMock(), "VIEW"))
+      "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
+      return_value=Ok((MagicMock(), "VIEW")),
     ),
     patch("app.api.routers.ws.ws_manager.disconnect", return_value=None),
   ):
     await dashboard_websocket_endpoint(mock_ws2, dash_id, token=valid_token, db=db)
+
+
+@pytest.mark.asyncio
+async def test_validate_ws_client_message_result_and_malformed_frame_dropped() -> None:
+  """Verifies `validate_ws_client_message_result` accepts typed messages and drops non-dict or invalid frames."""
+  from app.api.routers.ws import validate_ws_client_message_result
+
+  layout_res = validate_ws_client_message_result({"type": "LAYOUT_UPDATED", "items": [{"id": "w1", "x": 0}]})
+  assert isinstance(layout_res, Ok)
+  assert layout_res.value["type"] == "LAYOUT_UPDATED"
+
+  cursor_res = validate_ws_client_message_result({"type": "CURSOR_MOVED", "x": 10.5, "y": 20.0})
+  assert isinstance(cursor_res, Ok)
+  assert cursor_res.value["x"] == 10.5
+
+  event_only_res = validate_ws_client_message_result({"event": "WIDGET_UPDATED", "widget_id": "w1", "extra_key": 1})
+  assert isinstance(event_only_res, Ok)
+  assert event_only_res.value["type"] == "WIDGET_UPDATED"
+  assert event_only_res.value["extra_key"] == 1
+
+  non_dict_res = validate_ws_client_message_result(["not", "a", "dict"])
+  assert isinstance(non_dict_res, Err)
+
+  missing_type_res = validate_ws_client_message_result({"foo": "bar"})
+  assert isinstance(missing_type_res, Err)
+
+  dash_id = uuid.uuid4()
+  user_id = uuid.uuid4()
+  mock_ws = MagicMock()
+  mock_ws.accept = AsyncMock()
+  mock_ws.close = AsyncMock()
+  mock_ws.send_json = AsyncMock()
+  mock_ws.receive_json = AsyncMock(side_effect=[{"foo": "missing_type"}, WebSocketDisconnect()])
+  db = AsyncMock()
+
+  valid_token = security.create_access_token(subject=user_id, expires_delta=timedelta(minutes=10))
+  active_user = MagicMock(spec=User)
+  active_user.id = user_id
+  active_user.email = "schema@hospital.org"
+  active_user.role = "DATA_ANALYST"
+  active_user.is_active = True
+
+  mock_result = MagicMock()
+  mock_result.scalars.return_value.first.return_value = active_user
+  db.execute.return_value = mock_result
+
+  with patch(
+    "app.api.routers.ws.dashboard_service.access_policy.get_dashboard_with_access_result",
+    return_value=Ok((MagicMock(), "VIEW")),
+  ):
+    await dashboard_websocket_endpoint(mock_ws, dash_id, token=valid_token, db=db)
+
+  mock_ws.accept.assert_awaited_once()

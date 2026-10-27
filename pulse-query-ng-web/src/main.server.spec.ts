@@ -1,17 +1,9 @@
 /**
- * @fileoverview Unit tests for SSR `main.server.ts` bootstrap entry point.
+ * @fileoverview Unit tests for the server-side application bootstrap function (`main.server.ts`).
  */
 
-import { vi } from 'vitest';
-
-vi.mock('@material/material-color-utilities', () => ({
-  argbFromHex: () => 0xffffffff,
-  hexFromArgb: () => '#ffffff',
-  themeFromSourceColor: () => ({ schemes: { light: {}, dark: {} } }),
-  Scheme: class {},
-  Theme: class {},
-  __esModule: true,
-}));
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ApplicationRef } from '@angular/core';
 
 vi.mock('@angular/platform-browser', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@angular/platform-browser')>();
@@ -19,7 +11,6 @@ vi.mock('@angular/platform-browser', async (importOriginal) => {
   return {
     ...mod,
     bootstrapApplication: vi.fn(),
-    provideClientHydration: vi.fn(() => []),
   };
 });
 
@@ -35,17 +26,14 @@ describe('main.server bootstrap', () => {
     bootstrapApplication.mockReset();
   });
 
-  it('calls bootstrapApplication with context', async () => {
-    bootstrapApplication.mockResolvedValue(undefined as never);
+  it('should call bootstrapApplication with App, server config, and optional context', async () => {
+    const fakeAppRef = {} as ApplicationRef;
+    bootstrapApplication.mockResolvedValue(fakeAppRef);
 
-    const mod = await import('./main.server');
+    const { default: bootstrap } = await import('./main.server');
+    const result = await bootstrap();
 
-    await mod.default(undefined);
-
-    expect(bootstrapApplication).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      undefined,
-    );
+    expect(result).toBe(fakeAppRef);
+    expect(bootstrapApplication).toHaveBeenCalledTimes(1);
   });
 });

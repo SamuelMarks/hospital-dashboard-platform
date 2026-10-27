@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -49,5 +49,5 @@ export interface SystemHealthResponse {
   /**
    * Active diagnostic warnings.
    */
-  warnings?: Array<DiagnosticWarningSchema>;
+  warnings?: DiagnosticWarningSchema[];
 }

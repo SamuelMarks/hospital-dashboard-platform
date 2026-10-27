@@ -11,14 +11,70 @@ consumable by stakeholders to justify model/strategy selection.
 """
 
 import argparse
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
 import csv
+from dataclasses import dataclass
 import os
 import statistics
 import sys
-from collections import defaultdict
-from typing import Any
+from typing import TypedDict
 
-# --- Data Structures ---
+sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
+
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+
+
+@dataclass(frozen=True, slots=True)
+class BenchmarkCsvRow:
+  """
+  Immutable typed dataclass representing a row from a benchmark evaluation CSV file.
+
+  Attributes:
+      theme (str): Analytical category theme name.
+      strategy (str): Prompt engineering strategy identifier.
+      model (str): Evaluated LLM model identifier.
+      success (bool): Whether the generated SQL execution matched ground truth.
+      latency_ms (int): Generation latency in milliseconds.
+  """
+
+  theme: str
+  strategy: str
+  model: str
+  success: bool
+  latency_ms: int
+
+  @classmethod
+  def from_mapping(cls, row: Mapping[str, str]) -> "BenchmarkCsvRow":
+    """
+    Constructs a `BenchmarkCsvRow` from a raw CSV dictionary mapping.
+
+    Args:
+        row (Mapping[str, str]): Raw CSV row dictionary.
+
+    Returns:
+        BenchmarkCsvRow: Validated immutable benchmark row instance.
+    """
+    return cls(
+      theme=row.get("Theme", "Unknown"),
+      strategy=row.get("Strategy", "Unknown"),
+      model=row.get("Model", "Unknown"),
+      success=row.get("Success") == "True",
+      latency_ms=int(row.get("LatencyMs", 0)),
+    )
+
+
+class CotImprovementItemDict(TypedDict):
+  """
+  Typed dictionary representing a theme where Chain-of-Thought outperformed Zero-Shot.
+
+  Attributes:
+      theme (str): Analytical theme name.
+      cot_model (str): Model identifier that succeeded using CoT.
+  """
+
+  theme: str
+  cot_model: str
 
 
 class BenchmarkResult:
@@ -33,19 +89,19 @@ class BenchmarkResult:
       latency (int): Generation time in milliseconds.
   """
 
-  def __init__(self, row: dict[str, str]) -> None:
+  def __init__(self, row: Mapping[str, str] | BenchmarkCsvRow) -> None:
     """
-    Initialize from a CSV row dictionary.
+    Initialize from a CSV row dictionary or `BenchmarkCsvRow` instance.
 
     Args:
-        row (Dict[str, str]): Row data keyed by header name.
+        row (Mapping[str, str] | BenchmarkCsvRow): Row data keyed by header name or typed row.
     """
-    self.theme = row.get("Theme", "Unknown")
-    self.strategy = row.get("Strategy", "Unknown")
-    self.model = row.get("Model", "Unknown")
-    # CSV writes booleans as "True"/"False" string
-    self.success = row.get("Success") == "True"
-    self.latency = int(row.get("LatencyMs", 0))
+    parsed = row if isinstance(row, BenchmarkCsvRow) else BenchmarkCsvRow.from_mapping(row)
+    self.theme = parsed.theme
+    self.strategy = parsed.strategy
+    self.model = parsed.model
+    self.success = parsed.success
+    self.latency = parsed.latency_ms
 
 
 class StrategyStats:
@@ -55,7 +111,7 @@ class StrategyStats:
   Attributes:
       total (int): Total number of test runs.
       wins (int): Number of successful runs.
-      latencies (List[int]): Collection of response times.
+      latencies (list[int]): Collection of response times.
   """
 
   def __init__(self) -> None:
@@ -66,39 +122,46 @@ class StrategyStats:
 
   @property
   def accuracy(self) -> float:
-    """Returns percentage success rate (0-100)."""
+    """
+    Computes percentage success rate (`0.0` to `100.0`).
+
+    Returns:
+        float: Percentage of successful runs.
+    """
     if self.total == 0:
       return 0.0
     return (self.wins / self.total) * 100
 
   @property
   def avg_latency(self) -> float:
-    """Returns mean latency in ms."""
+    """
+    Computes arithmetic mean latency in milliseconds.
+
+    Returns:
+        float: Mean latency in milliseconds, or `0.0` if no samples exist.
+    """
     if not self.latencies:
       return 0.0
     return statistics.mean(self.latencies)
 
 
-# --- Core Logic ---
-
-
 def load_results(csv_path: str) -> list[BenchmarkResult]:
   """
-  Parses the input CSV file into objects.
+  Parses the input CSV file into `BenchmarkResult` objects.
 
   Args:
-      csv_path (str): File path.
+      csv_path (str): File path to the benchmark CSV log.
 
   Returns:
-      List[BenchmarkResult]: List of parsed result objects.
+      list[BenchmarkResult]: List of parsed result objects.
 
   Raises:
-      FileNotFoundError: If path is invalid.
+      FileNotFoundError: If `csv_path` does not exist.
   """
   if not os.path.exists(csv_path):
     raise FileNotFoundError(f"Input file not found: {csv_path}")
 
-  results = []
+  results: list[BenchmarkResult] = []
   with open(csv_path, "r", encoding="utf-8") as f:
     reader = csv.DictReader(f)
     for row in reader:
@@ -108,13 +171,13 @@ def load_results(csv_path: str) -> list[BenchmarkResult]:
 
 def aggregate_stats(results: list[BenchmarkResult]) -> dict[str, StrategyStats]:
   """
-  Groups results by Strategy.
+  Groups benchmark results by strategy name.
 
   Args:
-      results: The flat list of all test runs.
+      results (list[BenchmarkResult]): The flat list of all test runs.
 
   Returns:
-      Dict: Mapping of Strategy Name -> Stats Object.
+      dict[str, StrategyStats]: Mapping of strategy name to aggregated `StrategyStats`.
   """
   stats: dict[str, StrategyStats] = defaultdict(StrategyStats)
   for r in results:
@@ -126,36 +189,29 @@ def aggregate_stats(results: list[BenchmarkResult]) -> dict[str, StrategyStats]:
   return stats
 
 
-def analyze_improvements(results: list[BenchmarkResult]) -> list[dict[str, Any]]:
+def analyze_improvements(results: Sequence[BenchmarkResult]) -> list[CotImprovementItemDict]:
   """
   Identifies specific Themes where Chain-of-Thought (CoT) succeeded
   while the Baseline (Zero-Shot) failed.
 
   Args:
-      results: The flat list of runs.
+      results (Sequence[BenchmarkResult]): The flat list of runs.
 
   Returns:
-      List[Dict]: A list of objects describing the improvement case.
-      Format: [{'theme': '...', 'cot_model': '...', 'gap': True}]
+      list[CotImprovementItemDict]: A list of dictionaries describing the improvement case.
   """
-  # Group by Theme -> Strategy -> Result
-  # Map: Theme -> Strategy -> List[BenchmarkResult]
   grouped: dict[str, dict[str, list[BenchmarkResult]]] = defaultdict(lambda: defaultdict(list))
 
   for r in results:
     grouped[r.theme][r.strategy].append(r)
 
-  improvements = []
+  improvements: list[CotImprovementItemDict] = []
 
   for theme, strategies in grouped.items():
-    # Get baseline results (Zero-Shot)
     zero_shot_runs = strategies.get("zero-shot", [])
     cot_runs = strategies.get("cot-macro", [])
 
-    # Check if ALL zero-shots failed
     zero_shot_failed = len(zero_shot_runs) > 0 and all(not r.success for r in zero_shot_runs)
-
-    # Check if ANY CoT succeeded
     cot_succeeded = any(r.success for r in cot_runs)
 
     if zero_shot_failed and cot_succeeded:
@@ -165,33 +221,31 @@ def analyze_improvements(results: list[BenchmarkResult]) -> list[dict[str, Any]]
   return sorted(improvements, key=lambda x: x["theme"])
 
 
-def generate_markdown(stats: dict[str, StrategyStats], improvements: list[dict[str, Any]]) -> str:
+def generate_markdown(stats: dict[str, StrategyStats], improvements: Sequence[CotImprovementItemDict]) -> str:
   """
   Formats the analysis into a Markdown string using the requested template structure.
 
   Args:
-      stats: Aggregated metrics.
-      improvements: List of specific wins over baseline.
+      stats (dict[str, StrategyStats]): Aggregated metrics.
+      improvements (Sequence[CotImprovementItemDict]): List of specific wins over baseline.
 
   Returns:
       str: The full markdown content.
   """
-  lines = []
+  nl = chr(10)
+  lines: list[str] = []
   lines.append("# LLM Benchmarking Report")
-  lines.append(f"\n**Generated on:** {os.environ.get('BUILD_DATE', 'Local Execution')}")
+  lines.append(f"{nl}**Generated on:** {os.environ.get('BUILD_DATE', 'Local Execution')}")
 
-  # 1. Summary Table
-  lines.append("\n## 1. Strategy Performance Summary")
+  lines.append(f"{nl}## 1. Strategy Performance Summary")
   lines.append("| Strategy | Accuracy (%) | Avg Latency (ms) | Samples |")
   lines.append("| :--- | :---: | :---: | :---: |")
 
-  # Sort strategies for consistent output
   for strat in sorted(stats.keys()):
     s = stats[strat]
     lines.append(f"| **{strat}** | {s.accuracy:.1f}% | {s.avg_latency:.0f} | {s.total} |")
 
-  # 2. Failure Analysis
-  lines.append("\n## 2. Failure Analysis: CoT Improvements")
+  lines.append(f"{nl}## 2. Failure Analysis: CoT Improvements")
   lines.append(
     "The following themes failed consistently with **Zero-Shot** but were solved by **Chain-of-Thought (CoT)** logic:"
   )
@@ -203,37 +257,52 @@ def generate_markdown(stats: dict[str, StrategyStats], improvements: list[dict[s
     for item in improvements:
       lines.append(f"- **{item['theme']}**: Fixed by `{item['cot_model']}` using CoT.")
 
-  return "\n".join(lines)
+  return nl.join(lines)
 
 
-# --- CLI Entry Point ---
+def generate_report_result(input_path: str, output_path: str) -> AppResult[str]:
+  """
+  Loads CSV benchmark results from `input_path`, generates Markdown analysis, and writes to `output_path`.
+
+  Args:
+      input_path (str): Path to input CSV file.
+      output_path (str): Path to output Markdown file.
+
+  Returns:
+      AppResult[str]: `Ok(markdown_content)` on success, or `Err(AppError)` on failure.
+  """
+  try:
+    data = load_results(input_path)
+    stats = aggregate_stats(data)
+    improvements = analyze_improvements(data)
+    md_content = generate_markdown(stats, improvements)
+    with open(output_path, "w", encoding="utf-8") as f:
+      f.write(md_content)
+    return Ok(md_content)
+  except (FileNotFoundError, OSError, ValueError) as exc:
+    return Err(
+      AppError(
+        code=ErrorCode.IO_ERROR,
+        message=str(exc),
+        status_code=500,
+      )
+    )
 
 
 def main() -> None:
   """
-  Main execution loop.
-  Reads input CSV, processes data, and writes Markdown report.
+  Main execution loop reading input CSV, processing data, and writing the Markdown report.
   """
   parser = argparse.ArgumentParser(description="Generate Benchmark Report")
   parser.add_argument("--input", default="leaderboard.csv", help="Path to raw CSV results")
   parser.add_argument("--output", default="BENCHMARK_RESULTS.md", help="Path to output Markdown")
   args = parser.parse_args()
 
-  try:
-    data = load_results(args.input)
-    stats = aggregate_stats(data)
-    improvements = analyze_improvements(data)
-
-    md_content = generate_markdown(stats, improvements)
-
-    with open(args.output, "w", encoding="utf-8") as f:
-      f.write(md_content)
-
-    print(f"✅ Report generated: {args.output}")
-
-  except Exception as e:
-    print(f"❌ Error: {e}")
+  res = generate_report_result(args.input, args.output)
+  if isinstance(res, Err):
+    print(f"❌ Error: {res.error.message}")
     sys.exit(1)
+  print(f"✅ Report generated: {args.output}")
 
 
 if __name__ == "__main__":

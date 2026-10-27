@@ -3,14 +3,24 @@
  */
 package io.healthplatform.pulsequery.ui.screens.wizard
 
+import io.healthplatform.pulsequery.api.apis.AiApi
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.apis.TemplatesApi
 import io.healthplatform.pulsequery.api.models.HttpConfig
+import io.healthplatform.pulsequery.api.models.ModelInfo
 import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.api.models.TextConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.DashboardId
+import io.healthplatform.pulsequery.core.model.ProcessorCategory
+import io.healthplatform.pulsequery.core.model.ProcessorId
+import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
+import io.healthplatform.pulsequery.core.model.VisualizationType
+import io.healthplatform.pulsequery.core.model.WidgetSourceType
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -30,18 +40,23 @@ import kotlinx.serialization.json.JsonPrimitive
  * @property scope Coroutine scope used for executing asynchronous network requests.
  * @property templatesApi API client for querying template configurations.
  * @property dashboardsApi API client for persisting newly created widgets.
+ * @property aiApi Optional API client for querying available query processors (`SQL`, Ollama, `any-llm`).
  */
 class WizardViewModel(
     val dashboardId: String,
     private val scope: CoroutineScope,
     private val templatesApi: TemplatesApi? = null,
-    private val dashboardsApi: DashboardsApi? = null
+    private val dashboardsApi: DashboardsApi? = null,
+    private val aiApi: AiApi? = null
 ) {
     private val currentTemplatesApi: TemplatesApi
         get() = templatesApi ?: AppContainer.templatesApi
 
     private val currentDashboardsApi: DashboardsApi
         get() = dashboardsApi ?: AppContainer.dashboardsApi
+
+    private val currentAiApi: AiApi
+        get() = aiApi ?: AppContainer.aiApi
 
     private val _state = MutableStateFlow<WizardState>(WizardState.Loading)
 
@@ -50,9 +65,47 @@ class WizardViewModel(
 
     private var allTemplates: List<TemplateResponse> = emptyList()
     private var allCategories: List<String> = emptyList()
+    private var cachedProcessors: List<ProcessorSelectionOption> = listOf(ProcessorSelectionOption.SQL_DEFAULT)
 
     init {
         loadTemplates()
+        if (aiApi != null) {
+            loadAvailableProcessors()
+        }
+    }
+
+    /**
+     * Loads selectable query processors (`SQL [no model]`, Ollama models, and `any-llm` models) via [AiApi].
+     */
+    fun loadAvailableProcessors() {
+        scope.launch {
+            runCatchingPulseAsync {
+                currentAiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true)
+                    .asResult()
+                    .getOrThrow()
+            }.fold(
+                onSuccess = { models ->
+                    val mapped = models.map { mapModelInfoToProcessorSelection(it) }
+                    cachedProcessors = if (mapped.any { it.id == ProcessorId.SQL_NO_MODEL }) {
+                        mapped
+                    } else {
+                        listOf(ProcessorSelectionOption.SQL_DEFAULT) + mapped
+                    }
+                    when (val current = _state.value) {
+                        is WizardState.CustomWidgetConfiguration -> {
+                            _state.value = current.copy(availableProcessors = cachedProcessors)
+                        }
+                        is WizardState.ParameterConfiguration -> {
+                            _state.value = current.copy(availableProcessors = cachedProcessors)
+                        }
+                        else -> Unit
+                    }
+                },
+                onFailure = {
+                    cachedProcessors = listOf(ProcessorSelectionOption.SQL_DEFAULT)
+                }
+            )
+        }
     }
 
     /**
@@ -62,7 +115,7 @@ class WizardViewModel(
         _state.value = WizardState.Loading
         scope.launch {
             runCatchingPulseAsync {
-                currentTemplatesApi.listTemplatesApiV1TemplatesGet(limit = 100).body()
+                currentTemplatesApi.listTemplatesApiV1TemplatesGet(limit = 100).asResult().getOrThrow()
             }.fold(
                 onSuccess = { templates ->
                     allTemplates = templates
@@ -76,7 +129,7 @@ class WizardViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = WizardState.Error(e.messageOrDefault("Failed to load templates"))
+                    _state.value = WizardState.Error(e.messageOrDefault(UiErrorKey.LOAD_TEMPLATES))
                 }
             )
         }
@@ -113,9 +166,9 @@ class WizardViewModel(
         val fields = extractParameterFields(template.parametersSchema)
         val initialValues = fields.associate { it.key to it.defaultValue }
         val defaultVis = when (template.category.lowercase()) {
-            "census", "availability" -> "bar_chart"
-            "bottlenecks", "utilization" -> "line_chart"
-            else -> "table"
+            "census", "availability" -> VisualizationType.BAR_CHART.wireValue
+            "bottlenecks", "utilization" -> VisualizationType.LINE_CHART.wireValue
+            else -> VisualizationType.TABLE.wireValue
         }
 
         _state.value = WizardState.ParameterConfiguration(
@@ -124,7 +177,8 @@ class WizardViewModel(
             visualization = defaultVis,
             parameterFields = fields,
             parameterValues = initialValues,
-            fieldErrors = emptyMap()
+            fieldErrors = emptyMap(),
+            availableProcessors = cachedProcessors
         )
     }
 
@@ -134,12 +188,86 @@ class WizardViewModel(
      * @param type Source type identifier ("SQL", "HTTP", or "TEXT").
      */
     fun startCustomWidget(type: String) {
-        val defaultViz = if (type.equals("TEXT", ignoreCase = true)) "markdown" else "table"
+        val sourceType = WidgetSourceType.fromWire(type)
+        val defaultViz = if (sourceType == WidgetSourceType.TEXT) {
+            VisualizationType.MARKDOWN.wireValue
+        } else {
+            VisualizationType.TABLE.wireValue
+        }
         _state.value = WizardState.CustomWidgetConfiguration(
-            creationType = type.uppercase(),
+            creationType = sourceType.wireValue,
             widgetTitle = "Custom $type Widget",
-            visualization = defaultViz
+            visualization = defaultViz,
+            availableProcessors = cachedProcessors
         )
+    }
+
+    /**
+     * Updates whether the widget being configured allows user natural text entry on the dashboard.
+     *
+     * @param enabled True when natural text input is enabled.
+     */
+    fun updateAllowNaturalText(enabled: Boolean) {
+        when (val current = _state.value) {
+            is WizardState.CustomWidgetConfiguration -> {
+                _state.value = current.copy(allowNaturalText = enabled, fieldErrors = current.fieldErrors - "content")
+            }
+            is WizardState.ParameterConfiguration -> {
+                _state.value = current.copy(allowNaturalText = enabled)
+            }
+            else -> Unit
+        }
+    }
+
+    /**
+     * Updates the selected processor (`SQL [no model]`, Ollama model, or `any-llm` model).
+     *
+     * @param processorId Selected [ProcessorId].
+     */
+    fun selectProcessor(processorId: ProcessorId) {
+        when (val current = _state.value) {
+            is WizardState.CustomWidgetConfiguration -> {
+                _state.value = current.copy(selectedProcessor = processorId)
+            }
+            is WizardState.ParameterConfiguration -> {
+                _state.value = current.copy(selectedProcessor = processorId)
+            }
+            else -> Unit
+        }
+    }
+
+    /**
+     * Updates the default natural text prompt for the widget being configured.
+     *
+     * @param prompt Default natural language prompt or SQL string.
+     */
+    fun updateNaturalTextPrompt(prompt: String) {
+        when (val current = _state.value) {
+            is WizardState.CustomWidgetConfiguration -> {
+                _state.value = current.copy(naturalTextPrompt = prompt, fieldErrors = current.fieldErrors - "content")
+            }
+            is WizardState.ParameterConfiguration -> {
+                _state.value = current.copy(naturalTextPrompt = prompt)
+            }
+            else -> Unit
+        }
+    }
+
+    /**
+     * Updates the custom placeholder text for the widget's natural text input field.
+     *
+     * @param placeholder Placeholder string.
+     */
+    fun updatePlaceholderText(placeholder: String) {
+        when (val current = _state.value) {
+            is WizardState.CustomWidgetConfiguration -> {
+                _state.value = current.copy(placeholderText = placeholder)
+            }
+            is WizardState.ParameterConfiguration -> {
+                _state.value = current.copy(placeholderText = placeholder)
+            }
+            else -> Unit
+        }
     }
 
     /**
@@ -269,9 +397,15 @@ class WizardViewModel(
         )
         val widgetIn = WidgetIn.Sql(
             title = current.widgetTitle.trim(),
-            type = "SQL",
+            type = WidgetSourceType.SQL.wireValue,
             visualization = current.visualization,
-            config = SqlConfig(query = renderedSql)
+            config = SqlConfig(
+                query = renderedSql,
+                allowNaturalText = current.allowNaturalText,
+                processor = current.selectedProcessor.value,
+                naturalTextPrompt = current.naturalTextPrompt.trim().takeIf { it.isNotEmpty() },
+                placeholderText = current.placeholderText.trim().takeIf { it.isNotEmpty() }
+            )
         )
         persistWidget(widgetIn, onSuccess)
     }
@@ -289,14 +423,14 @@ class WizardViewModel(
                 currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                     dashboardId = dashboardId,
                     widgetIn = widgetIn
-                ).body()
+                ).asResult().getOrThrow()
             }.fold(
                 onSuccess = { created ->
                     _state.value = WizardState.Success(created)
                     onSuccess(created)
                 },
                 onFailure = { e ->
-                    _state.value = WizardState.Error(e.messageOrDefault("Failed to create widget"))
+                    _state.value = WizardState.Error(e.messageOrDefault(UiErrorKey.CREATE_WIDGET))
                 }
             )
         }
@@ -340,7 +474,9 @@ private fun validateCustomWidgetConfig(
     if (current.widgetTitle.isBlank()) {
         errors["title"] = "Title is required"
     }
-    if (current.queryOrUrlOrContent.isBlank()) {
+    val isSqlWithNaturalText = WidgetSourceType.fromWire(current.creationType) == WidgetSourceType.SQL &&
+        current.allowNaturalText
+    if (!isSqlWithNaturalText && current.queryOrUrlOrContent.isBlank()) {
         errors["content"] = "Query/URL/Content cannot be empty"
     }
     return errors
@@ -355,31 +491,74 @@ private fun validateCustomWidgetConfig(
 private fun buildCustomWidgetPayload(
     current: WizardState.CustomWidgetConfiguration
 ): WidgetIn {
-    return when (current.creationType.uppercase()) {
-        "TEXT" -> WidgetIn.Text(
+    return when (WidgetSourceType.fromWire(current.creationType)) {
+        WidgetSourceType.TEXT -> WidgetIn.Text(
             title = current.widgetTitle.trim(),
-            type = "TEXT",
+            type = WidgetSourceType.TEXT.wireValue,
             visualization = current.visualization,
             config = TextConfig(content = current.queryOrUrlOrContent)
         )
-        "HTTP" -> {
+        WidgetSourceType.HTTP -> {
             val methodEnum = HttpConfig.Method.entries.firstOrNull {
                 it.value.equals(current.httpMethod, ignoreCase = true)
             } ?: HttpConfig.Method.GET
             WidgetIn.Http(
                 title = current.widgetTitle.trim(),
-                type = "HTTP",
+                type = WidgetSourceType.HTTP.wireValue,
                 visualization = current.visualization,
                 config = HttpConfig(url = current.queryOrUrlOrContent.trim(), method = methodEnum)
             )
         }
-        else -> WidgetIn.Sql(
+        WidgetSourceType.SQL -> WidgetIn.Sql(
             title = current.widgetTitle.trim(),
-            type = "SQL",
+            type = WidgetSourceType.SQL.wireValue,
             visualization = current.visualization,
-            config = SqlConfig(query = current.queryOrUrlOrContent.trim())
+            config = SqlConfig(
+                query = current.queryOrUrlOrContent.trim(),
+                allowNaturalText = current.allowNaturalText,
+                processor = current.selectedProcessor.value,
+                naturalTextPrompt = current.naturalTextPrompt.trim().takeIf { it.isNotEmpty() },
+                placeholderText = current.placeholderText.trim().takeIf { it.isNotEmpty() }
+            )
         )
     }
+}
+
+/**
+ * Infers the [ProcessorCategory] for a [ModelInfo] instance.
+ *
+ * @param model Raw [ModelInfo] model.
+ * @return Resolved [ProcessorCategory].
+ */
+private fun inferProcessorCategory(model: ModelInfo): ProcessorCategory {
+    if (model.id.equals("SQL", ignoreCase = true) || model.processorType.equals("SQL", ignoreCase = true)) {
+        return ProcessorCategory.SQL
+    }
+    val idLower = model.id.lowercase()
+    val isOllama = model.processorType.equals("OLLAMA", ignoreCase = true) ||
+        model.provider.equals("ollama", ignoreCase = true) ||
+        idLower.startsWith("ollama:") ||
+        idLower.startsWith("ollama/") ||
+        model.isLocal
+    return if (isOllama) ProcessorCategory.OLLAMA else ProcessorCategory.ANY_LLM
+}
+
+/**
+ * Maps a raw [ModelInfo] response into a strongly typed [ProcessorSelectionOption].
+ *
+ * @param model Raw [ModelInfo] returned by `/api/v1/ai/models`.
+ * @return Mapped [ProcessorSelectionOption].
+ */
+fun mapModelInfoToProcessorSelection(model: ModelInfo): ProcessorSelectionOption {
+    val cat = inferProcessorCategory(model)
+    val defaultProvider = if (cat == ProcessorCategory.SQL) "sql" else "ollama"
+    return ProcessorSelectionOption(
+        id = ProcessorId(if (cat == ProcessorCategory.SQL) "SQL" else model.id),
+        displayName = model.name.ifBlank { ProcessorSelectionOption.SQL_DEFAULT.displayName },
+        provider = model.provider.ifBlank { defaultProvider },
+        category = cat,
+        isLocal = cat != ProcessorCategory.ANY_LLM
+    )
 }
 
 /**

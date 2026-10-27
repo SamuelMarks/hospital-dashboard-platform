@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Payload for modifying user active account status.
  */
 export interface UserStatusUpdate {
+  /** Property `is_active`. */
   is_active: boolean;
 }

@@ -48,7 +48,7 @@ def test_transform_opening_tag_variants() -> None:
 
 def test_process_html_attributes_and_nested_tags() -> None:
   """Verifies `process_html` localizes attributes, normal tags, and respects closing tags."""
-  raw = '<div placeholder="Enter name"><p>Hello <span>World</span></p></unmatched><br/></div>'
+  raw = '<div placeholder="Enter name"><p>Hello <span>World</span></p></unmatched></div ><br/>'
   processed = add_i18n.process_html(raw)
   assert 'i18n-placeholder placeholder="Enter name"' in processed
   assert "<p i18n>" in processed

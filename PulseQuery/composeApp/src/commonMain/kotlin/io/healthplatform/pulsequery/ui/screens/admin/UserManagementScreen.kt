@@ -47,8 +47,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.UserResponse
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.all_roles
+import pulsequery.composeapp.generated.resources.change_role
+import pulsequery.composeapp.generated.resources.navigate_back
+import pulsequery.composeapp.generated.resources.no_users_found
+import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.search
+import pulsequery.composeapp.generated.resources.search_users_by_email
+import pulsequery.composeapp.generated.resources.user_active
+import pulsequery.composeapp.generated.resources.user_id_label
+import pulsequery.composeapp.generated.resources.user_management
+import pulsequery.composeapp.generated.resources.user_role_label
+import pulsequery.composeapp.generated.resources.user_suspended
 
 /**
  * Screen composable facilitating administrative user management in Compose Multiplatform.
@@ -77,12 +95,17 @@ fun UserManagementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("User Management") },
+                title = {
+                    Text(
+                        stringResource(Res.string.user_management),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Navigate back"
+                            contentDescription = stringResource(Res.string.navigate_back)
                         )
                     }
                 }
@@ -107,7 +130,8 @@ fun UserManagementScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp),
+                            .padding(24.dp)
+                            .semantics { liveRegion = LiveRegionMode.Assertive },
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -118,7 +142,7 @@ fun UserManagementScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { vm.loadUsers() }) {
-                            Text("Retry")
+                            Text(stringResource(Res.string.retry))
                         }
                     }
                 }
@@ -160,8 +184,8 @@ private fun UserListContent(
             value = state.searchQuery,
             onValueChange = onSearchChange,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search users by email...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+            placeholder = { Text(stringResource(Res.string.search_users_by_email)) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(Res.string.search)) },
             singleLine = true
         )
 
@@ -175,7 +199,7 @@ private fun UserListContent(
                 FilterChip(
                     selected = state.selectedRole == null,
                     onClick = { onRoleFilterSelect(null) },
-                    label = { Text("All Roles") }
+                    label = { Text(stringResource(Res.string.all_roles)) }
                 )
             }
             items(roles) { role ->
@@ -195,7 +219,7 @@ private fun UserListContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No users found matching filter criteria.",
+                    text = stringResource(Res.string.no_users_found),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -251,7 +275,7 @@ private fun UserCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "ID: ${user.id}",
+                        text = stringResource(Res.string.user_id_label, user.id),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -259,7 +283,11 @@ private fun UserCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (user.isActive) "Active" else "Suspended",
+                        text = if (user.isActive) {
+                            stringResource(Res.string.user_active)
+                        } else {
+                            stringResource(Res.string.user_suspended)
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         color = if (user.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
@@ -281,13 +309,13 @@ private fun UserCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Role: ${user.role}",
+                    text = stringResource(Res.string.user_role_label, user.role ?: ""),
                     style = MaterialTheme.typography.labelLarge
                 )
 
                 Box {
                     OutlinedButton(onClick = { expanded = true }) {
-                        Text("Change Role")
+                        Text(stringResource(Res.string.change_role))
                     }
 
                     DropdownMenu(

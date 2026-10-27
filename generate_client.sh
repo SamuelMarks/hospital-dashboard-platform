@@ -1,96 +1,136 @@
-#!/usr/bin/env bash
+#!/bin/sh
+# # generate_client.sh
+#
+# ## Overview
+# Generates both the Angular TypeScript client and Kotlin Multiplatform (KMP)
+# client from the Backend OpenAPI schema using POSIX /bin/sh.
+#
+# ## Usage
+# ./generate_client.sh
 
-# -----------------------------------------------------------------------------
-# Script: generate_client.sh
-# Description: Generates both the Angular TypeScript client and Kotlin
-#              Multiplatform (KMP) client from the Backend OpenAPI schema.
-# Requirements:
-#   - Python 3 with backend dependencies installed (uv).
-#   - Node.js & npm (to run @openapitools/openapi-generator-cli).
-# -----------------------------------------------------------------------------
+set -feu
 
-set -e # Exit immediately if a command exits with a non-zero status.
+if [ "${SCRIPT_NAME-}" ]; then
+  THIS_FILE="${SCRIPT_NAME}"
+elif [ "${BASH_SOURCE-}" ]; then
+  THIS_FILE="${BASH_SOURCE}"
+elif [ "${ZSH_VERSION-}" ]; then
+  # libscript-allow-eval
+  # shellcheck disable=SC2296
+  THIS_FILE="${(%):-%x}"
+else
+  THIS_FILE="${0}"
+fi
 
-# Paths
-BACKEND_DIR="./pulse-query-backend"
-FRONTEND_DEST="./pulse-query-ng-web/src/app/api-client"
-KMP_DEST="./PulseQuery/composeApp/src/commonMain/kotlin/io/healthplatform/pulsequery/api"
-SCHEMA_FILE="./openapi.json"
-TMP_KMP_DIR="/tmp/kmp_client_gen"
+case "${STACK+x}" in
+  *':'"${THIS_FILE}"':'*)
+    printf '[STOP]     processing "%s"
+' "${THIS_FILE}" >&2
+    if (return 0 2>/dev/null); then return; else exit 0; fi ;;
+  *) printf '[CONTINUE] processing "%s"
+' "${THIS_FILE}" >&2 ;;
+esac
+export STACK="${STACK:-}${THIS_FILE}"':'
+SCRIPT_DIR=$(cd -- "$(dirname -- "${THIS_FILE}")" && pwd)
+: "${LIBSCRIPT_ROOT_DIR:=$(d="$SCRIPT_DIR"; while [ ! -f "$d/libscript.sh" ]; do n="${d%/*}"; [ -z "$n" ] && n="/"; [ "$d" = "$n" ] && break; d="$n"; done; printf '%s
+' "$d")}"
 
-# Cache configurations for resilient execution
+# ## sed_inplace
+# Applies a portable sed replacement to a target file across BSD/macOS and GNU sed.
+sed_inplace() {
+  _si_expr="$1"
+  _si_file="$2"
+  [ -f "$_si_file" ] || return 0
+  _si_tmp="${_si_file}.tmp.$$"
+  if sed "$_si_expr" "$_si_file" > "$_si_tmp" 2>/dev/null; then
+    mv "$_si_tmp" "$_si_file"
+  else
+    rm -f "$_si_tmp"
+  fi
+}
+
+BACKEND_DIR="${SCRIPT_DIR}/pulse-query-backend"
+FRONTEND_DEST="${SCRIPT_DIR}/pulse-query-ng-web/src/app/api-client"
+KMP_DEST="${SCRIPT_DIR}/PulseQuery/composeApp/src/commonMain/kotlin/io/healthplatform/pulsequery/api"
+SCHEMA_FILE="${SCRIPT_DIR}/openapi.json"
+TMP_KMP_DIR="${TMPDIR:-/tmp}/kmp_client_gen"
+
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv_cache}"
 export npm_config_cache="${npm_config_cache:-/tmp/npm_cache}"
 
-echo "=================================================="
-echo "🚀 Starting Full-Stack Client Generation Process"
-echo "=================================================="
+printf '%s
+' "=================================================="
+printf '%s
+' "Starting Full-Stack Client Generation Process"
+printf '%s
+' "=================================================="
 
-# 1. Extract Schema
-echo ""
-echo "🔹 Step 1: Extracting OpenAPI JSON from Backend..."
-cd $BACKEND_DIR
-uv run python scripts/extract_openapi.py --output ../$SCHEMA_FILE
-cd ..
+printf '
+%s
+' "Step 1: Extracting OpenAPI JSON from Backend..."
+(
+  cd "$BACKEND_DIR"
+  uv run python scripts/extract_openapi.py --output "$SCHEMA_FILE"
+)
 
 if [ ! -f "$SCHEMA_FILE" ]; then
-    echo "❌ Error: openapi.json was not generated."
-    exit 1
+  printf '%s
+' "Error: openapi.json was not generated." >&2
+  exit 1
 fi
 
-# 1a. Validate Critical Types Exist
 for critical_type in "ScenarioConstraint" "SystemHealthResponse" "SystemDiagnosticsResponse" "ReingestResponse" "DashboardShareResponse"; do
-    if ! grep -q "$critical_type" "$SCHEMA_FILE"; then
-        echo "❌ Error: Schema is missing critical type '$critical_type'."
-        exit 1
-    fi
+  if ! grep -q "$critical_type" "$SCHEMA_FILE"; then
+    printf '%s
+' "Error: Schema is missing critical type '$critical_type'." >&2
+    exit 1
+  fi
 done
 
-# 2. Clean Previous Angular Client
-echo ""
-echo "🔹 Step 2: Cleaning old Angular client files..."
+printf '
+%s
+' "Step 2: Cleaning old Angular client files..."
 if [ -d "$FRONTEND_DEST" ]; then
-    rm -rf "$FRONTEND_DEST"
-    echo "   - Removed $FRONTEND_DEST"
+  rm -rf "$FRONTEND_DEST"
 fi
 mkdir -p "$FRONTEND_DEST"
 
-# 3. Generate Angular Client
-echo ""
-echo "🔹 Step 3: Generating Angular TypeScript Client..."
-
-if ! command -v npx &> /dev/null; then
-    echo "❌ Error: 'npx' is not installed. Please install Node.js."
-    exit 1
+printf '
+%s
+' "Step 3: Generating Angular TypeScript Client..."
+if ! command -v npx >/dev/null 2>&1; then
+  printf '%s
+' "Error: 'npx' is not installed. Please install Node.js." >&2
+  exit 1
 fi
 
-npx -y @openapitools/openapi-generator-cli generate \
-    -i "$SCHEMA_FILE" \
-    -g typescript-angular \
-    -o "$FRONTEND_DEST" \
-    --additional-properties=ngVersion=17.0.0,fileNaming=kebab-case \
-    --skip-validate-spec
+npx -y @openapitools/openapi-generator-cli generate 
+  -i "$SCHEMA_FILE" 
+  -g typescript-angular 
+  -o "$FRONTEND_DEST" 
+  --additional-properties=ngVersion=17.0.0,fileNaming=kebab-case 
+  --skip-validate-spec
 
-# Fix empty any/object types in TypeScript client
-sed -i '' 's/?:  | null/?: Record<string, any> | null/g' "$FRONTEND_DEST/model/"*.ts 2>/dev/null || true
-sed -i '' 's/?: | null/?: Record<string, any> | null/g' "$FRONTEND_DEST/model/"*.ts 2>/dev/null || true
+for _ts_f in "$FRONTEND_DEST/model/"*.ts; do
+  [ -f "$_ts_f" ] || continue
+  sed_inplace 's/?:  | null/?: Record<string, any> | null/g' "$_ts_f"
+  sed_inplace 's/?: | null/?: Record<string, any> | null/g' "$_ts_f"
+done
 
-# 4. Generate Kotlin Multiplatform Client
-echo ""
-echo "🔹 Step 4: Generating Kotlin Multiplatform (KMP) Client..."
-
+printf '
+%s
+' "Step 4: Generating Kotlin Multiplatform (KMP) Client..."
 rm -rf "$TMP_KMP_DIR"
 mkdir -p "$TMP_KMP_DIR"
 
-npx -y @openapitools/openapi-generator-cli generate \
-    -i "$SCHEMA_FILE" \
-    -g kotlin \
-    --library multiplatform \
-    -o "$TMP_KMP_DIR" \
-    --additional-properties=packageName=io.healthplatform.pulsequery.api,collectionType=list,dateLibrary=kotlinx-datetime \
-    --skip-validate-spec
+npx -y @openapitools/openapi-generator-cli generate 
+  -i "$SCHEMA_FILE" 
+  -g kotlin 
+  --library multiplatform 
+  -o "$TMP_KMP_DIR" 
+  --additional-properties=packageName=io.healthplatform.pulsequery.api,collectionType=list,dateLibrary=kotlinx-datetime 
+  --skip-validate-spec
 
-# Copy generated apis and models into KMP source tree
 mkdir -p "$KMP_DEST/apis"
 mkdir -p "$KMP_DEST/models"
 mkdir -p "$KMP_DEST/infrastructure"
@@ -99,17 +139,44 @@ cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/apis/
 cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/models/"* "$KMP_DEST/models/"
 cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/infrastructure/"* "$KMP_DEST/infrastructure/"
 
-# Ensure polymorphic WidgetIn definition is restored if overwritten by raw generator
 cat << 'EOF' > "$KMP_DEST/models/WidgetIn.kt"
+/**
+ * Polymorphic widget creation payload models (`SQL`, `HTTP`, `TEXT`).
+ */
 package io.healthplatform.pulsequery.api.models
 
+import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonContentPolymorphicSerializer
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Polymorphic base model for creating widgets.
+ * Content-based polymorphic serializer for [WidgetIn] dispatching on the `"type"` JSON property.
  */
-@Serializable
+object WidgetInSerializer : JsonContentPolymorphicSerializer<WidgetIn>(WidgetIn::class) {
+    /**
+     * Selects the concrete [DeserializationStrategy] based on the `"type"` field in [element].
+     *
+     * @param element Parsed JSON payload.
+     * @return Concrete [WidgetIn] subtype serializer.
+     */
+    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<WidgetIn> {
+        val typeElement = element.jsonObject["type"] ?: return WidgetIn.Sql.serializer()
+        return when (typeElement.jsonPrimitive.content.uppercase()) {
+            "TEXT" -> WidgetIn.Text.serializer()
+            "HTTP" -> WidgetIn.Http.serializer()
+            else -> WidgetIn.Sql.serializer()
+        }
+    }
+}
+
+/**
+ * Polymorphic base model for creating dashboard widgets.
+ */
+@Serializable(with = WidgetInSerializer::class)
 sealed class WidgetIn {
     /** The title of the widget. */
     abstract val title: String
@@ -156,45 +223,48 @@ sealed class WidgetIn {
 }
 EOF
 
-# Ensure SystemDiagnosticsResponse uses JsonElement for environmentChecks
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/models/SystemDiagnosticsResponse.kt" 2>/dev/null || true
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/models/SystemDiagnosticsResponse.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/WidgetResponse.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/WidgetUpdate.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/SQLExecutionRequest.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/SQLExecutionResponse.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/TemplateCreate.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/TemplateResponse.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/TemplateUpdate.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/models/AdminSettingsResponse.kt"
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/models/AdminSettingsUpdateRequest.kt"
+sed_inplace 's/@SerialName(value = "language_preference") @Required val languagePreference: kotlin\.String,/@SerialName(value = "language_preference") val languagePreference: kotlin.String = "en",/g' "$KMP_DEST/models/UserResponse.kt"
 
-# Fix raw untyped Map in models to JsonObject / JsonElement
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/WidgetResponse.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/WidgetUpdate.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/SQLExecutionRequest.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/SQLExecutionResponse.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/TemplateCreate.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/TemplateResponse.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$KMP_DEST/models/TemplateUpdate.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/models/AdminSettingsResponse.kt" 2>/dev/null || true
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/models/AdminSettingsUpdateRequest.kt" 2>/dev/null || true
-sed -i '' 's/@SerialName(value = "language_preference") @Required val languagePreference: kotlin\.String,/@SerialName(value = "language_preference") val languagePreference: kotlin.String = "en",/g' "$KMP_DEST/models/UserResponse.kt" 2>/dev/null || true
+sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/apis/ExecutionApi.kt"
+sed_inplace 's/Map<kotlin\.String, kotlin\.Any>/Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/apis/ExecutionApi.kt"
+sed_inplace 's/RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(requestBody)/requestBody ?: emptyMap<String, kotlinx.serialization.json.JsonElement>()/g' "$KMP_DEST/apis/ExecutionApi.kt"
+sed_inplace 's/serializer<Map<String, kotlin\.Any>>()/serializer<Map<String, kotlinx.serialization.json.JsonElement>>()/g' "$KMP_DEST/apis/ExecutionApi.kt"
+sed_inplace 's/List<kotlin\.collections\.Map>/List<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>>/g' "$KMP_DEST/apis/BenchmarksApi.kt"
 
-# Fix ExecutionApi refreshDashboard requestBody and JsonElement types
-sed -i '' 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/apis/ExecutionApi.kt" 2>/dev/null || true
-sed -i '' 's/Map<kotlin\.String, kotlin\.Any>/Map<kotlin.String, kotlinx.serialization.json.JsonElement>/g' "$KMP_DEST/apis/ExecutionApi.kt" 2>/dev/null || true
-sed -i '' 's/RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(requestBody)/requestBody ?: emptyMap<String, kotlinx.serialization.json.JsonElement>()/g' "$KMP_DEST/apis/ExecutionApi.kt" 2>/dev/null || true
-sed -i '' 's/serializer<Map<String, kotlin\.Any>>()/serializer<Map<String, kotlinx.serialization.json.JsonElement>>()/g' "$KMP_DEST/apis/ExecutionApi.kt" 2>/dev/null || true
-
-# Fix raw untyped Map in BenchmarksApi
-sed -i '' 's/List<kotlin\.collections\.Map>/List<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>>/g' "$KMP_DEST/apis/BenchmarksApi.kt" 2>/dev/null || true
-
-# Fix AnyOfLessThanGreaterThan in models
-find "$KMP_DEST/models" -name "*.kt" -exec sed -i '' 's/import io\.healthplatform\.pulsequery\.api\.models\.AnyOfLessThanGreaterThan//g' {} + 2>/dev/null || true
-find "$KMP_DEST/models" -name "*.kt" -exec sed -i '' 's/AnyOfLessThanGreaterThan/kotlinx.serialization.json.JsonElement/g' {} + 2>/dev/null || true
+for _kt_f in "$KMP_DEST/models/"*.kt; do
+  [ -f "$_kt_f" ] || continue
+  sed_inplace 's/import io\.healthplatform\.pulsequery\.api\.models\.AnyOfLessThanGreaterThan//g' "$_kt_f"
+  sed_inplace 's/AnyOfLessThanGreaterThan/kotlinx.serialization.json.JsonElement/g' "$_kt_f"
+done
 
 rm -rf "$TMP_KMP_DIR"
 
-# 5. Cleanup
-echo ""
-echo "🔹 Step 5: Cleanup..."
-rm "$SCHEMA_FILE"
-echo "   - Removed temporary $SCHEMA_FILE"
+if [ -x "$BACKEND_DIR/.venv/bin/python" ]; then
+  "$BACKEND_DIR/.venv/bin/python" "$ROOT_DIR/scripts/normalize_api_client.py"
+else
+  python3 "$ROOT_DIR/scripts/normalize_api_client.py"
+fi
 
-echo ""
-echo "=================================================="
-echo "✅ Full-Stack Client Generation Complete!"
-echo "📂 Angular Client: $FRONTEND_DEST"
-echo "📂 KMP Client:     $KMP_DEST"
-echo "=================================================="
+rm -f "$SCHEMA_FILE"
+
+printf '
+%s
+' "=================================================="
+printf '%s
+' "Full-Stack Client Generation Complete!"
+printf '%s
+' "Angular Client: $FRONTEND_DEST"
+printf '%s
+' "KMP Client:     $KMP_DEST"
+printf '%s
+' "=================================================="

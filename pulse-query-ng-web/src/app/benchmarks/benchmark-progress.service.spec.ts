@@ -4,7 +4,11 @@
 
 import { TestBed } from '@angular/core/testing';
 
-import { BenchmarkProgressService, BenchmarkProgress } from './benchmark-progress.service';
+import {
+  BenchmarkProgressService,
+  BenchmarkProgress,
+  isBenchmarkProgress,
+} from './benchmark-progress.service';
 
 describe('BenchmarkProgressService', () => {
   let service: BenchmarkProgressService;
@@ -73,16 +77,29 @@ describe('BenchmarkProgressService', () => {
     expect(mockEventSource.close).toHaveBeenCalled();
   });
 
-  it('should gracefully handle malformed JSON messages without throwing', () => {
+  it('should gracefully handle malformed JSON messages and non-conforming shapes without throwing', () => {
     let emissionCount = 0;
     const sub = service.connect().subscribe(() => {
       emissionCount++;
     });
 
     mockEventSource.onmessage?.({ data: 'invalid-json' } as MessageEvent);
+    mockEventSource.onmessage?.({ data: 'null' } as MessageEvent);
+    mockEventSource.onmessage?.({ data: JSON.stringify({ active: 'not-bool' }) } as MessageEvent);
 
     expect(emissionCount).toBe(0);
     expect(service.progress()).toBeNull();
+    expect(isBenchmarkProgress(null)).toBe(false);
+    expect(
+      isBenchmarkProgress({
+        active: true,
+        completed: 1,
+        total: 2,
+        current_model: 'm',
+        status: 's',
+        eta_seconds: 5,
+      }),
+    ).toBe(true);
 
     sub.unsubscribe();
   });

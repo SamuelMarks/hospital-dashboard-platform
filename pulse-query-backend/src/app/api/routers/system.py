@@ -51,6 +51,10 @@ async def get_system_health(
   Returns:
       SystemHealthResponse: Consolidated system health model.
   """
+  response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+  response.headers["Pragma"] = "no-cache"
+  response.headers["Expires"] = "0"
+
   summary = await system_diagnostics_service.get_health_summary(require_populated=strict)
 
   if summary.status != "healthy":
@@ -65,6 +69,7 @@ async def get_system_health(
   summary="Detailed system diagnostics and troubleshooting guides",
 )
 async def get_system_diagnostics(
+  response: Response,
   current_user: Annotated[User, Depends(deps.get_current_user)],
 ) -> SystemDiagnosticsResponse:
   """
@@ -72,12 +77,16 @@ async def get_system_diagnostics(
   Requires an authenticated user session.
 
   Args:
+      response (Response): FastAPI response object for setting no-store cache headers.
       current_user (User): The authenticated user making the request.
 
   Returns:
       SystemDiagnosticsResponse: Detailed diagnostic summary with copyable fix commands.
   """
   _ = current_user
+  response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+  response.headers["Pragma"] = "no-cache"
+  response.headers["Expires"] = "0"
   return await system_diagnostics_service.build_diagnostics_response()
 
 

@@ -45,9 +45,11 @@ def test_get_system_health_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
 
   response = client.get("/api/v1/system/health")
   assert response.status_code == 200
+  assert "no-store" in response.headers.get("cache-control", "")
   data = response.json()
   assert data["status"] == "healthy"
   assert data["overall_status"] == "healthy"
+  assert data["database"] == {"postgres": True, "duckdb": True}
   assert data["datasets"]["status"] == "ready"
   assert data["datasets"]["table_count"] == 2
   assert data["datasets"]["row_counts"]["hospital_data"] == 700
@@ -67,13 +69,14 @@ def test_get_system_health_strict_mode_when_critical(monkeypatch: pytest.MonkeyP
     "app.services.system_service.validate_postgres_connection",
     AsyncMock(return_value={"status": "error", "latency_ms": None, "details": None, "error": "down"}),
   )
-  diagnostics_registry.postgres_status["status"] = "error"
+  diagnostics_registry.postgres_status.status = "error"
 
   response = client.get("/api/v1/system/health?strict=true")
   assert response.status_code == 503
   data = response.json()
   assert data["status"] == "critical"
   assert data["overall_status"] == "critical"
+  assert data["database"]["postgres"] is False
   assert data["templates"]["status"] == "critical"
 
 
@@ -192,19 +195,9 @@ async def test_query_template_count_branches(monkeypatch: pytest.MonkeyPatch) ->
   count_with_db = await system_diagnostics_service._query_template_count(db=mock_db)
   assert count_with_db == 18
 
-  class _MockSessionCM:
-    """Stub async context manager returning `mock_db`."""
+  from tests.typed_test_doubles import TypedAsyncContextManager
 
-    async def __aenter__(self) -> AsyncMock:
-      """Enter context."""
-      return mock_db
-
-    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> bool:
-      """Exit context."""
-      _ = (exc_type, exc, tb)
-      return False
-
-  monkeypatch.setattr("app.services.system_service.AsyncSessionLocal", lambda: _MockSessionCM())
+  monkeypatch.setattr("app.services.system_service.AsyncSessionLocal", lambda: TypedAsyncContextManager(mock_db))
   count_via_session_local = await system_diagnostics_service._query_template_count(db=None)
   assert count_via_session_local == 18
 
@@ -213,7 +206,7 @@ async def test_query_template_count_branches(monkeypatch: pytest.MonkeyPatch) ->
     raise RuntimeError("no db")
 
   monkeypatch.setattr("app.services.system_service.AsyncSessionLocal", _failing_session_local)
-  diagnostics_registry.template_status["templates_loaded"] = 11
+  diagnostics_registry.template_status.templates_loaded = 11
   count_fallback = await system_diagnostics_service._query_template_count(db=None)
   assert count_fallback == 11
 
@@ -317,13 +310,13 @@ async def test_template_seeder_edge_cases(tmp_path: Path, monkeypatch: pytest.Mo
   nonexistent_file = str(tmp_path / "nonexistent.json")
   monkeypatch.setattr("app.services.template_seeder.DATA_FILE", nonexistent_file)
   await TemplateSeeder.seed_defaults()
-  assert diagnostics_registry.template_status["missing_file"] is True
+  assert diagnostics_registry.template_status.missing_file is True
 
   empty_file = tmp_path / "empty.json"
   empty_file.write_text("[]", encoding="utf-8")
   monkeypatch.setattr("app.services.template_seeder.DATA_FILE", str(empty_file))
   await TemplateSeeder.seed_defaults()
-  assert diagnostics_registry.template_status["templates_loaded"] == 0
+  assert diagnostics_registry.template_status.templates_loaded == 0
 
   invalid_file = tmp_path / "invalid.json"
   invalid_file.write_text("{broken json", encoding="utf-8")
@@ -339,4 +332,4 @@ def test_data_ingestion_edge_cases(tmp_path: Path, monkeypatch: pytest.MonkeyPat
   monkeypatch.setattr("app.services.data_ingestion.DEFAULT_CSV_PATH", os.path.join(empty_dir, "hospital_data.csv"))
 
   DataIngestionService.ingest_all_csvs()
-  assert diagnostics_registry.data_status["fallback_generated"] is True
+  assert diagnostics_registry.data_status.fallback_generated is True

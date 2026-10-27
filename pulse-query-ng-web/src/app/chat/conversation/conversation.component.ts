@@ -273,9 +273,8 @@ export class ConversationComponent {
    * @param e - The keyboard event triggered on Enter.
    */
   handleEnter(e: Event): void {
-    const event = e as KeyboardEvent;
-    if (event.shiftKey) return;
-    event.preventDefault();
+    if ('shiftKey' in e && Boolean((e as { shiftKey?: boolean }).shiftKey)) return;
+    e.preventDefault();
     this.send();
   }
 
@@ -363,7 +362,8 @@ export class ConversationComponent {
       .subscribe({
         next: (res) => {
           if (res.error) {
-            this.candidateErrors.update((state) => ({ ...state, [id]: res.error as string }));
+            const errStr = String(res.error);
+            this.candidateErrors.update((state) => ({ ...state, [id]: errStr }));
             this.candidateResults.update((state) => ({ ...state, [id]: null }));
           } else {
             this.candidateResults.update((state) => ({

@@ -90,10 +90,14 @@ export class VizScalarComponent {
     const d = this.data();
     if (!d) return null;
     if (Array.isArray(d.data)) {
-      if (d.data.length > 0) {
-        const row = d.data[0] as Record<string, unknown>;
-        const valKey = Object.keys(row).find((k) => typeof row[k] === 'number');
-        return valKey ? (row[valKey] as number) : null;
+      const row = d.data[0];
+      if (row) {
+        for (const k of Object.keys(row)) {
+          const cellVal = row[k];
+          if (typeof cellVal === 'number') {
+            return cellVal;
+          }
+        }
       }
       return null;
     }
@@ -112,8 +116,10 @@ export class VizScalarComponent {
   /** Computed uppercase label derived from the dataset's primary column name. */
   readonly label = computed(() => {
     const d = this.data();
-    if (d?.columns && d.columns.length > 0)
-      return d.columns.find((c: string) => c !== 'value') || (d.columns[0] as string);
+    const firstCol = d?.columns?.[0];
+    if (d?.columns && firstCol !== undefined) {
+      return d.columns.find((c: string) => c !== 'value') || firstCol;
+    }
     return $localize`Result`;
   });
 

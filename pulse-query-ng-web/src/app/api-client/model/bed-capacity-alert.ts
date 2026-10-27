@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,20 +12,30 @@
  * Real-time hospital unit capacity alert payload.
  */
 export interface BedCapacityAlert {
+  /** Property `unit_category`. */
   unit_category: string;
+  /** Property `current_census`. */
   current_census: number;
+  /** Property `max_capacity`. */
   max_capacity: number;
+  /** Property `occupancy_percentage`. */
   occupancy_percentage: number;
+  /** Property `threshold_percentage`. */
   threshold_percentage: number;
+  /** Property `severity`. */
   severity: BedCapacityAlert.SeverityEnum;
+  /** Property `message`. */
   message: string;
+  /** Property `timestamp`. */
   timestamp: string;
 }
 export namespace BedCapacityAlert {
+  /** Generated OpenAPI type definition. */
   export const SeverityEnum = {
     Info: 'INFO',
     Warning: 'WARNING',
     Critical: 'CRITICAL',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type SeverityEnum = (typeof SeverityEnum)[keyof typeof SeverityEnum];
 }

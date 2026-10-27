@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -16,4 +16,5 @@ export const AlertSeverity = {
   Warning: 'WARNING',
   Critical: 'CRITICAL',
 } as const;
+/** Generated OpenAPI type definition. */
 export type AlertSeverity = (typeof AlertSeverity)[keyof typeof AlertSeverity];

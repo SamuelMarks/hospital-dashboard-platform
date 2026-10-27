@@ -6,6 +6,7 @@
 import { Component, input, computed, inject, effect, signal, PLATFORM_ID } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { inferChartAxisKeys } from '../viz-axis-inference.utils';
 
 /**
  * Configuration for reference lines (e.g. thresholds).
@@ -254,7 +255,7 @@ export class VizChartComponent {
     const colors = this.palette();
     if (colors.length === 0) return index === -1 ? '#ba1a1a' : '#1976d2';
     const targetIdx = index === -1 ? colors.length - 1 : index % (colors.length - 1);
-    return colors[targetIdx] as string;
+    return String(colors[targetIdx]);
   }
 
   /**
@@ -263,25 +264,9 @@ export class VizChartComponent {
   readonly axisKeys = computed(() => {
     const ds = this.dataSet();
     const conf = this.config();
-    if (!ds || !ds.data || ds.data.length === 0) return { x: '', y: '', stack: '' };
-    const firstRow = ds.data[0] as Record<string, unknown>;
-    const cols = ds.columns || Object.keys(firstRow);
-
-    const x =
-      conf?.xKey || cols.find((c) => typeof firstRow[c] === 'string') || (cols[0] as string);
-    const y =
-      conf?.yKey ||
-      cols.find((c) => typeof firstRow[c] === 'number') ||
-      cols[1] ||
-      (cols[0] as string);
-    let stack = conf?.stackBy || '';
-
-    if (!conf?.stackBy && cols.length >= 3) {
-      const potentialStack = cols.find((c) => c !== x && typeof firstRow[c] === 'string');
-      if (potentialStack) stack = potentialStack;
-    }
-
-    return { x, y, stack };
+    const firstRow = ds?.data?.[0];
+    if (!ds || !firstRow) return { x: '', y: '', stack: '' };
+    return inferChartAxisKeys(ds.columns, firstRow, conf);
   });
 
   /**

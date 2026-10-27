@@ -6,10 +6,62 @@ capacities, and clinical service demands for offline benchmark evaluations.
 """
 
 import json
-import random
-import uuid
 from pathlib import Path
-from typing import Any
+import random
+from typing import TypedDict
+import uuid
+
+
+class MpaxDemandEntryDict(TypedDict):
+  """
+  Typed dictionary representing a single service demand entry in an MPAX benchmark scenario.
+
+  Attributes:
+      Service (str): Clinical service name.
+      Count (int): Patient demand count.
+  """
+
+  Service: str
+  Count: int
+
+
+class MpaxExpectedMetricsDict(TypedDict):
+  """
+  Typed dictionary representing expected aggregate optimization metrics for a scenario.
+
+  Attributes:
+      total_demand (int): Sum of all service demands.
+      total_capacity (int): Sum of all unit capacities.
+      expected_overflow (int): Expected minimum overflow patient count.
+  """
+
+  total_demand: int
+  total_capacity: int
+  expected_overflow: int
+
+
+class MpaxBenchmarkScenarioDict(TypedDict):
+  """
+  Typed dictionary representing a generated MPAX benchmark scenario.
+
+  Attributes:
+      id (str): Scenario UUID string.
+      theme (str): Analytical theme label.
+      complexity (str): Complexity tier (`'Medium'` or `'High'`).
+      prompt (str): Natural language scenario prompt.
+      demand_data (list[MpaxDemandEntryDict]): Service demand entries.
+      base_capacity (dict[str, int]): Unit capacity map.
+      expected_metrics (MpaxExpectedMetricsDict): Expected optimization metrics.
+  """
+
+  id: str
+  theme: str
+  complexity: str
+  prompt: str
+  demand_data: list[MpaxDemandEntryDict]
+  base_capacity: dict[str, int]
+  expected_metrics: MpaxExpectedMetricsDict
+
 
 # Set fixed seed for reproducibility
 random.seed(42)
@@ -46,7 +98,7 @@ THEMES = [
 ]
 
 
-def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
+def generate_scenarios(count: int = 150) -> list[MpaxBenchmarkScenarioDict]:
   """
   Generates parameterized clinical scenarios for capacity optimization benchmarking.
 
@@ -54,9 +106,9 @@ def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
       count (int): Number of distinct scenarios to generate.
 
   Returns:
-      list[dict[str, Any]]: List of structured scenario dictionaries.
+      list[MpaxBenchmarkScenarioDict]: List of structured scenario dictionaries.
   """
-  scenarios: list[dict[str, Any]] = []
+  scenarios: list[MpaxBenchmarkScenarioDict] = []
 
   for _ in range(count):
     theme = random.choice(THEMES)
@@ -89,7 +141,7 @@ def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
     )
 
     # Construct Demand Data
-    demand_data: list[dict[str, Any]] = []
+    demand_data: list[MpaxDemandEntryDict] = []
     if "{demand1}" in theme["template"]:
       demand_data.append({"Service": s1, "Count": d1})
       demand_data.append({"Service": s2, "Count": d2})
@@ -106,7 +158,7 @@ def generate_scenarios(count: int = 150) -> list[dict[str, Any]]:
     total_capacity = sum(base_capacity.values())
     expected_overflow = max(0, total_demand - total_capacity)
 
-    scenario = {
+    scenario: MpaxBenchmarkScenarioDict = {
       "id": str(uuid.uuid4()),
       "theme": theme["name"],
       "complexity": "Medium" if len(demand_data) == 1 else "High",

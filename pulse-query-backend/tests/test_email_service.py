@@ -144,7 +144,7 @@ async def test_forgot_password_handles_email_service_exception(client: AsyncClie
   await db_session.commit()
 
   failing_email_svc = MagicMock()
-  failing_email_svc.send_password_reset_email.side_effect = Exception("SMTP connection failure")
+  failing_email_svc.send_password_reset_email.side_effect = OSError("SMTP connection failure")
 
   from app.main import app
 

@@ -150,12 +150,12 @@ def test_overflow_only_when_no_capacity_units(monkeypatch: pytest.MonkeyPatch) -
       """
       self._sol = sol
 
-    def optimize(self, _lp: object) -> _DummyResult:
+    def optimize(self, _lp: None = None) -> _DummyResult:
       """
       Returns a `_DummyResult` wrapping `self._sol`.
 
       Args:
-          _lp (object): Ignored LP problem instance.
+          _lp (None): Ignored LP problem instance.
 
       Returns:
           _DummyResult: Stubbed optimization result.
@@ -203,12 +203,12 @@ def test_hard_constraint_max_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
       """
       self._sol = sol
 
-    def optimize(self, _lp: object) -> _DummyResult:
+    def optimize(self, _lp: None = None) -> _DummyResult:
       """
       Returns a `_DummyResult` wrapping `self._sol`.
 
       Args:
-          _lp (object): Ignored LP problem instance.
+          _lp (None): Ignored LP problem instance.
 
       Returns:
           _DummyResult: Stubbed optimization result.
@@ -266,12 +266,12 @@ def test_solver_none_primal_solution(monkeypatch: pytest.MonkeyPatch) -> None:
   class _DummyNoneSolver:
     """Stub solver returning `_DummyNoneResult`."""
 
-    def optimize(self, _lp: object) -> _DummyNoneResult:
+    def optimize(self, _lp: None = None) -> _DummyNoneResult:
       """
       Returns `_DummyNoneResult`.
 
       Args:
-          _lp (object): Ignored LP problem instance.
+          _lp (None): Ignored LP problem instance.
 
       Returns:
           _DummyNoneResult: Stubbed None result.
@@ -299,12 +299,12 @@ def test_solver_nan_primal_solution(monkeypatch: pytest.MonkeyPatch) -> None:
   class _DummyNaNSolver:
     """Stub solver returning `_DummyNaNResult`."""
 
-    def optimize(self, _lp: object) -> _DummyNaNResult:
+    def optimize(self, _lp: None = None) -> _DummyNaNResult:
       """
       Returns `_DummyNaNResult`.
 
       Args:
-          _lp (object): Ignored LP problem instance.
+          _lp (None): Ignored LP problem instance.
 
       Returns:
           _DummyNaNResult: Stubbed NaN result.

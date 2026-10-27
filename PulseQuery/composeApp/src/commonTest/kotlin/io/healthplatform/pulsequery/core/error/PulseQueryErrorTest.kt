@@ -144,6 +144,97 @@ class PulseQueryErrorTest {
         assertEquals("Something failed", generic.messageOrDefault("Custom fallback"))
         assertEquals("Invalid argument value", converted.messageOrDefault("Custom fallback"))
         assertEquals("Custom fallback", nullMsgRaw.messageOrDefault("Custom fallback"))
+
+        val reqTimeout = io.ktor.client.plugins.HttpRequestTimeoutException("http://localhost/api", 5000L)
+        val mappedReqTimeout = PulseQueryError.fromThrowable(reqTimeout)
+        assertIs<PulseQueryError.Network.Timeout>(mappedReqTimeout)
+
+        val connTimeout = io.ktor.client.network.sockets.ConnectTimeoutException("Connect timed out", null)
+        val mappedConnTimeout = PulseQueryError.fromThrowable(connTimeout)
+        assertIs<PulseQueryError.Network.Timeout>(mappedConnTimeout)
+
+        val sockTimeout = io.ktor.client.network.sockets.SocketTimeoutException("Socket timed out", null)
+        val mappedSockTimeout = PulseQueryError.fromThrowable(sockTimeout)
+        assertIs<PulseQueryError.Network.Timeout>(mappedSockTimeout)
+    }
+
+    @Test
+    fun testExtractHttpErrorDetailAndCancellationPropagation() = runTest {
+        assertEquals(
+            "Not authorized",
+            io.healthplatform.pulsequery.core.result.extractHttpErrorDetail("""{"detail": "Not authorized"}""")
+        )
+        assertEquals(
+            """[{"msg":"invalid"}]""",
+            io.healthplatform.pulsequery.core.result.extractHttpErrorDetail("""{"detail": [{"msg":"invalid"}]}""")
+        )
+        assertEquals(
+            """{"other": "value"}""",
+            io.healthplatform.pulsequery.core.result.extractHttpErrorDetail("""{"other": "value"}""")
+        )
+        assertEquals(
+            "{malformed",
+            io.healthplatform.pulsequery.core.result.extractHttpErrorDetail("{malformed")
+        )
+        assertEquals(
+            "Plain error",
+            io.healthplatform.pulsequery.core.result.extractHttpErrorDetail("Plain error")
+        )
+
+        var syncCancelled = false
+        try {
+            runCatchingPulse {
+                throw kotlinx.coroutines.CancellationException("Sync cancelled")
+            }
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            syncCancelled = true
+        }
+        assertTrue(syncCancelled)
+
+        var asyncCancelled = false
+        try {
+            runCatchingPulseAsync {
+                throw kotlinx.coroutines.CancellationException("Async cancelled")
+            }
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            asyncCancelled = true
+        }
+        assertTrue(asyncCancelled)
+
+        val dummyEngine = io.ktor.client.engine.mock.MockEngine {
+            respond(
+                content = """[]""",
+                status = io.ktor.http.HttpStatusCode.OK,
+                headers = io.ktor.http.headersOf(io.ktor.http.HttpHeaders.ContentType, "application/json")
+            )
+        }
+        val dashboardsApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(
+            baseUrl = "http://localhost:8000",
+            httpClientEngine = dummyEngine
+        )
+        val baseResp = dashboardsApi.listDashboardsApiV1DashboardsGet()
+        val cancellingResp = io.healthplatform.pulsequery.api.infrastructure.HttpResponse(
+            response = baseResp.response,
+            provider = object : io.healthplatform.pulsequery.api.infrastructure.BodyProvider<String> {
+                override suspend fun body(response: io.ktor.client.statement.HttpResponse): String {
+                    throw kotlinx.coroutines.CancellationException("Body cancelled")
+                }
+
+                override suspend fun <V : Any> typedBody(
+                    response: io.ktor.client.statement.HttpResponse,
+                    type: io.ktor.util.reflect.TypeInfo
+                ): V {
+                    throw kotlinx.coroutines.CancellationException("TypedBody cancelled")
+                }
+            }
+        )
+        var bodyCancelled = false
+        try {
+            cancellingResp.asResult()
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            bodyCancelled = true
+        }
+        assertTrue(bodyCancelled)
     }
 
     @Test
@@ -249,5 +340,60 @@ class PulseQueryErrorTest {
         val error = result.toPulseQueryError()
         assertNotNull(error)
         assertIs<PulseQueryError.Storage.SerializationFailure>(error)
+    }
+
+    @Test
+    fun testUiErrorKeyMappingAndEndToEndViewModelErrorTransitions() = runTest {
+        assertEquals(
+            UiErrorKey.NETWORK_UNREACHABLE,
+            UiErrorKey.fromPulseQueryError(PulseQueryError.Network.Unreachable("localhost"))
+        )
+        assertEquals(
+            UiErrorKey.NETWORK_TIMEOUT,
+            UiErrorKey.fromPulseQueryError(PulseQueryError.Network.Timeout())
+        )
+        assertEquals(
+            UiErrorKey.AUTH_UNAUTHORIZED,
+            UiErrorKey.fromPulseQueryError(PulseQueryError.Http.Unauthorized())
+        )
+        assertEquals(
+            UiErrorKey.AUTH_UNAUTHORIZED,
+            UiErrorKey.fromPulseQueryError(PulseQueryError.Auth.SessionExpired())
+        )
+        assertEquals(
+            UiErrorKey.LOAD_BENCHMARKS,
+            UiErrorKey.fromPulseQueryError(
+                PulseQueryError.Http.ServerError(500, "DB down"),
+                UiErrorKey.LOAD_BENCHMARKS
+            )
+        )
+        assertEquals(
+            UiErrorKey.UNKNOWN_ERROR,
+            UiErrorKey.fromPulseQueryError(PulseQueryError.General("Failed"))
+        )
+        for (key in UiErrorKey.entries) {
+            assertTrue(key.resourceKey.isNotEmpty())
+            assertTrue(key.fallbackMessage.isNotEmpty())
+            assertEquals(key.fallbackMessage, RuntimeException().messageOrDefault(key))
+        }
+
+        val statusCodes = listOf(400, 401, 403, 404, 409, 422, 500, 503)
+        for (code in statusCodes) {
+            val engine = io.healthplatform.pulsequery.createInspectingMockEngine(
+                forcedStatus = io.ktor.http.HttpStatusCode.fromValue(code),
+                forcedErrorBody = """{"detail": "Failure $code"}"""
+            )
+            val api = io.healthplatform.pulsequery.api.apis.BenchmarksApi(
+                baseUrl = "http://localhost:8000",
+                httpClientEngine = engine
+            )
+            val vm = io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksViewModel(
+                scope = this,
+                benchmarksApi = api
+            )
+            vm.performLoadBenchmarks()
+            val expected = if (code == 404) "HTTP 404: Failure 404 not found" else "HTTP $code: Failure $code"
+            assertEquals(expected, vm.state.value.errorMessage)
+        }
     }
 }

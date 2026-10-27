@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -16,7 +16,10 @@ export interface PostgresHealthSchema {
    * Connection status (e.g. connected, error, unknown).
    */
   status: string;
+  /** Property `latency_ms`. */
   latency_ms?: number | null;
+  /** Property `details`. */
   details?: string | null;
+  /** Property `error`. */
   error?: string | null;
 }

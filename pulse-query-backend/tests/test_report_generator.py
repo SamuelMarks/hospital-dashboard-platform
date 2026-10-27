@@ -108,7 +108,9 @@ def test_markdown_generation() -> None:
   stats["zero-shot"].total = 10
   stats["zero-shot"].wins = 2
 
-  improvements = [{"theme": "Complex Logic", "cot_model": "GPT-4"}]
+  from scripts.generate_report import CotImprovementItemDict
+
+  improvements: list[CotImprovementItemDict] = [{"theme": "Complex Logic", "cot_model": "GPT-4"}]
 
   md = generate_markdown(stats, improvements)
 

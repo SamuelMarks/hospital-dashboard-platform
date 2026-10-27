@@ -23,9 +23,16 @@ complexity:
     ignoreDefaultParameters: true
     ignoreAnnotated: ['Composable']
   LongMethod:
-    active: false
+    active: true
+    threshold: 120
+    ignoreAnnotated: ['Composable']
   TooManyFunctions:
-    active: false
+    active: true
+    thresholdInFiles: 30
+    thresholdInClasses: 30
+    thresholdInInterfaces: 30
+    thresholdInObjects: 30
+    ignoreAnnotatedFunctions: ['Composable', 'Preview']
 
 style:
   active: true
@@ -36,11 +43,14 @@ style:
   MagicNumber:
     active: false
   ReturnCount:
-    active: false
+    active: true
+    max: 6
+    excludeGuardClauses: true
   MaxLineLength:
     active: false
   UnusedPrivateMember:
-    active: false
+    active: true
+    ignoreAnnotated: ['Composable', 'Preview']
 
 naming:
   active: true

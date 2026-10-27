@@ -232,6 +232,34 @@ export function verifySourceFileText(
       `${relPath}:1 - File contains banned placeholder doc comment (@docs / doc)`,
     );
   }
+  if (fullText.includes("@angular/core/primitives/signals")) {
+    errors.push(
+      `${relPath}:1 - Forbidden import from private @angular/core/primitives/signals`,
+    );
+  }
+
+  /**
+   * Recursively walks the AST to flag `any` type keywords and `as unknown as` double casts.
+   *
+   * @param n - AST node to inspect.
+   */
+  function checkForbiddenTypes(n: ts.Node): void {
+    if (n.kind === ts.SyntaxKind.AnyKeyword) {
+      const line = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+      errors.push(`${relPath}:${line} - Forbidden 'any' type annotation`);
+    } else if (
+      ts.isAsExpression(n) &&
+      ts.isAsExpression(n.expression) &&
+      n.expression.type.kind === ts.SyntaxKind.UnknownKeyword
+    ) {
+      const line = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+      errors.push(
+        `${relPath}:${line} - Forbidden 'as unknown as' double type assertion`,
+      );
+    }
+    ts.forEachChild(n, checkForbiddenTypes);
+  }
+  checkForbiddenTypes(sf);
 
   ts.forEachChild(sf, (node) => {
     if (ts.isClassDeclaration(node)) {

@@ -25,6 +25,7 @@ describe('DashboardStore', () => {
   let mockDashApi: {
     getDashboardApiV1DashboardsDashboardIdGet: ReturnType<typeof vi.fn>;
     updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
+    deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: ReturnType<typeof vi.fn>;
     restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost: ReturnType<typeof vi.fn>;
     reorderWidgetsApiV1DashboardsDashboardIdReorderPost: ReturnType<typeof vi.fn>;
     createWidgetApiV1DashboardsDashboardIdWidgetsPost: ReturnType<typeof vi.fn>;
@@ -57,6 +58,7 @@ describe('DashboardStore', () => {
     mockDashApi = {
       getDashboardApiV1DashboardsDashboardIdGet: vi.fn(),
       updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn(),
+      deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete: vi.fn(),
       restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost: vi.fn(),
       reorderWidgetsApiV1DashboardsDashboardIdReorderPost: vi.fn(),
       createWidgetApiV1DashboardsDashboardIdWidgetsPost: vi.fn(),
@@ -314,6 +316,69 @@ describe('DashboardStore', () => {
     });
   });
 
+  describe('updateWidgetLayout & deleteWidget', () => {
+    it('should optimistically update widget layout and apply server response', () => {
+      const w1 = makeWidget({ id: 'w1', config: { w: 6, h: 2 } });
+      const w2 = makeWidget({ id: 'w2', config: {} });
+      store.patch({ dashboard: d1, widgets: [w1, w2] });
+
+      const updatedServerWidget = makeWidget({ id: 'w1', config: { w: 8, h: 2 } });
+      mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+        of(updatedServerWidget),
+      );
+
+      store.updateWidgetLayout('w1', { w: 8 });
+      expect(store.widgets()[0]?.config['w']).toBe(8);
+      expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
+        config: { w: 8, h: 2 },
+      });
+
+      // Also test when server returns empty object
+      mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of({}));
+      store.updateWidgetLayout('w2', { w: 4 });
+      expect(store.widgets()[1]?.config['w']).toBe(4);
+
+      // Unknown widget ID should no-op
+      store.updateWidgetLayout('missing-id', { w: 12 });
+      expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledTimes(2);
+    });
+
+    it('should roll back widget layout on API error', () => {
+      const w1 = makeWidget({ id: 'w1', config: { w: 6, h: 2 } });
+      store.patch({ dashboard: d1, widgets: [w1] });
+      mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+        throwError(() => new Error('Layout save failed')),
+      );
+
+      store.updateWidgetLayout('w1', { w: 10 });
+      expect(store.widgets()[0]?.config['w']).toBe(6);
+      expect(store.error()).toBe('Layout save failed');
+    });
+
+    it('should optimistically delete widget and roll back on API error', () => {
+      const w1 = makeWidget({ id: 'w1' });
+      store.patch({ dashboard: d1, widgets: [w1] });
+
+      // Missing widget ID should no-op
+      store.deleteWidget('missing');
+      expect(mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete).not.toHaveBeenCalled();
+
+      // Successful delete keeps widget removed
+      mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(of({}));
+      store.deleteWidget('w1');
+      expect(store.widgets()).toEqual([]);
+
+      // Failing delete rolls back the removed widget
+      store.patch({ widgets: [w1] });
+      mockDashApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete.mockReturnValue(
+        throwError(() => new Error('Delete failed')),
+      );
+      store.deleteWidget('w1');
+      expect(store.widgets()).toEqual([w1]);
+      expect(store.error()).toBe('Delete failed');
+    });
+  });
+
   describe('Auto-Refresh', () => {
     it('should update lastUpdated timestamp on success', () => {
       mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
@@ -388,6 +453,32 @@ describe('DashboardStore', () => {
       );
       store.refreshWidget('w3');
       expect(store.dataMap()['w3']).toEqual([1, 2, 3]);
+
+      // Refresh with naturalText and processor options
+      mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost.mockReturnValue(
+        of({
+          w3: { data: [{ c: 1 }], generated_sql: 'SELECT 1 AS c', processor_used: 'ollama:llama3' },
+        }),
+      );
+      store.refreshWidget('w3', true, { naturalText: 'Count rows', processor: 'ollama:llama3' });
+      expect(
+        mockExecApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost,
+      ).toHaveBeenCalledWith(
+        'd1',
+        'w3',
+        true,
+        undefined,
+        undefined,
+        undefined,
+        'body',
+        false,
+        expect.objectContaining({
+          naturalText: 'Count rows',
+          processor: 'ollama:llama3',
+        }),
+      );
+      store.refreshWidget('w3', true, { processor: 'SQL' });
+      store.refreshWidget('w3', true, { naturalText: 'SELECT 1' });
     });
 
     it('should handle refreshWidget error gracefully', () => {

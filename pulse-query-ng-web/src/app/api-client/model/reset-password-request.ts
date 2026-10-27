@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,6 +12,8 @@
  * Payload supplying reset token and the replacement password.
  */
 export interface ResetPasswordRequest {
+  /** Property `token`. */
   token: string;
+  /** Property `new_password`. */
   new_password: string;
 }

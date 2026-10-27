@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,10 +12,16 @@
  * API Response model for a persisted Widget.
  */
 export interface WidgetResponse {
+  /** Property `title`. */
   title: string;
+  /** Property `type`. */
   type: string;
+  /** Property `visualization`. */
   visualization: string;
-  config: { [key: string]: any };
+  /** Property `config`. */
+  config: Record<string, unknown>;
+  /** Property `id`. */
   id: string;
+  /** Property `dashboard_id`. */
   dashboard_id: string;
 }

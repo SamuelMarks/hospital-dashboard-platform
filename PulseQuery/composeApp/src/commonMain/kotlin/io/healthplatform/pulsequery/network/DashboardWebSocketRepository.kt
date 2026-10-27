@@ -48,6 +48,44 @@ data class CollaboratorPresence(
 )
 
 /**
+ * Enumerated discriminator types for real-time WebSocket collaboration events.
+ *
+ * @property wireValue Raw wire event discriminator string.
+ */
+@Serializable
+enum class CollaborationEventType(val wireValue: String) {
+    /** A peer collaborator joined the dashboard session. */
+    @SerialName("USER_JOINED")
+    USER_JOINED("USER_JOINED"),
+
+    /** A peer collaborator left the dashboard session. */
+    @SerialName("USER_LEFT")
+    USER_LEFT("USER_LEFT"),
+
+    /** A widget configuration or query was updated by a peer. */
+    @SerialName("WIDGET_UPDATED")
+    WIDGET_UPDATED("WIDGET_UPDATED"),
+
+    /** Unrecognized collaboration event type. */
+    @SerialName("UNKNOWN")
+    UNKNOWN("UNKNOWN");
+
+    /**
+     * Companion utilities for resolving [CollaborationEventType] from raw wire strings.
+     */
+    companion object {
+        /**
+         * Resolves a [CollaborationEventType] from [raw], defaulting to [UNKNOWN].
+         *
+         * @param raw Raw event discriminator string.
+         * @return Matching [CollaborationEventType].
+         */
+        fun fromWire(raw: String): CollaborationEventType =
+            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+/**
  * Inbound real-time collaboration event structure.
  *
  * @property type Action type string (e.g. USER_JOINED, USER_LEFT, WIDGET_UPDATED).
@@ -63,7 +101,11 @@ data class CollaborationEvent(
     val activeUsers: List<CollaboratorPresence> = emptyList(),
     @SerialName("widget_id")
     val widgetId: String? = null
-)
+) {
+    /** Strongly typed [CollaborationEventType] resolved from [type]. */
+    val eventType: CollaborationEventType
+        get() = CollaborationEventType.fromWire(type)
+}
 
 /**
  * Minimal WebSocket session abstraction used by [DashboardWebSocketRepository]
@@ -188,15 +230,16 @@ class DashboardWebSocketRepository(
      */
     private suspend fun handleIncomingTextFrame(text: String) {
         val event = runCatchingPulse { json.decodeFromString<CollaborationEvent>(text) }.getOrNull() ?: return
-        when (event.type) {
-            "USER_JOINED", "USER_LEFT" -> {
+        when (event.eventType) {
+            CollaborationEventType.USER_JOINED, CollaborationEventType.USER_LEFT -> {
                 if (event.activeUsers.isNotEmpty()) {
                     _activeCollaborators.value = event.activeUsers
                 }
             }
-            "WIDGET_UPDATED" -> {
+            CollaborationEventType.WIDGET_UPDATED -> {
                 event.widgetId?.let { _remoteWidgetUpdates.emit(it) }
             }
+            CollaborationEventType.UNKNOWN -> Unit
         }
     }
 
@@ -210,7 +253,10 @@ class DashboardWebSocketRepository(
         if (session != null) {
             runCatchingPulseAsync {
                 val jsonMsg = json.encodeToString(
-                    CollaborationEvent(type = "WIDGET_UPDATED", widgetId = widgetId)
+                    CollaborationEvent(
+                        type = CollaborationEventType.WIDGET_UPDATED.wireValue,
+                        widgetId = widgetId
+                    )
                 )
                 session.sendText(jsonMsg)
             }

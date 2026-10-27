@@ -80,6 +80,20 @@ describe('scripts/verify_docs.ts', () => {
     expect(errors.some((e) => e.includes('enum member UndocEnum.A'))).toBe(true);
     expect(errors.some((e) => e.includes('Placeholder or empty @param a'))).toBe(true);
     expect(errors.some((e) => e.includes('Missing @param b'))).toBe(true);
+
+    const forbiddenTypesSource = `
+      /** @fileoverview Test forbidden types. */
+      import { SIGNAL } from '@angular/core/primitives/signals';
+      /** Bad type alias using any. */
+      export type BadAny = any;
+      export const x = (1 as unknown as string);
+    `;
+    const typeErrors = verifySourceFileText(forbiddenTypesSource, 'forbidden.ts');
+    expect(typeErrors.some((e) => e.includes('@angular/core/primitives/signals'))).toBe(true);
+    expect(typeErrors.some((e) => e.includes("Forbidden 'any' type annotation"))).toBe(true);
+    expect(
+      typeErrors.some((e) => e.includes("Forbidden 'as unknown as' double type assertion")),
+    ).toBe(true);
   });
 
   it('passes valid source files and reports failures via verifyFrontendDocs', () => {

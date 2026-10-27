@@ -108,8 +108,8 @@ def test_config_builder_injects_defaults() -> None:
   config = svc._build_config(t, "table")
 
   # Verify the placeholder {{unit}} was replaced with ICU_A
-  assert "ICU_A" in config["query"]
-  assert "{{unit}}" not in config["query"]
+  assert "ICU_A" in str(config["query"])
+  assert "{{unit}}" not in str(config["query"])
 
 
 def test_config_builder_injects_numeric_defaults() -> None:
@@ -124,7 +124,7 @@ def test_config_builder_injects_numeric_defaults() -> None:
 
   config = svc._build_config(t, "table")
 
-  assert "limit = 5" in config["query"]
+  assert "limit = 5" in str(config["query"])
 
 
 @pytest.mark.asyncio
@@ -148,7 +148,7 @@ async def test_get_safe_dashboard_name_restored_fallback() -> None:
   db = MagicMock()
 
   res_base = MagicMock()
-  res_base.scalars.return_value.first.return_value = object()
+  res_base.scalars.return_value.first.return_value = Dashboard(name=svc.DEFAULT_DASHBOARD_NAME, owner_id=MOCK_USER_ID)
 
   res_restored = MagicMock()
   res_restored.scalars.return_value.first.return_value = None
@@ -166,10 +166,12 @@ async def test_get_safe_dashboard_name_increments_suffix() -> None:
   db = MagicMock()
 
   res_base = MagicMock()
-  res_base.scalars.return_value.first.return_value = object()
+  res_base.scalars.return_value.first.return_value = Dashboard(name=svc.DEFAULT_DASHBOARD_NAME, owner_id=MOCK_USER_ID)
 
   res_restored = MagicMock()
-  res_restored.scalars.return_value.first.return_value = object()
+  res_restored.scalars.return_value.first.return_value = Dashboard(
+    name=f"{svc.DEFAULT_DASHBOARD_NAME} (Restored)", owner_id=MOCK_USER_ID
+  )
 
   res_existing = MagicMock()
   res_existing.scalars.return_value.all.return_value = [

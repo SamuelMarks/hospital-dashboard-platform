@@ -1,3 +1,6 @@
+/**
+ * Unit tests verifying [AppContainer] dependency registry, base URL hot-reloading, and token refresh flows.
+ */
 package io.healthplatform.pulsequery.di
 
 import io.healthplatform.pulsequery.api.models.UserResponse
@@ -10,28 +13,43 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNotSame
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
+/**
+ * Test suite for [AppContainer] service registry and session management.
+ */
 class AppContainerTest {
 
+    /** Resets session state before each test. */
     @BeforeTest
     fun setUp() {
         AppContainer.logout()
     }
 
+    /** Restores default base URL and logs out after each test. */
     @AfterTest
     fun tearDown() {
         AppContainer.logout()
         AppContainer.currentBaseUrl = "http://localhost:8080"
     }
 
+    /** Verifies token and user state mutations, [AuthSessionState.isAuthenticated], and logout cleanup. */
     @Test
     fun testAuthAndLogout() {
         assertNull(AppContainer.currentToken)
         assertNull(AppContainer.currentUser)
+        kotlin.test.assertFalse(AppContainer.sessionState.value.isAuthenticated)
+        assertTrue(AuthSessionState(accessToken = "   ").isAuthenticated.not())
 
         AppContainer.currentToken = "test-token"
+        AppContainer.refreshToken = "in-mem-refresh"
+        assertEquals("in-mem-refresh", AppContainer.refreshToken)
+        AppContainer.refreshToken = null
+        assertNull(AppContainer.refreshToken)
+        assertTrue(AppContainer.sessionState.value.isAuthenticated)
         val testUser = UserResponse(
             id = "1",
             email = "test@example.com",
@@ -43,23 +61,43 @@ class AppContainerTest {
 
         assertEquals("test-token", AppContainer.currentToken)
         assertEquals(testUser, AppContainer.currentUser)
+        assertEquals(testUser, AppContainer.sessionState.value.user)
+
+        val copiedState = AppContainer.sessionState.value.copy(refreshToken = "r-tok")
+        assertEquals("r-tok", copiedState.refreshToken)
+
+        val storage = io.healthplatform.pulsequery.database.KeyValueStorage()
+        AppContainer.keyValueStorage = storage
+        AppContainer.currentToken = "stored-access"
+        AppContainer.refreshToken = "stored-refresh"
+        AppContainer.currentToken = null
+        AppContainer.refreshToken = null
+        assertNull(storage.get(AppContainer.KEY_AUTH_TOKEN))
+        assertNull(storage.get(AppContainer.KEY_REFRESH_TOKEN))
 
         AppContainer.logout()
 
         assertNull(AppContainer.currentToken)
         assertNull(AppContainer.currentUser)
+        kotlin.test.assertFalse(AppContainer.sessionState.value.isAuthenticated)
     }
 
+    /** Verifies updating [AppContainer.currentBaseUrl] recreates distinct API service instances. */
     @Test
     fun testBaseUrlUpdateRecreatesClients() {
         val initialAuthApi = AppContainer.authApi
+        val initialDashboardsApi = AppContainer.dashboardsApi
+        val initialChatApi = AppContainer.chatApi
+        val initialSimApi = AppContainer.simulationApi
         assertNotNull(initialAuthApi)
 
         AppContainer.currentBaseUrl = "https://example.com/api"
 
-        val updatedAuthApi = AppContainer.authApi
-        // Since we changed baseUrl, it should be a new instance and the client re-initialized
-        assertTrue(initialAuthApi !== updatedAuthApi)
+        assertNotSame(initialAuthApi, AppContainer.authApi)
+        assertNotSame(initialDashboardsApi, AppContainer.dashboardsApi)
+        assertNotSame(initialChatApi, AppContainer.chatApi)
+        assertNotSame(initialSimApi, AppContainer.simulationApi)
+        assertSame(AppContainer.dashboardsApi, AppContainer.dashboardsApi)
     }
 
     @Test
@@ -208,5 +246,13 @@ class AppContainerTest {
         kotlin.test.assertTrue(result.isSuccess)
         assertEquals("token-only", AppContainer.currentToken)
         assertEquals("initial-refresh", AppContainer.refreshToken)
+
+        val failingDriverFactory = object : io.healthplatform.pulsequery.database.DatabaseDriverFactory {
+            override fun createDriver(): app.cash.sqldelight.db.SqlDriver {
+                throw IllegalStateException("Driver init failed")
+            }
+        }
+        val dbFailResult = AppContainer.initDatabase(failingDriverFactory)
+        kotlin.test.assertTrue(dbFailResult.isFailure)
     }
 }

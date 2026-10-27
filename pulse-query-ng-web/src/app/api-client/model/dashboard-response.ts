@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,9 +13,14 @@ import { WidgetResponse } from './widget-response';
  * API Response model for a Dashboard. Includes the nested list of Widgets and permission level.
  */
 export interface DashboardResponse {
+  /** Property `name`. */
   name: string;
+  /** Property `id`. */
   id: string;
+  /** Property `owner_id`. */
   owner_id: string;
+  /** Property `permission_level`. */
   permission_level?: string;
-  widgets?: Array<WidgetResponse>;
+  /** Property `widgets`. */
+  widgets?: WidgetResponse[];
 }

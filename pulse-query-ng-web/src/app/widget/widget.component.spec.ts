@@ -15,7 +15,6 @@ import {
   NO_ERRORS_SCHEMA,
   ErrorHandler,
 } from '@angular/core';
-import { SIGNAL, signalSetFn } from '@angular/core/primitives/signals';
 import { By } from '@angular/platform-browser';
 import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.component';
 import { VizMetricComponent } from '../shared/visualizations/viz-metric/viz-metric.component';
@@ -27,6 +26,7 @@ import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scal
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
 import { readTemplate } from '../../test-utils/component-resources';
+import { createMockInputEvent } from '../../test-utils/mock-factories';
 import { vi } from 'vitest';
 import { of } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
@@ -111,29 +111,6 @@ class MockVizScalarComponent {
 class MockVizMarkdownComponent {
   /** Content input. */
   readonly content = input<string | undefined>();
-}
-
-/**
- * Sets a signal input property on a component instance in JIT test mode.
- *
- * @param component - Target component instance.
- * @param key - Signal input property name.
- * @param value - Value to assign to the input signal.
- */
-function setInputSignal(component: object, key: string, value: unknown): void {
-  const record = component as Record<string, unknown>;
-  const current = record[key] as
-    { [SIGNAL]?: { applyValueToInputSignal?: (node: unknown, val: unknown) => void } } | undefined;
-  const node = current?.[SIGNAL];
-  if (node) {
-    if (typeof node.applyValueToInputSignal === 'function') {
-      node.applyValueToInputSignal(node, value);
-    } else {
-      signalSetFn(node as Parameters<typeof signalSetFn>[0], value as never);
-    }
-  } else {
-    record[key] = value;
-  }
 }
 
 describe('WidgetComponent', () => {
@@ -240,12 +217,16 @@ describe('WidgetComponent', () => {
 
     fixture = TestBed.createComponent(WidgetComponent);
     component = fixture.componentInstance;
-    setInputSignal(component, 'widgetInput', mockWidget);
+    fixture.componentRef.setInput('widget', mockWidget);
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create with initial widget input and default visualization state', () => {
     expect(component).toBeTruthy();
+    expect(component.widgetInput().id).toBe('w1');
+    expect(component.widgetInput().title).toBe('Test Widget');
+    expect(component.visualizationType()).toBe('table');
+    expect(component.isFocused()).toBe(false);
   });
 
   it('should hidden config buttons in Read-Only Mode (default)', () => {
@@ -365,31 +346,31 @@ describe('WidgetComponent', () => {
 
   it('should compute visualization type for text widgets', () => {
     const textWidget = { ...mockWidget, type: 'TEXT', visualization: undefined };
-    setInputSignal(component, 'widgetInput', textWidget);
+    fixture.componentRef.setInput('widget', textWidget);
     fixture.detectChanges();
     expect(component.visualizationType()).toBe('markdown');
   });
 
   it('should compute skeleton type for various visualizations', () => {
-    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'bar_chart' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, visualization: 'bar_chart' });
     fixture.detectChanges();
     expect(component.skeletonType()).toBe('chart');
 
-    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'pie' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, visualization: 'pie' });
     fixture.detectChanges();
     expect(component.skeletonType()).toBe('pie');
 
-    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'metric' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, visualization: 'metric' });
     fixture.detectChanges();
     expect(component.skeletonType()).toBe('metric');
 
-    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: undefined });
+    fixture.componentRef.setInput('widget', { ...mockWidget, visualization: undefined });
     fixture.detectChanges();
     expect(component.skeletonType()).toBe('table');
   });
 
   it('should fallback skeleton type for unknown visualizations', () => {
-    setInputSignal(component, 'widgetInput', { ...mockWidget, visualization: 'custom' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, visualization: 'custom' });
     fixture.detectChanges();
     expect(component.skeletonType()).toBe('card');
   });
@@ -445,7 +426,7 @@ describe('WidgetComponent', () => {
   });
 
   it('should navigate to simulation with templateId if widget is TEMPLATE', () => {
-    setInputSignal(component, 'widgetInput', {
+    fixture.componentRef.setInput('widget', {
       ...mockWidget,
       type: 'TEMPLATE',
       config: { template_id: 't1' },
@@ -458,7 +439,7 @@ describe('WidgetComponent', () => {
   });
 
   it('should not navigate on simulateWidget if neither SQL query nor TEMPLATE id is present', () => {
-    setInputSignal(component, 'widgetInput', {
+    fixture.componentRef.setInput('widget', {
       ...mockWidget,
       type: 'HTTP',
       config: {},
@@ -470,7 +451,7 @@ describe('WidgetComponent', () => {
 
   it('should reset non-SQL widget', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
-    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, type: 'TEXT' });
     component.resetWidget();
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
       visualization: 'table',
@@ -479,13 +460,13 @@ describe('WidgetComponent', () => {
   });
 
   it('should ignore simulate if SQL but no query', () => {
-    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'SQL', config: {} });
+    fixture.componentRef.setInput('widget', { ...mockWidget, type: 'SQL', config: {} });
     component.simulateWidget();
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should do nothing on unknown type in simulate', () => {
-    setInputSignal(component, 'widgetInput', { ...mockWidget, type: 'TEXT' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, type: 'TEXT' });
     component.simulateWidget();
     expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
@@ -521,7 +502,7 @@ describe('WidgetComponent', () => {
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:http://localhost/mock-blob');
 
     // Without title fallback
-    setInputSignal(component, 'widgetInput', { ...mockWidget, title: '' });
+    fixture.componentRef.setInput('widget', { ...mockWidget, title: '' });
     component.exportWidgetData();
     expect(createObjectURLMock).toHaveBeenCalledTimes(2);
   });
@@ -583,5 +564,79 @@ describe('WidgetComponent', () => {
     expect(component.typedDataAsMetric()).toBeUndefined();
     expect(component.typedDataAsScalar()).toBeUndefined();
     expect(component.markdownContent()).toBeUndefined();
+  });
+
+  it('should render and submit natural text input when allow_natural_text is enabled', () => {
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      config: {
+        query: 'SELECT 1',
+        allow_natural_text: true,
+        processor: 'ollama:llama3',
+        natural_text_prompt: 'Initial question',
+      },
+    });
+    dataMapSig.set({
+      w1: {
+        columns: ['a'],
+        data: [{ a: 1 }],
+        generated_sql: 'SELECT 1 AS a',
+        processor_used: 'ollama:llama3',
+      },
+    });
+    fixture.detectChanges();
+
+    expect(component.allowsNaturalText()).toBe(true);
+    expect(component.configuredProcessor()).toBe('ollama:llama3');
+    expect(component.activeProcessor()).toBe('ollama:llama3');
+    expect(component.naturalTextInput()).toBe('Initial question');
+    expect(component.placeholderText()).toBe('Ask in natural language...');
+    expect(component.generatedSql()).toBe('SELECT 1 AS a');
+    expect(component.processorUsed()).toBe('ollama:llama3');
+
+    const inputEl = fixture.debugElement.query(By.css('[data-testid="widget-natural-text-input"]'));
+    expect(inputEl).toBeTruthy();
+
+    component.updateNaturalTextInput(createMockInputEvent('Show ICU beds'));
+    expect(component.naturalTextInput()).toBe('Show ICU beds');
+
+    component.submitNaturalText();
+    expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1', true, {
+      naturalText: 'Show ICU beds',
+      processor: 'ollama:llama3',
+    });
+
+    // Empty input does not submit
+    mockStore.refreshWidget.mockClear();
+    component.naturalTextInput.set('   ');
+    component.submitNaturalText();
+    expect(mockStore.refreshWidget).not.toHaveBeenCalled();
+
+    // Custom placeholder and SQL processor placeholder
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      config: {
+        query: 'SELECT 1',
+        allow_natural_text: true,
+        processor: 'SQL',
+        placeholder_text: 'Custom hint',
+      },
+    });
+    fixture.detectChanges();
+    expect(component.placeholderText()).toBe('Custom hint');
+
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      config: {
+        query: 'SELECT 1',
+        allow_natural_text: true,
+      },
+    });
+    dataMapSig.set({ w1: { columns: ['a'], data: [{ a: 1 }] } });
+    fixture.detectChanges();
+    expect(component.configuredProcessor()).toBe('SQL');
+    expect(component.placeholderText()).toBe('Enter DuckDB SQL query...');
+    expect(component.generatedSql()).toBeNull();
+    expect(component.processorUsed()).toBe('SQL');
   });
 });

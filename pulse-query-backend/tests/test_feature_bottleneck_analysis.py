@@ -8,19 +8,19 @@ outpace discharges for specific clinical services.
 from collections.abc import Generator
 import json
 import os
-from typing import Any
 
 import duckdb
 import pytest
 
 from app.database.duckdb_init import create_hospital_macros  # Fixed import
+from app.schemas.json_types import JsonObject
 
 # Path to the templates definition
 DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
 
 
 @pytest.fixture
-def bottleneck_template() -> dict[str, Any]:
+def bottleneck_template() -> JsonObject:
   """
   Loads compliance with the Bottleneck Analysis template definition from JSON.
   """
@@ -28,7 +28,7 @@ def bottleneck_template() -> dict[str, Any]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
 
   # Find the specific template by title
   template = next((t for t in data if t["title"] == "Bottleneck Analysis"), None)
@@ -85,12 +85,12 @@ def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
 
 
 # ... Tests remain unchanged ...
-def test_bottleneck_detection_logic(db_conn: duckdb.DuckDBPyConnection, bottleneck_template: dict[str, Any]) -> None:
+def test_bottleneck_detection_logic(db_conn: duckdb.DuckDBPyConnection, bottleneck_template: JsonObject) -> None:
   """
   Validates that the SQL query correctly identifies Service A (High Net Influx)
   and excludes Service B (Net Outflow).
   """
-  raw_sql = bottleneck_template["sql_template"]
+  raw_sql = str(bottleneck_template["sql_template"])
 
   # Inject Parameters: Threshold > 0
   sql = raw_sql.replace("{{min_threshold}}", "0")
@@ -116,11 +116,11 @@ def test_bottleneck_detection_logic(db_conn: duckdb.DuckDBPyConnection, bottlene
   assert net == 8
 
 
-def test_bottleneck_threshold_filtering(db_conn: duckdb.DuckDBPyConnection, bottleneck_template: dict[str, Any]) -> None:
+def test_bottleneck_threshold_filtering(db_conn: duckdb.DuckDBPyConnection, bottleneck_template: JsonObject) -> None:
   """
   Verify that increasing the threshold filters out minor/neutral flows.
   """
-  raw_sql = bottleneck_template["sql_template"]
+  raw_sql = str(bottleneck_template["sql_template"])
 
   # Inject High Threshold: 5
   # Cardiology (8) > 5 -> Should Show
@@ -135,7 +135,7 @@ def test_bottleneck_threshold_filtering(db_conn: duckdb.DuckDBPyConnection, bott
   assert "Neurology" not in services
 
 
-def test_bottleneck_full_join_safety(db_conn: duckdb.DuckDBPyConnection, bottleneck_template: dict[str, Any]) -> None:
+def test_bottleneck_full_join_safety(db_conn: duckdb.DuckDBPyConnection, bottleneck_template: JsonObject) -> None:
   """
   Verify FULL OUTER JOIN handles hours with NO admissions but existing discharges,
   and hours with NO discharges but existing admissions.
@@ -155,7 +155,7 @@ def test_bottleneck_full_join_safety(db_conn: duckdb.DuckDBPyConnection, bottlen
   # Service 'OutboundOnly': 0 Admits at 9AM, 5 Discharges. Net -5.
   conn.execute("INSERT INTO synthetic_hospital_data VALUES ('OutboundOnly', NULL, '2023-01-01 09:00:00')")
 
-  raw_sql = bottleneck_template["sql_template"]
+  raw_sql = str(bottleneck_template["sql_template"])
 
   # Check Net > -10 (Should allow negative output for verification of join)
   sql = raw_sql.replace("{{min_threshold}}", "-10")

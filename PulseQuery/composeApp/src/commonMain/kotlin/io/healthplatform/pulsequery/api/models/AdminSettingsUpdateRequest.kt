@@ -24,11 +24,15 @@ import kotlinx.serialization.Serializable
 /**
  * Request schema for updating admin settings.
  *
- * @param apiKeys
- * @param visibleModels
+ * @param apiKeys Map of provider slugs to configured API keys.
+ * @param visibleModels List of visible model IDs.
+ * @param configuredModels Optional list of `any-llm` model identifiers.
+ * @param ollamaApiBase Optional custom Ollama base URL override.
  */
 @Serializable
 data class AdminSettingsUpdateRequest(
     @SerialName(value = "api_keys") @Required val apiKeys: kotlin.collections.Map<kotlin.String, kotlin.String>,
-    @SerialName(value = "visible_models") @Required val visibleModels: kotlin.collections.List<kotlin.String>
+    @SerialName(value = "visible_models") @Required val visibleModels: kotlin.collections.List<kotlin.String>,
+    @SerialName(value = "configured_models") val configuredModels: kotlin.collections.List<kotlin.String>? = null,
+    @SerialName(value = "ollama_api_base") val ollamaApiBase: kotlin.String? = null
 )

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,6 +12,8 @@
  * Metadata for a single database column.
  */
 export interface ColumnInfo {
+  /** Property `name`. */
   name: string;
+  /** Property `type`. */
   type: string;
 }

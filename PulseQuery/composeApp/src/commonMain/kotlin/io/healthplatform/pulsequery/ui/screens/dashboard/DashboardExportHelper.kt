@@ -123,7 +123,7 @@ object DashboardExportHelper {
      */
     fun saveExportedFile(filename: String, content: String): Result<Unit> {
         return runCatchingPulse {
-            AppContainer.keyValueStorage?.save("export_$filename", content)
+            AppContainer.keyValueStorage?.saveResult("export_$filename", content)?.getOrThrow()
             Unit
         }.fold(
             onSuccess = { Result.success(Unit) },

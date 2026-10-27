@@ -151,9 +151,10 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
     const baseMeta: Record<string, unknown[]> = { ...existingMeta };
 
     const src = Function.prototype.toString.call(this);
-    // Match `prop = ...input(...)`, `this.prop = ...input(...)`, or `(0,__vite_ssr_import_0__.input)(...)`
-    const inputRegex =
-      /(?:this\.|__publicField\(\s*this\s*,\s*['"]|\b)(\w+)['"]?\s*(?:,|=)[^;\n]*?\binput\)?(?:\.required\)?)?\s*\(([^;\n]*)/gm;
+    const inputRegex = new RegExp(
+      '(?:this\\.|__publicField\\(\\s*this\\s*,\\s*[\'"]|\\b)(\\w+)[\'"]?\\s*(?:,|=)[^;\\n]*?\\binput\\)?(?:\\.required\\)?)?\\s*\\(([^;\\n]*)',
+      'gm',
+    );
     let match: RegExpExecArray | null;
     while ((match = inputRegex.exec(src)) !== null) {
       const propName = match[1];
@@ -169,9 +170,10 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
       }
     }
 
-    // Match `prop = ...output(...)`
-    const outputRegex =
-      /(?:this\.|__publicField\(\s*this\s*,\s*['"]|\b)(\w+)['"]?\s*(?:,|=)[^;\n]*?\boutput\)?\s*\(([^;\n]*)/gm;
+    const outputRegex = new RegExp(
+      '(?:this\\.|__publicField\\(\\s*this\\s*,\\s*[\'"]|\\b)(\\w+)[\'"]?\\s*(?:,|=)[^;\\n]*?\\boutput\\)?\\s*\\(([^;\\n]*)',
+      'gm',
+    );
     while ((match = outputRegex.exec(src)) !== null) {
       const propName = match[1];
       const args = match[2] || '';
@@ -181,9 +183,10 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
       }
     }
 
-    // Match `prop = ...viewChild(...)` / `viewChild.required(...)` with string locator
-    const viewChildRegex =
-      /(?:this\.|__publicField\(\s*this\s*,\s*['"]|\b)(\w+)['"]?\s*(?:,|=)[^;\n]*?\bviewChild\)?(?:\.required\)?)?\s*\(\s*['"]([^'"]+)['"]/gm;
+    const viewChildRegex = new RegExp(
+      '(?:this\\.|__publicField\\(\\s*this\\s*,\\s*[\'"]|\\b)(\\w+)[\'"]?\\s*(?:,|=)[^;\\n]*?\\bviewChild\\)?(?:\\.required\\)?)?\\s*\\(\\s*[\'"]([^\'"]+)[\'"]',
+      'gm',
+    );
     while ((match = viewChildRegex.exec(src)) !== null) {
       const propName = match[1];
       const selector = match[2];
@@ -203,9 +206,6 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
   },
 });
 
-// Angular's JIT compiler does not understand `input()` metadata, so `setInput`
-// throws for signal inputs. Patch setInput to fall back to writing via the
-// internal signal node when available.
 interface SignalNodeLike {
   applyValueToInputSignal?: (node: SignalNodeLike, value: unknown) => void;
 }

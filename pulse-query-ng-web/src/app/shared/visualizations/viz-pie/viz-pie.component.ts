@@ -20,6 +20,7 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { TableDataSet } from '../viz-table/viz-table.component';
 import { ChartConfig } from '../viz-chart/viz-chart.component';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { inferPieSliceKeys } from '../viz-axis-inference.utils';
 
 /** Represents a calculated SVG arc segment for a single pie slice. */
 interface PieSlice {
@@ -190,27 +191,18 @@ export class VizPieComponent {
     const ds = this.dataSet();
     const colors = this.palette();
 
-    if (!ds || !ds.data.length || !ds.columns.length) return [];
+    const firstRow = ds?.data?.[0];
+    if (!ds || !firstRow || !ds.columns.length) return [];
 
     // Determine Mapping
     const conf = this.config();
     const availableCols = ds.columns;
-
-    // Default: Col 0 for label, Col 1 for value
-    let labelKey = availableCols[0] as string;
-    let valueKey = availableCols[1] || (availableCols[0] as string);
-
-    if (conf?.xKey && availableCols.includes(conf.xKey)) {
-      labelKey = conf.xKey;
-    }
-    if (conf?.yKey && availableCols.includes(conf.yKey)) {
-      valueKey = conf.yKey;
-    }
+    const { labelKey, valueKey } = inferPieSliceKeys(availableCols, firstRow, conf);
 
     const total = ds.data.reduce((acc, r) => acc + Math.max(0, Number(r[valueKey]) || 0), 0);
     let cumPercent = 0;
 
-    return ds.data.map((row, i) => {
+    return ds.data.map((row, i): PieSlice => {
       const rawVal = Number(row[valueKey]) || 0;
       const val = Math.max(0, rawVal);
       const percent = total > 0 ? val / total : 0;
@@ -233,9 +225,9 @@ export class VizPieComponent {
       return {
         label: String(row[labelKey]),
         percentage: Math.round(percent * 100),
-        color: colors[i % colors.length],
+        color: String(colors[i % colors.length]),
         path: pathCmd,
-      } as PieSlice;
+      };
     });
   });
 }

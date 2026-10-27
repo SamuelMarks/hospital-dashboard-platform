@@ -70,6 +70,9 @@ import pulsequery.composeapp.generated.resources.provider
 import pulsequery.composeapp.generated.resources.retry
 import pulsequery.composeapp.generated.resources.save_settings
 import pulsequery.composeapp.generated.resources.settings_saved_successfully
+import pulsequery.composeapp.generated.resources.staff_user_management
+import pulsequery.composeapp.generated.resources.staff_user_management_desc
+import pulsequery.composeapp.generated.resources.users_action
 import pulsequery.composeapp.generated.resources.visible_models
 
 /**
@@ -114,7 +117,7 @@ fun AdminScreen(
                     TextButton(onClick = onNavigateToUserManagement) {
                         Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Users")
+                        Text(stringResource(Res.string.users_action))
                     }
                 }
             )
@@ -163,12 +166,12 @@ fun AdminScreen(
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Staff User Management",
+                                        text = stringResource(Res.string.staff_user_management),
                                         style = MaterialTheme.typography.titleMedium
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "Assign roles (Physician, Charge Nurse, Analyst) and toggle account status.",
+                                        text = stringResource(Res.string.staff_user_management_desc),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )

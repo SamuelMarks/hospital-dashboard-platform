@@ -5,20 +5,146 @@ Wraps any-llm providers, executes concurrent requests, and normalizes responses.
 """
 
 import asyncio
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncGenerator, AsyncIterable, Iterable, Sequence
 import contextlib
 import logging
 import time
-from typing import Any, NamedTuple, TypedDict, cast
+from typing import NamedTuple, Protocol, TypedDict, runtime_checkable
 
 from any_llm import AnyLLM
+import httpx
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
+from app.core.result import AppResult, Ok
 from app.schemas.admin import AdminSettingsResponse
 from app.schemas.ai import ModelInfo
+from app.schemas.json_types import JsonPrimitive
+from app.services.llm.discovery import (
+  SQL_NO_MODEL_INFO,
+  _infer_processor_type,
+  _normalize_ollama_root_url,
+  _parse_configured_model_entry,
+  assemble_available_models,
+  discover_ollama_models_result as _discover_ollama_models_result,
+)
+from app.services.llm.fallback_mock import (
+  FallbackMockProvider,
+  build_streaming_error_fallback_sql,
+  build_streaming_mock_sql_response,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@runtime_checkable
+class CompletionDeltaProtocol(Protocol):
+  """
+  Structural protocol representing a streaming completion delta with `content`.
+  """
+
+  @property
+  def content(self) -> str | None:
+    """Delta content token string or None."""
+
+
+@runtime_checkable
+class CompletionMessageProtocol(Protocol):
+  """
+  Structural protocol representing a non-streaming completion message with `content`.
+  """
+
+  @property
+  def content(self) -> str | None:
+    """Message content string."""
+
+
+@runtime_checkable
+class CompletionStreamChoiceProtocol(Protocol):
+  """
+  Structural protocol representing a single streaming choice item with `delta`.
+  """
+
+  @property
+  def delta(self) -> CompletionDeltaProtocol | None:
+    """Streaming delta payload."""
+
+
+@runtime_checkable
+class CompletionTextChoiceProtocol(Protocol):
+  """
+  Structural protocol representing a legacy text-streaming choice item with `text`.
+  """
+
+  @property
+  def text(self) -> str | None:
+    """Legacy text completion delta."""
+
+
+@runtime_checkable
+class CompletionMessageChoiceProtocol(Protocol):
+  """
+  Structural protocol representing a single non-streaming choice item with `message`.
+  """
+
+  @property
+  def message(self) -> CompletionMessageProtocol:
+    """Non-streaming completion message."""
+
+
+@runtime_checkable
+class CompletionChunkProtocol(Protocol):
+  """
+  Structural protocol representing an `any-llm` streaming chunk or non-streaming completion response.
+  """
+
+  @property
+  def choices(
+    self,
+  ) -> Sequence[CompletionStreamChoiceProtocol | CompletionTextChoiceProtocol | CompletionMessageChoiceProtocol]:
+    """Sequence of completion choices."""
+
+
+StreamChunkProtocol = CompletionChunkProtocol
+"""Alias for `CompletionChunkProtocol` used by streaming consumers."""
+
+
+type StreamableCompletionResult = (
+  CompletionChunkProtocol | AsyncIterable[CompletionChunkProtocol] | Iterable[CompletionChunkProtocol]
+)
+
+
+class LLMProviderClientProtocol(Protocol):
+  """
+  Structural protocol representing an initialized `AnyLLM` client supporting `.completion(...)`.
+  """
+
+  def completion(
+    self,
+    *,
+    model: str,
+    messages: list[dict[str, str]],
+    temperature: float = 0.0,
+    max_tokens: int = 512,
+    stop: list[str] | None = None,
+    stream: bool = False,
+    api_key: str | None = None,
+  ) -> StreamableCompletionResult:
+    """
+    Executes a synchronous or streaming chat completion request.
+
+    Args:
+        model (str): Target model identifier.
+        messages (list[dict[str, str]]): OpenAI-formatted conversation messages.
+        temperature (float): Sampling temperature.
+        max_tokens (int): Maximum completion tokens.
+        stop (list[str] | None): Optional stop sequences.
+        stream (bool): Whether to return a streaming iterator.
+        api_key (str | None): Optional API key override.
+
+    Returns:
+        StreamableCompletionResult: Completion response or chunk iterator.
+    """
 
 
 class SwarmCombatantDict(TypedDict):
@@ -26,7 +152,8 @@ class SwarmCombatantDict(TypedDict):
   Typed dictionary representing an active LLM combatant in `LLMArenaClient.swarm`.
 
   Attributes:
-      client (Any): Initialized `AnyLLM` provider client or `FallbackMockProvider`.
+      client (LLMProviderClientProtocol | AnyLLM | FallbackMockProvider | None):
+          Initialized `AnyLLM` provider client or `FallbackMockProvider`.
       name (str): Display name for the model.
       id (str): Unique tracking identifier (`provider/model`).
       model_name (str): Underlying model identifier passed to completion calls.
@@ -34,54 +161,12 @@ class SwarmCombatantDict(TypedDict):
       is_local (bool): True if hosted locally.
   """
 
-  client: Any
+  client: "LLMProviderClientProtocol | AnyLLM | FallbackMockProvider | None"
   name: str
   id: str
   model_name: str
   provider: str
   is_local: bool
-
-
-class FallbackMockProvider:
-  """
-  Synthetic fallback LLM provider utilized when no cloud API keys or local LLMs are active.
-
-  Produces deterministic mock SQL analysis responses to preserve platform availability.
-
-  Attributes:
-      name (str): Human-readable provider identifier.
-      model_name (str): Logical model tag.
-  """
-
-  def __init__(self, name: str = "System Mock", model_name: str = "mock-model") -> None:
-    """
-    Initializes the fallback mock provider.
-
-    Args:
-        name (str): Display name for the fallback provider.
-        model_name (str): Internal model identifier.
-    """
-    self.name = name
-    self.model_name = model_name
-
-  def generate_response(self, messages: list[dict[str, str]]) -> str:
-    """
-    Generates a deterministic mock SQL query markdown codeblock.
-
-    Args:
-        messages (list[dict[str, str]]): Chat message conversation context.
-
-    Returns:
-        str: Formatted Markdown string containing synthetic fallback SQL query.
-    """
-    _ = messages
-    logger.warning("⚡ [FALLBACK MOCK] Generating synthetic fallback SQL response (No API key configured).")
-    nl = chr(10)
-    mock_sql = (
-      f"-- Generated by FallbackMockProvider (No API key configured){nl}"
-      "SELECT 'System Mock' as source, 'No LLM Configured' as status;"
-    )
-    return f"```sql{nl}{mock_sql}{nl}```"
 
 
 class ArenaResponse(NamedTuple):
@@ -105,45 +190,50 @@ class ArenaResponse(NamedTuple):
   is_fallback: bool = False
 
 
-_DONE_SENTINEL = object()
+class _StreamDoneSentinel:
+  """Typed sentinel marker signaling completion of a background token stream."""
 
 
-def _extract_chunk_delta(chunk: object) -> str | None:
+_DONE_SENTINEL = _StreamDoneSentinel()
+
+type StreamQueueItem = str | Exception | _StreamDoneSentinel
+
+
+def _extract_chunk_delta(chunk: CompletionChunkProtocol) -> str | None:
   """
   Extracts text delta from a streaming completion chunk.
 
   Args:
-      chunk (object): Completion chunk object from any-llm provider.
+      chunk (CompletionChunkProtocol): Completion chunk from any-llm provider.
 
   Returns:
       str | None: The extracted delta content string, or None if unavailable.
   """
-  choices = getattr(chunk, "choices", None)
-  if choices:
-    choice = choices[0]
-    delta = getattr(choice, "delta", None)
-    if delta is not None and getattr(delta, "content", None):
+  if isinstance(chunk, CompletionChunkProtocol) and chunk.choices:
+    choice = chunk.choices[0]
+    delta = choice.delta if isinstance(choice, CompletionStreamChoiceProtocol) else None
+    if delta is not None and delta.content:
       return str(delta.content)
-    if getattr(choice, "text", None):
+    if isinstance(choice, CompletionTextChoiceProtocol) and choice.text:
       return str(choice.text)
   return None
 
 
 def _pump_stream_to_queue(
-  stream_iterable: object,
-  queue: asyncio.Queue[object],
+  stream_iterable: Iterable[CompletionChunkProtocol],
+  queue: asyncio.Queue[StreamQueueItem],
   loop: asyncio.AbstractEventLoop,
 ) -> None:
   """
   Consumes a synchronous iterable in a background thread and queues tokens.
 
   Args:
-      stream_iterable (object): Synchronous generator or iterable producing chunks.
-      queue (asyncio.Queue[object]): Destination async queue for tokens or exceptions.
+      stream_iterable (Iterable[CompletionChunkProtocol]): Synchronous generator or iterable producing chunks.
+      queue (asyncio.Queue[StreamQueueItem]): Destination async queue for tokens or exceptions.
       loop (asyncio.AbstractEventLoop): The running asyncio event loop.
   """
   try:
-    for chunk in cast(Iterable[object], stream_iterable):
+    for chunk in stream_iterable:
       delta = _extract_chunk_delta(chunk)
       if delta:
         loop.call_soon_threadsafe(queue.put_nowait, delta)
@@ -174,22 +264,68 @@ class LLMArenaClient:
     self.swarm: list[SwarmCombatantDict] = []
     self.init_swarm()
 
-  def init_swarm(self, custom_api_keys: dict[str, str] | None = None) -> None:
+  def init_swarm(
+    self,
+    custom_api_keys: dict[str, str] | None = None,
+    configured_models: list[str] | None = None,
+    ollama_api_base: str | None = None,
+  ) -> None:
     """
-    Initializes or reloads the Swarm based on settings and updated API keys.
+    Initializes or reloads the Swarm based on settings, updated API keys, and configured `any-llm` models.
 
     Args:
         custom_api_keys (dict[str, str] | None): Updated API keys to apply.
+        configured_models (list[str] | None): Additional `provider:model` or `provider/model` entries.
+        ollama_api_base (str | None): Optional custom Ollama base URL.
     """
     self.swarm = []
     keys = custom_api_keys or {}
+    seen_ids: set[str] = set()
 
-    for raw_config in settings.LLM_SWARM:
-      config: dict[str, Any] = dict(raw_config)
+    raw_configs: list[dict[str, JsonPrimitive]] = [
+      {
+        "provider": c.get("provider"),
+        "model": c.get("model"),
+        "api_key": c.get("api_key"),
+        "api_base": str(c.get("api_base") or c.get("base_url") or "") or None,
+        "name": c.get("name"),
+        "model_name": str(c.get("model_name") or c.get("model") or ""),
+        "is_local": bool(c.get("is_local", c.get("local", False))),
+      }
+      for c in settings.LLM_SWARM
+    ]
+    for entry in configured_models or []:
+      parsed = _parse_configured_model_entry(entry)
+      if parsed is not None:
+        prov, mod_name, disp_name = parsed
+        is_ollama = prov == "ollama"
+        raw_configs.append(
+          {
+            "provider": "openai" if is_ollama else prov,
+            "logical_provider": prov,
+            "model": mod_name,
+            "model_name": mod_name,
+            "name": disp_name,
+            "api_key": "ollama" if is_ollama else keys.get(prov),
+            "api_base": (f"{_normalize_ollama_root_url(ollama_api_base)}/v1") if is_ollama else None,
+            "is_local": is_ollama,
+          }
+        )
+
+    for config in raw_configs:
       try:
-        api_base = config.get("api_base") or config.get("base_url")
+        raw_base = config.get("api_base") or config.get("base_url")
+        api_base = str(raw_base) if isinstance(raw_base, str) else None
         provider = str(config["provider"])
-        api_key = keys.get(provider) or keys.get(f"{provider.upper()}_API_KEY") or config.get("api_key")
+        logical_provider = str(config.get("logical_provider", provider))
+        raw_cfg_key = config.get("api_key")
+        cfg_api_key = str(raw_cfg_key) if isinstance(raw_cfg_key, str) else None
+        api_key = (
+          keys.get(logical_provider)
+          or keys.get(provider)
+          or keys.get(f"{logical_provider.upper()}_API_KEY")
+          or cfg_api_key
+        )
 
         client = AnyLLM.create(
           provider,
@@ -198,13 +334,18 @@ class LLMArenaClient:
           timeout=self.timeout,
         )
 
+        combatant_id = f"{logical_provider}/{config['model']}"
+        if combatant_id in seen_ids:
+          continue
+        seen_ids.add(combatant_id)
+
         self.swarm.append(
           {
             "client": client,
             "name": str(config["name"]),
-            "id": f"{config['provider']}/{config['model']}",
+            "id": combatant_id,
             "model_name": str(config.get("model_name", config.get("model"))),
-            "provider": provider,
+            "provider": logical_provider,
             "is_local": bool(config.get("is_local", config.get("local", False))),
           }
         )
@@ -229,35 +370,112 @@ class LLMArenaClient:
 
   def reload_swarm(self, admin_settings: AdminSettingsResponse | None = None) -> None:
     """
-    Reloads the swarm using updated API keys from admin configuration.
+    Reloads the swarm using updated API keys and configured models from admin configuration.
 
     Args:
-        admin_settings (AdminSettingsResponse | None): Updated admin settings containing `api_keys`.
+        admin_settings (AdminSettingsResponse | None): Updated admin settings containing `api_keys` and `configured_models`.
     """
-    api_keys = getattr(admin_settings, "api_keys", None) if admin_settings else None
-    self.init_swarm(custom_api_keys=api_keys)
+    api_keys = admin_settings.api_keys if admin_settings is not None else None
+    configured_models = (
+      admin_settings.configured_models
+      if admin_settings is not None and isinstance(admin_settings.configured_models, list)
+      else None
+    )
+    ollama_api_base = (
+      admin_settings.ollama_api_base
+      if admin_settings is not None and isinstance(admin_settings.ollama_api_base, str)
+      else None
+    )
+    self.init_swarm(
+      custom_api_keys=api_keys,
+      configured_models=configured_models,
+      ollama_api_base=ollama_api_base,
+    )
 
-  def get_available_models(self, admin_settings: AdminSettingsResponse | None = None) -> list[ModelInfo]:
+  async def discover_ollama_models_result(
+    self,
+    ollama_api_base: str | None = None,
+    http_client: httpx.AsyncClient | None = None,
+  ) -> AppResult[list[ModelInfo]]:
     """
-    Returns a list of configured models. Filters by admin settings if provided.
+    Queries the Ollama `/api/tags` endpoint to dynamically discover locally available Ollama models.
+
+    Args:
+        ollama_api_base (str | None): Optional override for the Ollama server base URL.
+        http_client (httpx.AsyncClient | None): Optional pre-configured async HTTP client for testing.
+
+    Returns:
+        AppResult[list[ModelInfo]]: `Ok` containing discovered Ollama `ModelInfo` items, or `Err(AppError)`.
+    """
+    return await _discover_ollama_models_result(ollama_api_base=ollama_api_base, http_client=http_client)
+
+  def get_available_models(
+    self,
+    admin_settings: AdminSettingsResponse | None = None,
+    include_sql: bool = False,
+    discovered_ollama: list[ModelInfo] | None = None,
+  ) -> list[ModelInfo]:
+    """
+    Returns a list of configured models (and optionally `SQL [no model]` + discovered Ollama models).
 
     Args:
         admin_settings (AdminSettingsResponse | None): Optional admin configuration to filter models by visibility.
+        include_sql (bool): Whether to prepend the `SQL [no model]` processor option.
+        discovered_ollama (list[ModelInfo] | None): Optional list of dynamically discovered Ollama models.
 
     Returns:
-        list[ModelInfo]: List of configured model information objects.
+        list[ModelInfo]: List of configured model/processor information objects.
     """
-    models = [
-      ModelInfo(id=m["id"], name=m["name"], provider=m["provider"], is_local=bool(m.get("is_local", False)))
+    swarm_entries: list[dict[str, JsonPrimitive]] = [
+      {
+        "id": m["id"],
+        "name": m["name"],
+        "provider": m["provider"],
+        "is_local": m["is_local"],
+      }
       for m in self.swarm
     ]
-    if admin_settings and admin_settings.visible_models:
-      return [m for m in models if m.id in admin_settings.visible_models]
-    return models
+    return assemble_available_models(
+      swarm_entries=swarm_entries,
+      admin_settings=admin_settings,
+      include_sql=include_sql,
+      discovered_ollama=discovered_ollama,
+    )
+
+  async def get_available_processors_async(
+    self,
+    admin_settings: AdminSettingsResponse | None = None,
+    include_sql: bool = False,
+    discover_ollama: bool = False,
+    http_client: httpx.AsyncClient | None = None,
+  ) -> list[ModelInfo]:
+    """
+    Asynchronously resolves all available processors (`SQL [no model]`, discovered Ollama models, and `any-llm` models).
+
+    Args:
+        admin_settings (AdminSettingsResponse | None): Optional admin configuration.
+        include_sql (bool): Whether to include the `SQL [no model]` processor option.
+        discover_ollama (bool): Whether to dynamically query Ollama `/api/tags`.
+        http_client (httpx.AsyncClient | None): Optional HTTP client for Ollama discovery.
+
+    Returns:
+        list[ModelInfo]: Ordered list of selectable processors/models.
+    """
+    discovered: list[ModelInfo] = []
+    if discover_ollama:
+      ollama_base = admin_settings.ollama_api_base if admin_settings else None
+      disc_res = await self.discover_ollama_models_result(ollama_api_base=ollama_base, http_client=http_client)
+      if isinstance(disc_res, Ok):
+        discovered = disc_res.value
+    return self.get_available_models(
+      admin_settings=admin_settings,
+      include_sql=include_sql,
+      discovered_ollama=discovered,
+    )
 
   async def _generate_single(
     self,
-    combatant: SwarmCombatantDict | dict[str, Any],
+    combatant: SwarmCombatantDict,
     messages: list[dict[str, str]],
     temperature: float,
     max_tokens: int,
@@ -268,7 +486,7 @@ class LLMArenaClient:
     Internal wrapper to execute a request against a single provider and measure its latency.
 
     Args:
-        combatant (SwarmCombatantDict | dict[str, Any]): Target combatant configuration.
+        combatant (SwarmCombatantDict): Target combatant configuration.
         messages (list[dict[str, str]]): OpenAI-formatted messages.
         temperature (float): Sampling temperature.
         max_tokens (int): Maximum completion tokens.
@@ -302,28 +520,43 @@ class LLMArenaClient:
       )
 
     try:
-      kwargs: dict[str, Any] = {}
+      override_key: str | None = None
       if admin_settings and admin_settings.api_keys:
         provider = str(combatant["provider"])
         if provider in admin_settings.api_keys:
-          kwargs["api_key"] = admin_settings.api_keys[provider]
+          override_key = admin_settings.api_keys[provider]
 
-      response = await run_in_threadpool(
-        client.completion,
-        model=target_model_name,
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        stop=stop,
-        **kwargs,
-      )
+      if override_key is not None:
+        response = await run_in_threadpool(
+          client.completion,
+          model=target_model_name,
+          messages=messages,
+          temperature=temperature,
+          max_tokens=max_tokens,
+          stop=stop,
+          api_key=override_key,
+        )
+      else:
+        response = await run_in_threadpool(
+          client.completion,
+          model=target_model_name,
+          messages=messages,
+          temperature=temperature,
+          max_tokens=max_tokens,
+          stop=stop,
+        )
 
       duration_ms = int((time.time() - start_time) * 1000)
 
       try:
-        content = response.choices[0].message.content.strip()
+        if not isinstance(response, CompletionChunkProtocol):
+          raise AttributeError("Response does not implement CompletionChunkProtocol")
+        first_choice = response.choices[0]
+        if not isinstance(first_choice, CompletionMessageChoiceProtocol) or first_choice.message.content is None:
+          raise AttributeError("Choice does not contain message content")
+        content = first_choice.message.content.strip()
         return ArenaResponse(provider_name=name, model_identifier=model_id, content=content, latency_ms=duration_ms)
-      except (AttributeError, IndexError):
+      except (AttributeError, IndexError, TypeError):
         return ArenaResponse(
           provider_name=name,
           model_identifier=model_id,
@@ -335,8 +568,52 @@ class LLMArenaClient:
     except Exception as e:
       duration_ms = int((time.time() - start_time) * 1000)
       return ArenaResponse(
-        provider_name=name, model_identifier=model_id, content="", latency_ms=duration_ms, error=str(e)
+        provider_name=name,
+        model_identifier=model_id,
+        content="",
+        latency_ms=duration_ms,
+        error=str(e) or type(e).__name__,
       )
+
+  def _build_dynamic_combatant(
+    self,
+    model_spec: str,
+    admin_settings: AdminSettingsResponse | None = None,
+  ) -> SwarmCombatantDict | None:
+    """
+    Builds an on-demand `SwarmCombatantDict` for a `provider:model` or `provider/model` string
+    when it is not already pre-registered in `self.swarm`.
+
+    Args:
+        model_spec (str): Target model identifier (e.g. `'ollama:llama3'` or `'openai:gpt-4o-mini'`).
+        admin_settings (AdminSettingsResponse | None): Optional admin settings with API keys and Ollama host.
+
+    Returns:
+        SwarmCombatantDict | None: On-demand combatant dictionary, or `None` if `model_spec` is not parseable.
+    """
+    parsed = _parse_configured_model_entry(model_spec)
+    if parsed is None:
+      return None
+    prov, mod_name, disp_name = parsed
+    keys = (admin_settings.api_keys if admin_settings and admin_settings.api_keys else {}) or {}
+    ollama_base = admin_settings.ollama_api_base if admin_settings else None
+    is_ollama = prov == "ollama"
+    sdk_provider = "openai" if is_ollama else prov
+    api_key = "ollama" if is_ollama else (keys.get(prov) or keys.get(f"{prov.upper()}_API_KEY"))
+    api_base = f"{_normalize_ollama_root_url(ollama_base)}/v1" if is_ollama else None
+    client: LLMProviderClientProtocol | AnyLLM | FallbackMockProvider
+    try:
+      client = AnyLLM.create(sdk_provider, api_key=api_key, api_base=api_base, timeout=self.timeout)
+    except Exception:
+      client = FallbackMockProvider(name=disp_name, model_name=mod_name)
+    return {
+      "client": client,
+      "name": disp_name,
+      "id": model_spec,
+      "model_name": mod_name,
+      "provider": prov,
+      "is_local": is_ollama,
+    }
 
   async def generate_arena_competition(
     self,
@@ -368,9 +645,18 @@ class LLMArenaClient:
     if not self.swarm:
       raise RuntimeError("No LLM providers are configured in the Arena.")
 
-    active_combatants = self.swarm
+    active_combatants = list(self.swarm)
     if target_model_ids:
-      active_combatants = [c for c in self.swarm if c["id"] in target_model_ids]
+      normalized_targets = {tid.replace(":", "/") for tid in target_model_ids} | set(target_model_ids)
+      matched = [
+        c for c in self.swarm if c["id"] in normalized_targets or c["id"].replace(":", "/") in normalized_targets
+      ]
+      if not matched:
+        for tid in target_model_ids:
+          dynamic_comb = self._build_dynamic_combatant(tid, admin_settings)
+          if dynamic_comb is not None:
+            matched.append(dynamic_comb)
+      active_combatants = matched
 
     if not active_combatants:
       return []
@@ -416,24 +702,33 @@ class LLMArenaClient:
     combatant = next((c for c in self.swarm if c["id"] == model_id), None) if model_id else None
     return combatant or self.swarm[0]
 
-  async def _stream_from_live_result(self, stream_result: object) -> AsyncGenerator[str, None]:
+  async def _stream_from_live_result(
+    self,
+    stream_result: StreamableCompletionResult,
+  ) -> AsyncGenerator[str, None]:
     """
     Yields token deltas from an `any-llm` completion result (sync, async iterator, or sync generator).
 
     Args:
-        stream_result (object): Raw stream object returned by `client.completion(..., stream=True)`.
+        stream_result (StreamableCompletionResult):
+            Raw stream object returned by `client.completion(..., stream=True)`.
 
     Yields:
         str: Token delta strings.
     """
-    if hasattr(stream_result, "choices"):
-      choices = getattr(stream_result, "choices")
-      content = str(getattr(choices[0].message, "content", ""))
+    if isinstance(stream_result, CompletionChunkProtocol):
+      first_choice = stream_result.choices[0]
+      raw_msg = (
+        first_choice.message.content
+        if isinstance(first_choice, CompletionMessageChoiceProtocol) and first_choice.message.content is not None
+        else ""
+      )
+      content = str(raw_msg)
       for word in content.split(" "):
         yield word + " "
       return
 
-    if hasattr(stream_result, "__aiter__"):
+    if isinstance(stream_result, AsyncIterable):
       async for chunk in stream_result:
         delta = _extract_chunk_delta(chunk)
         if delta:
@@ -441,7 +736,7 @@ class LLMArenaClient:
       return
 
     loop = asyncio.get_running_loop()
-    queue: asyncio.Queue[object] = asyncio.Queue()
+    queue: asyncio.Queue[StreamQueueItem] = asyncio.Queue()
     pump_task = asyncio.create_task(asyncio.to_thread(_pump_stream_to_queue, stream_result, queue, loop))
     try:
       while True:
@@ -483,56 +778,66 @@ class LLMArenaClient:
 
     combatant = self._select_stream_combatant(model_id)
     client = combatant.get("client")
-    nl = chr(10)
     if isinstance(client, FallbackMockProvider) or client is None:
-      mock_response = (
-        f"Here is the SQL query for your hospital data analysis:{nl}{nl}"
-        f"```sql{nl}"
-        f"SELECT Clinical_Service, COUNT(*) as patient_count{nl}"
-        f"FROM synthetic_hospital_data{nl}"
-        f"GROUP BY Clinical_Service{nl}"
-        f"ORDER BY patient_count DESC;{nl}"
-        f"```{nl}{nl}"
-        "This query aggregates patient counts by clinical service."
-      )
+      mock_response = build_streaming_mock_sql_response()
       words = mock_response.split(" ")
       for i, word in enumerate(words):
         yield word + (" " if i < len(words) - 1 else "")
       return
 
     try:
-      kwargs: dict[str, Any] = {}
       if admin_settings and admin_settings.api_keys and combatant["provider"] in admin_settings.api_keys:
-        kwargs["api_key"] = admin_settings.api_keys[combatant["provider"]]
-
-      stream_result = await run_in_threadpool(
-        client.completion,
-        model=combatant["model_name"],
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        stream=True,
-        **kwargs,
-      )
+        stream_result = await run_in_threadpool(
+          client.completion,
+          model=combatant["model_name"],
+          messages=messages,
+          temperature=temperature,
+          max_tokens=max_tokens,
+          stream=True,
+          api_key=admin_settings.api_keys[combatant["provider"]],
+        )
+      else:
+        stream_result = await run_in_threadpool(
+          client.completion,
+          model=combatant["model_name"],
+          messages=messages,
+          temperature=temperature,
+          max_tokens=max_tokens,
+          stream=True,
+        )
       async for token in self._stream_from_live_result(stream_result):
         yield token
 
     except Exception as e:
       logger.warning(f"Streaming failed, falling back to standard generation: {e}")
       res = await self._generate_single(combatant, messages, temperature, max_tokens, None, admin_settings)
-      fallback_text = (
-        (
-          f"Here is the fallback analysis query:{nl}{nl}"
-          f"```sql{nl}"
-          f"SELECT 'System Fallback' as source, 'synthetic_hospital_data' as dataset;{nl}"
-          "```"
-        )
-        if res.error
-        else res.content
-      )
+      fallback_text = build_streaming_error_fallback_sql() if res.error else res.content
       for word in fallback_text.split(" "):
         yield word + " "
 
 
 # Singleton instance
 llm_client = LLMArenaClient()
+
+__all__ = [
+  "ArenaResponse",
+  "CompletionChunkProtocol",
+  "CompletionDeltaProtocol",
+  "CompletionMessageChoiceProtocol",
+  "CompletionMessageProtocol",
+  "CompletionStreamChoiceProtocol",
+  "CompletionTextChoiceProtocol",
+  "FallbackMockProvider",
+  "LLMArenaClient",
+  "LLMProviderClientProtocol",
+  "SQL_NO_MODEL_INFO",
+  "StreamChunkProtocol",
+  "SwarmCombatantDict",
+  "_extract_chunk_delta",
+  "_infer_processor_type",
+  "_normalize_ollama_root_url",
+  "_parse_configured_model_entry",
+  "_pump_stream_to_queue",
+  "httpx",
+  "llm_client",
+]

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Payload for updating a user\'s clinical role.
  */
 export interface UserRoleUpdate {
+  /** Property `role`. */
   role: string;
 }

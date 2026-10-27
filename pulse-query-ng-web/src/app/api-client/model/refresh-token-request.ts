@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Payload requesting rotation of an active refresh token.
  */
 export interface RefreshTokenRequest {
+  /** Property `refresh_token`. */
   refresh_token: string;
 }

@@ -8,17 +8,18 @@ of daily census counts to identify units with unpredictable staffing needs.
 from collections.abc import Generator
 import json
 import os
-from typing import Any
 
 import duckdb
 import pytest
+
+from app.schemas.json_types import JsonObject
 
 # Path to the templates definition
 DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
 
 
 @pytest.fixture
-def volatility_template() -> dict[str, Any]:
+def volatility_template() -> JsonObject:
   """
   Loads compliance with the Day-of-Week Volatility template definition from JSON.
   """
@@ -26,7 +27,7 @@ def volatility_template() -> dict[str, Any]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
 
   # Find the specific template by title
   template = next((t for t in data if t["title"] == "Day-of-Week Volatility"), None)
@@ -82,14 +83,12 @@ def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
   conn.close()
 
 
-def test_volatility_calculation_and_ranking(
-  db_conn: duckdb.DuckDBPyConnection, volatility_template: dict[str, Any]
-) -> None:
+def test_volatility_calculation_and_ranking(db_conn: duckdb.DuckDBPyConnection, volatility_template: JsonObject) -> None:
   """
   Verify that the 'Volatile_Ward' is ranked higher than 'Stable_Ward' due to
   higher standard deviation, and that the calculated SD and CV values are correct.
   """
-  raw_sql = volatility_template["sql_template"]
+  raw_sql = str(volatility_template["sql_template"])
 
   # Inject min_avg_census = 5 to filter out Tiny_Ward
   sql = raw_sql.replace("{{min_avg_census}}", "5")
@@ -120,12 +119,12 @@ def test_volatility_calculation_and_ranking(
   assert first_place[2] > 10.0, "Volatile SD should be high (>10)"
 
 
-def test_volatility_filter_small_units(db_conn: duckdb.DuckDBPyConnection, volatility_template: dict[str, Any]) -> None:
+def test_volatility_filter_small_units(db_conn: duckdb.DuckDBPyConnection, volatility_template: JsonObject) -> None:
   """
   Verify that units below the average census threshold are excluded to prevent
   small N noise (e.g. going from 1 to 2 patients is 100% growth but statistically irrelevant).
   """
-  raw_sql = volatility_template["sql_template"]
+  raw_sql = str(volatility_template["sql_template"])
 
   # Filter avg census >= 5. 'Tiny_Ward' has avg 2.
   sql = raw_sql.replace("{{min_avg_census}}", "5")

@@ -10,6 +10,7 @@ import { of, throwError, delay } from 'rxjs';
 import { FormRoot, FormField } from '@angular/forms/signals';
 import { vi, describe, beforeEach, it, expect, afterEach } from 'vitest';
 import { signal, WritableSignal } from '@angular/core';
+import { createMockInputEvent } from '../../test-utils/mock-factories';
 
 describe('AdminComponent', () => {
   let component: AdminComponent;
@@ -262,6 +263,64 @@ describe('AdminComponent', () => {
       vi.advanceTimersByTime(3000);
       expect(component.message()).toBe('');
       vi.useRealTimers();
+    });
+
+    it('should manage custom any-llm provider keys, configured models, and ollamaApiBase', () => {
+      adminServiceMock.readAdminSettingsApiV1AdminSettingsGet.mockReturnValue(
+        of({
+          api_keys: { openai: 'sk-1', groq: 'g-123' },
+          visible_models: ['model-1'],
+          configured_models: ['ollama:llama3'],
+          ollama_api_base: 'http://localhost:11434',
+        }),
+      );
+      component.ngOnInit();
+      expect(component.customProviderKeys()).toEqual({ groq: 'g-123' });
+      expect(component.configuredModels()).toEqual(['ollama:llama3']);
+      expect(component.ollamaApiBase()).toBe('http://localhost:11434');
+
+      // Add and remove custom provider key
+      component.newProviderSlug.set('  ');
+      component.newProviderKey.set('k');
+      component.addCustomProviderKey();
+      expect(component.customProviderEntries().length).toBe(1);
+
+      component.newProviderSlug.set('Mistral');
+      component.newProviderKey.set('m-key');
+      component.addCustomProviderKey();
+      expect(component.customProviderKeys()['mistral']).toBe('m-key');
+
+      component.removeCustomProviderKey('groq');
+      expect(component.customProviderKeys()['groq']).toBeUndefined();
+
+      // Add and remove configured models
+      component.newModelSpec.set('invalid_spec');
+      component.addConfiguredModel();
+      expect(component.configuredModels().length).toBe(1);
+
+      component.newModelSpec.set('ollama:llama3'); // duplicate
+      component.addConfiguredModel();
+      expect(component.configuredModels().length).toBe(1);
+
+      component.newModelSpec.set('groq:mixtral-8x7b');
+      component.addConfiguredModel();
+      expect(component.configuredModels()).toContain('groq:mixtral-8x7b');
+
+      component.removeConfiguredModel('ollama:llama3');
+      expect(component.configuredModels()).toEqual(['groq:mixtral-8x7b']);
+
+      expect(component.getEventValue(createMockInputEvent('http://ollama:11434'))).toBe(
+        'http://ollama:11434',
+      );
+      component.ollamaApiBase.set('http://ollama:11434');
+
+      component.saveSettings();
+      expect(adminServiceMock.writeAdminSettingsApiV1AdminSettingsPut).toHaveBeenCalledWith({
+        api_keys: { openai: 'sk-1', mistral: 'm-key' },
+        visible_models: ['model-1'],
+        configured_models: ['groq:mixtral-8x7b'],
+        ollama_api_base: 'http://ollama:11434',
+      });
     });
   });
 

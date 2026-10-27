@@ -10,17 +10,23 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timezone
 import os
-from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import BACKEND_ROOT, settings
-from app.core.diagnostics import check_configuration_hygiene, diagnostics_registry
+from app.core.diagnostics import (
+  DataDiagnosticState,
+  TemplateDiagnosticState,
+  check_configuration_hygiene,
+  diagnostics_registry,
+)
 from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
 from app.database.postgres import AsyncSessionLocal, validate_postgres_connection
 from app.models.template import WidgetTemplate
+from app.schemas.json_types import JsonObject, JsonValue
 from app.schemas.system import (
+  DatabaseSummarySchema,
   DataHealthSchema,
   DiagnosticWarningSchema,
   DuckDbHealthSchema,
@@ -79,7 +85,7 @@ class SystemDiagnosticsService:
         res = await session.execute(select(func.count()).select_from(WidgetTemplate))
         return int(res.scalar_one_or_none() or 0)
     except Exception:
-      return int(diagnostics_registry.template_status.get("templates_loaded", 0))
+      return int(diagnostics_registry.template_status.templates_loaded)
 
   async def get_health_summary(
     self,
@@ -103,7 +109,12 @@ class SystemDiagnosticsService:
     pg_ok = pg_status.get("status") == "connected"
     duck_ok = duck_status.get("status") == "ready"
 
-    row_counts: dict[str, int] = dict(duck_status.get("tables") or {})
+    raw_tables = duck_status.get("tables")
+    row_counts: dict[str, int] = (
+      {str(k): int(v) for k, v in raw_tables.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+      if isinstance(raw_tables, dict)
+      else {}
+    )
     if "synthetic_hospital_data_transfers" in row_counts and "Synthetic_hospital_data_transfers" not in row_counts:
       row_counts["Synthetic_hospital_data_transfers"] = row_counts["synthetic_hospital_data_transfers"]
     elif "Synthetic_hospital_data_transfers" in row_counts and "synthetic_hospital_data_transfers" not in row_counts:
@@ -126,15 +137,14 @@ class SystemDiagnosticsService:
     else:
       dataset_status = "ready"
 
+    missing_files_list: list[str] = list(diagnostics_registry.data_status.missing_files)
     dataset_health = DataHealthSchema(
       status=dataset_status,
       table_count=table_count,
       tables=tables_list,
-      has_default_data=bool(
-        diagnostics_registry.data_status.get("has_default_data", False) or row_counts.get("hospital_data", 0) > 0
-      ),
-      fallback_generated=bool(diagnostics_registry.data_status.get("fallback_generated", False)),
-      missing_files=list(diagnostics_registry.data_status.get("missing_files", [])),
+      has_default_data=bool(diagnostics_registry.data_status.has_default_data or row_counts.get("hospital_data", 0) > 0),
+      fallback_generated=bool(diagnostics_registry.data_status.fallback_generated),
+      missing_files=missing_files_list,
       row_counts=row_counts,
     )
 
@@ -150,11 +160,25 @@ class SystemDiagnosticsService:
       template_count=template_count,
       templates_loaded=template_count,
       has_templates=template_count > 0,
-      missing_file=bool(diagnostics_registry.template_status.get("missing_file", False)),
+      missing_file=bool(diagnostics_registry.template_status.missing_file),
     )
 
-    diagnostics_registry.data_status.update(dataset_health.model_dump())
-    diagnostics_registry.template_status.update(template_health.model_dump())
+    diagnostics_registry.data_status = DataDiagnosticState(
+      status=dataset_health.status,
+      table_count=dataset_health.table_count,
+      tables=list(dataset_health.tables),
+      has_default_data=dataset_health.has_default_data,
+      fallback_generated=dataset_health.fallback_generated,
+      missing_files=list(dataset_health.missing_files),
+      row_counts=dict(dataset_health.row_counts),
+    )
+    diagnostics_registry.template_status = TemplateDiagnosticState(
+      status=template_health.status,
+      template_count=template_health.template_count,
+      templates_loaded=template_health.templates_loaded,
+      has_templates=template_health.has_templates,
+      missing_file=template_health.missing_file,
+    )
 
     if not pg_ok or not duck_ok or template_health.status == "critical" or dataset_health.status == "critical":
       overall_status = "critical"
@@ -167,12 +191,13 @@ class SystemDiagnosticsService:
       status=overall_status,
       overall_status=overall_status,
       timestamp=datetime.now(timezone.utc).isoformat(),
+      database=DatabaseSummarySchema(postgres=pg_ok, duckdb=duck_ok),
       postgres=PostgresHealthSchema.model_validate(pg_status),
       duckdb=DuckDbHealthSchema.model_validate(duck_status),
       data=dataset_health,
       datasets=dataset_health,
       templates=template_health,
-      llm=LlmHealthSchema.model_validate(diagnostics_registry.llm_status),
+      llm=LlmHealthSchema.model_validate(diagnostics_registry.llm_status.to_dict()),
       warnings=[DiagnosticWarningSchema.model_validate(w.to_dict()) for w in diagnostics_registry.warnings],
     )
 
@@ -189,7 +214,9 @@ class SystemDiagnosticsService:
     health_summary = await self.get_health_summary(db=db, require_populated=True)
     data_dir, data_dir_exists, data_files = await asyncio.to_thread(inspect_data_directory)
 
-    environment_checks: dict[str, Any] = {
+    csv_values: list[JsonValue] = [str(f) for f in data_files]
+    provider_values: list[JsonValue] = [str(item["provider"]) for item in settings.LLM_SWARM]
+    environment_checks: JsonObject = {
       "postgres_server": settings.POSTGRES_SERVER,
       "postgres_port": settings.POSTGRES_PORT,
       "postgres_database": settings.POSTGRES_DB,
@@ -197,9 +224,9 @@ class SystemDiagnosticsService:
       "duckdb_path": settings.DUCKDB_PATH,
       "data_directory": data_dir,
       "data_directory_exists": data_dir_exists,
-      "detected_csv_files": data_files,
+      "detected_csv_files": csv_values,
       "secret_key_is_default": settings.SECRET_KEY == "CHANGEME_IN_PROD_SUPER_SECRET_KEY",
-      "configured_llm_providers": [item["provider"] for item in settings.LLM_SWARM],
+      "configured_llm_providers": provider_values,
     }
 
     troubleshooting_guides: list[TroubleshootingStep] = [

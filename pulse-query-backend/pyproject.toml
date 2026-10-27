@@ -92,6 +92,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
+concurrency = ["greenlet", "thread"]
 source = ["app", "scripts"]
 omit = [
     "*/tests/*",
@@ -147,6 +148,7 @@ module = [
     "mpax.*",
     "jax",
     "jax.*",
+    "jax._src.*",
     "sqlglot",
     "sqlglot.*",
     "any_llm",

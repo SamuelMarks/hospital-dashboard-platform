@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.result import AppResult, Ok, unwrap_or_raise_http
 from app.models.admin_setting import AdminSetting
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
+from app.schemas.json_types import JsonValue
 from app.services.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
@@ -37,22 +38,56 @@ class AdminService:
         db (AsyncSession): Active database session.
 
     Returns:
-        AppResult[AdminSettingsResponse]: `Ok(AdminSettingsResponse)` containing `api_keys` and `visible_models`.
+        AppResult[AdminSettingsResponse]: `Ok(AdminSettingsResponse)` containing `api_keys`, `visible_models`,
+            `configured_models`, and `ollama_api_base`.
     """
-    stmt = select(AdminSetting).where(AdminSetting.setting_key.in_(["api_keys", "visible_models"]))
+    stmt = select(AdminSetting).where(
+      AdminSetting.setting_key.in_(["api_keys", "visible_models", "configured_models", "ollama_api_base"])
+    )
     result = await db.execute(stmt)
     settings = result.scalars().all()
 
     api_keys: dict[str, str] = {}
     visible_models: list[str] = []
+    configured_models: list[str] = []
+    ollama_api_base: str | None = None
 
     for setting in settings:
+      raw_val = setting.setting_value
       if setting.setting_key == "api_keys":
-        api_keys = setting.setting_value or {}
+        api_keys = {str(k): str(v) for k, v in raw_val.items()} if isinstance(raw_val, dict) else {}
+      elif setting.setting_key == "visible_models":
+        visible_models = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
+      elif setting.setting_key == "configured_models":
+        configured_models = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
       else:
-        visible_models = setting.setting_value or []
+        ollama_api_base = str(raw_val) if isinstance(raw_val, str) and raw_val.strip() else None
 
-    return Ok(AdminSettingsResponse(api_keys=api_keys, visible_models=visible_models))
+    return Ok(
+      AdminSettingsResponse(
+        api_keys=api_keys,
+        visible_models=visible_models,
+        configured_models=configured_models,
+        ollama_api_base=ollama_api_base,
+      )
+    )
+
+  async def _upsert_setting(self, db: AsyncSession, key: str, value: JsonValue) -> None:
+    """
+    Inserts or updates a single `AdminSetting` row in `db`.
+
+    Args:
+        db (AsyncSession): Active database session.
+        key (str): Setting key name.
+        value (JsonValue): JSON-serializable setting value.
+    """
+    stmt = select(AdminSetting).where(AdminSetting.setting_key == key)
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+    if existing:
+      existing.setting_value = value
+    else:
+      db.add(AdminSetting(setting_key=key, setting_value=value))
 
   async def update_admin_settings_result(
     self,
@@ -64,30 +99,20 @@ class AdminService:
 
     Args:
         db (AsyncSession): Active database session.
-        request (AdminSettingsUpdateRequest): Updated `api_keys` and `visible_models`.
+        request (AdminSettingsUpdateRequest): Updated `api_keys`, `visible_models`, `configured_models`, and `ollama_api_base`.
 
     Returns:
         AppResult[AdminSettingsResponse]: `Ok(AdminSettingsResponse)` containing updated state.
     """
-    stmt = select(AdminSetting).where(AdminSetting.setting_key == "api_keys")
-    result = await db.execute(stmt)
-    api_keys_setting = result.scalar_one_or_none()
-
-    if api_keys_setting:
-      api_keys_setting.setting_value = request.api_keys
-    else:
-      api_keys_setting = AdminSetting(setting_key="api_keys", setting_value=request.api_keys)
-      db.add(api_keys_setting)
-
-    stmt = select(AdminSetting).where(AdminSetting.setting_key == "visible_models")
-    result = await db.execute(stmt)
-    visible_models_setting = result.scalar_one_or_none()
-
-    if visible_models_setting:
-      visible_models_setting.setting_value = request.visible_models
-    else:
-      visible_models_setting = AdminSetting(setting_key="visible_models", setting_value=request.visible_models)
-      db.add(visible_models_setting)
+    api_keys_val: JsonValue = {str(k): str(v) for k, v in request.api_keys.items()}
+    visible_val: JsonValue = [str(item) for item in request.visible_models]
+    await self._upsert_setting(db, "api_keys", api_keys_val)
+    await self._upsert_setting(db, "visible_models", visible_val)
+    if request.configured_models is not None:
+      configured_val: JsonValue = [str(item) for item in request.configured_models]
+      await self._upsert_setting(db, "configured_models", configured_val)
+    if request.ollama_api_base is not None:
+      await self._upsert_setting(db, "ollama_api_base", request.ollama_api_base)
 
     await db.commit()
     new_settings_res = await self.get_admin_settings_result(db)

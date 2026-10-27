@@ -8,19 +8,19 @@ based on current utilization conditions using a self-join pattern.
 from collections.abc import Generator
 import json
 import os
-from typing import Any
 
 import duckdb
 import pytest
 
 from app.database.duckdb_init import create_hospital_macros  # Fixed import
+from app.schemas.json_types import JsonObject
 
 # Path to the templates definition
 DATA_FILE = os.path.join(os.path.dirname(__file__), "../data/initial_templates.json")
 
 
 @pytest.fixture
-def predictive_template() -> dict[str, Any]:
+def predictive_template() -> JsonObject:
   """
   Loads compliance with the new template definition from JSON.
   """
@@ -28,7 +28,7 @@ def predictive_template() -> dict[str, Any]:
     pytest.fail(f"Templates file not found at {DATA_FILE}")
 
   with open(DATA_FILE, "r") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
 
   # Find the specific template by title
   template = next((t for t in data if t["title"] == "Predictive Availability"), None)
@@ -93,11 +93,11 @@ def db_conn() -> Generator[duckdb.DuckDBPyConnection, None, None]:
 
 
 # ... Tests remain unchanged ...
-def test_predictive_availability_logic(db_conn: duckdb.DuckDBPyConnection, predictive_template: dict[str, Any]) -> None:
+def test_predictive_availability_logic(db_conn: duckdb.DuckDBPyConnection, predictive_template: JsonObject) -> None:
   """
   Injects parameters into the SQL template and verifies the statistical output.
   """
-  raw_sql = predictive_template["sql_template"]
+  raw_sql = str(predictive_template["sql_template"])
 
   # Inject Parameters matching the Seeding Strategy (ICU, Thursday DOW=4, 3-day gap, 10 capacity, 0.9 threshold, 2 beds)
 
@@ -122,11 +122,11 @@ def test_predictive_availability_logic(db_conn: duckdb.DuckDBPyConnection, predi
   assert prob_pct == 50.0, "Probability should be 50% (1 success out of 2 valid conditions)"
 
 
-def test_predictive_no_data_safety(db_conn: duckdb.DuckDBPyConnection, predictive_template: dict[str, Any]) -> None:
+def test_predictive_no_data_safety(db_conn: duckdb.DuckDBPyConnection, predictive_template: JsonObject) -> None:
   """
   Ensure the query handles cases where NO days meet the condition (divide by zero protection).
   """
-  raw_sql = predictive_template["sql_template"]
+  raw_sql = str(predictive_template["sql_template"])
 
   # Threshold 1.1 (Impossible)
   sql = (

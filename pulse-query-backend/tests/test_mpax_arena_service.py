@@ -52,7 +52,7 @@ async def test_run_mpax_arena_invalid_mode(
   arena_user: User,
 ) -> None:
   """
-  Verifies `run_mpax_arena` raises `ValueError` and `run_mpax_arena_result` returns `Err(MPAX_INVALID_MODE)`.
+  Verifies `run_mpax_arena_result` returns `Err(MPAX_INVALID_MODE)` for unsupported mode names.
 
   Args:
       service (MpaxArenaService): Service under test.
@@ -63,8 +63,6 @@ async def test_run_mpax_arena_invalid_mode(
   res = await service.run_mpax_arena_result(req, db_session, arena_user)
   assert isinstance(res, Err)
   assert res.error.code == ErrorCode.MPAX_INVALID_MODE
-  with pytest.raises(ValueError, match="Unknown mode"):
-    await service.run_mpax_arena(req, db_session, arena_user)
 
 
 @pytest.mark.asyncio
@@ -75,7 +73,7 @@ async def test_run_mpax_arena_empty_prompt_and_mode_results(
 ) -> None:
   """
   Verifies `run_mpax_arena_result` returns `Err(VALIDATION_ERROR)` for empty prompt or mode,
-  and maps internal runtime errors to `Err(INTERNAL_ERROR)` / `RuntimeError`.
+  and maps internal runtime errors to `Err(INTERNAL_ERROR)`.
 
   Args:
       service (MpaxArenaService): Service under test.
@@ -92,16 +90,34 @@ async def test_run_mpax_arena_empty_prompt_and_mode_results(
   assert isinstance(empty_mode_res, Err)
   assert empty_mode_res.error.code == ErrorCode.VALIDATION_ERROR
 
-  with patch.object(service, "_run_judge_mode", new=AsyncMock(side_effect=ValueError("Bad SQL"))):
-    val_err = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="ok", mode="judge"), db_session, arena_user)
-    assert isinstance(val_err, Err)
-    assert val_err.error.code == ErrorCode.VALIDATION_ERROR
+  with patch.object(service._strategies["judge"], "execute", new=AsyncMock(side_effect=RuntimeError("Crash"))):
+    crash_res = await service.run_mpax_arena_result(MpaxArenaRequest(prompt="ok", mode="judge"), db_session, arena_user)
+    assert isinstance(crash_res, Err)
+    assert crash_res.error.code == ErrorCode.INTERNAL_ERROR
+    assert "MPAX Arena failed: Crash" in crash_res.error.message
 
-  with (
-    patch.object(service, "_run_judge_mode", new=AsyncMock(side_effect=RuntimeError("Crash"))),
-    pytest.raises(RuntimeError, match="MPAX Arena failed: Crash"),
-  ):
-    await service.run_mpax_arena(MpaxArenaRequest(prompt="ok", mode="judge"), db_session, arena_user)
+
+def test_parse_constraints_payload_result_branches(service: MpaxArenaService) -> None:
+  """
+  Verifies `_parse_constraints_payload_result` validates dict and non-dict JSON payloads.
+
+  Args:
+      service (MpaxArenaService): Service under test.
+  """
+  ok_res = service._parse_constraints_payload_result('Prefix {"ICU": 15, "ER": 20} Suffix')
+  assert isinstance(ok_res, Ok)
+  assert ok_res.value.capacities == {"ICU": 15.0, "ER": 20.0}
+
+  non_dict_res = service._parse_constraints_payload_result("{not_a_dict}")
+  assert isinstance(non_dict_res, Err)
+
+  with patch("app.services.mpax_arena_service.json.loads", return_value=[1, 2, 3]):
+    list_res = service._parse_constraints_payload_result('{"a": 1}')
+    assert isinstance(list_res, Err)
+    assert "not a dictionary" in list_res.error.message
+
+  bad_val_res = service._parse_constraints_payload_result('{"ICU": "not_a_number"}')
+  assert isinstance(bad_val_res, Err)
 
 
 @pytest.mark.asyncio
@@ -131,12 +147,13 @@ async def test_run_judge_mode(
     nl = chr(10)
     mock_llm.return_value = [MagicMock(provider_name="m1", content=f"```sql{nl}SELECT 1{nl}```")]
 
-    res = await service.run_mpax_arena(req, db_session, arena_user)
-    assert res.mode == "judge"
-    assert len(res.candidates) == 1
+    res = await service.run_mpax_arena_result(req, db_session, arena_user)
+    assert isinstance(res, Ok)
+    assert res.value.mode == "judge"
+    assert len(res.value.candidates) == 1
 
   run_row = (
-    (await db_session.execute(select(MpaxArenaRun).where(MpaxArenaRun.id == uuid.UUID(res.experiment_id))))
+    (await db_session.execute(select(MpaxArenaRun).where(MpaxArenaRun.id == uuid.UUID(res.value.experiment_id))))
     .scalars()
     .first()
   )
@@ -182,9 +199,10 @@ async def test_run_translator_mode(
   ):
     mock_llm.return_value = [MagicMock(provider_name="m1", content="Answer")]
 
-    res = await service.run_mpax_arena(req, db_session, arena_user)
-    assert res.mode == "translator"
-    assert len(res.candidates) == 1
+    res = await service.run_mpax_arena_result(req, db_session, arena_user)
+    assert isinstance(res, Ok)
+    assert res.value.mode == "translator"
+    assert len(res.value.candidates) == 1
 
   with patch(
     "app.services.mpax_arena_service.simulation_service.run_scenario_async",
@@ -225,11 +243,12 @@ async def test_run_constraints_mode(
       "app.services.mpax_arena_service.simulation_service.run_scenario_async",
       new=AsyncMock(side_effect=[ok_sim, err_sim, ok_sim, ok_sim]),
     ):
-      res = await service.run_mpax_arena(req, db_session, arena_user)
-      assert res.mode == "constraints"
-      assert len(res.candidates) == 4
-      assert res.candidates[1].mpax_result is not None
-      assert res.candidates[1].mpax_result["status"] == "error"
+      res = await service.run_mpax_arena_result(req, db_session, arena_user)
+      assert isinstance(res, Ok)
+      assert res.value.mode == "constraints"
+      assert len(res.value.candidates) == 4
+      assert res.value.candidates[1].mpax_result is not None
+      assert res.value.candidates[1].mpax_result["status"] == "error"
 
 
 @pytest.mark.asyncio
@@ -262,12 +281,13 @@ async def test_run_sql_vs_mpax_mode(
       MagicMock(provider_name="m3", content=f"```sql{nl}SELECT 2{nl}```"),
     ]
 
-    res = await service.run_mpax_arena(req, db_session, arena_user)
-    assert res.mode == "sql_vs_mpax"
-    assert len(res.candidates) == 3
-    assert res.candidates[0].sql_snippet == "SELECT 1"
-    assert res.candidates[1].sql_snippet is None
-    assert res.candidates[2].sql_snippet == "SELECT 2"
+    res = await service.run_mpax_arena_result(req, db_session, arena_user)
+    assert isinstance(res, Ok)
+    assert res.value.mode == "sql_vs_mpax"
+    assert len(res.value.candidates) == 3
+    assert res.value.candidates[0].sql_snippet == "SELECT 1"
+    assert res.value.candidates[1].sql_snippet is None
+    assert res.value.candidates[2].sql_snippet == "SELECT 2"
 
   with patch(
     "app.services.mpax_arena_service.simulation_service.run_scenario_async",
@@ -293,7 +313,7 @@ async def test_run_critic_mode(
       db_session (AsyncSession): Active test database session.
       arena_user (User): Authenticated user fixture.
   """
-  req = MpaxArenaRequest(prompt="Test", mode="critic")
+  req = MpaxArenaRequest(prompt="Test", mode="critic", base_capacity={"ICU": 12})
 
   with patch("app.services.mpax_arena_service.llm_client.generate_arena_competition", new_callable=AsyncMock) as mock_llm:
     mock_llm.return_value = [
@@ -316,16 +336,17 @@ async def test_run_critic_mode(
       "app.services.mpax_arena_service.simulation_service.run_scenario_async",
       new=AsyncMock(side_effect=[good_res, err_res, good_res, good_res]),
     ):
-      res = await service.run_mpax_arena(req, db_session, arena_user)
-      assert res.mode == "critic"
-      assert len(res.candidates) == 4
-      assert res.candidates[0].mpax_score == 90
-      assert res.candidates[1].mpax_score == 0
+      res = await service.run_mpax_arena_result(req, db_session, arena_user)
+      assert isinstance(res, Ok)
+      assert res.value.mode == "critic"
+      assert len(res.value.candidates) == 4
+      assert res.value.candidates[0].mpax_score == 90
+      assert res.value.candidates[1].mpax_score == 0
 
   cand_rows = (
     (
       await db_session.execute(
-        select(MpaxArenaCandidateRecord).where(MpaxArenaCandidateRecord.run_id == uuid.UUID(res.experiment_id))
+        select(MpaxArenaCandidateRecord).where(MpaxArenaCandidateRecord.run_id == uuid.UUID(res.value.experiment_id))
       )
     )
     .scalars()
@@ -371,3 +392,54 @@ def test_extract_sql(service: MpaxArenaService) -> None:
   nl = chr(10)
   assert service._extract_sql(f"```sql{nl} SELECT 1 {nl}```") == "SELECT 1"
   assert service._extract_sql("SELECT 1") is None
+
+
+def test_mpax_arena_strategies_and_outcome_models() -> None:
+  """Verifies `MpaxArenaModeStrategy` conformance, `validate_mpax_arena_mode_result`, and outcome serialization."""
+  from app.core.result import Err, Ok
+  from app.schemas.mpax_arena import (
+    MpaxSolverErrorPayload,
+    MpaxSolverTruth,
+    validate_mpax_arena_mode_result,
+  )
+  from app.services.mpax_arena_service import (
+    ConstraintsModeStrategy,
+    CriticModeStrategy,
+    JudgeModeStrategy,
+    MpaxArenaModeStrategy,
+    SqlVsMpaxModeStrategy,
+    TranslatorModeStrategy,
+    _serialize_outcome_to_dict,
+  )
+
+  for strat in (
+    JudgeModeStrategy(),
+    TranslatorModeStrategy(),
+    ConstraintsModeStrategy(),
+    SqlVsMpaxModeStrategy(),
+    CriticModeStrategy(),
+  ):
+    assert isinstance(strat, MpaxArenaModeStrategy)
+
+  for mode_str in ("judge", "translator", "constraints", "sql_vs_mpax", "critic"):
+    res = validate_mpax_arena_mode_result(mode_str)
+    assert isinstance(res, Ok)
+    assert res.value == mode_str
+
+  assert isinstance(validate_mpax_arena_mode_result(""), Err)
+  assert isinstance(validate_mpax_arena_mode_result("unknown_mode"), Err)
+
+  truth = MpaxSolverTruth(status="OPTIMAL", assignments=[])
+  assert truth["status"] == "OPTIMAL"
+  err_payload = MpaxSolverErrorPayload(message="infeasible")
+  assert err_payload["status"] == "error"
+  assert err_payload["message"] == "infeasible"
+
+  assert _serialize_outcome_to_dict(None) is None
+  assert _serialize_outcome_to_dict(truth) == {
+    "status": "OPTIMAL",
+    "objective_value": None,
+    "assignments": [],
+    "message": None,
+  }
+  assert _serialize_outcome_to_dict({"status": "raw"}) == {"status": "raw"}

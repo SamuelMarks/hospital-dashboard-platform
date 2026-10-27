@@ -148,8 +148,38 @@ describe('Template and Style URL Resolution & DOM Rendering Verification', () =>
       // Verify the corresponding .spec.ts file instantiates the component via Angular TestBed
       const specPath = ref.sourceFile.replace(/\.ts$/, '.spec.ts');
       expect(existsSync(specPath)).toBe(true);
+      const compSource = readFileSync(ref.sourceFile, 'utf8');
       const specSource = readFileSync(specPath, 'utf8');
       expect(specSource).toMatch(/TestBed\.(createComponent|runInInjectionContext)/);
+
+      // Verify every component method bound in template event handlers is exercised or triggered via DOM in the spec
+      const handlerRegex =
+        /\((?:click|input|change|ngSubmit|selectionChange|keydown\.enter|keydown\.space)\)="([a-zA-Z0-9_$]+)\s*\(/g;
+      let handlerMatch: RegExpExecArray | null;
+      const hasDomTrigger =
+        /triggerEventHandler|\.click\(|dispatchEvent|querySelector|By\.css|nativeElement/.test(
+          specSource,
+        );
+      while ((handlerMatch = handlerRegex.exec(rawHtml))) {
+        const methodName = handlerMatch[1];
+        const isComponentMethod =
+          methodName !== undefined && new RegExp(`\\b${methodName}\\s*\\(`).test(compSource);
+        if (isComponentMethod && methodName) {
+          expect(
+            specSource.includes(methodName) || hasDomTrigger,
+            `Expected ${specPath} to test ${methodName}`,
+          ).toBe(true);
+        }
+      }
     }
+  });
+
+  it('verifies messages.xlf exists and contains extracted XLIFF translation units', () => {
+    const xlfPath = resolve(appRootPath, '..', '..', 'messages.xlf');
+    expect(existsSync(xlfPath)).toBe(true);
+    const xlfContent = readFileSync(xlfPath, 'utf8');
+    expect(xlfContent).toContain('<xliff version="1.2"');
+    const transUnitMatches = xlfContent.match(/<trans-unit\b/g) || [];
+    expect(transUnitMatches.length).toBeGreaterThan(100);
   });
 });

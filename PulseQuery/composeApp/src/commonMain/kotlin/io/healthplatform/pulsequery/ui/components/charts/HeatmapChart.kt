@@ -62,6 +62,8 @@ fun HeatmapChart(
 
     val yLabels = rows.map { it.getOrElse(0) { "" } }.distinct()
     val xLabels = rows.map { it.getOrElse(1) { "" } }.distinct()
+    val valColIdx = columns.indexOfFirst { it.equals("net_bottleneck", ignoreCase = true) }
+        .takeIf { it >= 2 } ?: if (columns.size > 3) columns.lastIndex else 2
 
     val valueMap = mutableMapOf<Pair<String, String>, Float>()
     var minVal = Float.MAX_VALUE
@@ -70,7 +72,7 @@ fun HeatmapChart(
     for (row in rows) {
         val y = row.getOrElse(0) { "" }
         val x = row.getOrElse(1) { "" }
-        val rawVal = row.getOrElse(2) { "0" }
+        val rawVal = row.getOrElse(valColIdx) { "0" }
         val numVal = rawVal.toFloatOrNull() ?: 0f
 
         valueMap[y to x] = numVal

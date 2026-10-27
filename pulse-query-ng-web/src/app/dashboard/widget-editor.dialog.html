@@ -47,6 +47,79 @@
   }
 </mat-dialog-content>
 
+<!-- Natural Text & Processor Settings for SQL Widgets -->
+@if (widget.type === 'SQL') {
+  <div class="viz-settings-panel" data-testid="natural-text-settings-panel">
+    <div i18n class="text-xs font-bold uppercase mb-2" style="color: var(--sys-text-secondary)">
+      Natural Text & Query Processor
+    </div>
+    <div class="flex flex-wrap items-center gap-4">
+      <mat-slide-toggle
+        data-testid="editor-toggle-natural-text"
+        [checked]="allowNaturalText()"
+        (change)="allowNaturalText.set($event.checked)"
+        i18n
+      >
+        Allow user natural text input
+      </mat-slide-toggle>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[220px]">
+        <mat-label i18n>Processor (Model or SQL)</mat-label>
+        <mat-select
+          data-testid="editor-select-processor"
+          [value]="processor()"
+          (selectionChange)="processor.set($event.value)"
+          i18n-aria-label
+          aria-label="Select processor model or SQL"
+        >
+          <mat-optgroup i18n-label label="Direct SQL">
+            @for (opt of processorCatalog.sqlProcessors(); track opt.id) {
+              <mat-option [value]="opt.id">{{ opt.name }}</mat-option>
+            }
+          </mat-optgroup>
+          @if (processorCatalog.ollamaProcessors().length > 0) {
+            <mat-optgroup i18n-label label="Ollama Models (Local)">
+              @for (opt of processorCatalog.ollamaProcessors(); track opt.id) {
+                <mat-option [value]="opt.id">{{ opt.name }}</mat-option>
+              }
+            </mat-optgroup>
+          }
+          @if (processorCatalog.anyLlmProcessors().length > 0) {
+            <mat-optgroup i18n-label label="Configured any-llm Models">
+              @for (opt of processorCatalog.anyLlmProcessors(); track opt.id) {
+                <mat-option [value]="opt.id">{{ opt.name }} ({{ opt.provider }})</mat-option>
+              }
+            </mat-optgroup>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (allowNaturalText()) {
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-grow">
+          <mat-label i18n>Default Natural Text Prompt</mat-label>
+          <input
+            matInput
+            data-testid="editor-input-natural-prompt"
+            [value]="naturalTextPrompt()"
+            (input)="naturalTextPrompt.set(getEventValue($event))"
+          />
+        </mat-form-field>
+      }
+
+      @if (!supportsMapping()) {
+        <button
+          i18n
+          mat-flat-button
+          data-testid="btn-save-processor-settings"
+          (click)="saveSettings()"
+        >
+          Save Processor
+        </button>
+      }
+    </div>
+  </div>
+}
+
 <!-- Visualization Mapping Settings -->
 <!-- Only show if viz type supports mapping -->
 @if (supportsMapping()) {

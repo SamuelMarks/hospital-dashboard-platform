@@ -109,7 +109,7 @@ async def test_refresh_single_widget_injects_global_params() -> None:
     mock_cache.get.return_value = None
     mock_runner.return_value = {"data": [{"cnt": 5}], "columns": ["cnt"], "error": None}
 
-    params = {"dept": "Cardiology", "start_date": "2023-01-01", "end_date": "2023-01-31"}
+    params = {"dept": "Cardiology", "start_date": "2023-01-01", "end_date": "2023-01-31", "shift": "Day"}
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
       res = await ac.post(

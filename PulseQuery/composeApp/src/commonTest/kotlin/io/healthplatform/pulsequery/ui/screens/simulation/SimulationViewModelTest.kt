@@ -132,9 +132,19 @@ class SimulationViewModelTest {
         val c2 = ScenarioConstraint(type = "force_flow", service = "ICU", unit = "ICU", min = 5.0, max = 20.0)
         vm.addConstraint(c1)
         vm.addConstraint(c2)
-        assertEquals(2, vm.state.value.constraints.size)
+        vm.addConstraintRule(
+            type = io.healthplatform.pulsequery.core.model.ConstraintRuleType.FORCE_FLOW,
+            service = "Neurology",
+            unit = "WARD_A",
+            min = 1.0,
+            max = 4.0
+        )
+        assertEquals(3, vm.state.value.constraints.size)
+        assertNull(vm.state.value.outcomeStatus)
+        kotlin.test.assertFalse(vm.state.value.isSuccessOutcome)
 
         vm.removeConstraintAt(0)
+        vm.removeConstraintAt(1)
         assertEquals(listOf(c2), vm.state.value.constraints)
 
         // Affinity overrides
@@ -180,6 +190,26 @@ class SimulationViewModelTest {
         vm.runSimulation()
         kotlinx.coroutines.delay(50)
         assertEquals("OPTIMAL", vm.state.value.result?.status)
+        assertEquals(io.healthplatform.pulsequery.core.model.SimulationOutcomeStatus.OPTIMAL, vm.state.value.outcomeStatus)
+        assertTrue(vm.state.value.isSuccessOutcome)
+        assertEquals(
+            true,
+            SimulationUiState(
+                result = io.healthplatform.pulsequery.api.models.ScenarioResult(
+                    status = "SUCCESS",
+                    assignments = emptyList()
+                )
+            ).isSuccessOutcome
+        )
+        assertEquals(
+            false,
+            SimulationUiState(
+                result = io.healthplatform.pulsequery.api.models.ScenarioResult(
+                    status = "INFEASIBLE",
+                    assignments = emptyList()
+                )
+            ).isSuccessOutcome
+        )
         assertNull(vm.state.value.errorMessage)
 
         // Run with non-empty constraints/affinities and non-numeric capacity fallback

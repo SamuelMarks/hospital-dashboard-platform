@@ -60,9 +60,10 @@ async def test_update_widget_valid_sql_dry_run(client: AsyncClient, db_session: 
   try:
     res = await client.put(
       f"/api/v1/dashboards/widgets/{widget.id}",
-      json={"config": {"query": "SELECT COUNT(*) AS cnt FROM hospital_data"}},
+      json={"visualization": "bar_chart", "config": {"query": "SELECT COUNT(*) AS cnt FROM hospital_data"}},
     )
     assert res.status_code == 200
+    assert res.json()["visualization"] == "bar_chart"
     assert res.json()["config"]["query"] == "SELECT COUNT(*) AS cnt FROM hospital_data"
   finally:
     app.dependency_overrides.pop(get_current_user, None)

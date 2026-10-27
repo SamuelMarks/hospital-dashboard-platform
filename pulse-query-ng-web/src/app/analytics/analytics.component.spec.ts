@@ -37,8 +37,12 @@ describe('AnalyticsComponent', () => {
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create with default filter state', () => {
     expect(component).toBeTruthy();
+    expect(component.rows()).toEqual([]);
+    expect(component.modelFilter()).toBe('all');
+    expect(component.userFilter()).toBe('all');
+    expect(component.sourceFilter()).toBe('all');
   });
 
   it('should load analytics on init', () => {

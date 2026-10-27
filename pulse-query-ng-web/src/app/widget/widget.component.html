@@ -9,6 +9,11 @@
       <!-- Use Standard Chip with minimal styling -->
       <mat-chip-set>
         <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
+        @if (allowsNaturalText()) {
+          <mat-chip class="widget-chip" data-testid="chip-widget-processor">
+            {{ processorUsed() === 'SQL' ? 'SQL [no model]' : processorUsed() }}
+          </mat-chip>
+        }
       </mat-chip-set>
     </div>
 
@@ -120,6 +125,56 @@
       }
     </div>
   </div>
+
+  <!-- Interactive Natural Text / SQL Execution Bar -->
+  @if (allowsNaturalText()) {
+    <div
+      class="px-4 py-2 border-b flex flex-col gap-1"
+      style="background-color: var(--sys-surface-variant); border-color: var(--sys-surface-border)"
+      data-testid="widget-natural-text-bar"
+    >
+      <div class="flex items-center gap-2">
+        <input
+          type="text"
+          data-testid="widget-natural-text-input"
+          class="flex-grow px-2 py-1 text-xs rounded border"
+          style="
+            background-color: var(--sys-surface);
+            color: var(--sys-text-primary);
+            border-color: var(--sys-surface-border);
+          "
+          [value]="naturalTextInput()"
+          [placeholder]="placeholderText()"
+          (input)="updateNaturalTextInput($event)"
+          (keydown.enter)="submitNaturalText()"
+          i18n-aria-label
+          aria-label="Enter natural text or SQL query for this widget"
+        />
+        <button
+          mat-stroked-button
+          data-testid="btn-submit-natural-text"
+          class="text-xs"
+          (click)="submitNaturalText()"
+          [disabled]="isLoadingLocal() || !naturalTextInput().trim()"
+          i18n-aria-label
+          aria-label="Run natural text query"
+        >
+          <span i18n>Run</span>
+        </button>
+      </div>
+      @if (generatedSql(); as sql) {
+        <div
+          class="text-[11px] font-mono truncate"
+          style="color: var(--sys-text-secondary)"
+          [title]="sql"
+          aria-live="polite"
+          data-testid="widget-generated-sql"
+        >
+          <span i18n>SQL:</span> {{ sql }}
+        </div>
+      }
+    </div>
+  }
 
   <!-- Content Area -->
   <mat-card-content>

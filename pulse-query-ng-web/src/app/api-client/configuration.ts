@@ -1,82 +1,74 @@
+/**
+ * @fileoverview Runtime configuration and credential management for the OpenAPI Angular client.
+ */
 import { HttpHeaders, HttpParams, HttpParameterCodec } from '@angular/common/http';
 import { Param } from './param';
 
+/**
+ * Initialization parameters for constructing an OpenAPI `Configuration` instance.
+ */
 export interface ConfigurationParameters {
-  /**
-   *  @deprecated Since 5.0. Use credentials instead
-   */
-  apiKeys?: { [key: string]: string };
+  /** Optional map of API key credentials keyed by security scheme name. */
+  apiKeys?: Record<string, string>;
+  /** Optional HTTP Basic authentication username. */
   username?: string;
+  /** Optional HTTP Basic authentication password. */
   password?: string;
-  /**
-   *  @deprecated Since 5.0. Use credentials instead
-   */
+  /** Optional bearer access token string or getter callback. */
   accessToken?: string | (() => string);
+  /** Optional base URL prefix for API requests. */
   basePath?: string;
+  /** Whether cross-site requests should include credentials/cookies. */
   withCredentials?: boolean;
-  /**
-   * Takes care of encoding query- and form-parameters.
-   */
+  /** Custom query and form parameter codec. */
   encoder?: HttpParameterCodec;
-  /**
-   * Override the default method for encoding path parameters in various
-   * <a href="https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#style-values">styles</a>.
-   * <p>
-   * See {@link README.md} for more details
-   * </p>
-   */
+  /** Custom path parameter encoder function. */
   encodeParam?: (param: Param) => string;
-  /**
-   * The keys are the names in the securitySchemes section of the OpenAPI
-   * document. They should map to the value used for authentication
-   * minus any standard prefixes such as 'Basic' or 'Bearer'.
-   */
-  credentials?: { [key: string]: string | (() => string | undefined) };
+  /** Map of security scheme names to credential values or getter callbacks. */
+  credentials?: Record<string, string | (() => string | undefined)>;
 }
 
+/**
+ * Holds runtime configuration, MIME negotiation helpers, and authentication credentials
+ * for generated OpenAPI services.
+ */
 export class Configuration {
-  /**
-   *  @deprecated Since 5.0. Use credentials instead
-   */
-  apiKeys?: { [key: string]: string };
+  /** Optional map of API key credentials keyed by security scheme name. */
+  apiKeys?: Record<string, string>;
+  /** Optional HTTP Basic authentication username. */
   username?: string;
+  /** Optional HTTP Basic authentication password. */
   password?: string;
-  /**
-   *  @deprecated Since 5.0. Use credentials instead
-   */
+  /** Optional bearer access token string or getter callback. */
   accessToken?: string | (() => string);
+  /** Optional base URL prefix for API requests. */
   basePath?: string;
+  /** Whether cross-site requests should include credentials/cookies. */
   withCredentials?: boolean;
-  /**
-   * Takes care of encoding query- and form-parameters.
-   */
+  /** Custom query and form parameter codec. */
   encoder?: HttpParameterCodec;
-  /**
-   * Encoding of various path parameter
-   * <a href="https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#style-values">styles</a>.
-   * <p>
-   * See {@link README.md} for more details
-   * </p>
-   */
+  /** Path parameter encoder function. */
   encodeParam: (param: Param) => string;
-  /**
-   * The keys are the names in the securitySchemes section of the OpenAPI
-   * document. They should map to the value used for authentication
-   * minus any standard prefixes such as 'Basic' or 'Bearer'.
-   */
-  credentials: { [key: string]: string | (() => string | undefined) };
+  /** Map of security scheme names to credential values or getter callbacks. */
+  credentials: Record<string, string | (() => string | undefined)>;
 
-  constructor({
-    accessToken,
-    apiKeys,
-    basePath,
-    credentials,
-    encodeParam,
-    encoder,
-    password,
-    username,
-    withCredentials,
-  }: ConfigurationParameters = {}) {
+  /**
+   * Initializes a new `Configuration` instance.
+   *
+   * @param configurationParameters - Optional initial configuration parameters.
+   */
+  constructor(configurationParameters: ConfigurationParameters = {}) {
+    const {
+      accessToken,
+      apiKeys,
+      basePath,
+      credentials,
+      encodeParam,
+      encoder,
+      password,
+      username,
+      withCredentials,
+    } = configurationParameters;
     if (apiKeys) {
       this.apiKeys = apiKeys;
     }
@@ -101,7 +93,6 @@ export class Configuration {
     this.encodeParam = encodeParam ?? ((param) => this.defaultEncodeParam(param));
     this.credentials = credentials ?? {};
 
-    // init default OAuth2PasswordBearer credential
     if (!this.credentials['OAuth2PasswordBearer']) {
       this.credentials['OAuth2PasswordBearer'] = () => {
         return typeof this.accessToken === 'function' ? this.accessToken() : this.accessToken;
@@ -110,11 +101,10 @@ export class Configuration {
   }
 
   /**
-   * Select the correct content-type to use for a request.
-   * Uses {@link Configuration#isJsonMime} to determine the correct content-type.
-   * If no content type is found return the first found type if the contentTypes is not empty
-   * @param contentTypes - the array of content types that are available for selection
-   * @returns the selected content-type or <code>undefined</code> if no selection could be made.
+   * Selects the preferred `Content-Type` header from a list of candidate MIME types.
+   *
+   * @param contentTypes - Candidate MIME type strings.
+   * @returns Selected MIME type string, or `undefined` when `contentTypes` is empty.
    */
   public selectHeaderContentType(contentTypes: string[]): string | undefined {
     if (contentTypes.length === 0) {
@@ -129,11 +119,10 @@ export class Configuration {
   }
 
   /**
-   * Select the correct accept content-type to use for a request.
-   * Uses {@link Configuration#isJsonMime} to determine the correct accept content-type.
-   * If no content type is found return the first found type if the contentTypes is not empty
-   * @param accepts - the array of content types that are available for selection.
-   * @returns the selected content-type or <code>undefined</code> if no selection could be made.
+   * Selects the preferred `Accept` header from a list of candidate MIME types.
+   *
+   * @param accepts - Candidate accept MIME type strings.
+   * @returns Selected MIME type string, or `undefined` when `accepts` is empty.
    */
   public selectHeaderAccept(accepts: string[]): string | undefined {
     if (accepts.length === 0) {
@@ -148,30 +137,38 @@ export class Configuration {
   }
 
   /**
-   * Check if the given MIME is a JSON MIME.
-   * JSON MIME examples:
-   *   application/json
-   *   application/json; charset=UTF8
-   *   APPLICATION/JSON
-   *   application/vnd.company+json
-   * @param mime - MIME (Multipurpose Internet Mail Extensions)
-   * @return True if the given MIME is JSON, false otherwise.
+   * Checks whether the given MIME string represents a JSON media type.
+   *
+   * @param mime - MIME type string to evaluate.
+   * @returns True if `mime` is a JSON media type.
    */
   public isJsonMime(mime: string): boolean {
-    const jsonMime: RegExp = new RegExp(
-      '^(application\/json|[^;/ \t]+\/[^;/ \t]+[+]json)[ \t]*(;.*)?$',
-      'i',
-    );
+    const jsonMime = new RegExp('^(application/json|[^;/ ]+/[^;/ ]+[+]json)[ ]*(;.*)?$', 'i');
     return (
       mime !== null && (jsonMime.test(mime) || mime.toLowerCase() === 'application/json-patch+json')
     );
   }
 
+  /**
+   * Resolves the current credential value for a security scheme key.
+   *
+   * @param key - Security scheme identifier.
+   * @returns Resolved credential string or `undefined`.
+   */
   public lookupCredential(key: string): string | undefined {
     const value = this.credentials[key];
     return typeof value === 'function' ? value() : value;
   }
 
+  /**
+   * Appends a resolved credential to `HttpHeaders` if available.
+   *
+   * @param credentialKey - Security scheme identifier.
+   * @param headerName - Target HTTP header name.
+   * @param headers - Existing `HttpHeaders` instance.
+   * @param prefix - Optional prefix such as `'Bearer '`.
+   * @returns Updated `HttpHeaders` instance.
+   */
   public addCredentialToHeaders(
     credentialKey: string,
     headerName: string,
@@ -182,6 +179,14 @@ export class Configuration {
     return value ? headers.set(headerName, (prefix ?? '') + value) : headers;
   }
 
+  /**
+   * Appends a resolved credential to `HttpParams` if available.
+   *
+   * @param credentialKey - Security scheme identifier.
+   * @param paramName - Target query parameter name.
+   * @param query - Existing `HttpParams` instance.
+   * @returns Updated `HttpParams` instance.
+   */
   public addCredentialToQuery(
     credentialKey: string,
     paramName: string,
@@ -191,18 +196,16 @@ export class Configuration {
     return value ? query.set(paramName, value) : query;
   }
 
+  /**
+   * Default path parameter encoder handling ISO-8601 dates and primitive values.
+   *
+   * @param param - Parameter descriptor to encode.
+   * @returns URL-encoded string representation of the parameter value.
+   */
   private defaultEncodeParam(param: Param): string {
-    // This implementation exists as fallback for missing configuration
-    // and for backwards compatibility to older typescript-angular generator versions.
-    // It only works for the 'simple' parameter style.
-    // Date-handling only works for the 'date-time' format.
-    // All other styles and Date-formats are probably handled incorrectly.
-    //
-    // But: if that's all you need (i.e.: the most common use-case): no need for customization!
-
     const value =
       param.dataFormat === 'date-time' && param.value instanceof Date
-        ? (param.value as Date).toISOString()
+        ? param.value.toISOString()
         : param.value;
 
     return encodeURIComponent(String(value));

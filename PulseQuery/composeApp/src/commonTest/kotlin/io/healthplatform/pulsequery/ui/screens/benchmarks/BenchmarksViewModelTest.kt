@@ -12,12 +12,15 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 /**
@@ -81,10 +84,20 @@ class BenchmarksViewModelTest {
         assertEquals(1, state.selectedTabIndex)
         assertEquals(1, state.sqlBenchmarks.size)
         assertEquals(1, state.mpaxBenchmarks.size)
+
+        // Verify copy and structural equality contracts
+        val sqlCopy = sqlItem.copy(difficulty = "Hard")
+        assertNotEquals(sqlItem, sqlCopy)
+        assertEquals(sqlItem, sqlCopy.copy(difficulty = "Easy"))
+        val mpaxCopy = mpaxItem.copy(targetService = "Emergency")
+        assertNotEquals(mpaxItem, mpaxCopy)
+        val stateCopy = state.copy(selectedTabIndex = 0, errorMessage = null)
+        assertEquals(0, stateCopy.selectedTabIndex)
+        assertNull(stateCopy.errorMessage)
     }
 
     @Test
-    fun testSelectTabAndLoadBenchmarksSuccessWithFallbacks() = kotlinx.coroutines.runBlocking {
+    fun testSelectTabAndLoadBenchmarksSuccessWithFallbacks() = runTest {
         val sqlJson = """
             [
                 {
@@ -126,27 +139,27 @@ class BenchmarksViewModelTest {
         assertEquals(1, vm.state.value.selectedTabIndex)
 
         vm.loadBenchmarks()
-        kotlinx.coroutines.delay(50)
-        assertFalse(vm.state.value.isLoading)
-        assertNull(vm.state.value.errorMessage)
-        assertEquals(3, vm.state.value.sqlBenchmarks.size)
-        assertEquals("Cardiology", vm.state.value.sqlBenchmarks[0].theme)
-        assertEquals("Explicit description", vm.state.value.sqlBenchmarks[0].description)
-        assertEquals("General", vm.state.value.sqlBenchmarks[1].theme)
-        assertEquals("Medium", vm.state.value.sqlBenchmarks[1].difficulty)
-        assertEquals("Question fallback", vm.state.value.sqlBenchmarks[1].description)
-        assertEquals("", vm.state.value.sqlBenchmarks[2].description)
+        val loadedState = vm.state.first { !it.isLoading && it.sqlBenchmarks.isNotEmpty() }
+        assertFalse(loadedState.isLoading)
+        assertNull(loadedState.errorMessage)
+        assertEquals(3, loadedState.sqlBenchmarks.size)
+        assertEquals("Cardiology", loadedState.sqlBenchmarks[0].theme)
+        assertEquals("Explicit description", loadedState.sqlBenchmarks[0].description)
+        assertEquals("General", loadedState.sqlBenchmarks[1].theme)
+        assertEquals("Medium", loadedState.sqlBenchmarks[1].difficulty)
+        assertEquals("Question fallback", loadedState.sqlBenchmarks[1].description)
+        assertEquals("", loadedState.sqlBenchmarks[2].description)
 
-        assertEquals(2, vm.state.value.mpaxBenchmarks.size)
-        assertEquals("Ward Rebalancing", vm.state.value.mpaxBenchmarks[0].title)
-        assertEquals("Med-Surg", vm.state.value.mpaxBenchmarks[0].targetService)
-        assertEquals("Optimization Scenario", vm.state.value.mpaxBenchmarks[1].title)
-        assertEquals("Standard", vm.state.value.mpaxBenchmarks[1].difficulty)
-        assertEquals("Hospital Wide", vm.state.value.mpaxBenchmarks[1].targetService)
+        assertEquals(2, loadedState.mpaxBenchmarks.size)
+        assertEquals("Ward Rebalancing", loadedState.mpaxBenchmarks[0].title)
+        assertEquals("Med-Surg", loadedState.mpaxBenchmarks[0].targetService)
+        assertEquals("Optimization Scenario", loadedState.mpaxBenchmarks[1].title)
+        assertEquals("Standard", loadedState.mpaxBenchmarks[1].difficulty)
+        assertEquals("Hospital Wide", loadedState.mpaxBenchmarks[1].targetService)
     }
 
     @Test
-    fun testLoadBenchmarksWithRawStringValuesAndFailures() = kotlinx.coroutines.runBlocking {
+    fun testLoadBenchmarksWithRawStringValuesAndFailures() = runTest {
         val engine = MockEngine {
             respond(
                 content = "[]",
@@ -191,8 +204,8 @@ class BenchmarksViewModelTest {
             benchmarksApi = BenchmarksApi(baseUrl = "http://localhost", httpClient = createClient(engineFailMsg))
         )
         vmFail1.loadBenchmarks()
-        kotlinx.coroutines.delay(50)
-        assertEquals("Benchmarks offline", vmFail1.state.value.errorMessage)
+        val errState1 = vmFail1.state.first { !it.isLoading && it.errorMessage != null }
+        assertEquals("Benchmarks offline", errState1.errorMessage)
 
         // Failure with null message
         val engineFailNull = MockEngine { throw RuntimeException(null as String?) }
@@ -201,7 +214,7 @@ class BenchmarksViewModelTest {
             benchmarksApi = BenchmarksApi(baseUrl = "http://localhost", httpClient = createClient(engineFailNull))
         )
         vmFail2.loadBenchmarks()
-        kotlinx.coroutines.delay(50)
-        assertEquals("Failed to load benchmarks", vmFail2.state.value.errorMessage)
+        val errState2 = vmFail2.state.first { !it.isLoading && it.errorMessage != null }
+        assertEquals("Failed to load benchmarks", errState2.errorMessage)
     }
 }

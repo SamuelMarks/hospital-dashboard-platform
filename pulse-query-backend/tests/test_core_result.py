@@ -72,3 +72,26 @@ def test_unwrap_or_raise_http() -> None:
   assert exc.value.status_code == 401
   assert exc.value.detail == "Invalid credentials"
   assert exc.value.headers == {"WWW-Authenticate": "Bearer"}
+
+
+def test_app_error_from_exception() -> None:
+  """Verifies `AppError.from_exception` extracts message and exception class metadata."""
+  err1 = AppError.from_exception(ValueError("bad input"), ErrorCode.VALIDATION_ERROR, status_code=422)
+  assert err1.code == ErrorCode.VALIDATION_ERROR
+  assert err1.message == "bad input"
+  assert err1.status_code == 422
+  assert err1.details == {"exception_type": "ValueError"}
+
+  err2 = AppError.from_exception(RuntimeError(), ErrorCode.INTERNAL_ERROR, status_code=500)
+  assert err2.code == ErrorCode.INTERNAL_ERROR
+  assert err2.message == "RuntimeError"
+  assert err2.status_code == 500
+
+  class CustomDomainExceptionError(ValueError):
+    """Custom exception subclass for testing `type(exc).__name__` resolution."""
+
+  err3 = AppError.from_exception(CustomDomainExceptionError(), ErrorCode.VALIDATION_ERROR, status_code=422)
+  assert err3.code == ErrorCode.VALIDATION_ERROR
+  assert err3.message == "CustomDomainExceptionError"
+  assert err3.details == {"exception_type": "CustomDomainExceptionError"}
+  assert err3.status_code == 422

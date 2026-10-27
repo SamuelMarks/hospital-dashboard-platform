@@ -7,11 +7,26 @@ Logs messages and tracks dispatched payloads for verification in tests.
 
 import logging
 import os
-from typing import Any
+from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
 MAX_SENT_MESSAGES = 100
+
+
+class SentEmailRecordDict(TypedDict):
+  """
+  Typed dictionary representing a recorded mock email dispatch.
+
+  Attributes:
+      recipient (str): Target email address.
+      reset_token (str): Single-use password reset token.
+      type (str): Email template type (`'password_reset'`).
+  """
+
+  recipient: str
+  reset_token: str
+  type: str
 
 
 class MockEmailService:
@@ -19,7 +34,7 @@ class MockEmailService:
   In-memory mock email notification service for testing and development environments.
 
   Attributes:
-      sent_messages (list[dict[str, Any]]): History of sent email messages.
+      sent_messages (list[SentEmailRecordDict]): History of sent email messages.
       last_token (str | None): Most recently dispatched reset token.
       max_messages (int): Maximum capacity for in-memory message history.
   """
@@ -31,7 +46,7 @@ class MockEmailService:
     Args:
         max_messages (int): Maximum number of dispatched email records to retain.
     """
-    self.sent_messages: list[dict[str, Any]] = []
+    self.sent_messages: list[SentEmailRecordDict] = []
     self.last_token: str | None = None
     self.max_messages = max_messages
 

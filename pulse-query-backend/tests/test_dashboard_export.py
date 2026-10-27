@@ -293,12 +293,13 @@ def test_generate_clinical_pdf_report_branches() -> None:
   """
   from datetime import UTC, datetime
 
+  from app.schemas.json_types import JsonObject
   from app.services.pdf_export import generate_clinical_pdf_report
 
   custom_time = datetime(2026, 9, 15, 8, 30, 0, tzinfo=UTC)
 
   # 1. Non-dict row in rows
-  non_dict_widgets = [
+  non_dict_widgets: list[JsonObject] = [
     {"title": "Non Dict", "type": "SQL", "data": ["just a string"]},
     {"title": "Special Chars (\\()", "type": "SQL", "data": []},
   ]
@@ -311,7 +312,9 @@ def test_generate_clinical_pdf_report_branches() -> None:
   assert pdf_bytes.startswith(b"%PDF-1.4")
 
   # 2. Page overflow (multi-page document pagination)
-  many_widgets = [{"title": f"Widget {i}", "type": "SQL", "data": [{"k": v} for v in range(1)]} for i in range(50)]
+  many_widgets: list[JsonObject] = [
+    {"title": f"Widget {i}", "type": "SQL", "data": [{"k": v} for v in range(1)]} for i in range(50)
+  ]
   pdf_overflow = generate_clinical_pdf_report(
     dashboard_name="Overflow Test",
     author_email="test@hospital.org",
@@ -401,3 +404,123 @@ async def test_export_endpoints_query_token_authentication(client: AsyncClient, 
 
   finally:
     app.dependency_overrides.update(saved_overrides)
+
+
+@pytest.mark.asyncio
+async def test_export_dashboard_report_result_and_widget_collaborator(db_session: AsyncSession) -> None:
+  """Verifies `export_dashboard_report_result` (json, csv, pdf, invalid) and `dashboard_widget_service.create_widget_result`."""
+  from app.core.result import Err, ErrorCode, Ok
+  from app.schemas.widget import SqlConfig, WidgetCreateSql
+  from app.services.dashboard_service import (
+    dashboard_export_service,
+    dashboard_service,
+    dashboard_widget_service,
+  )
+
+  owner = User(
+    id=uuid.uuid4(),
+    email=f"exp_res_{uuid.uuid4()}@hospital.org",
+    hashed_password="pw",
+    is_active=True,
+  )
+  db_session.add(owner)
+  dash = Dashboard(
+    id=uuid.uuid4(),
+    name="Collaborator Report",
+    owner_id=owner.id,
+  )
+  db_session.add(dash)
+  await db_session.commit()
+
+  w_in = WidgetCreateSql(
+    title="Test SQL",
+    type="SQL",
+    visualization="table",
+    config=SqlConfig.model_validate({"query": "SELECT 1 AS c"}),
+  )
+  w_ok = await dashboard_widget_service.create_widget_result(
+    dashboard_id=dash.id,
+    widget_in=w_in,
+    current_user=owner,
+    db=db_session,
+  )
+  assert isinstance(w_ok, Ok)
+
+  w_bad_in = WidgetCreateSql(
+    title="Bad SQL",
+    type="SQL",
+    visualization="table",
+    config=SqlConfig.model_validate({"query": "SELECT * FROM missing_tbl_xyz"}),
+  )
+  w_err = await dashboard_widget_service.create_widget_result(
+    dashboard_id=dash.id,
+    widget_in=w_bad_in,
+    current_user=owner,
+    db=db_session,
+  )
+  assert isinstance(w_err, Err)
+  assert w_err.error.code == ErrorCode.SQL_VALIDATION_ERROR
+
+  reloaded_res = await dashboard_service._reload_dashboard_with_widgets_result(dash.id, db_session)
+  assert isinstance(reloaded_res, Ok)
+  loaded_dash = reloaded_res.value
+
+  json_res = await dashboard_export_service.export_dashboard_report_result(loaded_dash, "json", owner.email)
+  assert isinstance(json_res, Ok)
+  assert json_res.value.media_type == "application/json"
+  assert json_res.value.filename == "Collaborator_Report_export.json"
+
+  csv_res = await dashboard_export_service.export_dashboard_report_result(loaded_dash, "csv", owner.email)
+  assert isinstance(csv_res, Ok)
+  assert csv_res.value.media_type == "text/csv"
+
+  pdf_res = await dashboard_export_service.export_dashboard_report_result(loaded_dash, "pdf", owner.email)
+  assert isinstance(pdf_res, Ok)
+  assert pdf_res.value.media_type == "application/pdf"
+  assert pdf_res.value.content.startswith(b"%PDF-1.4")
+
+  bad_fmt_res = await dashboard_export_service.export_dashboard_report_result(loaded_dash, "xml", owner.email)
+  assert isinstance(bad_fmt_res, Err)
+  assert bad_fmt_res.error.code == ErrorCode.VALIDATION_ERROR
+
+  prep_cfg = dashboard_export_service.prepare_sql_run_config(
+    {"query": "SELECT 1 WHERE 1=1 {{global_service}}"},
+    {"dept": "Cardiology"},
+  )
+  assert "Cardiology" in str(prep_cfg["query"])
+
+  val_ok = await dashboard_widget_service.validate_sql_query_async("SELECT 1")
+  assert isinstance(val_ok, Ok)
+  syntax_err_res = dashboard_widget_service.validate_sql_query_result("SELECT FROM (")
+  assert isinstance(syntax_err_res, Err)
+
+  target_w = loaded_dash.widgets[0]
+  assert dashboard_widget_service.get_dashboard_widget_result(loaded_dash, target_w.id) == Ok(target_w)
+  missing_w_res = dashboard_widget_service.get_dashboard_widget_result(loaded_dash, uuid.uuid4())
+  assert isinstance(missing_w_res, Err)
+
+  w_json_res = dashboard_export_service.build_widget_export_content(loaded_dash, target_w, "json")
+  assert isinstance(w_json_res, Ok)
+  w_json_str, w_json_mime, w_json_name = w_json_res.value
+  assert w_json_mime == "application/json"
+  assert w_json_name.endswith("_export.json")
+  assert "Test SQL" in w_json_str
+
+  w_csv_res = dashboard_export_service.build_widget_export_content(loaded_dash, target_w, "csv")
+  assert isinstance(w_csv_res, Ok)
+  w_csv_str, w_csv_mime, _ = w_csv_res.value
+  assert w_csv_mime == "text/csv"
+  assert "c" in w_csv_str
+
+  text_w = Widget(
+    id=uuid.uuid4(),
+    dashboard_id=loaded_dash.id,
+    title="Note",
+    type="TEXT",
+    visualization="markdown",
+    config={"content": "hi"},
+  )
+  w_empty_res = dashboard_export_service.build_widget_export_content(loaded_dash, text_w, "csv")
+  assert isinstance(w_empty_res, Ok)
+  w_empty_csv, _, _ = w_empty_res.value
+  assert "No data" in w_empty_csv

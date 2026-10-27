@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,10 +12,16 @@
  * DTO for a single Arena Candidate.
  */
 export interface MessageCandidateResponse {
+  /** Property `id`. */
   id: string;
+  /** Property `model_name`. */
   model_name: string;
+  /** Property `content`. */
   content: string;
+  /** Property `sql_snippet`. */
   sql_snippet?: string | null;
+  /** Property `sql_hash`. */
   sql_hash?: string | null;
+  /** Property `is_selected`. */
   is_selected: boolean;
 }

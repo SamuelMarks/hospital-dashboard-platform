@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,8 +12,12 @@
  * OAuth2 access and refresh token response payload.
  */
 export interface Token {
+  /** Property `access_token`. */
   access_token: string;
+  /** Property `token_type`. */
   token_type?: string;
+  /** Property `refresh_token`. */
   refresh_token?: string | null;
+  /** Property `expires_in`. */
   expires_in?: number;
 }

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -20,13 +20,13 @@ export interface ScenarioRunRequest {
   /**
    * Map of Unit Name to available bed capacity.
    */
-  capacity_parameters: { [key: string]: number };
+  capacity_parameters: Record<string, number>;
   /**
    * List of hard constraints to apply.
    */
-  constraints?: Array<ScenarioConstraint>;
+  constraints?: ScenarioConstraint[];
   /**
    * Optional overrides for clinical affinity scores.
    */
-  affinity_overrides?: { [key: string]: { [key: string]: number } };
+  affinity_overrides?: Record<string, Record<string, number>>;
 }

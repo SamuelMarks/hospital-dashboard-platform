@@ -2,7 +2,7 @@
  * @fileoverview Modal dialog component for editing an existing dashboard widget's
  * data source configuration and visualization column mappings.
  */
-import { Component, computed, Signal, inject, linkedSignal } from '@angular/core';
+import { Component, OnInit, computed, Signal, inject, linkedSignal } from '@angular/core';
 
 // Material Imports
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -10,11 +10,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatInputModule } from '@angular/material/input';
 
 import { WidgetResponse, DashboardsService, WidgetUpdate, DashboardResponse } from '../api-client';
 import { DashboardStore } from './dashboard.store';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
+import { ProcessorCatalogService } from '../shared/services/processor-catalog.service';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 
 /**
  * Data interface for the Dialog Injection.
@@ -43,6 +47,8 @@ export interface WidgetEditorData {
     MatIconModule,
     MatSelectModule,
     MatFormFieldModule,
+    MatSlideToggleModule,
+    MatInputModule,
     SqlBuilderComponent,
     HttpConfigComponent,
   ],
@@ -80,7 +86,7 @@ export interface WidgetEditorData {
   ],
   templateUrl: './widget-editor.dialog.html',
 })
-export class WidgetEditorDialog {
+export class WidgetEditorDialog implements OnInit {
   /** Injected dialog data containing the target dashboard ID and widget entity. */
   readonly data = inject<WidgetEditorData>(MAT_DIALOG_DATA);
   /** Reference to the active Material dialog instance hosting this editor. */
@@ -90,18 +96,58 @@ export class WidgetEditorDialog {
 
   /** Access existing data to populate column dropdowns. */
   private readonly store = inject(DashboardStore);
+  /** Processor catalog service providing `SQL [no model]`, Ollama models, and `any-llm` models. */
+  readonly processorCatalog = inject(ProcessorCatalogService);
 
   /** Selected horizontal axis or category column key synchronized from widget configuration. */
   readonly xKey = linkedSignal<string | null>(() => {
-    const raw: unknown = this.data.widget.config?.['xKey'];
+    const raw: unknown = this.data.widget.config['xKey'];
     return typeof raw === 'string' && raw.length > 0 ? raw : null;
   });
 
   /** Selected vertical axis or metric value column key synchronized from widget configuration. */
   readonly yKey = linkedSignal<string | null>(() => {
-    const raw: unknown = this.data.widget.config?.['yKey'];
+    const raw: unknown = this.data.widget.config['yKey'];
     return typeof raw === 'string' && raw.length > 0 ? raw : null;
   });
+
+  /** Whether the widget allows user natural text input on the dashboard. */
+  readonly allowNaturalText = linkedSignal<boolean>(() =>
+    Boolean(this.data.widget.config['allow_natural_text']),
+  );
+
+  /** Selected processor ID (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`). */
+  readonly processor = linkedSignal<string>(() => {
+    const raw: unknown = this.data.widget.config['processor'];
+    return typeof raw === 'string' && raw.length > 0 ? raw : 'SQL';
+  });
+
+  /** Default or saved natural text prompt synchronized from widget configuration. */
+  readonly naturalTextPrompt = linkedSignal<string>(() => {
+    const raw: unknown = this.data.widget.config['natural_text_prompt'];
+    return typeof raw === 'string' ? raw : '';
+  });
+
+  /** Optional custom placeholder text synchronized from widget configuration. */
+  readonly placeholderText = linkedSignal<string>(() => {
+    const raw: unknown = this.data.widget.config['placeholder_text'];
+    return typeof raw === 'string' ? raw : '';
+  });
+
+  /** Loads available processors (`SQL [no model]`, Ollama models, `any-llm` models) on dialog init. */
+  ngOnInit(): void {
+    this.processorCatalog.loadProcessors();
+  }
+
+  /**
+   * Extracts the string value from a DOM input event.
+   *
+   * @param event - DOM input event.
+   * @returns Extracted string value.
+   */
+  getEventValue(event: Event): string {
+    return extractEventInputValue(event);
+  }
 
   /** Target widget entity currently being edited in the dialog. */
   get widget(): WidgetResponse {
@@ -110,7 +156,7 @@ export class WidgetEditorDialog {
 
   /** Extract SQL for the editor. */
   readonly initialSql: Signal<string> = computed(() => {
-    return (this.widget.config?.['query'] as string | undefined) || '';
+    return (this.widget.config['query'] as string | undefined) || '';
   });
 
   /**
@@ -119,7 +165,7 @@ export class WidgetEditorDialog {
    * @returns True if the visualization type supports column mapping.
    */
   supportsMapping(): boolean {
-    const v = (this.widget.visualization || '').toLowerCase();
+    const v = this.widget.visualization.toLowerCase();
     return ['bar_chart', 'line_graph', 'pie'].includes(v);
   }
 
@@ -162,17 +208,34 @@ export class WidgetEditorDialog {
     this.dashboardsApi
       .getDashboardApiV1DashboardsDashboardIdGet(this.data.dashboardId)
       .subscribe((dash: DashboardResponse) => {
-        // Fix TS7006: Explicitly typing `w` in find predicate
-        const freshWidget = dash.widgets?.find((w: WidgetResponse) => w.id === this.widget.id);
+        const freshWidget = dash.widgets.find((w: WidgetResponse) => w.id === this.widget.id);
         if (!freshWidget) return;
 
-        const currentConfig = freshWidget.config || {};
+        const currentConfig = freshWidget.config;
+        const extraSqlConfig: Record<string, unknown> = {};
+        if (
+          this.widget.type === 'SQL' &&
+          (this.allowNaturalText() ||
+            this.processor() !== 'SQL' ||
+            'allow_natural_text' in currentConfig ||
+            'processor' in currentConfig)
+        ) {
+          extraSqlConfig['allow_natural_text'] = this.allowNaturalText();
+          extraSqlConfig['processor'] = this.processor();
+          if (this.naturalTextPrompt().trim()) {
+            extraSqlConfig['natural_text_prompt'] = this.naturalTextPrompt().trim();
+          }
+          if (this.placeholderText().trim()) {
+            extraSqlConfig['placeholder_text'] = this.placeholderText().trim();
+          }
+        }
 
         // 2. Merge Updates
         const newConfig = {
           ...currentConfig,
           xKey: this.xKey(),
           yKey: this.yKey(),
+          ...extraSqlConfig,
         };
 
         // 3. Persist

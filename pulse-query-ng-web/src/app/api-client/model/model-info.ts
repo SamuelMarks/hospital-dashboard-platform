@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -9,11 +9,17 @@
  */
 
 /**
- * Information about a configured LLM in the Arena.
+ * Information about a configured LLM or SQL processor in the platform.
  */
 export interface ModelInfo {
+  /** Property `id`. */
   id: string;
+  /** Property `name`. */
   name: string;
+  /** Property `provider`. */
   provider: string;
+  /** Property `is_local`. */
   is_local: boolean;
+  /** Property `processor_type`. */
+  processor_type?: 'SQL' | 'OLLAMA' | 'ANY_LLM';
 }

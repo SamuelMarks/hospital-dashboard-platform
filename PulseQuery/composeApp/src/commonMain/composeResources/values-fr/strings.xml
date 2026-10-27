@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AdminScreen -->
+    <string name="admin_settings">Paramètres Administrateur</string>
+    <string name="save_settings">Enregistrer les Paramètres</string>
+    <string name="api_keys">Clés API</string>
+    <string name="provider">Fournisseur</string>
+    <string name="key">Clé</string>
+    <string name="add_key">Ajouter une Clé</string>
+    <string name="delete_key">Supprimer la Clé</string>
+    <string name="visible_models">Modèles Visibles</string>
+    <string name="model_name">Nom du Modèle</string>
+    <string name="add_model">Ajouter un Modèle</string>
+    <string name="delete_model">Supprimer le Modèle</string>
+    <string name="retry">Réessayer</string>
+    <string name="settings_saved_successfully">Paramètres enregistrés avec succès</string>
+    <string name="failed_to_load_admin_settings">Échec du chargement des paramètres : %1$s</string>
+    <string name="failed_to_save_admin_settings">Échec de l’enregistrement des paramètres : %1$s</string>
+
+    <!-- ChatScreen -->
+    <string name="new_chat">Nouvelle Discussion</string>
+    <string name="new_conversation">Nouvelle Conversation</string>
+    <string name="history">Historique</string>
+    <string name="start_a_new_conversation">Démarrez une nouvelle conversation</string>
+    <string name="ask_a_query">Posez une question...</string>
+    <string name="send">Envoyer</string>
+    <string name="conversations_history">Historique des Conversations</string>
+    <string name="untitled">Sans titre</string>
+    <string name="close">Fermer</string>
+    <string name="delete">Supprimer</string>
+    <string name="candidate_variations_available">Variations candidates disponibles.</string>
+
+    <!-- DashboardScreen -->
+    <string name="dashboards">Tableaux de Bord</string>
+    <string name="select_dashboard">Sélectionner un Tableau de Bord</string>
+    <string name="create_new_dashboard">Créer un Tableau de Bord...</string>
+    <string name="delete_dashboard">Supprimer le Tableau de Bord</string>
+    <string name="add_widget">Ajouter un Widget</string>
+    <string name="no_dashboards_found">Aucun tableau de bord trouvé.</string>
+    <string name="create_dashboard">Créer un Tableau de Bord</string>
+    <string name="dashboard_is_empty">Le tableau de bord est vide. Ajoutez un widget.</string>
+    <string name="dashboard_name">Nom du Tableau de Bord</string>
+    <string name="create">Créer</string>
+    <string name="cancel">Annuler</string>
+    <string name="adding_widgets_requires">L’ajout de widgets nécessite une configuration détaillée via l’API ou l’assistant.</string>
+    <string name="ok">OK</string>
+    <string name="delete_widget">Supprimer le Widget</string>
+    <string name="failed_to_load_dashboards">Échec du chargement des tableaux de bord : %1$s</string>
+    <string name="failed_to_create_dashboard">Échec de la création du tableau de bord : %1$s</string>
+    <string name="failed_to_delete_dashboard">Échec de la suppression du tableau de bord : %1$s</string>
+    <string name="failed_to_delete_widget">Échec de la suppression du widget : %1$s</string>
+    <string name="error">Erreur : %1$s</string>
+    <string name="failed_to_load_data">Échec du chargement des données</string>
+
+    <!-- SimulationScreen -->
+    <string name="capacity_simulation">Simulation de Capacité</string>
+    <string name="run">Exécuter</string>
+    <string name="run_simulation">Lancer la Simulation</string>
+    <string name="demand_sql">SQL de Demande</string>
+    <string name="icu_capacity">Capacité USI</string>
+    <string name="ward_capacity">Capacité d’Unité</string>
+    <string name="status_msg">Statut : %1$s</string>
+    <string name="service_msg">Service : %1$s</string>
+    <string name="target_unit_msg">Unité Cible : %1$s</string>
+    <string name="admitted_patients_msg">Patients Admis : %1$s</string>
+    <string name="delta_msg">Delta : %1$s%2$s</string>
+    <string name="simulation_failed">Échec de la simulation</string>
+
+    <!-- AnalyticsScreen -->
+    <string name="llm_analytics">Analytique LLM</string>
+    <string name="refresh">Actualiser</string>
+    <string name="no_analytics_data">Aucune donnée analytique disponible.</string>
+    <string name="model_msg">Modèle : %1$s</string>
+    <string name="selected">Sélectionné</string>
+    <string name="query_msg">Requête : %1$s</string>
+    <string name="user_msg">Utilisateur : %1$s</string>
+    <string name="unknown_error">Erreur inconnue</string>
+
+    <!-- LoginScreen -->
+    <string name="settings">Paramètres</string>
+    <string name="server_url">URL du Serveur</string>
+    <string name="server_url_hint">ex. http://10.0.2.2:8000 pour l’émulateur Android ou IP locale.</string>
+    <string name="save">Enregistrer</string>
+    <string name="welcome_to_pulsequery">Bienvenue sur PulseQuery</string>
+    <string name="email">Adresse e-mail</string>
+    <string name="password">Mot de passe</string>
+    <string name="email_and_password_cannot_be_empty">L’e-mail et le mot de passe ne peuvent pas être vides.</string>
+    <string name="login_register">Connexion / Inscription</string>
+    <string name="login_failed">Échec de la connexion et de l’inscription automatique : %1$s</string>
+    <string name="failed_to_fetch_user_profile">Échec de la récupération du profil utilisateur.</string>
+    <string name="authentication_failed">Échec de l’authentification</string>
+    <string name="settings_icon">⚙️</string>
+
+    <!-- EditorScreen -->
+    <string name="sql_editor">Éditeur SQL</string>
+    <string name="execute">Exécuter</string>
+    <string name="enter_sql_query_here">Saisissez la requête SQL ici...</string>
+    <string name="query">Requête</string>
+    <string name="sql_error_msg">Erreur SQL : %1$s</string>
+    <string name="execution_failed_msg">Échec de l’exécution : %1$s</string>
+    <plurals name="results_rows">
+        <item quantity="one">Résultat (1 ligne)</item>
+        <item quantity="other">Résultats (%1$d lignes)</item>
+    </plurals>
+
+    <!-- WizardScreen -->
+    <string name="optimization_assistant">Assistant d’Optimisation</string>
+    <string name="back">Retour</string>
+    <string name="what_would_you_like_to_optimize_today">Que souhaitez-vous optimiser aujourd’hui ?</string>
+    <string name="simulation_workspace">Espace de Simulation</string>
+    <string name="detected_constraints">Contraintes Détectées :</string>
+    <string name="base_scenario_output">Résultat du Scénario de Base :</string>
+    <string name="branch_scenario_output_optimized">Résultat du Scénario Optimisé :</string>
+    <string name="describe_changes">Décrivez les changements...</string>
+
+    <!-- Widget Wizard -->
+    <string name="widget_wizard">Assistant de Création de Widgets</string>
+    <string name="template_marketplace">Catalogue de Modèles</string>
+    <string name="select_template">Sélectionner un Modèle</string>
+    <string name="configure_widget">Configurer le Widget</string>
+    <string name="all_categories">Toutes</string>
+    <string name="search_templates">Rechercher des modèles...</string>
+    <string name="widget_title">Titre du Widget</string>
+    <string name="visualization_type">Type de Visualisation</string>
+    <string name="create_widget_button">Créer le Widget</string>
+    <string name="creating_widget">Création du Widget...</string>
+    <string name="loading_templates">Chargement des Modèles...</string>
+    <string name="no_templates_found">Aucun modèle trouvé.</string>
+    <string name="parameters">Paramètres</string>
+    <string name="widget_created_success">Widget créé avec succès !</string>
+    <string name="failed_to_load_templates">Échec du chargement des modèles : %1$s</string>
+    <string name="failed_to_create_widget">Échec de la création du widget : %1$s</string>
+
+    <!-- Simulation Constraint Editor -->
+    <string name="custom_constraints">Contraintes Personnalisées</string>
+    <string name="add_constraint">Ajouter une Contrainte</string>
+    <string name="affinity_overrides">Substitutions d’Affinité</string>
+    <string name="add_affinity_override">Ajouter une Affinité</string>
+    <string name="before_after_comparison">Comparaison Avant &amp; Après</string>
+    <string name="original_occupancy">Initiale</string>
+    <string name="proposed_occupancy">Proposée</string>
+    <string name="delta_change">Delta</string>
+    <string name="clinical_service">Service Clinique</string>
+    <string name="ward_unit">Unité</string>
+    <string name="constraint_type">Type de Contrainte</string>
+    <string name="min_beds">Lits Min.</string>
+    <string name="max_beds">Lits Max.</string>
+    <string name="affinity_score">Score d’Affinité</string>
+    <string name="no_constraints_added">Aucune contrainte personnalisée ajoutée.</string>
+    <string name="no_affinities_added">Aucune substitution d’affinité ajoutée.</string>
+
+    <!-- Processor Selection & Natural Text Widgets -->
+    <string name="processor_label">Processeur / Modèle</string>
+    <string name="processor_sql_no_model">SQL [sans modèle]</string>
+    <string name="processor_group_ollama">Modèles Locaux Ollama</string>
+    <string name="processor_group_any_llm">Modèles Cloud any-llm</string>
+    <string name="select_processor_content_desc">Sélectionner le processeur de requête</string>
+    <string name="allow_natural_text_label">Autoriser la saisie en langage naturel sur le tableau de bord</string>
+    <string name="allow_natural_text_desc">Autoriser les utilisateurs à saisir du texte naturel ou du SQL traité par le modèle sélectionné</string>
+    <string name="natural_text_prompt_label">Invite initiale en langage naturel ou SQL</string>
+    <string name="natural_text_placeholder_label">Texte d’Espace Réservé</string>
+    <string name="natural_text_placeholder_default">Posez votre question en langage naturel...</string>
+    <string name="sql_input_placeholder_default">Saisissez une requête SQL DuckDB...</string>
+    <string name="run_natural_text_button">Exécuter</string>
+    <string name="generated_sql_label">SQL : %1$s</string>
+    <string name="processed_by_model_msg">Traité par %1$s</string>
+
+    <!-- UserManagementScreen & AdminScreen -->
+    <string name="users_action">Utilisateurs</string>
+    <string name="staff_user_management">Gestion des Utilisateurs</string>
+    <string name="staff_user_management_desc">Attribuez les rôles cliniques et activez ou suspendez les comptes.</string>
+    <string name="user_management">Gestion des Utilisateurs</string>
+    <string name="navigate_back">Retour</string>
+    <string name="search_users_by_email">Rechercher des utilisateurs par e-mail...</string>
+    <string name="search">Rechercher</string>
+    <string name="all_roles">Tous les Rôles</string>
+    <string name="no_users_found">Aucun utilisateur ne correspond aux critères.</string>
+    <string name="user_active">Actif</string>
+    <string name="user_suspended">Suspendu</string>
+    <string name="change_role">Changer le Rôle</string>
+    <string name="user_id_label">ID : %1$s</string>
+    <string name="user_role_label">Rôle : %1$s</string>
+
+    <!-- AlertRulesScreen -->
+    <string name="alert_rules">Règles d’Alerte</string>
+    <string name="refresh_rules">Actualiser les Règles</string>
+    <string name="add_rule">Ajouter une Règle</string>
+    <string name="no_alert_rules_configured">Aucune règle d’alerte configurée</string>
+    <string name="create_rule">Créer une Règle</string>
+    <string name="configured_occupancy_thresholds">Seuils d’Occupation Configurés</string>
+    <string name="edit_rule">Modifier la Règle</string>
+    <string name="delete_rule">Supprimer la Règle</string>
+    <string name="edit_alert_rule">Modifier la Règle d’Alerte</string>
+    <string name="create_alert_rule">Créer une Règle d’Alerte</string>
+    <string name="unit_category">Catégorie d’Unité</string>
+    <string name="occupancy_threshold_pct">Seuil d’Occupation (%)</string>
+    <string name="severity">Sévérité</string>
+    <string name="severity_info">Info</string>
+    <string name="severity_warning">Avertissement</string>
+    <string name="severity_critical">Critique</string>
+    <string name="active_evaluation">Évaluation Active</string>
+    <string name="saving">Enregistrement...</string>
+    <string name="save_changes">Enregistrer les Modifications</string>
+
+    <!-- RegisterScreen & LoginScreen -->
+    <string name="create_an_account">Créer un Compte</string>
+    <string name="sign_up_subtitle">Inscrivez-vous à Pulse Query Clinical Analytics</string>
+    <string name="email_address">Adresse E-mail</string>
+    <string name="confirm_password">Confirmer le Mot de Passe</string>
+    <string name="hide_password">Masquer le mot de passe</string>
+    <string name="show_password">Afficher le mot de passe</string>
+    <string name="register_account">Créer le Compte</string>
+    <string name="already_have_account_sign_in">Vous avez déjà un compte ? Se Connecter</string>
+    <string name="register_button">S’inscrire</string>
+    <string name="already_have_account_log_in">Vous avez déjà un compte ? Connexion</string>
+    <string name="need_an_account_register">Besoin d’un compte ? S’inscrire</string>
+
+    <!-- Wizard Custom Authoring -->
+    <string name="custom_widget_builder">Constructeur de Widgets Personnalisés</string>
+    <string name="creation_source">Source de Création</string>
+    <string name="source_templates">Modèles</string>
+    <string name="source_custom_sql">+ SQL Personnalisé</string>
+    <string name="source_custom_http">+ HTTP Personnalisé</string>
+    <string name="source_custom_text">+ Note / Texte</string>
+    <string name="search_templates_input">Champ de recherche de modèles</string>
+    <string name="http_verb">Méthode HTTP</string>
+    <string name="visualization_format">Format de Visualisation</string>
+    <string name="endpoint_url_label">URL du Point de Terminaison (ex. https://api.hospital.org/v1/metrics)</string>
+    <string name="markdown_content_label">Contenu Markdown / Notes</string>
+    <string name="sql_query_label">Requête SQL</string>
+
+    <!-- Dashboard, Share, Export, Cart, & Save Query -->
+    <string name="undo">Annuler</string>
+    <string name="redo">Rétablir</string>
+    <string name="query_cart">Panier de Requêtes</string>
+    <string name="share_dashboard">Partager le Tableau de Bord</string>
+    <string name="export_dashboard">Exporter le Tableau de Bord</string>
+    <string name="export_pdf_report">Rapport Clinique PDF</string>
+    <string name="export_csv_snapshot">Instantané de Données CSV</string>
+    <string name="export_json_snapshot">Instantané de Disposition JSON</string>
+    <string name="move_up">Monter</string>
+    <string name="move_down">Descendre</string>
+    <string name="edit_widget">Modifier le Widget</string>
+    <string name="save_query">Enregistrer la Requête</string>
+    <string name="add_to_cart">Ajouter au Panier</string>
+    <string name="stage_to_cart">Mettre au Panier</string>
+    <string name="stage">Préparer</string>
+    <string name="vote_as_best">Voter comme Meilleur</string>
+    <string name="assistant_streaming">Assistant (En cours...)</string>
+    <string name="hide_variations">Masquer les Variations</string>
+    <string name="winner_badge">Gagnant</string>
+    <string name="save_analytical_query">Enregistrer la Requête Analytique</string>
+    <string name="dashboard_widget_dest">Widget de Tableau de Bord</string>
+    <string name="template_library_dest">Bibliothèque de Modèles</string>
+    <string name="title_label">Titre</string>
+    <string name="category_label">Catégorie</string>
+    <string name="description_label">Description</string>
+    <string name="clear_all">Tout Effacer</string>
+    <string name="remove_from_cart">Retirer du panier</string>
+    <string name="done">Terminé</string>
+
+    <!-- Simulation, MPAX Arena, Benchmarks, & Analytics -->
+    <string name="delete_constraint">Supprimer la contrainte</string>
+    <string name="delete_affinity">Supprimer l’affinité</string>
+    <string name="confirm_add_constraint">Confirmer l’Ajout de Contrainte</string>
+    <string name="confirm_add_affinity">Confirmer l’Ajout d’Affinité</string>
+    <string name="bed_occupancy_comparison_table">Tableau comparatif d’occupation des lits</string>
+    <string name="mpax_arena_title">Arène MPAX : Compétition de Modèles</string>
+    <string name="mpax_arena_prompt_label">Invite de Scénario d’Optimisation Clinique</string>
+    <string name="evaluation_mode_label">Mode d’Évaluation</string>
+    <string name="evaluating_models">Évaluation des Modèles...</string>
+    <string name="run_arena_competition">Lancer la Compétition</string>
+    <string name="mpax_arena_empty_prompt">Soumettez une invite pour comparer les modèles candidats.</string>
+    <string name="selected_winner">Gagnant Sélectionné</string>
+    <string name="voting_in_progress">Vote en cours...</string>
+    <string name="ai_optimization_benchmarks">Benchmarks IA &amp; Optimisation</string>
+    <string name="refresh_benchmarks">Actualiser les Benchmarks</string>
+    <string name="no_sql_benchmarks">Aucun benchmark SQL disponible.</string>
+    <string name="no_mpax_benchmarks">Aucun benchmark MPAX disponible.</string>
+    <string name="simulate_in_arena">Simuler dans l’Arène</string>
+    <string name="bed_capacity_alert_rules">Règles d’Alerte de Capacité des Lits</string>
+    <string name="bed_capacity_alert_rules_desc">Configurez les seuils d’occupation et les alertes automatisées.</string>
+    <string name="configure">Configurer</string>
+
+    <!-- TV, Wear, FilterRibbon, & SystemErrorComponents -->
+    <string name="tv_wallboard">Écran Mural TV</string>
+    <string name="clinical_status_wallboard">Tableau Mural d’État Clinique</string>
+    <string name="tv_live_view_subtitle">Télémétrie des Opérations Hospitalières • Vue en Direct</string>
+    <string name="exit_wallboard">Quitter l’Écran Mural</string>
+    <string name="no_telemetry_widgets">Aucun widget de télémétrie actif sur ce tableau.</string>
+    <string name="live_telemetry_feed">Flux de Télémétrie en Direct</string>
+    <string name="press_ok_to_inspect">Appuyez sur OK pour inspecter</string>
+    <string name="use_dpad_to_select">Utilisez le pavé directionnel pour sélectionner</string>
+    <string name="wearable_header">En-tête Montre</string>
+    <string name="pulse_watch">Pulse Watch</string>
+    <string name="hospital_census_upper">RECENSEMENT HOSPITALIER</string>
+    <string name="wear_census_summary_desc">Recensement : %1$d% Occupé, %2$d Lits Libres</string>
+    <string name="wear_occupancy_percent">%1$d%</string>
+    <string name="wear_open_beds">%1$d Lits Libres</string>
+    <string name="wear_active_alerts">ALERTES ACTIVES (%1$d)</string>
+    <string name="refresh_wear_data">Actualiser les Données Montre</string>
+    <string name="all_units_nominal">Toutes les unités sont nominales</string>
+    <string name="exit_button">Quitter</string>
+    <string name="filter_ribbon">Ruban de Filtres</string>
+    <string name="department_all">Département : Tous</string>
+    <string name="time_all">Période : Toutes</string>
+    <string name="clear_filters">Effacer les Filtres</string>
+    <string name="offline_indicator">Indicateur hors ligne</string>
+    <string name="backend_inaccessible">Serveur Inaccessible</string>
+    <string name="backend_inaccessible_desc">Impossible de joindre le serveur Pulse Query. Vérifiez le réseau.</string>
+    <string name="database_error">Erreur de base de données</string>
+    <string name="database_misconfiguration">Mauvaise Configuration de la Base de Données</string>
+    <string name="retry_query">Réessayer la Requête</string>
+</resources>

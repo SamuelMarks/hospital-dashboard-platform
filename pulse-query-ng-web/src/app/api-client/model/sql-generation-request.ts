@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Request model for generating SQL from natural language.
  */
 export interface SQLGenerationRequest {
+  /** Property `prompt`. */
   prompt: string;
 }

@@ -148,4 +148,20 @@ describe('QueryCartComponent', () => {
       'SELECT * FROM test WHERE 1 = 1 AND 2 = 2 AND 3 = 3 AND 4 = 4 AND 5 = 5...',
     );
   });
+
+  it('should restore focus on destroy and when restoreFocus is called with an element or null', () => {
+    const btn = document.createElement('button');
+    const focusSpy = vi.spyOn(btn, 'focus');
+    component.restoreFocus(btn);
+    expect(focusSpy).toHaveBeenCalled();
+    component.restoreFocus(null);
+    component.ngOnDestroy();
+
+    Object.defineProperty(document, 'activeElement', { value: null, configurable: true });
+    const f2 = TestBed.createComponent(QueryCartComponent);
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    f2.componentInstance.clear();
+    f2.componentInstance.rename(makeItem());
+    delete (document as unknown as Record<string, unknown>)['activeElement'];
+  });
 });

@@ -5,6 +5,8 @@ package io.healthplatform.pulsequery.ui.screens.analytics
 
 import io.healthplatform.pulsequery.api.apis.AnalyticsApi
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -51,11 +53,11 @@ class AnalyticsViewModel(
      *
      * @param fallbackError Default error message if the exception has no message.
      */
-    fun loadAnalytics(fallbackError: String = "Unknown error") {
+    fun loadAnalytics(fallbackError: String = UiErrorKey.UNKNOWN_ERROR.fallbackMessage) {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             runCatchingPulseAsync {
-                currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).body()
+                currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).asResult().getOrThrow()
             }.fold(
                 onSuccess = { rows ->
                     _state.update { it.copy(records = rows, isLoading = false, errorMessage = null) }

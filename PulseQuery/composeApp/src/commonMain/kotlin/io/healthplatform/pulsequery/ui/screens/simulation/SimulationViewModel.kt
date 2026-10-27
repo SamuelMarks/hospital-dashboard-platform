@@ -9,6 +9,10 @@ import io.healthplatform.pulsequery.api.apis.SimulationApi
 import io.healthplatform.pulsequery.api.models.ScenarioConstraint
 import io.healthplatform.pulsequery.api.models.ScenarioResult
 import io.healthplatform.pulsequery.api.models.ScenarioRunRequest
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.ConstraintRuleType
+import io.healthplatform.pulsequery.core.model.SimulationOutcomeStatus
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -72,7 +76,18 @@ data class SimulationUiState(
     val result: ScenarioResult? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
-)
+) {
+    /** Strongly typed [SimulationOutcomeStatus] resolved from [result], or null when no result is present. */
+    val outcomeStatus: SimulationOutcomeStatus?
+        get() {
+            val currentResult = result ?: return null
+            return SimulationOutcomeStatus.fromWire(currentResult.status)
+        }
+
+    /** True when [outcomeStatus] represents a successful or optimal solver run. */
+    val isSuccessOutcome: Boolean
+        get() = outcomeStatus == SimulationOutcomeStatus.SUCCESS || outcomeStatus == SimulationOutcomeStatus.OPTIMAL
+}
 
 /**
  * ViewModel managing state and backend calls for hospital capacity simulation scenarios.
@@ -104,7 +119,7 @@ class SimulationViewModel(
     fun loadSchemaTables() {
         scope.launch {
             runCatchingPulseAsync {
-                currentSchemaApi.getDatabaseSchemaApiV1SchemaGet().body()
+                currentSchemaApi.getDatabaseSchemaApiV1SchemaGet().asResult().getOrThrow()
             }.onSuccess { tables ->
                 if (tables.isNotEmpty()) {
                     val tableNames = tables.map { it.tableName }.distinct()
@@ -148,6 +163,33 @@ class SimulationViewModel(
      */
     fun addConstraint(constraint: ScenarioConstraint) {
         _state.update { it.copy(constraints = it.constraints + constraint) }
+    }
+
+    /**
+     * Appends a new constraint constructed from a strongly typed [ConstraintRuleType].
+     *
+     * @param type Strongly typed [ConstraintRuleType] (defaults to [ConstraintRuleType.FORCE_FLOW]).
+     * @param service Clinical service name.
+     * @param unit Hospital unit name.
+     * @param min Optional minimum patient flow bound.
+     * @param max Optional maximum patient flow bound.
+     */
+    fun addConstraintRule(
+        type: ConstraintRuleType,
+        service: String,
+        unit: String,
+        min: Double?,
+        max: Double?
+    ) {
+        addConstraint(
+            ScenarioConstraint(
+                type = type.wireValue,
+                service = service,
+                unit = unit,
+                min = min,
+                max = max
+            )
+        )
     }
 
     /**
@@ -204,7 +246,7 @@ class SimulationViewModel(
      *
      * @param fallbackError Default error message if the exception has no message.
      */
-    fun runSimulation(fallbackError: String = "Simulation failed") {
+    fun runSimulation(fallbackError: String = UiErrorKey.SIMULATION_FAILED.fallbackMessage) {
         val snapshot = _state.value
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null, result = null) }
@@ -218,7 +260,7 @@ class SimulationViewModel(
                     constraints = if (snapshot.constraints.isNotEmpty()) snapshot.constraints else null,
                     affinityOverrides = if (snapshot.affinityOverrides.isNotEmpty()) snapshot.affinityOverrides else null
                 )
-                currentSimulationApi.runSimulationApiV1SimulationRunPost(req).body()
+                currentSimulationApi.runSimulationApiV1SimulationRunPost(req).asResult().getOrThrow()
             }.fold(
                 onSuccess = { res ->
                     _state.update { it.copy(result = res, isLoading = false, errorMessage = null) }

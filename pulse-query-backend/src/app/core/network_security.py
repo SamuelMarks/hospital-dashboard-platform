@@ -9,6 +9,7 @@ link-local, cloud metadata, IPv6 transition tunnels, or private network IP range
 import asyncio
 import ipaddress
 import socket
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 import httpx
@@ -16,6 +17,19 @@ import httpx
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 
 _NAT64_NETWORK = ipaddress.IPv6Network("64:ff9b::/96")
+
+
+class IpAddressInfo(NamedTuple):
+  """
+  Strongly typed representation of a resolved DNS socket address entry.
+
+  Attributes:
+      family (int): Address family (`socket.AF_INET` or `socket.AF_INET6`).
+      ip_address (str): Resolved literal IP address string.
+  """
+
+  family: int
+  ip_address: str
 
 
 def is_ip_private_or_restricted(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -112,7 +126,11 @@ def _check_dns_resolution(hostname: str, strict_dns: bool = False) -> AppResult[
   try:
     addr_info = socket.getaddrinfo(hostname, None)
     for info in addr_info:
-      ip_str = str(info[4][0])
+      entry = IpAddressInfo(
+        family=int(info[0]) if isinstance(info[0], int) else 0,
+        ip_address=str(info[4][0]),
+      )
+      ip_str = entry.ip_address
       try:
         resolved_ip = ipaddress.ip_address(ip_str)
         if is_ip_private_or_restricted(resolved_ip):

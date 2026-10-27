@@ -21,8 +21,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok, unwrap_or_raise_http
 from app.database.postgres import get_db
+from app.models.dashboard import Dashboard
 from app.models.user import User
 from app.schemas.token import TokenPayload
+from app.services.dashboard_collaborators import PermissionLevel
+from app.services.dashboard_service import dashboard_service
 
 # 1. Define the OAuth2 Schemes
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
@@ -206,3 +209,33 @@ def require_role(*allowed_roles: str) -> Callable[..., Awaitable[User]]:
     return unwrap_or_raise_http(check_user_role_result(current_user, allowed_roles))
 
   return role_checker
+
+
+async def get_dashboard_with_access(
+  dashboard_id: UUID,
+  current_user: User,
+  db: AsyncSession,
+  required_level: PermissionLevel = "VIEW",
+  accept_language: str | None = None,
+) -> tuple[Dashboard, str]:
+  """
+  Verifies that the user has the required access level to the dashboard.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      current_user (User): Requesting user.
+      db (AsyncSession): Database session.
+      required_level (PermissionLevel): Minimum required permission ('VIEW', 'EDIT', 'OWNER').
+      accept_language (str | None): Language preference.
+
+  Returns:
+      tuple[Dashboard, str]: The dashboard and the resolved permission level ('OWNER', 'EDIT', 'VIEW').
+  """
+  res = await dashboard_service.access_policy.get_dashboard_with_access_result(
+    dashboard_id=dashboard_id,
+    current_user=current_user,
+    db=db,
+    required_level=required_level,
+    accept_language=accept_language,
+  )
+  return unwrap_or_raise_http(res)

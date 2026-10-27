@@ -10,12 +10,71 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import TypedDict
+
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from app.core.config import BACKEND_ROOT
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.schemas.json_types import JsonObject
 
 DATA_DIR = BACKEND_ROOT / "data"
+
+
+class BenchmarkScenarioSchema(BaseModel):
+  """
+  Strongly typed Pydantic schema for a Text-to-SQL or MPAX What-If benchmark scenario entry.
+
+  Attributes:
+      id (str | None): Optional scenario UUID string.
+      theme (str | None): Analytical or clinical optimization theme name.
+      question (str | None): Natural language clinical question (SQL benchmark).
+      gold_sql (str | None): Ground-truth DuckDB SQL query (SQL benchmark).
+      complexity (str | None): Complexity tier (`'Low'`, `'Medium'`, `'High'`, `'Easy'`, `'Hard'`).
+      prompt (str | None): Natural language scenario prompt (MPAX benchmark).
+      scenario (str | None): Optional scenario identifier or summary label.
+      demand_data (list[JsonObject] | None): List of clinical service demand objects.
+      base_capacity (dict[str, float] | None): Unit capacity dictionary.
+      expected_metrics (dict[str, float] | None): Expected demand/capacity/overflow metrics.
+  """
+
+  model_config = ConfigDict(extra="allow")
+
+  id: str | None = None
+  theme: str | None = None
+  question: str | None = None
+  gold_sql: str | None = None
+  complexity: str | None = None
+  prompt: str | None = None
+  scenario: str | None = None
+  demand_data: list[JsonObject] | None = None
+  base_capacity: dict[str, float] | None = None
+  expected_metrics: dict[str, float] | None = None
+
+
+SqlBenchmarkEntry = BenchmarkScenarioSchema
+MpaxBenchmarkScenarioEntry = BenchmarkScenarioSchema
+
+
+class BenchmarkTelemetryStateDict(TypedDict):
+  """
+  Typed dictionary representing real-time benchmark execution progress state.
+
+  Attributes:
+      active (bool): Whether a benchmark run is currently executing.
+      completed (int): Number of benchmark scenarios completed.
+      total (int): Total number of scenarios in the test matrix.
+      current_model (str): Currently evaluated LLM model tag.
+      status (str): Current execution phase description.
+      eta_seconds (int): Estimated remaining seconds to completion.
+  """
+
+  active: bool
+  completed: int
+  total: int
+  current_model: str
+  status: str
+  eta_seconds: int
 
 
 class BenchmarkTelemetryService:
@@ -26,7 +85,7 @@ class BenchmarkTelemetryService:
   def __init__(self) -> None:
     """Initializes the telemetry state dictionary and synchronization lock."""
     self._lock = Lock()
-    self._state: dict[str, Any] = {
+    self._state: BenchmarkTelemetryStateDict = {
       "active": False,
       "completed": 0,
       "total": 0,
@@ -36,15 +95,22 @@ class BenchmarkTelemetryService:
     }
 
   @property
-  def state(self) -> dict[str, Any]:
+  def state(self) -> BenchmarkTelemetryStateDict:
     """
     Returns a thread-safe snapshot copy of the current telemetry state dictionary.
 
     Returns:
-        dict[str, Any]: Copy of current benchmark execution progress state.
+        BenchmarkTelemetryStateDict: Copy of current benchmark execution progress state.
     """
     with self._lock:
-      return dict(self._state)
+      return {
+        "active": self._state["active"],
+        "completed": self._state["completed"],
+        "total": self._state["total"],
+        "current_model": self._state["current_model"],
+        "status": self._state["status"],
+        "eta_seconds": self._state["eta_seconds"],
+      }
 
   def update(
     self,
@@ -133,7 +199,7 @@ def update_benchmark_progress(
 def read_benchmark_json_file(
   file_path: Path,
   not_found_message: str | None = None,
-) -> AppResult[list[dict[str, Any]]]:
+) -> AppResult[list[BenchmarkScenarioSchema]]:
   """
   Reads and parses a JSON benchmark file from disk, returning an explicit `AppResult`.
 
@@ -142,7 +208,7 @@ def read_benchmark_json_file(
       not_found_message (str | None): Optional custom 404 detail message.
 
   Returns:
-      AppResult[list[dict[str, Any]]]: `Ok(records)` on success, or `Err(AppError)` on failure.
+      AppResult[list[BenchmarkScenarioSchema]]: `Ok(records)` on success, or `Err(AppError)` on failure.
   """
   if not file_path.exists():
     return Err(
@@ -154,9 +220,10 @@ def read_benchmark_json_file(
     )
   try:
     with open(file_path, encoding="utf-8") as f:
-      data: list[dict[str, Any]] = json.load(f)
-      return Ok(data)
-  except Exception as e:
+      raw_data: list[JsonObject] = json.load(f)
+      validated = [BenchmarkScenarioSchema.model_validate(item) for item in raw_data]
+      return Ok(validated)
+  except (OSError, json.JSONDecodeError, ValidationError, TypeError, ValueError) as e:
     return Err(
       AppError(
         code=ErrorCode.IO_ERROR,

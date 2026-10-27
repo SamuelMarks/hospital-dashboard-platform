@@ -80,9 +80,11 @@ export class VizHeatmapComponent {
     const ds = this.dataSet();
     if (!ds || ds.data.length === 0) return null;
     const cols = ds.columns;
-    const yKey = cols[0] as string;
-    const xKey = cols[1] as string;
-    const valKey = cols[2] as string;
+    const yKey = String(cols[0]);
+    const xKey = String(cols[1]);
+    const valKey =
+      cols.find((c) => c.toLowerCase() === 'net_bottleneck') ||
+      String(cols.length > 3 ? cols[cols.length - 1] : cols[2]);
 
     const xSet = new Set<string>();
     const ySet = new Set<string>();

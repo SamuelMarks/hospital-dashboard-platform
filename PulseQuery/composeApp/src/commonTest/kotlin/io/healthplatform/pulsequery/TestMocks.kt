@@ -53,14 +53,25 @@ fun createInspectingMockEngine(
     }
 
     when (request.url.encodedPath.removeSuffix("/")) {
-        "/api/v1/auth/register" -> respond(
-            content = """{"email": "test@test.com", "id": "1", "is_active": true, "is_admin": false}""",
-            status = HttpStatusCode.OK,
-            headers = headersOf(HttpHeaders.ContentType, "application/json")
-        )
+        "/api/v1/auth/register" -> {
+            val bodyText = request.body.readBodyText()
+            if (request.method != HttpMethod.Post || !bodyText.contains("email")) {
+                respond(
+                    content = """{"detail": "Invalid registration request"}""",
+                    status = HttpStatusCode.BadRequest,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"email": "test@test.com", "id": "1", "is_active": true, "is_admin": false}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
         "/api/v1/auth/login" -> {
             val bodyString = request.body.readBodyText()
-            if (bodyString.contains("wrongpassword")) {
+            if (request.method != HttpMethod.Post || bodyString.contains("wrongpassword")) {
                 respond(
                     content = """{"detail": "Incorrect username or password"}""",
                     status = HttpStatusCode.Unauthorized,
@@ -144,11 +155,22 @@ fun createInspectingMockEngine(
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )
-        "/api/v1/simulation/run" -> respond(
-            content = """{"assignments": [{"Service":"ICU","Unit":"ICU","Patient_Count":15.0}], "status": "optimal", "message": "Simulation executed successfully"}""",
-            status = HttpStatusCode.OK,
-            headers = headersOf(HttpHeaders.ContentType, "application/json")
-        )
+        "/api/v1/simulation/run" -> {
+            val bodyText = request.body.readBodyText()
+            if (request.method != HttpMethod.Post || !bodyText.contains("demand_source_sql")) {
+                respond(
+                    content = """{"detail": "Invalid simulation payload"}""",
+                    status = HttpStatusCode.BadRequest,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"assignments": [{"Service":"ICU","Unit":"ICU","Patient_Count":15.0}], "status": "optimal", "message": "Simulation executed successfully"}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
         "/api/v1/dashboards/1/refresh" -> respond(
             content = """{"w1": {"data": [{"label": "ICU", "value": 12}]}}""",
             status = HttpStatusCode.OK,
@@ -183,11 +205,22 @@ fun createInspectingMockEngine(
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )
-        "/api/v1/mpax-arena/run", "/api/v1/mpax_arena/run" -> respond(
-            content = """{"experiment_id": "exp-1", "mode": "critic", "candidates": [{"id":"c1","model_name":"gpt-4o","content":"Allocated","is_selected":false}], "ground_truth_mpax": null}""",
-            status = HttpStatusCode.OK,
-            headers = headersOf(HttpHeaders.ContentType, "application/json")
-        )
+        "/api/v1/mpax-arena/run", "/api/v1/mpax_arena/run" -> {
+            val bodyText = request.body.readBodyText()
+            if (request.method != HttpMethod.Post || !bodyText.contains("prompt")) {
+                respond(
+                    content = """{"detail": "Invalid MPAX arena payload"}""",
+                    status = HttpStatusCode.BadRequest,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            } else {
+                respond(
+                    content = """{"experiment_id": "exp-1", "mode": "critic", "candidates": [{"id":"c1","model_name":"gpt-4o","content":"Allocated","is_selected":false}], "ground_truth_mpax": null}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                )
+            }
+        }
         else -> respond("Not Found", HttpStatusCode.NotFound)
     }
 }

@@ -238,7 +238,9 @@ describe('ToolbarComponent', () => {
       afterClosed: () => of(false),
     });
 
+    Object.defineProperty(document, 'activeElement', { value: null, configurable: true });
     component.openWidgetBuilder();
+    delete (document as unknown as Record<string, unknown>)['activeElement'];
 
     expect(mockDialog.open).toHaveBeenCalled();
     expect(mockStore.loadDashboard).not.toHaveBeenCalled();

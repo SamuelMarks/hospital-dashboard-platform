@@ -6,16 +6,17 @@ data from HTTP endpoints. It utilizes `httpx` for asynchronous non-blocking I/O,
 essential for loading multiple widgets simultaneously on a dashboard.
 """
 
+from collections.abc import Mapping
 import json
 import logging
 from threading import Lock
-from typing import Any
 
 import httpx
 
 from app.core.network_security import SafeAsyncHTTPTransport, validate_safe_url_result
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.execution import HttpRunnerPayload, HttpRunnerResultDict
+from app.schemas.json_types import JsonValue
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ async def _dispatch_http_request(
   url: str,
   headers: dict[str, str],
   query_params: dict[str, str],
-  json_body: dict[str, Any] | None,
+  json_body: JsonValue,
   timeout_sec: float,
   client: httpx.AsyncClient | None = None,
 ) -> httpx.Response:
@@ -91,7 +92,7 @@ async def _dispatch_http_request(
       url (str): Target URL.
       headers (dict[str, str]): Request headers.
       query_params (dict[str, str]): URL query parameters.
-      json_body (dict[str, Any] | None): Optional JSON body payload.
+      json_body (JsonValue): Optional JSON body payload.
       timeout_sec (float): Request timeout in seconds.
       client (httpx.AsyncClient | None): Optional pooled client instance.
 
@@ -121,7 +122,7 @@ async def _dispatch_http_request(
 
 
 async def execute_http_result(
-  config: dict[str, Any],
+  config: Mapping[str, JsonValue],
   forward_auth_token: str | None = None,
   client: httpx.AsyncClient | None = None,
 ) -> AppResult[HttpRunnerPayload]:
@@ -129,19 +130,22 @@ async def execute_http_result(
   Executes an HTTP widget request and returns an explicit `AppResult[HttpRunnerPayload]`.
 
   Args:
-      config (dict[str, Any]): Widget configuration dictionary (`url`, `method`, `headers`, `params`, `body`, `timeout`).
+      config (Mapping[str, JsonValue]): Widget configuration dictionary (`url`, `method`, `headers`, `params`, `body`, `timeout`).
       forward_auth_token (str | None): Optional bearer token to forward when `Authorization` is not set.
       client (httpx.AsyncClient | None): Optional pre-configured/pooled `httpx.AsyncClient`.
 
   Returns:
       AppResult[HttpRunnerPayload]: `Ok(HttpRunnerPayload)` on 2xx response, or `Err(AppError)` with status/details.
   """
-  raw_url: object = config.get("url", "")
+  raw_url: JsonValue = config.get("url", "")
   method: str = str(config.get("method", "GET")).upper()
-  headers: dict[str, str] = dict(config.get("headers", {}))
-  query_params: dict[str, str] = config.get("params", {})
-  json_body: dict[str, Any] | None = config.get("body")
-  timeout_sec: float = float(config.get("timeout", 10.0))
+  raw_headers = config.get("headers")
+  headers: dict[str, str] = {str(k): str(v) for k, v in raw_headers.items()} if isinstance(raw_headers, dict) else {}
+  raw_params = config.get("params")
+  query_params: dict[str, str] = {str(k): str(v) for k, v in raw_params.items()} if isinstance(raw_params, dict) else {}
+  json_body: JsonValue = config.get("body")
+  raw_timeout = config.get("timeout", 10.0)
+  timeout_sec: float = float(raw_timeout) if isinstance(raw_timeout, (int, float, str)) else 10.0
 
   if not raw_url:
     return Err(
@@ -188,7 +192,7 @@ async def execute_http_result(
     response.raise_for_status()
 
     try:
-      data = response.json()
+      data: JsonValue = response.json()
     except ValueError:
       data = {"raw_content": response.text}
 
@@ -241,7 +245,7 @@ async def execute_http_result(
 
 
 async def run_http_widget(
-  config: dict[str, Any],
+  config: Mapping[str, JsonValue],
   forward_auth_token: str | None = None,
   client: httpx.AsyncClient | None = None,
 ) -> HttpRunnerResultDict:
@@ -249,7 +253,7 @@ async def run_http_widget(
   Executes an HTTP request based on the provided widget configuration.
 
   Args:
-      config (dict[str, Any]): The configuration dictionary for the widget.
+      config (Mapping[str, JsonValue]): The configuration dictionary for the widget.
       forward_auth_token (str | None): Optional bearer token to forward when `Authorization` is not set.
       client (httpx.AsyncClient | None): Optional pooled `httpx.AsyncClient` to reuse.
 
@@ -260,9 +264,9 @@ async def run_http_widget(
   if isinstance(res, Ok):
     return {"data": res.value.data, "status": res.value.status, "error": None}
 
-  error_data: Any = None
+  error_data: JsonValue = None
   raw_body = res.error.details.get("response_text")
-  if raw_body is not None:
+  if isinstance(raw_body, str):
     try:
       error_data = json.loads(raw_body)
     except ValueError:

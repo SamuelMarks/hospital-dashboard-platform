@@ -1,11 +1,15 @@
 """
-Tests for the FastAPI root endpoint handler and CORS middleware behavior.
+Tests for the FastAPI root endpoint handler, static file serving, and CORS middleware behavior.
 """
 
-import pytest
-from httpx import ASGITransport, AsyncClient
+from pathlib import Path
+from unittest.mock import patch
 
-from app.main import app, root
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+import pytest
+
+from app.main import app, root, setup_static_files
 
 
 def test_root_returns_health_message() -> None:
@@ -42,44 +46,36 @@ async def test_root_get_returns_health_message() -> None:
 
 
 @pytest.mark.asyncio
-async def test_debug_static_files_serving(tmp_path: pytest.TempPathFactory) -> None:
-  """Static files should be served when DEBUG environment is set and dist path exists."""
-  from pathlib import Path
-  from unittest.mock import patch
-  from fastapi import FastAPI
-  from app.main import setup_static_files
-
+async def test_debug_static_files_serving(tmp_path: Path) -> None:
+  """Static files should be mounted and served over HTTP when DEBUG is set and dist path exists."""
   dummy_app = FastAPI()
-  dist_dir = tmp_path / "browser"  # type: ignore[operator]
+  dist_dir = tmp_path / "browser"
   dist_dir.mkdir(parents=True, exist_ok=True)
   index_file = dist_dir / "index.html"
-  index_file.write_text("<!doctype html><html><body><h1>Pulse Test</h1></body></html>")
+  index_file.write_text("<!doctype html><html><body><h1>Pulse Test</h1></body></html>", encoding="utf-8")
 
-  with (
-    patch.dict("os.environ", {"DEBUG": "1"}),
-    patch.object(Path, "exists", return_value=True),
-    patch("app.main.StaticFiles") as mock_static_files,
-  ):
-    setup_static_files(dummy_app)
-    assert mock_static_files.called
+  with patch.dict("os.environ", {"DEBUG": "1"}):
+    setup_static_files(dummy_app, dist_candidates=[dist_dir])
+
+  async with AsyncClient(transport=ASGITransport(app=dummy_app), base_url="http://test") as client:
+    resp = await client.get("/")
+    assert resp.status_code == 200
+    assert "<h1>Pulse Test</h1>" in resp.text
 
 
 @pytest.mark.asyncio
-async def test_debug_static_files_missing_dist() -> None:
-  """Fallback to root handler when DEBUG environment is set but dist path does not exist."""
-  from pathlib import Path
-  from unittest.mock import patch
-  from fastapi import FastAPI
-  from app.main import setup_static_files
-
+async def test_debug_static_files_missing_dist(tmp_path: Path) -> None:
+  """Fallback to root JSON health handler when DEBUG is set but dist path does not exist."""
   dummy_app = FastAPI()
-  with (
-    patch.dict("os.environ", {"DEBUG": "1"}),
-    patch.object(Path, "exists", return_value=False),
-    patch("app.main.StaticFiles") as mock_static_files,
-  ):
-    setup_static_files(dummy_app)
-    assert not mock_static_files.called
+  missing_dir = tmp_path / "nonexistent_dist"
+
+  with patch.dict("os.environ", {"DEBUG": "1"}):
+    setup_static_files(dummy_app, dist_candidates=[missing_dir])
+
+  async with AsyncClient(transport=ASGITransport(app=dummy_app), base_url="http://test") as client:
+    resp = await client.get("/")
+    assert resp.status_code == 200
+    assert resp.json() == {"message": "Hospital Analytics Platform API is running"}
 
 
 @pytest.mark.asyncio

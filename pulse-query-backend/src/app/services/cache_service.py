@@ -12,19 +12,24 @@ Features:
 - **Deterministic Hashing**: Generates unique keys based on widget configuration.
 """
 
+from collections import OrderedDict
+from collections.abc import Mapping
 import hashlib
 import json
 import logging
-import time
-from collections import OrderedDict
 from threading import Lock
-from typing import Any, Generic, TypeVar
+import time
+from typing import Generic, TypeVar
 
 from app.core.config import settings
+from app.schemas.execution import HttpRunnerResultDict, SqlRunnerResultDict
+from app.schemas.json_types import JsonObject, JsonValue
 
 logger = logging.getLogger("cache_service")
 
 T = TypeVar("T")
+
+type WidgetCachePayload = SqlRunnerResultDict | HttpRunnerResultDict | JsonObject
 
 
 class ResultCacheService(Generic[T]):
@@ -42,13 +47,13 @@ class ResultCacheService(Generic[T]):
     self._max_entries = settings.CACHE_MAX_ENTRIES
     self._max_item_size = settings.CACHE_MAX_ITEM_SIZE
 
-  def generate_key(self, widget_type: str, config: dict[str, Any]) -> str:
+  def generate_key(self, widget_type: str, config: Mapping[str, JsonValue]) -> str:
     """
     Generates a deterministic SHA-256 hash based on the widget details.
 
     Args:
         widget_type (str): The type of widget (e.g., "SQL", "HTTP").
-        config (dict[str, Any]): The configuration dictionary.
+        config (Mapping[str, JsonValue]): The configuration dictionary.
 
     Returns:
         str: A hex digest string representing the unique key.
@@ -59,14 +64,15 @@ class ResultCacheService(Generic[T]):
 
     if widget_type == "SQL":
       # For SQL, whitespace normalization helps cache hit rate
-      query = config.get("query", "").strip()
+      raw_query = config.get("query", "")
+      query = str(raw_query).strip() if raw_query is not None else ""
       # Collapse multiple spaces to one
       clean_query = " ".join(query.split())
       payload_str += f":{clean_query}"
     else:
       # For generic/HTTP, dump the whole sorted config
       # Use default=str to handle non-serializable objects gracefully
-      clean_config = json.dumps(config, sort_keys=True, default=str)
+      clean_config = json.dumps(dict(config), sort_keys=True, default=str)
       payload_str += f":{clean_config}"
 
     return hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
@@ -116,7 +122,7 @@ class ResultCacheService(Generic[T]):
       if size_est > self._max_item_size:
         logger.warning(f"Item too large for cache ({size_est} bytes). Skipping.")
         return
-    except Exception:
+    except (TypeError, ValueError, OverflowError):
       # If serialization fails, assume it's acceptable or riskier to assume too large
       pass
 
@@ -140,4 +146,4 @@ class ResultCacheService(Generic[T]):
 
 
 # Singleton Instance
-cache_service: ResultCacheService[Any] = ResultCacheService()
+cache_service: ResultCacheService[WidgetCachePayload] = ResultCacheService()

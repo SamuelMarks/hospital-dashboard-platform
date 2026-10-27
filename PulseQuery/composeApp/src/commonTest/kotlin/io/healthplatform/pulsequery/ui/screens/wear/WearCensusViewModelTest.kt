@@ -47,8 +47,16 @@ class WearCensusViewModelTest {
 
     @Test
     fun testWearCensusUiStateProperties() {
-        val state = WearCensusUiState(alerts = emptyList(), isLoading = false, errorMessage = "err")
+        val state = WearCensusUiState(
+            alerts = emptyList(),
+            occupancyPercent = 91,
+            openBeds = 18,
+            isLoading = false,
+            errorMessage = "err"
+        )
         assertTrue(state.alerts.isEmpty())
+        assertEquals(91, state.occupancyPercent)
+        assertEquals(18, state.openBeds)
         assertFalse(state.isLoading)
         assertEquals("err", state.errorMessage)
     }

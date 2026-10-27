@@ -30,7 +30,9 @@ def test_template_base_valid_matching_handlebars() -> None:
     },
   )
   assert template.title == "Valid Template"
-  assert "unit_name" in template.parameters_schema["properties"]
+  props = template.parameters_schema["properties"]
+  assert isinstance(props, dict)
+  assert "unit_name" in props
 
 
 def test_template_base_missing_placeholder_raises_error() -> None:

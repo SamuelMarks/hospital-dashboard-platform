@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,9 +12,14 @@
  * API Response model for an active dashboard share.
  */
 export interface DashboardShareResponse {
+  /** Property `id`. */
   id: string;
+  /** Property `dashboard_id`. */
   dashboard_id: string;
+  /** Property `user_id`. */
   user_id: string;
+  /** Property `user_email`. */
   user_email: string;
+  /** Property `permission_level`. */
   permission_level: string;
 }

@@ -8,6 +8,10 @@ import io.healthplatform.pulsequery.api.apis.AdminUsersApi
 import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.api.models.UserRoleUpdate
 import io.healthplatform.pulsequery.api.models.UserStatusUpdate
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.ClinicalRole
+import io.healthplatform.pulsequery.core.model.UserId
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -78,7 +82,7 @@ class UserManagementViewModel(
         scope.launch {
             runCatchingPulseAsync {
                 val response = currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100)
-                response.body()
+                response.asResult().getOrThrow()
             }.fold(
                 onSuccess = { users ->
                     _state.value = UserManagementUiState.Success(
@@ -89,7 +93,7 @@ class UserManagementViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.messageOrDefault("Failed to load users"))
+                    _state.value = UserManagementUiState.Error(e.messageOrDefault(UiErrorKey.LOAD_USERS))
                 }
             )
         }
@@ -109,7 +113,7 @@ class UserManagementViewModel(
                     userId = userId,
                     userRoleUpdate = UserRoleUpdate(role = newRole)
                 )
-                response.body()
+                response.asResult().getOrThrow()
             }.fold(
                 onSuccess = { updated ->
                     val newAllUsers = current.allUsers.map { if (it.id == userId) updated else it }
@@ -119,7 +123,7 @@ class UserManagementViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.messageOrDefault("Failed to update role"))
+                    _state.value = UserManagementUiState.Error(e.messageOrDefault(UiErrorKey.UPDATE_USER_ROLE))
                 }
             )
         }
@@ -139,7 +143,7 @@ class UserManagementViewModel(
                     userId = userId,
                     userStatusUpdate = UserStatusUpdate(isActive = newStatus)
                 )
-                response.body()
+                response.asResult().getOrThrow()
             }.fold(
                 onSuccess = { updated ->
                     val newAllUsers = current.allUsers.map { if (it.id == userId) updated else it }
@@ -149,7 +153,7 @@ class UserManagementViewModel(
                     )
                 },
                 onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.messageOrDefault("Failed to toggle user status"))
+                    _state.value = UserManagementUiState.Error(e.messageOrDefault(UiErrorKey.TOGGLE_USER_STATUS))
                 }
             )
         }
@@ -179,6 +183,25 @@ class UserManagementViewModel(
             selectedRole = role,
             users = filterUsers(current.allUsers, current.searchQuery, role)
         )
+    }
+
+    /**
+     * Filters displayed user profiles by strongly typed [ClinicalRole].
+     *
+     * @param role Target [ClinicalRole].
+     */
+    fun setRoleFilter(role: ClinicalRole) {
+        setRoleFilter(role.wireValue)
+    }
+
+    /**
+     * Updates the clinical or administrative role of a specific user using strongly typed [UserId] and [ClinicalRole].
+     *
+     * @param userId Target [UserId].
+     * @param newRole Desired [ClinicalRole].
+     */
+    fun updateRole(userId: UserId, newRole: ClinicalRole) {
+        updateRole(userId.value, newRole.wireValue)
     }
 
     private fun filterUsers(

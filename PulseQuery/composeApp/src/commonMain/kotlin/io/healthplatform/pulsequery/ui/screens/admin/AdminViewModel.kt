@@ -6,6 +6,8 @@ package io.healthplatform.pulsequery.ui.screens.admin
 
 import io.healthplatform.pulsequery.api.apis.AdminApi
 import io.healthplatform.pulsequery.api.models.AdminSettingsUpdateRequest
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -66,7 +68,7 @@ class AdminViewModel(
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             runCatchingPulseAsync {
-                currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().body()
+                currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().asResult().getOrThrow()
             }.fold(
                 onSuccess = { settings ->
                     _state.update {
@@ -82,7 +84,7 @@ class AdminViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = errorPrefix + e.messageOrDefault("Unknown error")
+                            errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)
                         )
                     }
                 }
@@ -163,7 +165,7 @@ class AdminViewModel(
                     apiKeys = snapshot.apiKeys,
                     visibleModels = snapshot.visibleModels
                 )
-                currentAdminApi.writeAdminSettingsApiV1AdminSettingsPut(updateReq)
+                currentAdminApi.writeAdminSettingsApiV1AdminSettingsPut(updateReq).asResult().getOrThrow()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(isLoading = false, errorMessage = null) }
@@ -173,7 +175,7 @@ class AdminViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = errorPrefix + e.messageOrDefault("Unknown error")
+                            errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)
                         )
                     }
                 }

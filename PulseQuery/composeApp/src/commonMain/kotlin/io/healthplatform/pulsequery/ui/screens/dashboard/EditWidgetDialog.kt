@@ -5,6 +5,7 @@ package io.healthplatform.pulsequery.ui.screens.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -19,22 +20,45 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.apis.AiApi
+import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.api.models.WidgetUpdate
+import io.healthplatform.pulsequery.core.model.ProcessorId
+import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
+import io.healthplatform.pulsequery.core.model.TypedWidgetConfig
+import io.healthplatform.pulsequery.core.model.extractWidgetSqlConfig
+import io.healthplatform.pulsequery.core.model.parseTypedWidgetConfig
+import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.screens.wizard.mapModelInfoToProcessorSelection
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.allow_natural_text_label
+import pulsequery.composeapp.generated.resources.natural_text_prompt_label
+import pulsequery.composeapp.generated.resources.processor_label
+import pulsequery.composeapp.generated.resources.select_processor_content_desc
 
 /**
  * Standard visualization options available for dashboard widgets.
@@ -55,29 +79,56 @@ val AVAILABLE_VISUALIZATIONS: List<String> = listOf(
  * @param widget The target [WidgetResponse] to edit.
  * @param onDismiss Callback invoked when dismissing the dialog without saving.
  * @param onWidgetUpdated Callback invoked with the updated [WidgetResponse] upon successful save.
+ * @param dashboardsApi Optional [DashboardsApi] override for testing.
+ * @param aiApi Optional [AiApi] override for loading selectable processors.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditWidgetDialog(
     widget: WidgetResponse,
     onDismiss: () -> Unit,
-    onWidgetUpdated: (WidgetResponse) -> Unit
+    onWidgetUpdated: (WidgetResponse) -> Unit,
+    dashboardsApi: DashboardsApi? = null,
+    aiApi: AiApi? = null
 ) {
     var title by remember { mutableStateOf(widget.title) }
     var selectedViz by remember { mutableStateOf(widget.visualization.lowercase()) }
     var showVizDropdown by remember { mutableStateOf(false) }
 
-    val initialContent = when (widget.type.uppercase()) {
-        "TEXT" -> (widget.config["content"] as? JsonPrimitive)?.content
-            ?: (widget.config["text"] as? JsonPrimitive)?.content ?: ""
-        "HTTP" -> (widget.config["url"] as? JsonPrimitive)?.content ?: ""
-        else -> (widget.config["query"] as? JsonPrimitive)?.content ?: ""
+    val sqlConfig = extractWidgetSqlConfig(widget.config)
+    var allowNaturalText by remember { mutableStateOf(sqlConfig.allowNaturalText) }
+    var selectedProcessor by remember { mutableStateOf(sqlConfig.processor) }
+    var naturalTextPrompt by remember { mutableStateOf(sqlConfig.naturalTextPrompt) }
+    var showProcessorDropdown by remember { mutableStateOf(false) }
+    var availableProcessors by remember { mutableStateOf(listOf(ProcessorSelectionOption.SQL_DEFAULT)) }
+
+    val initialContent = when (val parsed = parseTypedWidgetConfig(widget.type, widget.config)) {
+        is TypedWidgetConfig.Text -> parsed.content
+        is TypedWidgetConfig.Http -> parsed.url
+        is TypedWidgetConfig.Sql -> parsed.query
     }
     var queryOrContent by remember { mutableStateOf(initialContent) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(aiApi) {
+        if (aiApi != null) {
+            runCatchingPulseAsync {
+                aiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true)
+                    .asResult()
+                    .getOrThrow()
+            }.onSuccess { models ->
+                val mapped = models.map { mapModelInfoToProcessorSelection(it) }
+                availableProcessors = if (mapped.any { it.id == ProcessorId.SQL_NO_MODEL }) {
+                    mapped
+                } else {
+                    listOf(ProcessorSelectionOption.SQL_DEFAULT) + mapped
+                }
+            }
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -135,6 +186,67 @@ fun EditWidgetDialog(
                     }
                 }
 
+                if (widget.type.equals("SQL", ignoreCase = true)) {
+                    val toggleLabel = stringResource(Res.string.allow_natural_text_label)
+                    val procDesc = stringResource(Res.string.select_processor_content_desc)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = toggleLabel, style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = allowNaturalText,
+                            onCheckedChange = { allowNaturalText = it },
+                            modifier = Modifier.semantics { contentDescription = toggleLabel }
+                        )
+                    }
+
+                    val procDisplay = availableProcessors.firstOrNull { it.id == selectedProcessor }?.displayName
+                        ?: selectedProcessor.value
+
+                    ExposedDropdownMenuBox(
+                        expanded = showProcessorDropdown,
+                        onExpandedChange = { showProcessorDropdown = it }
+                    ) {
+                        OutlinedTextField(
+                            value = procDisplay,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(Res.string.processor_label)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProcessorDropdown) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                .semantics { contentDescription = procDesc }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = showProcessorDropdown,
+                            onDismissRequest = { showProcessorDropdown = false }
+                        ) {
+                            availableProcessors.forEach { opt ->
+                                DropdownMenuItem(
+                                    text = { Text(opt.displayName) },
+                                    onClick = {
+                                        selectedProcessor = opt.id
+                                        showProcessorDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (allowNaturalText) {
+                        OutlinedTextField(
+                            value = naturalTextPrompt,
+                            onValueChange = { naturalTextPrompt = it },
+                            label = { Text(stringResource(Res.string.natural_text_prompt_label)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
                 val labelText = when (widget.type.uppercase()) {
                     "TEXT" -> "Markdown Content"
                     "HTTP" -> "HTTP Endpoint URL"
@@ -161,7 +273,8 @@ fun EditWidgetDialog(
                     scope.launch {
                         isLoading = true
                         errorMessage = null
-                        runCatching {
+                        val api = dashboardsApi ?: AppContainer.dashboardsApi
+                        runCatchingPulseAsync {
                             val newConfigMap = widget.config.toMutableMap()
                             when (widget.type.uppercase()) {
                                 "TEXT" -> {
@@ -172,6 +285,13 @@ fun EditWidgetDialog(
                                 }
                                 else -> {
                                     newConfigMap["query"] = JsonPrimitive(queryOrContent)
+                                    if (allowNaturalText || selectedProcessor != ProcessorId.SQL_NO_MODEL || newConfigMap.containsKey("allow_natural_text")) {
+                                        newConfigMap["allow_natural_text"] = JsonPrimitive(allowNaturalText)
+                                        newConfigMap["processor"] = JsonPrimitive(selectedProcessor.value)
+                                        if (naturalTextPrompt.isNotBlank()) {
+                                            newConfigMap["natural_text_prompt"] = JsonPrimitive(naturalTextPrompt.trim())
+                                        }
+                                    }
                                 }
                             }
                             val updateReq = WidgetUpdate(
@@ -179,17 +299,17 @@ fun EditWidgetDialog(
                                 visualization = selectedViz,
                                 config = JsonObject(newConfigMap)
                             )
-                            val response = AppContainer.dashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
+                            val response = api.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
                                 widgetId = widget.id,
                                 widgetUpdate = updateReq
                             )
-                            response.body()
+                            response.asResult().getOrThrow()
                         }.fold(
                             onSuccess = { updated ->
                                 onWidgetUpdated(updated)
                             },
                             onFailure = { e ->
-                                errorMessage = e.message ?: "Failed to update widget"
+                                errorMessage = e.messageOrDefault("Failed to update widget")
                             }
                         )
                         isLoading = false

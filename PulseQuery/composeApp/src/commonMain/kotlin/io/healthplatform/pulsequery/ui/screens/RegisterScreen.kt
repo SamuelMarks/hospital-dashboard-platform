@@ -44,6 +44,17 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.ui.screens.auth.AuthUiState
 import io.healthplatform.pulsequery.ui.screens.auth.AuthViewModel
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.already_have_account_sign_in
+import pulsequery.composeapp.generated.resources.confirm_password
+import pulsequery.composeapp.generated.resources.create_an_account
+import pulsequery.composeapp.generated.resources.email_address
+import pulsequery.composeapp.generated.resources.hide_password
+import pulsequery.composeapp.generated.resources.password
+import pulsequery.composeapp.generated.resources.register_account
+import pulsequery.composeapp.generated.resources.show_password
+import pulsequery.composeapp.generated.resources.sign_up_subtitle
 
 /**
  * Re-exported [AuthUiState] typealias preserving package compatibility for registration state consumers.
@@ -89,11 +100,11 @@ fun RegisterScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Create an Account",
+                    text = stringResource(Res.string.create_an_account),
                     style = MaterialTheme.typography.headlineMedium
                 )
                 Text(
-                    text = "Sign up for Pulse Query Clinical Analytics",
+                    text = stringResource(Res.string.sign_up_subtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -103,7 +114,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.email,
                     onValueChange = { vm.updateEmail(it) },
-                    label = { Text("Email Address") },
+                    label = { Text(stringResource(Res.string.email_address)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
@@ -114,7 +125,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.password,
                     onValueChange = { vm.updatePassword(it) },
-                    label = { Text("Password") },
+                    label = { Text(stringResource(Res.string.password)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     visualTransformation = if (state.passwordVisible) {
@@ -127,7 +138,11 @@ fun RegisterScreen(
                         IconButton(onClick = { vm.togglePasswordVisibility() }) {
                             Icon(
                                 if (state.passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                contentDescription = if (state.passwordVisible) "Hide password" else "Show password"
+                                contentDescription = if (state.passwordVisible) {
+                                    stringResource(Res.string.hide_password)
+                                } else {
+                                    stringResource(Res.string.show_password)
+                                }
                             )
                         }
                     }
@@ -138,7 +153,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = state.confirmPassword,
                     onValueChange = { vm.updateConfirmPassword(it) },
-                    label = { Text("Confirm Password") },
+                    label = { Text(stringResource(Res.string.confirm_password)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     visualTransformation = if (state.passwordVisible) {
@@ -180,7 +195,7 @@ fun RegisterScreen(
                             modifier = Modifier.size(24.dp)
                         )
                     } else {
-                        Text("Register Account")
+                        Text(stringResource(Res.string.register_account))
                     }
                 }
 
@@ -190,7 +205,7 @@ fun RegisterScreen(
                     onClick = onNavigateToLogin,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Already have an account? Sign In")
+                    Text(stringResource(Res.string.already_have_account_sign_in))
                 }
             }
         }

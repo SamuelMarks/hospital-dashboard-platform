@@ -11,17 +11,17 @@ import json
 import logging
 import os
 import sys
-from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Ensure backend modules are resolvable by adding the 'src' directory to sys.path
-sys.path.append(os.path.join(os.path.dirname(__file__), "../src"))
-
 from app.core.config import BACKEND_ROOT
 from app.database.postgres import AsyncSessionLocal
+from app.models import register_orm_models
+from app.schemas.json_types import JsonObject
 from app.services.template_seeder import TemplateSeeder, template_seeder
+
+register_orm_models()
 
 # Configuration
 DATA_FILE = str((BACKEND_ROOT / "data" / "initial_templates.json").resolve())
@@ -31,7 +31,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("seed_templates")
 
 
-def _read_templates_disk(filepath: str) -> list[dict[str, Any]] | None:
+def _read_templates_disk(filepath: str) -> list[JsonObject] | None:
   """
   Synchronously checks and reads template JSON records from `filepath`.
 
@@ -39,22 +39,22 @@ def _read_templates_disk(filepath: str) -> list[dict[str, Any]] | None:
       filepath (str): Path to the template JSON file.
 
   Returns:
-      list[dict[str, Any]] | None: Parsed list of templates, or None if missing.
+      list[JsonObject] | None: Parsed list of templates, or None if missing.
   """
   if not os.path.exists(filepath):
     return None
   with open(filepath, "r", encoding="utf-8") as f:
-    data: list[dict[str, Any]] = json.load(f)
+    data: list[JsonObject] = json.load(f)
     return data
 
 
-async def upsert_template(db: AsyncSession, data: dict[str, Any]) -> None:
+async def upsert_template(db: AsyncSession, data: JsonObject) -> None:
   """
   Delegates template upsert to `TemplateSeeder._upsert_template`.
 
   Args:
       db (AsyncSession): Active database session.
-      data (dict[str, Any]): Dictionary containing template fields.
+      data (JsonObject): Dictionary containing template fields.
   """
   await TemplateSeeder._upsert_template(db, data)
 
@@ -97,9 +97,6 @@ def main() -> None:
   """
   CLI entry point for running `seed_templates()` and asserting >= 10 templates exist.
   """
-  if sys.platform == "win32":  # pragma: no cover
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
   count = asyncio.run(seed_templates())
   if isinstance(count, int) and count < 10:
     print(f"Error: Expected >= 10 templates in pulse_query_db, found {count}.")

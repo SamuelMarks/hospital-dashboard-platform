@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -58,8 +59,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +70,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.ScenarioConstraint
 import io.healthplatform.pulsequery.api.models.SimulationAssignment
+import io.healthplatform.pulsequery.core.model.ConstraintRuleType
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import io.healthplatform.pulsequery.ui.screens.simulation.SimulationViewModel
@@ -78,12 +82,18 @@ import pulsequery.composeapp.generated.resources.add_constraint
 import pulsequery.composeapp.generated.resources.admitted_patients_msg
 import pulsequery.composeapp.generated.resources.affinity_overrides
 import pulsequery.composeapp.generated.resources.affinity_score
+import pulsequery.composeapp.generated.resources.bed_occupancy_comparison_table
 import pulsequery.composeapp.generated.resources.before_after_comparison
 import pulsequery.composeapp.generated.resources.cancel
 import pulsequery.composeapp.generated.resources.capacity_simulation
 import pulsequery.composeapp.generated.resources.clinical_service
+import pulsequery.composeapp.generated.resources.confirm_add_affinity
+import pulsequery.composeapp.generated.resources.confirm_add_constraint
 import pulsequery.composeapp.generated.resources.constraint_type
 import pulsequery.composeapp.generated.resources.custom_constraints
+import pulsequery.composeapp.generated.resources.database_misconfiguration
+import pulsequery.composeapp.generated.resources.delete_affinity
+import pulsequery.composeapp.generated.resources.delete_constraint
 import pulsequery.composeapp.generated.resources.delta_change
 import pulsequery.composeapp.generated.resources.delta_msg
 import pulsequery.composeapp.generated.resources.demand_sql
@@ -129,6 +139,7 @@ fun SimulationScreen(
     val healthState by AppContainer.networkHealthRepository.healthState.collectAsState()
 
     val errSimFailed = stringResource(Res.string.simulation_failed)
+    val runSimDesc = stringResource(Res.string.run_simulation)
 
     LaunchedEffect(vm) {
         vm.loadSchemaTables()
@@ -147,7 +158,7 @@ fun SimulationScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { vm.runSimulation(fallbackError = errSimFailed) },
-                modifier = Modifier.semantics { contentDescription = "Run Simulation" },
+                modifier = Modifier.semantics { contentDescription = runSimDesc },
                 icon = {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -173,7 +184,7 @@ fun SimulationScreen(
                     val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error
                         ?: "Database service is unreachable or uninitialized. Verify database configuration."
                     DatabaseErrorCard(
-                        title = "Database Misconfiguration",
+                        title = stringResource(Res.string.database_misconfiguration),
                         message = dbMsg,
                         onRetry = {
                             AppContainer.networkHealthRepository.refreshHealth()
@@ -264,9 +275,14 @@ fun SimulationScreen(
                                     IconButton(
                                         onClick = {
                                             vm.removeConstraintAt(index)
-                                        }
+                                        },
+                                        modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                     ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Delete constraint", modifier = Modifier.size(16.dp))
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = stringResource(Res.string.delete_constraint),
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
                                 }
                             }
@@ -325,9 +341,14 @@ fun SimulationScreen(
                                         IconButton(
                                             onClick = {
                                                 vm.removeAffinityOverride(srv, unit)
-                                            }
+                                            },
+                                            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                                         ) {
-                                            Icon(Icons.Default.Close, contentDescription = "Delete affinity", modifier = Modifier.size(16.dp))
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = stringResource(Res.string.delete_affinity),
+                                                modifier = Modifier.size(16.dp)
+                                            )
                                         }
                                     }
                                 }
@@ -341,7 +362,9 @@ fun SimulationScreen(
                 item {
                     ElevatedCard(
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { liveRegion = LiveRegionMode.Assertive }
                     ) {
                         val errTxt = stringResource(Res.string.error, err)
                         Text(
@@ -357,22 +380,24 @@ fun SimulationScreen(
                 item {
                     ElevatedCard(
                         colors = CardDefaults.elevatedCardColors(
-                            containerColor = if (res.status == "SUCCESS") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                            containerColor = if (uiState.isSuccessOutcome) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { liveRegion = LiveRegionMode.Polite }
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
                                 text = stringResource(Res.string.status_msg, res.status),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = if (res.status == "SUCCESS") MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                                color = if (uiState.isSuccessOutcome) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
                             )
                             res.message?.let {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = it,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = if (res.status == "SUCCESS") MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                                    color = if (uiState.isSuccessOutcome) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }
@@ -435,7 +460,7 @@ fun AddConstraintDialog(
 ) {
     var selectedService by remember { mutableStateOf(availableServices.firstOrNull() ?: "ICU") }
     var selectedUnit by remember { mutableStateOf(availableUnits.firstOrNull() ?: "ICU") }
-    var constraintType by remember { mutableStateOf("force_flow") }
+    var constraintType by remember { mutableStateOf(ConstraintRuleType.FORCE_FLOW.wireValue) }
     var minBeds by remember { mutableStateOf("") }
     var maxBeds by remember { mutableStateOf("") }
 
@@ -532,6 +557,7 @@ fun AddConstraintDialog(
             }
         },
         confirmButton = {
+            val confirmConstraintDesc = stringResource(Res.string.confirm_add_constraint)
             TextButton(
                 onClick = {
                     onAdd(
@@ -544,7 +570,7 @@ fun AddConstraintDialog(
                         )
                     )
                 },
-                modifier = Modifier.semantics { contentDescription = "Confirm Add Constraint" }
+                modifier = Modifier.semantics { contentDescription = confirmConstraintDesc }
             ) {
                 Text(stringResource(Res.string.add_constraint))
             }
@@ -652,12 +678,13 @@ fun AddAffinityDialog(
             }
         },
         confirmButton = {
+            val confirmAffinityDesc = stringResource(Res.string.confirm_add_affinity)
             TextButton(
                 onClick = {
                     val score = affinityScore.toDoubleOrNull() ?: 1.0
                     onAdd(selectedService, selectedUnit, score)
                 },
-                modifier = Modifier.semantics { contentDescription = "Confirm Add Affinity" }
+                modifier = Modifier.semantics { contentDescription = confirmAffinityDesc }
             ) {
                 Text(stringResource(Res.string.add_affinity_override))
             }
@@ -681,6 +708,7 @@ fun BedOccupancyComparisonTable(
     assignments: List<SimulationAssignment>,
     modifier: Modifier = Modifier
 ) {
+    val tableDesc = stringResource(Res.string.bed_occupancy_comparison_table)
     ElevatedCard(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
@@ -688,7 +716,7 @@ fun BedOccupancyComparisonTable(
         Column(
             modifier = Modifier
                 .padding(16.dp)
-                .semantics { contentDescription = "Bed occupancy comparison table" }
+                .semantics { contentDescription = tableDesc }
         ) {
             Text(
                 text = stringResource(Res.string.before_after_comparison),

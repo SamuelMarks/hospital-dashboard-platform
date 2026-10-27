@@ -27,12 +27,13 @@ describe('SimulationRoutes', () => {
     });
   });
 
-  it('should define the default route', async () => {
+  it('should define the default route with SimulationComponent', async () => {
+    const { SimulationComponent } = await import('./simulation.component');
     const route = simulationRoutes.find((r) => r.path === '');
     expect(route).toBeDefined();
 
-    // Check lazy loading function
+    // Check lazy loading function resolves to exact SimulationComponent class
     const component = await route?.loadComponent?.();
-    expect(component).toBeTruthy();
+    expect(component).toBe(SimulationComponent);
   });
 });

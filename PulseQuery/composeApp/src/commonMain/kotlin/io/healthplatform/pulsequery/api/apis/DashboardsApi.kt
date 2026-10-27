@@ -84,7 +84,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return DashboardResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun cloneDashboardApiV1DashboardsDashboardIdClonePost(
         dashboardId: kotlin.String,
         token: kotlin.String? = null,
@@ -122,7 +121,6 @@ open class DashboardsApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return DashboardResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createDashboardApiV1DashboardsPost(
         dashboardCreate: DashboardCreate,
         token: kotlin.String? = null
@@ -159,7 +157,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return WidgetResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createWidgetApiV1DashboardsDashboardIdWidgetsPost(
         dashboardId: kotlin.String,
         widgetIn: WidgetIn,
@@ -315,7 +312,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.String
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun exportDashboardApiV1DashboardsDashboardIdExportGet(
         dashboardId: kotlin.String,
         format: kotlin.String? = "json",
@@ -356,7 +352,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.ByteArray
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun exportDashboardPdfApiV1DashboardsDashboardIdExportPdfGet(
         dashboardId: kotlin.String,
         token: kotlin.String? = null,
@@ -397,7 +392,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.String
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun exportWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdExportGet(
         dashboardId: kotlin.String,
         widgetId: kotlin.String,
@@ -439,7 +433,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return DashboardResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getDashboardApiV1DashboardsDashboardIdGet(
         dashboardId: kotlin.String,
         token: kotlin.String? = null,
@@ -478,7 +471,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.collections.List<DashboardShareResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listDashboardSharesApiV1DashboardsDashboardIdSharesGet(
         dashboardId: kotlin.String,
         token: kotlin.String? = null,
@@ -530,7 +522,6 @@ open class DashboardsApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<DashboardResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listDashboardsApiV1DashboardsGet(
         token: kotlin.String? = null
     ): HttpResponse<kotlin.collections.List<DashboardResponse>> {
@@ -577,7 +568,6 @@ open class DashboardsApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<DashboardResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listDashboardsApiV1DashboardsGet_0(
         token: kotlin.String? = null
     ): HttpResponse<kotlin.collections.List<DashboardResponse>> {
@@ -627,7 +617,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return kotlin.collections.Map<kotlin.String, JsonElement>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun reorderWidgetsApiV1DashboardsDashboardIdReorderPost(
         dashboardId: kotlin.String,
         widgetReorderRequest: WidgetReorderRequest,
@@ -679,7 +668,6 @@ open class DashboardsApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return DashboardResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun restoreDefaultDashboardApiV1DashboardsRestoreDefaultsPost(
         token: kotlin.String? = null
     ): HttpResponse<DashboardResponse> {
@@ -716,7 +704,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return DashboardShareResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun shareDashboardApiV1DashboardsDashboardIdSharesPost(
         dashboardId: kotlin.String,
         dashboardShareCreate: DashboardShareCreate,
@@ -756,7 +743,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return DashboardResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateDashboardApiV1DashboardsDashboardIdPut(
         dashboardId: kotlin.String,
         dashboardCreate: DashboardCreate,
@@ -796,7 +782,6 @@ open class DashboardsApi : ApiClient {
      * @param acceptLanguage  (optional)
      * @return WidgetResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
         widgetId: kotlin.String,
         widgetUpdate: WidgetUpdate,

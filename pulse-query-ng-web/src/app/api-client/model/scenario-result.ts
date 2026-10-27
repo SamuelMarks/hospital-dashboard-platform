@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,7 +13,10 @@ import { SimulationAssignment } from './simulation-assignment';
  * Response containing the optimization outcome.
  */
 export interface ScenarioResult {
-  assignments: Array<SimulationAssignment>;
+  /** Property `assignments`. */
+  assignments: SimulationAssignment[];
+  /** Property `status`. */
   status: string;
+  /** Property `message`. */
   message?: string | null;
 }

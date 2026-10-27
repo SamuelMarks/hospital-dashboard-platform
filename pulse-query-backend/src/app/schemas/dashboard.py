@@ -5,10 +5,13 @@ Defines the Data Transfer Objects (DTOs) for Dashboards.
 Integrates the strict polymorphic `WidgetCreate` definition from the widget module.
 """
 
-from typing import Any, Literal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
+
+from app.schemas.json_types import JsonObject
+from app.schemas.widget import WidgetConfigUnion
 
 PermissionLevel = Literal["OWNER", "EDIT", "VIEW"]
 
@@ -22,7 +25,7 @@ class WidgetBase(BaseModel):
   title: str
   type: str
   visualization: str
-  config: dict[str, Any]
+  config: JsonObject | WidgetConfigUnion
 
 
 class WidgetResponse(WidgetBase):

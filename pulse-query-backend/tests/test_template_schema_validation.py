@@ -25,7 +25,9 @@ def test_template_base_creation_valid() -> None:
   }
   model = TemplateBase(**payload)
   assert model.title == "Valid Template"
-  assert "id" in model.parameters_schema["properties"]
+  props = model.parameters_schema["properties"]
+  assert isinstance(props, dict)
+  assert "id" in props
 
 
 def test_template_default_schema() -> None:

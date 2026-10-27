@@ -8,6 +8,8 @@ Verifies the logic for:
 4. Full Run Orchestration (dry-run mode).
 """
 
+import asyncio
+from collections.abc import Coroutine
 from datetime import UTC, datetime
 import importlib
 import os
@@ -20,6 +22,7 @@ import uuid
 import pytest
 
 from app.models.feedback import ExperimentLog, ModelCandidate
+from app.schemas.json_types import JsonObject
 
 CURRENT_FILE = os.path.abspath(__file__)
 TESTS_DIR = os.path.dirname(CURRENT_FILE)
@@ -29,11 +32,13 @@ if BACKEND_ROOT not in sys.path:
   sys.path.insert(0, BACKEND_ROOT)
 
 if TYPE_CHECKING:
-  from scripts.run_benchmark import BenchmarkRunner
+  from scripts.run_benchmark import BenchmarkEvaluationRowDict, BenchmarkRunner
 else:
-  BenchmarkRunner = importlib.import_module("scripts.run_benchmark").BenchmarkRunner
+  _bench_mod = importlib.import_module("scripts.run_benchmark")
+  BenchmarkRunner = _bench_mod.BenchmarkRunner
+  BenchmarkEvaluationRowDict = _bench_mod.BenchmarkEvaluationRowDict
 
-MOCK_DATASET = [
+MOCK_DATASET: list[JsonObject] = [
   {"theme": "Test Theme", "question": "Count rows", "gold_sql": "SELECT count(*) FROM t1", "complexity": "Low"}
 ]
 
@@ -104,6 +109,39 @@ def test_execute_sql_safety(runner: BenchmarkRunner) -> None:
     assert "Syntax Error" in err
 
 
+def test_execute_sql_real_duckdb_integration(runner: BenchmarkRunner) -> None:
+  """Verifies `_execute_sql` and `_compare_results` against a real in-memory DuckDB connection."""
+  import duckdb
+
+  mem_conn = duckdb.connect(":memory:")
+  mem_conn.execute("CREATE TABLE hospital_data (Service VARCHAR, Patient_Count INTEGER)")
+  mem_conn.execute("INSERT INTO hospital_data VALUES ('Cardiology', 12), ('Neurology', 8)")
+
+  class _NonClosingProxy:
+    """Proxy delegating `execute` to `mem_conn` while keeping `mem_conn` open across calls."""
+
+    def execute(self, query: str) -> duckdb.DuckDBPyConnection:
+      """Executes `query` on the underlying in-memory DuckDB connection."""
+      return mem_conn.execute(query)
+
+    def close(self) -> None:
+      """No-op close so multiple queries can inspect the same in-memory table."""
+
+  with patch("scripts.run_benchmark.duckdb_manager.get_readonly_connection", side_effect=_NonClosingProxy):
+    gold_rows, gold_err = runner._execute_sql("SELECT Service, SUM(Patient_Count) FROM hospital_data GROUP BY Service")
+    gen_rows, gen_err = runner._execute_sql(
+      "SELECT Service, SUM(Patient_Count) AS total FROM hospital_data GROUP BY Service ORDER BY Service DESC"
+    )
+    wrong_rows, wrong_err = runner._execute_sql("SELECT Service, COUNT(*) FROM hospital_data GROUP BY Service")
+
+  mem_conn.close()
+  assert gold_err is None
+  assert gen_err is None
+  assert wrong_err is None
+  assert runner._compare_results(gold_rows, gen_rows) is True
+  assert runner._compare_results(gold_rows, wrong_rows) is False
+
+
 def _verify_and_cleanup_report(filepath: str) -> bool:
   """
   Checks whether `filepath` exists on disk and removes it if present.
@@ -167,8 +205,7 @@ async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: Pa
   # 5. _create_mock_db branches (pre-populated id/created_at, non-ExperimentLog refresh)
   mock_db = runner._create_mock_db()
   cand = ModelCandidate(model_tag="m", generated_sql="SELECT 1", is_selected=True)
-  cand_none = ModelCandidate(model_tag="m2", generated_sql="SELECT 2")
-  setattr(cand_none, "is_selected", None)
+  cand_none = ModelCandidate(model_tag="m2", generated_sql="SELECT 2", is_selected=None)
 
   cand.id = uuid.uuid4()
   mock_db.add(cand)
@@ -181,15 +218,32 @@ async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: Pa
   dummy_obj.created_at = datetime.now(UTC)
   await mock_db.refresh(dummy_obj)
 
-  exp = ExperimentLog(user_id=uuid.uuid4(), prompt_text="q", prompt_strategy="zero-shot")
-  setattr(exp, "id", None)
-  setattr(exp, "created_at", None)
+  exp = ExperimentLog(
+    id=None,
+    user_id=uuid.uuid4(),
+    prompt_text="q",
+    prompt_strategy="zero-shot",
+    created_at=None,
+  )
   await mock_db.refresh(exp)
   assert exp.id is not None
 
   # 6. Gold SQL failure and strategy exception in run(), plus empty _save_report
   runner._save_report([])
-  runner._save_report([{"Success": False, "Model": "M"}])
+  sample_row: BenchmarkEvaluationRowDict = {
+    "Timestamp": "2026-01-01T00:00:00",
+    "Theme": "T",
+    "Complexity": "Easy",
+    "Strategy": "zero-shot",
+    "Model": "M",
+    "LatencyMs": 10,
+    "Success": False,
+    "ExecError": False,
+    "ErrorMsg": "",
+    "SQLHash": "h",
+    "GeneratedSQL": "SELECT 1",
+  }
+  runner._save_report([sample_row])
 
   with patch.object(runner, "_execute_sql", return_value=(None, "Gold Error")):
     await runner.run(strategies=["zero-shot"])
@@ -202,14 +256,27 @@ async def test_benchmark_runner_edge_cases(runner: BenchmarkRunner, tmp_path: Pa
 
   # 7. CLI main() executes end-to-end against Mock dataset and writes real CSV file
   out_csv = tmp_path / "cli_out.csv"
+  loop = asyncio.get_running_loop()
+  cli_tasks: list[asyncio.Task[None]] = []
+
+  def _schedule_runner(coro: Coroutine[None, None, None]) -> None:
+    """
+    Schedules the `BenchmarkRunner.run` coroutine onto the active test event loop.
+
+    Args:
+        coro (Coroutine[None, None, None]): Coroutine passed to `asyncio.run`.
+    """
+    cli_tasks.append(loop.create_task(coro))
+
   with (
     patch.object(BenchmarkRunner, "_load_dataset", return_value=MOCK_DATASET),
     patch.object(BenchmarkRunner, "_init_duckdb", return_value=None),
     patch.object(BenchmarkRunner, "_execute_sql", return_value=([(1,)], None)),
-    patch("scripts.run_benchmark.asyncio.run", side_effect=lambda coro: coro.close()),
+    patch("scripts.run_benchmark.asyncio.run", side_effect=_schedule_runner),
   ):
     runner_main(["--dry-run", "--output", str(out_csv), "--strategies", "zero-shot"])
-    await BenchmarkRunner(dry_run=True, output_file=str(out_csv)).run(strategies=["zero-shot"])
+    for task in cli_tasks:
+      await task
   assert out_csv.exists()
   csv_text = out_csv.read_text(encoding="utf-8")
   assert "Theme" in csv_text

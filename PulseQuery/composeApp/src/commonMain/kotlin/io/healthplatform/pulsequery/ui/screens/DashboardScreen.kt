@@ -72,6 +72,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.model.extractWidgetSqlConfig
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.saveFileToDevice
 import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
@@ -91,8 +92,11 @@ import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardViewModel
 import io.healthplatform.pulsequery.ui.screens.dashboard.EditWidgetDialog
 import io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.add_widget
 import pulsequery.composeapp.generated.resources.cancel
 import pulsequery.composeapp.generated.resources.create
 import pulsequery.composeapp.generated.resources.create_dashboard
@@ -100,16 +104,33 @@ import pulsequery.composeapp.generated.resources.create_new_dashboard
 import pulsequery.composeapp.generated.resources.dashboard_is_empty
 import pulsequery.composeapp.generated.resources.dashboard_name
 import pulsequery.composeapp.generated.resources.dashboards
+import pulsequery.composeapp.generated.resources.database_misconfiguration
 import pulsequery.composeapp.generated.resources.delete_dashboard
 import pulsequery.composeapp.generated.resources.delete_widget
+import pulsequery.composeapp.generated.resources.edit_widget
 import pulsequery.composeapp.generated.resources.error
+import pulsequery.composeapp.generated.resources.export_csv_snapshot
+import pulsequery.composeapp.generated.resources.export_dashboard
+import pulsequery.composeapp.generated.resources.export_json_snapshot
+import pulsequery.composeapp.generated.resources.export_pdf_report
 import pulsequery.composeapp.generated.resources.failed_to_create_dashboard
 import pulsequery.composeapp.generated.resources.failed_to_delete_dashboard
 import pulsequery.composeapp.generated.resources.failed_to_delete_widget
 import pulsequery.composeapp.generated.resources.failed_to_load_dashboards
+import pulsequery.composeapp.generated.resources.generated_sql_label
+import pulsequery.composeapp.generated.resources.move_down
+import pulsequery.composeapp.generated.resources.move_up
+import pulsequery.composeapp.generated.resources.natural_text_placeholder_default
 import pulsequery.composeapp.generated.resources.no_dashboards_found
+import pulsequery.composeapp.generated.resources.processor_sql_no_model
+import pulsequery.composeapp.generated.resources.query_cart
+import pulsequery.composeapp.generated.resources.redo
 import pulsequery.composeapp.generated.resources.retry
+import pulsequery.composeapp.generated.resources.run_natural_text_button
 import pulsequery.composeapp.generated.resources.select_dashboard
+import pulsequery.composeapp.generated.resources.share_dashboard
+import pulsequery.composeapp.generated.resources.sql_input_placeholder_default
+import pulsequery.composeapp.generated.resources.undo
 
 /**
  * Main application dashboard screen delegating all state and network operations to [DashboardViewModel].
@@ -223,13 +244,13 @@ fun DashboardScreen(
                             onClick = { vm.undo() },
                             enabled = canUndo
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Undo")
+                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(Res.string.undo))
                         }
                         IconButton(
                             onClick = { vm.redo() },
                             enabled = canRedo
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = "Redo")
+                            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = stringResource(Res.string.redo))
                         }
                         IconButton(onClick = { showCartSheet = true }) {
                             BadgedBox(
@@ -239,22 +260,22 @@ fun DashboardScreen(
                                     }
                                 }
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Query Cart")
+                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(Res.string.query_cart))
                             }
                         }
                         IconButton(onClick = { showShareDialog = true }) {
-                            Icon(Icons.Filled.Share, contentDescription = "Share Dashboard")
+                            Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.share_dashboard))
                         }
                         Box {
                             IconButton(onClick = { showExportMenu = true }) {
-                                Icon(Icons.Filled.FileDownload, contentDescription = "Export Dashboard")
+                                Icon(Icons.Filled.FileDownload, contentDescription = stringResource(Res.string.export_dashboard))
                             }
                             DropdownMenu(
                                 expanded = showExportMenu,
                                 onDismissRequest = { showExportMenu = false }
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text("Clinical PDF Report") },
+                                    text = { Text(stringResource(Res.string.export_pdf_report)) },
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
@@ -276,7 +297,7 @@ fun DashboardScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("CSV Data Snapshot") },
+                                    text = { Text(stringResource(Res.string.export_csv_snapshot)) },
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
@@ -298,7 +319,7 @@ fun DashboardScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("JSON Layout Snapshot") },
+                                    text = { Text(stringResource(Res.string.export_json_snapshot)) },
                                     onClick = {
                                         showExportMenu = false
                                         coroutineScope.launch {
@@ -330,9 +351,10 @@ fun DashboardScreen(
         },
         floatingActionButton = {
             if (activeDashboard != null) {
+                val addWidgetDesc = stringResource(Res.string.add_widget)
                 FloatingActionButton(
                     onClick = { onAddWidget?.invoke(activeDashboard.id) },
-                    modifier = Modifier.semantics { contentDescription = "Add Widget" }
+                    modifier = Modifier.semantics { contentDescription = addWidgetDesc }
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                 }
@@ -346,7 +368,7 @@ fun DashboardScreen(
                 !isDatabaseHealthy -> {
                     val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: "Database service is experiencing storage or configuration errors."
                     DatabaseErrorCard(
-                        title = "Database Misconfiguration",
+                        title = stringResource(Res.string.database_misconfiguration),
                         message = dbMsg,
                         onRetry = { vm.retryHealthAndLoad() },
                         modifier = Modifier.padding(16.dp)
@@ -417,7 +439,10 @@ fun DashboardScreen(
                                         onMoveUp = { vm.reorderWidget(index, index - 1) },
                                         onMoveDown = { vm.reorderWidget(index, index + 1) },
                                         onEdit = { widgetToEdit = widget },
-                                        onDelete = { vm.deleteWidgetWithUndo(widget, errDeleteWidget) }
+                                        onDelete = { vm.deleteWidgetWithUndo(widget, errDeleteWidget) },
+                                        onExecuteNaturalText = { text ->
+                                            vm.executeWidgetNaturalText(widget.id, text)
+                                        }
                                     )
                                 }
                             }
@@ -481,7 +506,8 @@ fun DashboardScreen(
 }
 
 /**
- * Stateless card container rendering an analytical widget with header controls for editing, reordering, and deletion.
+ * Stateless card container rendering an analytical widget with header controls for editing, reordering, and deletion,
+ * plus an interactive natural-text / SQL execution bar when `allow_natural_text` is enabled.
  *
  * @param widget The [WidgetResponse] data model to render.
  * @param renderState Parsed [WidgetRenderState] produced by [DashboardViewModel].
@@ -491,6 +517,7 @@ fun DashboardScreen(
  * @param onMoveDown Callback to move the widget downward.
  * @param onEdit Callback to initiate in-place editing of widget configurations.
  * @param onDelete Callback to delete the widget.
+ * @param onExecuteNaturalText Callback invoked when the user submits natural text or SQL inside the widget.
  */
 @Composable
 fun WidgetElevatedCard(
@@ -501,10 +528,23 @@ fun WidgetElevatedCard(
     onMoveUp: () -> Unit = {},
     onMoveDown: () -> Unit = {},
     onEdit: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    onExecuteNaturalText: (String) -> Unit = {}
 ) {
+    val sqlCfg = extractWidgetSqlConfig(widget.config)
+    val allowNaturalText = renderState.allowNaturalText || sqlCfg.allowNaturalText
+    val cfgProcessor = if (sqlCfg.processor.value != "SQL") {
+        sqlCfg.processor.value
+    } else {
+        renderState.processor.value
+    }
+    val cfgPrompt = sqlCfg.naturalTextPrompt
+    var naturalInput by remember(widget.id, renderState.naturalTextPrompt, cfgPrompt) {
+        mutableStateOf(renderState.naturalTextPrompt.ifBlank { cfgPrompt })
+    }
+
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().height(300.dp),
+        modifier = Modifier.fillMaxWidth().height(if (allowNaturalText) 370.dp else 300.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -514,26 +554,79 @@ fun WidgetElevatedCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = widget.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = widget.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
+                    )
+                    if (allowNaturalText) {
+                        val procLabel = if (cfgProcessor.equals("SQL", ignoreCase = true)) {
+                            stringResource(Res.string.processor_sql_no_model)
+                        } else {
+                            cfgProcessor
+                        }
+                        Text(
+                            text = procLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                        Icon(Icons.Default.ArrowUpward, contentDescription = "Move Up")
+                        Icon(Icons.Default.ArrowUpward, contentDescription = stringResource(Res.string.move_up))
                     }
                     IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                        Icon(Icons.Default.ArrowDownward, contentDescription = "Move Down")
+                        Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(Res.string.move_down))
                     }
                     IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Widget")
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(Res.string.edit_widget))
                     }
                     IconButton(onClick = onDelete) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.delete_widget))
                     }
+                }
+            }
+            if (allowNaturalText) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val defaultHint = if (cfgProcessor.equals("SQL", ignoreCase = true)) {
+                    stringResource(Res.string.sql_input_placeholder_default)
+                } else {
+                    stringResource(Res.string.natural_text_placeholder_default)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = naturalInput,
+                        onValueChange = { naturalInput = it },
+                        placeholder = { Text(defaultHint, style = MaterialTheme.typography.bodySmall) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("widget_natural_text_input_${widget.id}")
+                            .semantics { contentDescription = defaultHint }
+                    )
+                    Button(
+                        onClick = { onExecuteNaturalText(naturalInput) },
+                        enabled = !renderState.isExecutingNaturalText && naturalInput.isNotBlank(),
+                        modifier = Modifier.testTag("widget_natural_text_run_${widget.id}")
+                    ) {
+                        Text(stringResource(Res.string.run_natural_text_button))
+                    }
+                }
+                renderState.generatedSql?.takeIf { it.isNotBlank() }?.let { sql ->
+                    Text(
+                        text = stringResource(Res.string.generated_sql_label, sql),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))

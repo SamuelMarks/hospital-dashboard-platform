@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,5 +12,6 @@
  * Payload for voting on a candidate.
  */
 export interface MessageVoteRequest {
+  /** Property `candidate_id`. */
   candidate_id: string;
 }

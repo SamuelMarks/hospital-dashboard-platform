@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -12,6 +12,8 @@
  * Payload for sharing a dashboard with another user by email.
  */
 export interface DashboardShareCreate {
+  /** Property `user_email`. */
   user_email: string;
+  /** Property `permission_level`. */
   permission_level?: string;
 }

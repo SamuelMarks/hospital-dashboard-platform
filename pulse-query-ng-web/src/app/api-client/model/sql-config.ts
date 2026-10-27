@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -31,7 +31,25 @@ export interface SqlConfig {
   /**
    * The raw SQL query to execute.
    */
-  query: string;
+  query?: string | null;
+  /** Property `xKey`. */
   xKey?: string | null;
+  /** Property `yKey`. */
   yKey?: string | null;
+  /**
+   * Whether the widget allows the user to enter natural text on the dashboard.
+   */
+  allow_natural_text?: boolean;
+  /**
+   * Processor identifier: 'SQL' [no model], 'ollama:<model>', or '<any-llm-provider>:<model>'.
+   */
+  processor?: string;
+  /**
+   * Default or saved natural text prompt for this widget.
+   */
+  natural_text_prompt?: string | null;
+  /**
+   * Optional placeholder shown in the widget's natural text input.
+   */
+  placeholder_text?: string | null;
 }

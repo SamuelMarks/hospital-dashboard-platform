@@ -87,12 +87,55 @@ describe('ConnectionStatusService', () => {
 
     const req = httpMock.expectOne('/api/v1/system/health');
     expect(req.request.method).toBe('GET');
+    expect(req.request.headers.get('Cache-Control')).toContain('no-cache');
     req.flush(mockHealthSuccess);
 
     expect(service.isBackendReachable()).toBe(true);
     expect(service.isDatabaseHealthy()).toBe(true);
     expect(service.overallStatus()).toBe('healthy');
     expect(service.healthData()).toEqual(mockHealthSuccess);
+  });
+
+  it('should normalize degraded overall_status to healthy when databases and default dataset are ready', () => {
+    const degradedFromConfigWarning: SystemHealthResponse = {
+      ...mockHealthSuccess,
+      overall_status: 'degraded',
+      warnings: [
+        {
+          code: 'INSECURE_SECRET_KEY',
+          message: 'Default secret key in use',
+          severity: 'warning',
+          remediation: 'Change SECRET_KEY',
+          timestamp: '2026-09-06T00:00:00Z',
+        },
+      ],
+    };
+
+    service.checkHealth().subscribe();
+    const req = httpMock.expectOne('/api/v1/system/health');
+    req.flush(degradedFromConfigWarning);
+
+    expect(service.isDatabaseHealthy()).toBe(true);
+    expect(service.overallStatus()).toBe('healthy');
+    expect(service.activeWarnings().length).toBe(1);
+  });
+
+  it('should preserve degraded overall_status when dataset is missing or using synthetic fallback data', () => {
+    const degradedMissingData: SystemHealthResponse = {
+      ...mockHealthSuccess,
+      overall_status: 'degraded',
+      data: {
+        ...mockHealthSuccess.data,
+        has_default_data: false,
+        fallback_generated: true,
+      },
+    };
+
+    service.checkHealth().subscribe();
+    const req = httpMock.expectOne('/api/v1/system/health');
+    req.flush(degradedMissingData);
+
+    expect(service.overallStatus()).toBe('degraded');
   });
 
   it('should handle checkHealth with failing database status and missing warnings', () => {

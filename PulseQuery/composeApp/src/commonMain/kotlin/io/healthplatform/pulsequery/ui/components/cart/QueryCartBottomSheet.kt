@@ -41,9 +41,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
+import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.messageOrDefault
+import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.StagedQuery
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.clear_all
+import pulsequery.composeapp.generated.resources.query_cart
+import pulsequery.composeapp.generated.resources.remove_from_cart
 
 /**
  * Modal Bottom Sheet allowing users to review staged queries in their cart,
@@ -79,13 +87,13 @@ fun QueryCartBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Query Cart (${stagedQueries.size})",
+                    text = "${stringResource(Res.string.query_cart)} (${stagedQueries.size})",
                     style = MaterialTheme.typography.titleLarge
                 )
 
                 if (stagedQueries.isNotEmpty()) {
                     TextButton(onClick = { AppContainer.queryCartRepository.clearCart() }) {
-                        Text("Clear All")
+                        Text(stringResource(Res.string.clear_all))
                     }
                 }
             }
@@ -137,7 +145,7 @@ fun QueryCartBottomSheet(
                             scope.launch {
                                 isDeploying = true
                                 deployError = null
-                                runCatching {
+                                runCatchingPulseAsync {
                                     for (query in stagedQueries) {
                                         val widgetIn = WidgetIn.Sql(
                                             title = query.title,
@@ -147,7 +155,7 @@ fun QueryCartBottomSheet(
                                         AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                                             activeDashboardId,
                                             widgetIn
-                                        )
+                                        ).asResult().getOrThrow()
                                     }
                                 }.fold(
                                     onSuccess = {
@@ -156,7 +164,7 @@ fun QueryCartBottomSheet(
                                         onDismiss()
                                     },
                                     onFailure = { e ->
-                                        deployError = e.message ?: "Failed to deploy queries to dashboard"
+                                        deployError = e.messageOrDefault("Failed to deploy queries to dashboard")
                                     }
                                 )
                                 isDeploying = false
@@ -206,7 +214,7 @@ private fun StagedQueryCard(
                 IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Remove from cart",
+                        contentDescription = stringResource(Res.string.remove_from_cart),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(18.dp)
                     )

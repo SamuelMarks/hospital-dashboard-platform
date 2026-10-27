@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -13,6 +13,8 @@ import { ColumnInfo } from './column-info';
  * Metadata for a database table, including its columns.
  */
 export interface TableInfo {
+  /** Property `table_name`. */
   table_name: string;
-  columns: Array<ColumnInfo>;
+  /** Property `columns`. */
+  columns: ColumnInfo[];
 }

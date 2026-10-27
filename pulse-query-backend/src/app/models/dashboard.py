@@ -1,6 +1,6 @@
 """Dashboard and widget models for the analytics UI."""
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 import uuid
 
 from sqlalchemy import ForeignKey, String
@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.postgres import Base
+from app.schemas.json_types import JsonObject
 
 if TYPE_CHECKING:
   from app.models.user import User
@@ -72,6 +73,6 @@ class Widget(Base):
   # For SQL: { "query": "SELECT * ..." }
   # For HTTP: { "url": "https://api...", "method": "GET" }
   # Also stores Layout: { "w": 6, "h": 4, "x": 0, "y": 0 }
-  config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+  config: Mapped[JsonObject] = mapped_column(JSONB, default=dict)
 
   dashboard: Mapped["Dashboard"] = relationship("Dashboard", back_populates="widgets")

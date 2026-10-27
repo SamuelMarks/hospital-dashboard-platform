@@ -38,13 +38,16 @@ import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.auth.AuthViewModel
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.already_have_account_log_in
 import pulsequery.composeapp.generated.resources.authentication_failed
 import pulsequery.composeapp.generated.resources.cancel
 import pulsequery.composeapp.generated.resources.email
 import pulsequery.composeapp.generated.resources.email_and_password_cannot_be_empty
 import pulsequery.composeapp.generated.resources.failed_to_fetch_user_profile
 import pulsequery.composeapp.generated.resources.login_register
+import pulsequery.composeapp.generated.resources.need_an_account_register
 import pulsequery.composeapp.generated.resources.password
+import pulsequery.composeapp.generated.resources.register_button
 import pulsequery.composeapp.generated.resources.save
 import pulsequery.composeapp.generated.resources.server_url
 import pulsequery.composeapp.generated.resources.server_url_hint
@@ -178,7 +181,13 @@ fun LoginScreen(
                         modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Text(if (uiState.isRegisterMode) "Register" else stringResource(Res.string.login_register))
+                    Text(
+                        if (uiState.isRegisterMode) {
+                            stringResource(Res.string.register_button)
+                        } else {
+                            stringResource(Res.string.login_register)
+                        }
+                    )
                 }
             }
 
@@ -193,7 +202,13 @@ fun LoginScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (uiState.isRegisterMode) "Already have an account? Log In" else "Need an account? Register")
+                Text(
+                    if (uiState.isRegisterMode) {
+                        stringResource(Res.string.already_have_account_log_in)
+                    } else {
+                        stringResource(Res.string.need_an_account_register)
+                    }
+                )
             }
         }
     }

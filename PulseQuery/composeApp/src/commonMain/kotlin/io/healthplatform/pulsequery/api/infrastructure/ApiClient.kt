@@ -31,6 +31,8 @@ import io.ktor.http.encodeURLQueryComponent
 import io.ktor.http.encodedPath
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.util.reflect.TypeInfo
+import io.ktor.util.reflect.typeInfo
 import kotlinx.serialization.json.Json
 
 /**
@@ -105,7 +107,7 @@ open class ApiClient(
         }
 
         /** Headers managed directly by Ktor's content negotiation that must not be manually duplicated. */
-        protected val UNSAFE_HEADERS: List<String> = listOf(HttpHeaders.ContentType)
+        internal val UNSAFE_HEADERS: List<String> = listOf(HttpHeaders.ContentType)
     }
 
     /**
@@ -225,32 +227,53 @@ open class ApiClient(
     }
 
     /**
-     * Executes an `application/json` HTTP request.
+     * Executes an `application/json` HTTP request with a reified request body type [B].
      *
      * @param T Type of the request configuration body metadata.
+     * @param B Serializable request payload type.
      * @param requestConfig Request configuration descriptor.
      * @param body Optional JSON serializable request body.
      * @param authNames Security scheme names required by the endpoint.
      * @return Raw Ktor [HttpResponse].
      */
-    protected suspend fun <T : Any?> jsonRequest(
+    protected suspend inline fun <T, reified B> jsonRequest(
         requestConfig: RequestConfig<T>,
-        body: Any?,
+        body: B?,
         authNames: List<String>
-    ): HttpResponse = request(requestConfig, body, authNames)
+    ): HttpResponse = executeTypedRequest(requestConfig, body, typeInfo<B>(), authNames)
 
     /**
-     * Executes a configured HTTP request against the underlying Ktor [HttpClient].
+     * Executes a configured HTTP request with a reified request body type [B].
      *
      * @param T Type of the request configuration body metadata.
+     * @param B Request payload type.
      * @param requestConfig Request configuration descriptor.
      * @param body Optional request payload.
      * @param authNames Security scheme names required by the endpoint.
      * @return Raw Ktor [HttpResponse].
      */
-    protected suspend fun <T : Any?> request(
+    protected suspend inline fun <T, reified B> request(
         requestConfig: RequestConfig<T>,
-        body: Any?,
+        body: B?,
+        authNames: List<String>
+    ): HttpResponse = executeTypedRequest(requestConfig, body, typeInfo<B>(), authNames)
+
+    /**
+     * Executes a configured HTTP request against the underlying Ktor [HttpClient] using explicit [bodyType] metadata.
+     *
+     * @param T Type of the request configuration body metadata.
+     * @param B Request payload type.
+     * @param requestConfig Request configuration descriptor.
+     * @param body Optional request payload.
+     * @param bodyType Reflection [TypeInfo] describing [B].
+     * @param authNames Security scheme names required by the endpoint.
+     * @return Raw Ktor [HttpResponse].
+     */
+    @PublishedApi
+    internal suspend fun <T, B> executeTypedRequest(
+        requestConfig: RequestConfig<T>,
+        body: B?,
+        bodyType: TypeInfo,
         authNames: List<String>
     ): HttpResponse {
         requestConfig.updateForAuth(authNames)
@@ -277,7 +300,7 @@ open class ApiClient(
                     ContentType.Application.Json
                 }
                 this.contentType(contentType)
-                this.setBody(body)
+                this.setBody(body, bodyType)
             }
         }
     }

@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -30,4 +30,3 @@ export interface AlertRuleCreate {
    */
   is_active?: boolean;
 }
-export namespace AlertRuleCreate {}

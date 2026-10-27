@@ -81,7 +81,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationDetail
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createConversationApiV1ChatPost(
         conversationCreate: ConversationCreate,
         token: kotlin.String? = null
@@ -116,7 +115,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationDetail
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun createConversationApiV1ConversationsPost(
         conversationCreate: ConversationCreate,
         token: kotlin.String? = null
@@ -221,7 +219,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<MessageResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getMessagesApiV1ChatConversationIdMessagesGet(
         conversationId: kotlin.String,
         token: kotlin.String? = null
@@ -272,7 +269,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<MessageResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun getMessagesApiV1ConversationsConversationIdMessagesGet(
         conversationId: kotlin.String,
         token: kotlin.String? = null
@@ -324,7 +320,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<ConversationResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listConversationsApiV1ChatGet(
         limit: kotlin.Int? = 50,
         offset: kotlin.Int? = 0,
@@ -377,7 +372,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<ConversationResponse>
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun listConversationsApiV1ConversationsGet(
         limit: kotlin.Int? = 50,
         offset: kotlin.Int? = 0,
@@ -430,7 +424,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun sendMessageApiV1ChatConversationIdMessagesPost(
         conversationId: kotlin.String,
         messageCreate: MessageCreate,
@@ -467,7 +460,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun sendMessageApiV1ConversationsConversationIdMessagesPost(
         conversationId: kotlin.String,
         messageCreate: MessageCreate,
@@ -504,7 +496,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.String
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun streamConversationTokensApiV1ChatStreamConversationIdGet(
         conversationId: kotlin.String,
         modelId: kotlin.String? = null,
@@ -543,7 +534,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.String
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun streamConversationTokensApiV1ConversationsStreamConversationIdGet(
         conversationId: kotlin.String,
         modelId: kotlin.String? = null,
@@ -582,7 +572,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateConversationApiV1ChatConversationIdPut(
         conversationId: kotlin.String,
         conversationUpdate: ConversationUpdate,
@@ -619,7 +608,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun updateConversationApiV1ConversationsConversationIdPut(
         conversationId: kotlin.String,
         conversationUpdate: ConversationUpdate,
@@ -657,7 +645,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun voteCandidateApiV1ChatConversationIdMessagesMessageIdVotePost(
         conversationId: kotlin.String,
         messageId: kotlin.String,
@@ -696,7 +683,6 @@ open class ChatApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
-    @Suppress("UNCHECKED_CAST")
     open suspend fun voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
         conversationId: kotlin.String,
         messageId: kotlin.String,

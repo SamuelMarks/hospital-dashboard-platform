@@ -1,5 +1,5 @@
 /**
- * Hospital Analytics Platform
+ * @fileoverview Generated OpenAPI model for Hospital Analytics Platform.
  *
  *
  *
@@ -39,23 +39,26 @@ export interface HttpConfig {
   /**
    * Request Headers
    */
-  headers?: { [key: string]: string };
+  headers?: Record<string, string>;
   /**
    * Query Parameters
    */
-  params?: { [key: string]: string };
+  params?: Record<string, string>;
   /**
    * JSON Body payload
    */
-  body?: Record<string, any> | null;
+  body?: Record<string, unknown> | null;
   /**
    * If true, forwards the user\'s JWT to the target.
    */
   meta_forward_auth?: boolean;
+  /** Property `xKey`. */
   xKey?: string | null;
+  /** Property `yKey`. */
   yKey?: string | null;
 }
 export namespace HttpConfig {
+  /** Generated OpenAPI type definition. */
   export const MethodEnum = {
     Get: 'GET',
     Post: 'POST',
@@ -63,5 +66,6 @@ export namespace HttpConfig {
     Delete: 'DELETE',
     Patch: 'PATCH',
   } as const;
+  /** Generated OpenAPI type definition. */
   export type MethodEnum = (typeof MethodEnum)[keyof typeof MethodEnum];
 }

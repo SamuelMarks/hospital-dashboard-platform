@@ -152,7 +152,7 @@ class AnalyticsService:
               timestamp=now,
             )
           )
-    except Exception as exc:
+    except (duckdb.Error, RuntimeError, ValueError, TypeError, OSError) as exc:
       logger.warning(f"Failed to evaluate capacity alerts against DuckDB: {exc}")
 
     return Ok(alerts)

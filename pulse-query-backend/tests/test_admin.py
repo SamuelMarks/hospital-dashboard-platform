@@ -42,10 +42,20 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) ->
   # Test authorized access (get initial)
   res = await client.get("/api/v1/admin/settings", headers=admin_headers)
   assert res.status_code == 200
-  assert res.json() == {"api_keys": {}, "visible_models": []}
+  assert res.json() == {
+    "api_keys": {},
+    "visible_models": [],
+    "configured_models": [],
+    "ollama_api_base": None,
+  }
 
   # Test update
-  payload = {"api_keys": {"openai": "sk-123"}, "visible_models": ["openai/gpt-4o"]}
+  payload = {
+    "api_keys": {"openai": "sk-123"},
+    "visible_models": ["openai/gpt-4o"],
+    "configured_models": ["groq:llama3-70b"],
+    "ollama_api_base": "http://localhost:11434",
+  }
   res = await client.put("/api/v1/admin/settings", headers=admin_headers, json=payload)
   assert res.status_code == 200
   assert res.json() == payload
@@ -56,7 +66,12 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) ->
   assert res.json() == payload
 
   # Test update again (to hit the update block instead of create)
-  payload2 = {"api_keys": {"anthropic": "sk-456"}, "visible_models": ["anthropic/claude"]}
+  payload2 = {
+    "api_keys": {"anthropic": "sk-456"},
+    "visible_models": ["anthropic/claude"],
+    "configured_models": ["mistral:mistral-large"],
+    "ollama_api_base": "http://ollama.local:11434",
+  }
   res = await client.put("/api/v1/admin/settings", headers=admin_headers, json=payload2)
   assert res.status_code == 200
   assert res.json() == payload2

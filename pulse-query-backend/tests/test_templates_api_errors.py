@@ -99,11 +99,25 @@ async def test_template_crud_success(client: AsyncClient) -> None:
   # update
   res_update = await client.put(
     f"/api/v1/templates/{template_id}",
-    json={"title": "Temp2", "description": "D2", "sql_template": "SELECT 2", "category": "C2"},
+    json={
+      "title": "Temp2",
+      "description": "D2",
+      "sql_template": "SELECT 2",
+      "category": "C2",
+      "parameters_schema": {"type": "object", "properties": {}},
+    },
     headers=headers,
   )
   assert res_update.status_code == 200
   assert res_update.json()["title"] == "Temp2"
+
+  res_empty_update = await client.put(
+    f"/api/v1/templates/{template_id}",
+    json={},
+    headers=headers,
+  )
+  assert res_empty_update.status_code == 200
+  assert res_empty_update.json()["title"] == "Temp2"
 
   # delete
   res_delete = await client.delete(f"/api/v1/templates/{template_id}", headers=headers)

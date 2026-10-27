@@ -7,9 +7,6 @@ const jsdoc = require('eslint-plugin-jsdoc');
 
 module.exports = defineConfig([
   {
-    ignores: ['src/app/api-client/**'],
-  },
-  {
     files: ['**/*.ts'],
     extends: [
       eslint.configs.recommended,
@@ -109,6 +106,12 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ['src/app/api-client/model/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-namespace': 'off',
+    },
+  },
+  {
     files: ['**/*.spec.ts'],
     rules: {
       '@typescript-eslint/no-empty-function': 'off',
@@ -132,7 +135,7 @@ module.exports = defineConfig([
           checkId: false,
           checkText: true,
           checkAttributes: true,
-          ignoreTags: ['mat-icon', 'code', 'pre'],
+          ignoreTags: ['mat-icon', 'code', 'pre', 'meta'],
           ignoreAttributes: [
             'data-testid',
             'appearance',
@@ -151,7 +154,6 @@ module.exports = defineConfig([
             'preserveAspectRatio',
             'matBadgeSize',
             'matBadgeColor',
-            'content',
             'aria-labelledby',
             'aria-describedby',
             'aria-orientation',

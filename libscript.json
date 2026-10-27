@@ -1,12 +1,20 @@
 {
   "$schema": "https://raw.githubusercontent.com/SamuelMarks/libscript/master/libscript.schema.json",
   "name": "hospital-dashboard-platform",
+  "aliases": [
+    "pulse",
+    "pulse_query",
+    "pulse-query",
+    "hospital_dashboard_platform"
+  ],
   "version": "0.0.1",
   "domain": "pulse-query.healthplatform.io",
+  "legacy_service_names": ["pulse-backend", "pulse-web"],
   "deps": {
     "python": "3.12",
     "nodejs": "22",
     "postgres": "18",
+    "valkey": "latest",
     "nginx": "latest",
     "duckdb": "latest",
     "ollama": "latest",
@@ -16,6 +24,7 @@
     "python": "3.12",
     "nodejs": "22",
     "postgres": "18",
+    "valkey": "latest",
     "nginx": "latest",
     "duckdb": "latest",
     "ollama": "latest",
@@ -102,21 +111,45 @@
     {
       "engine": "postgres",
       "name": "pulse_query_db",
+      "legacy_names": ["pulse_query"],
       "user": "postgres",
       "password_env": "POSTGRES_PASSWORD",
       "host": "127.0.0.1",
       "port": 5432,
       "url_env": "DATABASE_URL",
+      "db_env": "POSTGRES_DB",
       "min_tables": 2,
-      "required_tables": ["templates", "alembic_version"]
+      "required_tables": ["templates", "alembic_version"],
+      "min_rows": {
+        "templates": 10
+      },
+      "seed_command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && cd pulse-query-backend && if [ ! -d .venv ]; then uv sync --python 3.12; fi && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run alembic upgrade head && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py"
     },
     {
       "engine": "duckdb",
       "name": "hospital_analytics",
       "path": "${DUCKDB_PATH}",
+      "fallback_paths": [
+        "${DATA_MOUNT_DIR}/hospital_analytics.duckdb",
+        "pulse-query-backend/data/hospital_analytics.duckdb",
+        "hospital_analytics.duckdb"
+      ],
       "url_env": "DUCKDB_URL",
       "min_tables": 2,
-      "required_tables": ["hospital_data", "Synthetic_hospital_data_transfers"]
+      "required_tables": ["hospital_data", "Synthetic_hospital_data_transfers"],
+      "min_rows": {
+        "hospital_data": 100,
+        "Synthetic_hospital_data_transfers": 100
+      },
+      "seed_command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && cd pulse-query-backend && if [ ! -d .venv ]; then uv sync --python 3.12; fi && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py"
+    },
+    {
+      "engine": "valkey",
+      "name": "pulse_query_cache",
+      "host": "127.0.0.1",
+      "port": 6379,
+      "db_index": 0,
+      "url_env": "VALKEY_URL"
     }
   ],
   "frontends": {
@@ -137,16 +170,19 @@
   "services": [
     {
       "name": "pulse-query-backend",
-      "command": "sh -c 'if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\"; exec \"${UV_BIN:-uv}\" run uvicorn app.main:app --host 0.0.0.0 --port 8000'",
+      "command": "set -a; for _ef in ../.env .env ../.env.secrets .env.secrets ../.env.libscript .env.libscript; do if [ -r \"$_ef\" ]; then . \"$_ef\"; fi; done; set +a; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin:/root/.local/bin}:$PATH\"; exec \"${UV_BIN:-uv}\" run uvicorn app.main:app --host 0.0.0.0 --port ${PULSE_API_PORT:-8000}",
       "working_dir": "pulse-query-backend",
       "working_directory": "pulse-query-backend",
       "port": 8000,
       "user": "${SERVICE_USER}",
-      "env_files": [".env", ".env.secrets", "../.env", "../.env.secrets"],
+      "env_files": [".env", ".env.secrets", ".env.libscript"],
       "health_check": {
         "url": "http://127.0.0.1:8000/api/v1/system/health",
         "expect_status": 200,
-        "expect_json": ".status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10"
+        "retries": 15,
+        "interval": 2,
+        "timeout": 5,
+        "expect_json": ".status == \"healthy\" and .database.duckdb == true and .database.postgres == true and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and (.datasets.row_counts.Synthetic_hospital_data_transfers // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10"
       },
       "env": {
         "PYTHONUNBUFFERED": "1",
@@ -178,7 +214,7 @@
     "pre_install": [
       {
         "name": "prepare-persistent-data-dir",
-        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\" && (sudo -u postgres psql -c 'ALTER USER postgres WITH PASSWORD $$postgres$$;' || true) && (sudo -u postgres psql -c 'CREATE DATABASE pulse_query_db OWNER postgres;' || true)",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
         "cmd_windows": "if not exist data mkdir data",
         "description": "Mount and prepare persistent data directory for DuckDB"
       }
@@ -186,46 +222,26 @@
     "install": [
       {
         "name": "prepare-persistent-data-dir",
-        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\" && (sudo -u postgres psql -c 'ALTER USER postgres WITH PASSWORD $$postgres$$;' || true) && (sudo -u postgres psql -c 'CREATE DATABASE pulse_query_db OWNER postgres;' || true)",
+        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
         "cmd_windows": "if not exist data mkdir data",
         "description": "Mount and prepare persistent data directory for DuckDB"
       },
       {
         "name": "install-backend-deps",
         "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _lock_hash=$(cksum uv.lock 2>/dev/null | awk '{print $1\"_\"$2}' || printf 'none') && if [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ -x .venv/bin/uvicorn ] && [ -f .venv/.libscript_lock_hash ] && [ \"$(cat .venv/.libscript_lock_hash 2>/dev/null)\" = \"$_lock_hash\" ]; then printf '[REUSE] pulse-query-backend .venv is up-to-date.\\n'; else uv sync --python 3.12 && printf '%s\\n' \"$_lock_hash\" > .venv/.libscript_lock_hash; fi",
         "cmd_windows": "uv sync --python 3.12",
         "description": "Install Python backend dependencies"
       },
       {
         "name": "install-frontend-deps",
         "working_dir": "pulse-query-ng-web",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _pkg_hash=$(cksum package-lock.json 2>/dev/null | awk '{print $1\"_\"$2}' || printf 'none') && if [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ -d node_modules/@angular/core ] && [ -f node_modules/.libscript_pkg_hash ] && [ \"$(cat node_modules/.libscript_pkg_hash 2>/dev/null)\" = \"$_pkg_hash\" ]; then printf '[REUSE] pulse-query-ng-web node_modules is up-to-date.\\n'; else npm install --legacy-peer-deps && printf '%s\\n' \"$_pkg_hash\" > node_modules/.libscript_pkg_hash; fi",
         "cmd_windows": "npm install --legacy-peer-deps",
         "description": "Install Node.js frontend dependencies"
       }
     ],
     "post_install": [
-      {
-        "name": "prepare-persistent-data-dir",
-        "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\" && (sudo -u postgres psql -c 'ALTER USER postgres WITH PASSWORD $$postgres$$;' || true) && (sudo -u postgres psql -c 'CREATE DATABASE pulse_query_db OWNER postgres;' || true)",
-        "cmd_windows": "if not exist data mkdir data",
-        "description": "Mount and prepare persistent data directory for DuckDB"
-      },
-      {
-        "name": "sync-backend-deps",
-        "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
-        "cmd_windows": "uv sync --python 3.12",
-        "description": "Install Python backend dependencies"
-      },
-      {
-        "name": "build-angular-frontend",
-        "working_dir": "pulse-query-ng-web",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps && npm run build",
-        "cmd_windows": "npm install --legacy-peer-deps && npm run build",
-        "description": "Install and build Angular frontend application"
-      },
       {
         "name": "fix-workspace-permissions",
         "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" .; fi",
@@ -237,8 +253,8 @@
       {
         "name": "build-angular-web",
         "working_dir": "pulse-query-ng-web",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
-        "cmd_windows": "npm run build",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ]; then _cnt=$(find dist/pulse-query-ng-web/browser -type f 2>/dev/null | wc -l | tr -d ' '); _sz=$(du -sh dist/pulse-query-ng-web/browser 2>/dev/null | awk '{print $1}'); printf '[BUILD] [REUSE] Angular build (ng build) output verified at dist/pulse-query-ng-web/browser/index.html (%s files, %s; pass --force-rebuild to re-run ng build).\\n' \"${_cnt:-0}\" \"${_sz:-0B}\"; else printf '[BUILD] [ng build] Building Angular frontend (pulse-query-ng-web) -> dist/pulse-query-ng-web/browser/...\\n' && npm run build; fi",
+        "cmd_windows": "if not \"%FORCE_REBUILD%\"==\"1\" if exist \"dist\\pulse-query-ng-web\\browser\\index.html\" (echo [BUILD] [REUSE] Angular build ^(ng build^) output verified at dist\\pulse-query-ng-web\\browser\\index.html ^(pass --force-rebuild to re-run ng build^).) else (echo [BUILD] [ng build] Building Angular frontend ^(pulse-query-ng-web^) -^> dist\\pulse-query-ng-web\\browser\\... && npm run build)",
         "description": "Build Angular frontend application"
       }
     ],
@@ -246,23 +262,23 @@
       {
         "name": "alembic-upgrade-head",
         "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run alembic upgrade head",
-        "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run alembic upgrade head",
-        "description": "Run Alembic database migrations for PostgreSQL"
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Running Alembic schema migrations on PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run alembic upgrade head && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run alembic current",
+        "cmd_windows": "echo [UPSERT:POSTGRES] Running Alembic schema migrations on PostgreSQL... && set PYTHONPATH=src&& uv run alembic upgrade head && uv run alembic current",
+        "description": "Apply PostgreSQL Alembic migrations"
       },
       {
         "name": "ingest-clinical-datasets",
         "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
-        "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB \"%s\"...\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
+        "cmd_windows": "echo [UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
         "description": "Ingest synthetic clinical datasets into DuckDB"
       },
       {
         "name": "seed-dashboard-templates",
         "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/seed_templates.py",
-        "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
-        "description": "Seed initial dashboard templates into PostgreSQL"
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py",
+        "cmd_windows": "echo [UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
+        "description": "Seed initial clinical dashboard templates into PostgreSQL"
       },
       {
         "name": "fix-data-directory-ownership",
@@ -296,6 +312,7 @@
     "provider": "nginx",
     "domain": "pulse-query.healthplatform.io",
     "server_name": "pulse-query.healthplatform.io",
+    "expect_html": "<app-root",
     "tls": "letsencrypt",
     "port": 8000,
     "listen": [80, 443],
@@ -375,6 +392,7 @@
         "provider": "nginx",
         "domain": "pulse-query.healthplatform.io",
         "server_name": "pulse-query.healthplatform.io",
+        "expect_html": "<app-root",
         "tls": "letsencrypt",
         "port": 8000,
         "listen": [80, 443],
@@ -430,13 +448,19 @@
       {
         "engine": "postgres",
         "name": "pulse_query_db",
+        "legacy_names": ["pulse_query"],
         "user": "postgres",
         "password_env": "POSTGRES_PASSWORD",
         "host": "127.0.0.1",
         "port": 5432,
         "url_env": "DATABASE_URL",
+        "db_env": "POSTGRES_DB",
         "min_tables": 2,
-        "required_tables": ["templates", "alembic_version"]
+        "required_tables": ["templates", "alembic_version"],
+        "min_rows": {
+          "templates": 10
+        },
+        "seed_command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && cd pulse-query-backend && if [ ! -d .venv ]; then uv sync --python 3.12; fi && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run alembic upgrade head && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py"
       },
       {
         "engine": "duckdb",
@@ -447,7 +471,12 @@
         "required_tables": [
           "hospital_data",
           "Synthetic_hospital_data_transfers"
-        ]
+        ],
+        "min_rows": {
+          "hospital_data": 100,
+          "Synthetic_hospital_data_transfers": 100
+        },
+        "seed_command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && cd pulse-query-backend && if [ ! -d .venv ]; then uv sync --python 3.12; fi && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py"
       }
     ],
     "frontends": {
@@ -468,16 +497,19 @@
     "services": [
       {
         "name": "pulse-query-backend",
-        "command": "sh -c 'if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\"; exec \"${UV_BIN:-uv}\" run uvicorn app.main:app --host 0.0.0.0 --port 8000'",
+        "command": "set -a; for _ef in ../.env .env ../.env.secrets .env.secrets ../.env.libscript .env.libscript; do if [ -r \"$_ef\" ]; then . \"$_ef\"; fi; done; set +a; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin:/root/.local/bin}:$PATH\"; exec \"${UV_BIN:-uv}\" run uvicorn app.main:app --host 0.0.0.0 --port ${PULSE_API_PORT:-8000}",
         "working_dir": "pulse-query-backend",
         "working_directory": "pulse-query-backend",
         "port": 8000,
         "user": "${SERVICE_USER}",
-        "env_files": [".env", ".env.secrets", "../.env", "../.env.secrets"],
+        "env_files": [".env", ".env.secrets", ".env.libscript"],
         "health_check": {
           "url": "http://127.0.0.1:8000/api/v1/system/health",
           "expect_status": 200,
-          "expect_json": ".status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10"
+          "retries": 15,
+          "interval": 2,
+          "timeout": 5,
+          "expect_json": ".status == \"healthy\" and .database.duckdb == true and .database.postgres == true and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and (.datasets.row_counts.Synthetic_hospital_data_transfers // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10"
         },
         "env": {
           "PYTHONUNBUFFERED": "1",
@@ -524,39 +556,19 @@
         {
           "name": "install-backend-deps",
           "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _lock_hash=$(cksum uv.lock 2>/dev/null | awk '{print $1\"_\"$2}' || printf 'none') && if [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ -x .venv/bin/uvicorn ] && [ -f .venv/.libscript_lock_hash ] && [ \"$(cat .venv/.libscript_lock_hash 2>/dev/null)\" = \"$_lock_hash\" ]; then printf '[REUSE] pulse-query-backend .venv is up-to-date.\\n'; else uv sync --python 3.12 && printf '%s\\n' \"$_lock_hash\" > .venv/.libscript_lock_hash; fi",
           "cmd_windows": "uv sync --python 3.12",
           "description": "Install Python backend dependencies"
         },
         {
           "name": "install-frontend-deps",
           "working_dir": "pulse-query-ng-web",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _pkg_hash=$(cksum package-lock.json 2>/dev/null | awk '{print $1\"_\"$2}' || printf 'none') && if [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ -d node_modules/@angular/core ] && [ -f node_modules/.libscript_pkg_hash ] && [ \"$(cat node_modules/.libscript_pkg_hash 2>/dev/null)\" = \"$_pkg_hash\" ]; then printf '[REUSE] pulse-query-ng-web node_modules is up-to-date.\\n'; else npm install --legacy-peer-deps && printf '%s\\n' \"$_pkg_hash\" > node_modules/.libscript_pkg_hash; fi",
           "cmd_windows": "npm install --legacy-peer-deps",
           "description": "Install Node.js frontend dependencies"
         }
       ],
       "post_install": [
-        {
-          "name": "prepare-persistent-data-dir",
-          "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; sudo mkdir -p \"$DATA_DIR\" && sudo chown -R $(whoami):$(whoami) \"$DATA_DIR\"",
-          "cmd_windows": "if not exist data mkdir data",
-          "description": "Mount and prepare persistent data directory for DuckDB"
-        },
-        {
-          "name": "sync-backend-deps",
-          "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && uv sync --python 3.12",
-          "cmd_windows": "uv sync --python 3.12",
-          "description": "Install Python backend dependencies"
-        },
-        {
-          "name": "build-angular-frontend",
-          "working_dir": "pulse-query-ng-web",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm install --legacy-peer-deps && npm run build",
-          "cmd_windows": "npm install --legacy-peer-deps && npm run build",
-          "description": "Install and build Angular frontend application"
-        },
         {
           "name": "fix-workspace-permissions",
           "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" .; fi",
@@ -568,8 +580,8 @@
         {
           "name": "build-angular-web",
           "working_dir": "pulse-query-ng-web",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
-          "cmd_windows": "npm run build",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ]; then _cnt=$(find dist/pulse-query-ng-web/browser -type f 2>/dev/null | wc -l | tr -d ' '); _sz=$(du -sh dist/pulse-query-ng-web/browser 2>/dev/null | awk '{print $1}'); printf '[BUILD] [REUSE] Angular build (ng build) output verified at dist/pulse-query-ng-web/browser/index.html (%s files, %s; pass --force-rebuild to re-run ng build).\\n' \"${_cnt:-0}\" \"${_sz:-0B}\"; else printf '[BUILD] [ng build] Building Angular frontend (pulse-query-ng-web) -> dist/pulse-query-ng-web/browser/...\\n' && npm run build; fi",
+          "cmd_windows": "if not \"%FORCE_REBUILD%\"==\"1\" if exist \"dist\\pulse-query-ng-web\\browser\\index.html\" (echo [BUILD] [REUSE] Angular build ^(ng build^) output verified at dist\\pulse-query-ng-web\\browser\\index.html ^(pass --force-rebuild to re-run ng build^).) else (echo [BUILD] [ng build] Building Angular frontend ^(pulse-query-ng-web^) -^> dist\\pulse-query-ng-web\\browser\\... && npm run build)",
           "description": "Build Angular frontend application"
         }
       ],
@@ -577,23 +589,23 @@
         {
           "name": "alembic-upgrade-head",
           "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run alembic upgrade head",
-          "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run alembic upgrade head",
-          "description": "Run Alembic database migrations for PostgreSQL"
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Running Alembic schema migrations on PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run alembic upgrade head && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run alembic current",
+          "cmd_windows": "echo [UPSERT:POSTGRES] Running Alembic schema migrations on PostgreSQL... && set PYTHONPATH=src&& uv run alembic upgrade head && uv run alembic current",
+          "description": "Apply PostgreSQL Alembic migrations"
         },
         {
           "name": "ingest-clinical-datasets",
           "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
-          "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB \"%s\"...\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
+          "cmd_windows": "echo [UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
           "description": "Ingest synthetic clinical datasets into DuckDB"
         },
         {
           "name": "seed-dashboard-templates",
           "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && PYTHONPATH=src POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/seed_templates.py",
-          "cmd_windows": "set PYTHONPATH=src&& set POSTGRES_SERVER=127.0.0.1&& set POSTGRES_USER=postgres&& set POSTGRES_PASSWORD=postgres&& set POSTGRES_DB=pulse_query_db&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
-          "description": "Seed initial dashboard templates into PostgreSQL"
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py",
+          "cmd_windows": "echo [UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
+          "description": "Seed initial clinical dashboard templates into PostgreSQL"
         },
         {
           "name": "fix-data-directory-ownership",
@@ -667,6 +679,22 @@
         }
       ],
       "capabilities": ["${INIT_SYSTEM}"]
+    },
+    "node": {
+      "capabilities": ["${INIT_SYSTEM:-auto}"],
+      "data_disks": [
+        {
+          "size_gb": 100,
+          "mount_path": "${DATA_MOUNT_DIR}",
+          "name": "data-disk"
+        }
+      ]
+    }
+  },
+  "init_system": "${INIT_SYSTEM:-auto}",
+  "service_overrides": {
+    "ollama": {
+      "OLLAMA_MODELS": "${DATA_MOUNT_DIR}/ollama_models"
     }
   }
 }

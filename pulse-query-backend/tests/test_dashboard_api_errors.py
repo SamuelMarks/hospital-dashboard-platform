@@ -8,7 +8,9 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routers.dashboards import _validate_sql_query
+from app.core.result import Err, ErrorCode, Ok
+from app.schemas.widget import HttpConfig, SqlConfig, TextConfig, parse_widget_config_result
+from app.services.dashboard_collaborators import dashboard_widget_service
 
 
 async def _auth_headers(client: AsyncClient) -> dict[str, str]:
@@ -28,9 +30,42 @@ async def _auth_headers(client: AsyncClient) -> dict[str, str]:
   return {"Authorization": f"Bearer {token}"}
 
 
-def test_validate_sql_query_empty() -> None:
-  """Empty queries should no-op without raising."""
-  _validate_sql_query("")
+def test_validate_sql_query_and_parse_widget_config_results() -> None:
+  """Verifies `validate_sql_query_result` and `parse_widget_config_result` return substantive `Ok` and `Err` values."""
+  assert dashboard_widget_service.validate_sql_query_result("") == Ok(True)
+  assert dashboard_widget_service.validate_sql_query_result("   ") == Ok(True)
+  assert dashboard_widget_service.validate_sql_query_result("SELECT 1 AS col") == Ok(True)
+
+  multi_stmt_res = dashboard_widget_service.validate_sql_query_result("SELECT 1; SELECT 2;")
+  assert isinstance(multi_stmt_res, Err)
+  assert multi_stmt_res.error.code == ErrorCode.SQL_VALIDATION_ERROR
+  assert "Multiple SQL statements" in multi_stmt_res.error.message
+
+  bad_table_res = dashboard_widget_service.validate_sql_query_result("SELECT * FROM missing_table_xyz_999")
+  assert isinstance(bad_table_res, Err)
+  assert bad_table_res.error.code == ErrorCode.SQL_VALIDATION_ERROR
+
+  sql_cfg_res = parse_widget_config_result("SQL", {"query": "SELECT 1"})
+  assert isinstance(sql_cfg_res, Ok)
+  assert isinstance(sql_cfg_res.value, SqlConfig)
+  assert sql_cfg_res.value.query == "SELECT 1"
+
+  http_cfg_res = parse_widget_config_result("HTTP", {"url": "https://api.example.com/health"})
+  assert isinstance(http_cfg_res, Ok)
+  assert isinstance(http_cfg_res.value, HttpConfig)
+
+  text_cfg_res = parse_widget_config_result("TEXT", {"content": "# Heading"})
+  assert isinstance(text_cfg_res, Ok)
+  assert isinstance(text_cfg_res.value, TextConfig)
+  assert text_cfg_res.value.content == "# Heading"
+
+  unknown_type_res = parse_widget_config_result("UNKNOWN", {})
+  assert isinstance(unknown_type_res, Err)
+  assert unknown_type_res.error.code == ErrorCode.VALIDATION_ERROR
+
+  invalid_sql_cfg_res = parse_widget_config_result("SQL", {"allow_natural_text": False})
+  assert isinstance(invalid_sql_cfg_res, Err)
+  assert invalid_sql_cfg_res.error.code == ErrorCode.VALIDATION_ERROR
 
 
 @pytest.mark.asyncio
@@ -263,6 +298,31 @@ async def test_dashboards_SQL_validation_errors_on_create_and_update(
     headers=headers,
   )
   assert bad_update.status_code == 400
+
+  # Invalid processor on update returns 400
+  bad_proc_update = await client.put(
+    f"/api/v1/dashboards/widgets/{wid_id}",
+    json={"config": {"query": "SELECT 1", "processor": "invalid_processor"}},
+    headers=headers,
+  )
+  assert bad_proc_update.status_code == 400
+
+  # Creating a natural-text SQL widget with empty query succeeds
+  nl_create = await client.post(
+    f"/api/v1/dashboards/{dash_id}/widgets",
+    json={
+      "title": "NL Widget",
+      "type": "SQL",
+      "visualization": "table",
+      "config": {
+        "allow_natural_text": True,
+        "processor": "ollama:llama3",
+        "natural_text_prompt": "Count patients",
+      },
+    },
+    headers=headers,
+  )
+  assert nl_create.status_code == 200
   _ = db_session
 
 
@@ -311,14 +371,20 @@ async def test_dashboards_widget_update_and_reorder_branches(client: AsyncClient
     headers=headers,
   )
   assert u1.status_code == 200
+  assert u1.json()["title"] == "updated_sql"
+  assert u1.json()["config"]["query"] == "SELECT 2;"
 
   u2 = await client.put(f"/api/v1/dashboards/widgets/{w1.id}", json={"title": "t2", "config": {"x": 1}}, headers=headers)
   assert u2.status_code == 200
+  assert u2.json()["title"] == "t2"
+  assert u2.json()["config"]["x"] == 1
 
   u3 = await client.put(
     f"/api/v1/dashboards/widgets/{w_sql_no_query.id}", json={"title": "t3", "config": {"y": 2}}, headers=headers
   )
   assert u3.status_code == 200
+  assert u3.json()["title"] == "t3"
+  assert u3.json()["config"]["y"] == 2
 
   bad_id = str(uuid.uuid4())
   r_reorder = await client.post(
@@ -333,3 +399,9 @@ async def test_dashboards_widget_update_and_reorder_branches(client: AsyncClient
     headers=headers,
   )
   assert r_reorder.status_code == 200
+  assert r_reorder.json() == {"updated": 2}
+  await db_session.refresh(w1)
+  await db_session.refresh(w_sql)
+  assert w1.config["order"] == 2
+  assert w_sql.config["order"] == 4
+  assert w_sql.config["group"] == "g2"

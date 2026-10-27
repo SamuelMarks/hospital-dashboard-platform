@@ -142,9 +142,16 @@ class TemplateService:
       return tpl_res
 
     template = tpl_res.value
-    update_data = template_in.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-      setattr(template, key, value)
+    if template_in.title is not None:
+      template.title = template_in.title
+    if template_in.description is not None:
+      template.description = template_in.description
+    if template_in.sql_template is not None:
+      template.sql_template = template_in.sql_template
+    if template_in.category is not None:
+      template.category = template_in.category
+    if template_in.parameters_schema is not None:
+      template.parameters_schema = template_in.parameters_schema
 
     await db.commit()
     return Ok(template)
