@@ -15,7 +15,7 @@ from app.models import register_orm_models
 config = context.config
 
 if config.config_file_name is not None:
-  fileConfig(config.config_file_name)
+  fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 register_orm_models()
 target_metadata = Base.metadata
@@ -48,7 +48,8 @@ def do_run_migrations(connection: Connection) -> None:
   inspector = inspect(connection)
   existing_tables = set(inspector.get_table_names())
   if "users" in existing_tables and "alembic_version" not in existing_tables:
-    target_metadata.drop_all(bind=connection)
+    target_metadata.drop_all(bind=connection, checkfirst=True)
+    connection.commit()
 
   context.configure(connection=connection, target_metadata=target_metadata)
 
@@ -57,7 +58,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-  """Creates an async SQLAlchemy engine and executes online Alembic migrations."""
+  """Creates an async SQLAlchemy engine, executes online Alembic migrations, and commits the transaction."""
   connectable = async_engine_from_config(
     config.get_section(config.config_ini_section, {}),
     prefix="sqlalchemy.",
@@ -66,6 +67,7 @@ async def run_async_migrations() -> None:
 
   async with connectable.connect() as connection:
     await connection.run_sync(do_run_migrations)
+    await connection.commit()
 
   await connectable.dispose()
 

@@ -48,11 +48,12 @@ export default defineConfig({
       command:
         "cd ../pulse-query-backend && uv run --active alembic upgrade head && uv run --active uvicorn app.main:app --port 8000",
       url: "http://127.0.0.1:8000/api/v1/openapi.json",
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env["CI"],
       timeout: 120000,
       env: {
-        USE_SQLITE_ALEMBIC: "1",
-        DUCKDB_PATH: "e2e_test.duckdb",
+        USE_SQLITE_ALEMBIC:
+          process.env["USE_SQLITE_ALEMBIC"] ?? (process.env["CI"] ? "0" : "1"),
+        DUCKDB_PATH: process.env["DUCKDB_PATH"] || "e2e_test.duckdb",
       },
     },
     {

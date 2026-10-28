@@ -275,6 +275,7 @@ jobs:
           export DUCKDB_PATH="data/hospital_analytics.duckdb"
           alembic upgrade head
           python3 scripts/ingest.py
+          python3 scripts/seed_templates.py
         working-directory: pulse-query-backend
 
       - name: Angular dependencies install

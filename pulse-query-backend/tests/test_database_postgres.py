@@ -146,3 +146,57 @@ async def test_validate_postgres_duckdb_and_config_results(monkeypatch: pytest.M
   cfg_err = check_configuration_hygiene_result(_EmptySecretSettings())
   assert isinstance(cfg_err, Err)
   assert cfg_err.error.code == ErrorCode.CONFIGURATION_ERROR
+
+
+def test_alembic_sqlite_upgrade_commits_all_migrations(
+  tmp_path: pytest.TempPathFactory,
+  monkeypatch: pytest.MonkeyPatch,
+) -> None:
+  """
+  Verifies that running Alembic `upgrade head` against a `sqlite+aiosqlite`
+  database commits all migration steps (including `users.is_admin`, `users.role`,
+  `users.language_preference`, and `alembic_version`), and recovers cleanly when
+  a legacy `users` table exists without `alembic_version`.
+
+  Args:
+      tmp_path (pytest.TempPathFactory): Temporary directory fixture.
+      monkeypatch (pytest.MonkeyPatch): Pytest monkeypatch helper.
+  """
+  import contextlib
+  import sqlite3
+  from pathlib import Path
+
+  from alembic import command
+  from alembic.config import Config
+
+  from app.core.config import BACKEND_ROOT, settings
+
+  db_file = Path(str(tmp_path)) / "test_alembic_commit.db"
+  sqlite_uri = f"sqlite+aiosqlite:///{db_file}"
+
+  # Seed a legacy pre-Alembic `users` table without `is_admin` or `alembic_version`
+  with contextlib.closing(sqlite3.connect(str(db_file))) as legacy_conn:
+    legacy_conn.execute("CREATE TABLE users (id TEXT PRIMARY KEY, email VARCHAR NOT NULL)")
+    legacy_conn.commit()
+
+  monkeypatch.setattr(type(settings), "SQLALCHEMY_DATABASE_URI", property(lambda _self: sqlite_uri))
+
+  alembic_cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
+  alembic_cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+  command.upgrade(alembic_cfg, "head")
+
+  with contextlib.closing(sqlite3.connect(str(db_file))) as conn:
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')").fetchall()}
+    assert "alembic_version" in tables
+    assert "users" in tables
+    assert "admin_settings" in tables
+    assert "dashboards" in tables
+    assert "widgets" in tables
+    assert "widget_templates" in tables
+    assert "templates" in tables
+
+    user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    assert {"id", "email", "hashed_password", "is_active", "is_admin", "role", "language_preference"}.issubset(user_cols)
+
+    version_rows = conn.execute("SELECT version_num FROM alembic_version").fetchall()
+    assert version_rows == [("014",)]
