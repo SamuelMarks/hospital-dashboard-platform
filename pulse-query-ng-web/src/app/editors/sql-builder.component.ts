@@ -146,9 +146,9 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly store = inject(DashboardStore);
 
   /** Dashboard Id. */
-  readonly dashboardId = input.required<string>();
+  readonly dashboardId = input<string>('');
   /** Widget Id. */
-  readonly widgetId = input.required<string>();
+  readonly widgetId = input<string>('');
   /** Initial Sql. */
   readonly initialSql = input<string>('');
   /** Optional: Set which tab opens by default. 0=Code, 1=AI */
@@ -282,8 +282,9 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
             .refreshDashboardApiV1DashboardsDashboardIdRefreshPost(this.dashboardId())
             .pipe(finalize(() => this.isRunning.set(false)))
             .subscribe({
-              next: (map: Record<string, TableDataSet & { error?: string }>) => {
-                const result = map[this.widgetId()];
+              next: (map: Record<string, unknown>) => {
+                const result = map[this.widgetId()] as
+                  (TableDataSet & { error?: string }) | undefined;
 
                 // Logic Fix: Check for embedded error from backend runner
                 if (result && result.error) {

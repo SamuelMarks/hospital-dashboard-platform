@@ -4,7 +4,16 @@
  * Ensures WCAG 2.1 AA compliance for keyboard navigation.
  */
 
-import { Directive, ElementRef, inject, OnInit, OnDestroy, input, output } from '@angular/core';
+import {
+  Directive,
+  ElementRef,
+  inject,
+  OnInit,
+  AfterViewInit,
+  OnDestroy,
+  input,
+  output,
+} from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
 /**
@@ -26,9 +35,10 @@ import { DOCUMENT } from '@angular/common';
   selector: '[appFocusTrap]',
   host: {
     '(keydown)': 'handleKeydown($event)',
+    '(document:keydown.escape)': 'handleDocumentEscape($event)',
   },
 })
-export class FocusTrapDirective implements OnInit, OnDestroy {
+export class FocusTrapDirective implements OnInit, AfterViewInit, OnDestroy {
   /** Element ref. */
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   /** Injected DOM document reference. */
@@ -48,11 +58,16 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
   previousActiveElement: HTMLElement | null = null;
 
   /**
-   * Lifecycle hook: Initialize focus trap.
+   * Lifecycle hook: Capture the previously focused element before trapping focus.
    */
   ngOnInit(): void {
-    this.previousActiveElement = this.document.activeElement as HTMLElement;
+    this.previousActiveElement = this.document.activeElement as HTMLElement | null;
+  }
 
+  /**
+   * Lifecycle hook: Focus the first focusable element after child component inputs and views initialize.
+   */
+  ngAfterViewInit(): void {
     if (this.autoFocus()) {
       this.focusFirstElement();
     }
@@ -83,26 +98,38 @@ export class FocusTrapDirective implements OnInit, OnDestroy {
     }
 
     const focusableElements = this.getFocusableElements();
-    const [firstElement] = focusableElements;
-    if (!firstElement) {
+    const [first] = focusableElements;
+    if (!first) {
       return;
     }
 
-    const lastElement = focusableElements.reduce((_, el) => el, firstElement);
+    const last = focusableElements.reduce((_prev, curr) => curr, first);
     const activeElement = this.document.activeElement;
 
     if (event.shiftKey) {
       // Shift + Tab: Move focus backward
-      if (activeElement === firstElement) {
+      if (activeElement === first) {
         event.preventDefault();
-        lastElement.focus();
+        last.focus();
       }
     } else {
       // Tab: Move focus forward
-      if (activeElement === lastElement) {
+      if (activeElement === last) {
         event.preventDefault();
-        firstElement.focus();
+        first.focus();
       }
+    }
+  }
+
+  /**
+   * Emits `escape` when the Escape key is pressed while focus is outside the host element.
+   *
+   * @param event - Document-level Escape keyboard event.
+   */
+  handleDocumentEscape(event: Event): void {
+    const target = event.target as Node | null;
+    if (!target || !this.elementRef.nativeElement.contains(target)) {
+      this.escape.emit();
     }
   }
 

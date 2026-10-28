@@ -22,7 +22,7 @@
                 }
               </span>
               @if (hasSqlCandidates(msg)) {
-                <button i18n mat-button (click)="runAllCandidates(msg)">
+                <button i18n type="button" mat-button (click)="runAllCandidates(msg)">
                   <mat-icon aria-hidden="true">play_arrow</mat-icon> Run All
                 </button>
               }
@@ -72,7 +72,11 @@
                     }
 
                     @if (isCandidateLoading(cand.id)) {
-                      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                      <mat-progress-bar
+                        mode="indeterminate"
+                        i18n-aria-label
+                        aria-label="Running candidate SQL query"
+                      ></mat-progress-bar>
                     }
 
                     <!-- RE-ADDED: VizTable Preview (Fixes NG8113) -->
@@ -84,7 +88,13 @@
                   </div>
 
                   <div class="candidate-actions">
-                    <button i18n mat-flat-button class="w-full" (click)="vote(msg.id, cand.id)">
+                    <button
+                      i18n
+                      type="button"
+                      mat-flat-button
+                      class="w-full"
+                      (click)="vote(msg.id, cand.id)"
+                    >
                       Select Model
                     </button>
                   </div>
@@ -119,9 +129,19 @@
           <div class="streaming-content">
             <viz-markdown [content]="store.streamingMessageContent()!"></viz-markdown>
           </div>
-          <mat-progress-bar mode="indeterminate" class="mt-2"></mat-progress-bar>
+          <mat-progress-bar
+            mode="indeterminate"
+            class="mt-2"
+            i18n-aria-label
+            aria-label="Streaming assistant response"
+          ></mat-progress-bar>
         } @else {
-          <mat-progress-spinner mode="indeterminate" diameter="24"></mat-progress-spinner>
+          <mat-progress-spinner
+            mode="indeterminate"
+            diameter="24"
+            i18n-aria-label
+            aria-label="Generating assistant response"
+          ></mat-progress-spinner>
         }
       </mat-card>
     </div>
@@ -153,31 +173,31 @@
     </div>
   }
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
-    <textarea
-      matInput
-      i18n-aria-label
-      aria-label="Ask about hospital data"
-      i18n-placeholder
-      placeholder="Ask about hospital data..."
-      #chatInput
-      [value]="inputText()"
-      (input)="inputText.set(chatInput.value)"
-      (keydown.enter)="handleEnter($event)"
-      cdkTextareaAutosize
-      cdkAutosizeMinRows="1"
-      cdkAutosizeMaxRows="5"
-      [disabled]="store.isGenerating()"
-    ></textarea>
-    <button
-      mat-icon-button
-      matSuffix
-      (click)="send()"
-      [disabled]="!inputText().trim() || store.isGenerating()"
-      i18n-aria-label
-      aria-label="Send Message"
-    >
-      <mat-icon aria-hidden="true">send</mat-icon>
-    </button>
-  </mat-form-field>
+  <form [formRoot]="composerForm" (submit)="send()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+      <textarea
+        matInput
+        [formField]="composerForm"
+        i18n-aria-label
+        aria-label="Ask about hospital data"
+        i18n-placeholder
+        placeholder="Ask about hospital data..."
+        (keydown.enter)="handleEnter($event)"
+        cdkTextareaAutosize
+        cdkAutosizeMinRows="1"
+        cdkAutosizeMaxRows="5"
+      ></textarea>
+      <button
+        type="button"
+        mat-icon-button
+        matSuffix
+        (click)="send()"
+        [disabled]="!inputText().trim() || store.isGenerating()"
+        i18n-aria-label
+        aria-label="Send Message"
+      >
+        <mat-icon aria-hidden="true">send</mat-icon>
+      </button>
+    </mat-form-field>
+  </form>
 </div>

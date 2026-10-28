@@ -5,6 +5,7 @@
 import { Component, input, computed, viewChild, effect } from '@angular/core';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 
 /**
  * Tabular dataset structure consumed by visualization components.
@@ -35,7 +36,7 @@ export interface TableConfig {
  */
 @Component({
   selector: 'viz-table',
-  imports: [MatTableModule, MatPaginatorModule],
+  imports: [MatTableModule, MatPaginatorModule, MatSortModule],
 
   styles: [
     `
@@ -96,20 +97,23 @@ export class VizTableComponent {
   readonly dataSet = input<TableDataSet | null | undefined>();
 
   /** Optional threshold styling configuration for numeric alert columns. */
-  readonly config = input<TableConfig | null>(null);
+  readonly config = input<TableConfig | null | undefined>(null);
 
   /** Material table data source managing row sorting and pagination. */
   dataSource = new MatTableDataSource<Record<string, unknown>>([]);
   /** Reference to the Material paginator instance bound to `dataSource`. */
   readonly paginator = viewChild<MatPaginator>('paginator');
+  /** Reference to the Material sort directive bound to `dataSource`. */
+  readonly sort = viewChild(MatSort);
 
   /**
-   * Registers a reactive effect that synchronizes incoming `dataSet` rows with `dataSource` and `paginator`.
+   * Registers a reactive effect that synchronizes incoming `dataSet` rows with `dataSource`, `paginator`, and `sort`.
    */
   constructor() {
     effect(() => {
       const db = this.dataSet();
       const paginator = this.paginator();
+      this.dataSource.sort = this.sort() ?? null;
       if (db?.data) {
         this.dataSource.data = db.data;
         if (paginator) {

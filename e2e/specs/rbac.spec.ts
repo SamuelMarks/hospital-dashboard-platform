@@ -81,7 +81,7 @@ test.describe("Role-Based Access Control (RBAC)", () => {
     await expect(page).toHaveURL(/\/admin/);
 
     // Verify Admin page title
-    const adminTitle = page.locator("h2", { hasText: "Admin Configuration" });
+    const adminTitle = page.locator("h1", { hasText: "Admin Configuration" });
     await expect(adminTitle).toBeVisible();
 
     // Toggle a setting (e.g. OpenAI API Key)

@@ -13,7 +13,6 @@ if [ "${SCRIPT_NAME-}" ]; then
 elif [ "${BASH_SOURCE-}" ]; then
     THIS_FILE="${BASH_SOURCE}"
 elif [ "${ZSH_VERSION-}" ]; then
-    # libscript-allow-eval
     # shellcheck disable=SC2296
     THIS_FILE="${(%):-%x}"
 else
@@ -49,8 +48,7 @@ load_env_defaults() {
             _VAL="${_VAL%"$_DQ"}"
             _VAL="${_VAL#"$_SQ"}"
             _VAL="${_VAL%"$_SQ"}"
-            eval "_CUR=\${$_KEY:-}" # libscript-allow-eval
-            if [ -z "$_CUR" ]; then
+            if ! export -p | grep -q "^export ${_KEY}="; then
                 export "$_KEY=$_VAL"
             fi
         done < "$_ENV_FILE"
@@ -95,12 +93,12 @@ for arg in "$@"; do
             ;;
         --help|-h)
             echo "Usage: $0 [--unit-mock|--mock-cloud|--dry-run] [--live-cloud] [--local|-l] [--run-remote-tests|-t] [provider]"
-            echo "Options:"
-            echo "  --unit-mock, --mock-cloud, --dry-run  Simulate cloud operations locally without cloud resources."
-            echo "  --live-cloud                          Force live cloud provisioning and execution; fails if auth missing."
-            echo "  --local, -l                           Run tests locally using installed pytest/npm."
-            echo "  --run-remote-tests, -t                Run pytest directly on remote compute instance after provisioning."
-            echo "Environment variables:"
+            echo 'Options:'
+            echo '  --unit-mock, --mock-cloud, --dry-run  Simulate cloud operations locally without cloud resources.'
+            echo '  --live-cloud                          Force live cloud provisioning and execution; fails if auth missing.'
+            echo '  --local, -l                           Run tests locally using installed pytest/npm.'
+            echo '  --run-remote-tests, -t                Run pytest directly on remote compute instance after provisioning.'
+            echo 'Environment variables:'
             echo "  CLOUD_PROVIDER     Cloud provider (${SUPPORTED_CLOUD_PROVIDERS:-gcp,aws}). Default: ${DEFAULT_CLOUD_PROVIDER:-}"
             echo "  LIBSCRIPT_ROOT_DIR Path to Libscript repo. Default: \$HOME/repos/libscript"
             echo "  LIBSCRIPT_CLI      Path to Libscript executable wrapper. Default: \$LIBSCRIPT_ROOT_DIR/libscript.sh"
@@ -129,10 +127,10 @@ if [ -z "${LOCATION:-}" ]; then
 fi
 
 if [ "$MOCK_CLOUD" -eq 1 ]; then
-    echo "=========================================================="
-    echo "Running in Mock Cloud mode (--mock-cloud specified)..."
+    echo '=========================================================='
+    echo 'Running in Mock Cloud mode (--mock-cloud specified)...'
     echo "Simulating provisioning on $CLOUD_PROVIDER ($NODE_NAME)..."
-    echo "=========================================================="
+    echo '=========================================================='
     MOCK_CLEANED_UP=0
     # ## mock_cleanup
     # Simulates cloud resource teardown on exit or signal in mock mode.
@@ -140,34 +138,34 @@ if [ "$MOCK_CLOUD" -eq 1 ]; then
         if [ "$MOCK_CLEANED_UP" -eq 0 ]; then
             MOCK_CLEANED_UP=1
             echo "Mock deprovisioning cloud resources on $CLOUD_PROVIDER ($NODE_NAME)..."
-            echo "Deprovisioning complete."
+            echo 'Deprovisioning complete.'
         fi
     }
     trap mock_cleanup EXIT INT TERM
 
-    echo "Verifying remote execution..."
-    echo "Deployment test successful"
-    echo "Verifying backend API health status on remote host..."
+    echo 'Verifying remote execution...'
+    echo 'Deployment test successful'
+    echo 'Verifying backend API health status on remote host...'
     echo '{"status": "healthy", "datasets": {"status": "ready", "table_count": 2, "row_counts": {"hospital_data": 700, "Synthetic_hospital_data_transfers": 41692}}, "templates": {"status": "ready", "template_count": 29}}'
-    echo "Verifying frontend web service on remote host..."
-    echo "HTTP/1.1 200 OK"
+    echo 'Verifying frontend web service on remote host...'
+    echo 'HTTP/1.1 200 OK'
     if [ "$RUN_REMOTE_TESTS" -eq 1 ]; then
-        echo "Running test suite on mock remote instance..."
+        echo 'Running test suite on mock remote instance...'
         pytest -q
     fi
-    echo "Deployment and remote health verification passed successfully."
+    echo 'Deployment and remote health verification passed successfully.'
     exit 0
 fi
 
 if [ "$RUN_LOCAL" -eq 1 ] || [ ! -x "$LIBSCRIPT_CLI" ]; then
-    echo "=========================================================="
+    echo '=========================================================='
     if [ "$RUN_LOCAL" -eq 1 ]; then
-        echo "Running test suite locally (--local specified)..."
+        echo 'Running test suite locally (--local specified)...'
     else
         echo "Libscript CLI not found at '$LIBSCRIPT_CLI'."
-        echo "Falling back to local test suite..."
+        echo 'Falling back to local test suite...'
     fi
-    echo "=========================================================="
+    echo '=========================================================='
     if command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
         HEALTH_JSON=$(curl -sf http://127.0.0.1:8000/api/v1/system/health 2>/dev/null || true)
         if [ -n "$HEALTH_JSON" ]; then
@@ -182,7 +180,7 @@ if [ "$RUN_LOCAL" -eq 1 ] || [ ! -x "$LIBSCRIPT_CLI" ]; then
     if [ -d "pulse-query-ng-web" ]; then
         (cd pulse-query-ng-web && npm test)
     fi
-    echo "Local test suite completed successfully."
+    echo 'Local test suite completed successfully.'
     exit 0
 fi
 
@@ -193,8 +191,8 @@ cleanup() {
     if [ "$CLEANED_UP" -eq 0 ]; then
         CLEANED_UP=1
         echo "Cleaning up cloud resources on $CLOUD_PROVIDER ($NODE_NAME)..."
-        "$LIBSCRIPT_CLI" deprovision "$CLOUD_PROVIDER" "$NODE_NAME" "$RG_NAME" "$LOCATION" "$REPO_DIR" "$REMOTE_DEST" || echo "Cleanup failed, but continuing."
-        echo "Deprovisioning complete."
+        "$LIBSCRIPT_CLI" deprovision "$CLOUD_PROVIDER" "$NODE_NAME" "$RG_NAME" "$LOCATION" "$REPO_DIR" "$REMOTE_DEST" || echo 'Cleanup failed, but continuing.'
+        echo 'Deprovisioning complete.'
     fi
 }
 
@@ -225,7 +223,7 @@ check_cloud_credentials() {
                 if ! gcloud auth print-access-token >/dev/null 2>&1; then
                     echo "WARNING: Google Cloud CLI not authenticated. Run 'gcloud auth login'." >&2
                     if [ "$LIVE_CLOUD" -eq 1 ]; then
-                        echo "ERROR: --live-cloud requires authenticated GCP credentials." >&2
+                        echo 'ERROR: --live-cloud requires authenticated GCP credentials.' >&2
                         exit 1
                     fi
                 fi
@@ -239,7 +237,7 @@ check_cloud_credentials() {
                 if ! aws sts get-caller-identity >/dev/null 2>&1; then
                     echo "WARNING: AWS CLI not authenticated. Run 'aws configure'." >&2
                     if [ "$LIVE_CLOUD" -eq 1 ]; then
-                        echo "ERROR: --live-cloud requires authenticated AWS credentials." >&2
+                        echo 'ERROR: --live-cloud requires authenticated AWS credentials.' >&2
                         exit 1
                     fi
                 fi
@@ -275,36 +273,36 @@ remote_exec() {
 }
 
 # 1. Verify remote node execution connectivity
-echo "Verifying remote execution..."
+echo 'Verifying remote execution...'
 if ! remote_exec "echo 'Deployment test successful'"; then
     echo "ERROR: Remote connectivity test failed on $CLOUD_PROVIDER ($NODE_NAME)." >&2
     exit 1
 fi
 
 # 2. Verify backend API health endpoint
-echo "Verifying backend API health status on remote host..."
+echo 'Verifying backend API health status on remote host...'
 if ! remote_exec 'HEALTH_JSON=$(curl -sf http://localhost:8000/api/v1/system/health || curl -sf http://127.0.0.1:8000/api/v1/system/health) && echo "$HEALTH_JSON" | jq -e '\''.status == "healthy" and .datasets.status == "ready" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and (.datasets.row_counts.Synthetic_hospital_data_transfers // 0) > 0 and .templates.status == "ready" and .templates.template_count >= 10'\'''; then
-    echo "WARNING: Backend API health endpoint check failed. Gathering diagnostic logs..."
+    echo 'WARNING: Backend API health endpoint check failed. Gathering diagnostic logs...'
     remote_exec "${BACKEND_DIAG_LOG_CMD:-docker logs --tail 30 pulse-query-backend} 2>/dev/null || docker logs --tail 30 pulse-query-backend 2>/dev/null || true"
     exit 1
 fi
 
 # 3. Verify frontend response
-echo "Verifying frontend web service on remote host..."
+echo 'Verifying frontend web service on remote host...'
 if ! remote_exec "curl -sf -I http://localhost:80/ || curl -sf -I http://127.0.0.1:80/"; then
-    echo "WARNING: Frontend check failed. Gathering diagnostic logs..."
+    echo 'WARNING: Frontend check failed. Gathering diagnostic logs...'
     remote_exec "${FRONTEND_DIAG_LOG_CMD:-docker logs --tail 30 pulse-query-frontend} 2>/dev/null || docker logs --tail 30 pulse-query-frontend 2>/dev/null || true"
     exit 1
 fi
 
 # 4. Optional: Run full test suite on remote compute instance
 if [ "$RUN_REMOTE_TESTS" -eq 1 ]; then
-    echo "Running test suite on remote instance..."
+    echo 'Running test suite on remote instance...'
     if ! remote_exec "cd $REMOTE_DEST/pulse-query-backend && pytest -q"; then
-        echo "ERROR: Remote test suite failed." >&2
+        echo 'ERROR: Remote test suite failed.' >&2
         exit 1
     fi
-    echo "Remote test suite passed."
+    echo 'Remote test suite passed.'
 fi
 
 END_TIME=$(date +%s)

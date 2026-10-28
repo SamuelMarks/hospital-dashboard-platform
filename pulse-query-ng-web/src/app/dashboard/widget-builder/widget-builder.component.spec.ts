@@ -379,19 +379,26 @@ describe('WidgetBuilderComponent', () => {
 
   it('onSqlChange, onConfigChange, onContentChange, and updateVizType update draftWidget', () => {
     component.draftWidget.set(MOCK_DRAFT);
+    expect(component.draftSqlQuery()).toBe('SELECT 1');
+    expect(component.draftTextContent()).toBe('');
+
     component.onSqlChange('SELECT 2');
     expect(component.draftWidget()?.config['query']).toBe('SELECT 2');
+    expect(component.draftSqlQuery()).toBe('SELECT 2');
 
     component.onConfigChange({ url: 'http://test' });
     expect(component.draftWidget()?.config['url']).toBe('http://test');
 
     component.onContentChange('content');
     expect(component.draftWidget()?.config['content']).toBe('content');
+    expect(component.draftTextContent()).toBe('content');
 
     component.updateVizType('bar_chart');
     expect(component.draftWidget()?.visualization).toBe('bar_chart');
 
     component.draftWidget.set(null);
+    expect(component.draftSqlQuery()).toBe('');
+    expect(component.draftTextContent()).toBe('');
     component.onSqlChange('SELECT 2');
     component.onConfigChange({ url: 'http://test' });
     component.onContentChange('content');

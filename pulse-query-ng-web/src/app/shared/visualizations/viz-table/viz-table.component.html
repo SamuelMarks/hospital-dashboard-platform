@@ -1,6 +1,7 @@
 <div class="table-container">
   <table
     mat-table
+    matSort
     [dataSource]="dataSource"
     class="mat-elevation-z0"
     i18n-aria-label
@@ -8,7 +9,7 @@
   >
     @for (col of finalColumns(); track col) {
       <ng-container [matColumnDef]="col">
-        <th mat-header-cell *matHeaderCellDef scope="col">{{ col }}</th>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ col }}</th>
         <td mat-cell *matCellDef="let row">
           <!-- Applied heuristic styling and threshold class binding -->
           <span [class]="getCellClass(row, col)" [attr.aria-label]="getCellAriaLabel(row, col)">

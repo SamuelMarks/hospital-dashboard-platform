@@ -159,7 +159,6 @@ export class EmptyStateComponent {
       maxWidth: '95vw',
       height: '90vh',
       panelClass: 'no-padding-dialog',
-      disableClose: true,
     });
 
     ref.afterClosed().subscribe((res: boolean) => {

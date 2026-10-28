@@ -3,7 +3,7 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import inspect, pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -45,6 +45,11 @@ def do_run_migrations(connection: Connection) -> None:
   Args:
       connection (Connection): Active SQLAlchemy database connection.
   """
+  inspector = inspect(connection)
+  existing_tables = set(inspector.get_table_names())
+  if "users" in existing_tables and "alembic_version" not in existing_tables:
+    target_metadata.drop_all(bind=connection)
+
   context.configure(connection=connection, target_metadata=target_metadata)
 
   with context.begin_transaction():

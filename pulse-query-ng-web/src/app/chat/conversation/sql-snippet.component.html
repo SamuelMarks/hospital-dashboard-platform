@@ -1,11 +1,12 @@
 <div class="card">
   <div class="header">
     <span i18n>Suggested Query</span>
-    <div class="flex gap-2">
+    <div class="flex gap-2 items-center">
       <!-- Copy -->
       <button
+        type="button"
         mat-icon-button
-        class="scale-75 text-gray-400 hover:text-white"
+        class="text-gray-300 hover:text-white"
         (click)="copy()"
         i18n-aria-label
         aria-label="Copy SQL"
@@ -17,8 +18,9 @@
 
       <!-- Cart Action -->
       <button
+        type="button"
         mat-icon-button
-        class="scale-75 text-gray-400 hover:text-white"
+        class="text-gray-300 hover:text-white"
         (click)="emitAddToCart()"
         i18n-aria-label
         aria-label="Save to Cart"
@@ -30,8 +32,9 @@
       </button>
 
       <button
+        type="button"
         mat-icon-button
-        class="scale-75 text-gray-400 hover:text-white"
+        class="text-gray-300 hover:text-white"
         (click)="emitSimulate()"
         i18n-aria-label
         aria-label="Simulate Scenario"
@@ -43,8 +46,9 @@
 
       <button
         i18n
+        type="button"
         mat-stroked-button
-        class="text-xs h-6 px-2 leading-none"
+        class="text-xs px-2"
         (click)="emitRun()"
         [disabled]="!sql()"
       >

@@ -319,4 +319,24 @@ describe('FocusTrapDirective', () => {
     expect(document.activeElement).toBe(btn);
     fEl.remove();
   });
+
+  it('should emit escape on document Escape keydown when target is outside or null', () => {
+    const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
+    const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
+
+    const outsideEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    Object.defineProperty(outsideEvent, 'target', { value: document.body });
+    directiveInstance.handleDocumentEscape(outsideEvent);
+    expect(component.onEscape).toHaveBeenCalledTimes(1);
+
+    const nullTargetEvent = new KeyboardEvent('keydown', { key: 'Escape' });
+    Object.defineProperty(nullTargetEvent, 'target', { value: null });
+    directiveInstance.handleDocumentEscape(nullTargetEvent);
+    expect(component.onEscape).toHaveBeenCalledTimes(2);
+
+    const insideEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    Object.defineProperty(insideEvent, 'target', { value: first });
+    directiveInstance.handleDocumentEscape(insideEvent);
+    expect(component.onEscape).toHaveBeenCalledTimes(2);
+  });
 });

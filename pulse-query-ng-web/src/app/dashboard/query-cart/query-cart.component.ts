@@ -145,18 +145,18 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
       .item-actions {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 4px;
       }
       .item-actions button {
-        width: 24px;
-        height: 24px;
-        line-height: 24px;
+        width: 36px;
+        height: 36px;
+        line-height: 36px;
         padding: 0;
       }
       .item-actions mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
       .hint {
         padding: 12px;

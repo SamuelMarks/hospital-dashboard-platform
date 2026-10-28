@@ -202,6 +202,7 @@ describe('TemplateWizardComponent', () => {
     const event = new Event('input');
     Object.defineProperty(event, 'target', { value: input });
     component.updateSearch(event);
+    fixture.detectChanges();
     vi.advanceTimersByTime(300);
     expect(loadSpy).toHaveBeenCalledWith('adm');
     vi.useRealTimers();

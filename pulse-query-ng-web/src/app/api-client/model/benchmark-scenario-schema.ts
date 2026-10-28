@@ -34,6 +34,5 @@ export interface BenchmarkScenarioSchema {
     expected_overflow: number;
     /** Property `is_feasible`. */
     is_feasible: boolean;
-    /** Property `};`. */
   };
 }

@@ -193,12 +193,16 @@ interface ChartItem {
 })
 export class VizChartComponent {
   /** Tabular dataset containing rows and columns to plot. */
-  readonly dataSet = input.required<{
-    columns?: string[];
-    data: Record<string, unknown>[];
-  } | null>();
+  readonly dataSet = input<
+    | {
+        columns?: string[];
+        data: Record<string, unknown>[];
+      }
+    | null
+    | undefined
+  >(null);
   /** Optional chart axis and stacking configuration. */
-  readonly config = input<ChartConfig>();
+  readonly config = input<ChartConfig | undefined>();
 
   /** Injected DOM document reference used to read computed CSS custom properties. */
   private readonly document = inject(DOCUMENT);

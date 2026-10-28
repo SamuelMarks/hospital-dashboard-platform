@@ -33,19 +33,19 @@
 
   <!-- Filters Card -->
   <mat-card class="filters-card">
-    <div class="filters-row">
+    <form [formRoot]="searchForm" (submit)="fetchUsers()" class="filters-row">
       <mat-form-field appearance="outline" style="flex: 2; min-width: 250px">
         <mat-label i18n>Search Users by Email</mat-label>
         <input
           matInput
-          [value]="searchQuery()"
-          (input)="onSearchInput($event)"
+          [formField]="searchForm"
           i18n-placeholder
           placeholder="e.g. physician@hospital.org"
           (keyup.enter)="fetchUsers()"
           data-testid="search-input"
         />
         <button
+          type="button"
           mat-icon-button
           matSuffix
           (click)="fetchUsers()"
@@ -71,18 +71,25 @@
         </mat-select>
       </mat-form-field>
 
-      <button i18n mat-flat-button (click)="fetchUsers()" data-testid="apply-filters-btn">
+      <button
+        i18n
+        type="button"
+        mat-flat-button
+        (click)="fetchUsers()"
+        data-testid="apply-filters-btn"
+      >
         <mat-icon aria-hidden="true">refresh</mat-icon>
         Refresh
       </button>
-    </div>
+    </form>
   </mat-card>
 
   <!-- Users Table Card -->
   <mat-card class="table-card">
     <table
       mat-table
-      [dataSource]="users()"
+      matSort
+      [dataSource]="dataSource"
       class="mat-elevation-z0"
       i18n-aria-label
       aria-label="Hospital user accounts"
@@ -90,7 +97,7 @@
     >
       <!-- Email Column -->
       <ng-container matColumnDef="email">
-        <th i18n mat-header-cell *matHeaderCellDef>User Email</th>
+        <th i18n mat-header-cell *matHeaderCellDef mat-sort-header>User Email</th>
         <td mat-cell *matCellDef="let user" data-testid="email-cell">
           <strong>{{ user.email }}</strong>
         </td>
@@ -98,7 +105,7 @@
 
       <!-- Role Assignment Column -->
       <ng-container matColumnDef="role">
-        <th i18n mat-header-cell *matHeaderCellDef>Clinical Role</th>
+        <th i18n mat-header-cell *matHeaderCellDef mat-sort-header>Clinical Role</th>
         <td mat-cell *matCellDef="let user" data-testid="role-cell">
           <mat-form-field appearance="outline" style="margin-top: 8px; width: 220px">
             <mat-select
@@ -118,7 +125,7 @@
 
       <!-- Administrator Privileges Column -->
       <ng-container matColumnDef="is_admin">
-        <th i18n mat-header-cell *matHeaderCellDef>Super Admin</th>
+        <th i18n mat-header-cell *matHeaderCellDef mat-sort-header>Super Admin</th>
         <td mat-cell *matCellDef="let user" data-testid="is-admin-cell">
           <span class="role-chip" [class]="getRoleBadgeClass(user.role)">
             @if (user.is_admin) {
@@ -132,7 +139,7 @@
 
       <!-- Active Status Column -->
       <ng-container matColumnDef="is_active">
-        <th i18n mat-header-cell *matHeaderCellDef>Account Active</th>
+        <th i18n mat-header-cell *matHeaderCellDef mat-sort-header>Account Active</th>
         <td mat-cell *matCellDef="let user" data-testid="is-active-cell">
           <mat-slide-toggle
             [checked]="user.is_active"
@@ -152,7 +159,7 @@
 
       <!-- Language Preference Column -->
       <ng-container matColumnDef="language_preference">
-        <th i18n mat-header-cell *matHeaderCellDef>Locale</th>
+        <th i18n mat-header-cell *matHeaderCellDef mat-sort-header>Locale</th>
         <td mat-cell *matCellDef="let user" data-testid="language-cell">
           @if (user.language_preference; as lang) {
             {{ lang.toUpperCase() }}

@@ -27,6 +27,7 @@ import { ThemeService } from '../../core/theme/theme.service';
 
   template: `
     <button
+      type="button"
       mat-icon-button
       (click)="toggleTheme()"
       [matTooltip]="tooltipLabel()"

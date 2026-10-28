@@ -1,4 +1,16 @@
-<div class="wrapper" role="figure" i18n-aria-label aria-label="Bar chart visualization">
+<div
+  class="wrapper"
+  role="figure"
+  [attr.aria-label]="
+    'Bar chart: ' +
+    (axisKeys().y || 'Value') +
+    ' by ' +
+    (axisKeys().x || 'Category') +
+    ' (' +
+    processedData().length +
+    ' items)'
+  "
+>
   <div class="header">
     <span>{{ axisKeys().y }}</span>
     <span>{{ axisKeys().x }}</span>

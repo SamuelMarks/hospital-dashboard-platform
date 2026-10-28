@@ -1,9 +1,9 @@
 <!-- Header -->
-<div mat-dialog-title class="flex items-center justify-between border-b pb-2">
+<div class="flex items-center justify-between border-b pb-2">
   <div class="flex flex-col">
-    <span i18n class="text-lg font-medium">Edit Widget</span>
+    <h2 i18n mat-dialog-title class="text-lg font-medium m-0">Edit Widget</h2>
     <span
-      class="text-xs font-mono flex items-center gap-2"
+      class="text-xs font-mono flex items-center gap-2 px-6"
       style="color: var(--sys-text-secondary)"
     >
       {{ widget.title }}
@@ -18,7 +18,13 @@
       >
     </span>
   </div>
-  <button mat-icon-button i18n-aria-label aria-label="Close widget editor dialog" mat-dialog-close>
+  <button
+    type="button"
+    mat-icon-button
+    i18n-aria-label
+    aria-label="Close widget editor dialog"
+    mat-dialog-close
+  >
     <mat-icon aria-hidden="true">close</mat-icon>
   </button>
 </div>
@@ -109,6 +115,7 @@
       @if (!supportsMapping()) {
         <button
           i18n
+          type="button"
           mat-flat-button
           data-testid="btn-save-processor-settings"
           (click)="saveSettings()"
@@ -171,11 +178,11 @@
         </mat-select>
       </mat-form-field>
 
-      <button i18n mat-flat-button (click)="saveSettings()">Update Viz</button>
+      <button i18n type="button" mat-flat-button (click)="saveSettings()">Update Viz</button>
     </div>
 
     @if (columns().length === 0) {
-      <div i18n class="text-xs text-amber-700 mt-2" style="color: var(--sys-warn)">
+      <div i18n class="text-xs text-amber-700 mt-2" style="color: var(--sys-text-secondary)">
         Run the query in the editor above to populate available columns.
       </div>
     }

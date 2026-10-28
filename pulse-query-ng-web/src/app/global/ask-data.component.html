@@ -10,7 +10,7 @@
     >smart_toy</mat-icon
   >
   <div class="flex flex-col leading-tight">
-    <span i18n class="font-medium text-base">Ask Data</span>
+    <h1 i18n class="font-medium text-base m-0">Ask Data</h1>
     <span
       i18n
       class="text-[10px] text-secondary uppercase tracking-widest font-bold"
@@ -24,6 +24,7 @@
   <!-- Controls -->
   <div class="flex items-center gap-3">
     <button
+      type="button"
       mat-stroked-button
       class="cart-btn"
       [class.active]="cartCount() > 0"
@@ -41,6 +42,7 @@
     </button>
 
     <button
+      type="button"
       mat-icon-button
       i18n-aria-label
       aria-label="Close Ask Data sidebar"
@@ -61,7 +63,11 @@
   <!-- Loading State -->
   @if (loadingContext()) {
     <div class="center-overlay" data-testid="loading-state">
-      <mat-spinner diameter="32"></mat-spinner>
+      <mat-spinner
+        diameter="32"
+        i18n-aria-label
+        aria-label="Initializing analytics engine"
+      ></mat-spinner>
       <p i18n class="mt-4 text-xs text-secondary" style="color: var(--sys-text-secondary)">
         Initializing Analytics Engine...
       </p>
@@ -75,7 +81,9 @@
         >error_outline</mat-icon
       >
       <p class="text-sm px-8 text-center" style="color: var(--sys-text-primary)">{{ err }}</p>
-      <button i18n mat-stroked-button class="mt-4" (click)="vis.close()">Close</button>
+      <button i18n type="button" mat-stroked-button class="mt-4" (click)="vis.close()">
+        Close
+      </button>
     </div>
   }
 

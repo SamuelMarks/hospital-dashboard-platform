@@ -76,7 +76,11 @@ export interface TemplatePreviewExecutionResult {
             class="absolute inset-0 z-10 flex items-center justify-center"
             style="background-color: color-mix(in srgb, var(--sys-surface) 80%, transparent)"
           >
-            <mat-spinner diameter="32"></mat-spinner>
+            <mat-spinner
+              diameter="32"
+              i18n-aria-label
+              aria-label="Executing SQL preview"
+            ></mat-spinner>
           </div>
         }
 
@@ -104,8 +108,8 @@ export interface TemplatePreviewExecutionResult {
       }
       .editor-wrapper {
         position: relative;
-        background: #1e1e1e;
-        color: #d4d4d4;
+        background: var(--sys-surface-variant, #1e1e1e);
+        color: var(--sys-on-surface-variant, #d4d4d4);
         font-family: 'Consolas', monospace;
         font-size: 14px;
         overflow: hidden;

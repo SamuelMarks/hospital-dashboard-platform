@@ -41,8 +41,8 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
   it('should create, render visualization options and axis controls, and emit changes', () => {
     expect(component).toBeTruthy();
 
-    fixture.componentRef.setInput('title', 'Initial Title');
-    fixture.componentRef.setInput('selectedVisualization', 'bar_chart');
+    component.title.set('Initial Title');
+    component.selectedVisualization.set('bar_chart');
     fixture.componentRef.setInput('visualizations', [
       { id: 'table', icon: 'table_chart', label: 'Table' },
       { id: 'bar_chart', icon: 'bar_chart', label: 'Bar Chart' },
@@ -60,7 +60,6 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
     });
     fixture.detectChanges();
 
-    const titleSpy = vi.spyOn(component.titleChange, 'emit');
     const vizSpy = vi.spyOn(component.vizTypeChange, 'emit');
 
     const inputEl = (fixture.nativeElement as HTMLElement).querySelector(
@@ -68,7 +67,7 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
     ) as HTMLInputElement;
     inputEl.value = 'New Title';
     inputEl.dispatchEvent(new Event('input'));
-    expect(titleSpy).toHaveBeenCalledWith('New Title');
+    expect(component.title()).toBe('New Title');
 
     const vizOption = (fixture.nativeElement as HTMLElement).querySelector(
       '.viz-option',
@@ -77,6 +76,7 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
     vizOption.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     vizOption.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
     expect(vizSpy).toHaveBeenCalledWith('table');
+    expect(component.selectedVisualization()).toBe('table');
 
     fixture.componentRef.setInput('isPie', true);
     fixture.detectChanges();
@@ -100,27 +100,25 @@ describe('WidgetBuilderVisualizeStepComponent', () => {
         category: 'ANY_LLM',
       },
     ]);
-    fixture.componentRef.setInput('allowNaturalText', true);
+    component.allowNaturalText.set(true);
     fixture.detectChanges();
 
     expect(component.sqlOptions().length).toBe(1);
     expect(component.ollamaOptions().length).toBe(1);
     expect(component.anyLlmOptions().length).toBe(1);
 
-    const promptSpy = vi.spyOn(component.naturalTextPromptChange, 'emit');
-    const placeholderSpy = vi.spyOn(component.placeholderTextChange, 'emit');
     const promptInput = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="input-natural-text-prompt"]',
     ) as HTMLInputElement;
     promptInput.value = 'Count admissions';
     promptInput.dispatchEvent(new Event('input'));
-    expect(promptSpy).toHaveBeenCalledWith('Count admissions');
+    expect(component.naturalTextPrompt()).toBe('Count admissions');
 
     const placeholderInput = (fixture.nativeElement as HTMLElement).querySelector(
       '[data-testid="input-placeholder-text"]',
     ) as HTMLInputElement;
     placeholderInput.value = 'Ask here...';
     placeholderInput.dispatchEvent(new Event('input'));
-    expect(placeholderSpy).toHaveBeenCalledWith('Ask here...');
+    expect(component.placeholderText()).toBe('Ask here...');
   });
 });

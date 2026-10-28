@@ -327,21 +327,21 @@ describe('WidgetComponent', () => {
     expect(viz).toBeTruthy();
   });
 
-  it('should synchronize focus to DashboardStore when host receives focus', () => {
+  it('should track local host focus on focus and blur without mutating fullscreen store state', () => {
+    const freshFixture = TestBed.createComponent(WidgetComponent);
+    expect(freshFixture.componentInstance.widgetInput().id).toBe('');
+
     focusedWidgetIdSig.set(null);
     mockStore.setFocusedWidget.mockClear();
 
+    expect(component.isHostFocused()).toBe(false);
     component.onFocus();
-
-    expect(mockStore.setFocusedWidget).toHaveBeenCalledWith('w1');
-
-    // Second focus when already active should not trigger duplicate store call
-    focusedWidgetIdSig.set('w1');
-    mockStore.setFocusedWidget.mockClear();
-
-    component.onFocus();
-
+    expect(component.isHostFocused()).toBe(true);
     expect(mockStore.setFocusedWidget).not.toHaveBeenCalled();
+
+    component.onBlur();
+    expect(component.isHostFocused()).toBe(false);
+    freshFixture.destroy();
   });
 
   it('should compute visualization type for text widgets', () => {

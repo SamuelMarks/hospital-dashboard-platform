@@ -2,7 +2,7 @@
  * @fileoverview Service for persisting, validating, and comparing global dashboard filters in `localStorage`.
  */
 
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { GlobalFilterParams } from './dashboard.models';
 
 /** Prefix for per-dashboard filter entries in browser `localStorage`. */
@@ -12,9 +12,7 @@ const FILTER_STORAGE_PREFIX = 'pulse_dashboard_filters_';
  * Service managing serialization, runtime schema validation, and shallow comparison
  * of global dashboard filter parameters (`GlobalFilterParams`).
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class DashboardFilterPersistenceService {
   /**
    * Compares two `GlobalFilterParams` maps for shallow key-value equality.
@@ -68,7 +66,7 @@ export class DashboardFilterPersistenceService {
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
         return {};
       }
-      const validated: GlobalFilterParams = {};
+      const validated: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(parsed)) {
         if (
           typeof value === 'string' ||

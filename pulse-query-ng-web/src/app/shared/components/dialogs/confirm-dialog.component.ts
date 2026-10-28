@@ -5,6 +5,7 @@
 import { Component, inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 /**
  * Input configuration payload passed into `ConfirmDialogComponent`.
@@ -25,10 +26,22 @@ export interface ConfirmDialogData {
  */
 @Component({
   selector: 'app-confirm-dialog',
-  imports: [MatDialogModule, MatButtonModule],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule],
 
   template: `
-    <h2 mat-dialog-title>{{ data.title }}</h2>
+    <div class="dialog-title-row">
+      <h2 mat-dialog-title>{{ data.title }}</h2>
+      <button
+        mat-icon-button
+        type="button"
+        mat-dialog-close
+        i18n-aria-label
+        aria-label="Close dialog"
+        data-testid="close-dialog-btn"
+      >
+        <mat-icon aria-hidden="true">close</mat-icon>
+      </button>
+    </div>
     <mat-dialog-content>
       <p class="mat-body-1 text-secondary">{{ data.message }}</p>
     </mat-dialog-content>
@@ -46,6 +59,11 @@ export interface ConfirmDialogData {
   `,
   styles: [
     `
+      .dialog-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
       .text-secondary {
         color: var(--sys-text-secondary);
       }

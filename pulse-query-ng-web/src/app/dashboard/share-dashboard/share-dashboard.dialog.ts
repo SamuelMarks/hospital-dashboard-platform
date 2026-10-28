@@ -3,6 +3,7 @@
  */
 
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { HttpClient } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -47,6 +48,8 @@ export interface DashboardShareItem {
 @Component({
   selector: 'app-share-dashboard-dialog',
   imports: [
+    FormRoot,
+    FormField,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -83,6 +86,10 @@ export class ShareDashboardDialog implements OnInit {
   readonly emailInput = signal('');
   /** Signal holding the input permission level for a new collaborator. */
   readonly roleInput = signal<'VIEW' | 'EDIT'>('VIEW');
+  /** Signal Form instance validating collaborator email. */
+  readonly shareForm = form(this.emailInput, (f) => {
+    required(f);
+  });
 
   /** List of currently active shares. */
   readonly shares = signal<DashboardShareItem[]>([]);

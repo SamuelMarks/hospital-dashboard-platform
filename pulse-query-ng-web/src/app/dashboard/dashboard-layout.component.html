@@ -1,10 +1,11 @@
 <!-- FILTER RIBBON (Now integrated Toolbar variant) -->
 @if (!isTvMode()) {
+  <h1 class="sr-only">{{ store.dashboard()?.name || 'Hospital Dashboard' }}</h1>
   <app-filter-ribbon></app-filter-ribbon>
 } @else {
   <!-- TV Mode Header -->
   <div class="tv-carousel-header">
-    <div class="tv-dashboard-title">{{ store.dashboard()?.name }}</div>
+    <h1 class="tv-dashboard-title m-0">{{ store.dashboard()?.name }}</h1>
     <div class="tv-meta">
       @if (store.lastUpdated(); as date) {
         <span i18n class="tv-last-updated">Updated: {{ date | date: 'shortTime' }}</span>
@@ -12,7 +13,12 @@
     </div>
   </div>
   @if (store.isLoading()) {
-    <mat-progress-bar mode="indeterminate" style="height: 4px"></mat-progress-bar>
+    <mat-progress-bar
+      mode="indeterminate"
+      style="height: 4px"
+      i18n-aria-label
+      aria-label="Refreshing dashboard widgets"
+    ></mat-progress-bar>
   }
 }
 
@@ -43,7 +49,7 @@
         (cdkDropListDropped)="onDrop($event)"
         class="dashboard-grid"
       >
-        @for (widget of store.sortedWidgets(); track widget.id) {
+        @for (widget of store.sortedWidgets(); track widget.id; let idx = $index) {
           <div
             class="grid-item"
             cdkDrag
@@ -58,8 +64,14 @@
               <div
                 class="drag-handle-overlay"
                 cdkDragHandle
+                tabindex="0"
+                role="button"
                 i18n-aria-label
-                aria-label="Drag widget to reorder"
+                aria-label="Drag widget to reorder or use arrow keys"
+                (keydown.arrowLeft)="reorderByKeyboard($event, idx, -1)"
+                (keydown.arrowUp)="reorderByKeyboard($event, idx, -1)"
+                (keydown.arrowRight)="reorderByKeyboard($event, idx, 1)"
+                (keydown.arrowDown)="reorderByKeyboard($event, idx, 1)"
                 data-testid="drag-handle"
               >
                 <mat-icon fontIcon="drag_indicator" aria-hidden="true"></mat-icon>
@@ -116,6 +128,8 @@
     position="end"
     [opened]="store.isEditMode() && !isTvMode()"
     class="editor-sidenav mat-elevation-z4"
+    i18n-aria-label
+    aria-label="Query Cart and Widget Gallery"
   >
     <div class="sidebar-stack">
       <app-query-cart
@@ -136,17 +150,31 @@
     tabindex="-1"
     appFocusTrap
     [attr.aria-label]="focused.title"
-    (escape)="store.setFocusedWidget(null)"
     (keydown.escape)="store.setFocusedWidget(null)"
     (click)="onFocusOverlayClick($event)"
   >
     <div class="focus-container mat-elevation-z24">
-      <app-widget
-        [widget]="focused"
-        class="h-full block"
-        (edit)="editWidget(focused)"
-        (delete)="confirmDeleteWidget(focused)"
-      ></app-widget>
+      <div class="focus-modal-bar">
+        <span class="focus-modal-title">{{ focused.title }}</span>
+        <button
+          mat-icon-button
+          type="button"
+          (click)="store.setFocusedWidget(null)"
+          i18n-aria-label
+          aria-label="Close modal"
+          data-testid="close-focus-modal"
+        >
+          <mat-icon aria-hidden="true">close</mat-icon>
+        </button>
+      </div>
+      <div class="focus-widget-body">
+        <app-widget
+          [widget]="focused"
+          class="h-full block"
+          (edit)="editWidget(focused)"
+          (delete)="confirmDeleteWidget(focused)"
+        ></app-widget>
+      </div>
     </div>
   </div>
 }

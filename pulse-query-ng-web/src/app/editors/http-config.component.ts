@@ -153,9 +153,9 @@ export class HttpConfigComponent {
   private readonly executionApi = inject(ExecutionService);
 
   /** ID of the dashboard. */
-  readonly dashboardId = input.required<string>();
+  readonly dashboardId = input<string>('');
   /** ID of the widget. */
-  readonly widgetId = input.required<string>();
+  readonly widgetId = input<string>('');
   /** Initial configuration. */
   readonly initialConfig = input<Record<string, unknown>>({});
   /** Emits configuration changes. */

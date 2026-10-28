@@ -291,6 +291,24 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Reorders a widget within the dashboard grid via keyboard arrow keys on the drag handle.
+   *
+   * @param event - DOM keyboard event triggered on the drag handle.
+   * @param currentIndex - Current zero-based index of the widget in `sortedWidgets()`.
+   * @param delta - Direction offset (`-1` to move earlier, `+1` to move later).
+   */
+  reorderByKeyboard(event: Event, currentIndex: number, delta: number): void {
+    if (this.isTvMode() || !this.store.isEditMode()) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const total = this.store.sortedWidgets().length;
+    const targetIndex = currentIndex + delta;
+    if (targetIndex >= 0 && targetIndex < total) {
+      this.store.updateWidgetOrder(currentIndex, targetIndex);
+    }
+  }
+
+  /**
    * Closes the focus/zen mode overlay when the user clicks directly on the backdrop.
    *
    * @param event - DOM mouse click event on the overlay backdrop.

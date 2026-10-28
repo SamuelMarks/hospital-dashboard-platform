@@ -126,9 +126,9 @@ interface PieSlice {
 })
 export class VizPieComponent {
   /** Tabular dataset containing category labels and numeric values for the pie slices. */
-  readonly dataSet = input.required<TableDataSet | null>();
+  readonly dataSet = input<TableDataSet | null | undefined>(null);
   /** Optional chart configuration specifying label (`xKey`) and value (`yKey`) column names. */
-  readonly config = input<ChartConfig>();
+  readonly config = input<ChartConfig | undefined>();
 
   /** Reference to the DOM `Document` used to inspect computed CSS variables. */
   private readonly document = inject(DOCUMENT);

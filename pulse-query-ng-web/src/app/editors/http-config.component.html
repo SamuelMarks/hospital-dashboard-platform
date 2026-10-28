@@ -1,9 +1,20 @@
 <!-- Toolbar -->
 <div class="header-bar">
   <h3 i18n class="header-title">HTTP Configuration</h3>
-  <button i18n mat-flat-button (click)="saveAndTest()" [disabled]="form().invalid() || isRunning()">
+  <button
+    i18n
+    type="button"
+    mat-flat-button
+    (click)="saveAndTest()"
+    [disabled]="form().invalid() || isRunning()"
+  >
     @if (isRunning()) {
-      <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+      <mat-spinner
+        diameter="18"
+        class="mr-2"
+        i18n-aria-label
+        aria-label="Testing HTTP endpoint"
+      ></mat-spinner>
     }
     Save & Test
   </button>
@@ -78,6 +89,7 @@
                   />
                 </mat-form-field>
                 <button
+                  type="button"
                   mat-icon-button
                   (click)="removeItem('params', $index)"
                   i18n-aria-label
@@ -88,7 +100,7 @@
               </div>
             }
           </div>
-          <button i18n mat-button (click)="addItem('params')">
+          <button i18n type="button" mat-button (click)="addItem('params')">
             <mat-icon aria-hidden="true">add</mat-icon> Add Parameter
           </button>
         </mat-expansion-panel>
@@ -123,6 +135,7 @@
                   />
                 </mat-form-field>
                 <button
+                  type="button"
                   mat-icon-button
                   (click)="removeItem('headers', $index)"
                   i18n-aria-label
@@ -133,7 +146,7 @@
               </div>
             }
           </div>
-          <button i18n mat-button (click)="addItem('headers')">
+          <button i18n type="button" mat-button (click)="addItem('headers')">
             <mat-icon aria-hidden="true">add</mat-icon> Add Header
           </button>
         </mat-expansion-panel>

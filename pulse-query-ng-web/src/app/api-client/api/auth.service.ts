@@ -2,7 +2,7 @@
  * @fileoverview Generated OpenAPI Angular service for Hospital Analytics Platform.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { HttpClient, HttpParams, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
@@ -22,9 +22,7 @@ import { BaseService } from '../api.base.service';
 /**
  * Injectable OpenAPI client service.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class AuthService extends BaseService {
   /** Angular HttpClient used to dispatch REST requests. */
   protected readonly httpClient = inject(HttpClient);

@@ -1,4 +1,4 @@
-<mat-toolbar class="app-toolbar mat-elevation-z2">
+<mat-toolbar role="banner" class="app-toolbar mat-elevation-z2">
   <a class="title-group" routerLink="/" i18n-matTooltip matTooltip="Back to Home">
     <span i18n class="title-overline" style="color: var(--sys-primary)">Analytics</span>
     <span class="title-main">
@@ -49,6 +49,7 @@
   <div class="gap-2 items-center">
     <!-- Global Cart Status (Always Visible) -->
     <button
+      type="button"
       mat-icon-button
       (click)="openCart()"
       i18n-matTooltip
@@ -83,6 +84,7 @@
 
         <button
           i18n
+          type="button"
           mat-stroked-button
           class="action-btn"
           (click)="openWidgetBuilder()"
@@ -94,6 +96,7 @@
       }
 
       <button
+        type="button"
         mat-icon-button
         (click)="store.refreshAll()"
         [disabled]="store.isLoading()"
@@ -101,13 +104,18 @@
         data-testid="btn-refresh"
       >
         @if (store.isLoading()) {
-          <mat-spinner diameter="18"></mat-spinner>
+          <mat-spinner
+            diameter="18"
+            i18n-aria-label
+            aria-label="Refreshing dashboard"
+          ></mat-spinner>
         } @else {
           <mat-icon aria-hidden="true">refresh</mat-icon>
         }
       </button>
 
       <button
+        type="button"
         mat-icon-button
         [matMenuTriggerFor]="exportMenu"
         [disabled]="!store.dashboard()"
@@ -122,21 +130,40 @@
 
       <mat-menu #exportMenu="matMenu">
         <div i18n class="menu-header-compact">Export Format</div>
-        <button i18n mat-menu-item (click)="exportDashboard('csv')" data-testid="btn-export-csv">
+        <button
+          i18n
+          type="button"
+          mat-menu-item
+          (click)="exportDashboard('csv')"
+          data-testid="btn-export-csv"
+        >
           <mat-icon aria-hidden="true">table_chart</mat-icon>
           <span>Export CSV</span>
         </button>
-        <button i18n mat-menu-item (click)="exportDashboard('json')" data-testid="btn-export-json">
+        <button
+          i18n
+          type="button"
+          mat-menu-item
+          (click)="exportDashboard('json')"
+          data-testid="btn-export-json"
+        >
           <mat-icon aria-hidden="true">data_object</mat-icon>
           <span>Export JSON</span>
         </button>
-        <button i18n mat-menu-item (click)="exportDashboard('pdf')" data-testid="btn-export-pdf">
+        <button
+          i18n
+          type="button"
+          mat-menu-item
+          (click)="exportDashboard('pdf')"
+          data-testid="btn-export-pdf"
+        >
           <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
           <span>Export PDF</span>
         </button>
       </mat-menu>
 
       <button
+        type="button"
         mat-icon-button
         (click)="openShareDialog()"
         [disabled]="!store.dashboard()"
@@ -153,6 +180,7 @@
     }
 
     <button
+      type="button"
       mat-icon-button
       [matMenuTriggerFor]="themeMenu"
       i18n-aria-label
@@ -164,7 +192,7 @@
 
     <mat-menu #themeMenu="matMenu">
       <div i18n class="menu-header-compact">Appearance</div>
-      <button mat-menu-item (click)="themeService.toggle()">
+      <button type="button" mat-menu-item (click)="themeService.toggle()">
         <mat-icon aria-hidden="true">{{
           themeService.isDark() ? 'light_mode' : 'dark_mode'
         }}</mat-icon>
@@ -180,6 +208,7 @@
         <div class="flex gap-2 flex-wrap">
           @for (color of presetColors; track color) {
             <button
+              type="button"
               class="color-dot"
               [style.background-color]="color"
               (click)="updateTheme(color); $event.stopPropagation()"
@@ -208,7 +237,13 @@
         </div>
       </div>
       <mat-divider></mat-divider>
-      <button i18n mat-menu-item (click)="openThemeDialog()" data-testid="btn-open-theme-dialog">
+      <button
+        i18n
+        type="button"
+        mat-menu-item
+        (click)="openThemeDialog()"
+        data-testid="btn-open-theme-dialog"
+      >
         <mat-icon aria-hidden="true">palette</mat-icon>
         <span>Clinical Palettes...</span>
       </button>
@@ -216,6 +251,7 @@
 
     <button
       i18n
+      type="button"
       mat-stroked-button
       class="action-btn"
       (click)="askDataService.open()"
@@ -226,6 +262,7 @@
     </button>
 
     <button
+      type="button"
       mat-icon-button
       [matMenuTriggerFor]="userMenu"
       i18n-aria-label
@@ -240,22 +277,22 @@
         <mat-icon aria-hidden="true" class="large-avatar mb-2">account_circle</mat-icon>
         <span class="menu-email">{{ authService.currentUser()?.email }}</span>
       </div>
-      <button i18n mat-menu-item routerLink="/">
+      <button i18n type="button" mat-menu-item routerLink="/">
         <mat-icon aria-hidden="true">dashboard</mat-icon><span>My Dashboards</span>
       </button>
-      <button i18n mat-menu-item routerLink="/mpax-arena">
+      <button i18n type="button" mat-menu-item routerLink="/mpax-arena">
         <mat-icon aria-hidden="true">sports_score</mat-icon><span>MPAX Arena</span>
       </button>
-      <button i18n mat-menu-item routerLink="/benchmarks">
+      <button i18n type="button" mat-menu-item routerLink="/benchmarks">
         <mat-icon aria-hidden="true">speed</mat-icon><span>Benchmarks</span>
       </button>
       @if (authService.currentUser()?.is_admin) {
-        <button i18n mat-menu-item routerLink="/admin">
+        <button i18n type="button" mat-menu-item routerLink="/admin">
           <mat-icon aria-hidden="true">settings</mat-icon><span>Admin Settings</span>
         </button>
       }
       <mat-divider></mat-divider>
-      <button i18n mat-menu-item (click)="logout()">
+      <button i18n type="button" mat-menu-item (click)="logout()">
         <mat-icon aria-hidden="true" style="color: var(--sys-error)">logout</mat-icon
         ><span>Logout</span>
       </button>

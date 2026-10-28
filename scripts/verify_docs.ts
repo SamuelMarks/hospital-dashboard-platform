@@ -239,7 +239,8 @@ export function verifySourceFileText(
   }
 
   /**
-   * Recursively walks the AST to flag `any` type keywords and `as unknown as` double casts.
+   * Recursively walks the AST to flag `any` type keywords, `as unknown as` double casts,
+   * and forbidden Angular decorator properties (`standalone: true`, `changeDetection: ...OnPush`).
    *
    * @param n - AST node to inspect.
    */
@@ -256,6 +257,20 @@ export function verifySourceFileText(
       errors.push(
         `${relPath}:${line} - Forbidden 'as unknown as' double type assertion`,
       );
+    } else if (ts.isPropertyAssignment(n)) {
+      const propName = n.name.getText(sf).trim();
+      const propVal = n.initializer.getText(sf).trim();
+      if (propName === "standalone" && propVal === "true") {
+        const line = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+        errors.push(
+          `${relPath}:${line} - Forbidden 'standalone: true' in Angular decorator (default in Angular v20+)`,
+        );
+      } else if (propName === "changeDetection" && propVal.includes("OnPush")) {
+        const line = sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+        errors.push(
+          `${relPath}:${line} - Forbidden 'changeDetection: ChangeDetectionStrategy.OnPush' (default in Angular v22+)`,
+        );
+      }
     }
     ts.forEachChild(n, checkForbiddenTypes);
   }

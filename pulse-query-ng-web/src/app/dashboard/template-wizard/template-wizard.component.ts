@@ -8,10 +8,10 @@
  * 4. Persist the new widget on the target dashboard only when the user confirms "Add Widget".
  */
 
-import { Component, computed, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
-import { finalize, debounceTime, distinctUntilChanged } from 'rxjs/operators';
-import { Subject, Subscription } from 'rxjs';
+import { finalize, debounceTime, distinctUntilChanged, skip } from 'rxjs/operators';
 
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatStepperModule } from '@angular/material/stepper';
@@ -38,6 +38,7 @@ import {
   TemplatePreviewExecutionResult,
   TemplateWizardPreviewStepComponent,
 } from './template-wizard-preview-step.component';
+import { WidgetBuilderMarketplaceStepComponent } from '../widget-builder/widget-builder-marketplace-step.component';
 import { TemplateConfigurationService } from '../template-configuration.service';
 
 /**
@@ -69,6 +70,7 @@ export interface WizardData {
     MatCardModule,
     DynamicFormComponent,
     TemplateWizardPreviewStepComponent,
+    WidgetBuilderMarketplaceStepComponent,
   ],
   templateUrl: './template-wizard.component.html',
   styles: [
@@ -105,7 +107,10 @@ export interface WizardData {
     `,
   ],
 })
-export class TemplateWizardComponent implements OnInit, OnDestroy {
+export class TemplateWizardComponent implements OnInit {
+  /** DestroyRef for automatic RxJS stream teardown. */
+  private readonly destroyRef = inject(DestroyRef);
+
   /** Hosting dialog reference. */
   private readonly dialogRef = inject(MatDialogRef<TemplateWizardComponent>);
 
@@ -145,11 +150,8 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   /** ID of the currently selected marketplace template. */
   readonly selectedTemplateId = signal<string | null>(null);
 
-  /** Debounced search input stream. */
-  private readonly searchSubject = new Subject<string>();
-
-  /** Active subscription to `searchSubject`. */
-  private searchSub?: Subscription;
+  /** Reactive signal holding the current marketplace search input string. */
+  readonly searchQuery = signal<string>('');
 
   /** JSON Schema for the selected template's parameters. */
   readonly paramsSchema = signal<Record<string, unknown>>({});
@@ -185,21 +187,19 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   readonly placeholderText = "SELECT * FROM table WHERE col = '{{param}}'";
 
   /**
-   * Loads initial marketplace templates and subscribes to debounced search input.
+   * Initializes the debounced search query stream using `toObservable` and `takeUntilDestroyed`.
    */
-  ngOnInit(): void {
-    this.loadTemplates();
-
-    this.searchSub = this.searchSubject
-      .pipe(debounceTime(300), distinctUntilChanged())
+  constructor() {
+    toObservable(this.searchQuery)
+      .pipe(skip(1), debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe((term) => this.loadTemplates(term));
   }
 
   /**
-   * Cleans up the search subscription when the dialog is destroyed.
+   * Loads initial marketplace templates on component initialization.
    */
-  ngOnDestroy(): void {
-    this.searchSub?.unsubscribe();
+  ngOnInit(): void {
+    this.loadTemplates();
   }
 
   /**
@@ -261,13 +261,13 @@ export class TemplateWizardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Pushes the current search input text into the debounced `searchSubject`.
+   * Pushes the current search input text into the reactive `searchQuery` signal.
    *
    * @param event - DOM input event from the search field.
    */
   updateSearch(event: Event): void {
     const val = (event.target as HTMLInputElement).value;
-    this.searchSubject.next(val);
+    this.searchQuery.set(val);
   }
 
   /**

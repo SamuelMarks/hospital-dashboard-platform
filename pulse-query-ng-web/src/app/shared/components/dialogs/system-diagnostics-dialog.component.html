@@ -3,7 +3,13 @@
     <mat-icon aria-hidden="true">health_and_safety</mat-icon>
     <h2 i18n mat-dialog-title>System Health &amp; Diagnostics</h2>
   </div>
-  <button i18n-aria-label mat-icon-button mat-dialog-close aria-label="Close diagnostics dialog">
+  <button
+    i18n-aria-label
+    type="button"
+    mat-icon-button
+    mat-dialog-close
+    aria-label="Close diagnostics dialog"
+  >
     <mat-icon aria-hidden="true">close</mat-icon>
   </button>
 </div>
@@ -23,11 +29,11 @@
       <strong i18n>Overall State: {{ status() | uppercase }}</strong>
       <span>{{ getStatusDescription() }}</span>
     </div>
-    <button mat-stroked-button (click)="refresh()" [disabled]="isRefreshing()">
+    <button type="button" mat-stroked-button (click)="refresh()" [disabled]="isRefreshing()">
       @if (!isRefreshing()) {
         <mat-icon aria-hidden="true">refresh</mat-icon>
       } @else {
-        <mat-spinner diameter="16"></mat-spinner>
+        <mat-spinner diameter="16" i18n-aria-label aria-label="Testing system health"></mat-spinner>
       }
       <span i18n>Test Now</span>
     </button>
@@ -126,7 +132,7 @@
         @if (health()?.data?.fallback_generated) {
           <p class="warning-msg" i18n>Default hospital_data.csv missing; sample data generated.</p>
         }
-        <button mat-button (click)="reingestData()" [disabled]="isReingesting()">
+        <button type="button" mat-button (click)="reingestData()" [disabled]="isReingesting()">
           <mat-icon aria-hidden="true">sync</mat-icon>
           @if (isReingesting()) {
             <span i18n>Ingesting...</span>
@@ -201,6 +207,7 @@
             <strong>{{ step.title }}</strong>
             @if (step.command) {
               <button
+                type="button"
                 mat-icon-button
                 (click)="copyCommand(step.command)"
                 i18n-matTooltip
@@ -223,5 +230,5 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button i18n mat-flat-button mat-dialog-close>Close</button>
+  <button i18n type="button" mat-flat-button mat-dialog-close cdkFocusInitial>Close</button>
 </mat-dialog-actions>

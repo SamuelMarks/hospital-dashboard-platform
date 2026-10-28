@@ -3,6 +3,7 @@
  * arena candidate comparisons, inline SQL execution previews, and message composition.
  */
 import { Component, inject, viewChild, ElementRef, effect, signal } from '@angular/core';
+import { FormRoot, FormField, form, disabled } from '@angular/forms/signals';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -37,6 +38,8 @@ import { ArenaSqlService } from '../arena-sql.service';
 @Component({
   selector: 'app-conversation',
   imports: [
+    FormRoot,
+    FormField,
     DatePipe,
     MatButtonModule,
     MatIconModule,
@@ -251,6 +254,10 @@ export class ConversationComponent {
   readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   /** Input text model. */
   readonly inputText = signal('');
+  /** Signal Form binding the chat composer textarea. */
+  readonly composerForm = form(this.inputText, (f) => {
+    disabled(f, () => this.store.isGenerating());
+  });
 
   /** Signal map for candidate results. */
   readonly candidateResults = signal<Record<string, TableDataSet | null>>({});

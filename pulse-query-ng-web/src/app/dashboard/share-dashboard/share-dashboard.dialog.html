@@ -1,14 +1,30 @@
-<h2 mat-dialog-title i18n>Share "{{ data.dashboardName }}"</h2>
+<div class="flex items-center justify-between pr-2">
+  <h2 mat-dialog-title i18n>Share "{{ data.dashboardName }}"</h2>
+  <button
+    mat-icon-button
+    type="button"
+    mat-dialog-close
+    i18n-aria-label
+    aria-label="Close dialog"
+    data-testid="close-dialog-btn"
+  >
+    <mat-icon aria-hidden="true">close</mat-icon>
+  </button>
+</div>
 
 <mat-dialog-content class="share-dialog-content">
   <!-- Add Collaborator Form -->
-  <div class="share-form flex gap-2 items-center mb-4">
+  <form
+    [formRoot]="shareForm"
+    (submit)="addShare()"
+    class="share-form flex gap-2 items-center mb-4"
+  >
     <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
       <mat-label i18n>Collaborator Email</mat-label>
       <input
         matInput
-        [value]="emailInput()"
-        (input)="onEmailInput($event)"
+        [formField]="shareForm"
+        cdkFocusInitial
         placeholder="doctor@hospital.org"
         type="email"
         autocomplete="email"
@@ -30,6 +46,7 @@
     </mat-form-field>
 
     <button
+      type="button"
       mat-flat-button
       (click)="addShare()"
       [disabled]="!emailInput().trim() || isSubmitting()"
@@ -38,7 +55,7 @@
     >
       Share
     </button>
-  </div>
+  </form>
 
   @if (errorMessage()) {
     <div role="alert" class="error-banner mb-3 p-2 text-sm text-red-600 bg-red-50 rounded">
@@ -51,7 +68,11 @@
 
   @if (isLoading()) {
     <div class="flex justify-center p-4" role="status" aria-live="polite">
-      <mat-spinner diameter="28"></mat-spinner>
+      <mat-spinner
+        diameter="28"
+        i18n-aria-label
+        aria-label="Loading active collaborators"
+      ></mat-spinner>
     </div>
   } @else if (shares().length === 0) {
     <p class="text-sm text-secondary py-2" i18n>
@@ -73,6 +94,7 @@
             </span>
           </div>
           <button
+            type="button"
             mat-icon-button
             matListItemMeta
             (click)="revokeShare(share.id)"
@@ -91,5 +113,7 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button mat-dialog-close data-testid="btn-close-share" i18n>Close</button>
+  <button type="button" mat-button mat-dialog-close data-testid="btn-close-share" i18n>
+    Close
+  </button>
 </mat-dialog-actions>

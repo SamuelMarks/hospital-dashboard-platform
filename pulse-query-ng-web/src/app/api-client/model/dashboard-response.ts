@@ -22,5 +22,5 @@ export interface DashboardResponse {
   /** Property `permission_level`. */
   permission_level?: string;
   /** Property `widgets`. */
-  widgets?: WidgetResponse[];
+  widgets: WidgetResponse[];
 }

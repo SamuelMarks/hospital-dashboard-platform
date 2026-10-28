@@ -1,4 +1,16 @@
-<h2 i18n mat-dialog-title>Create New Dashboard</h2>
+<div class="flex items-center justify-between pr-2">
+  <h2 i18n mat-dialog-title>Create New Dashboard</h2>
+  <button
+    mat-icon-button
+    type="button"
+    mat-dialog-close
+    i18n-aria-label
+    aria-label="Close dialog"
+    data-testid="close-dialog-btn"
+  >
+    <mat-icon aria-hidden="true">close</mat-icon>
+  </button>
+</div>
 
 <mat-dialog-content>
   <form [formRoot]="createForm" (submit)="submit()">
@@ -11,6 +23,7 @@
       <input
         matInput
         [formField]="createForm.name"
+        cdkFocusInitial
         i18n-placeholder
         placeholder="e.g. Q3 Overview"
         data-testid="input-name"
@@ -29,8 +42,9 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button i18n mat-button mat-dialog-close>Cancel</button>
+  <button i18n type="button" mat-button mat-dialog-close>Cancel</button>
   <button
+    type="button"
     mat-flat-button
     (click)="submit()"
     [disabled]="createForm().invalid() || isSubmitting()"

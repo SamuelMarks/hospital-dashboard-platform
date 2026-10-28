@@ -2,10 +2,9 @@
  * @fileoverview Generated OpenAPI Angular service for Hospital Analytics Platform.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { HttpClient, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 import { ConversationCreate } from '../model/conversation-create';
 import { ConversationDetail } from '../model/conversation-detail';
@@ -18,13 +17,12 @@ import { MessageVoteRequest } from '../model/message-vote-request';
 import { BASE_PATH } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 /**
  * Injectable OpenAPI client service.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ChatService extends BaseService {
   /** Angular HttpClient used to dispatch REST requests. */
   protected readonly httpClient = inject(HttpClient);

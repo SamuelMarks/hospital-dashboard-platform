@@ -7,14 +7,12 @@
   </div>
 
   <mat-card class="form-panel p-4 mb-6">
-    <div class="flex gap-4">
+    <form [formRoot]="promptForm" (submit)="run()" class="flex gap-4">
       <mat-form-field appearance="outline" class="flex-grow">
         <mat-label i18n>Scenario Prompt</mat-label>
         <textarea
           matInput
-          #promptInput
-          [value]="prompt()"
-          (input)="prompt.set(promptInput.value)"
+          [formField]="promptForm"
           rows="3"
           i18n-placeholder
           placeholder="Describe the scenario..."
@@ -31,14 +29,22 @@
           <mat-option i18n value="critic">5. Feedback Critic</mat-option>
         </mat-select>
       </mat-form-field>
-    </div>
+    </form>
 
-    <button i18n mat-flat-button (click)="run()" [disabled]="isLoading() || !prompt().trim()">
+    <button
+      i18n
+      type="button"
+      mat-flat-button
+      (click)="run()"
+      [disabled]="isLoading() || !prompt().trim()"
+    >
       @if (isLoading()) {
         <mat-progress-spinner
           mode="indeterminate"
           diameter="20"
           class="mr-2"
+          i18n-aria-label
+          aria-label="Running arena evaluation"
         ></mat-progress-spinner>
       }
       Run Arena

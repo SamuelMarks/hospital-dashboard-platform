@@ -49,6 +49,8 @@ const makeWidget = (overrides: Partial<WidgetResponse> = {}): WidgetResponse => 
 describe('DashboardLayoutComponent', () => {
   let mockStore: {
     dashboard: WritableSignal<{ id: string } | null>;
+    isEditMode: WritableSignal<boolean>;
+    sortedWidgets: WritableSignal<WidgetResponse[]>;
     reset: ReturnType<typeof vi.fn>;
     loadDashboard: ReturnType<typeof vi.fn>;
     refreshWidget: ReturnType<typeof vi.fn>;
@@ -87,6 +89,8 @@ describe('DashboardLayoutComponent', () => {
 
     mockStore = {
       dashboard: signal({ id: 'd1' }),
+      isEditMode: signal(true),
+      sortedWidgets: signal([makeWidget({ id: 'w1' }), makeWidget({ id: 'w2' })]),
       reset: vi.fn(),
       loadDashboard: vi.fn(),
       refreshWidget: vi.fn(),
@@ -510,6 +514,22 @@ describe('DashboardLayoutComponent', () => {
     mockTheme.isTvMode.set(true);
     component.resizeByKeyboard(event, makeWidget({ config: { w: 6 } }), 1);
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('should reorder widgets via keyboard arrow keys on drag handle', () => {
+    const component = setup();
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true });
+
+    component.reorderByKeyboard(event, 0, 1);
+    expect(mockStore.updateWidgetOrder).toHaveBeenCalledWith(0, 1);
+
+    mockStore.updateWidgetOrder.mockClear();
+    component.reorderByKeyboard(event, 0, -1);
+    expect(mockStore.updateWidgetOrder).not.toHaveBeenCalled();
+
+    mockStore.isEditMode.set(false);
+    component.reorderByKeyboard(event, 0, 1);
+    expect(mockStore.updateWidgetOrder).not.toHaveBeenCalled();
   });
 
   it('should close focus overlay when clicking directly on the backdrop', () => {

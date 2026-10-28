@@ -3,7 +3,7 @@
  * visualization (table, chart, metric, pie, heatmap, scalar, markdown), skeleton loading states,
  * safe-mode error recovery, and widget toolbar actions.
  */
-import { Component, input, output, inject, computed, linkedSignal } from '@angular/core';
+import { Component, input, output, inject, computed, linkedSignal, signal } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -44,6 +44,18 @@ import {
 } from './widget-data.guards';
 
 /**
+ * Default placeholder widget configuration used before a parent component binds `[widget]`.
+ */
+const DEFAULT_WIDGET: WidgetResponse = {
+  id: '',
+  dashboard_id: '',
+  title: '',
+  type: 'SQL',
+  visualization: 'table',
+  config: {},
+};
+
+/**
  * Renders a single dashboard widget card with dynamic visualization switching and error recovery.
  */
 @Component({
@@ -70,6 +82,7 @@ import {
     class: 'widget-host',
     '(keydown.escape)': 'onEscape($event)',
     '(focus)': 'onFocus()',
+    '(blur)': 'onBlur()',
   },
   templateUrl: './widget.component.html',
   styles: [
@@ -246,7 +259,9 @@ export class WidgetComponent {
   readonly connectionService = inject(ConnectionStatusService);
 
   /** Widget configuration and metadata model passed from the parent dashboard grid. */
-  readonly widgetInput = input.required<WidgetResponse>({ alias: 'widget' });
+  readonly widgetInput = input<WidgetResponse>(DEFAULT_WIDGET, { alias: 'widget' });
+  /** Whether the widget host element currently holds DOM keyboard/pointer focus. */
+  readonly isHostFocused = signal(false);
   /** Emits when the user clicks the edit action on the widget. */
   readonly edit = output<void>();
   /** Emits when the user clicks the duplicate action on the widget. */
@@ -424,16 +439,21 @@ export class WidgetComponent {
   }
 
   /**
-   * Synchronizes browser focus on host element with the dashboard store.
-   * Ensures the focused widget state reflects active keyboard or mouse focus.
+   * Marks the widget host element as focused when it receives DOM focus.
    *
    * @param _event - Optional DOM focus event.
    */
   onFocus(_event?: FocusEvent): void {
-    const id = this.widgetInput().id;
-    if (this.store.focusedWidgetId() !== id) {
-      this.store.setFocusedWidget(id);
-    }
+    this.isHostFocused.set(true);
+  }
+
+  /**
+   * Clears the host focus indicator when DOM focus leaves the widget host element.
+   *
+   * @param _event - Optional DOM blur event.
+   */
+  onBlur(_event?: FocusEvent): void {
+    this.isHostFocused.set(false);
   }
 
   /** Prompts for confirmation and resets the widget configuration to safe-mode defaults. */

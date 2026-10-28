@@ -5,15 +5,7 @@
  * their content with a fallback template.
  */
 
-import {
-  Directive,
-  TemplateRef,
-  ViewContainerRef,
-  inject,
-  ErrorHandler,
-  OnInit,
-  input,
-} from '@angular/core';
+import { Directive, TemplateRef, ViewContainerRef, inject, OnInit, input } from '@angular/core';
 import { GlobalErrorHandler } from './global-error.handler';
 
 /**
@@ -57,7 +49,7 @@ export class ErrorBoundaryDirective implements OnInit {
   /** Primary structural template reference wrapped by the error boundary. */
   private readonly templateCallback = inject(TemplateRef<unknown>);
   /** Global error handler instance used to reset global error state on retry. */
-  private readonly globalHandler = inject(ErrorHandler) as GlobalErrorHandler;
+  private readonly globalHandler = inject(GlobalErrorHandler);
 
   /**
    * The Fallback Template to render when an error state is active.

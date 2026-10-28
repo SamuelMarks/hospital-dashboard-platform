@@ -5,7 +5,7 @@
  * single-query SQL preview execution (`/api/v1/ai/execute`), and final widget persistence.
  */
 
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { MatStepper } from '@angular/material/stepper';
 import { Subject, merge } from 'rxjs';
@@ -48,9 +48,7 @@ export const CANONICAL_VISUALIZATIONS: VisualizationOption[] = [
 /**
  * Signal-based store managing `WidgetBuilderComponent` wizard state and API interactions.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class WidgetBuilderStore {
   /** DestroyRef used for declarative RxJS stream teardown. */
   private readonly destroyRef = inject(DestroyRef);

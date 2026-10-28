@@ -5,6 +5,8 @@
     [mode]="isHandset() ? 'over' : 'side'"
     [opened]="isHandset() ? false : sidebarOpen()"
     class="history-drawer"
+    i18n-aria-label
+    aria-label="Conversation history and query cart"
   >
     <!-- Use Tabs to switch between History and Cart -->
     <mat-tab-group class="sidebar-tabs" animationDuration="0ms">
@@ -17,14 +19,20 @@
 
         <div class="tab-column">
           <div class="history-header">
-            <button mat-stroked-button class="w-full" (click)="newChat()">
+            <button type="button" mat-stroked-button class="w-full" (click)="newChat()">
               <mat-icon aria-hidden="true">add</mat-icon>
               <span i18n>New Chat</span>
             </button>
           </div>
 
           @if (store.isDataLoading()) {
-            <div class="flex justify-center p-8"><mat-spinner diameter="32"></mat-spinner></div>
+            <div class="flex justify-center p-8">
+              <mat-spinner
+                diameter="32"
+                i18n-aria-label
+                aria-label="Loading conversation history"
+              ></mat-spinner>
+            </div>
           }
 
           <div class="history-list" role="list">
@@ -48,9 +56,10 @@
 
                   <!-- Context Menu Button -->
                   <button
+                    type="button"
                     mat-icon-button
                     [attr.aria-label]="getOptionsAriaLabel(chat)"
-                    class="action-btn scale-75"
+                    class="action-btn"
                     [matMenuTriggerFor]="menu"
                     (click)="$event.stopPropagation()"
                   >
@@ -58,11 +67,16 @@
                   </button>
 
                   <mat-menu #menu="matMenu">
-                    <button mat-menu-item (click)="renameChat(chat)">
+                    <button type="button" mat-menu-item (click)="renameChat(chat)">
                       <mat-icon aria-hidden="true">edit</mat-icon>
                       <span i18n>Rename</span>
                     </button>
-                    <button mat-menu-item (click)="deleteChat(chat)" class="text-red-600">
+                    <button
+                      type="button"
+                      mat-menu-item
+                      (click)="deleteChat(chat)"
+                      class="text-red-600"
+                    >
                       <mat-icon aria-hidden="true">delete</mat-icon>
                       <span i18n>Delete</span>
                     </button>
@@ -96,6 +110,7 @@
     @if (isHandset()) {
       <mat-toolbar class="flex-none">
         <button
+          type="button"
           mat-icon-button
           i18n-aria-label
           aria-label="Toggle conversation history sidebar"
@@ -111,6 +126,7 @@
     <!-- Desktop Toggle Button -->
     @if (!isHandset()) {
       <button
+        type="button"
         mat-icon-button
         i18n-aria-label
         aria-label="Toggle conversation history sidebar"

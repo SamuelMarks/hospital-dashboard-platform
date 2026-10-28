@@ -2,10 +2,9 @@
  * @fileoverview Generated OpenAPI Angular service for Hospital Analytics Platform.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { HttpClient, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 import { BedCapacityAlert } from '../model/bed-capacity-alert';
 import { LlmOutputAnalyticsRow } from '../model/llm-output-analytics-row';
@@ -13,13 +12,12 @@ import { LlmOutputAnalyticsRow } from '../model/llm-output-analytics-row';
 import { BASE_PATH } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 /**
  * Injectable OpenAPI client service.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class AnalyticsService extends BaseService {
   /** Angular HttpClient used to dispatch REST requests. */
   protected readonly httpClient = inject(HttpClient);

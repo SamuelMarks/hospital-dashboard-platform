@@ -17,7 +17,7 @@
   </mat-sidenav>
 
   <!-- Main Content Area -->
-  <mat-sidenav-content role="main" class="main-content-layout">
+  <mat-sidenav-content class="main-content-layout">
     <!-- Global Toolbar (Hidden in TV Mode) -->
     @if (!themeService.isTvMode()) {
       <app-toolbar class="global-toolbar"></app-toolbar>
@@ -27,8 +27,8 @@
     <app-system-health-banner></app-system-health-banner>
 
     <!-- Page Content -->
-    <div id="main-content" class="page-container">
+    <main id="main-content" class="page-container" tabindex="-1">
       <router-outlet></router-outlet>
-    </div>
+    </main>
   </mat-sidenav-content>
 </mat-sidenav-container>

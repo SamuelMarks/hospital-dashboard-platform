@@ -170,8 +170,9 @@ import {
       }
       .command-box {
         display: block;
-        background: #212121;
-        color: #76ff03;
+        background: var(--sys-surface);
+        color: var(--sys-primary);
+        border: 1px solid var(--sys-surface-border);
         padding: 0.4rem 0.6rem;
         border-radius: 4px;
         font-family: monospace;

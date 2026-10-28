@@ -113,17 +113,71 @@ export interface MetricConfig {
         fill: var(--sys-error);
         opacity: 0.2;
       }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
     `,
   ],
-  templateUrl: './viz-metric.component.html',
+  template: `
+    <!-- Sparkline Background -->
+    @if (sparklinePath(); as path) {
+      <svg
+        class="sparkline-container"
+        viewBox="0 0 100 50"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path
+          [attr.d]="path"
+          fill="none"
+          stroke-width="2"
+          vector-effect="non-scaling-stroke"
+          [class]="isTrendUp() ? 'spark-pos' : 'spark-neg'"
+        ></path>
+        <path
+          [attr.d]="sparklineFill()"
+          stroke="none"
+          [class]="isTrendUp() ? 'spark-fill-pos' : 'spark-fill-neg'"
+        ></path>
+      </svg>
+    }
+
+    <!-- Primary Value -->
+    <div class="mat-headline-2 metric-value" [class]="alertClass()">
+      {{ displayValue() }}
+    </div>
+
+    <!-- Label -->
+    <div class="mat-body-2 metric-label">
+      {{ displayLabel() }}
+    </div>
+
+    <!-- Trend Indicator -->
+    @let trendVal = parsedTrend();
+    @if (trendVal !== null) {
+      <div class="mat-caption trend" [class]="trendVal > 0 ? 'trend-pos' : 'trend-neg'">
+        <span aria-hidden="true">{{ trendVal > 0 ? '▲' : '▼' }}</span>
+        <span class="sr-only">{{ trendVal > 0 ? '+' : '' }}</span>
+        {{ trendVal }}%
+      </div>
+    }
+  `,
 })
 export class VizMetricComponent {
   /** Raw metric data object or tabular query result. */
-  readonly data = input<MetricData | null>();
+  readonly data = input<MetricData | null | undefined>();
   /** Optional explicit label overriding the dataset's inferred column or label name. */
   readonly titleOverride = input<string>('');
   /** Optional threshold configuration for warning and critical state styling. */
-  readonly config = input<MetricConfig | null>(null);
+  readonly config = input<MetricConfig | null | undefined>(null);
 
   /** Computed primary scalar value extracted from the metric data payload. */
   readonly displayValue: Signal<string | number> = computed(() => {

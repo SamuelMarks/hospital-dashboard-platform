@@ -1,7 +1,8 @@
 <div class="h-full flex flex-col overflow-hidden" style="background-color: var(--sys-background)">
   <div class="flex items-center justify-between px-6 py-4 border-b flex-shrink-0 dialog-header">
-    <h2 i18n class="text-xl font-light m-0">Add Widget</h2>
+    <h2 i18n mat-dialog-title class="text-xl font-light m-0">Add Widget from Marketplace</h2>
     <button
+      type="button"
       mat-icon-button
       (click)="cancel()"
       i18n-aria-label
@@ -11,7 +12,7 @@
     </button>
   </div>
 
-  <mat-dialog-content class="flex-grow !p-0 overflow-hidden" role="status" aria-live="polite">
+  <mat-dialog-content class="flex-grow !p-0 overflow-hidden">
     <mat-stepper
       [linear]="true"
       #stepper
@@ -19,7 +20,7 @@
       style="background: transparent"
     >
       <!-- STEP 1: SOURCE SELECTION -->
-      <mat-step [completed]="!!draftWidgetId()">
+      <mat-step [completed]="!!selectedTemplateId() || !!selectedCustomType()">
         <ng-template i18n matStepLabel>Select Source</ng-template>
 
         <div
@@ -49,7 +50,7 @@
             <!-- TAB 2: CUSTOM -->
             <mat-tab label="Custom Query" i18n-label>
               <app-widget-builder-custom-source-step
-                [selectedCustomType]="selectedCustomType()"
+                [(selectedCustomType)]="selectedCustomType"
                 (customTypeSelect)="selectCustomType($event)"
               ></app-widget-builder-custom-source-step>
             </mat-tab>
@@ -60,14 +61,20 @@
             class="p-4 border-t flex justify-end gap-2"
             style="background-color: var(--sys-surface); border-color: var(--sys-surface-border)"
           >
-            <button i18n mat-button (click)="cancel()">Cancel</button>
+            <button i18n type="button" mat-button (click)="cancel()">Cancel</button>
             <button
+              type="button"
               mat-flat-button
               (click)="initializeDraft(stepper)"
               [disabled]="isBusy() || (!selectedTemplateId() && !selectedCustomType())"
             >
               @if (isBusy()) {
-                <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+                <mat-spinner
+                  diameter="18"
+                  class="mr-2"
+                  i18n-aria-label
+                  aria-label="Initializing widget draft"
+                ></mat-spinner>
               }
               <span i18n>Next: Configure</span>
             </button>
@@ -86,7 +93,7 @@
                 <app-sql-builder
                   [dashboardId]="data.dashboardId"
                   [widgetId]="widget.id"
-                  [initialSql]="widget.config['query']"
+                  [initialSql]="draftSqlQuery()"
                   (sqlChange)="onSqlChange($event)"
                   class="h-full block"
                 ></app-sql-builder>
@@ -102,7 +109,7 @@
                 <app-text-editor
                   [dashboardId]="data.dashboardId"
                   [widgetId]="widget.id"
-                  [initialContent]="widget.config['content']"
+                  [initialContent]="draftTextContent()"
                   (contentChange)="onContentChange($event)"
                   class="h-full block"
                 ></app-text-editor>
@@ -114,22 +121,30 @@
               class="p-4 border-t flex justify-end gap-2 z-10 relative"
               style="background: var(--sys-surface); border-color: var(--sys-surface-border)"
             >
-              <button i18n mat-button matStepperPrevious>Back</button>
+              <button i18n type="button" mat-button matStepperPrevious>Back</button>
               @if (activeMode() === 'template') {
                 <button
+                  type="button"
                   mat-flat-button
                   (click)="runTemplateQuery(stepper)"
                   [disabled]="!templateFormValid() || isBusy()"
                 >
                   @if (isBusy()) {
-                    <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+                    <mat-spinner
+                      diameter="18"
+                      class="mr-2"
+                      i18n-aria-label
+                      aria-label="Running template preview query"
+                    ></mat-spinner>
                   }
                   <span i18n>Run & Preview</span>
                 </button>
               } @else if (widget.type === 'TEXT') {
-                <button i18n mat-flat-button (click)="saveAndClose()">Save & Finish</button>
+                <button i18n type="button" mat-flat-button (click)="saveAndClose()">
+                  Save & Finish
+                </button>
               } @else {
-                <button i18n mat-flat-button (click)="validateDataPresence(stepper)">
+                <button i18n type="button" mat-flat-button (click)="validateDataPresence(stepper)">
                   Next: Visualize
                 </button>
               }
@@ -151,32 +166,34 @@
           [xKey]="vizFormModel().xKey"
           [yKey]="vizFormModel().yKey"
           [previewWidget]="previewWidget()"
-          [allowNaturalText]="allowNaturalText()"
-          [selectedProcessor]="selectedProcessor()"
-          [naturalTextPrompt]="naturalTextPrompt()"
-          [placeholderText]="placeholderText()"
+          [(allowNaturalText)]="allowNaturalText"
+          [(selectedProcessor)]="selectedProcessor"
+          [(naturalTextPrompt)]="naturalTextPrompt"
+          [(placeholderText)]="placeholderText"
           [processors]="processorCatalog.processors()"
           (titleChange)="updateTitle($event)"
           (vizTypeChange)="updateVizType($event)"
           (xKeyChange)="updateXKey($event)"
           (yKeyChange)="updateYKey($event)"
-          (allowNaturalTextChange)="updateAllowNaturalText($event)"
-          (processorChange)="updateProcessor($event)"
-          (naturalTextPromptChange)="updateNaturalTextPrompt($event)"
-          (placeholderTextChange)="updatePlaceholderText($event)"
         ></app-widget-builder-visualize-step>
         <div
           class="p-4 border-t flex justify-end gap-2 fixed-bottom"
           style="background: var(--sys-surface); border-color: var(--sys-surface-border)"
         >
-          <button i18n mat-button matStepperPrevious>Back</button>
+          <button i18n type="button" mat-button matStepperPrevious>Back</button>
           <button
+            type="button"
             mat-flat-button
             (click)="saveAndClose()"
             [disabled]="vizForm().invalid() || isBusy()"
           >
             @if (isBusy()) {
-              <mat-spinner diameter="18" class="mr-2"></mat-spinner>
+              <mat-spinner
+                diameter="18"
+                class="mr-2"
+                i18n-aria-label
+                aria-label="Saving widget"
+              ></mat-spinner>
             }
             <span i18n>Save Widget</span>
           </button>

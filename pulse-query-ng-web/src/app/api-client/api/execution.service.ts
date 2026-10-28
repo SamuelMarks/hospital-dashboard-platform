@@ -2,21 +2,19 @@
  * @fileoverview Generated OpenAPI Angular service for Hospital Analytics Platform.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { HttpClient, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 import { BASE_PATH } from '../variables';
 import { Configuration } from '../configuration';
 import { BaseService } from '../api.base.service';
+import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 /**
  * Injectable OpenAPI client service.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ExecutionService extends BaseService {
   /** Angular HttpClient used to dispatch REST requests. */
   protected readonly httpClient = inject(HttpClient);
@@ -159,17 +157,22 @@ export class ExecutionService extends BaseService {
 
     const localVarPath = `/api/v1/dashboards/${this.configuration.encodeParam({ name: 'dashboardId', value: dashboardId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/refresh`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<Record<string, unknown>>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      body: requestBody,
-      params: localVarQueryParameters.toHttpParams(),
-      responseType: responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.executeRequest<Record<string, unknown>>(
+      this.httpClient,
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: requestBody,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 
   /**
@@ -343,16 +346,21 @@ export class ExecutionService extends BaseService {
 
     const localVarPath = `/api/v1/dashboards/${this.configuration.encodeParam({ name: 'dashboardId', value: dashboardId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/widgets/${this.configuration.encodeParam({ name: 'widgetId', value: widgetId, in: 'path', style: 'simple', explode: false, dataType: 'string', dataFormat: 'uuid' })}/refresh`;
     const { basePath, withCredentials } = this.configuration;
-    return this.httpClient.request<Record<string, unknown>>('post', `${basePath}${localVarPath}`, {
-      context: localVarHttpContext,
-      ...(options?.requestBody !== undefined ? { body: options.requestBody } : {}),
-      params: localVarQueryParameters.toHttpParams(),
-      responseType: responseType_,
-      ...(withCredentials ? { withCredentials } : {}),
-      headers: localVarHeaders,
-      observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-      reportProgress: reportProgress,
-    });
+    return this.executeRequest<Record<string, unknown>>(
+      this.httpClient,
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        ...(options?.requestBody !== undefined ? { body: options.requestBody } : {}),
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        reportProgress: reportProgress,
+      },
+    );
   }
 }

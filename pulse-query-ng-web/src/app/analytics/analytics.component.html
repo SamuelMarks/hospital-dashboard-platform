@@ -51,20 +51,14 @@
   </div>
 
   <app-analytics-filter-bar
-    [searchText]="searchText()"
-    [modelFilter]="modelFilter()"
-    [userFilter]="userFilter()"
-    [scoreFilter]="scoreFilter()"
-    [sqlFilter]="sqlFilter()"
-    [sourceFilter]="sourceFilter()"
+    [(searchText)]="searchText"
+    [(modelFilter)]="modelFilter"
+    [(userFilter)]="userFilter"
+    [(scoreFilter)]="scoreFilter"
+    [(sqlFilter)]="sqlFilter"
+    [(sourceFilter)]="sourceFilter"
     [models]="models()"
     [users]="users()"
-    (searchTextChange)="searchText.set($event)"
-    (modelFilterChange)="modelFilter.set($event)"
-    (userFilterChange)="userFilter.set($event)"
-    (scoreFilterChange)="scoreFilter.set($event)"
-    (sqlFilterChange)="sqlFilter.set($event)"
-    (sourceFilterChange)="sourceFilter.set($event)"
     (clearFilters)="clearFilters()"
   ></app-analytics-filter-bar>
 

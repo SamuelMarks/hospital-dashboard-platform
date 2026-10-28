@@ -3,7 +3,7 @@
  * (`SQL [no model]`, dynamically discovered local Ollama models, and configured Mozilla `any-llm` models).
  */
 
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Service, inject, signal, computed } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { AiService, ModelInfo } from '../../api-client';
 
@@ -83,7 +83,7 @@ export function mapModelInfoToProcessorOption(model: ModelInfo): ProcessorOption
 /**
  * Service managing the reactive catalog of available widget processors (`SQL [no model]`, Ollama, and `any-llm`).
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ProcessorCatalogService {
   /** Injected AI API client for querying `/api/v1/ai/models`. */
   private readonly aiApi = inject(AiService);

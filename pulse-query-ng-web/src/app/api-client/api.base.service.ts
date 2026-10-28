@@ -119,12 +119,14 @@ export class BaseService {
     options: ApiRequestOptions,
   ): Observable<unknown> {
     const baseOptions = {
-      body: options.body,
-      headers: options.headers,
-      context: options.context,
-      params: options.params,
-      reportProgress: options.reportProgress,
-      withCredentials: options.withCredentials,
+      ...(options.body !== undefined ? { body: options.body } : {}),
+      ...(options.headers !== undefined ? { headers: options.headers } : {}),
+      ...(options.context !== undefined ? { context: options.context } : {}),
+      ...(options.params !== undefined ? { params: options.params } : {}),
+      ...(options.reportProgress !== undefined ? { reportProgress: options.reportProgress } : {}),
+      ...(options.withCredentials !== undefined
+        ? { withCredentials: options.withCredentials }
+        : {}),
       ...(options.transferCache !== undefined ? { transferCache: options.transferCache } : {}),
     };
     const observe = options.observe ?? 'body';

@@ -6,11 +6,13 @@
  * - Removed `ReactiveFormsModule`.
  */
 
-import { Component, inject, OnInit, OnDestroy, signal, LOCALE_ID } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, OnDestroy, signal, LOCALE_ID } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { formatDate } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { FormRoot, FormField, form } from '@angular/forms/signals';
+import { DATE_NOW } from '../core/time.token';
 
 // Material Imports
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -111,6 +113,10 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   /** Active application locale identifier. */
   private readonly localeId = inject(LOCALE_ID);
+  /** Injected clock provider returning the current Date instance. */
+  private readonly dateNow = inject(DATE_NOW);
+  /** Angular DestroyRef for declarative RxJS stream teardown. */
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Subject emitting on component destruction to tear down route query parameter subscriptions. */
   private readonly destroy$ = new Subject<void>();
@@ -131,30 +137,24 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   /** Synchronizes global department and date range filter controls from route query parameters. */
   ngOnInit(): void {
     // Sync from Route to Form
-    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
-      const start = params.get('start_date');
-      const end = params.get('end_date');
-      const dept = params.get('dept');
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$), takeUntilDestroyed(this.destroyRef))
+      .subscribe((params) => {
+        const start = params.get('start_date');
+        const end = params.get('end_date');
+        const dept = params.get('dept');
 
-      this.isSyncingFromRoute = true;
-      const val = this.formModel();
+        this.isSyncingFromRoute = true;
+        const val = this.formModel();
 
-      this.formModel.set({
-        ...val,
-        dept: dept || null,
-        startDate: start ? new Date(start) : null,
-        endDate: end ? new Date(end) : null,
+        this.formModel.set({
+          ...val,
+          dept: dept || null,
+          startDate: start ? new Date(start) : null,
+          endDate: end ? new Date(end) : null,
+        });
+        this.isSyncingFromRoute = false;
       });
-      this.isSyncingFromRoute = false;
-    });
-
-    // Sync from Form to Route (dept)
-    // In signal forms, we manually observe or use effects,
-    // but since we want to respond to the model changes, let's subscribe to changes.
-    // Wait, the easiest way to observe value changes dynamically in angular 22 forms
-    // is to use effect, but since we want to unsubscribe on destroy without issue,
-    // we can either hook into the template events or use an effect.
-    // Effect runs inside injection context automatically here.
   }
 
   /**

@@ -7,6 +7,7 @@ import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 import { finalize } from 'rxjs/operators';
 import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-client';
 
@@ -25,6 +26,7 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatIconModule,
   ],
   templateUrl: './dashboard-create.dialog.html',
 })

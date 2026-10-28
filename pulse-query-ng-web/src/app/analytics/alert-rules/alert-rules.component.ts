@@ -4,7 +4,7 @@
  * hospital bed occupancy alerting thresholds, unit categories, and severity levels.
  */
 
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild, effect } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormRoot, FormField, form, required, min, max, maxLength } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
@@ -12,7 +12,8 @@ import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -56,6 +57,7 @@ export interface AlertRuleFormModel {
     MatButtonModule,
     MatIconModule,
     MatTableModule,
+    MatSortModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -149,6 +151,12 @@ export class AlertRulesComponent implements OnInit {
   /** Signal containing the list of configured alert rules. */
   readonly alertRules = signal<AlertRuleResponse[]>([]);
 
+  /** Material table data source synchronized with `alertRules()` and `MatSort`. */
+  readonly dataSource = new MatTableDataSource<AlertRuleResponse>([]);
+
+  /** Reference to the Material sort directive on the alert rules table. */
+  readonly sort = viewChild(MatSort);
+
   /** Signal tracking asynchronous loading state. */
   readonly isLoading = signal<boolean>(false);
 
@@ -196,6 +204,16 @@ export class AlertRulesComponent implements OnInit {
     });
     required(f.severity);
   });
+
+  /**
+   * Synchronizes the Material table data source with `alertRules()` and `sort()`.
+   */
+  constructor() {
+    effect(() => {
+      this.dataSource.data = this.alertRules();
+      this.dataSource.sort = this.sort() ?? null;
+    });
+  }
 
   /**
    * Initializes component and triggers initial rule listing fetch.

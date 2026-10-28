@@ -12,7 +12,8 @@
 import { DATE_NOW } from '../core/time.token';
 import { LoggerService } from '../core/logging/logger.service';
 import { extractApiErrorMessage } from '../core/error.utils';
-import { signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { DestroyRef, signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, retry } from 'rxjs/operators';
 import { ChatSseClientService } from './chat-sse-client.service';
@@ -73,6 +74,8 @@ const initialState: ChatState = {
 export class ChatStore implements OnDestroy {
   /** Injected clock provider returning the current Date instance. */
   private readonly dateNow = inject(DATE_NOW);
+  /** Angular DestroyRef for declarative RxJS stream teardown. */
+  private readonly destroyRef = inject(DestroyRef);
   /** Centralized diagnostic logger service. */
   private readonly logger = inject(LoggerService);
   /** Generated OpenAPI client for conversation and message endpoints. */
@@ -125,6 +128,7 @@ export class ChatStore implements OnDestroy {
         retry(2),
         finalize(() => this.patch({ isLoadingList: false })),
         takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (list: ConversationResponse[]) => this.patch({ conversations: list }),
@@ -136,7 +140,7 @@ export class ChatStore implements OnDestroy {
       if (this.aiApi.listAvailableModelsApiV1AiModelsGet) {
         this.aiApi
           .listAvailableModelsApiV1AiModelsGet()
-          .pipe(retry(2))
+          .pipe(retry(2), takeUntil(this.destroy$), takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (models: ModelInfo[]) => this.patch({ availableModels: models }),
             error: (err: unknown) => this.logger.error('Failed to load models', err),
@@ -160,6 +164,7 @@ export class ChatStore implements OnDestroy {
         retry(2),
         finalize(() => this.patch({ isLoadingList: false })),
         takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (msgs: MessageResponse[]) => this.patch({ messages: msgs }),

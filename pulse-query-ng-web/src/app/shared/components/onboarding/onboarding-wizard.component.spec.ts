@@ -208,4 +208,21 @@ describe('OnboardingWizardComponent', () => {
   it('steps property equals ONBOARDING_STEPS', () => {
     expect(component.steps).toBe(ONBOARDING_STEPS);
   });
+
+  it('should dismiss wizard when clicking overlay backdrop but not when clicking inside card', () => {
+    const overlay = hostEl.querySelector('.overlay') as HTMLElement;
+    const card = hostEl.querySelector('.wizard-card') as HTMLElement;
+
+    const cardClick = new MouseEvent('click', { bubbles: true });
+    Object.defineProperty(cardClick, 'target', { value: card });
+    Object.defineProperty(cardClick, 'currentTarget', { value: overlay });
+    component.onOverlayClick(cardClick);
+    expect(mockOnboarding.skip).not.toHaveBeenCalled();
+
+    const backdropClick = new MouseEvent('click', { bubbles: true });
+    Object.defineProperty(backdropClick, 'target', { value: overlay });
+    Object.defineProperty(backdropClick, 'currentTarget', { value: overlay });
+    component.onOverlayClick(backdropClick);
+    expect(mockOnboarding.skip).toHaveBeenCalledTimes(1);
+  });
 });

@@ -62,7 +62,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
         color: #d19a66;
       }
       .comment {
-        color: #5c6370;
+        color: #9da5b4;
         font-style: italic;
       }
     `,

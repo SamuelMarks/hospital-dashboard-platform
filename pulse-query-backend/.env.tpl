@@ -6,3 +6,4 @@ POSTGRES_PORT=5433
 
 SECRET_KEY=dev_secret_key_change_this
 LLM_API_URL=http://localhost:8000/v1
+DUCKDB_PATH=data/hospital_analytics.duckdb

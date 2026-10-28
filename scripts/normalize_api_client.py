@@ -862,12 +862,14 @@ export class BaseService {
     options: ApiRequestOptions,
   ): Observable<unknown> {
     const baseOptions = {
-      body: options.body,
-      headers: options.headers,
-      context: options.context,
-      params: options.params,
-      reportProgress: options.reportProgress,
-      withCredentials: options.withCredentials,
+      ...(options.body !== undefined ? { body: options.body } : {}),
+      ...(options.headers !== undefined ? { headers: options.headers } : {}),
+      ...(options.context !== undefined ? { context: options.context } : {}),
+      ...(options.params !== undefined ? { params: options.params } : {}),
+      ...(options.reportProgress !== undefined ? { reportProgress: options.reportProgress } : {}),
+      ...(options.withCredentials !== undefined
+        ? { withCredentials: options.withCredentials }
+        : {}),
       ...(options.transferCache !== undefined ? { transferCache: options.transferCache } : {}),
     };
     const observe = options.observe ?? 'body';
@@ -1102,21 +1104,27 @@ def _ensure_model_jsdoc(text: str) -> str:
   """
   out_lines: list[str] = []
   in_interface = False
+  brace_depth = 0
   prev_nonempty = ""
   for line in text.splitlines():
     stripped = line.strip()
     has_doc = prev_nonempty.endswith("*/")
     if stripped.startswith("export interface "):
       in_interface = True
+      brace_depth = stripped.count("{") - stripped.count("}")
       if not has_doc:
         out_lines.append("/** Generated OpenAPI model interface. */")
     elif stripped.startswith(("export type ", "export const ")) and not has_doc:
       out_lines.append("/** Generated OpenAPI type definition. */")
-    elif in_interface and stripped == "}":
+    elif in_interface and stripped == "}" and brace_depth == 1:
       in_interface = False
-    elif in_interface and stripped and not stripped.startswith(("/", "*")) and not has_doc:
+      brace_depth = 0
+    elif in_interface and stripped and not stripped.startswith(("/", "*", "}", "{")) and ":" in stripped and not has_doc:
       prop_name = stripped.split(":")[0].rstrip("?").strip()
-      out_lines.append(f"  /** Property `{prop_name}`. */")
+      indent = line[: len(line) - len(line.lstrip())]
+      out_lines.append(f"{indent}/** Property `{prop_name}`. */")
+    if in_interface and not stripped.startswith("export interface "):
+      brace_depth += stripped.count("{") - stripped.count("}")
     out_lines.append(line)
     if stripped:
       prev_nonempty = stripped
@@ -1155,6 +1163,8 @@ def normalize_model_file(path: Path) -> None:
     "export interface ValidationErrorLocInner {}",
     "export type ValidationErrorLocInner = string | number;",
   )
+  if path.name == "dashboard-response.ts":
+    text = text.replace("widgets?: WidgetResponse[];", "widgets: WidgetResponse[];")
   text = _strip_unused_model_imports(text)
   text = _ensure_model_jsdoc(text)
   path.write_text(text, encoding="utf-8")
@@ -1198,7 +1208,7 @@ def _strip_unused_service_imports(text: str) -> str:
       str: Service TypeScript content with unused imports removed.
   """
   lines = text.splitlines()
-  class_idx = next((i for i, l in enumerate(lines) if "@Injectable" in l), len(lines))
+  class_idx = next((i for i, l in enumerate(lines) if "@Injectable" in l or "@Service" in l), len(lines))
   body_code = re.sub(r"/\*[\s\S]*?\*/", "", NL.join(lines[class_idx:]))
 
   if not re.search(r"\bCOLLECTION_FORMATS\b", body_code):
@@ -1211,7 +1221,7 @@ def _strip_unused_service_imports(text: str) -> str:
     ("HttpHeaders,", r"\bHttpHeaders\b"),
     ("HttpParams,", r"\bHttpParams\b"),
     ("from '../model/http-validation-error'", r"\bHTTPValidationError\b"),
-    ("from '../query.params'", r"\bOpenApiHttpParams\b"),
+    ("from '../query.params'", r"\b(OpenApiHttpParams|QueryParamStyle)\b"),
   )
   cleaned: list[str] = []
   for line in text.splitlines():
@@ -1219,7 +1229,13 @@ def _strip_unused_service_imports(text: str) -> str:
     if any(token in stripped and not re.search(pat, body_code) for token, pat in optional_checks):
       continue
     cleaned.append(line)
-  return NL.join(cleaned) + NL
+  result = NL.join(cleaned) + NL
+  if re.search(r"\b(OpenApiHttpParams|QueryParamStyle)\b", body_code) and "from '../query.params'" not in result:
+    result = result.replace(
+      "import { BaseService } from '../api.base.service';",
+      f"import {{ BaseService }} from '../api.base.service';{NL}import {{ OpenApiHttpParams, QueryParamStyle }} from '../query.params';",
+    )
+  return result
 
 
 def normalize_service_file(path: Path) -> None:
@@ -1248,7 +1264,12 @@ def normalize_service_file(path: Path) -> None:
 
   text = re.sub(
     r"import\s*\{\s*Inject,\s*Injectable,\s*Optional\s*\}\s*from\s*'@angular/core';",
-    "import { Injectable, inject } from '@angular/core';",
+    "import { Service, inject } from '@angular/core';",
+    text,
+  )
+  text = re.sub(
+    r"import\s*\{\s*Injectable,\s*inject\s*\}\s*from\s*'@angular/core';",
+    "import { Service, inject } from '@angular/core';",
     text,
   )
   text = re.sub(
@@ -1268,8 +1289,14 @@ def normalize_service_file(path: Path) -> None:
 
   if "Injectable OpenAPI client service." not in text:
     text = re.sub(
-      r"@Injectable\(\{\s*providedIn:\s*'root',\s*\}\)",
-      f"/**{NL} * Injectable OpenAPI client service.{NL} */{NL}@Injectable({{{NL}  providedIn: 'root',{NL}}})",
+      r"@Injectable\(\{\s*providedIn:\s*'root',?\s*\}\)",
+      f"/**{NL} * Injectable OpenAPI client service.{NL} */{NL}@Service()",
+      text,
+    )
+  else:
+    text = re.sub(
+      r"@Injectable\(\{\s*providedIn:\s*'root',?\s*\}\)",
+      "@Service()",
       text,
     )
 
@@ -1301,11 +1328,17 @@ def normalize_service_file(path: Path) -> None:
   text = text.replace("observe: any = 'body'", "observe: 'body' | 'events' | 'response' = 'body'")
   text = text.replace("reportProgress: boolean = false", "reportProgress = false")
   text = text.replace("<any>", "")
-  text = re.sub(
-    r"this\.httpClient\.request<([^>]+)>\(\s*",
-    r"this.executeRequest<\1>(this.httpClient, ",
-    text,
-  )
+  req_prefix = "this.httpClient.request<"
+  while req_prefix in text:
+    idx = text.find(req_prefix)
+    end_pos = _find_matching_angle(text, idx + len(req_prefix))
+    if end_pos == -1 or end_pos >= len(text) or text[end_pos] != "(":
+      break
+    type_arg = text[idx + len(req_prefix) : end_pos - 1]
+    after_paren = end_pos + 1
+    while after_paren < len(text) and text[after_paren].isspace():
+      after_paren += 1
+    text = text[:idx] + f"this.executeRequest<{type_arg}>(this.httpClient, " + text[after_paren:]
   text = re.sub(r"/\*\*[\s\S]*?\*/", _fix_endpoint_jsdoc_block, text)
   text = _strip_unused_service_imports(text)
   path.write_text(text, encoding="utf-8")

@@ -246,7 +246,6 @@ export class ToolbarComponent {
       maxWidth: '95vw',
       height: '90vh',
       panelClass: 'no-padding-dialog',
-      disableClose: true,
       restoreFocus: true,
     });
     ref.afterClosed().subscribe((res: boolean) => {

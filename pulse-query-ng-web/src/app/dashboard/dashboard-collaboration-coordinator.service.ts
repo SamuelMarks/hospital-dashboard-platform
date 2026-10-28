@@ -21,10 +21,10 @@ export class DashboardCollaborationCoordinator implements OnDestroy {
   private readonly collaborationService = inject(DashboardCollaborationService);
 
   /** Active subscription to remote widget update notifications. */
-  private widgetUpdateSub?: Subscription;
+  private widgetUpdateSub: Subscription | undefined = undefined;
 
   /** Active subscription to raw inbound WebSocket collaboration frames. */
-  private messageSub?: Subscription;
+  private messageSub: Subscription | undefined = undefined;
 
   /** Read-only signal of currently active collaborator profiles on the dashboard. */
   readonly activeCollaborators = this.collaborationService.activeCollaborators;

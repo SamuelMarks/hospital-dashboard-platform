@@ -11,11 +11,11 @@ import { Observable } from 'rxjs';
  */
 export interface BenchmarkMeta {
   /** Dataset schema version or description. */
-  version?: string;
+  version?: string | null;
   /** Optional description of the benchmark suite. */
-  description?: string;
+  description?: string | null;
   /** Additional metadata properties. */
-  [key: string]: string | number | boolean | null | undefined;
+  [key: string]: unknown;
 }
 
 /**
@@ -27,7 +27,7 @@ export interface DemandDataRow {
   /** Patient demand count for the service. */
   Count: number;
   /** Optional current unit name when 3-column demand is used. */
-  Unit?: string;
+  Unit?: string | null;
 }
 
 /**
@@ -35,15 +35,31 @@ export interface DemandDataRow {
  */
 export interface SqlBenchmark {
   /** Clinical analytics theme name. */
-  theme?: string;
+  theme?: string | null;
   /** Natural language analytics question. */
-  question?: string;
+  question?: string | null;
   /** Complexity rating (`Easy`, `Medium`, `Hard`). */
-  complexity?: string;
+  complexity?: string | null;
   /** Ground-truth DuckDB SQL query. */
-  gold_sql?: string;
+  gold_sql?: string | null;
   /** Optional metadata header entry. */
-  _meta?: BenchmarkMeta;
+  _meta?: BenchmarkMeta | null;
+}
+
+/**
+ * Expected solver metrics summary for an MPAX benchmark scenario.
+ */
+export interface MpaxExpectedMetrics {
+  /** Expected total patient demand. */
+  total_demand?: number;
+  /** Expected total bed capacity. */
+  total_capacity?: number;
+  /** Expected patient overflow count. */
+  expected_overflow?: number;
+  /** Whether the scenario is feasible without overflow. */
+  is_feasible?: boolean;
+  /** Additional numeric metric entries. */
+  [key: string]: number | boolean | undefined;
 }
 
 /**
@@ -51,19 +67,19 @@ export interface SqlBenchmark {
  */
 export interface MpaxBenchmark {
   /** Unique benchmark scenario UUID. */
-  id?: string;
+  id?: string | null;
   /** Scenario theme category. */
-  theme?: string;
+  theme?: string | null;
   /** Complexity rating (`Medium`, `High`). */
-  complexity?: string;
+  complexity?: string | null;
   /** Natural language clinical optimization prompt. */
-  prompt?: string;
+  prompt?: string | null;
   /** Structured service demand records. */
-  demand_data?: DemandDataRow[];
+  demand_data?: DemandDataRow[] | null;
   /** Baseline unit bed capacities. */
-  base_capacity?: Record<string, number>;
+  base_capacity?: Record<string, number> | null;
   /** Expected total demand, capacity, and overflow metrics. */
-  expected_metrics?: Record<string, number>;
+  expected_metrics?: MpaxExpectedMetrics | null;
 }
 
 /**

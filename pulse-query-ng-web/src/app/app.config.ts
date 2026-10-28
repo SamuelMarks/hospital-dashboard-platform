@@ -6,8 +6,9 @@
 
 import {
   ApplicationConfig,
-  APP_INITIALIZER,
   ErrorHandler,
+  inject,
+  provideAppInitializer,
   provideZonelessChangeDetection,
 } from '@angular/core';
 import {
@@ -124,16 +125,11 @@ export const appConfig: ApplicationConfig = {
     // Global Runtime Error Handler
     {
       provide: ErrorHandler,
-      useClass: GlobalErrorHandler,
+      useExisting: GlobalErrorHandler,
     },
 
     // Auth Initialization (Bootstrap Blocker)
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeAuth,
-      deps: [AuthService],
-      multi: true,
-    },
+    provideAppInitializer(() => initializeAuth(inject(AuthService))()),
 
     // API Client Configuration
     // 1. Provide the BASE_PATH token for services that inject it directly

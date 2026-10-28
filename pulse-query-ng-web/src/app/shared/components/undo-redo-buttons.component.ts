@@ -27,6 +27,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
   template: `
     <div class="undo-redo-group">
       <button
+        type="button"
         mat-icon-button
         [disabled]="!undoRedoService.canUndo()"
         (click)="undo()"
@@ -39,6 +40,7 @@ import { UndoRedoService } from '../../core/undo/undo-redo.service';
       </button>
 
       <button
+        type="button"
         mat-icon-button
         [disabled]="!undoRedoService.canRedo()"
         (click)="redo()"

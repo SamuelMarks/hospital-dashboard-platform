@@ -37,14 +37,20 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
           }
         </div>
         <div class="banner-actions">
-          <button mat-flat-button (click)="retryNow()" [disabled]="isChecking()">
+          <button type="button" mat-flat-button (click)="retryNow()" [disabled]="isChecking()">
             @if (isChecking()) {
-              <mat-spinner diameter="14"></mat-spinner>
+              <mat-spinner
+                diameter="14"
+                i18n-aria-label
+                aria-label="Retrying connection"
+              ></mat-spinner>
             } @else {
               <span i18n>Retry Now</span>
             }
           </button>
-          <button i18n mat-stroked-button (click)="openTroubleshoot()">Troubleshoot</button>
+          <button i18n type="button" mat-stroked-button (click)="openTroubleshoot()">
+            Troubleshoot
+          </button>
         </div>
       </div>
     }
@@ -58,7 +64,9 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
           is unreachable or reporting critical errors.
         </div>
         <div class="banner-actions">
-          <button i18n mat-flat-button (click)="openTroubleshoot()">View Diagnostics</button>
+          <button i18n type="button" mat-flat-button (click)="openTroubleshoot()">
+            View Diagnostics
+          </button>
         </div>
       </div>
     }
@@ -72,8 +80,9 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
           fallback data.
         </div>
         <div class="banner-actions">
-          <button i18n mat-button (click)="openTroubleshoot()">Details</button>
+          <button i18n type="button" mat-button (click)="openTroubleshoot()">Details</button>
           <button
+            type="button"
             mat-icon-button
             (click)="dismiss()"
             i18n-aria-label
@@ -118,21 +127,24 @@ import { ConnectionStatusService } from '../../core/health/connection-status.ser
         gap: 0.5rem;
       }
       .banner-offline {
-        background: #424242;
-        color: #fff;
+        background: var(--sys-surface-variant);
+        color: var(--sys-on-surface-variant);
+        border-bottom: 1px solid var(--sys-surface-border);
       }
       .banner-unreachable {
-        background: #b71c1c;
-        color: #fff;
+        background: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        border-bottom: 1px solid var(--sys-error);
       }
       .banner-critical {
-        background: #d32f2f;
-        color: #fff;
+        background: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        border-bottom: 1px solid var(--sys-error);
       }
       .banner-degraded {
-        background: #fff3e0;
-        color: #e65100;
-        border-bottom: 1px solid #ffe0b2;
+        background: var(--sys-secondary-container);
+        color: var(--sys-on-secondary-container);
+        border-bottom: 1px solid var(--sys-surface-border);
       }
     `,
   ],

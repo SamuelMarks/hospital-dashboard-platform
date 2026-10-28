@@ -429,8 +429,9 @@ class DuckDBManager:
         conn = duckdb.connect(database=self.db_path, read_only=False)
         register_duckdb_udfs(conn)
         return conn
-      except duckdb.IOException as e:
-        if "lock" in str(e).lower() and attempt < max_retries - 1:
+      except (duckdb.IOException, duckdb.ConnectionException) as e:
+        err_lower = str(e).lower()
+        if ("lock" in err_lower or "different configuration" in err_lower) and attempt < max_retries - 1:
           logger.warning(f"DuckDB locked, retrying read-write connection ({attempt + 1}/{max_retries})...")
           time.sleep(0.05 * (attempt + 1))
           continue
@@ -465,8 +466,9 @@ class DuckDBManager:
         conn = duckdb.connect(database=self.db_path, read_only=True, config={"enable_external_access": "false"})
         register_duckdb_udfs(conn)
         return conn
-      except duckdb.IOException as e:
-        if "lock" in str(e).lower() and attempt < max_retries - 1:
+      except (duckdb.IOException, duckdb.ConnectionException) as e:
+        err_lower = str(e).lower()
+        if ("lock" in err_lower or "different configuration" in err_lower) and attempt < max_retries - 1:
           logger.warning(f"DuckDB locked, retrying readonly connection ({attempt + 1}/{max_retries})...")
           time.sleep(0.05 * (attempt + 1))
           continue

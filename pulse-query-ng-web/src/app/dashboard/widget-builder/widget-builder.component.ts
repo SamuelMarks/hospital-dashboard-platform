@@ -4,7 +4,7 @@
  * Delegates reactive wizard state, template marketplace search, client-memory draft
  * configuration, and single-query preview execution (`/api/v1/ai/execute`) to `WidgetBuilderStore`.
  */
-import { Component, ChangeDetectionStrategy, inject, OnInit } from '@angular/core';
+import { Component, computed, inject, OnInit } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { form, required } from '@angular/forms/signals';
 
@@ -65,7 +65,6 @@ export interface WidgetBuilderData {
     WidgetBuilderVisualizeStepComponent,
   ],
   providers: [provideNativeDateAdapter(), WidgetBuilderStore],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './widget-builder.component.html',
   styles: [
     `
@@ -176,6 +175,16 @@ export class WidgetBuilderComponent implements OnInit {
   readonly selectedTab = this.builderStore.selectedTab;
   /** Computed widget snapshot merging `draftWidget` with `vizFormModel`. */
   readonly previewWidget = this.builderStore.previewWidget;
+  /** Computed SQL query string extracted safely from `draftWidget().config['query']`. */
+  readonly draftSqlQuery = computed(() => {
+    const q = this.draftWidget()?.config?.['query'];
+    return typeof q === 'string' ? q : '';
+  });
+  /** Computed markdown content string extracted safely from `draftWidget().config['content']`. */
+  readonly draftTextContent = computed(() => {
+    const c = this.draftWidget()?.config?.['content'];
+    return typeof c === 'string' ? c : '';
+  });
 
   /** Loads initial widget templates and available processors. */
   ngOnInit(): void {
@@ -450,9 +459,9 @@ export class WidgetBuilderComponent implements OnInit {
    * @param res - The execution result payload.
    * @returns Table dataset with defined columns and data rows.
    */
-  asTableData(res: { columns?: string[]; data?: unknown[] } | null | undefined): {
+  asTableData(res: { columns?: string[]; data?: Record<string, unknown>[] } | null | undefined): {
     columns: string[];
-    data: unknown[];
+    data: Record<string, unknown>[];
   } {
     if (!res) {
       return this.previewTableData();

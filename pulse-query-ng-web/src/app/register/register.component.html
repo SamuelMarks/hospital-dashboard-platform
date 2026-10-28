@@ -1,6 +1,11 @@
 <mat-card>
   @if (isLoading()) {
-    <mat-progress-bar mode="indeterminate" data-testid="loading-bar"></mat-progress-bar>
+    <mat-progress-bar
+      mode="indeterminate"
+      i18n-aria-label
+      aria-label="Creating account"
+      data-testid="loading-bar"
+    ></mat-progress-bar>
   }
 
   <mat-card-header>

@@ -34,13 +34,13 @@ describe('PromptDialogComponent', () => {
   });
 
   it('should close with value on save', () => {
-    component.value.set('New Value');
+    component.setValue('New Value');
     component.save();
     expect(mockRef.close).toHaveBeenCalledWith('New Value');
   });
 
   it('should not close on invalid empty save', () => {
-    component.value.set('   ');
+    component.setValue('   ');
     component.save();
     expect(mockRef.close).not.toHaveBeenCalled();
   });

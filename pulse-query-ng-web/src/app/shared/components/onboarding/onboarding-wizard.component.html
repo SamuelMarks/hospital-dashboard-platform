@@ -2,8 +2,10 @@
   class="overlay"
   role="dialog"
   aria-modal="true"
+  tabindex="-1"
   appFocusTrap
-  (escape)="skip()"
+  (keydown.escape)="skip()"
+  (click)="onOverlayClick($event)"
   [attr.aria-label]="dialogAriaLabel()"
 >
   <div class="wizard-card" data-testid="onboarding-wizard">
@@ -13,6 +15,7 @@
         Step {{ onboarding.currentStepIndex() + 1 }} of {{ onboarding.totalSteps() }}
       </span>
       <button
+        type="button"
         mat-icon-button
         (click)="skip()"
         i18n-matTooltip
@@ -47,6 +50,7 @@
     <div class="step-dots" role="tablist" i18n-aria-label aria-label="Onboarding steps">
       @for (step of steps; track step.id; let i = $index) {
         <button
+          type="button"
           class="dot"
           [class.active]="i === onboarding.currentStepIndex()"
           (click)="onboarding.goToStep(i)"
@@ -61,6 +65,7 @@
     <!-- Actions -->
     <div class="wizard-actions">
       <button
+        type="button"
         mat-button
         (click)="prev()"
         [disabled]="!onboarding.hasPrev()"
@@ -75,6 +80,7 @@
       <div class="action-right">
         @if (onboarding.currentStep().actionLabel && onboarding.currentStep().actionRoute) {
           <button
+            type="button"
             mat-stroked-button
             (click)="navigateToAction()"
             [attr.data-testid]="'action-button'"
@@ -84,6 +90,7 @@
         }
 
         <button
+          type="button"
           mat-flat-button
           (click)="next()"
           [attr.aria-label]="nextButtonAriaLabel()"

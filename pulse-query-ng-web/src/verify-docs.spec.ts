@@ -87,12 +87,22 @@ describe('scripts/verify_docs.ts', () => {
       /** Bad type alias using any. */
       export type BadAny = any;
       export const x = (1 as unknown as string);
+      export const compMeta = {
+        standalone: true,
+        changeDetection: ChangeDetectionStrategy.OnPush,
+      };
     `;
     const typeErrors = verifySourceFileText(forbiddenTypesSource, 'forbidden.ts');
     expect(typeErrors.some((e) => e.includes('@angular/core/primitives/signals'))).toBe(true);
     expect(typeErrors.some((e) => e.includes("Forbidden 'any' type annotation"))).toBe(true);
     expect(
       typeErrors.some((e) => e.includes("Forbidden 'as unknown as' double type assertion")),
+    ).toBe(true);
+    expect(typeErrors.some((e) => e.includes("Forbidden 'standalone: true'"))).toBe(true);
+    expect(
+      typeErrors.some((e) =>
+        e.includes("Forbidden 'changeDetection: ChangeDetectionStrategy.OnPush'"),
+      ),
     ).toBe(true);
   });
 

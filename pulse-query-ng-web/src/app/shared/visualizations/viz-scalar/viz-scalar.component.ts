@@ -77,13 +77,35 @@ export interface ScalarData {
       }
     `,
   ],
-  templateUrl: './viz-scalar.component.html',
+  template: `
+    <div class="value-display" role="status">{{ formattedValue() }}</div>
+    <div class="label-display">{{ label() }}</div>
+
+    @if (isCorrelation()) {
+      <div class="gauge-wrapper" i18n-matTooltip matTooltip="Correlation Scale: -1 to +1">
+        <mat-progress-bar
+          mode="determinate"
+          [value]="gaugePosition()"
+          [class]="colorClass()"
+          role="meter"
+          i18n-aria-label
+          aria-label="Correlation strength meter"
+          [attr.aria-valuenow]="value()"
+          aria-valuemin="-1"
+          aria-valuemax="1"
+        ></mat-progress-bar>
+      </div>
+      <div class="interpret-text" [style.color]="strengthColor()">
+        {{ strengthLabel() }}
+      </div>
+    }
+  `,
 })
 export class VizScalarComponent {
   /** Injected application locale identifier. */
   private readonly localeId = inject(LOCALE_ID);
   /** Scalar or single-row tabular dataset to display. */
-  readonly data = input<ScalarData | null>();
+  readonly data = input<ScalarData | null | undefined>();
 
   /** Computed numeric scalar value extracted from `data`, or `null` if unavailable. */
   readonly value: Signal<number | null> = computed(() => {

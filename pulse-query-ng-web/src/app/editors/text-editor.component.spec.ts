@@ -91,6 +91,16 @@ describe('TextEditorComponent', () => {
     expect(saveSpy).toHaveBeenCalled();
   });
 
+  it('should emit contentChange without API call when widgetId is LOCAL_DRAFT_WIDGET_ID', () => {
+    const emitSpy = vi.spyOn(component.contentChange, 'emit');
+    fixture.componentRef.setInput('widgetId', 'draft-local');
+    fixture.detectChanges();
+    component.formModel.set({ content: 'Local Draft Text' });
+    component.save();
+    expect(emitSpy).toHaveBeenCalledWith('Local Draft Text');
+    expect(mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+  });
+
   it('should show spinner when running', () => {
     component.isRunning.set(true);
     fixture.detectChanges();

@@ -54,9 +54,9 @@ export function parseChatSseDataLine(line: string): ChatStreamEvent | null {
           : undefined;
       return {
         event: 'done',
-        message_id: messageId,
-        content,
-        sql_snippet: sqlSnippet,
+        ...(messageId !== undefined ? { message_id: messageId } : {}),
+        ...(content !== undefined ? { content } : {}),
+        ...(sqlSnippet !== undefined ? { sql_snippet: sqlSnippet } : {}),
       };
     }
     return null;

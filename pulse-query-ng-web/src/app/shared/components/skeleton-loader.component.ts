@@ -127,7 +127,41 @@ export type SkeletonVariant = 'card' | 'table' | 'chart' | 'metric' | 'pie';
       }
     `,
   ],
-  templateUrl: './skeleton-loader.component.html',
+  template: `
+    @switch (variant()) {
+      @case ('metric') {
+        <div class="layout-metric">
+          <div class="skeleton-box metric-val"></div>
+          <div class="skeleton-box metric-lbl"></div>
+        </div>
+      }
+      @case ('chart') {
+        <div class="layout-chart">
+          <div class="skeleton-box chart-area"></div>
+          <div class="skeleton-box chart-axis"></div>
+        </div>
+      }
+      @case ('table') {
+        <div class="layout-table">
+          <div class="skeleton-box table-head"></div>
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="skeleton-box table-row" [style.opacity]="1 - i * 0.15"></div>
+          }
+        </div>
+      }
+      @case ('pie') {
+        <div class="layout-pie">
+          <div class="skeleton-box pie-circle"></div>
+        </div>
+      }
+      @default {
+        <div class="layout-card">
+          <div class="skeleton-box" style="height: 24px; width: 50%"></div>
+          <div class="skeleton-box" style="flex: 1; width: 100%"></div>
+        </div>
+      }
+    }
+  `,
 })
 export class SkeletonLoaderComponent {
   /** Layout shape variant to display while widget data is loading. */

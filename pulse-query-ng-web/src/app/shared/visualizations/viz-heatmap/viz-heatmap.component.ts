@@ -71,7 +71,7 @@ export interface HeatmapMatrix {
 })
 export class VizHeatmapComponent {
   /** Tabular dataset whose first three columns represent Y category, X category, and numeric intensity. */
-  readonly dataSet = input.required<TableDataSet | null>();
+  readonly dataSet = input<TableDataSet | null | undefined>(null);
 
   /**
    * Computed 2D matrix representation containing sorted X/Y axis headers, a coordinate-to-value lookup map, and min/max bounds.

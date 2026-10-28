@@ -4,13 +4,15 @@
  * and activate or suspend hospital user accounts.
  */
 
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild, effect } from '@angular/core';
+import { FormRoot, FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -28,11 +30,14 @@ import { UserResponse } from '../../api-client/model/user-response';
 @Component({
   selector: 'app-user-management',
   imports: [
+    FormRoot,
+    FormField,
     RouterLink,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
     MatTableModule,
+    MatSortModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -113,6 +118,12 @@ export class UserManagementComponent implements OnInit {
   /** Signal containing list of fetched user profiles. */
   readonly users = signal<UserResponse[]>([]);
 
+  /** Material table data source synchronized with `users()` and `MatSort`. */
+  readonly dataSource = new MatTableDataSource<UserResponse>([]);
+
+  /** Reference to the Material sort directive on the users table. */
+  readonly sort = viewChild(MatSort);
+
   /** Signal indicating asynchronous loading state. */
   readonly isLoading = signal<boolean>(false);
 
@@ -121,6 +132,9 @@ export class UserManagementComponent implements OnInit {
 
   /** Search query signal for filtering users by email. */
   readonly searchQuery = signal<string>('');
+
+  /** Signal Form binding the user email search field. */
+  readonly searchForm = form(this.searchQuery);
 
   /** Role filter signal for isolating specific clinical roles. */
   readonly roleFilter = signal<string>('');
@@ -143,6 +157,16 @@ export class UserManagementComponent implements OnInit {
     'CHARGE_NURSE',
     'DATA_ANALYST',
   ];
+
+  /**
+   * Synchronizes the Material table data source with `users()` and `sort()`.
+   */
+  constructor() {
+    effect(() => {
+      this.dataSource.data = this.users();
+      this.dataSource.sort = this.sort() ?? null;
+    });
+  }
 
   /**
    * Initializes component and triggers initial user list fetch.

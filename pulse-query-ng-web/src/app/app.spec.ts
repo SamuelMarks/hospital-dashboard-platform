@@ -141,8 +141,10 @@ describe('App', () => {
 
   it('should contain router-outlet inside main content area', () => {
     const content = fixture.debugElement.query(By.css('mat-sidenav-content'));
-    expect(content.attributes['role']).toBe('main');
-    const outlet = content.query(By.directive(RouterOutlet));
+    const mainEl = content.query(By.css('main#main-content'));
+    expect(mainEl).toBeTruthy();
+    expect(mainEl.attributes['tabindex']).toBe('-1');
+    const outlet = mainEl.query(By.directive(RouterOutlet));
     expect(outlet).toBeTruthy();
   });
 

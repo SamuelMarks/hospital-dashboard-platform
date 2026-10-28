@@ -13,7 +13,7 @@ import {
 import { BASE_PATH, Configuration } from './api-client';
 import { environment } from '../environments/environment';
 import { AuthService } from './core/auth/auth.service';
-import { APP_INITIALIZER, ErrorHandler } from '@angular/core';
+import { ApplicationInitStatus, ErrorHandler } from '@angular/core';
 import { TitleStrategy } from '@angular/router';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 import { GlobalErrorHandler } from './core/error/global-error.handler';
@@ -65,16 +65,14 @@ describe('AppConfig', () => {
     expect(handler).toBeInstanceOf(GlobalErrorHandler);
   });
 
-  it('should contain the APP_INITIALIZER for Auth', () => {
-    // Verify the factory function behavior
-    const initFn = initializeAuth(mockAuthService);
-    initFn();
+  it('should execute Auth initialization via provideAppInitializer', async () => {
+    const initStatus = TestBed.inject(ApplicationInitStatus);
+    await initStatus.donePromise;
     expect(mockAuthService.initialize).toHaveBeenCalled();
 
-    // Verify it is present in TestBed providers
-    const initializers = TestBed.inject(APP_INITIALIZER);
-    expect(initializers).toBeTruthy();
-    expect(initializers.length).toBeGreaterThan(0);
+    const initFn = initializeAuth(mockAuthService);
+    await initFn();
+    expect(mockAuthService.initialize).toHaveBeenCalledTimes(2);
   });
 
   it('should include BASE_PATH provider in appConfig', () => {

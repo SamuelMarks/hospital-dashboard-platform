@@ -3,7 +3,8 @@
  * unit capacities, hard flow constraints, and clinical affinity overrides.
  */
 
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, linkedSignal, OnInit } from '@angular/core';
+import { FormRoot, FormField, form } from '@angular/forms/signals';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 
@@ -25,6 +26,8 @@ import { VizTableComponent } from '../shared/visualizations/viz-table/viz-table.
 @Component({
   selector: 'app-simulation',
   imports: [
+    FormRoot,
+    FormField,
     MatCardModule,
     MatButtonModule,
     MatIconModule,
@@ -90,6 +93,11 @@ export class SimulationComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   /** DestroyRef for cleaning up route query parameter subscriptions. */
   private readonly destroyRef = inject(DestroyRef);
+
+  /** Linked signal synchronizing the demand SQL Signal Form with `store.demandSql`. */
+  readonly demandSqlModel = linkedSignal(() => this.store.demandSql());
+  /** Signal Form binding the patient demand SQL query textarea. */
+  readonly demandForm = form(this.demandSqlModel);
 
   /**
    * Extracts the string value from a DOM `input` or `textarea` event target.

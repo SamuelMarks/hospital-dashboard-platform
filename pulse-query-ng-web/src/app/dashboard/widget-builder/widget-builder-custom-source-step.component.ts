@@ -5,7 +5,7 @@
  * and Static Markdown) with full keyboard and ARIA button semantics.
  */
 
-import { Component, input, output } from '@angular/core';
+import { Component, model, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -24,12 +24,12 @@ import { MatIconModule } from '@angular/material/icon';
         <div
           class="source-option"
           [class.selected]="selectedCustomType() === 'SQL'"
-          (click)="customTypeSelect.emit('SQL')"
+          (click)="selectType('SQL')"
           tabindex="0"
           role="button"
           [attr.aria-pressed]="selectedCustomType() === 'SQL'"
-          (keydown.enter)="customTypeSelect.emit('SQL')"
-          (keydown.space)="customTypeSelect.emit('SQL'); $event.preventDefault()"
+          (keydown.enter)="selectType('SQL')"
+          (keydown.space)="selectType('SQL'); $event.preventDefault()"
         >
           <mat-icon aria-hidden="true" class="text-4xl mb-4" style="color: var(--sys-primary)"
             >storage</mat-icon
@@ -43,12 +43,12 @@ import { MatIconModule } from '@angular/material/icon';
         <div
           class="source-option"
           [class.selected]="selectedCustomType() === 'HTTP'"
-          (click)="customTypeSelect.emit('HTTP')"
+          (click)="selectType('HTTP')"
           tabindex="0"
           role="button"
           [attr.aria-pressed]="selectedCustomType() === 'HTTP'"
-          (keydown.enter)="customTypeSelect.emit('HTTP')"
-          (keydown.space)="customTypeSelect.emit('HTTP'); $event.preventDefault()"
+          (keydown.enter)="selectType('HTTP')"
+          (keydown.space)="selectType('HTTP'); $event.preventDefault()"
         >
           <mat-icon aria-hidden="true" class="text-4xl mb-4" style="color: var(--sys-tertiary)"
             >cloud_download</mat-icon
@@ -62,12 +62,12 @@ import { MatIconModule } from '@angular/material/icon';
         <div
           class="source-option"
           [class.selected]="selectedCustomType() === 'TEXT'"
-          (click)="customTypeSelect.emit('TEXT')"
+          (click)="selectType('TEXT')"
           tabindex="0"
           role="button"
           [attr.aria-pressed]="selectedCustomType() === 'TEXT'"
-          (keydown.enter)="customTypeSelect.emit('TEXT')"
-          (keydown.space)="customTypeSelect.emit('TEXT'); $event.preventDefault()"
+          (keydown.enter)="selectType('TEXT')"
+          (keydown.space)="selectType('TEXT'); $event.preventDefault()"
         >
           <mat-icon aria-hidden="true" class="text-4xl mb-4" style="color: var(--sys-secondary)"
             >description</mat-icon
@@ -109,8 +109,18 @@ import { MatIconModule } from '@angular/material/icon';
   ],
 })
 export class WidgetBuilderCustomSourceStepComponent {
-  /** Currently selected custom data source type, or `null` when none is selected. */
-  readonly selectedCustomType = input<'SQL' | 'HTTP' | 'TEXT' | null>(null);
+  /** Currently selected custom data source type (two-way bound), or `null` when none is selected. */
+  readonly selectedCustomType = model<'SQL' | 'HTTP' | 'TEXT' | null>(null);
   /** Emits the chosen custom data source type (`'SQL'`, `'HTTP'`, or `'TEXT'`). */
   readonly customTypeSelect = output<'SQL' | 'HTTP' | 'TEXT'>();
+
+  /**
+   * Updates the `selectedCustomType` model signal and emits `customTypeSelect`.
+   *
+   * @param type - The chosen custom data source type (`'SQL'`, `'HTTP'`, or `'TEXT'`).
+   */
+  selectType(type: 'SQL' | 'HTTP' | 'TEXT'): void {
+    this.selectedCustomType.set(type);
+    this.customTypeSelect.emit(type);
+  }
 }

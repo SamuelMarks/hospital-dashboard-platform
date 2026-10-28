@@ -26,11 +26,11 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
       }
     `,
   ],
-  templateUrl: './viz-markdown.component.html',
+  template: `<div class="md-content" [innerHTML]="safeHtml()"></div>`,
 })
 export class VizMarkdownComponent {
   /** Raw Markdown source text to render. */
-  readonly content = input<string>('');
+  readonly content = input<string | null | undefined>('');
   /** Angular DOM sanitizer used to strip unsafe HTML tags and attributes. */
   private readonly sanitizer = inject(DomSanitizer);
 

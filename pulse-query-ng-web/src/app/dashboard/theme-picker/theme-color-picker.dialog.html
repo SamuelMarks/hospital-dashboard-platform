@@ -1,7 +1,19 @@
-<h2 mat-dialog-title class="flex items-center gap-2">
-  <mat-icon aria-hidden="true" style="color: var(--sys-primary)">palette</mat-icon>
-  <span i18n>Dashboard Theme Palette</span>
-</h2>
+<div class="flex items-center justify-between pr-2">
+  <h2 mat-dialog-title class="flex items-center gap-2">
+    <mat-icon aria-hidden="true" style="color: var(--sys-primary)">palette</mat-icon>
+    <span i18n>Dashboard Theme Palette</span>
+  </h2>
+  <button
+    mat-icon-button
+    type="button"
+    (click)="close()"
+    i18n-aria-label
+    aria-label="Close dialog"
+    data-testid="close-dialog-btn"
+  >
+    <mat-icon aria-hidden="true">close</mat-icon>
+  </button>
+</div>
 
 <mat-dialog-content class="theme-dialog-content py-3">
   <p i18n class="text-sm text-secondary mb-4">
@@ -59,6 +71,7 @@
         <input
           matInput
           [formField]="hexForm.customHex"
+          cdkFocusInitial
           (input)="onHexInputChange()"
           placeholder="#1565C0"
           i18n-placeholder
@@ -79,9 +92,10 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end" class="gap-2">
-  <button i18n mat-button (click)="close()" [disabled]="isSaving()">Cancel</button>
+  <button i18n type="button" mat-button (click)="close()" [disabled]="isSaving()">Cancel</button>
   <button
     i18n
+    type="button"
     mat-stroked-button
     (click)="applyTheme()"
     [disabled]="isSaving()"
@@ -91,6 +105,7 @@
   </button>
   <button
     i18n
+    type="button"
     mat-flat-button
     (click)="saveToDashboard()"
     [disabled]="isSaving()"

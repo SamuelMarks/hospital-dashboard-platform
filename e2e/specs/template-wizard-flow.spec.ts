@@ -56,9 +56,11 @@ test.describe("Template Wizard & Dynamic Parameter Form Flow", () => {
     await wizardBtn.click();
 
     // Assert dialog opened
-    const dialogTitle = page.getByRole("heading", {
-      name: /Add Widget from Marketplace|Template/i,
-    });
+    const dialogTitle = page
+      .getByRole("heading", {
+        name: /Add Widget from Marketplace|Template/i,
+      })
+      .first();
     await expect(dialogTitle).toBeVisible({ timeout: 10000 });
 
     // Select first marketplace template card

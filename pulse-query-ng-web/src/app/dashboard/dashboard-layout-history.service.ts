@@ -2,7 +2,7 @@
  * @fileoverview Service managing undoable dashboard widget layout and creation history commands.
  */
 
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { DashboardsService, WidgetResponse } from '../api-client';
 import { DATE_NOW } from '../core/time.token';
 import {
@@ -15,9 +15,7 @@ import { UndoRedoService } from '../core/undo/undo-redo.service';
 /**
  * Service encapsulating undo/redo command creation and execution for dashboard layout operations.
  */
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class DashboardLayoutHistoryService {
   /** Injected clock factory returning the current `Date`. */
   private readonly dateNow = inject(DATE_NOW);

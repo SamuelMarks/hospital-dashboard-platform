@@ -255,6 +255,17 @@ export class OnboardingWizardComponent {
   }
 
   /**
+   * Dismisses the onboarding wizard when the user clicks the backdrop outside the card.
+   *
+   * @param event - Mouse click event on the overlay container.
+   */
+  onOverlayClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.skip();
+    }
+  }
+
+  /**
    * Navigates to the current step's action route and completes onboarding.
    */
   navigateToAction(): void {

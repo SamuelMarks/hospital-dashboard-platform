@@ -25,10 +25,9 @@ describe('AnalyticsFilterBarComponent', () => {
 
     fixture.componentRef.setInput('models', ['GPT-4o', 'Mistral']);
     fixture.componentRef.setInput('users', ['a@example.com']);
-    fixture.componentRef.setInput('searchText', 'initial');
+    component.searchText.set('initial');
     fixture.detectChanges();
 
-    const searchSpy = vi.spyOn(component.searchTextChange, 'emit');
     const clearSpy = vi.spyOn(component.clearFilters, 'emit');
 
     const inputEl = (fixture.nativeElement as HTMLElement).querySelector(
@@ -36,13 +35,13 @@ describe('AnalyticsFilterBarComponent', () => {
     ) as HTMLInputElement;
     inputEl.value = 'updated';
     inputEl.dispatchEvent(new Event('input'));
-    expect(searchSpy).toHaveBeenCalledWith('updated');
+    expect(component.searchText()).toBe('updated');
 
     const clearSearchBtn = (fixture.nativeElement as HTMLElement).querySelector(
       'button[aria-label="Clear search"]',
     ) as HTMLButtonElement;
     clearSearchBtn.click();
-    expect(searchSpy).toHaveBeenCalledWith('');
+    expect(component.searchText()).toBe('');
 
     const clearAllBtn = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('button'),

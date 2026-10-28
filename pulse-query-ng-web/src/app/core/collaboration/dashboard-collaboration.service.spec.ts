@@ -232,6 +232,7 @@ describe('DashboardCollaborationService', () => {
     const ws = MockWebSocket.instances[0];
     expect(() => {
       ws?.onmessage?.({ data: 'invalid-json{' });
+      ws?.onmessage?.({ data: JSON.stringify({ no_type_field: true }) });
     }).not.toThrow();
   });
 

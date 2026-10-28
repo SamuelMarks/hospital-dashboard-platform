@@ -60,6 +60,21 @@ export interface CollaborationMessage {
 }
 
 /**
+ * Runtime type guard verifying that a parsed JSON payload is a valid `CollaborationMessage`.
+ *
+ * @param val - Parsed JSON value to inspect.
+ * @returns True if `val` is a non-null object containing a string `type` property.
+ */
+export function isCollaborationMessage(val: unknown): val is CollaborationMessage {
+  return (
+    typeof val === 'object' &&
+    val !== null &&
+    'type' in val &&
+    typeof (val as { type?: unknown }).type === 'string'
+  );
+}
+
+/**
  * Service managing real-time WebSocket connection to a specific dashboard.
  */
 @Service()
@@ -213,15 +228,18 @@ export class DashboardCollaborationService implements OnDestroy {
    */
   private handleMessage(rawData: string): void {
     try {
-      const data = JSON.parse(rawData) as CollaborationMessage;
-      this.message$.next(data);
+      const parsed: unknown = JSON.parse(rawData);
+      if (!isCollaborationMessage(parsed)) {
+        return;
+      }
+      this.message$.next(parsed);
 
-      if (data.type === 'USER_JOINED' || data.type === 'USER_LEFT') {
-        if (Array.isArray(data.active_users)) {
-          this.activeCollaborators.set(data.active_users);
+      if (parsed.type === 'USER_JOINED' || parsed.type === 'USER_LEFT') {
+        if (Array.isArray(parsed.active_users)) {
+          this.activeCollaborators.set(parsed.active_users);
         }
-      } else if (data.type === 'WIDGET_UPDATED' && typeof data.widget_id === 'string') {
-        this.remoteWidgetUpdates$.next(data.widget_id);
+      } else if (parsed.type === 'WIDGET_UPDATED' && typeof parsed.widget_id === 'string') {
+        this.remoteWidgetUpdates$.next(parsed.widget_id);
       }
     } catch {
       // Ignore unparseable frames

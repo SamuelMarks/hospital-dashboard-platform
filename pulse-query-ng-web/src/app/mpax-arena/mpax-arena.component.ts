@@ -4,6 +4,7 @@
  */
 
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { JsonPipe } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,6 +28,8 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
   selector: 'app-mpax-arena',
   imports: [
+    FormRoot,
+    FormField,
     JsonPipe,
     MatCardModule,
     MatButtonModule,
@@ -62,6 +65,11 @@ export class MpaxArenaComponent implements OnInit {
   readonly prompt = signal<string>(
     $localize`We have 15 incoming Cardiac patients and 10 MedSurg beds, 2 ICU beds. Where should they go to minimize overflow?`,
   );
+
+  /** Signal Form binding the scenario prompt field. */
+  readonly promptForm = form(this.prompt, (f) => {
+    required(f);
+  });
 
   /** Selected evaluation mode for the arena execution. */
   readonly mode = signal<string>('judge');

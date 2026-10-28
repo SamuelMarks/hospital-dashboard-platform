@@ -58,7 +58,11 @@ import { TemplateResponse } from '../../api-client';
 
       @if (loadingTemplates()) {
         <div class="flex justify-center p-12">
-          <mat-spinner diameter="40"></mat-spinner>
+          <mat-spinner
+            diameter="40"
+            i18n-aria-label
+            aria-label="Loading marketplace templates"
+          ></mat-spinner>
         </div>
       }
 
@@ -114,6 +118,10 @@ import { TemplateResponse } from '../../api-client';
         background-color: var(--sys-hover);
         border-color: var(--sys-primary);
         transform: translateY(-2px);
+      }
+      .template-card:focus-visible {
+        outline: 2px solid var(--sys-primary);
+        outline-offset: 2px;
       }
       .template-card.selected {
         background-color: var(--sys-selected);

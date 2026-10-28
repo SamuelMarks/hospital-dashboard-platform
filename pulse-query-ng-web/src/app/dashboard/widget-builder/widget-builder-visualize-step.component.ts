@@ -5,7 +5,7 @@
  * and live `WidgetComponent` preview.
  */
 
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, input, model, output } from '@angular/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -61,7 +61,7 @@ export interface VisualizationOption {
 
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
           <mat-label i18n>Widget Title</mat-label>
-          <input matInput [value]="title()" (input)="titleChange.emit(getEventValue($event))" />
+          <input matInput [value]="title()" (input)="title.set(getEventValue($event))" />
         </mat-form-field>
 
         @if (previewWidget()?.type !== 'HTTP' && previewWidget()?.type !== 'TEXT') {
@@ -70,7 +70,7 @@ export interface VisualizationOption {
             <mat-slide-toggle
               data-testid="toggle-allow-natural-text"
               [checked]="allowNaturalText()"
-              (change)="allowNaturalTextChange.emit($event.checked)"
+              (change)="allowNaturalText.set($event.checked)"
               i18n
             >
               Allow user natural text input
@@ -82,7 +82,7 @@ export interface VisualizationOption {
             <mat-select
               data-testid="select-widget-processor"
               [value]="selectedProcessor()"
-              (selectionChange)="processorChange.emit($event.value)"
+              (selectionChange)="selectedProcessor.set($event.value)"
               i18n-aria-label
               aria-label="Select query processor model or SQL"
             >
@@ -115,7 +115,7 @@ export interface VisualizationOption {
                 matInput
                 data-testid="input-natural-text-prompt"
                 [value]="naturalTextPrompt()"
-                (input)="naturalTextPromptChange.emit(getEventValue($event))"
+                (input)="naturalTextPrompt.set(getEventValue($event))"
               />
             </mat-form-field>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
@@ -124,7 +124,7 @@ export interface VisualizationOption {
                 matInput
                 data-testid="input-placeholder-text"
                 [value]="placeholderText()"
-                (input)="placeholderTextChange.emit(getEventValue($event))"
+                (input)="placeholderText.set(getEventValue($event))"
               />
             </mat-form-field>
           }
@@ -142,9 +142,9 @@ export interface VisualizationOption {
           @for (viz of visualizations(); track viz.id) {
             <mat-chip-option
               [selected]="selectedVisualization() === viz.id"
-              (click)="vizTypeChange.emit(viz.id)"
-              (keydown.enter)="vizTypeChange.emit(viz.id)"
-              (keydown.space)="vizTypeChange.emit(viz.id); $event.preventDefault()"
+              (click)="selectVisualization(viz.id)"
+              (keydown.enter)="selectVisualization(viz.id)"
+              (keydown.space)="selectVisualization(viz.id); $event.preventDefault()"
               role="button"
               tabindex="0"
               [attr.aria-pressed]="selectedVisualization() === viz.id"
@@ -164,7 +164,7 @@ export interface VisualizationOption {
             } @else {
               <mat-label i18n>X-Axis / Category</mat-label>
             }
-            <mat-select [value]="xKey()" (selectionChange)="xKeyChange.emit($event.value)">
+            <mat-select [value]="xKey()" (selectionChange)="xKey.set($event.value)">
               <mat-option i18n [value]="null">Auto</mat-option>
               @for (col of availableColumns(); track col) {
                 <mat-option [value]="col">{{ col }}</mat-option>
@@ -178,7 +178,7 @@ export interface VisualizationOption {
             } @else {
               <mat-label i18n>Y-Axis / Value</mat-label>
             }
-            <mat-select [value]="yKey()" (selectionChange)="yKeyChange.emit($event.value)">
+            <mat-select [value]="yKey()" (selectionChange)="yKey.set($event.value)">
               <mat-option i18n [value]="null">Auto</mat-option>
               @for (col of availableColumns(); track col) {
                 <mat-option [value]="col">{{ col }}</mat-option>
@@ -231,10 +231,10 @@ export interface VisualizationOption {
   ],
 })
 export class WidgetBuilderVisualizeStepComponent {
-  /** Current widget title string. */
-  readonly title = input<string>('');
-  /** Currently selected visualization identifier. */
-  readonly selectedVisualization = input<string | undefined>(undefined);
+  /** Current widget title string (two-way bound). */
+  readonly title = model<string>('');
+  /** Currently selected visualization identifier (two-way bound). */
+  readonly selectedVisualization = model<string | null | undefined>(undefined);
   /** Available visualization options. */
   readonly visualizations = input<VisualizationOption[]>([]);
   /** Whether X and Y axis mapping selectors should be displayed. */
@@ -243,20 +243,20 @@ export class WidgetBuilderVisualizeStepComponent {
   readonly isPie = input<boolean>(false);
   /** Available column names for axis mapping. */
   readonly availableColumns = input<string[]>([]);
-  /** Currently selected X-axis column name. */
-  readonly xKey = input<string | null>(null);
-  /** Currently selected Y-axis column name. */
-  readonly yKey = input<string | null>(null);
+  /** Currently selected X-axis column name (two-way bound). */
+  readonly xKey = model<string | null>(null);
+  /** Currently selected Y-axis column name (two-way bound). */
+  readonly yKey = model<string | null>(null);
   /** Live preview widget snapshot. */
   readonly previewWidget = input<WidgetResponse | null>(null);
-  /** Whether the widget allows user natural text input on the dashboard. */
-  readonly allowNaturalText = input<boolean>(false);
-  /** Selected processor ID (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`). */
-  readonly selectedProcessor = input<string>('SQL');
-  /** Default natural text prompt string. */
-  readonly naturalTextPrompt = input<string>('');
-  /** Optional custom placeholder text for the widget natural text input. */
-  readonly placeholderText = input<string>('');
+  /** Whether the widget allows user natural text input on the dashboard (two-way bound). */
+  readonly allowNaturalText = model<boolean>(false);
+  /** Selected processor ID (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`) (two-way bound). */
+  readonly selectedProcessor = model<string>('SQL');
+  /** Default natural text prompt string (two-way bound). */
+  readonly naturalTextPrompt = model<string>('');
+  /** Optional custom placeholder text for the widget natural text input (two-way bound). */
+  readonly placeholderText = model<string>('');
   /** Available processor options (`SQL [no model]`, Ollama models, `any-llm` models). */
   readonly processors = input<ProcessorOption[]>([SQL_NO_MODEL_OPTION]);
 
@@ -274,22 +274,20 @@ export class WidgetBuilderVisualizeStepComponent {
     this.processors().filter((p) => p.category === 'ANY_LLM'),
   );
 
-  /** Emits when the widget title input changes. */
-  readonly titleChange = output<string>();
   /** Emits when a visualization option chip is selected. */
   readonly vizTypeChange = output<string>();
-  /** Emits when the X-axis column selection changes. */
-  readonly xKeyChange = output<string | null>();
-  /** Emits when the Y-axis column selection changes. */
-  readonly yKeyChange = output<string | null>();
-  /** Emits when the allow-natural-text toggle changes. */
-  readonly allowNaturalTextChange = output<boolean>();
   /** Emits when the selected processor changes. */
   readonly processorChange = output<string>();
-  /** Emits when the default natural text prompt changes. */
-  readonly naturalTextPromptChange = output<string>();
-  /** Emits when the natural text input placeholder changes. */
-  readonly placeholderTextChange = output<string>();
+
+  /**
+   * Updates `selectedVisualization` and emits `vizTypeChange`.
+   *
+   * @param vizId - Selected visualization identifier.
+   */
+  selectVisualization(vizId: string): void {
+    this.selectedVisualization.set(vizId);
+    this.vizTypeChange.emit(vizId);
+  }
 
   /**
    * Extracts the string value from a DOM input event.

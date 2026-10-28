@@ -57,6 +57,7 @@ jobs:
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           cp .env.tpl .env
           export $(grep -v '^#' .env | xargs -d '\n')
+          export DUCKDB_PATH="data/hospital_analytics.duckdb"
           alembic upgrade head
           python3 scripts/ingest.py
         working-directory: pulse-query-backend
@@ -64,6 +65,7 @@ jobs:
       - name: Python tests
         run: |
           export $(grep -v '^#' .env | xargs -d '\n')
+          export DUCKDB_PATH="data/hospital_analytics.duckdb"
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           pytest
         working-directory: pulse-query-backend
@@ -122,14 +124,14 @@ jobs:
           uv pip install -r "requirements.txt" -r "requirements-dev.txt"
           uv pip install -e .
           cp .env.tpl .env
-          USE_SQLITE_ALEMBIC=1 alembic upgrade head
-          USE_SQLITE_ALEMBIC=1 python3 scripts/ingest.py
+          USE_SQLITE_ALEMBIC=1 DUCKDB_PATH="data/hospital_analytics.duckdb" alembic upgrade head
+          USE_SQLITE_ALEMBIC=1 DUCKDB_PATH="data/hospital_analytics.duckdb" python3 scripts/ingest.py
         working-directory: pulse-query-backend
 
       - name: Start Python Backend
         run: |
           . "$GITHUB_WORKSPACE"/venv/bin/activate
-          USE_SQLITE_ALEMBIC=1 uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          USE_SQLITE_ALEMBIC=1 DUCKDB_PATH="data/hospital_analytics.duckdb" uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 5
         working-directory: pulse-query-backend
 
@@ -184,14 +186,14 @@ jobs:
           uv pip install -r "requirements.txt" -r "requirements-dev.txt"
           uv pip install -e .
           cp .env.tpl .env
-          USE_SQLITE_ALEMBIC=1 alembic upgrade head
-          USE_SQLITE_ALEMBIC=1 python3 scripts/ingest.py
+          USE_SQLITE_ALEMBIC=1 DUCKDB_PATH="data/hospital_analytics.duckdb" alembic upgrade head
+          USE_SQLITE_ALEMBIC=1 DUCKDB_PATH="data/hospital_analytics.duckdb" python3 scripts/ingest.py
         working-directory: pulse-query-backend
 
       - name: Start Python Backend
         run: |
           . "$GITHUB_WORKSPACE"/venv/bin/activate
-          USE_SQLITE_ALEMBIC=1 uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          USE_SQLITE_ALEMBIC=1 DUCKDB_PATH="data/hospital_analytics.duckdb" uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           sleep 5
         working-directory: pulse-query-backend
 
@@ -270,6 +272,7 @@ jobs:
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           cp .env.tpl .env
           export $(grep -v '^#' .env | xargs -d '\n')
+          export DUCKDB_PATH="data/hospital_analytics.duckdb"
           alembic upgrade head
           python3 scripts/ingest.py
         working-directory: pulse-query-backend
@@ -287,6 +290,7 @@ jobs:
       - name: Run Playwright E2E Tests
         run: |
           export $(grep -v '^#' ../pulse-query-backend/.env | xargs -d '\n')
+          export DUCKDB_PATH="data/hospital_analytics.duckdb"
           . "$GITHUB_WORKSPACE"/venv/bin/activate
           npx playwright test
         working-directory: e2e

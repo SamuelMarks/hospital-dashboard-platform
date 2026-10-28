@@ -4,6 +4,7 @@
 import { Component, input, output, signal, linkedSignal, inject } from '@angular/core';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { DashboardsService, WidgetUpdate } from '../api-client';
+import { LOCAL_DRAFT_WIDGET_ID } from '../dashboard/widget-builder/widget-builder.store';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -58,17 +59,54 @@ import { finalize } from 'rxjs';
       }
     `,
   ],
-  templateUrl: './text-editor.component.html',
+  template: `
+    <form [formRoot]="form" (submit)="save()">
+      <mat-form-field appearance="outline" class="flex-grow">
+        <mat-label i18n>Markdown Content</mat-label>
+        <textarea
+          matInput
+          [formField]="form.content"
+          i18n-placeholder
+          placeholder="# Header
+
+**Bold Text**
+
+- List Item"
+        ></textarea>
+        <mat-hint i18n>Supports basic Markdown syntax.</mat-hint>
+      </mat-form-field>
+    </form>
+
+    <div class="footer">
+      <button
+        i18n
+        type="button"
+        mat-flat-button
+        (click)="save()"
+        [disabled]="form().invalid() || isRunning()"
+      >
+        @if (isRunning()) {
+          <mat-spinner
+            diameter="18"
+            class="mr-2"
+            i18n-aria-label
+            aria-label="Saving markdown content"
+          ></mat-spinner>
+        }
+        Save Content
+      </button>
+    </div>
+  `,
 })
 export class TextEditorComponent {
   /** Backend dashboards API service. */
   private readonly dashboardsApi = inject(DashboardsService);
 
   /** Parent dashboard ID containing the widget. */
-  readonly dashboardId = input.required<string>();
+  readonly dashboardId = input<string>('');
 
   /** Target widget ID being edited. */
-  readonly widgetId = input.required<string>();
+  readonly widgetId = input<string>('');
 
   /** Initial markdown content loaded into the editor. */
   readonly initialContent = input<string>('');
@@ -91,8 +129,13 @@ export class TextEditorComponent {
   save(): void {
     if (this.form().invalid()) return;
 
-    this.isRunning.set(true);
     const val = this.formModel().content;
+    if (this.widgetId() === LOCAL_DRAFT_WIDGET_ID) {
+      this.contentChange.emit(val);
+      return;
+    }
+
+    this.isRunning.set(true);
 
     const update: WidgetUpdate = {
       config: { content: val },
