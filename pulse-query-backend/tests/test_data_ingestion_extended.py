@@ -373,3 +373,14 @@ def test_ingest_data_method_and_transfers_alias(monkeypatch: pytest.MonkeyPatch,
   # 2. Default self.data_dir resolution when DATA_DIR is unchanged
   tables_default = svc.ingest_data()
   assert "Synthetic_hospital_data_transfers" in tables_default
+
+  # 3. Result-wrapped methods
+  from app.core.result import Ok
+
+  res_all = data_ingestion.DataIngestionService.ingest_all_csvs_result(data_dir=str(data_dir))
+  assert isinstance(res_all, Ok)
+  assert "hospital_data" in res_all.value
+
+  res_data = svc.ingest_data_result(data_dir=data_dir)
+  assert isinstance(res_data, Ok)
+  assert "hospital_data" in res_data.value

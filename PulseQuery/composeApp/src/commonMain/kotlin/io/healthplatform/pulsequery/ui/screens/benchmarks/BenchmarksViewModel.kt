@@ -6,9 +6,11 @@ package io.healthplatform.pulsequery.ui.screens.benchmarks
 
 import io.healthplatform.pulsequery.api.apis.BenchmarksApi
 import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.result.andThenSus
 import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -119,12 +121,14 @@ class BenchmarksViewModel(
      */
     suspend fun performLoadBenchmarks() {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        runCatchingPulseAsync {
-            val sqlRaw = currentBenchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().asResult().getOrThrow()
-            val optRaw = currentBenchmarksApi.getOptimizationBenchmarksApiV1BenchmarksOptimizationGet().asResult().getOrThrow()
-            val sqlItems = sqlRaw.map { parseSqlBenchmarkItem(it) }
-            val optItems = optRaw.map { parseMpaxBenchmarkItem(it) }
-            Pair(sqlItems, optItems)
+        runResultPulseAsync {
+            currentBenchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().asResult().andThenSus { sqlRaw ->
+                currentBenchmarksApi.getOptimizationBenchmarksApiV1BenchmarksOptimizationGet().asResultMap { optRaw ->
+                    val sqlItems = sqlRaw.map { parseSqlBenchmarkItem(it) }
+                    val optItems = optRaw.map { parseMpaxBenchmarkItem(it) }
+                    Pair(sqlItems, optItems)
+                }
+            }
         }.fold(
             onSuccess = { (sqlItems, mpaxItems) ->
                 _state.update {

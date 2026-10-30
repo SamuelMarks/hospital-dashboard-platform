@@ -8,7 +8,7 @@ import io.healthplatform.pulsequery.api.models.SystemHealthResponse
 import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,9 +55,8 @@ class NetworkHealthRepository(
      */
     suspend fun checkHealth(): Result<SystemHealthResponse> {
         _isChecking.value = true
-        return runCatchingPulseAsync {
-            val response = systemApi.getSystemHealthApiV1SystemHealthGet(strict = false)
-            response.asResult().getOrThrow()
+        return runResultPulseAsync {
+            systemApi.getSystemHealthApiV1SystemHealthGet(strict = false).asResult()
         }.onSuccess { health ->
             _healthState.value = health
             _isOnline.value = true

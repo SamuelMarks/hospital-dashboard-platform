@@ -16,7 +16,6 @@ import time
 from typing import Literal, TypedDict
 
 import jax.numpy as jnp
-from mpax import create_lp, r2HPDHG
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.optimization import (
@@ -26,6 +25,10 @@ from app.schemas.optimization import (
 )
 from app.services.optimization.des_baseline_engine import evaluate_surgical_schedule_des
 from app.services.optimization.institution_profiles import get_institution_profile_result
+from app.services.optimization.mpax_lp_runner import (
+  optimization_solution_cache,
+  solve_mpax_linear_program,
+)
 
 DAYS_OF_WEEK: tuple[Literal["Mon", "Tue", "Wed", "Thu", "Fri"], ...] = (
   "Mon",
@@ -34,8 +37,6 @@ DAYS_OF_WEEK: tuple[Literal["Mon", "Tue", "Wed", "Thu", "Fri"], ...] = (
   "Thu",
   "Fri",
 )
-_MPAX_SOLVER = r2HPDHG(eps_abs=1e-2, eps_rel=1e-2, iteration_limit=150, verbose=False)
-_SURGICAL_CACHE: dict[str, OptimizationSolutionPayload] = {}
 
 
 class SurgicalCohortSpec(TypedDict):
@@ -368,30 +369,18 @@ def solve_surgical_scheduling_result(
       h_vals.append(-max(daily_cap, l_bounds[var_idx]))
 
   cache_key = json.dumps(
-    {"inst": profile.institution_id, "c": [c.model_dump() for c in constraints]},
+    {"uc": "surgical_scheduling", "inst": profile.institution_id, "c": [c.model_dump() for c in constraints]},
     sort_keys=True,
   )
-  cached = _SURGICAL_CACHE.get(cache_key)
+  cached = optimization_solution_cache.get(cache_key)
   if cached is not None:
     return Ok(cached)
 
-  c_jnp = jnp.asarray(cost_list, dtype=jnp.float32)
-  lp = create_lp(
-    c_jnp,
-    jnp.asarray(a_rows, dtype=jnp.float32),
-    jnp.asarray(b_vals, dtype=jnp.float32),
-    jnp.asarray(g_rows, dtype=jnp.float32),
-    jnp.asarray(h_vals, dtype=jnp.float32),
-    jnp.asarray(l_bounds, dtype=jnp.float32),
-    jnp.asarray(u_bounds, dtype=jnp.float32),
-  )
-  res = _MPAX_SOLVER.optimize(lp)
-  primal = [max(0.0, float(v)) for v in res.primal_solution.tolist()]
+  primal, obj_val = solve_mpax_linear_program(cost_list, a_rows, b_vals, g_rows, h_vals, l_bounds, u_bounds)
 
   schedule_rows = _build_surgical_schedule_rows(primal, role_to_unit, unit_caps)
   des_summary = evaluate_surgical_schedule_des(schedule_rows=schedule_rows)
   elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-  obj_val = round(float(jnp.dot(c_jnp, jnp.asarray(primal, dtype=jnp.float32))), 2)
 
   payload = OptimizationSolutionPayload(
     use_case="surgical_scheduling",
@@ -407,7 +396,7 @@ def solve_surgical_scheduling_result(
     applied_surgical_constraints=list(constraints),
     applied_staffing_constraints=[],
   )
-  _SURGICAL_CACHE[cache_key] = payload
+  optimization_solution_cache.set(cache_key, payload)
   return Ok(payload)
 
 

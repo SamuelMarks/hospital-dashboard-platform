@@ -9,7 +9,7 @@ import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,9 +59,8 @@ class WearCensusViewModel(
     fun loadWearData() {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
-                val alertRes = currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet()
-                alertRes.asResult().getOrThrow()
+            runResultPulseAsync {
+                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult()
             }.fold(
                 onSuccess = { fetchedAlerts ->
                     _state.update {

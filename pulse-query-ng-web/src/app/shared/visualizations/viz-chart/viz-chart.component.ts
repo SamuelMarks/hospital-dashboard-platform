@@ -274,6 +274,17 @@ export class VizChartComponent {
   });
 
   /**
+   * Localized ARIA summary label describing the chart axes and item count.
+   */
+  readonly chartAriaLabel = computed(() => {
+    const { x, y } = this.axisKeys();
+    const yName = y || $localize`Value`;
+    const xName = x || $localize`Category`;
+    const count = this.processedData().length;
+    return $localize`Bar chart: ${yName} by ${xName} (${count} items)`;
+  });
+
+  /**
    * Computes the renderable data structure.
    */
   readonly processedData = computed<ChartItem[]>(() => {

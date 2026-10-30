@@ -338,4 +338,15 @@
     <string name="optimization_des_baseline_title">JAX Discrete Event Simulation (DES) — Expert Baseline</string>
     <string name="optimization_survey_button">Submit UX Evaluation Survey</string>
     <string name="optimization_disclaimer">LLMs can make mistakes. Check important info.</string>
+    <string name="optimization_solving_loading">Solving JAX/MPAX model...</string>
+    <string name="optimization_survey_recorded">UX Evaluation Survey Recorded</string>
+    <string name="wear_alert_threshold_label">Threshold: &gt;%1$d%%</string>
+    <string name="edit_widget_title_format">Edit Widget: %1$s</string>
+    <string name="edit_widget_title_blank_error">Widget title cannot be blank</string>
+    <string name="share_collaborator_email">Collaborator Email</string>
+    <string name="share_permission_view">View</string>
+    <string name="share_permission_edit">Edit</string>
+    <string name="share_invite_button">Invite</string>
+    <string name="share_no_collaborators">No collaborators shared yet.</string>
+    <string name="cart_empty_message">Your query cart is empty. Stage queries from SQL Editor or Chat.</string>
 </resources>

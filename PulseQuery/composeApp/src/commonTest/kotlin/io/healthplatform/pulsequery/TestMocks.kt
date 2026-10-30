@@ -38,58 +38,71 @@ fun createInspectingMockEngine(
     forcedStatus: HttpStatusCode? = null,
     forcedErrorBody: String = """{"detail":"Simulated error"}""",
     recordedRequests: MutableList<HttpRequestData>? = null
-): MockEngine = MockEngine { request ->
-    recordedRequests?.add(request)
+): MockEngine {
+    var activeUserEmail = "test@test.com"
+    val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
+    return MockEngine { request ->
+        recordedRequests?.add(request)
 
-    val statusOverride = forcedStatus
-        ?: request.headers["X-Force-Status"]?.toIntOrNull()?.let { HttpStatusCode.fromValue(it) }
+        val statusOverride = forcedStatus
+            ?: request.headers["X-Force-Status"]?.toIntOrNull()?.let { HttpStatusCode.fromValue(it) }
 
-    if (statusOverride != null) {
-        return@MockEngine respond(
-            content = forcedErrorBody,
-            status = statusOverride,
-            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-        )
-    }
-
-    when (request.url.encodedPath.removeSuffix("/")) {
-        "/api/v1/auth/register" -> {
-            val bodyText = request.body.readBodyText()
-            if (request.method != HttpMethod.Post || !bodyText.contains("email")) {
-                respond(
-                    content = """{"detail": "Invalid registration request"}""",
-                    status = HttpStatusCode.BadRequest,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
-            } else {
-                respond(
-                    content = """{"email": "test@test.com", "id": "1", "is_active": true, "is_admin": false}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
-            }
+        if (statusOverride != null) {
+            return@MockEngine respond(
+                content = forcedErrorBody,
+                status = statusOverride,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            )
         }
-        "/api/v1/auth/login" -> {
-            val bodyString = request.body.readBodyText()
-            if (request.method != HttpMethod.Post || bodyString.contains("wrongpassword")) {
-                respond(
-                    content = """{"detail": "Incorrect username or password"}""",
-                    status = HttpStatusCode.Unauthorized,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
-            } else {
-                respond(
-                    content = """{"access_token": "fake-token", "token_type": "bearer"}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
+
+        when (request.url.encodedPath.removeSuffix("/")) {
+            "/api/v1/auth/register" -> {
+                val bodyText = request.body.readBodyText()
+                if (request.method != HttpMethod.Post || !bodyText.contains("email")) {
+                    respond(
+                        content = """{"detail": "Invalid registration request"}""",
+                        status = HttpStatusCode.BadRequest,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                } else {
+                    val parsedEmail = runCatching {
+                        jsonParser.parseToJsonElement(bodyText)
+                            .let { it as? kotlinx.serialization.json.JsonObject }
+                            ?.get("email")
+                            ?.let { it as? kotlinx.serialization.json.JsonPrimitive }
+                            ?.content
+                    }.getOrNull()
+                    if (!parsedEmail.isNullOrBlank()) {
+                        activeUserEmail = parsedEmail
+                    }
+                    respond(
+                        content = """{"email": "$activeUserEmail", "id": "1", "is_active": true, "is_admin": false}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
             }
-        }
-        "/api/v1/auth/me" -> respond(
-            content = """{"email": "test@test.com", "id": "1", "is_active": true, "is_admin": false}""",
-            status = HttpStatusCode.OK,
-            headers = headersOf(HttpHeaders.ContentType, "application/json")
-        )
+            "/api/v1/auth/login" -> {
+                val bodyString = request.body.readBodyText()
+                if (request.method != HttpMethod.Post || bodyString.contains("wrongpassword")) {
+                    respond(
+                        content = """{"detail": "Incorrect username or password"}""",
+                        status = HttpStatusCode.Unauthorized,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                } else {
+                    respond(
+                        content = """{"access_token": "fake-token", "token_type": "bearer"}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+            }
+            "/api/v1/auth/me" -> respond(
+                content = """{"email": "$activeUserEmail", "id": "1", "is_active": true, "is_admin": false}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
         "/api/v1/dashboards" -> {
             if (request.method == HttpMethod.Post) {
                 respond(
@@ -206,6 +219,7 @@ fun createInspectingMockEngine(
             }
         }
         else -> respond("Not Found", HttpStatusCode.NotFound)
+        }
     }
 }
 

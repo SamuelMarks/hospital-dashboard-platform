@@ -40,6 +40,10 @@ export interface MetricConfig {
 @Component({
   selector: 'viz-metric',
   imports: [],
+  host: {
+    role: 'region',
+    '[attr.aria-label]': 'metricAriaLabel()',
+  },
 
   styles: [
     `
@@ -285,5 +289,19 @@ export class VizMetricComponent {
     if (warning !== undefined && val >= warning) return 'val-warn';
 
     return '';
+  });
+
+  /** Localized accessible summary label for the KPI metric card region. */
+  readonly metricAriaLabel: Signal<string> = computed(() => {
+    const label = this.displayLabel() || $localize`Metric`;
+    const val = this.displayValue();
+    const cls = this.alertClass();
+    if (cls === 'val-critical') {
+      return $localize`${label}\: ${val} (Critical)`;
+    }
+    if (cls === 'val-warn') {
+      return $localize`${label}\: ${val} (Warning)`;
+    }
+    return $localize`${label}\: ${val}`;
   });
 }

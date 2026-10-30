@@ -12,9 +12,6 @@ from collections.abc import Sequence
 import json
 import time
 
-import jax.numpy as jnp
-from mpax import create_lp, r2HPDHG
-
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.optimization import (
   InstitutionProfileSchema,
@@ -24,14 +21,16 @@ from app.schemas.optimization import (
 )
 from app.services.optimization.des_baseline_engine import evaluate_staffing_schedule_des
 from app.services.optimization.institution_profiles import get_institution_profile_result
+from app.services.optimization.mpax_lp_runner import (
+  optimization_solution_cache,
+  solve_mpax_linear_program,
+)
 
 SEASON_WINDOWS: tuple[tuple[str, float, float], ...] = (
   ("Winter Respiratory Surge (Dec-Feb, Mon-Wed)", 1.18, 0.92),
   ("Spring/Fall Baseline (Mar-May & Sep-Nov)", 1.00, 0.84),
   ("Summer Elective Trough (Jun-Aug, Thu-Sun)", 0.82, 0.72),
 )
-_MPAX_SOLVER = r2HPDHG(eps_abs=1e-2, eps_rel=1e-2, iteration_limit=150, verbose=False)
-_STAFFING_CACHE: dict[str, OptimizationSolutionPayload] = {}
 
 
 def _extract_staffing_parameters(
@@ -200,30 +199,18 @@ def solve_staffing_optimization_result(
     h_vals.append(-summer_rn_req)
 
   cache_key = json.dumps(
-    {"inst": profile.institution_id, "c": [c.model_dump() for c in constraints]},
+    {"uc": "staffing_optimization", "inst": profile.institution_id, "c": [c.model_dump() for c in constraints]},
     sort_keys=True,
   )
-  cached = _STAFFING_CACHE.get(cache_key)
+  cached = optimization_solution_cache.get(cache_key)
   if cached is not None:
     return Ok(cached)
 
-  c_jnp = jnp.asarray(cost_list, dtype=jnp.float32)
-  lp = create_lp(
-    c_jnp,
-    jnp.asarray(a_rows, dtype=jnp.float32),
-    jnp.asarray(b_vals, dtype=jnp.float32),
-    jnp.asarray(g_rows, dtype=jnp.float32),
-    jnp.asarray(h_vals, dtype=jnp.float32),
-    jnp.asarray(l_bounds, dtype=jnp.float32),
-    jnp.asarray(u_bounds, dtype=jnp.float32),
-  )
-  res = _MPAX_SOLVER.optimize(lp)
-  primal = [max(0.0, float(v)) for v in res.primal_solution.tolist()]
+  primal, obj_val = solve_mpax_linear_program(cost_list, a_rows, b_vals, g_rows, h_vals, l_bounds, u_bounds)
 
   staffing_rows = _build_staffing_rows(profile, units, primal)
   des_summary = evaluate_staffing_schedule_des(staffing_rows=staffing_rows)
   elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-  obj_val = round(float(jnp.dot(c_jnp, jnp.asarray(primal, dtype=jnp.float32))), 2)
 
   payload = OptimizationSolutionPayload(
     use_case="staffing_optimization",
@@ -239,7 +226,7 @@ def solve_staffing_optimization_result(
     applied_surgical_constraints=[],
     applied_staffing_constraints=list(constraints),
   )
-  _STAFFING_CACHE[cache_key] = payload
+  optimization_solution_cache.set(cache_key, payload)
   return Ok(payload)
 
 

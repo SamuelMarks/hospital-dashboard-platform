@@ -8,7 +8,7 @@ import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,8 +56,8 @@ class AnalyticsViewModel(
     fun loadAnalytics(fallbackError: String = UiErrorKey.UNKNOWN_ERROR.fallbackMessage) {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
-                currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).asResult().getOrThrow()
+            runResultPulseAsync {
+                currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).asResult()
             }.fold(
                 onSuccess = { rows ->
                     _state.update { it.copy(records = rows, isLoading = false, errorMessage = null) }

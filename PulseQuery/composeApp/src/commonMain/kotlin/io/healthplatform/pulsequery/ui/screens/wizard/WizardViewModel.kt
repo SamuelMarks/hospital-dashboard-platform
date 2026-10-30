@@ -21,7 +21,7 @@ import io.healthplatform.pulsequery.core.model.VisualizationType
 import io.healthplatform.pulsequery.core.model.WidgetSourceType
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,10 +78,9 @@ class WizardViewModel(
      */
     fun loadAvailableProcessors() {
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentAiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true)
                     .asResult()
-                    .getOrThrow()
             }.fold(
                 onSuccess = { models ->
                     val mapped = models.map { mapModelInfoToProcessorSelection(it) }
@@ -113,8 +112,8 @@ class WizardViewModel(
     fun loadTemplates() {
         _state.value = WizardState.Loading
         scope.launch {
-            runCatchingPulseAsync {
-                currentTemplatesApi.listTemplatesApiV1TemplatesGet(limit = 100).asResult().getOrThrow()
+            runResultPulseAsync {
+                currentTemplatesApi.listTemplatesApiV1TemplatesGet(limit = 100).asResult()
             }.fold(
                 onSuccess = { templates ->
                     allTemplates = templates
@@ -438,11 +437,11 @@ class WizardViewModel(
     private fun persistWidget(widgetIn: WidgetIn, onSuccess: (WidgetResponse) -> Unit) {
         _state.value = WizardState.Submitting()
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                     dashboardId = dashboardId,
                     widgetIn = widgetIn
-                ).asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = { created ->
                     _state.value = WizardState.Success(created)

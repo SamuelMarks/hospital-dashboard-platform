@@ -15,8 +15,9 @@ import io.healthplatform.pulsequery.api.models.TemplateCreate
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.QueryCartRepository
 import kotlinx.coroutines.CoroutineScope
@@ -91,9 +92,9 @@ class EditorViewModel(
 
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null, result = null) }
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 val req = SQLExecutionRequest(sql = currentSql, maxRows = 50)
-                currentAiApi.executeSqlPreviewApiV1AiExecutePost(req).asResult().getOrThrow()
+                currentAiApi.executeSqlPreviewApiV1AiExecutePost(req).asResult()
             }.fold(
                 onSuccess = { res ->
                     _state.update { it.copy(result = res, isLoading = false, errorMessage = null) }
@@ -128,8 +129,8 @@ class EditorViewModel(
      * @return [Result] containing the list of [DashboardResponse] items or a [io.healthplatform.pulsequery.core.error.PulseQueryError].
      */
     suspend fun loadAvailableDashboards(): Result<List<DashboardResponse>> {
-        return runCatchingPulseAsync {
-            currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult().getOrThrow()
+        return runResultPulseAsync {
+            currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult()
         }
     }
 
@@ -155,7 +156,7 @@ class EditorViewModel(
         category: String = "Clinical",
         description: String = ""
     ): Result<String> {
-        return runCatchingPulseAsync {
+        return runResultPulseAsync {
             if (destination == SaveQueryDestination.DASHBOARD_WIDGET && dashboardId != null) {
                 val widgetIn = WidgetIn.Sql(
                     title = title.trim(),
@@ -165,8 +166,7 @@ class EditorViewModel(
                 currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                     dashboardId,
                     widgetIn
-                ).asResult().getOrThrow()
-                "Widget successfully added to dashboard"
+                ).asResultMap { "Widget successfully added to dashboard" }
             } else {
                 val templateCreate = TemplateCreate(
                     title = title.trim(),
@@ -174,8 +174,9 @@ class EditorViewModel(
                     category = category.trim().ifBlank { "Clinical" },
                     description = description.trim()
                 )
-                currentTemplatesApi.createTemplateApiV1TemplatesPost(templateCreate).asResult().getOrThrow()
-                "Template successfully registered in library"
+                currentTemplatesApi.createTemplateApiV1TemplatesPost(templateCreate).asResultMap {
+                    "Template successfully registered in library"
+                }
             }
         }
     }

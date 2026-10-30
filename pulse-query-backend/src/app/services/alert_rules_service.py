@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.models.alert_rule import AlertRule
 from app.schemas.alert_rule import AlertRuleCreate, AlertRuleUpdate
@@ -68,6 +69,7 @@ class AlertRulesService:
     self,
     rule_id: UUID,
     db: AsyncSession,
+    accept_language: str | None = None,
   ) -> AppResult[AlertRule]:
     """
     Retrieves a single clinical alert rule by UUID.
@@ -75,6 +77,7 @@ class AlertRulesService:
     Args:
         rule_id (UUID): Unique alert rule identifier.
         db (AsyncSession): Active PostgreSQL async session.
+        accept_language (str | None): Optional HTTP `Accept-Language` header.
 
     Returns:
         AppResult[AlertRule]: `Ok(AlertRule)` if found, or `Err(AppError)` with `ALERT_RULE_NOT_FOUND`.
@@ -85,7 +88,7 @@ class AlertRulesService:
       return Err(
         AppError(
           code=ErrorCode.ALERT_RULE_NOT_FOUND,
-          message="Alert rule not found",
+          message=get_translated_message(accept_language, "error.alert_rule_not_found", "Alert rule not found"),
           status_code=404,
         )
       )

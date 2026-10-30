@@ -16,9 +16,6 @@ from collections.abc import Sequence
 import json
 import time
 
-import jax.numpy as jnp
-from mpax import create_lp, r2HPDHG
-
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.json_types import SqlScalar
 from app.schemas.optimization import (
@@ -31,10 +28,12 @@ from app.schemas.optimization import (
 )
 from app.services.optimization.des_baseline_engine import evaluate_service_unit_des
 from app.services.optimization.institution_profiles import get_institution_profile_result
+from app.services.optimization.mpax_lp_runner import (
+  optimization_solution_cache,
+  solve_mpax_linear_program,
+)
 
 HORIZON_DAYS: int = 180
-_MPAX_SOLVER = r2HPDHG(eps_abs=1e-2, eps_rel=1e-2, iteration_limit=150, verbose=False)
-_SERVICE_UNIT_CACHE: dict[str, OptimizationSolutionPayload] = {}
 
 
 def _build_baseline_matrix(
@@ -340,25 +339,14 @@ def solve_service_unit_assignment_result(
     h_vals.append(-(unit_caps_beds[u_name] * float(HORIZON_DAYS)))
 
   cache_key = json.dumps(
-    {"inst": profile.institution_id, "c": [c.model_dump() for c in constraints]},
+    {"uc": "service_unit", "inst": profile.institution_id, "c": [c.model_dump() for c in constraints]},
     sort_keys=True,
   )
-  cached = _SERVICE_UNIT_CACHE.get(cache_key)
+  cached = optimization_solution_cache.get(cache_key)
   if cached is not None:
     return Ok(cached)
 
-  c_jnp = jnp.asarray(cost_list, dtype=jnp.float32)
-  lp = create_lp(
-    c_jnp,
-    jnp.asarray(a_rows, dtype=jnp.float32),
-    jnp.asarray(b_vals, dtype=jnp.float32),
-    jnp.asarray(g_rows, dtype=jnp.float32),
-    jnp.asarray(h_vals, dtype=jnp.float32),
-    jnp.asarray(l_bounds, dtype=jnp.float32),
-    jnp.asarray(u_bounds, dtype=jnp.float32),
-  )
-  result = _MPAX_SOLVER.optimize(lp)
-  primal = [max(0.0, float(v)) for v in result.primal_solution.tolist()]
+  primal, obj_val = solve_mpax_linear_program(cost_list, a_rows, b_vals, g_rows, h_vals, l_bounds, u_bounds)
 
   assignment_rows = _build_service_unit_assignment_rows(
     profile, services, units, unit_caps_beds, baseline_matrix, service_demands, primal
@@ -368,7 +356,6 @@ def solve_service_unit_assignment_result(
     total_capacity=max(round(sum(unit_caps_beds.values())), 1),
   )
   elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-  obj_val = round(float(jnp.dot(c_jnp, jnp.asarray(primal, dtype=jnp.float32))), 2)
 
   payload = OptimizationSolutionPayload(
     use_case="service_unit",
@@ -384,7 +371,7 @@ def solve_service_unit_assignment_result(
     applied_surgical_constraints=[],
     applied_staffing_constraints=[],
   )
-  _SERVICE_UNIT_CACHE[cache_key] = payload
+  optimization_solution_cache.set(cache_key, payload)
   return Ok(payload)
 
 

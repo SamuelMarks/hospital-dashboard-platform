@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.models.dashboard import DashboardShare
 from app.models.user import User
@@ -42,19 +43,26 @@ class DashboardShareService:
     user_stmt = select(User).where(User.email == share_in.user_email)
     target_user = (await db.execute(user_stmt)).scalars().first()
     if not target_user:
-      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="Target user not found", status_code=404))
+      msg = get_translated_message(
+        current_user.language_preference, "error.target_user_not_found", "Target user not found"
+      )
+      return Err(AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message=msg, status_code=404))
 
     if target_user.id == current_user.id:
-      return Err(
-        AppError(code=ErrorCode.SHARE_SELF_FORBIDDEN, message="Cannot share dashboard with yourself", status_code=400)
+      msg = get_translated_message(
+        current_user.language_preference, "error.share_self_forbidden", "Cannot share dashboard with yourself"
       )
+      return Err(AppError(code=ErrorCode.SHARE_SELF_FORBIDDEN, message=msg, status_code=400))
 
     perm = share_in.permission_level.upper()
     if perm not in ("VIEW", "EDIT"):
+      msg = get_translated_message(
+        current_user.language_preference, "error.share_invalid_permission", "Permission level must be VIEW or EDIT"
+      )
       return Err(
         AppError(
           code=ErrorCode.SHARE_INVALID_PERMISSION,
-          message="Permission level must be VIEW or EDIT",
+          message=msg,
           status_code=400,
         )
       )
@@ -142,7 +150,8 @@ class DashboardShareService:
     stmt = select(DashboardShare).where(and_(DashboardShare.id == share_id, DashboardShare.dashboard_id == dashboard_id))
     share = (await db.execute(stmt)).scalars().first()
     if not share:
-      return Err(AppError(code=ErrorCode.SHARE_NOT_FOUND, message="Share not found", status_code=404))
+      msg = get_translated_message(None, "error.share_not_found", "Share not found")
+      return Err(AppError(code=ErrorCode.SHARE_NOT_FOUND, message=msg, status_code=404))
 
     await db.delete(share)
     await db.commit()

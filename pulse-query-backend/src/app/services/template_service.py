@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.models.template import WidgetTemplate
 from app.schemas.template import (
@@ -97,6 +98,7 @@ class TemplateService:
     self,
     template_id: UUID,
     db: AsyncSession,
+    accept_language: str | None = None,
   ) -> AppResult[WidgetTemplate]:
     """
     Retrieves a single widget template by UUID.
@@ -104,6 +106,7 @@ class TemplateService:
     Args:
         template_id (UUID): Unique template identifier.
         db (AsyncSession): Active PostgreSQL async session.
+        accept_language (str | None): Optional HTTP `Accept-Language` header.
 
     Returns:
         AppResult[WidgetTemplate]: `Ok(WidgetTemplate)` if found, or `Err(AppError)` with `RESOURCE_NOT_FOUND`.
@@ -114,7 +117,7 @@ class TemplateService:
       return Err(
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
-          message="Template not found",
+          message=get_translated_message(accept_language, "error.template_not_found", "Template not found"),
           status_code=404,
         )
       )

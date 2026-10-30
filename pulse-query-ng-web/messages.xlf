@@ -217,60 +217,60 @@
         <source>Unknown</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">193</context>
+          <context context-type="linenumber">196</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">198</context>
+          <context context-type="linenumber">201</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3623315782173249299" datatype="html">
         <source>Checking...</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">204</context>
+          <context context-type="linenumber">207</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8067765124079970854" datatype="html">
         <source>Default CSV Present</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">206</context>
+          <context context-type="linenumber">209</context>
         </context-group>
       </trans-unit>
       <trans-unit id="186382785532401648" datatype="html">
         <source>Synthetic Fallback Active</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">207</context>
+          <context context-type="linenumber">210</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5340038401913136566" datatype="html">
         <source>Data re-ingested successfully!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">219</context>
+          <context context-type="linenumber">232</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7129849083885595781" datatype="html">
         <source>Failed to re-ingest CSV data.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">224</context>
+          <context context-type="linenumber">235</context>
         </context-group>
       </trans-unit>
       <trans-unit id="247553445375981223" datatype="html">
         <source>Settings saved successfully!</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">296</context>
+          <context context-type="linenumber">313</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7621582062565085415" datatype="html">
         <source>Error saving settings.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/admin/admin.component.ts</context>
-          <context context-type="linenumber">303</context>
+          <context context-type="linenumber">317</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6975251082844708176" datatype="html">
@@ -1576,7 +1576,7 @@
         <source>Error</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/chat/chat.store.ts</context>
-          <context context-type="linenumber">433</context>
+          <context context-type="linenumber">438</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/components/dialogs/system-diagnostics-dialog.component.html</context>
@@ -1811,8 +1811,12 @@
           <context context-type="linenumber">19</context>
         </context-group>
         <context-group purpose="location">
+          <context context-type="sourcefile">src/app/core/state/signal-store.utils.ts</context>
+          <context context-type="linenumber">63</context>
+        </context-group>
+        <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard.store.ts</context>
-          <context context-type="linenumber">686</context>
+          <context context-type="linenumber">689</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1627921135126005753" datatype="html">
@@ -2053,42 +2057,42 @@
         <source>Add a new widget to this dashboard</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">155,156</context>
+          <context context-type="linenumber">158,159</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4109172620926917990" datatype="html">
         <source>Add Another Widget to Your Dashboard</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">161,162</context>
+          <context context-type="linenumber">164,165</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4857666627326193434" datatype="html">
         <source> Combine multiple metrics, clinical tables, or trend charts side-by-side. Drag a template from the Widget Gallery directly into this slot, or launch the wizard below. </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">163,164</context>
+          <context context-type="linenumber">166,167</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4921388105361495120" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Add Widget (Wizard) </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">174,176</context>
+          <context context-type="linenumber">177,179</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2321250190620926525" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>library_add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Drag from Gallery </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">184,186</context>
+          <context context-type="linenumber">187,189</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4592858360129712582" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>smart_toy<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/> Ask AI </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">194,196</context>
+          <context context-type="linenumber">197,199</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/home/home.component.html</context>
@@ -2099,14 +2103,14 @@
         <source>Query Cart and Widget Gallery</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">216,218</context>
+          <context context-type="linenumber">219,221</context>
         </context-group>
       </trans-unit>
       <trans-unit id="9061282158263468923" datatype="html">
         <source>Close modal</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard-layout.component.html</context>
-          <context context-type="linenumber">250,251</context>
+          <context context-type="linenumber">253,254</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8222092783672072373" datatype="html">
@@ -2163,15 +2167,15 @@
         <source>Copy of <x id="PH" equiv-text="source.title"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard.store.ts</context>
-          <context context-type="linenumber">340</context>
+          <context context-type="linenumber">343</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard.store.ts</context>
-          <context context-type="linenumber">347</context>
+          <context context-type="linenumber">350</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/dashboard.store.ts</context>
-          <context context-type="linenumber">354</context>
+          <context context-type="linenumber">357</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5074584967441838450" datatype="html">
@@ -2457,7 +2461,7 @@
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
-          <context context-type="linenumber">73,74</context>
+          <context context-type="linenumber">75,76</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5017023821359967169" datatype="html">
@@ -2964,155 +2968,155 @@
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>add<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Widget<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">94,97</context>
+          <context context-type="linenumber">96,99</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8820775306125609126" datatype="html">
         <source>Refreshing dashboard</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">109,110</context>
+          <context context-type="linenumber">111,112</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6255735177384267647" datatype="html">
         <source>Export Dashboard</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">122,123</context>
+          <context context-type="linenumber">124,125</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">124,125</context>
+          <context context-type="linenumber">126,127</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7802616102620775604" datatype="html">
         <source>Export Format</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">131,132</context>
+          <context context-type="linenumber">133,134</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8864717155678322961" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>table_chart<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Export CSV<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">139,141</context>
+          <context context-type="linenumber">141,143</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5153880239483349540" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>data_object<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Export JSON<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">149,151</context>
+          <context context-type="linenumber">151,153</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3525753439403149312" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>picture_as_pdf<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Export PDF<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">159,161</context>
+          <context context-type="linenumber">161,163</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1702869446386764268" datatype="html">
         <source>Share Dashboard</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">170,171</context>
+          <context context-type="linenumber">172,173</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">172,173</context>
+          <context context-type="linenumber">174,175</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2048481582280537098" datatype="html">
         <source>Open Theme Settings</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">186,187</context>
+          <context context-type="linenumber">188,189</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8671234314555525900" datatype="html">
         <source>Appearance</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">193,194</context>
+          <context context-type="linenumber">195,196</context>
         </context-group>
       </trans-unit>
       <trans-unit id="869044638670864650" datatype="html">
         <source>Light Mode</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">199,200</context>
+          <context context-type="linenumber">201,202</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3279636347259347513" datatype="html">
         <source>Dark Mode</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">201,202</context>
+          <context context-type="linenumber">203,204</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3676838007574820884" datatype="html">
         <source>Seed Color</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">206,207</context>
+          <context context-type="linenumber">208,209</context>
         </context-group>
       </trans-unit>
       <trans-unit id="54334629841803842" datatype="html">
         <source>Custom Theme Color</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">233,234</context>
+          <context context-type="linenumber">235,236</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8347605082699387085" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>palette<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Clinical Palettes...<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">246,249</context>
+          <context context-type="linenumber">248,251</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2301262831405117784" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>smart_toy<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span class=&quot;hidden sm:inline&quot;&gt;"/>Ask AI<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">259,263</context>
+          <context context-type="linenumber">261,265</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6400509563404610063" datatype="html">
         <source>User Account Menu</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">268,269</context>
+          <context context-type="linenumber">270,271</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7425766914410430563" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>dashboard<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>My Dashboards<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">280,282</context>
+          <context context-type="linenumber">282,284</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7975907597550899057" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>tune<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Hospital Optimization<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">283,285</context>
+          <context context-type="linenumber">285,287</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7379745637659937280" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>speed<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Benchmarks<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">286,288</context>
+          <context context-type="linenumber">288,290</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1943694510241048840" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>settings<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Admin Settings<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">290,291</context>
+          <context context-type="linenumber">292,293</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2430127355752167484" datatype="html">
@@ -3120,7 +3124,7 @@
         &gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Logout<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/toolbar.component.html</context>
-          <context context-type="linenumber">295,298</context>
+          <context context-type="linenumber">297,300</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3585102437237942849" datatype="html">
@@ -3776,14 +3780,14 @@ Edit this content.</source>
         <source>Drop to place (6×<x id="INTERPOLATION" equiv-text="{{ getTemplateRowSpan(t) }}"/>)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
-          <context context-type="linenumber">60,61</context>
+          <context context-type="linenumber">61,62</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5901175793327968661" datatype="html">
         <source> No templates found </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/dashboard/widget-gallery/widget-gallery.component.html</context>
-          <context context-type="linenumber">81,82</context>
+          <context context-type="linenumber">83,84</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6439365426343089851" datatype="html">
@@ -3930,6 +3934,10 @@ Edit this content.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/components/dialogs/prompt-dialog.component.ts</context>
           <context context-type="linenumber">97</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.ts</context>
+          <context context-type="linenumber">281</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4304465124910788940" datatype="html">
@@ -4676,620 +4684,620 @@ Edit this content.</source>
         <source>Hospital Operations Optimization Copilot</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">1,2</context>
+          <context context-type="linenumber">5,7</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">6,7</context>
+          <context context-type="linenumber">11,12</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1060880187964472102" datatype="html">
         <source>LLM + JAX + MPAX Self-Service Optimization</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">5,6</context>
+          <context context-type="linenumber">10,11</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6731276047870734291" datatype="html">
         <source> Democratizing access to mathematical programming across Service-Unit Assignments, Surgical Scheduling (BEDS &amp; POINTS), and Physician &amp; Nurse Staffing. </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">8,9</context>
+          <context context-type="linenumber">13,14</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8533641155278241258" datatype="html">
         <source>Partner Institution</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">15</context>
+          <context context-type="linenumber">20</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7814084867543423496" datatype="html">
         <source>Partner hospital institution</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">21,22</context>
+          <context context-type="linenumber">26,27</context>
         </context-group>
       </trans-unit>
       <trans-unit id="960350802689326726" datatype="html">
         <source> <x id="INTERPOLATION" equiv-text="{{ inst.short_name }}"/> (<x id="INTERPOLATION_1" equiv-text="{{ inst.total_licensed_beds }}"/> beds) </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">25,26</context>
+          <context context-type="linenumber">30,31</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5312248620529588839" datatype="html">
         <source>Optimization Agent / Model</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">32</context>
+          <context context-type="linenumber">37</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6683156023407829419" datatype="html">
         <source>Optimization LLM or LiteRT model</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">38,39</context>
+          <context context-type="linenumber">43,44</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4014921029588063979" datatype="html">
         <source><x id="START_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;mat-icon aria-hidden=&quot;true&quot;&gt;"/>rate_review<x id="CLOSE_TAG_MAT_ICON" ctype="x-mat_icon" equiv-text="&lt;/mat-icon&gt;"/><x id="START_TAG_SPAN" ctype="x-span" equiv-text="&lt;span&gt;"/>Evaluate Workflow UX<x id="CLOSE_TAG_SPAN" ctype="x-span" equiv-text="&lt;/span&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">53,56</context>
+          <context context-type="linenumber">58,61</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8303534946403993289" datatype="html">
         <source>Clinical Optimization Use Cases</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">60,61</context>
+          <context context-type="linenumber">69,71</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2393645399256964451" datatype="html">
         <source>Use Case 1: Service-Unit Assignments</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">70,71</context>
+          <context context-type="linenumber">80,81</context>
         </context-group>
       </trans-unit>
       <trans-unit id="783739210536242183" datatype="html">
         <source>Minimize off-service days, transfer diverts &amp; propensity-matched LOS</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">71</context>
+          <context context-type="linenumber">81</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1505390473526133663" datatype="html">
         <source>Use Case 2: Surgical Scheduling (BEDS &amp; POINTS)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">83</context>
+          <context context-type="linenumber">93</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2209536167320500994" datatype="html">
         <source>Smooth post-operative bed demand &amp; prevent short-notice cancellations</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">84</context>
+          <context context-type="linenumber">94</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5083832794214604907" datatype="html">
         <source>Use Case 3: Physician &amp; Nurse Scheduling</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">96</context>
+          <context context-type="linenumber">106</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4600645763837103829" datatype="html">
         <source>Reduce unexpected RN overtime, A-days &amp; staffing cost per patient day</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">97</context>
+          <context context-type="linenumber">107</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5138174886761775683" datatype="html">
         <source>What I Can Do</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">103,104</context>
+          <context context-type="linenumber">113,114</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="4481798685325484662" datatype="html">
-        <source>I can help you analyze this patient census data and iteratively optimize hospital operations:</source>
+      <trans-unit id="4866415242028644724" datatype="html">
+        <source> I can help you analyze this patient census data and iteratively optimize hospital operations: </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">104,105</context>
+          <context context-type="linenumber">115,116</context>
         </context-group>
       </trans-unit>
       <trans-unit id="681439220746757011" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/>Patient days by unit<x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> - How many patient days each hospital unit had </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">107,109</context>
+          <context context-type="linenumber">119,121</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2471274685421255102" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/>Patient days by service<x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> - How many patient days each medical service had </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">110,112</context>
+          <context context-type="linenumber">122,124</context>
         </context-group>
       </trans-unit>
       <trans-unit id="9174290500493010376" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/>Combined breakdowns<x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> - Detailed analysis by both unit and service </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">113,115</context>
+          <context context-type="linenumber">125,127</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3453350835294105084" datatype="html">
         <source><x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/>Specific queries &amp; MPAX constraints<x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> - Iteratively add or modify bed capacities, service-unit locks, BEDS/POINTS blocks, and nurse staffing rules </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">116,118</context>
+          <context context-type="linenumber">128,131</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1472120673711249850" datatype="html">
         <source>Quick Actions</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">120,121</context>
+          <context context-type="linenumber">133,134</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6849329540767075047" datatype="html">
         <source> Use the buttons below for common analyses, or ask me any question about your data: </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">122,123</context>
+          <context context-type="linenumber">135,136</context>
         </context-group>
       </trans-unit>
       <trans-unit id="499987718808522896" datatype="html">
         <source> Natural language optimization prompt </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">143,144</context>
+          <context context-type="linenumber">156,157</context>
         </context-group>
       </trans-unit>
       <trans-unit id="806003770578603036" datatype="html">
         <source>Type your message here...</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">150,151</context>
+          <context context-type="linenumber">163,164</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6493096073597975291" datatype="html">
         <source> Active Model: <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION" equiv-text="{{ store.selectedModelId() }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">156,158</context>
+          <context context-type="linenumber">169,171</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3110392145690480424" datatype="html">
         <source>Submit optimization prompt</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">163,164</context>
+          <context context-type="linenumber">176,177</context>
         </context-group>
       </trans-unit>
       <trans-unit id="9074217983034759329" datatype="html">
         <source>LLMs can make mistakes. Check important info.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">170,172</context>
+          <context context-type="linenumber">183,185</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7281683069752837468" datatype="html">
         <source>Suggested follow-up iterations</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">173,174</context>
+          <context context-type="linenumber">190,192</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3473513423430178144" datatype="html">
         <source>Try next iteration:</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">174,175</context>
+          <context context-type="linenumber">192,193</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2563533814066756097" datatype="html">
         <source>Running JAX and MPAX optimization</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">192</context>
+          <context context-type="linenumber">213,214</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="8670497254951469242" datatype="html">
-        <source>Solving mathematical program in JAX &amp; MPAX and running Discrete Event Simulation...</source>
+      <trans-unit id="4581126804457212430" datatype="html">
+        <source> Solving mathematical program in JAX &amp; MPAX and running Discrete Event Simulation... </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">193,194</context>
+          <context context-type="linenumber">216</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1056302413021189436" datatype="html">
         <source>Clinical User Experience Evaluation Survey</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">207</context>
+          <context context-type="linenumber">235,236</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5783643228104339712" datatype="html">
         <source>Qualitative &amp; Workflow Comparison Survey</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">208,209</context>
+          <context context-type="linenumber">238,239</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4989043790538294780" datatype="html">
         <source> Help us evaluate this self-service LLM-MPAX interface against (A) the manual graduate-student email process and (B) existing hospital workflow technology. </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">210,211</context>
+          <context context-type="linenumber">240,241</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6762566350121928931" datatype="html">
         <source>Clinical / Operational Role</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">216</context>
+          <context context-type="linenumber">246</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8180340182235141076" datatype="html">
         <source>Physician / Surgeon</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">218</context>
+          <context context-type="linenumber">252</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6365774073070931858" datatype="html">
         <source>Nurse Manager / Staffing Leader</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">219</context>
+          <context context-type="linenumber">253</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3940205025147554230" datatype="html">
         <source>Hospital Operations Executive</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">220</context>
+          <context context-type="linenumber">254</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7504625315998058145" datatype="html">
         <source>Vs. Manual Graduate-Student Email Process (1-5)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">225</context>
+          <context context-type="linenumber">259</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7245349843898123407" datatype="html">
         <source>Vs. Existing Hospital Workflow Tech (1-5)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">234</context>
+          <context context-type="linenumber">272</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6668718991034068764" datatype="html">
         <source>Result Transparency &amp; Interpretability (1-5)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">243</context>
+          <context context-type="linenumber">285</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2878973418879914521" datatype="html">
         <source>Qualitative Feedback</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">253</context>
+          <context context-type="linenumber">299</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8906534154298283939" datatype="html">
         <source>How did iterative constraint refinement compare to emailing graduate students?</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">258,259</context>
+          <context context-type="linenumber">304,305</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8383597817252479243" datatype="html">
         <source> Submit Evaluation Survey </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">273,274</context>
+          <context context-type="linenumber">319,320</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6779012595604166383" datatype="html">
         <source>Quick Action Report</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">289,290</context>
+          <context context-type="linenumber">340,341</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6248737525277348174" datatype="html">
         <source>Copilot Clinical Interpretation</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">318</context>
+          <context context-type="linenumber">373,374</context>
         </context-group>
       </trans-unit>
       <trans-unit id="9028319481176383957" datatype="html">
         <source>Interpretable Clinical Briefing</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">320,321</context>
+          <context context-type="linenumber">377,378</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5466141104113162776" datatype="html">
         <source> JAX Discrete Event Simulation (DES) — Expert Baseline Comparison </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">333</context>
+          <context context-type="linenumber">394</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7360936649090196527" datatype="html">
         <source> Evaluated across <x id="INTERPOLATION" equiv-text="{{ sol.des_evaluation.replications }}"/> Monte Carlo trajectories over a <x id="INTERPOLATION_1" equiv-text="{{ sol.des_evaluation.horizon_days }}"/>-day horizon · Solver status: <x id="START_TAG_STRONG" ctype="x-strong" equiv-text="&lt;strong&gt;"/><x id="INTERPOLATION_2" equiv-text="{{ sol.solver_status }}"/><x id="CLOSE_TAG_STRONG" ctype="x-strong" equiv-text="&lt;/strong&gt;"/> (<x id="INTERPOLATION_3" equiv-text="{{ sol.solve_time_ms }}"/> ms) </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">336,340</context>
+          <context context-type="linenumber">397,401</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6154068565239139651" datatype="html">
         <source> Expert Baseline Optimality Gap: <x id="INTERPOLATION" equiv-text="{{ sol.des_evaluation.overall_expert_gap_pct }}"/>% </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">342,344</context>
+          <context context-type="linenumber">403,405</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8543760667943581532" datatype="html">
         <source>Manual Historical</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">352,353</context>
+          <context context-type="linenumber">413,414</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2104453473177201801" datatype="html">
         <source>Expert Baseline</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">356,357</context>
+          <context context-type="linenumber">417,418</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3084233763615209125" datatype="html">
         <source>Your LLM+MPAX Policy</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">360,361</context>
+          <context context-type="linenumber">421,422</context>
         </context-group>
       </trans-unit>
       <trans-unit id="361112445965943446" datatype="html">
         <source> <x id="INTERPOLATION" equiv-text="{{ m.improvement_vs_manual_pct }}"/>% improvement vs. manual (<x id="INTERPOLATION_1" equiv-text="{{ m.unit_label }}"/>) </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">366,367</context>
+          <context context-type="linenumber">427,428</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2066595547129756568" datatype="html">
         <source> <x id="INTERPOLATION" equiv-text="{{ m.expert_attainment_pct }}"/>% of expert gain captured </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">369,370</context>
+          <context context-type="linenumber">430,431</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8096750176572088211" datatype="html">
         <source>Solved Service × Unit Bed Allocations</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">379,380</context>
+          <context context-type="linenumber">440,441</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4191674908223961718" datatype="html">
         <source>Clinical Service</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">384,385</context>
+          <context context-type="linenumber">445,446</context>
         </context-group>
       </trans-unit>
       <trans-unit id="792801807515703375" datatype="html">
         <source>Hospital Unit</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">385,386</context>
+          <context context-type="linenumber">446,447</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7475896011491763528" datatype="html">
         <source>Placement Type</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">386,387</context>
+          <context context-type="linenumber">447,448</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1204430001151496878" datatype="html">
         <source>Historical Days</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">387,388</context>
+          <context context-type="linenumber">448,449</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2410958095041460302" datatype="html">
         <source>Expert Baseline Days</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">388,389</context>
+          <context context-type="linenumber">449,450</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3070548830965640636" datatype="html">
         <source>MPAX Optimized Days</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">389,390</context>
+          <context context-type="linenumber">450,451</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3487533963873398256" datatype="html">
         <source>Allocated Beds</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">390,391</context>
+          <context context-type="linenumber">451,452</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3233776442952140705" datatype="html">
         <source>Delta Days</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">391,392</context>
+          <context context-type="linenumber">452,453</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4503439895096294672" datatype="html">
         <source>On-Service Home Unit</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">401,402</context>
+          <context context-type="linenumber">464,465</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1930322733008623663" datatype="html">
         <source>Off-Service</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">403,404</context>
+          <context context-type="linenumber">466,467</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7585690037564150304" datatype="html">
         <source>Solved BEDS &amp; POINTS Master Surgical Schedule</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">422,423</context>
+          <context context-type="linenumber">490,491</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8739965563912784562" datatype="html">
         <source>Program</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">427,428</context>
+          <context context-type="linenumber">495,496</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1381285086213668081" datatype="html">
         <source>Surgical Procedure Cohort</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">428,429</context>
+          <context context-type="linenumber">496,497</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2753911957640298181" datatype="html">
         <source>Recovery Unit</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">429,430</context>
+          <context context-type="linenumber">497,498</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4099780570893092274" datatype="html">
         <source>Operating Day</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">430,431</context>
+          <context context-type="linenumber">498,499</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6400926559943009573" datatype="html">
         <source>Historical Cases</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">431,432</context>
+          <context context-type="linenumber">499,500</context>
         </context-group>
       </trans-unit>
       <trans-unit id="422583952822337761" datatype="html">
         <source>Smoothed Cases</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">432,433</context>
+          <context context-type="linenumber">500,501</context>
         </context-group>
       </trans-unit>
       <trans-unit id="666259443890125445" datatype="html">
         <source>Expected Post-Op LOS (Days)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">433,434</context>
+          <context context-type="linenumber">501,502</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5444242286426595224" datatype="html">
         <source>Expected Recovery Occupancy</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">434,435</context>
+          <context context-type="linenumber">502,503</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4701430996968276685" datatype="html">
         <source><x id="INTERPOLATION" equiv-text="{{ row.expected_unit_occupancy }}"/> / <x id="INTERPOLATION_1" equiv-text="{{ row.unit_capacity }}"/> beds</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">447,448</context>
+          <context context-type="linenumber">524,525</context>
         </context-group>
       </trans-unit>
-      <trans-unit id="7098623218975967059" datatype="html">
-        <source>Solved Cross-Unit Physician &amp; Nurse Seasonal Schedule</source>
+      <trans-unit id="8614073146451789319" datatype="html">
+        <source> Solved Cross-Unit Physician &amp; Nurse Seasonal Schedule </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">459,460</context>
+          <context context-type="linenumber">539</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8932917860978648376" datatype="html">
         <source>Unit</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">464,465</context>
+          <context context-type="linenumber">545,546</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8728537824664696562" datatype="html">
         <source>Seasonal Volume Window</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">465,466</context>
+          <context context-type="linenumber">546,547</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1282037190634273901" datatype="html">
         <source>Core RNs / Day</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">466,467</context>
+          <context context-type="linenumber">547,548</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2971587973268495346" datatype="html">
         <source>Float Pool RNs</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">467,468</context>
+          <context context-type="linenumber">548,549</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2215197110206048513" datatype="html">
         <source>Physicians</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">468,469</context>
+          <context context-type="linenumber">549,550</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7838021394601478323" datatype="html">
         <source>Unexpected Overtime (Shifts/Wk)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">469,470</context>
+          <context context-type="linenumber">550,551</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3666064443966562919" datatype="html">
         <source>Admin A-Days (Shifts/Wk)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">470,471</context>
+          <context context-type="linenumber">551,552</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7258831712773083977" datatype="html">
         <source>RN Cost / Patient-Day</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.html</context>
-          <context context-type="linenumber">471,472</context>
+          <context context-type="linenumber">552,553</context>
         </context-group>
       </trans-unit>
       <trans-unit id="4045156346357741618" datatype="html">
         <source>Prompt is required</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.component.ts</context>
-          <context context-type="linenumber">74</context>
+          <context context-type="linenumber">70</context>
         </context-group>
       </trans-unit>
       <trans-unit id="957516113589465696" datatype="html">
@@ -5317,28 +5325,28 @@ Edit this content.</source>
         <source>Failed to start optimization session.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.store.ts</context>
-          <context context-type="linenumber">278</context>
+          <context context-type="linenumber">279</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6147386401152681794" datatype="html">
         <source>Optimization iteration failed.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.store.ts</context>
-          <context context-type="linenumber">304</context>
+          <context context-type="linenumber">306</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3860557310993677701" datatype="html">
         <source>Thank you! Your clinical workflow evaluation has been recorded.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.store.ts</context>
-          <context context-type="linenumber">331</context>
+          <context context-type="linenumber">333</context>
         </context-group>
       </trans-unit>
       <trans-unit id="5364041395493030071" datatype="html">
         <source>Failed to submit user survey.</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/optimization/optimization.store.ts</context>
-          <context context-type="linenumber">338</context>
+          <context context-type="linenumber">340</context>
         </context-group>
       </trans-unit>
       <trans-unit id="6536465303991061554" datatype="html">
@@ -5899,7 +5907,7 @@ Edit this content.</source>
         <source>Loading content</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/components/skeleton-loader.component.ts</context>
-          <context context-type="linenumber">305</context>
+          <context context-type="linenumber">298</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7737524628215233974" datatype="html">
@@ -6032,11 +6040,25 @@ Edit this content.</source>
         <source> No Data </source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.html</context>
-          <context context-type="linenumber">54,55</context>
+          <context context-type="linenumber">42,43</context>
         </context-group>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-heatmap/viz-heatmap.component.html</context>
           <context context-type="linenumber">51,52</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1806667489382256324" datatype="html">
+        <source>Category</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.ts</context>
+          <context context-type="linenumber">282</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1153714366358271894" datatype="html">
+        <source>Bar chart: <x id="PH" equiv-text="yName"/> by <x id="PH_1" equiv-text="xName"/> (<x id="PH_2" equiv-text="count"/> items)</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-chart/viz-chart.component.ts</context>
+          <context context-type="linenumber">284</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1040432800425306479" datatype="html">
@@ -6067,6 +6089,38 @@ Edit this content.</source>
           <context context-type="linenumber">138</context>
         </context-group>
       </trans-unit>
+      <trans-unit id="9079143231473125231" datatype="html">
+        <source>Metric</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-metric/viz-metric.component.ts</context>
+          <context context-type="linenumber">296</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1522011292762058102" datatype="html">
+        <source><x id="PH" equiv-text="label"/>: <x id="PH_1" equiv-text="val"/> (Critical)</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-metric/viz-metric.component.ts</context>
+          <context context-type="linenumber">300</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="1274444055761052348" datatype="html">
+        <source><x id="PH" equiv-text="label"/>: <x id="PH_1" equiv-text="val"/> (Warning)</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-metric/viz-metric.component.ts</context>
+          <context context-type="linenumber">303</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="5714851796268422029" datatype="html">
+        <source><x id="PH" equiv-text="label"/>: <x id="PH_1" equiv-text="val"/></source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-metric/viz-metric.component.ts</context>
+          <context context-type="linenumber">305</context>
+        </context-group>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
+          <context context-type="linenumber">198</context>
+        </context-group>
+      </trans-unit>
       <trans-unit id="7085767138465810901" datatype="html">
         <source>Chart Legend</source>
         <context-group purpose="location">
@@ -6085,42 +6139,42 @@ Edit this content.</source>
         <source>Correlation Scale: -1 to +1</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
-          <context context-type="linenumber">85,86</context>
+          <context context-type="linenumber">89,90</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7261484728702161207" datatype="html">
         <source>Correlation strength meter</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
-          <context context-type="linenumber">92,93</context>
+          <context context-type="linenumber">96,97</context>
         </context-group>
       </trans-unit>
       <trans-unit id="2525230676386818985" datatype="html">
         <source>Result</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
-          <context context-type="linenumber">145</context>
+          <context context-type="linenumber">149</context>
         </context-group>
       </trans-unit>
       <trans-unit id="294764228557474017" datatype="html">
         <source>Weak / No Correlation</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
-          <context context-type="linenumber">180</context>
+          <context context-type="linenumber">184</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7676465157716003539" datatype="html">
         <source>Moderate Correlation</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
-          <context context-type="linenumber">181</context>
+          <context context-type="linenumber">185</context>
         </context-group>
       </trans-unit>
       <trans-unit id="9062000232528601022" datatype="html">
         <source>Strong Correlation</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-scalar/viz-scalar.component.ts</context>
-          <context context-type="linenumber">182</context>
+          <context context-type="linenumber">186</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3238932971131156747" datatype="html">
@@ -6148,14 +6202,14 @@ Edit this content.</source>
         <source>Critical: <x id="PH" equiv-text="val"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.ts</context>
-          <context context-type="linenumber">216</context>
+          <context context-type="linenumber">218</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1579041366194438674" datatype="html">
         <source>Warning: <x id="PH" equiv-text="val"/></source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/shared/visualizations/viz-table/viz-table.component.ts</context>
-          <context context-type="linenumber">219</context>
+          <context context-type="linenumber">221</context>
         </context-group>
       </trans-unit>
       <trans-unit id="8604673556809626581" datatype="html">
@@ -6300,49 +6354,56 @@ Edit this content.</source>
         <source>Minimize</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">304</context>
+          <context context-type="linenumber">306</context>
         </context-group>
       </trans-unit>
       <trans-unit id="1334771356257554730" datatype="html">
         <source>Full Screen</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">304</context>
+          <context context-type="linenumber">306</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7869856198501870109" datatype="html">
         <source>Enter DuckDB SQL query...</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">397</context>
+          <context context-type="linenumber">394</context>
         </context-group>
       </trans-unit>
       <trans-unit id="3761712425520688684" datatype="html">
         <source>Ask in natural language...</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">398</context>
+          <context context-type="linenumber">395</context>
+        </context-group>
+      </trans-unit>
+      <trans-unit id="2973938166212885208" datatype="html">
+        <source>SQL [no model]</source>
+        <context-group purpose="location">
+          <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
+          <context context-type="linenumber">413</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7642933798322838431" datatype="html">
         <source>Reset Widget</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">506</context>
+          <context context-type="linenumber">505</context>
         </context-group>
       </trans-unit>
       <trans-unit id="9147827515857206854" datatype="html">
         <source>This will reset configuration to defaults. Continue?</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">507</context>
+          <context context-type="linenumber">506</context>
         </context-group>
       </trans-unit>
       <trans-unit id="7808756054397155068" datatype="html">
         <source>Reset</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/widget/widget.component.ts</context>
-          <context context-type="linenumber">509</context>
+          <context context-type="linenumber">508</context>
         </context-group>
       </trans-unit>
     </body>

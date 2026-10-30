@@ -70,6 +70,19 @@ export function parseChatSseDataLine(line: string): ChatStreamEvent | null {
  */
 @Service()
 export class ChatSseClientService {
+  /** Currently active `AbortController` for cancelling an in-flight SSE stream. */
+  private activeAbortController: AbortController | null = null;
+
+  /**
+   * Aborts any currently active SSE stream request.
+   */
+  abortActiveStream(): void {
+    if (this.activeAbortController) {
+      this.activeAbortController.abort();
+      this.activeAbortController = null;
+    }
+  }
+
   /**
    * Connects to the chat SSE endpoint and invokes `onEvent` for each parsed `ChatStreamEvent`.
    *
@@ -83,6 +96,10 @@ export class ChatSseClientService {
     onEvent: (evt: ChatStreamEvent) => boolean,
     modelId?: string,
   ): Promise<void> {
+    this.abortActiveStream();
+    const controller = new AbortController();
+    this.activeAbortController = controller;
+
     const url = `/api/v1/chat/stream/${conversationId}${modelId ? `?model_id=${encodeURIComponent(modelId)}` : ''}`;
     const token = safeStorage.getItem('pulse_auth_token');
     const headers: Record<string, string> = {
@@ -92,35 +109,41 @@ export class ChatSseClientService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Streaming failed with status: ${response.status}`);
-    }
+    try {
+      const response = await fetch(url, { headers, signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`Streaming failed with status: ${response.status}`);
+      }
 
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('Readable stream not supported');
-    }
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Readable stream not supported');
+      }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(String.fromCharCode(10));
-      buffer = lines.pop() || '';
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split(String.fromCharCode(10));
+        buffer = lines.pop() || '';
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('data:')) {
-          const parsed = parseChatSseDataLine(trimmed);
-          if (parsed && onEvent(parsed)) {
-            return;
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('data:')) {
+            const parsed = parseChatSseDataLine(trimmed);
+            if (parsed && onEvent(parsed)) {
+              return;
+            }
           }
         }
+      }
+    } finally {
+      if (this.activeAbortController === controller) {
+        this.activeAbortController = null;
       }
     }
   }

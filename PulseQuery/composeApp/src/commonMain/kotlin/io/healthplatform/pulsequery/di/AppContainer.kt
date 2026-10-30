@@ -20,8 +20,8 @@ import io.healthplatform.pulsequery.api.apis.TemplatesApi
 import io.healthplatform.pulsequery.api.models.RefreshTokenRequest
 import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.core.error.PulseQueryError
-import io.healthplatform.pulsequery.core.result.asResult
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.asResultMap
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.core.result.valueOrNull
 import io.healthplatform.pulsequery.database.DatabaseDriverFactory
 import io.healthplatform.pulsequery.database.KeyValueStorage
@@ -351,14 +351,14 @@ object AppContainer : AppDependencies {
         val ref = refreshToken ?: return Result.failure(
             PulseQueryError.Auth.Unauthenticated("No refresh token present")
         )
-        return runCatchingPulseAsync {
-            val response = authApi.refreshAccessTokenApiV1AuthRefreshPost(
+        return runResultPulseAsync {
+            authApi.refreshAccessTokenApiV1AuthRefreshPost(
                 RefreshTokenRequest(refreshToken = ref)
-            )
-            val body = response.asResult().getOrThrow()
-            currentToken = body.accessToken
-            body.refreshToken?.let { refreshToken = it }
-            true
+            ).asResultMap { body ->
+                currentToken = body.accessToken
+                body.refreshToken?.let { refreshToken = it }
+                true
+            }
         }.onFailure {
             logout()
         }

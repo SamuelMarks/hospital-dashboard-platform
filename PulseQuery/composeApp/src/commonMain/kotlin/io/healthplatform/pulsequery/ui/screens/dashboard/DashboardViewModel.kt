@@ -17,8 +17,9 @@ import io.healthplatform.pulsequery.core.model.DashboardId
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.WidgetId
 import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.core.result.valueOrNull
 import io.healthplatform.pulsequery.core.undo.DashboardCommand
 import io.healthplatform.pulsequery.core.undo.UndoRedoManager
@@ -159,8 +160,8 @@ class DashboardViewModel(
     fun loadDashboards(errorPrefix: String = "Failed to load dashboards: ") {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
-                currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult().getOrThrow()
+            runResultPulseAsync {
+                currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult()
             }.fold(
                 onSuccess = { fetched -> onDashboardsLoaded(fetched) },
                 onFailure = { e -> onDashboardsLoadFailed(e, errorPrefix) }
@@ -270,11 +271,11 @@ class DashboardViewModel(
         }
 
         val globalFilters = buildGlobalFilterPayload(_state.value)
-        runCatchingPulseAsync {
+        runResultPulseAsync {
             currentExecutionApi.refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
                 dashboardId = dashboard.id,
                 requestBody = globalFilters
-            ).asResult().getOrThrow()
+            ).asResult()
         }.fold(
             onSuccess = { payloadMap ->
                 val executedMap = cacheAndParseExecutedWidgets(dashboard.id, executableWidgets, payloadMap)
@@ -360,10 +361,9 @@ class DashboardViewModel(
     fun createDashboard(name: String, errorPrefix: String = "Failed to create dashboard: ") {
         if (name.isBlank()) return
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentDashboardsApi.createDashboardApiV1DashboardsPost(DashboardCreate(name = name))
                     .asResult()
-                    .getOrThrow()
             }.fold(
                 onSuccess = { loadDashboards() },
                 onFailure = { e -> _state.update { it.copy(errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)) } }
@@ -379,10 +379,9 @@ class DashboardViewModel(
      */
     fun deleteDashboard(id: String, errorPrefix: String = "Failed to delete dashboard: ") {
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentDashboardsApi.deleteDashboardApiV1DashboardsDashboardIdDelete(id)
                     .asResult()
-                    .getOrThrow()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(activeDashboard = null) }
@@ -417,22 +416,21 @@ class DashboardViewModel(
             undoRedoManager.executeCommand(object : DashboardCommand {
                 override val description: String = "Delete Widget ${widget.title}"
 
-                override suspend fun execute(): Result<Unit> = runCatchingPulseAsync {
+                override suspend fun execute(): Result<Unit> = runResultPulseAsync {
                     currentDashboardsApi.deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(currentWidgetId)
-                        .asResult()
-                        .getOrThrow()
-                    loadDashboards()
+                        .asResultMap { loadDashboards() }
                 }.onFailure { e ->
                     _state.update { it.copy(errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)) }
                 }
 
-                override suspend fun undo(): Result<Unit> = runCatchingPulseAsync {
-                    val recreated = currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
+                override suspend fun undo(): Result<Unit> = runResultPulseAsync {
+                    currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                         dashboardId = widget.dashboardId,
                         widgetIn = savedWidgetIn
-                    ).asResult().getOrThrow()
-                    currentWidgetId = recreated.id
-                    loadDashboards()
+                    ).asResultMap { recreated ->
+                        currentWidgetId = recreated.id
+                        loadDashboards()
+                    }
                 }.onFailure { e ->
                     _state.update { it.copy(errorMessage = "Failed to restore widget: ${e.message}") }
                 }
@@ -463,13 +461,12 @@ class DashboardViewModel(
         currentWidgets.add(targetIndex, moved)
         _state.update { it.copy(activeDashboard = currentDb.copy(widgets = currentWidgets)) }
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 val req = WidgetReorderRequest(
                     items = currentWidgets.mapIndexed { idx, w -> WidgetReorderItem(id = w.id, order = idx) }
                 )
                 currentDashboardsApi.reorderWidgetsApiV1DashboardsDashboardIdReorderPost(currentDb.id, req)
                     .asResult()
-                    .getOrThrow()
             }.onFailure { e ->
                 _state.update { it.copy(errorMessage = "Failed to persist widget order: ${e.message}") }
             }
@@ -478,7 +475,7 @@ class DashboardViewModel(
 
     /**
      * Executes an interactive natural-text (or direct SQL) query for a single widget on the active dashboard
-     * using [runCatchingPulseAsync] and updates [DashboardUiState.widgetDataMap].
+     * using [runResultPulseAsync] and updates [DashboardUiState.widgetDataMap].
      *
      * @param widgetId UUID of the target widget.
      * @param naturalText User-entered natural language prompt or SQL query string.
@@ -510,14 +507,14 @@ class DashboardViewModel(
         }
 
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentExecutionApi.refreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPost(
                     dashboardId = activeDash.id,
                     widgetId = widgetId,
                     forceRefresh = true,
                     naturalText = cleanText,
                     processor = effectiveProcessor.value
-                ).asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = { payloadMap ->
                     val rawElem = payloadMap[widgetId]

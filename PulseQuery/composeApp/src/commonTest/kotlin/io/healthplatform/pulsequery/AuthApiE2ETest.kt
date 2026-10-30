@@ -45,7 +45,7 @@ class AuthApiE2ETest {
 
         val meResponse = AppContainer.authApi.readUsersMeApiV1AuthMeGet()
         assertTrue(meResponse.success, "Fetch Me failed: ${meResponse.status}")
-        assertEquals("test@test.com", meResponse.body().email)
+        assertEquals(email, meResponse.body().email)
         AppContainer.resetForTest()
     }
 }

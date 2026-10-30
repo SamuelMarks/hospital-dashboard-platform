@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping
+import contextlib
 import logging
 from typing import Protocol, TypeGuard
 from uuid import UUID
@@ -106,27 +107,23 @@ class ExecutionService:
         conn_factory (ConnFactoryCallable): Connection factory returning a DuckDB connection.
         cache_svc (ResultCacheService[WidgetCachePayload]): Result cache service instance.
     """
-    active_conn: DuckDBCursorFactoryProtocol | duckdb.DuckDBPyConnection | None = None
     with duckdb_manager._write_lock:
       try:
-        active_conn = conn_factory()
-        cursor = active_conn.cursor()
+        with contextlib.closing(conn_factory()) as active_conn:
+          cursor = active_conn.cursor()
 
-        for widget, config, cache_key in widgets_info:
-          res = sql_runner_fn(cursor, config)
-          results_map[widget.id] = res
+          for widget, config, cache_key in widgets_info:
+            res = sql_runner_fn(cursor, config)
+            results_map[widget.id] = res
 
-          if not res.get("error"):
-            cache_svc.set(cache_key, res)
+            if not res.get("error"):
+              cache_svc.set(cache_key, res)
 
       except (duckdb.Error, RuntimeError, ValueError, TypeError, OSError) as e:
         logger.error(f"DuckDB Execution Error: {e}")
         for widget, _, _ in widgets_info:
           if widget.id not in results_map:
             results_map[widget.id] = {"error": "Internal Database Error"}
-      finally:
-        if active_conn is not None:
-          active_conn.close()
 
   def _classify_dashboard_widgets(
     self,
@@ -249,17 +246,13 @@ class ExecutionService:
     Returns:
         SqlRunnerResultDict | JsonObject: Query execution result dictionary.
     """
-    active_conn: DuckDBCursorFactoryProtocol | duckdb.DuckDBPyConnection | None = None
     with duckdb_manager._write_lock:
       try:
-        active_conn = conn_factory()
-        cursor = active_conn.cursor()
-        return sql_runner_fn(cursor, run_config)
+        with contextlib.closing(conn_factory()) as active_conn:
+          cursor = active_conn.cursor()
+          return sql_runner_fn(cursor, run_config)
       except (duckdb.Error, RuntimeError, ValueError, TypeError, OSError) as e:
         return {"error": str(e)}
-      finally:
-        if active_conn is not None:
-          active_conn.close()
 
   async def _resolve_sql_widget_run_config_result(
     self,

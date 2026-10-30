@@ -296,10 +296,25 @@ async def test_seed_templates_script(tmp_path: Path, db_session: AsyncSession) -
   assert cli_row is not None
   assert cli_row.sql_template == "SELECT 42"
 
+  def _spawn_coro_zero(coro: Coroutine[None, None, int]) -> int:
+    """
+    Schedules `coro` on the active event loop and returns 0 to test the empty-seed exit branch.
+
+    Args:
+        coro (Coroutine[None, None, int]): Coroutine passed to `asyncio.run`.
+
+    Returns:
+        int: Zero seeded templates.
+    """
+    spawned_tasks.append(loop.create_task(coro))
+    return 0
+
   with (
-    patch.object(seed_templates_mod, "seed_templates", new=MagicMock(return_value=0)),
-    patch("scripts.seed_templates.asyncio.run", return_value=0),
+    patch.object(seed_templates_mod, "seed_templates", new=AsyncMock(return_value=0)),
+    patch("scripts.seed_templates.asyncio.run", side_effect=_spawn_coro_zero),
   ):
     with pytest.raises(SystemExit) as exc_seed:
       seed_templates_mod.main()
     assert exc_seed.value.code == 1
+    for t in spawned_tasks:
+      await t

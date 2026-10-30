@@ -7,7 +7,6 @@ package io.healthplatform.pulsequery.ui.screens.dashboard
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.core.result.flatMap
-import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.call.body
@@ -122,10 +121,9 @@ object DashboardExportHelper {
      * @return [Result] of [Unit] on success, or a [PulseQueryError.Storage.WriteFailure] on failure.
      */
     fun saveExportedFile(filename: String, content: String): Result<Unit> {
-        return runCatchingPulse {
-            AppContainer.keyValueStorage?.saveResult("export_$filename", content)?.getOrThrow()
-            Unit
-        }.fold(
+        val storageResult = AppContainer.keyValueStorage?.saveResult("export_$filename", content)
+            ?: Result.success(Unit)
+        return storageResult.fold(
             onSuccess = { Result.success(Unit) },
             onFailure = { error ->
                 Result.failure(PulseQueryError.Storage.WriteFailure(filename, "keyValueStorage", error))

@@ -22,6 +22,7 @@ import time
 from typing import Literal
 import uuid
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -68,6 +69,60 @@ from app.services.optimization.staffing_scheduling_solver import (
 from app.services.optimization.surgical_scheduling_solver import (
   solve_surgical_scheduling_result,
 )
+
+
+_SERVICE_CONSTRAINTS_ADAPTER: TypeAdapter[list[ServiceUnitConstraint]] = TypeAdapter(list[ServiceUnitConstraint])
+_SURGICAL_CONSTRAINTS_ADAPTER: TypeAdapter[list[SurgicalScheduleConstraint]] = TypeAdapter(
+  list[SurgicalScheduleConstraint]
+)
+_STAFFING_CONSTRAINTS_ADAPTER: TypeAdapter[list[StaffingConstraint]] = TypeAdapter(list[StaffingConstraint])
+
+
+def parse_llm_constraints_json_result(
+  use_case: OptimizationUseCase,
+  raw_llm_output: str,
+  fallback_prompt: str,
+  profile: InstitutionProfileSchema,
+) -> AppResult[list[ServiceUnitConstraint] | list[SurgicalScheduleConstraint] | list[StaffingConstraint]]:
+  """
+  Parses raw or markdown-fenced JSON constraint arrays returned by an LLM using `pydantic.TypeAdapter`,
+  falling back to deterministic rule-based extraction when `raw_llm_output` is empty or non-JSON.
+
+  Args:
+      use_case (OptimizationUseCase): Target optimization use case (`'service_unit'`, `'surgical_scheduling'`, or `'staffing_optimization'`).
+      raw_llm_output (str): Raw text or JSON response from the LLM constraint translator.
+      fallback_prompt (str): Original user prompt used for deterministic fallback extraction.
+      profile (InstitutionProfileSchema): Active partner hospital profile.
+
+  Returns:
+      AppResult[list[ServiceUnitConstraint] | list[SurgicalScheduleConstraint] | list[StaffingConstraint]]:
+          `Ok(constraints)` when valid JSON or fallback succeeds, or `Err(AppError)` when JSON is explicitly invalid against the schema.
+  """
+  cleaned = raw_llm_output.strip()
+  fenced = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", cleaned, flags=re.DOTALL | re.IGNORECASE)
+  json_candidate = fenced.group(1).strip() if fenced else (cleaned if cleaned.startswith("[") else "")
+
+  if json_candidate:
+    try:
+      if use_case == "service_unit":
+        return Ok(_SERVICE_CONSTRAINTS_ADAPTER.validate_json(json_candidate))
+      if use_case == "surgical_scheduling":
+        return Ok(_SURGICAL_CONSTRAINTS_ADAPTER.validate_json(json_candidate))
+      return Ok(_STAFFING_CONSTRAINTS_ADAPTER.validate_json(json_candidate))
+    except ValidationError as exc:
+      return Err(
+        AppError(
+          code=ErrorCode.OPTIMIZATION_INVALID_CONSTRAINT,
+          message=f"Invalid LLM constraint JSON for {use_case}: {exc}",
+          status_code=400,
+        )
+      )
+
+  if use_case == "service_unit":
+    return Ok(extract_service_unit_constraints_from_prompt(fallback_prompt, profile))
+  if use_case == "surgical_scheduling":
+    return Ok(extract_surgical_constraints_from_prompt(fallback_prompt, profile))
+  return Ok(extract_staffing_constraints_from_prompt(fallback_prompt))
 
 
 def _match_clinical_service(lower_text: str, services: list[str]) -> str | None:
@@ -1115,4 +1170,5 @@ __all__ = [
   "extract_surgical_constraints_from_prompt",
   "generate_clinical_explanation",
   "llm_optimization_copilot",
+  "parse_llm_constraints_json_result",
 ]

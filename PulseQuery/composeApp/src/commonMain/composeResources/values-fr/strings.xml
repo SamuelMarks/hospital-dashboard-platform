@@ -338,4 +338,15 @@
     <string name="optimization_des_baseline_title">Simulation à Événements Discrets (DES) JAX — Référence Experte</string>
     <string name="optimization_survey_button">Soumettre l’Enquête d’Évaluation UX</string>
     <string name="optimization_disclaimer">Les LLM peuvent faire des erreurs. Vérifiez les informations importantes.</string>
+    <string name="optimization_solving_loading">Résolution du modèle JAX/MPAX...</string>
+    <string name="optimization_survey_recorded">Enquête d’Évaluation UX Enregistrée</string>
+    <string name="wear_alert_threshold_label">Seuil : &gt;%1$d%%</string>
+    <string name="edit_widget_title_format">Modifier le Widget : %1$s</string>
+    <string name="edit_widget_title_blank_error">Le titre du widget ne peut pas être vide</string>
+    <string name="share_collaborator_email">E-mail du Collaborateur</string>
+    <string name="share_permission_view">Voir</string>
+    <string name="share_permission_edit">Modifier</string>
+    <string name="share_invite_button">Inviter</string>
+    <string name="share_no_collaborators">Aucun collaborateur partagé pour le moment.</string>
+    <string name="cart_empty_message">Votre panier de requêtes est vide. Ajoutez des requêtes depuis l’Éditeur SQL ou le Chat.</string>
 </resources>

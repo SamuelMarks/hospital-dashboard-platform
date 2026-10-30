@@ -480,6 +480,48 @@ class DuckDBManager:
         raise e
     raise duckdb.IOException(f"Failed to open DuckDB connection after {max_retries} retries.")
 
+  def get_connection_result(self, max_retries: int = 5) -> AppResult[duckdb.DuckDBPyConnection]:
+    """
+    Opens a Read-Write DuckDB connection wrapped in `AppResult[duckdb.DuckDBPyConnection]`.
+
+    Args:
+        max_retries (int): Maximum retry attempts for transient file lock contention.
+
+    Returns:
+        AppResult[duckdb.DuckDBPyConnection]: `Ok(conn)` on success, or `Err(AppError)` on failure.
+    """
+    try:
+      return Ok(self.get_connection(max_retries=max_retries))
+    except Exception as exc:
+      return Err(
+        AppError(
+          code=ErrorCode.DUCKDB_STORAGE_ERROR,
+          message=f"Failed to open DuckDB read-write connection: {exc}",
+          status_code=503,
+        )
+      )
+
+  def get_readonly_connection_result(self, max_retries: int = 3) -> AppResult[duckdb.DuckDBPyConnection]:
+    """
+    Opens a sandboxed Read-Only DuckDB connection wrapped in `AppResult[duckdb.DuckDBPyConnection]`.
+
+    Args:
+        max_retries (int): Maximum retry attempts for transient file lock contention.
+
+    Returns:
+        AppResult[duckdb.DuckDBPyConnection]: `Ok(conn)` on success, or `Err(AppError)` on failure.
+    """
+    try:
+      return Ok(self.get_readonly_connection(max_retries=max_retries))
+    except Exception as exc:
+      return Err(
+        AppError(
+          code=ErrorCode.DUCKDB_STORAGE_ERROR,
+          message=f"Failed to open DuckDB read-only connection: {exc}",
+          status_code=503,
+        )
+      )
+
 
 # Global instance configured with settings parameters
 duckdb_manager = DuckDBManager(settings.DUCKDB_PATH)

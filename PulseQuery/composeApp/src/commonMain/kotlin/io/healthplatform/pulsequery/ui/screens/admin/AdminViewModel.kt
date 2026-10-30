@@ -9,7 +9,7 @@ import io.healthplatform.pulsequery.api.models.AdminSettingsUpdateRequest
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -67,8 +67,8 @@ class AdminViewModel(
     fun loadSettings(errorPrefix: String = "Failed to load admin settings: ") {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
-                currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().asResult().getOrThrow()
+            runResultPulseAsync {
+                currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().asResult()
             }.fold(
                 onSuccess = { settings ->
                     _state.update {
@@ -160,12 +160,12 @@ class AdminViewModel(
         val snapshot = _state.value
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 val updateReq = AdminSettingsUpdateRequest(
                     apiKeys = snapshot.apiKeys,
                     visibleModels = snapshot.visibleModels
                 )
-                currentAdminApi.writeAdminSettingsApiV1AdminSettingsPut(updateReq).asResult().getOrThrow()
+                currentAdminApi.writeAdminSettingsApiV1AdminSettingsPut(updateReq).asResult()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(isLoading = false, errorMessage = null) }

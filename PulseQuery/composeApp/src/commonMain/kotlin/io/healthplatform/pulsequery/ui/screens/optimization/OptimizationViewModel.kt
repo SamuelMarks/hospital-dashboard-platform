@@ -27,9 +27,11 @@ import io.healthplatform.pulsequery.core.model.InstitutionId
 import io.healthplatform.pulsequery.core.model.OptimizationUseCaseType
 import io.healthplatform.pulsequery.core.model.QuickActionId
 import io.healthplatform.pulsequery.core.model.SurveyScore
+import io.healthplatform.pulsequery.core.result.andThenSus
 import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ml.LiteRtModelDescriptor
 import io.healthplatform.pulsequery.ml.LiteRtModelManager
@@ -120,30 +122,33 @@ class OptimizationViewModel(
      */
     suspend fun performInitializeWorkspace(): Result<Unit> {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        return runCatchingPulseAsync {
-            val insts = currentApi.getOptimizationInstitutionsApiV1OptimizationInstitutionsGet().asResult().getOrThrow()
-            val mods = currentApi.getOptimizationModelCompendiumApiV1OptimizationModelsGet().asResult().getOrThrow()
-            val qas = currentApi.getOptimizationQuickActionsApiV1OptimizationQuickActionsGet(
-                useCase = _state.value.selectedUseCase.wireValue
-            ).asResult().getOrThrow()
-            val sol = currentApi.solveOptimizationStatelessApiV1OptimizationSolvePost(
-                OptimizationSolveRequest(
-                    useCase = toRequestUseCase(_state.value.selectedUseCase),
-                    institutionId = _state.value.selectedInstitutionId.value,
-                    modelId = _state.value.selectedModelId,
-                    prompt = null
-                )
-            ).asResult().getOrThrow()
-
-            _state.update {
-                it.copy(
-                    institutions = insts,
-                    models = mods,
-                    quickActions = qas,
-                    latestSolution = sol,
-                    isLoading = false,
-                    errorMessage = null
-                )
+        return runResultPulseAsync {
+            currentApi.getOptimizationInstitutionsApiV1OptimizationInstitutionsGet().asResult().andThenSus { insts ->
+                currentApi.getOptimizationModelCompendiumApiV1OptimizationModelsGet().asResult().andThenSus { mods ->
+                    currentApi.getOptimizationQuickActionsApiV1OptimizationQuickActionsGet(
+                        useCase = _state.value.selectedUseCase.wireValue
+                    ).asResult().andThenSus { qas ->
+                        currentApi.solveOptimizationStatelessApiV1OptimizationSolvePost(
+                            OptimizationSolveRequest(
+                                useCase = toRequestUseCase(_state.value.selectedUseCase),
+                                institutionId = _state.value.selectedInstitutionId.value,
+                                modelId = _state.value.selectedModelId,
+                                prompt = null
+                            )
+                        ).asResultMap { sol ->
+                            _state.update {
+                                it.copy(
+                                    institutions = insts,
+                                    models = mods,
+                                    quickActions = qas,
+                                    latestSolution = sol,
+                                    isLoading = false,
+                                    errorMessage = null
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }.onFailure { err ->
             _state.update {
@@ -259,29 +264,29 @@ class OptimizationViewModel(
      */
     suspend fun performExecuteQuickAction(actionId: QuickActionId): Result<QuickActionExecutionResponse> {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        return runCatchingPulseAsync {
+        return runResultPulseAsync {
             val reqUseCase = when (_state.value.selectedUseCase) {
                 OptimizationUseCaseType.SERVICE_UNIT -> QuickActionExecutionRequest.UseCase.service_unit
                 OptimizationUseCaseType.SURGICAL_SCHEDULING -> QuickActionExecutionRequest.UseCase.surgical_scheduling
                 OptimizationUseCaseType.STAFFING_OPTIMIZATION -> QuickActionExecutionRequest.UseCase.staffing_optimization
             }
-            val resp = currentApi.executeOptimizationQuickActionApiV1OptimizationQuickActionsActionIdPost(
+            currentApi.executeOptimizationQuickActionApiV1OptimizationQuickActionsActionIdPost(
                 actionId = actionId.value,
                 quickActionExecutionRequest = QuickActionExecutionRequest(
                     institutionId = _state.value.selectedInstitutionId.value,
                     useCase = reqUseCase
                 )
-            ).asResult().getOrThrow()
-
-            _state.update {
-                it.copy(
-                    quickActionReport = resp,
-                    latestSolution = resp.optimizationSolution ?: it.latestSolution,
-                    isLoading = false,
-                    errorMessage = null
-                )
+            ).asResultMap { resp ->
+                _state.update {
+                    it.copy(
+                        quickActionReport = resp,
+                        latestSolution = resp.optimizationSolution ?: it.latestSolution,
+                        isLoading = false,
+                        errorMessage = null
+                    )
+                }
+                resp
             }
-            resp
         }.onFailure { err ->
             _state.update {
                 it.copy(
@@ -316,7 +321,7 @@ class OptimizationViewModel(
         }
 
         _state.update { it.copy(isLoading = true, errorMessage = null) }
-        return runCatchingPulseAsync {
+        return runResultPulseAsync {
             val existingSession = current.activeSession
             if (existingSession == null) {
                 val createUseCase = when (current.selectedUseCase) {
@@ -324,56 +329,67 @@ class OptimizationViewModel(
                     OptimizationUseCaseType.SURGICAL_SCHEDULING -> OptimizationSessionCreate.UseCase.surgical_scheduling
                     OptimizationUseCaseType.STAFFING_OPTIMIZATION -> OptimizationSessionCreate.UseCase.staffing_optimization
                 }
-                val created = currentApi.createOptimizationSessionApiV1OptimizationSessionsPost(
+                currentApi.createOptimizationSessionApiV1OptimizationSessionsPost(
                     OptimizationSessionCreate(
                         useCase = createUseCase,
                         institutionId = current.selectedInstitutionId.value,
                         initialPrompt = cleanedPrompt,
                         modelId = current.selectedModelId
                     )
-                ).asResult().getOrThrow()
-
-                val sol = created.latestSolution
-                    ?: currentApi.solveOptimizationStatelessApiV1OptimizationSolvePost(
-                        OptimizationSolveRequest(
-                            useCase = toRequestUseCase(current.selectedUseCase),
-                            institutionId = current.selectedInstitutionId.value,
-                            prompt = cleanedPrompt,
-                            modelId = current.selectedModelId
-                        )
-                    ).asResult().getOrThrow()
-
-                _state.update {
-                    it.copy(
-                        activeSession = created,
-                        latestSolution = sol,
-                        isLoading = false,
-                        errorMessage = null
-                    )
+                ).asResult().andThenSus { created ->
+                    if (created.latestSolution != null) {
+                        _state.update {
+                            it.copy(
+                                activeSession = created,
+                                latestSolution = created.latestSolution,
+                                isLoading = false,
+                                errorMessage = null
+                            )
+                        }
+                        Result.success(created.latestSolution)
+                    } else {
+                        currentApi.solveOptimizationStatelessApiV1OptimizationSolvePost(
+                            OptimizationSolveRequest(
+                                useCase = toRequestUseCase(current.selectedUseCase),
+                                institutionId = current.selectedInstitutionId.value,
+                                prompt = cleanedPrompt,
+                                modelId = current.selectedModelId
+                            )
+                        ).asResultMap { sol ->
+                            _state.update {
+                                it.copy(
+                                    activeSession = created,
+                                    latestSolution = sol,
+                                    isLoading = false,
+                                    errorMessage = null
+                                )
+                            }
+                            sol
+                        }
+                    }
                 }
-                sol
             } else {
-                val turn = currentApi.iterateOptimizationSessionApiV1OptimizationSessionsSessionIdIteratePost(
+                currentApi.iterateOptimizationSessionApiV1OptimizationSessionsSessionIdIteratePost(
                     sessionId = existingSession.id,
                     optimizationIterationRequest = OptimizationIterationRequest(
                         prompt = cleanedPrompt,
                         modelId = current.selectedModelId
                     )
-                ).asResult().getOrThrow()
-
-                val updatedIterations = (existingSession.iterations ?: emptyList()) + turn
-                _state.update {
-                    it.copy(
-                        activeSession = existingSession.copy(
+                ).asResultMap { turn ->
+                    val updatedIterations = (existingSession.iterations ?: emptyList()) + turn
+                    _state.update {
+                        it.copy(
+                            activeSession = existingSession.copy(
+                                latestSolution = turn.solution,
+                                iterations = updatedIterations
+                            ),
                             latestSolution = turn.solution,
-                            iterations = updatedIterations
-                        ),
-                        latestSolution = turn.solution,
-                        isLoading = false,
-                        errorMessage = null
-                    )
+                            isLoading = false,
+                            errorMessage = null
+                        )
+                    }
+                    turn.solution
                 }
-                turn.solution
             }
         }.onFailure { err ->
             _state.update {
@@ -415,7 +431,7 @@ class OptimizationViewModel(
             OptimizationUseCaseType.SURGICAL_SCHEDULING -> OptimizationSurveyCreate.UseCase.surgical_scheduling
             OptimizationUseCaseType.STAFFING_OPTIMIZATION -> OptimizationSurveyCreate.UseCase.staffing_optimization
         }
-        return runCatchingPulseAsync {
+        return runResultPulseAsync {
             currentApi.submitOptimizationSurveyApiV1OptimizationSurveysPost(
                 OptimizationSurveyCreate(
                     scoreVsManualProcess = scoreManual.value,
@@ -426,8 +442,9 @@ class OptimizationViewModel(
                     roleCategory = "Physician",
                     qualitativeFeedback = feedback
                 )
-            ).asResult().getOrThrow()
-            _state.update { it.copy(surveySubmitted = true, errorMessage = null) }
+            ).asResultMap {
+                _state.update { it.copy(surveySubmitted = true, errorMessage = null) }
+            }
         }.onFailure { err ->
             _state.update {
                 it.copy(errorMessage = err.messageOrDefault(UiErrorKey.SURVEY_SUBMISSION_FAILED))

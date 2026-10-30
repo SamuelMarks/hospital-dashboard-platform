@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api import deps
 from app.api.routers.admin import require_admin
+from app.core.result import unwrap_or_raise_http
 from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
 from app.models.user import User
 from app.schemas.system import (
@@ -55,7 +56,7 @@ async def get_system_health(
   response.headers["Pragma"] = "no-cache"
   response.headers["Expires"] = "0"
 
-  summary = await system_diagnostics_service.get_health_summary(require_populated=strict)
+  summary = unwrap_or_raise_http(await system_diagnostics_service.get_health_summary_result(require_populated=strict))
 
   if summary.status != "healthy":
     response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -87,7 +88,7 @@ async def get_system_diagnostics(
   response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
   response.headers["Pragma"] = "no-cache"
   response.headers["Expires"] = "0"
-  return await system_diagnostics_service.build_diagnostics_response()
+  return unwrap_or_raise_http(await system_diagnostics_service.build_diagnostics_response_result())
 
 
 @router.post(
@@ -109,7 +110,7 @@ async def trigger_reingest(
       ReingestResponse: ReingestResponse with updated table row counts.
   """
   _ = current_user
-  await run_in_duckdb_thread(data_ingestion_service.ingest_all_csvs)
+  unwrap_or_raise_http(await run_in_duckdb_thread(data_ingestion_service.ingest_all_csvs_result))
   storage_status = await run_in_duckdb_thread(duckdb_manager.validate_duckdb_storage)
 
   tables = storage_status.get("tables", {})

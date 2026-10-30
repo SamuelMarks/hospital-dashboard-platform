@@ -15,6 +15,7 @@ import {
   output,
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
+import { hasActiveCdkOverlay } from './cdk-overlay-state.utils';
 
 /**
  * Focus Trap Directive.
@@ -146,11 +147,7 @@ export class FocusTrapDirective implements OnInit, AfterViewInit, OnDestroy {
    * @returns True when a higher-layer CDK overlay is active.
    */
   private hasActiveCdkModalOverlay(): boolean {
-    return (
-      this.document.querySelector(
-        '.cdk-overlay-container .mat-mdc-dialog-container, .cdk-overlay-container [role="dialog"], .cdk-overlay-container [role="menu"], .cdk-overlay-container [role="listbox"]',
-      ) !== null
-    );
+    return hasActiveCdkOverlay(this.document);
   }
 
   /**

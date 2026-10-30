@@ -56,10 +56,10 @@ describe('AskDataService', () => {
     service.close();
 
     // Non-HTMLElement activeElement branch
-    Object.defineProperty(document, 'activeElement', { value: null, configurable: true });
+    const activeSpy = vi.spyOn(document, 'activeElement', 'get').mockReturnValue(null);
     service.open();
     service.close();
-    delete (document as unknown as Record<string, unknown>)['activeElement'];
+    activeSpy.mockRestore();
 
     document.body.removeChild(btn);
   });

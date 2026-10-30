@@ -135,6 +135,25 @@ def test_readonly_connection_zero_retries() -> None:
   assert "retries" in str(exc.value).lower()
 
 
+def test_connection_result_wrappers(db_manager: DuckDBManager) -> None:
+  """Verify `get_connection_result` and `get_readonly_connection_result` Ok and Err branches."""
+  from app.core.result import Err, Ok
+
+  rw_ok = db_manager.get_connection_result()
+  assert isinstance(rw_ok, Ok)
+  rw_ok.value.close()
+
+  ro_ok = db_manager.get_readonly_connection_result()
+  assert isinstance(ro_ok, Ok)
+  ro_ok.value.close()
+
+  rw_err = db_manager.get_connection_result(max_retries=0)
+  assert isinstance(rw_err, Err)
+
+  ro_err = db_manager.get_readonly_connection_result(max_retries=0)
+  assert isinstance(ro_err, Err)
+
+
 @pytest.mark.asyncio
 async def test_duckdb_udf_available_across_multiple_readonly_connections_and_threads(tmp_path: Path) -> None:
   """Verifies `OPTIMIZE_SERVICE_UNIT_BEDS` UDF is registered on every read-only connection and works concurrently."""

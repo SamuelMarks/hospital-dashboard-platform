@@ -14,7 +14,7 @@ import io.healthplatform.pulsequery.core.model.AlertRuleId
 import io.healthplatform.pulsequery.core.model.ClinicalRole
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,8 +64,8 @@ class AlertRulesViewModel(
     fun loadRules() {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
-                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult().getOrThrow()
+            runResultPulseAsync {
+                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult()
             }.fold(
                 onSuccess = { list ->
                     _state.update { it.copy(rules = list, isLoading = false, errorMessage = null) }
@@ -89,8 +89,8 @@ class AlertRulesViewModel(
      */
     fun deleteRule(ruleId: String) {
         scope.launch {
-            runCatchingPulseAsync {
-                currentAlertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId).asResult().getOrThrow()
+            runResultPulseAsync {
+                currentAlertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId).asResult()
             }.fold(
                 onSuccess = {
                     loadRules()
@@ -153,7 +153,7 @@ class AlertRulesViewModel(
 
         scope.launch {
             _state.update { it.copy(isSaving = true, dialogError = null) }
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentAlertRulesApi.createAlertRuleApiV1AnalyticsAlertRulesPost(
                     AlertRuleCreate(
                         unitCategory = unitCategory.trim(),
@@ -161,7 +161,7 @@ class AlertRulesViewModel(
                         severity = severity,
                         isActive = true
                     )
-                ).asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(isSaving = false, dialogError = null) }
@@ -210,7 +210,7 @@ class AlertRulesViewModel(
 
         scope.launch {
             _state.update { it.copy(isSaving = true, dialogError = null) }
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentAlertRulesApi.updateAlertRuleApiV1AnalyticsAlertRulesRuleIdPut(
                     ruleId = ruleId,
                     alertRuleUpdate = AlertRuleUpdate(
@@ -219,7 +219,7 @@ class AlertRulesViewModel(
                         severity = severity,
                         isActive = isActive
                     )
-                ).asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = {
                     _state.update { it.copy(isSaving = false, dialogError = null) }

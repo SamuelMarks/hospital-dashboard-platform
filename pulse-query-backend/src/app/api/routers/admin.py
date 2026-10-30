@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.core.i18n import get_translated_message
-from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok, unwrap_or_raise_http
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
-from app.services.admin import get_admin_settings, update_admin_settings
+from app.services.admin import admin_service
 
 router = APIRouter()
 
@@ -102,8 +102,18 @@ def require_admin(
 async def read_admin_settings(
   db: Annotated[AsyncSession, Depends(get_db)], current_user: Annotated[User, Depends(require_admin)]
 ) -> AdminSettingsResponse:
-  """Get system-wide admin settings like API keys and visible models."""
-  return await get_admin_settings(db)
+  """
+  Get system-wide admin settings like API keys and visible models.
+
+  Args:
+      db (AsyncSession): Active PostgreSQL session.
+      current_user (User): Authenticated administrator.
+
+  Returns:
+      AdminSettingsResponse: Current admin settings state.
+  """
+  _ = current_user
+  return unwrap_or_raise_http(await admin_service.get_admin_settings_result(db))
 
 
 @router.put("/settings", response_model=AdminSettingsResponse)
@@ -112,5 +122,16 @@ async def write_admin_settings(
   db: Annotated[AsyncSession, Depends(get_db)],
   current_user: Annotated[User, Depends(require_admin)],
 ) -> AdminSettingsResponse:
-  """Update system-wide admin settings like API keys and visible models."""
-  return await update_admin_settings(db, request)
+  """
+  Update system-wide admin settings like API keys and visible models.
+
+  Args:
+      request (AdminSettingsUpdateRequest): Updated admin settings payload.
+      db (AsyncSession): Active PostgreSQL session.
+      current_user (User): Authenticated administrator.
+
+  Returns:
+      AdminSettingsResponse: Updated admin settings state.
+  """
+  _ = current_user
+  return unwrap_or_raise_http(await admin_service.update_admin_settings_result(db, request))

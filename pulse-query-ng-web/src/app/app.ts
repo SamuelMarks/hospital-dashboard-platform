@@ -20,6 +20,7 @@ import { KeyboardShortcutsService } from './core/keyboard/keyboard-shortcuts.ser
 import { ThemeService } from './core/theme/theme.service';
 import { ToolbarComponent } from './dashboard/toolbar.component';
 import { SystemHealthBannerComponent } from './shared/components/system-health-banner.component';
+import { hasActiveCdkOverlay } from './core/accessibility/cdk-overlay-state.utils';
 import { environment } from '../environments/environment';
 
 /**
@@ -184,12 +185,7 @@ export class App implements OnInit {
    * modal dialog, menu, or listbox overlay is currently open on top.
    */
   onDocumentEscape(): void {
-    if (
-      this.askData.isOpen() &&
-      !this.document.querySelector(
-        '.cdk-overlay-container .mat-mdc-dialog-container, .cdk-overlay-container [role="dialog"], .cdk-overlay-container [role="menu"], .cdk-overlay-container [role="listbox"]',
-      )
-    ) {
+    if (this.askData.isOpen() && !hasActiveCdkOverlay(this.document)) {
       this.askData.close();
     }
   }

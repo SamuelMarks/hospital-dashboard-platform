@@ -13,7 +13,7 @@ import io.healthplatform.pulsequery.core.model.ClinicalRole
 import io.healthplatform.pulsequery.core.model.UserId
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -80,9 +80,8 @@ class UserManagementViewModel(
     fun loadUsers() {
         _state.value = UserManagementUiState.Loading
         scope.launch {
-            runCatchingPulseAsync {
-                val response = currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100)
-                response.asResult().getOrThrow()
+            runResultPulseAsync {
+                currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100).asResult()
             }.fold(
                 onSuccess = { users ->
                     _state.value = UserManagementUiState.Success(
@@ -108,12 +107,11 @@ class UserManagementViewModel(
     fun updateRole(userId: String, newRole: String) {
         val current = _state.value as? UserManagementUiState.Success ?: return
         scope.launch {
-            runCatchingPulseAsync {
-                val response = currentAdminUsersApi.updateUserRoleApiV1AdminUsersUserIdRolePut(
+            runResultPulseAsync {
+                currentAdminUsersApi.updateUserRoleApiV1AdminUsersUserIdRolePut(
                     userId = userId,
                     userRoleUpdate = UserRoleUpdate(role = newRole)
-                )
-                response.asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = { updated ->
                     val newAllUsers = current.allUsers.map { if (it.id == userId) updated else it }
@@ -138,12 +136,11 @@ class UserManagementViewModel(
     fun toggleStatus(userId: String, newStatus: Boolean) {
         val current = _state.value as? UserManagementUiState.Success ?: return
         scope.launch {
-            runCatchingPulseAsync {
-                val response = currentAdminUsersApi.updateUserStatusApiV1AdminUsersUserIdStatusPut(
+            runResultPulseAsync {
+                currentAdminUsersApi.updateUserStatusApiV1AdminUsersUserIdStatusPut(
                     userId = userId,
                     userStatusUpdate = UserStatusUpdate(isActive = newStatus)
-                )
-                response.asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = { updated ->
                     val newAllUsers = current.allUsers.map { if (it.id == userId) updated else it }

@@ -64,7 +64,9 @@ import pulsequery.composeapp.generated.resources.optimization_litert_hot_load
 import pulsequery.composeapp.generated.resources.optimization_prompt_label
 import pulsequery.composeapp.generated.resources.optimization_quick_actions
 import pulsequery.composeapp.generated.resources.optimization_solve_button
+import pulsequery.composeapp.generated.resources.optimization_solving_loading
 import pulsequery.composeapp.generated.resources.optimization_survey_button
+import pulsequery.composeapp.generated.resources.optimization_survey_recorded
 import pulsequery.composeapp.generated.resources.optimization_use_case_service_unit
 import pulsequery.composeapp.generated.resources.optimization_use_case_staffing
 import pulsequery.composeapp.generated.resources.optimization_use_case_surgical
@@ -322,7 +324,7 @@ fun OptimizationScreen(
                         .testTag("optimization-loading")
                 ) {
                     CircularProgressIndicator()
-                    Text("Solving JAX/MPAX model...")
+                    Text(stringResource(Res.string.optimization_solving_loading))
                 }
             }
         }
@@ -348,7 +350,7 @@ fun OptimizationScreen(
         if (state.surveySubmitted) {
             item {
                 Text(
-                    text = "UX Evaluation Survey Recorded",
+                    text = stringResource(Res.string.optimization_survey_recorded),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier

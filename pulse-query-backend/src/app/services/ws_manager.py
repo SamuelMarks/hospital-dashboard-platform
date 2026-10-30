@@ -8,11 +8,14 @@ widget updates, collaborator presence, and layout adjustments.
 from collections import defaultdict
 from collections.abc import Mapping
 from datetime import UTC, datetime
+import logging
 from typing import TypedDict
 
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 from app.schemas.json_types import JsonValue
+
+logger = logging.getLogger(__name__)
 
 
 class CollaboratorMetadataDict(TypedDict):
@@ -137,7 +140,8 @@ class DashboardConnectionManager:
         continue
       try:
         await connection.send_json(message)
-      except Exception:
+      except (WebSocketDisconnect, RuntimeError, OSError, ValueError, TypeError) as exc:
+        logger.debug("Removing stale WebSocket connection on %s: %s", dashboard_id, exc)
         stale.append(connection)
 
     for dead in stale:

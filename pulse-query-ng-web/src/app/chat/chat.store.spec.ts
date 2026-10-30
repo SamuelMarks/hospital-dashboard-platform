@@ -605,5 +605,27 @@ data: {"no_event":true}
       expect(store.isStreaming()).toBe(false);
       expect(store.error()).toContain('Streaming failed with status: 500');
     });
+
+    it('aborts an active in-flight stream when selectConversation or createNewChat is called', async () => {
+      let capturedSignal: AbortSignal | null | undefined = null;
+      let resolveFetch!: (res: Response) => void;
+      vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
+        capturedSignal = init?.signal;
+        return new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        });
+      });
+
+      const pendingStream = store.streamResponse('c1');
+      expect(capturedSignal).toBeTruthy();
+      expect(capturedSignal?.aborted).toBe(false);
+
+      // Calling createNewChat while stream is in-flight aborts the active controller
+      store.createNewChat();
+      expect(capturedSignal?.aborted).toBe(true);
+
+      resolveFetch(new Response('Aborted', { status: 500 }));
+      await pendingStream;
+    });
   });
 });

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Runtime type-guard and narrowing parsers for dashboard widget datasets
- * (`TableDataSet`, `MetricData`, `ScalarData`, `ChartConfig`).
+ * (`TableDataSet`, `MetricData`, `ScalarData`, `ChartConfig`, `TypedWidgetConfig`).
  */
 
 import { TableDataSet } from '../shared/visualizations/viz-table/viz-table.component';
@@ -10,6 +10,117 @@ import {
   ChartConfig,
   ChartReferenceLine,
 } from '../shared/visualizations/viz-chart/viz-chart.component';
+
+/**
+ * Strongly typed SQL widget configuration variant.
+ */
+export interface SqlWidgetConfig {
+  /** Discriminant widget source kind. */
+  readonly kind: 'SQL';
+  /** DuckDB SQL query string. */
+  readonly query: string;
+  /** Whether interactive natural-text / LLM query execution is enabled on the card. */
+  readonly allowNaturalText: boolean;
+  /** Configured LLM processor identifier (`'SQL'` or `'provider:model'`). */
+  readonly processor: string;
+  /** Optional saved natural-language prompt. */
+  readonly naturalTextPrompt: string;
+  /** Optional custom input placeholder string. */
+  readonly placeholderText: string | null;
+  /** Optional template UUID when instantiated from a template. */
+  readonly templateId: string | null;
+}
+
+/**
+ * Strongly typed HTTP widget configuration variant.
+ */
+export interface HttpWidgetConfig {
+  /** Discriminant widget source kind. */
+  readonly kind: 'HTTP';
+  /** Target HTTP endpoint URL. */
+  readonly url: string;
+  /** HTTP request method (`'GET'`, `'POST'`, etc.). */
+  readonly method: string;
+}
+
+/**
+ * Strongly typed Markdown/Text widget configuration variant.
+ */
+export interface TextWidgetConfig {
+  /** Discriminant widget source kind. */
+  readonly kind: 'TEXT';
+  /** Markdown text body. */
+  readonly content: string;
+}
+
+/**
+ * Discriminated union of all strongly typed widget configurations.
+ */
+export type TypedWidgetConfig = SqlWidgetConfig | HttpWidgetConfig | TextWidgetConfig;
+
+/**
+ * Parses a raw widget configuration record into a strongly typed `SqlWidgetConfig`.
+ *
+ * @param config - Raw widget configuration record.
+ * @returns Strongly typed `SqlWidgetConfig` value.
+ */
+export function parseSqlWidgetConfig(
+  config: Record<string, unknown> | null | undefined,
+): SqlWidgetConfig {
+  const safeConfig = config ?? {};
+  const rawProcessor = safeConfig['processor'];
+  const rawPlaceholder = safeConfig['placeholder_text'];
+  const rawTemplateId = safeConfig['template_id'];
+
+  return {
+    kind: 'SQL',
+    query: typeof safeConfig['query'] === 'string' ? safeConfig['query'] : '',
+    allowNaturalText: Boolean(safeConfig['allow_natural_text']),
+    processor: typeof rawProcessor === 'string' && rawProcessor.length > 0 ? rawProcessor : 'SQL',
+    naturalTextPrompt:
+      typeof safeConfig['natural_text_prompt'] === 'string'
+        ? safeConfig['natural_text_prompt']
+        : '',
+    placeholderText:
+      typeof rawPlaceholder === 'string' && rawPlaceholder.trim().length > 0
+        ? rawPlaceholder
+        : null,
+    templateId:
+      typeof rawTemplateId === 'string' && rawTemplateId.length > 0 ? rawTemplateId : null,
+  };
+}
+
+/**
+ * Parses a raw widget `type` and `config` record into a strongly typed `TypedWidgetConfig` discriminated union.
+ *
+ * @param widgetType - Raw widget type string (`'SQL'`, `'HTTP'`, `'TEXT'`, or `'TEMPLATE'`).
+ * @param config - Raw widget configuration record.
+ * @returns Strongly typed `TypedWidgetConfig` union value.
+ */
+export function parseTypedWidgetConfig(
+  widgetType: string | null | undefined,
+  config: Record<string, unknown> | null | undefined,
+): TypedWidgetConfig {
+  const normalizedType = (widgetType || 'SQL').toUpperCase();
+  const safeConfig = config ?? {};
+
+  if (normalizedType === 'TEXT') {
+    return {
+      kind: 'TEXT',
+      content: typeof safeConfig['content'] === 'string' ? safeConfig['content'] : '',
+    };
+  }
+
+  if (normalizedType === 'HTTP') {
+    return {
+      kind: 'HTTP',
+      url: typeof safeConfig['url'] === 'string' ? safeConfig['url'] : '',
+      method: typeof safeConfig['method'] === 'string' ? safeConfig['method'] : 'GET',
+    };
+  }
+
+  return parseSqlWidgetConfig(safeConfig);
+}
 
 /**
  * Safely narrows an arbitrary `unknown` value into `Record<string, unknown> | null`.

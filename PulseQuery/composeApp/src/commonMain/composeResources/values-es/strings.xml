@@ -338,4 +338,15 @@
     <string name="optimization_des_baseline_title">Simulación de Eventos Discretos (DES) JAX — Línea Base Experta</string>
     <string name="optimization_survey_button">Enviar Encuesta de Evaluación UX</string>
     <string name="optimization_disclaimer">Los LLM pueden cometer errores. Verifique la información importante.</string>
+    <string name="optimization_solving_loading">Resolviendo modelo JAX/MPAX...</string>
+    <string name="optimization_survey_recorded">Encuesta de Evaluación UX Registrada</string>
+    <string name="wear_alert_threshold_label">Umbral: &gt;%1$d%%</string>
+    <string name="edit_widget_title_format">Editar Widget: %1$s</string>
+    <string name="edit_widget_title_blank_error">El título del widget no puede estar vacío</string>
+    <string name="share_collaborator_email">Correo del Colaborador</string>
+    <string name="share_permission_view">Ver</string>
+    <string name="share_permission_edit">Editar</string>
+    <string name="share_invite_button">Invitar</string>
+    <string name="share_no_collaborators">Aún no se han compartido colaboradores.</string>
+    <string name="cart_empty_message">Su carrito de consultas está vacío. Añada consultas desde el Editor SQL o el Chat.</string>
 </resources>

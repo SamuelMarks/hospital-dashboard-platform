@@ -31,6 +31,72 @@ inline fun <T, R> Result<T>.flatMap(transform: (T) -> Result<R>): Result<R> =
     )
 
 /**
+ * Suspending monadic flatMap (`andThenSus`) that applies a suspending function returning a [Result]
+ * to a successful [Result], catching any unexpected exceptions into a [PulseQueryError].
+ *
+ * @param T The type of the value contained in the current result.
+ * @param R The type of the value contained in the returned result.
+ * @param transform Suspending function invoked with the successful value to produce a new [Result].
+ * @return Flattened [Result] containing the transformed value, or the failure.
+ */
+suspend fun <T, R> Result<T>.andThenSus(
+    transform: suspend (T) -> Result<R>
+): Result<R> = fold(
+    onSuccess = { value -> runResultPulseAsync { transform(value) } },
+    onFailure = { Result.failure(it) }
+)
+
+/**
+ * Transforms the failure [PulseQueryError] of a failed [Result] using [transform], leaving
+ * successful results unchanged.
+ *
+ * @param T The type of the successful value.
+ * @param transform Mapping function applied to the normalized [PulseQueryError].
+ * @return [Result] with the transformed [PulseQueryError] on failure, or the original success value.
+ */
+fun <T> Result<T>.mapError(
+    transform: (PulseQueryError) -> PulseQueryError
+): Result<T> = fold(
+    onSuccess = { Result.success(it) },
+    onFailure = { err -> Result.failure(transform(PulseQueryError.fromThrowable(err))) }
+)
+
+/**
+ * Executes a suspending block that itself returns a [Result], catching any uncaught exceptions
+ * from the suspending call (such as Ktor MockEngine network errors) and normalizing them into
+ * a failed [Result] with a [PulseQueryError] while preserving [CancellationException].
+ *
+ * @param T Target value type inside the returned [Result].
+ * @param block Suspending block returning `Result<T>`.
+ * @return Flattened `Result<T>` with normalized [PulseQueryError] on failure.
+ */
+@Suppress("TooGenericExceptionCaught")
+suspend fun <T> runResultPulseAsync(block: suspend () -> Result<T>): Result<T> {
+    return try {
+        block()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (throwable: Throwable) {
+        Result.failure(PulseQueryError.fromThrowable(throwable))
+    }
+}
+
+/**
+ * Converts a typed [HttpResponse] into an idiomatic Kotlin [Result] and transforms the
+ * successful body value using [transform] without inline `Result.map` branch duplication.
+ *
+ * @param T Deserialized HTTP response body type.
+ * @param R Transformed output value type.
+ * @param transform Mapping function applied to the successful HTTP response body.
+ * @return [Result] containing the mapped value [R] or a [PulseQueryError].
+ */
+suspend fun <T : Any, R> HttpResponse<T>.asResultMap(transform: (T) -> R): Result<R> =
+    asResult().fold(
+        onSuccess = { Result.success(transform(it)) },
+        onFailure = { Result.failure(it) }
+    )
+
+/**
  * Extracts a human-readable error detail message from a raw HTTP response body string,
  * unwrapping FastAPI `{"detail": "..."}` JSON structures when present.
  *

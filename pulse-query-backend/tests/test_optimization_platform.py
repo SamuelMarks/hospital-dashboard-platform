@@ -54,6 +54,7 @@ from app.services.optimization import (
   solve_surgical_scheduling_result,
 )
 from app.services.optimization.des_baseline_engine import _compute_improvement_and_attainment
+from app.services.optimization.llm_optimization_copilot import parse_llm_constraints_json_result
 
 
 @pytest.fixture
@@ -281,6 +282,46 @@ def test_natural_language_constraint_extractors() -> None:
     "Cap unexpected overtime shifts at 2, limit A-days to 2, and set float pool to 5."
   )
   assert len(c_staff) == 3
+
+  # Verify parse_llm_constraints_json_result across raw JSON, markdown-fenced JSON, invalid JSON, and fallback
+  fenced_svc = """```json
+  [{"constraint_type": "unit_capacity_delta", "unit": "PCU 350", "value": 6.0}]
+  ```"""
+  parsed_svc = parse_llm_constraints_json_result("service_unit", fenced_svc, "", prof)
+  assert isinstance(parsed_svc, Ok)
+  assert len(parsed_svc.value) == 1
+
+  raw_surg = '[{"constraint_type": "reserve_emergency_beds", "recovery_unit": "PICU", "value": 3.0}]'
+  parsed_surg = parse_llm_constraints_json_result("surgical_scheduling", raw_surg, "", prof)
+  assert isinstance(parsed_surg, Ok)
+  assert len(parsed_surg.value) == 1
+
+  raw_staff = '[{"constraint_type": "max_overtime_shifts", "value": 2.0}]'
+  parsed_staff = parse_llm_constraints_json_result("staffing_optimization", raw_staff, "", prof)
+  assert isinstance(parsed_staff, Ok)
+  assert len(parsed_staff.value) == 1
+
+  bad_json = '[{"constraint_type": "invalid_type_xyz"}]'
+  assert isinstance(parse_llm_constraints_json_result("service_unit", bad_json, "", prof), Err)
+
+  # Fallback when raw_llm_output is prose / empty
+  fb_svc = parse_llm_constraints_json_result("service_unit", "Natural language fallback", "Add 4 beds on PCU 350", prof)
+  assert isinstance(fb_svc, Ok)
+  assert len(fb_svc.value) == 1
+  fb_surg = parse_llm_constraints_json_result("surgical_scheduling", "", "Reserve 2 emergency beds on PICU", prof)
+  assert isinstance(fb_surg, Ok)
+  assert len(fb_surg.value) == 1
+  fb_staff = parse_llm_constraints_json_result("staffing_optimization", "", "Limit A-days to 2", prof)
+  assert isinstance(fb_staff, Ok)
+  assert len(fb_staff.value) == 1
+
+  # Mathematical invariants across partner institutions: non-negativity and capacity bounds
+  for inst_profile in list_institution_profiles():
+    sol_res = solve_service_unit_assignment_result(inst_profile.institution_id)
+    assert isinstance(sol_res, Ok)
+    for row in sol_res.value.service_unit_assignments:
+      assert row.optimized_patient_days >= 0.0
+      assert row.baseline_patient_days >= 0.0
 
 
 @pytest.mark.asyncio

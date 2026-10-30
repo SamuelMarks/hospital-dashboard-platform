@@ -43,12 +43,18 @@ import io.healthplatform.pulsequery.api.models.DashboardShareCreate
 import io.healthplatform.pulsequery.api.models.DashboardShareResponse
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.done
+import pulsequery.composeapp.generated.resources.share_collaborator_email
+import pulsequery.composeapp.generated.resources.share_dashboard
+import pulsequery.composeapp.generated.resources.share_invite_button
+import pulsequery.composeapp.generated.resources.share_no_collaborators
+import pulsequery.composeapp.generated.resources.share_permission_edit
+import pulsequery.composeapp.generated.resources.share_permission_view
 
 /**
  * State representation for the Dashboard Sharing Dialog.
@@ -82,7 +88,7 @@ fun DashboardShareDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Share Dashboard") },
+        title = { Text(stringResource(Res.string.share_dashboard)) },
         text = {
             DashboardShareContent(
                 dashboardId = dashboardId,
@@ -92,7 +98,7 @@ fun DashboardShareDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Done")
+                Text(stringResource(Res.string.done))
             }
         }
     )
@@ -120,11 +126,10 @@ fun DashboardShareContent(
     fun loadShares() {
         coroutineScope.launch {
             state = state.copy(isLoading = true, errorMessage = null)
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 AppContainer.dashboardsApi
                     .listDashboardSharesApiV1DashboardsDashboardIdSharesGet(dashboardId)
                     .asResult()
-                    .getOrThrow()
             }.fold(
                 onSuccess = { shares ->
                     state = state.copy(isLoading = false, shares = shares)
@@ -143,7 +148,7 @@ fun DashboardShareContent(
         if (state.inviteEmail.isBlank()) return
         coroutineScope.launch {
             state = state.copy(isLoading = true, errorMessage = null)
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 val req = DashboardShareCreate(
                     userEmail = state.inviteEmail.trim(),
                     permissionLevel = state.invitePermission
@@ -151,7 +156,6 @@ fun DashboardShareContent(
                 AppContainer.dashboardsApi
                     .shareDashboardApiV1DashboardsDashboardIdSharesPost(dashboardId, req)
                     .asResult()
-                    .getOrThrow()
             }.fold(
                 onSuccess = {
                     state = state.copy(inviteEmail = "")
@@ -172,11 +176,10 @@ fun DashboardShareContent(
     fun revokeShare(shareId: String) {
         coroutineScope.launch {
             state = state.copy(isLoading = true, errorMessage = null)
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 AppContainer.dashboardsApi
                     .deleteDashboardShareApiV1DashboardsDashboardIdSharesShareIdDelete(dashboardId, shareId)
                     .asResult()
-                    .getOrThrow()
             }.fold(
                 onSuccess = {
                     loadShares()
@@ -196,7 +199,7 @@ fun DashboardShareContent(
         OutlinedTextField(
             value = state.inviteEmail,
             onValueChange = { state = state.copy(inviteEmail = it) },
-            label = { Text("Collaborator Email") },
+            label = { Text(stringResource(Res.string.share_collaborator_email)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -212,12 +215,12 @@ fun DashboardShareContent(
                 FilterChip(
                     selected = state.invitePermission == "VIEW",
                     onClick = { state = state.copy(invitePermission = "VIEW") },
-                    label = { Text("View") }
+                    label = { Text(stringResource(Res.string.share_permission_view)) }
                 )
                 FilterChip(
                     selected = state.invitePermission == "EDIT",
                     onClick = { state = state.copy(invitePermission = "EDIT") },
-                    label = { Text("Edit") }
+                    label = { Text(stringResource(Res.string.share_permission_edit)) }
                 )
             }
 
@@ -227,7 +230,7 @@ fun DashboardShareContent(
             ) {
                 Icon(Icons.Filled.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Invite")
+                Text(stringResource(Res.string.share_invite_button))
             }
         }
 
@@ -256,7 +259,7 @@ fun DashboardShareContent(
             }
         } else if (state.shares.isEmpty()) {
             Text(
-                text = "No collaborators shared yet.",
+                text = stringResource(Res.string.share_no_collaborators),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

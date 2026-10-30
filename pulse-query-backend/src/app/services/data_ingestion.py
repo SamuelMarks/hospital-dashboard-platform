@@ -27,6 +27,7 @@ from app.core.diagnostics import (
   diagnostics_registry,
   format_missing_data_warning_banner,
 )
+from app.core.result import AppResult, Ok
 from app.database.duckdb import DuckDBConnectionProtocol, duckdb_manager
 
 logger = logging.getLogger("data_ingestion")
@@ -399,6 +400,31 @@ class DataIngestionService:
     else:
       resolved_dir = str(self.data_dir)
     return self.ingest_all_csvs(data_dir=resolved_dir)
+
+  @classmethod
+  def ingest_all_csvs_result(cls, data_dir: str | None = None) -> AppResult[list[str]]:
+    """
+    Ingests all CSV files from `data_dir` into DuckDB and returns `AppResult[list[str]]`.
+
+    Args:
+        data_dir (str | None): Optional directory path override.
+
+    Returns:
+        AppResult[list[str]]: `Ok(ingested_tables)`.
+    """
+    return Ok(cls.ingest_all_csvs(data_dir=data_dir))
+
+  def ingest_data_result(self, data_dir: str | Path | None = None) -> AppResult[list[str]]:
+    """
+    Ingests CSV files from `data_dir` (or `self.data_dir`) and returns `AppResult[list[str]]`.
+
+    Args:
+        data_dir (str | Path | None): Optional directory path override.
+
+    Returns:
+        AppResult[list[str]]: `Ok(ingested_tables)`.
+    """
+    return Ok(self.ingest_data(data_dir=data_dir))
 
 
 # Singleton instance

@@ -12,7 +12,7 @@
           <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
           @if (allowsNaturalText()) {
             <mat-chip class="widget-chip" data-testid="chip-widget-processor">
-              {{ processorUsed() === 'SQL' ? 'SQL [no model]' : processorUsed() }}
+              {{ processorDisplayLabel() }}
             </mat-chip>
           }
         </mat-chip-set>

@@ -11,10 +11,75 @@ import {
   parseChartConfig,
   parseMetricData,
   parseScalarData,
+  parseSqlWidgetConfig,
   parseTableDataSet,
+  parseTypedWidgetConfig,
 } from './widget-data.guards';
 
 describe('widget-data.guards', () => {
+  describe('parseTypedWidgetConfig', () => {
+    it('parses TEXT, HTTP, and SQL widget configurations across default and custom fields', () => {
+      expect(parseSqlWidgetConfig(null)).toEqual({
+        kind: 'SQL',
+        query: '',
+        allowNaturalText: false,
+        processor: 'SQL',
+        naturalTextPrompt: '',
+        placeholderText: null,
+        templateId: null,
+      });
+      expect(parseTypedWidgetConfig('TEXT', { content: '# Notes' })).toEqual({
+        kind: 'TEXT',
+        content: '# Notes',
+      });
+      expect(parseTypedWidgetConfig('TEXT', null)).toEqual({
+        kind: 'TEXT',
+        content: '',
+      });
+
+      expect(
+        parseTypedWidgetConfig('HTTP', { url: 'https://api.example.com', method: 'POST' }),
+      ).toEqual({
+        kind: 'HTTP',
+        url: 'https://api.example.com',
+        method: 'POST',
+      });
+      expect(parseTypedWidgetConfig('HTTP', {})).toEqual({
+        kind: 'HTTP',
+        url: '',
+        method: 'GET',
+      });
+
+      expect(
+        parseTypedWidgetConfig('SQL', {
+          query: 'SELECT 1',
+          allow_natural_text: true,
+          processor: 'ollama:llama3',
+          natural_text_prompt: 'Count patients',
+          placeholder_text: 'Custom hint',
+          template_id: 'tmpl-1',
+        }),
+      ).toEqual({
+        kind: 'SQL',
+        query: 'SELECT 1',
+        allowNaturalText: true,
+        processor: 'ollama:llama3',
+        naturalTextPrompt: 'Count patients',
+        placeholderText: 'Custom hint',
+        templateId: 'tmpl-1',
+      });
+
+      expect(parseTypedWidgetConfig(null, null)).toEqual({
+        kind: 'SQL',
+        query: '',
+        allowNaturalText: false,
+        processor: 'SQL',
+        naturalTextPrompt: '',
+        placeholderText: null,
+        templateId: null,
+      });
+    });
+  });
   describe('narrowRecordPayload, extractExecutionErrorMessage, extractMarkdownContent, extractTabularExportRows', () => {
     it('narrows record payloads and rejects primitives or arrays', () => {
       expect(narrowRecordPayload(null)).toBeNull();

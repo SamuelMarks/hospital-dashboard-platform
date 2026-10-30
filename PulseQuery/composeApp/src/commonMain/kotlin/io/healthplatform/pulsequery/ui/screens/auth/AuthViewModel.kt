@@ -10,6 +10,7 @@ import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -146,7 +147,7 @@ class AuthViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
 
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 executeLoginFlow(current, errFetchProfile, onLoginSuccess)
             }.onFailure { e ->
                 val formattedError = formatLoginError(e, current.isRegisterMode, errAuthFailed)
@@ -161,12 +162,13 @@ class AuthViewModel(
      * @param current Snapshot of the active [AuthUiState].
      * @param errFetchProfile Fallback error message when `/me` profile retrieval fails.
      * @param onLoginSuccess Callback invoked upon successful login and profile retrieval.
+     * @return [Result] wrapping `Unit` on success or a [PulseQueryError] on failure.
      */
     private suspend fun executeLoginFlow(
         current: AuthUiState,
         errFetchProfile: String,
         onLoginSuccess: () -> Unit
-    ) {
+    ): Result<Unit> {
         if (current.isRegisterMode) {
             val userCreate = UserCreate(email = current.email, password = current.password)
             currentAuthApi.registerUserApiV1AuthRegisterPost(userCreate)
@@ -180,19 +182,20 @@ class AuthViewModel(
             clientId = null,
             clientSecret = null
         )
-        AppContainer.currentToken = tokenResponse.asResult().getOrThrow().accessToken
-
-        val meResponse = currentAuthApi.readUsersMeApiV1AuthMeGet()
-        meResponse.asResult().fold(
-            onSuccess = { user ->
-                AppContainer.currentUser = user
-                _state.update { it.copy(isLoading = false, errorMessage = null) }
-                onLoginSuccess()
-            },
-            onFailure = {
-                _state.update { it.copy(isLoading = false, errorMessage = errFetchProfile) }
-            }
-        )
+        return tokenResponse.asResult().map { tokenBody ->
+            AppContainer.currentToken = tokenBody.accessToken
+            val meResponse = currentAuthApi.readUsersMeApiV1AuthMeGet()
+            meResponse.asResult().fold(
+                onSuccess = { user ->
+                    AppContainer.currentUser = user
+                    _state.update { it.copy(isLoading = false, errorMessage = null) }
+                    onLoginSuccess()
+                },
+                onFailure = {
+                    _state.update { it.copy(isLoading = false, errorMessage = errFetchProfile) }
+                }
+            )
+        }
     }
 
     /**

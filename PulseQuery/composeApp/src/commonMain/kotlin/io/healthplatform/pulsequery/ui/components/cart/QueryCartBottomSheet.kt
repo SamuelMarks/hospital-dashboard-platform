@@ -43,12 +43,13 @@ import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.StagedQuery
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.cart_empty_message
 import pulsequery.composeapp.generated.resources.clear_all
 import pulsequery.composeapp.generated.resources.query_cart
 import pulsequery.composeapp.generated.resources.remove_from_cart
@@ -117,7 +118,7 @@ fun QueryCartBottomSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Your query cart is empty. Stage queries from SQL Editor or Chat.",
+                        text = stringResource(Res.string.cart_empty_message),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -145,18 +146,24 @@ fun QueryCartBottomSheet(
                             scope.launch {
                                 isDeploying = true
                                 deployError = null
-                                runCatchingPulseAsync {
+                                runResultPulseAsync {
+                                    var batchResult: Result<Unit> = Result.success(Unit)
                                     for (query in stagedQueries) {
                                         val widgetIn = WidgetIn.Sql(
                                             title = query.title,
                                             visualization = query.visualization,
                                             config = SqlConfig(query = query.sql)
                                         )
-                                        AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
+                                        val singleRes = AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                                             activeDashboardId,
                                             widgetIn
-                                        ).asResult().getOrThrow()
+                                        ).asResult()
+                                        if (singleRes.isFailure) {
+                                            batchResult = singleRes.map { }
+                                            break
+                                        }
                                     }
+                                    batchResult
                                 }.fold(
                                     onSuccess = {
                                         AppContainer.queryCartRepository.clearCart()

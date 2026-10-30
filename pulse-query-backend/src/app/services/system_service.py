@@ -21,6 +21,7 @@ from app.core.diagnostics import (
   check_configuration_hygiene,
   diagnostics_registry,
 )
+from app.core.result import AppResult, Ok
 from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
 from app.database.postgres import AsyncSessionLocal, validate_postgres_connection
 from app.models.template import WidgetTemplate
@@ -257,6 +258,38 @@ class SystemDiagnosticsService:
       environment_checks=environment_checks,
       troubleshooting_guides=troubleshooting_guides,
     )
+
+  async def get_health_summary_result(
+    self,
+    db: AsyncSession | None = None,
+    require_populated: bool = True,
+  ) -> AppResult[SystemHealthResponse]:
+    """
+    Evaluates live system health and wraps the response in `AppResult[SystemHealthResponse]`.
+
+    Args:
+        db (AsyncSession | None): Optional database session for template count inspection.
+        require_populated (bool): If True, empty datasets or templates mark status as 'unhealthy'.
+
+    Returns:
+        AppResult[SystemHealthResponse]: `Ok(SystemHealthResponse)`.
+    """
+    return Ok(await self.get_health_summary(db=db, require_populated=require_populated))
+
+  async def build_diagnostics_response_result(
+    self,
+    db: AsyncSession | None = None,
+  ) -> AppResult[SystemDiagnosticsResponse]:
+    """
+    Builds the detailed `SystemDiagnosticsResponse` wrapped in `AppResult[SystemDiagnosticsResponse]`.
+
+    Args:
+        db (AsyncSession | None): Optional database session for template inspection.
+
+    Returns:
+        AppResult[SystemDiagnosticsResponse]: `Ok(SystemDiagnosticsResponse)`.
+    """
+    return Ok(await self.build_diagnostics_response(db=db))
 
 
 system_diagnostics_service = SystemDiagnosticsService()

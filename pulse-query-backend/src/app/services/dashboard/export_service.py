@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping
+import contextlib
 import csv
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -124,9 +125,8 @@ class DashboardExportService:
     """
     safe_title = sanitize_filename_title(dashboard.name)
     factory = conn_factory if conn_factory is not None else duckdb_manager.get_readonly_connection
-    conn = factory()
 
-    try:
+    with contextlib.closing(factory()) as conn:
       cursor = conn.cursor()
       if export_format == "json":
         exported_widgets: list[dict[str, str | None | JsonObject | list[SqlRow]]] = []
@@ -186,8 +186,6 @@ class DashboardExportService:
         writer.writerow([])
 
       return Ok((output.getvalue(), "text/csv", f"{safe_title}_export.csv"))
-    finally:
-      conn.close()
 
   def build_widget_export_content(
     self,
@@ -216,14 +214,11 @@ class DashboardExportService:
     data_records: list[SqlRow] = []
     if widget.type == "SQL":
       factory = conn_factory if conn_factory is not None else duckdb_manager.get_readonly_connection
-      conn = factory()
-      try:
+      with contextlib.closing(factory()) as conn:
         cursor = conn.cursor()
         run_cfg = self.prepare_sql_run_config(widget.config, global_params)
         res = sql_runner_fn(cursor, run_cfg)
         data_records = res.get("data", [])
-      finally:
-        conn.close()
 
     if export_format == "json":
       payload = {
@@ -291,8 +286,7 @@ class DashboardExportService:
       """
       widgets_data: list[WidgetPdfSnapshot] = []
       factory = conn_factory if conn_factory is not None else duckdb_manager.get_readonly_connection
-      conn = factory()
-      try:
+      with contextlib.closing(factory()) as conn:
         cursor = conn.cursor()
         for w_title, w_sub, w_type, w_cfg in widget_snapshots:
           rows: list[SqlRow] = []
@@ -310,8 +304,6 @@ class DashboardExportService:
               error=err,
             )
           )
-      finally:
-        conn.close()
 
       return generate_clinical_pdf_report(
         dashboard_name=dashboard.name,

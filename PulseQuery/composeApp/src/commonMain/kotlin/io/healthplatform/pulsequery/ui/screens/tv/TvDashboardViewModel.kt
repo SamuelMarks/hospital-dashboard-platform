@@ -7,9 +7,9 @@ package io.healthplatform.pulsequery.ui.screens.tv
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.models.DashboardResponse
 import io.healthplatform.pulsequery.core.error.UiErrorKey
-import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,9 +55,8 @@ class TvDashboardViewModel(
     fun loadDashboard() {
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
-                val res = currentDashboardsApi.listDashboardsApiV1DashboardsGet()
-                res.asResult().getOrThrow().firstOrNull()
+            runResultPulseAsync {
+                currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResultMap { it.firstOrNull() }
             }.fold(
                 onSuccess = { db ->
                     _state.update {

@@ -11,8 +11,8 @@
 
 import { DATE_NOW } from '../core/time.token';
 import { LoggerService } from '../core/logging/logger.service';
-import { extractApiErrorMessage } from '../core/error.utils';
-import { DestroyRef, signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { createSignalStateContainer } from '../core/state/signal-store.utils';
+import { DestroyRef, computed, inject, OnDestroy, Service } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject } from 'rxjs';
 import { finalize, takeUntil, retry } from 'rxjs/operators';
@@ -84,13 +84,15 @@ export class ChatStore implements OnDestroy {
   private readonly aiApi = inject(AiService);
   /** Injectable SSE client service for real-time chat token streaming. */
   private readonly sseClient = inject(ChatSseClientService);
+  /** Shared reactive signal state container managing `ChatState` patches and error formatting. */
+  private readonly stateContainer = createSignalStateContainer<ChatState>(initialState);
   /** Internal writable signal holding the complete chat store state. */
-  private readonly _state = signal<ChatState>(initialState);
+  private readonly _state = this.stateContainer.writableState;
   /** Subject emitting when the store is destroyed to cancel active subscriptions. */
   private readonly destroy$ = new Subject<void>();
 
   /** Read-only signal exposing the complete chat store state snapshot. */
-  readonly state = this._state.asReadonly();
+  readonly state = this.stateContainer.state;
   /** Computed signal returning the ordered list of user conversation threads. */
   readonly conversations = computed(() => this._state().conversations);
   /** Computed signal returning the currently active conversation UUID, or null if none is selected. */
@@ -113,8 +115,9 @@ export class ChatStore implements OnDestroy {
   /** Computed signal returning the accumulated text content of an in-progress SSE stream. */
   readonly streamingMessageContent = computed(() => this._state().streamingMessageContent);
 
-  /** Completes active RxJS streams when the store is destroyed. */
+  /** Completes active RxJS streams and aborts any active SSE connection when the store is destroyed. */
   ngOnDestroy(): void {
+    this.sseClient.abortActiveStream();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -157,6 +160,7 @@ export class ChatStore implements OnDestroy {
    * @param id - The conversation ID to select.
    */
   selectConversation(id: string): void {
+    this.sseClient.abortActiveStream();
     this.patch({ activeConversationId: id, messages: [], error: null, isLoadingList: true });
     this.chatApi
       .getMessagesApiV1ConversationsConversationIdMessagesGet(id)
@@ -174,6 +178,7 @@ export class ChatStore implements OnDestroy {
 
   /** Clears the active conversation selection and message list to begin a fresh chat session. */
   createNewChat(): void {
+    this.sseClient.abortActiveStream();
     if (!this.activeConversationId() && this.messages().length === 0) return;
     this.patch({ activeConversationId: null, messages: [], error: null });
   }
@@ -420,7 +425,7 @@ export class ChatStore implements OnDestroy {
    * @param p - Partial state properties to merge into the current state.
    */
   patch(p: Partial<ChatState>): void {
-    this._state.update((s) => ({ ...s, ...p }));
+    this.stateContainer.patch(p);
   }
 
   /**
@@ -430,6 +435,6 @@ export class ChatStore implements OnDestroy {
    */
   handleError(e: unknown): void {
     this.logger.error('[ChatStore] API Error:', e);
-    this.patch({ error: extractApiErrorMessage(e, $localize`Error`) });
+    this.stateContainer.patchError(e, $localize`Error`);
   }
 }

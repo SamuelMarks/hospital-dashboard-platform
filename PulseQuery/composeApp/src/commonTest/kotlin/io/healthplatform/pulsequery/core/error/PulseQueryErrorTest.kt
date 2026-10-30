@@ -1,15 +1,21 @@
 package io.healthplatform.pulsequery.core.error
 
+import io.healthplatform.pulsequery.core.result.andThenSus
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.flatMap
+import io.healthplatform.pulsequery.core.result.mapError
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.core.result.toPulseQueryError
+import io.healthplatform.pulsequery.core.result.valueOrNull
 import io.ktor.client.engine.mock.respond
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -395,5 +401,38 @@ class PulseQueryErrorTest {
             val expected = if (code == 404) "HTTP 404: Failure 404 not found" else "HTTP $code: Failure $code"
             assertEquals(expected, vm.state.value.errorMessage)
         }
+    }
+
+    @Test
+    fun testAndThenSusMapErrorAndRunResultPulseAsync() = runTest {
+        val okRes = Result.success(10)
+        val mappedOk = okRes.andThenSus { v -> Result.success(v * 2) }
+        assertEquals(20, mappedOk.valueOrNull())
+
+        val failRes = Result.failure<Int>(PulseQueryError.Http.BadRequest("bad"))
+        val mappedFail = failRes.andThenSus { v -> Result.success(v * 2) }
+        assertTrue(mappedFail.isFailure)
+
+        val errTransformedOnOk = okRes.mapError { PulseQueryError.General("mapped") }
+        assertEquals(10, errTransformedOnOk.valueOrNull())
+
+        val errTransformedOnFail = failRes.mapError { PulseQueryError.General("mapped: ${it.message}") }
+        assertTrue(errTransformedOnFail.isFailure)
+        assertEquals("mapped: HTTP 400: bad", errTransformedOnFail.toPulseQueryError()?.message)
+
+        val caughtAsync = runResultPulseAsync<Int> {
+            throw IllegalArgumentException("async failure")
+        }
+        assertTrue(caughtAsync.isFailure)
+
+        var cancellationCaught = false
+        try {
+            runResultPulseAsync<Int> {
+                throw CancellationException("cancelled")
+            }
+        } catch (_: CancellationException) {
+            cancellationCaught = true
+        }
+        assertTrue(cancellationCaught)
     }
 }

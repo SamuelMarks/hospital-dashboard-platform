@@ -1,10 +1,16 @@
+/**
+ * Compose UI integration tests for [EditorScreen] and [SaveQueryDialog].
+ */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDestination
@@ -24,8 +30,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Verifies SQL execution, error handling, and query saving in [EditorScreen].
+ */
 class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
+    /**
+     * Resets [AppContainer] before each test.
+     */
     @BeforeTest
     fun setUp() {
         AppContainer.resetForTest()
@@ -37,10 +49,14 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
             when {
                 request.url.encodedPath.contains("ai/execute") -> {
                     if (!success) {
-                        respond("Server error", HttpStatusCode.InternalServerError)
+                        respond(
+                            """{"detail":"DuckDB engine error"}""",
+                            HttpStatusCode.InternalServerError,
+                            headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        )
                     } else if (returnErrorMsg) {
                         respond(
-                            """{"status":"error","error":"Syntax error","data":[],"columns":[]}""",
+                            """{"status":"error","error":"Syntax error near FROM","data":[],"columns":[]}""",
                             HttpStatusCode.OK,
                             headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                         )
@@ -77,6 +93,9 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
         AppContainer.setHttpClientForTest(client)
     }
 
+    /**
+     * Verifies that [EditorScreen] executes a SQL query and renders the returned tabular data.
+     */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testEditorScreenInitialAndExecuteSuccess() = runComposeUiTest {
@@ -87,8 +106,17 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
                 EditorScreen()
             }
         }
+
+        onNodeWithText("Execute", useUnmergedTree = true).performClick()
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("TestResult", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("TestResult", substring = true).assertExists()
     }
 
+    /**
+     * Verifies that [EditorScreen] displays SQL execution error messages returned in the payload.
+     */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testEditorScreenExecuteErrorResponse() = runComposeUiTest {
@@ -99,8 +127,17 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
                 EditorScreen()
             }
         }
+
+        onNodeWithText("Execute", useUnmergedTree = true).performClick()
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Syntax error near FROM", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("Syntax error near FROM", substring = true).assertIsDisplayed()
     }
 
+    /**
+     * Verifies that [EditorScreen] displays a network/HTTP error message when the endpoint returns HTTP 500.
+     */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testEditorScreenExecuteNetworkError() = runComposeUiTest {
@@ -111,8 +148,17 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
                 EditorScreen()
             }
         }
+
+        onNodeWithText("Execute", useUnmergedTree = true).performClick()
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("DuckDB engine error", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("DuckDB engine error", substring = true).assertIsDisplayed()
     }
 
+    /**
+     * Verifies that clicking Save Query opens [SaveQueryDialog].
+     */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testEditorScreenOpensSaveDialog() = runComposeUiTest {
@@ -130,6 +176,9 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
         onNodeWithText("Template Library").assertExists()
     }
 
+    /**
+     * Verifies that [SaveQueryDialog] in Template Library mode saves a template and invokes `onSaved`.
+     */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testSaveQueryDialogTemplateMode() = runComposeUiTest {
@@ -149,8 +198,16 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
         onNodeWithText("Template Library").performClick()
         onNodeWithText("Category").assertExists()
         onNodeWithText("Description").assertExists()
+        onNodeWithText("Title").performTextInput("Admissions Count")
+        onNodeWithText("Save").performClick()
+
+        waitUntil(timeoutMillis = 15000) { savedMessage.isNotEmpty() }
+        assertEquals("Template successfully registered in library", savedMessage)
     }
 
+    /**
+     * Verifies [SaveQueryDestination] enum entries.
+     */
     @Test
     fun testSaveQueryDestinationEnumValues() {
         assertEquals(2, SaveQueryDestination.entries.size)

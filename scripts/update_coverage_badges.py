@@ -61,9 +61,12 @@ def scan_for_typing_and_reflection_smells(scan_dirs: Iterable[Path] | None = Non
           violations.append(f"{rel}:{node.lineno} ({node.id})")
         elif isinstance(node, ast.Attribute) and node.attr == "__dict__":
           violations.append(f"{rel}:{node.lineno} (__dict__)")
-        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-          if node.func.id in _FORBIDDEN_REFLECTION_FUNCS or (has_typing_cast and node.func.id == "cast"):
-            violations.append(f"{rel}:{node.lineno} ({node.func.id})")
+        elif (
+          isinstance(node, ast.Call)
+          and isinstance(node.func, ast.Name)
+          and (node.func.id in _FORBIDDEN_REFLECTION_FUNCS or (has_typing_cast and node.func.id == "cast"))
+        ):
+          violations.append(f"{rel}:{node.lineno} ({node.func.id})")
   return violations
 
 

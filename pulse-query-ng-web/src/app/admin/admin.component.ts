@@ -13,7 +13,8 @@ import { AdminService, AdminSettingsUpdateRequest, AiService, ModelInfo } from '
 import { ConnectionStatusService } from '../core/health/connection-status.service';
 import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject, timer } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 /**
  * Component providing the administration interface for API keys, model selection, and system diagnostics.
@@ -97,6 +98,8 @@ export class AdminComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   /** Service monitoring backend and database health statuses. */
   private connectionService = inject(ConnectionStatusService);
+  /** Reactive trigger stream that schedules automatic status message clearing after 3000ms. */
+  private readonly statusMessageTrigger$ = new Subject<string>();
 
   /** Whether the initial admin settings have finished loading. */
   settingsLoaded = signal<boolean>(false);
@@ -207,6 +210,16 @@ export class AdminComponent implements OnInit {
       : $localize`Synthetic Fallback Active`;
   });
 
+  /**
+   * Displays a status message and resets the 3000ms auto-dismiss RxJS timer stream.
+   *
+   * @param text - Localized status message to display.
+   */
+  private showTransientMessage(text: string): void {
+    this.message.set(text);
+    this.statusMessageTrigger$.next(text);
+  }
+
   /** Opens the system connection diagnostics modal dialog. */
   openDiagnostics(): void {
     this.connectionService.openDiagnosticsDialog();
@@ -216,20 +229,23 @@ export class AdminComponent implements OnInit {
   reingestData(): void {
     this.connectionService.triggerReingest().subscribe({
       next: (res) => {
-        this.message.set(res.message || $localize`Data re-ingested successfully!`);
-        const timer = setTimeout(() => this.message.set(''), 3000);
-        this.destroyRef.onDestroy(() => clearTimeout(timer));
+        this.showTransientMessage(res.message || $localize`Data re-ingested successfully!`);
       },
       error: () => {
-        this.message.set($localize`Failed to re-ingest CSV data.`);
-        const timer = setTimeout(() => this.message.set(''), 3000);
-        this.destroyRef.onDestroy(() => clearTimeout(timer));
+        this.showTransientMessage($localize`Failed to re-ingest CSV data.`);
       },
     });
   }
 
   /** Loads current admin settings and available models on component initialization. */
   ngOnInit(): void {
+    this.statusMessageTrigger$
+      .pipe(
+        switchMap(() => timer(3000)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.message.set(''));
+
     forkJoin({
       settings: this.adminService.readAdminSettingsApiV1AdminSettingsGet(),
       models: this.aiService.listAvailableModelsApiV1AiModelsGet(true),
@@ -293,10 +309,8 @@ export class AdminComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
-          this.message.set($localize`Settings saved successfully!`);
           this.isSaving.set(false);
-          const timer = setTimeout(() => this.message.set(''), 3000);
-          this.destroyRef.onDestroy(() => clearTimeout(timer));
+          this.showTransientMessage($localize`Settings saved successfully!`);
         },
         error: () => {
           this.isSaving.set(false);

@@ -6,7 +6,7 @@
 
 import { Service, InjectionToken, inject, signal, OnDestroy, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Subject } from 'rxjs';
+import { Subject, Subscription, timer } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 
 /**
@@ -85,8 +85,8 @@ export class DashboardCollaborationService implements OnDestroy {
   private socket: WebSocket | null = null;
   /** Identifier of the currently connected dashboard. */
   private currentDashboardId: string | null = null;
-  /** Reconnection timer handle. */
-  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  /** Active RxJS timer subscription for exponential-backoff reconnection. */
+  private reconnectSubscription: Subscription | null = null;
   /** Count of failed reconnection attempts. */
   private reconnectAttempts = 0;
   /** Maximum number of reconnection attempts before giving up. */
@@ -131,9 +131,9 @@ export class DashboardCollaborationService implements OnDestroy {
    * Closes active WebSocket connection and resets collaboration state.
    */
   disconnect(): void {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
+    if (this.reconnectSubscription) {
+      this.reconnectSubscription.unsubscribe();
+      this.reconnectSubscription = null;
     }
     this.reconnectAttempts = 0;
 
@@ -242,7 +242,7 @@ export class DashboardCollaborationService implements OnDestroy {
   }
 
   /**
-   * Schedules a delayed reconnect attempt with exponential backoff.
+   * Schedules a delayed reconnect attempt with exponential backoff via RxJS `timer`.
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS || !this.currentDashboardId) {
@@ -252,8 +252,9 @@ export class DashboardCollaborationService implements OnDestroy {
     const backoffMs = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
     this.reconnectAttempts++;
 
-    this.reconnectTimeout = setTimeout(() => {
+    this.reconnectSubscription = timer(backoffMs).subscribe(() => {
+      this.reconnectSubscription = null;
       this.initSocket();
-    }, backoffMs);
+    });
   }
 }

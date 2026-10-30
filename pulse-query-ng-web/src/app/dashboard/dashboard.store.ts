@@ -8,7 +8,7 @@
  */
 
 import { DATE_NOW } from '../core/time.token';
-import { DestroyRef, signal, computed, inject, OnDestroy, Service } from '@angular/core';
+import { DestroyRef, computed, inject, OnDestroy, Service } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { EMPTY, Subject, of, timer } from 'rxjs';
@@ -20,7 +20,7 @@ import {
   WidgetResponse,
   WidgetIn,
 } from '../api-client';
-import { extractApiErrorMessage } from '../core/error.utils';
+import { createSignalStateContainer } from '../core/state/signal-store.utils';
 import {
   buildHttpWidgetConfig,
   buildSqlWidgetConfig,
@@ -114,8 +114,11 @@ export class DashboardStore implements OnDestroy {
   /** Offline snapshot cache service backed by `localStorage`. */
   private readonly offlineCache = inject(DashboardOfflineCacheService);
 
+  /** Shared reactive signal state container managing `DashboardState` patches and error formatting. */
+  private readonly stateContainer = createSignalStateContainer<DashboardState>(initialState);
+
   /** Internal writable state signal. */
-  private readonly _state = signal<DashboardState>(initialState);
+  private readonly _state = this.stateContainer.writableState;
 
   /** Stream triggering full dashboard execution refreshes. */
   private readonly refreshTrigger$ = new Subject<void>();
@@ -674,7 +677,7 @@ export class DashboardStore implements OnDestroy {
    * @param p - Partial `DashboardState` fields to update.
    */
   patch(p: Partial<DashboardState>): void {
-    this._state.update((current) => ({ ...current, ...p }));
+    this.stateContainer.patch(p);
   }
 
   /**
@@ -683,7 +686,6 @@ export class DashboardStore implements OnDestroy {
    * @param e - Caught error value.
    */
   handleError(e: unknown): void {
-    const msg = extractApiErrorMessage(e, $localize`An unexpected error occurred`);
-    this.patch({ error: msg });
+    this.stateContainer.patchError(e, $localize`An unexpected error occurred`);
   }
 }

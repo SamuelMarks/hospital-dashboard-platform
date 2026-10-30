@@ -46,7 +46,7 @@ import io.healthplatform.pulsequery.core.model.extractWidgetSqlConfig
 import io.healthplatform.pulsequery.core.model.parseTypedWidgetConfig
 import io.healthplatform.pulsequery.core.result.asResult
 import io.healthplatform.pulsequery.core.result.messageOrDefault
-import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.wizard.mapModelInfoToProcessorSelection
 import kotlinx.coroutines.launch
@@ -55,11 +55,17 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.allow_natural_text_label
+import pulsequery.composeapp.generated.resources.cancel
+import pulsequery.composeapp.generated.resources.edit_widget_title_blank_error
+import pulsequery.composeapp.generated.resources.edit_widget_title_format
 import pulsequery.composeapp.generated.resources.natural_text_prompt_label
 import pulsequery.composeapp.generated.resources.processor_label
+import pulsequery.composeapp.generated.resources.save_changes
 import pulsequery.composeapp.generated.resources.select_processor_content_desc
+import pulsequery.composeapp.generated.resources.visualization_type
 import pulsequery.composeapp.generated.resources.widget_subtitle_label
 import pulsequery.composeapp.generated.resources.widget_subtitle_placeholder
+import pulsequery.composeapp.generated.resources.widget_title
 
 /**
  * Standard visualization options available for dashboard widgets.
@@ -117,10 +123,9 @@ fun EditWidgetDialog(
 
     LaunchedEffect(aiApi) {
         if (aiApi != null) {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 aiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true)
                     .asResult()
-                    .getOrThrow()
             }.onSuccess { models ->
                 val mapped = models.map { mapModelInfoToProcessorSelection(it) }
                 availableProcessors = if (mapped.any { it.id == ProcessorId.SQL_NO_MODEL }) {
@@ -132,9 +137,11 @@ fun EditWidgetDialog(
         }
     }
 
+    val blankTitleError = stringResource(Res.string.edit_widget_title_blank_error)
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Widget: ${widget.title}") },
+        title = { Text(stringResource(Res.string.edit_widget_title_format, widget.title)) },
         text = {
             Column(
                 modifier = Modifier
@@ -153,7 +160,7 @@ fun EditWidgetDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Widget Title") },
+                    label = { Text(stringResource(Res.string.widget_title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -175,7 +182,7 @@ fun EditWidgetDialog(
                         value = selectedViz,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Visualization Type") },
+                        label = { Text(stringResource(Res.string.visualization_type)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showVizDropdown) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -278,14 +285,14 @@ fun EditWidgetDialog(
             Button(
                 onClick = {
                     if (title.isBlank()) {
-                        errorMessage = "Widget title cannot be blank"
+                        errorMessage = blankTitleError
                         return@Button
                     }
                     scope.launch {
                         isLoading = true
                         errorMessage = null
                         val api = dashboardsApi ?: AppContainer.dashboardsApi
-                        runCatchingPulseAsync {
+                        runResultPulseAsync {
                             val newConfigMap = widget.config.toMutableMap()
                             when (widget.type.uppercase()) {
                                 "TEXT" -> {
@@ -317,11 +324,10 @@ fun EditWidgetDialog(
                                 visualization = selectedViz,
                                 config = JsonObject(newConfigMap)
                             )
-                            val response = api.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
+                            api.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
                                 widgetId = widget.id,
                                 widgetUpdate = updateReq
-                            )
-                            response.asResult().getOrThrow()
+                            ).asResult()
                         }.fold(
                             onSuccess = { updated ->
                                 onWidgetUpdated(updated)
@@ -342,13 +348,13 @@ fun EditWidgetDialog(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Save Changes")
+                    Text(stringResource(Res.string.save_changes))
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) {
-                Text("Cancel")
+                Text(stringResource(Res.string.cancel))
             }
         }
     )

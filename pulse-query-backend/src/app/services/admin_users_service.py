@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.models.user import Role, User
 from app.schemas.user import UserRoleUpdate, UserStatusUpdate
@@ -87,7 +88,7 @@ class AdminUsersService:
       return Err(
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
-          message="User not found",
+          message=get_translated_message(None, "error.user_not_found", "User not found"),
           status_code=404,
         )
       )
@@ -123,7 +124,11 @@ class AdminUsersService:
       return Err(
         AppError(
           code=ErrorCode.ADMIN_SELF_MODIFICATION_FORBIDDEN,
-          message="Administrators cannot suspend their own active account.",
+          message=get_translated_message(
+            current_user.language_preference,
+            "error.self_suspension_forbidden",
+            "Administrators cannot suspend their own active account.",
+          ),
           status_code=400,
         )
       )
@@ -134,7 +139,7 @@ class AdminUsersService:
       return Err(
         AppError(
           code=ErrorCode.RESOURCE_NOT_FOUND,
-          message="User not found",
+          message=get_translated_message(current_user.language_preference, "error.user_not_found", "User not found"),
           status_code=404,
         )
       )

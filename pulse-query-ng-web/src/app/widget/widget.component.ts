@@ -32,6 +32,7 @@ import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-he
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { serializeTableToCsv, triggerBlobDownload } from '../shared/utils/csv-export.utils';
+import { hasActiveCdkOverlay } from '../core/accessibility/cdk-overlay-state.utils';
 import {
   extractExecutionErrorMessage,
   extractMarkdownContent,
@@ -40,6 +41,7 @@ import {
   parseChartConfig,
   parseMetricData,
   parseScalarData,
+  parseSqlWidgetConfig,
   parseTableDataSet,
 } from './widget-data.guards';
 
@@ -367,30 +369,25 @@ export class WidgetComponent {
   /** Markdown content string extracted from the widget configuration. */
   readonly markdownContent = computed(() => extractMarkdownContent(this.widgetInput().config));
 
+  /** Strongly typed SQL configuration fields parsed from `widgetInput().config`. */
+  readonly sqlConfig = computed(() => parseSqlWidgetConfig(this.widgetInput().config));
+
   /** Whether this widget is configured to accept interactive natural text input on the dashboard. */
-  readonly allowsNaturalText = computed(() =>
-    Boolean(this.widgetInput().config?.['allow_natural_text']),
-  );
+  readonly allowsNaturalText = computed(() => this.sqlConfig().allowNaturalText);
 
   /** Configured processor identifier (`'SQL'`, `'ollama:<model>'`, or `'<provider>:<model>'`). */
-  readonly configuredProcessor = computed(() => {
-    const raw: unknown = this.widgetInput().config?.['processor'];
-    return typeof raw === 'string' && raw.length > 0 ? raw : 'SQL';
-  });
+  readonly configuredProcessor = computed(() => this.sqlConfig().processor);
 
   /** Active processor identifier bound to the widget's interactive execution bar. */
   readonly activeProcessor = linkedSignal<string>(() => this.configuredProcessor());
 
   /** Current user-entered natural text (or SQL) inside the widget input bar. */
-  readonly naturalTextInput = linkedSignal<string>(() => {
-    const raw: unknown = this.widgetInput().config?.['natural_text_prompt'];
-    return typeof raw === 'string' ? raw : '';
-  });
+  readonly naturalTextInput = linkedSignal<string>(() => this.sqlConfig().naturalTextPrompt);
 
   /** Placeholder text displayed in the widget's natural text input field. */
   readonly placeholderText = computed(() => {
-    const custom: unknown = this.widgetInput().config?.['placeholder_text'];
-    if (typeof custom === 'string' && custom.trim().length > 0) {
+    const custom = this.sqlConfig().placeholderText;
+    if (custom) {
       return custom;
     }
     return this.activeProcessor() === 'SQL'
@@ -408,6 +405,12 @@ export class WidgetComponent {
   readonly processorUsed = computed(() => {
     const raw: unknown = this.rawResult()?.['processor_used'];
     return typeof raw === 'string' && raw.length > 0 ? raw : this.activeProcessor();
+  });
+
+  /** Localized display label for `processorUsed()` in the widget header chip. */
+  readonly processorDisplayLabel = computed(() => {
+    const proc = this.processorUsed();
+    return proc === 'SQL' ? $localize`SQL [no model]` : proc;
   });
 
   /**
@@ -445,13 +448,14 @@ export class WidgetComponent {
   /** Navigates to the optimization workspace pre-populated with this widget's SQL query or template ID. */
   simulateWidget(): void {
     const widget = this.widgetInput();
-    if (widget.type === 'SQL' && widget.config['query']) {
+    const cfg = this.sqlConfig();
+    if (widget.type === 'SQL' && cfg.query) {
       this.router.navigate(['/optimization'], {
-        queryParams: { prompt: String(widget.config['query']) },
+        queryParams: { prompt: cfg.query },
       });
-    } else if (widget.type === 'TEMPLATE' && widget.config['template_id']) {
+    } else if (widget.type === 'TEMPLATE' && cfg.templateId) {
       this.router.navigate(['/optimization'], {
-        queryParams: { templateId: String(widget.config['template_id']) },
+        queryParams: { templateId: cfg.templateId },
       });
     }
   }
@@ -469,12 +473,7 @@ export class WidgetComponent {
    * @param event - Keyboard event triggered by pressing Escape.
    */
   onEscape(event: Event): void {
-    if (
-      this.isFocused() &&
-      !this.document.querySelector(
-        '.cdk-overlay-container .mat-mdc-dialog-container, .cdk-overlay-container [role="dialog"], .cdk-overlay-container [role="menu"], .cdk-overlay-container [role="listbox"]',
-      )
-    ) {
+    if (this.isFocused() && !hasActiveCdkOverlay(this.document)) {
       event.stopPropagation();
       this.store.setFocusedWidget(null);
     }

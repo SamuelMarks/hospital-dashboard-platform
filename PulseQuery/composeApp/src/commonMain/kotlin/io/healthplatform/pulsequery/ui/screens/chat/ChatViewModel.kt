@@ -17,8 +17,10 @@ import io.healthplatform.pulsequery.core.model.ConversationId
 import io.healthplatform.pulsequery.core.model.MessageAuthorRole
 import io.healthplatform.pulsequery.core.model.MessageId
 import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.ChatStreamEvent
 import io.healthplatform.pulsequery.network.ChatStreamingRepository
@@ -93,8 +95,8 @@ class ChatViewModel(
      */
     fun loadConversations() {
         scope.launch {
-            runCatchingPulseAsync {
-                currentChatApi.listConversationsApiV1ConversationsGet().asResult().getOrThrow()
+            runResultPulseAsync {
+                currentChatApi.listConversationsApiV1ConversationsGet().asResult()
             }.fold(
                 onSuccess = { list ->
                     val currentActive = _state.value.activeConversation
@@ -151,10 +153,10 @@ class ChatViewModel(
         }
         scope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentChatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
                     conversationId = active.id
-                ).asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = { msgs ->
                     _state.update { it.copy(messages = msgs, errorMessage = null) }
@@ -185,8 +187,8 @@ class ChatViewModel(
      */
     fun deleteConversation(id: String) {
         scope.launch {
-            runCatchingPulseAsync {
-                currentChatApi.deleteConversationApiV1ConversationsConversationIdDelete(id).asResult().getOrThrow()
+            runResultPulseAsync {
+                currentChatApi.deleteConversationApiV1ConversationsConversationIdDelete(id).asResult()
             }.fold(
                 onSuccess = {
                     if (_state.value.activeConversation?.id == id) {
@@ -214,45 +216,49 @@ class ChatViewModel(
         _state.update { it.copy(inputText = "", isLoading = true, errorMessage = null) }
 
         scope.launch {
-            runCatchingPulseAsync {
-                val active = _state.value.activeConversation
-                val targetConv: ConversationResponse = if (active == null) {
-                    val detail: ConversationDetail = currentChatApi.createConversationApiV1ConversationsPost(
+            val active = _state.value.activeConversation
+            val convResult: Result<ConversationResponse> = runResultPulseAsync {
+                if (active == null) {
+                    currentChatApi.createConversationApiV1ConversationsPost(
                         ConversationCreate(
                             title = textToSend.take(20),
                             message = textToSend
                         )
-                    ).asResult().getOrThrow()
-                    val created = ConversationResponse(
-                        id = detail.id,
-                        userId = detail.userId,
-                        createdAt = detail.createdAt,
-                        updatedAt = detail.updatedAt,
-                        title = detail.title
-                    )
-                    _state.update {
-                        it.copy(
-                            activeConversation = created,
-                            messages = detail.messages.orEmpty()
+                    ).asResultMap { detail: ConversationDetail ->
+                        val created = ConversationResponse(
+                            id = detail.id,
+                            userId = detail.userId,
+                            createdAt = detail.createdAt,
+                            updatedAt = detail.updatedAt,
+                            title = detail.title
                         )
+                        _state.update {
+                            it.copy(
+                                activeConversation = created,
+                                messages = detail.messages.orEmpty()
+                            )
+                        }
+                        loadConversations()
+                        created
                     }
-                    loadConversations()
-                    created
                 } else {
                     currentChatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
                         conversationId = active.id,
                         messageCreate = MessageCreate(content = textToSend)
-                    ).asResult().getOrThrow()
-                    active
+                    ).asResultMap { active }
                 }
-
-                streamTokensForConversation(targetConv.id)
-                loadMessages()
-            }.onFailure { e ->
-                val msg = "Failed to send message: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
-                _state.update { it.copy(errorMessage = msg, streamingCandidateText = null) }
-                _notifications.tryEmit(msg)
             }
+            convResult.fold(
+                onSuccess = { targetConv ->
+                    streamTokensForConversation(targetConv.id)
+                    loadMessages()
+                },
+                onFailure = { e ->
+                    val msg = "Failed to send message: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
+                    _state.update { it.copy(errorMessage = msg, streamingCandidateText = null) }
+                    _notifications.tryEmit(msg)
+                }
+            )
             _state.update { it.copy(isLoading = false, streamingCandidateText = null) }
         }
     }
@@ -294,12 +300,12 @@ class ChatViewModel(
     fun voteCandidate(messageId: String, candidateId: String) {
         val active = _state.value.activeConversation ?: return
         scope.launch {
-            runCatchingPulseAsync {
+            runResultPulseAsync {
                 currentChatApi.voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(
                     conversationId = active.id,
                     messageId = messageId,
                     messageVoteRequest = MessageVoteRequest(candidateId = candidateId)
-                ).asResult().getOrThrow()
+                ).asResult()
             }.fold(
                 onSuccess = {
                     _notifications.tryEmit("Vote recorded successfully")

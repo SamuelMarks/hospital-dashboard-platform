@@ -63,3 +63,12 @@ def test_password_reset_token_helpers() -> None:
 
   # Invalid/corrupted token
   assert verify_password_reset_token("invalid-garbage-token") is None
+
+  # Reset token missing 'sub' claim
+  from app.core.result import Err
+  from app.core.security import verify_password_reset_token_result
+
+  empty_sub_tok = create_password_reset_token("")
+  res_empty_sub = verify_password_reset_token_result(empty_sub_tok)
+  assert isinstance(res_empty_sub, Err)
+  assert verify_password_reset_token(empty_sub_tok) is None

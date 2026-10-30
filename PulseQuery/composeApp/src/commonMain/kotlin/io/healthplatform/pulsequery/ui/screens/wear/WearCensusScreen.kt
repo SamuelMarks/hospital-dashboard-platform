@@ -57,6 +57,7 @@ import pulsequery.composeapp.generated.resources.hospital_census_upper
 import pulsequery.composeapp.generated.resources.pulse_watch
 import pulsequery.composeapp.generated.resources.refresh_wear_data
 import pulsequery.composeapp.generated.resources.wear_active_alerts
+import pulsequery.composeapp.generated.resources.wear_alert_threshold_label
 import pulsequery.composeapp.generated.resources.wear_census_summary_desc
 import pulsequery.composeapp.generated.resources.wear_occupancy_percent
 import pulsequery.composeapp.generated.resources.wear_open_beds
@@ -254,7 +255,7 @@ fun WearAlertCard(alert: AlertRuleResponse) {
                     maxLines = 1
                 )
                 Text(
-                    text = "Threshold: >${alert.thresholdPercentage.toInt()}%",
+                    text = stringResource(Res.string.wear_alert_threshold_label, alert.thresholdPercentage.toInt()),
                     fontSize = 9.sp,
                     color = Color(0xFFEF9A9A)
                 )

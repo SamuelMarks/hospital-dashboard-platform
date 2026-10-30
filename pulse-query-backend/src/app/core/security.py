@@ -8,11 +8,12 @@ from datetime import UTC, datetime, timedelta
 import hashlib
 import uuid
 
-from jose import jwt
+from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import settings
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 
 # Setup password context (Argon2 is robust)
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
@@ -128,6 +129,46 @@ def create_password_reset_token(email: str) -> str:
   return str(jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM))
 
 
+def verify_password_reset_token_result(token: str) -> AppResult[str]:
+  """
+  Decodes and validates a password reset JWT token returning an `AppResult[str]`.
+
+  Args:
+      token (str): The reset token provided by the user.
+
+  Returns:
+      AppResult[str]: `Ok(email)` when valid and of type `'reset'`, or `Err(AppError)` otherwise.
+  """
+  try:
+    raw_claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    payload = JwtPayload.model_validate(raw_claims)
+    if payload.type != "reset":
+      return Err(
+        AppError(
+          code=ErrorCode.AUTH_INVALID_TOKEN,
+          message="Invalid token type: expected reset token",
+          status_code=400,
+        )
+      )
+    if not payload.sub:
+      return Err(
+        AppError(
+          code=ErrorCode.AUTH_INVALID_TOKEN,
+          message="Password reset token is missing subject claim",
+          status_code=400,
+        )
+      )
+    return Ok(payload.sub)
+  except (JWTError, ValidationError, ValueError, TypeError) as exc:
+    return Err(
+      AppError(
+        code=ErrorCode.AUTH_INVALID_TOKEN,
+        message=f"Invalid or expired password reset token: {exc}",
+        status_code=400,
+      )
+    )
+
+
 def verify_password_reset_token(token: str) -> str | None:
   """
   Decodes and validates a password reset JWT token.
@@ -138,11 +179,5 @@ def verify_password_reset_token(token: str) -> str | None:
   Returns:
       str | None: The user email if token is valid and of type 'reset', otherwise None.
   """
-  try:
-    raw_claims = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    payload = JwtPayload.model_validate(raw_claims)
-    if payload.type != "reset":
-      return None
-    return payload.sub if payload.sub else None
-  except Exception:
-    return None
+  res = verify_password_reset_token_result(token)
+  return res.value if isinstance(res, Ok) else None

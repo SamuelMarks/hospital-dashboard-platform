@@ -27,6 +27,10 @@ export interface ScalarData {
 @Component({
   selector: 'viz-scalar',
   imports: [MatTooltipModule, MatProgressBarModule],
+  host: {
+    role: 'region',
+    '[attr.aria-label]': 'scalarAriaLabel()',
+  },
 
   styles: [
     `
@@ -187,5 +191,10 @@ export class VizScalarComponent {
     const v = this.value() || 0;
     if (Math.abs(v) < 0.3) return 'var(--sys-text-secondary)';
     return v > 0 ? 'var(--sys-success)' : 'var(--sys-error)';
+  });
+
+  /** Localized ARIA summary label describing the scalar value and label for screen readers. */
+  readonly scalarAriaLabel = computed(() => {
+    return $localize`${this.label()}\: ${this.formattedValue()}`;
   });
 }
