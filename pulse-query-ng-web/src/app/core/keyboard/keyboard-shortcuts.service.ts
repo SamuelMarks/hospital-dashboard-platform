@@ -210,11 +210,11 @@ export class KeyboardShortcutsService implements OnDestroy {
     });
 
     this.register({
-      id: 'nav-simulation',
-      description: $localize`Go to simulation`,
-      keys: 'alt+s',
+      id: 'nav-optimization',
+      description: $localize`Go to optimization`,
+      keys: 'alt+o',
       category: 'navigation',
-      handler: () => this.router.navigate(['/simulation']),
+      handler: () => this.router.navigate(['/optimization']),
     });
 
     // View shortcuts
@@ -319,7 +319,7 @@ export class KeyboardShortcutsService implements OnDestroy {
 
     if (event.ctrlKey || event.metaKey) parts.push('mod');
     if (event.altKey) parts.push('alt');
-    if (event.shiftKey && event.key !== 'Shift') parts.push('shift');
+    if (event.shiftKey && event.key !== 'Shift' && event.key !== '?') parts.push('shift');
 
     const key = event.key.toLowerCase();
     if (key !== 'control' && key !== 'alt' && key !== 'shift' && key !== 'meta') {

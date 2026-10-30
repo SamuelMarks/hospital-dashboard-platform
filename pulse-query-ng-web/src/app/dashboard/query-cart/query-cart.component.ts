@@ -17,13 +17,21 @@ import { QueryCartProvisioningService } from '../query-cart-provisioning.service
 import { DashboardStore } from '../dashboard.store';
 import { ConfirmDialogComponent } from '../../shared/components/dialogs/confirm-dialog.component';
 import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-dialog.component';
+import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader.component';
 
 /**
  * Component displaying the user's saved SQL queries with drag-and-drop dashboard provisioning.
  */
 @Component({
   selector: 'app-query-cart',
-  imports: [DragDropModule, MatButtonModule, MatIconModule, MatTooltipModule, MatSnackBarModule],
+  imports: [
+    DragDropModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatSnackBarModule,
+    SkeletonLoaderComponent,
+  ],
 
   templateUrl: './query-cart.component.html',
   styles: [
@@ -137,10 +145,49 @@ import { PromptDialogComponent } from '../../shared/components/dialogs/prompt-di
         z-index: 10000;
       }
       .cdk-drag-placeholder {
-        border: 1px dashed var(--sys-primary);
+        border: 2px dashed var(--sys-primary);
         border-radius: 10px;
-        background: rgba(var(--sys-primary), 0.04);
-        height: 54px;
+        background: color-mix(in srgb, var(--sys-primary) 8%, var(--sys-surface));
+        min-height: 240px;
+      }
+      .gallery-drop-silhouette {
+        grid-column: span 6;
+        min-height: 240px;
+        height: 100%;
+        width: 100%;
+        border: 2px dashed var(--sys-primary);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sys-primary) 8%, var(--sys-surface));
+        padding: 14px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .silhouette-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .silhouette-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--sys-primary);
+      }
+      .silhouette-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background-color: var(--sys-primary-container);
+        color: var(--sys-on-primary-container);
+      }
+      .silhouette-body {
+        flex: 1;
+        min-height: 140px;
+        opacity: 0.85;
       }
       .item-actions {
         display: flex;

@@ -311,4 +311,31 @@
     <string name="database_error">Error de base de datos</string>
     <string name="database_misconfiguration">Error de Configuración de Base de Datos</string>
     <string name="retry_query">Reintentar Consulta</string>
+
+    <!-- Widget Subtitles, Skeleton Placeholders & Add Widget Prompt -->
+    <string name="widget_subtitle_label">Subtítulo / Leyenda</string>
+    <string name="widget_subtitle_placeholder">Describa lo que este widget mide o muestra...</string>
+    <string name="loading_widget_data">Cargando datos del widget</string>
+    <string name="loading_dashboard_layout">Cargando diseño del panel</string>
+    <string name="add_widget_prompt_title">Añada Otro Widget a su Panel</string>
+    <string name="add_widget_prompt_subtitle">Combine métricas clínicas, tablas o gráficos de tendencias lado a lado. Elija una plantilla o cree un widget personalizado.</string>
+    <string name="browse_template_marketplace">Explorar Mercado de Plantillas</string>
+    <string name="no_table_rows_available">No hay registros que coincidan con los filtros activos.</string>
+    <string name="cancel_button">Cancelar</string>
+
+    <!-- Hospital Operations Optimization Copilot & LiteRT Hot-Loading -->
+    <string name="optimization_copilot_title">Copiloto de Optimización de Operaciones Hospitalarias</string>
+    <string name="optimization_what_i_can_do">Lo Que Puedo Hacer</string>
+    <string name="optimization_what_i_can_do_desc">Analice datos del censo de pacientes y optimice iterativamente las asignaciones de unidades, programación quirúrgica (BEDS y POINTS) y personal de enfermería.</string>
+    <string name="optimization_quick_actions">Acciones Rápidas</string>
+    <string name="optimization_use_case_service_unit">1. Asignación Servicio-Unidad</string>
+    <string name="optimization_use_case_surgical">2. Programación Quirúrgica (BEDS/POINTS)</string>
+    <string name="optimization_use_case_staffing">3. Personal Médico y de Enfermería</string>
+    <string name="optimization_prompt_label">Escriba su mensaje aquí...</string>
+    <string name="optimization_solve_button">Optimizar con JAX y MPAX</string>
+    <string name="optimization_litert_hot_load">Cargar Modelo LiteRT en Dispositivo</string>
+    <string name="optimization_litert_active">LiteRT ODML Activo</string>
+    <string name="optimization_des_baseline_title">Simulación de Eventos Discretos (DES) JAX — Línea Base Experta</string>
+    <string name="optimization_survey_button">Enviar Encuesta de Evaluación UX</string>
+    <string name="optimization_disclaimer">Los LLM pueden cometer errores. Verifique la información importante.</string>
 </resources>

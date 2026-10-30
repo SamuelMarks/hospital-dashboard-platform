@@ -32,7 +32,7 @@ def test_schema_string_generation() -> None:
   assert "PROBABILITY" in schema_str
   assert "IS_BOTTLENECK" in schema_str
 
-  assert "OPTIMIZE_ASSIGNMENTS" in schema_str
+  assert "OPTIMIZE_SERVICE_UNIT_BEDS" in schema_str
 
   assert "EXAMPLE QUERIES" in schema_str
   assert "SELECT PROBABILITY" in schema_str

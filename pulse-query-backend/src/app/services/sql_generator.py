@@ -383,15 +383,16 @@ class SQLGeneratorService:
     """
     owns_conn = olap_conn is None
     conn: duckdb.DuckDBPyConnection | None = None
-    try:
-      conn = olap_conn if olap_conn is not None else conn_factory()
-      cursor = conn.cursor()
-      return sql_runner_fn(cursor, {"query": runnable_sql, "max_rows": max_rows})
-    except Exception as e:
-      return {"data": [], "columns": [], "error": str(e)}
-    finally:
-      if owns_conn and conn:
-        conn.close()
+    with duckdb_manager._write_lock:
+      try:
+        conn = olap_conn if olap_conn is not None else conn_factory()
+        cursor = conn.cursor()
+        return sql_runner_fn(cursor, {"query": runnable_sql, "max_rows": max_rows})
+      except Exception as e:
+        return {"data": [], "columns": [], "error": str(e)}
+      finally:
+        if owns_conn and conn:
+          conn.close()
 
   async def execute_sql_preview_result(
     self,

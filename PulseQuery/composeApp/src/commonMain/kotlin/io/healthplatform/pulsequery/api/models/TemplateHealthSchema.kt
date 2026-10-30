@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,9 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for template seeder pack health.
  *
- * @param templatesLoaded Number of widget templates seeded into database.
- * @param hasTemplates True if one or more templates are available.
- * @param missingFile True if initial_templates.json was missing.
+ * @property templatesLoaded Number of widget templates seeded into database.
+ * @property hasTemplates True if one or more templates are available.
+ * @property missingFile True if initial_templates.json was missing.
  */
 @Serializable
 data class TemplateHealthSchema(

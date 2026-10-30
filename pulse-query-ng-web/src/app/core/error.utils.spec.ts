@@ -39,6 +39,8 @@ describe('extractApiErrorMessage', () => {
   it('extracts detail or message from plain error objects', () => {
     expect(extractApiErrorMessage({ error: { detail: 'Plain detail' } })).toBe('Plain detail');
     expect(extractApiErrorMessage({ error: { detail: { code: 12 } } })).toBe('{"code":12}');
+    expect(extractApiErrorMessage({ error: {} }, 'Fallback')).toBe('Fallback');
+    expect(extractApiErrorMessage({}, 'Fallback')).toBe('Fallback');
     expect(extractApiErrorMessage({ message: 'Plain message' })).toBe('Plain message');
     expect(extractApiErrorMessage({ message: '   ' }, 'Fallback')).toBe('Fallback');
   });

@@ -141,10 +141,14 @@ describe('VizTableComponent', () => {
   });
 
   it('should format cell values correctly', () => {
+    expect(component.showPaginator()).toBe(false);
+    expect(component.formatHeaderLabel('avg_los_days')).toBe('avg los days');
     expect(component.getCellValue({ a: null }, 'a')).toBe('-');
     expect(component.getCellValue({ a: { x: 1 } }, 'a')).toContain('"x":1');
+    expect(component.getCellValue({ a: 3.14159 }, 'a')).toBe('3.14');
     expect(component.getCellValue({ delta: 5 }, 'delta')).toBe('+5');
     expect(component.getCellValue({ delta: -3 }, 'delta')).toBe('-3');
+    expect(component.getCellValue({ name: 'Cardiology' }, 'name')).toBe('Cardiology');
   });
 
   it('should apply delta classes for positive and negative values', () => {

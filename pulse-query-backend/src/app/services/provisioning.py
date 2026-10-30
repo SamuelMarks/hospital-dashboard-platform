@@ -33,6 +33,39 @@ class ProvisioningService:
 
   DEFAULT_DASHBOARD_NAME = "Hospital Command Center"
 
+  DEFAULT_WIDGET_BLUEPRINTS: dict[str, str] = {
+    "Capacity Forecasting": "7-day Simple Moving Average (SMA) forecast of unit census to anticipate capacity surges.",
+    "Elective Impact": "Correlation between Monday elective surgical volume and Wednesday inpatient bed scarcity.",
+    "Predictive Availability": "Probability of open bed availability on target future days given high current utilization.",
+    "Utilization Spikes": "Consecutive 3-day windows where unit census exceeded 100% of staffed bed capacity.",
+    "Weekend Effect": "Comparison of Average Length of Stay (ALOS) for Friday/Saturday admissions versus Tuesday.",
+    "Admission Lag": "Average hours elapsed between Emergency Room admission and first Midnight Census appearance.",
+    "Bottleneck Analysis": "Clinical services and hours of day where inpatient admissions outpace discharges.",
+    "Long-Stayers": "Percentage of total hospital bed-days consumed by length-of-stay outliers (>2 SD above mean).",
+    "Paired Bottlenecks": "Dates where competing clinical wards simultaneously reached 100% capacity.",
+    "Throughput Velocity": "Daily patient churn (combined admissions and discharges) across high-volume units.",
+    "The 'NICU Cliff'": "Probability that a newborn staying beyond 48 hours transitions into a >10-day long stay.",
+    "Maternity-Nursery Link": "Synchronization risk measuring likelihood that Nursery is >90% full when Maternity is >90% full.",
+    "Cohort Isolation": "Daily census comparison between Emergency Room and Physician Referral admission pathways.",
+    "Discharge Efficiency": "Average delay in minutes after 8:00 AM until the first bed is vacated on full-capacity days.",
+    "Weekend Discharge Lag": "Probability of exceeding target Length of Stay for weekend versus weekday discharges.",
+    "Bed Turnover Time": "Average turnaround time in minutes between a unit discharge and the subsequent admission.",
+    "Step-Down Availability": "Likelihood that PCU step-down beds are open when the ICU reaches maximum capacity.",
+    "Step-Down Flow": "Average hours patients spend in the ICU prior to step-down transfer to a PCU ward.",
+    "Midnight vs. Noon": "Comparison of official Midnight Census against active 12:00 PM Noon patient load.",
+    "The '2 AM' Indicator": "Overstay risk comparison between overnight (00:00-05:00) and standard daytime admissions.",
+    "Overflow Predictor": "Probability that a patient is boarded off-service when their primary specialty unit is full.",
+    "Wait-list Probability": "Historical likelihood that a target unit reaches 100% capacity on a given day of the week.",
+    "Conditional Overstay Risk": "Conditional probability that a patient staying X days remains hospitalized at least Y days.",
+    "Service-Adjusted LoS": "Overstay risk (>120% of service median LoS) stratified by patient entry point.",
+    "Clinical Service 'Rent'": "Total inpatient bed-hours consumed by each clinical service within mixed-acuity units.",
+    "Day-of-Week Volatility": "Units ranked by daily census standard deviation and variance index to guide flexible staffing.",
+    "Holiday Decompression": "Days required for hospital census to return to baseline following a major holiday.",
+    "Seasonal Growth": "Month-over-month percentage change in inpatient census for the selected clinical service.",
+    "Service Dominance": "Proportional share of clinical services occupying beds within mixed-acuity units.",
+    "Shift Change Stress": "Inpatient units experiencing the highest volume of discharges during the 6:00 PM - 8:00 PM handover.",
+  }
+
   async def provision_new_user(self, db: AsyncSession, user: User) -> None:
     """
     Creates the default 'Hospital Command Center' dashboard for a new user.
@@ -134,22 +167,29 @@ class ProvisioningService:
       return dashboard  # Return empty dashboard
 
     # 3. Instantiate Widgets
+    current_y = 0
+    row_height = 4
     for idx, template in enumerate(templates):
       # Layout Strategy: 2 Column Grid (Width 6 per widget)
       widgets_per_row = 2
       col_width = 6
 
-      row_index = idx // widgets_per_row
       col_index = (idx % widgets_per_row) * col_width
 
       viz_type = self._determine_visual_type(template)
       config = self._build_config(template, viz_type)
+      widget_h = 6 if viz_type == "table" else (5 if viz_type in ("bar_chart", "pie") else 4)
+      row_height = widget_h if idx % widgets_per_row == 0 else max(row_height, widget_h)
 
       # Inject Layout
       config["x"] = col_index
-      config["y"] = row_index * 4
+      config["y"] = current_y
       config["w"] = col_width
-      config["h"] = 4
+      config["h"] = widget_h
+      config["order"] = idx
+
+      if idx % widgets_per_row == widgets_per_row - 1:
+        current_y += row_height
 
       widget = Widget(
         id=uuid.uuid4(),
@@ -200,7 +240,8 @@ class ProvisioningService:
   def _build_config(self, template: WidgetTemplate, viz_type: str) -> JsonObject:
     """
     Constructs the widget configuration dictionary.
-    Injects default parameter values into the SQL to ensure it executes without user input.
+    Injects default parameter values into the SQL to ensure it executes without user input,
+    and attaches a descriptive subtitle/caption when available.
 
     Args:
         template (WidgetTemplate): The source template.
@@ -214,7 +255,14 @@ class ProvisioningService:
       template.sql_template,
       template.parameters_schema if isinstance(template.parameters_schema, dict) else None,
     )
-    return {"query": processed_sql}
+    config: JsonObject = {"query": processed_sql}
+    subtitle = self.DEFAULT_WIDGET_BLUEPRINTS.get(template.title) or (
+      template.description.strip() if isinstance(template.description, str) and template.description.strip() else None
+    )
+    if subtitle:
+      config["subtitle"] = subtitle
+      config["description"] = subtitle
+    return config
 
 
 # Singleton Instance

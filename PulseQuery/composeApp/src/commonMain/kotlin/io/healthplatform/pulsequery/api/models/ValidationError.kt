@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,8 @@ import kotlinx.serialization.Serializable
 /**
  *
  *
- * @param loc
- * @param msg
- * @param type
- */
+ * @property loc * @param msg
+ * @property type */
 @Serializable
 data class ValidationError(
     @SerialName(value = "loc") @Required val loc: kotlin.collections.List<ValidationErrorLocInner>,

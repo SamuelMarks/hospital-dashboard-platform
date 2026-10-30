@@ -1,3 +1,7 @@
+/**
+ * @fileoverview E2E Test Suite for Authentication and Authorization Flows.
+ */
+
 import { test, expect } from "@playwright/test";
 
 /**

@@ -13,9 +13,8 @@ import io.healthplatform.pulsequery.api.apis.BenchmarksApi
 import io.healthplatform.pulsequery.api.apis.ChatApi
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.apis.ExecutionApi
-import io.healthplatform.pulsequery.api.apis.MpaxArenaApi
+import io.healthplatform.pulsequery.api.apis.OptimizationApi
 import io.healthplatform.pulsequery.api.apis.SchemaApi
-import io.healthplatform.pulsequery.api.apis.SimulationApi
 import io.healthplatform.pulsequery.api.apis.SystemApi
 import io.healthplatform.pulsequery.api.apis.TemplatesApi
 import io.healthplatform.pulsequery.api.models.RefreshTokenRequest
@@ -30,6 +29,7 @@ import io.healthplatform.pulsequery.database.PulseQueryDatabase
 import io.healthplatform.pulsequery.database.WidgetCacheStorage
 import io.healthplatform.pulsequery.database.createDatabaseResult
 import io.healthplatform.pulsequery.getDefaultLocalHost
+import io.healthplatform.pulsequery.ml.LiteRtModelManager
 import io.healthplatform.pulsequery.network.ChatStreamingRepository
 import io.healthplatform.pulsequery.network.DashboardWebSocketRepository
 import io.healthplatform.pulsequery.network.NetworkHealthRepository
@@ -131,8 +131,8 @@ interface AppDependencies {
     /** Client for analytical report queries. */
     val analyticsApi: AnalyticsApi
 
-    /** Client for MPAX capacity simulation endpoints. */
-    val simulationApi: SimulationApi
+    /** Client for LLM + JAX + MPAX hospital operations optimization endpoints. */
+    val optimizationApi: OptimizationApi
 
     /** Client for admin configuration endpoints. */
     val adminApi: AdminApi
@@ -155,14 +155,14 @@ interface AppDependencies {
     /** Client for system diagnostics and health endpoints. */
     val systemApi: SystemApi
 
-    /** Client for SQL and MPAX benchmark query endpoints. */
+    /** Client for SQL and hospital optimization benchmark query endpoints. */
     val benchmarksApi: BenchmarksApi
-
-    /** Client for multi-candidate MPAX Arena competitive evaluation endpoints. */
-    val mpaxArenaApi: MpaxArenaApi
 
     /** Client for hospital capacity alerting thresholds and alert rules endpoints. */
     val alertRulesApi: AlertRulesApi
+
+    /** On-Device ML (ODML) LiteRT model hot-loading manager. */
+    val liteRtModelManager: LiteRtModelManager
 
     /** Repository managing live WebSocket collaboration and collaborator presence. */
     val dashboardWebSocketRepository: DashboardWebSocketRepository
@@ -205,8 +205,8 @@ class ApiServiceRegistry(
     /** Client for analytical report queries. */
     override val analyticsApi: AnalyticsApi by lazy { AnalyticsApi(baseUrl = baseUrl, httpClient = httpClient) }
 
-    /** Client for MPAX capacity simulation endpoints. */
-    override val simulationApi: SimulationApi by lazy { SimulationApi(baseUrl = baseUrl, httpClient = httpClient) }
+    /** Client for LLM + JAX + MPAX hospital operations optimization endpoints. */
+    override val optimizationApi: OptimizationApi by lazy { OptimizationApi(baseUrl = baseUrl, httpClient = httpClient) }
 
     /** Client for admin configuration endpoints. */
     override val adminApi: AdminApi by lazy { AdminApi(baseUrl = baseUrl, httpClient = httpClient) }
@@ -229,14 +229,14 @@ class ApiServiceRegistry(
     /** Client for system diagnostics and health endpoints. */
     override val systemApi: SystemApi by lazy { SystemApi(baseUrl = baseUrl, httpClient = httpClient) }
 
-    /** Client for SQL and MPAX benchmark query endpoints. */
+    /** Client for SQL and hospital optimization benchmark query endpoints. */
     override val benchmarksApi: BenchmarksApi by lazy { BenchmarksApi(baseUrl = baseUrl, httpClient = httpClient) }
-
-    /** Client for multi-candidate MPAX Arena competitive evaluation endpoints. */
-    override val mpaxArenaApi: MpaxArenaApi by lazy { MpaxArenaApi(baseUrl = baseUrl, httpClient = httpClient) }
 
     /** Client for hospital capacity alerting thresholds and alert rules endpoints. */
     override val alertRulesApi: AlertRulesApi by lazy { AlertRulesApi(baseUrl = baseUrl, httpClient = httpClient) }
+
+    /** On-Device ML (ODML) LiteRT model hot-loading manager. */
+    override val liteRtModelManager: LiteRtModelManager by lazy { LiteRtModelManager() }
 
     /** Repository managing live WebSocket collaboration and collaborator presence. */
     override val dashboardWebSocketRepository: DashboardWebSocketRepository by lazy {
@@ -431,9 +431,9 @@ object AppContainer : AppDependencies {
     override val analyticsApi: AnalyticsApi
         get() = _registryFlow.value.analyticsApi
 
-    /** Client for MPAX capacity simulation endpoints. */
-    override val simulationApi: SimulationApi
-        get() = _registryFlow.value.simulationApi
+    /** Client for LLM + JAX + MPAX hospital operations optimization endpoints. */
+    override val optimizationApi: OptimizationApi
+        get() = _registryFlow.value.optimizationApi
 
     /** Client for admin configuration endpoints. */
     override val adminApi: AdminApi
@@ -471,17 +471,17 @@ object AppContainer : AppDependencies {
     override val systemApi: SystemApi
         get() = _registryFlow.value.systemApi
 
-    /** Client for SQL and MPAX benchmark query endpoints. */
+    /** Client for SQL and hospital optimization benchmark query endpoints. */
     override val benchmarksApi: BenchmarksApi
         get() = _registryFlow.value.benchmarksApi
-
-    /** Client for multi-candidate MPAX Arena competitive evaluation endpoints. */
-    override val mpaxArenaApi: MpaxArenaApi
-        get() = _registryFlow.value.mpaxArenaApi
 
     /** Client for hospital capacity alerting thresholds and alert rules endpoints. */
     override val alertRulesApi: AlertRulesApi
         get() = _registryFlow.value.alertRulesApi
+
+    /** On-Device ML (ODML) LiteRT model hot-loading manager. */
+    override val liteRtModelManager: LiteRtModelManager
+        get() = _registryFlow.value.liteRtModelManager
 
     /** Repository monitoring backend health and reachability. */
     override val networkHealthRepository: NetworkHealthRepository

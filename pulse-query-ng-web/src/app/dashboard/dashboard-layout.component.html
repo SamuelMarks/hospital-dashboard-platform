@@ -29,17 +29,30 @@
     <!-- Skeleton Loading State -->
     @if (store.isLoading() && !store.dashboard()) {
       <div class="ghost-grid" data-testid="skeleton-grid">
-        <div class="ghost-card h-2" style="grid-column: span 6">
-          <app-skeleton-loader variant="metric"></app-skeleton-loader>
-        </div>
-        <div class="ghost-card h-2" style="grid-column: span 6">
-          <app-skeleton-loader variant="chart"></app-skeleton-loader>
+        <div class="col-span-12">
+          <app-skeleton-loader variant="dashboard-grid"></app-skeleton-loader>
         </div>
       </div>
     }
 
     <!-- Grid Canvas -->
-    @if (store.dashboard()) {
+    @if (store.dashboard(); as activeDash) {
+      @if (!isTvMode() && isHospitalCommandCenter()) {
+        <div class="command-center-banner" data-testid="command-center-banner">
+          <div class="banner-icon">
+            <mat-icon aria-hidden="true">local_hospital</mat-icon>
+          </div>
+          <div class="banner-text">
+            <div class="banner-title">{{ activeDash.name }}</div>
+            <div i18n class="banner-subtitle">
+              Real-time inpatient capacity, unit occupancy, department workload, length of stay, and
+              clinical bottleneck overview — each widget includes a descriptive caption explaining
+              its operational metric.
+            </div>
+          </div>
+        </div>
+      }
+
       <div
         cdkDropList
         id="dashboard-grid"
@@ -89,8 +102,26 @@
               ></app-widget>
             </div>
 
-            <!-- Drag Placeholder style -->
-            <div *cdkDragPlaceholder class="drag-placeholder"></div>
+            <!-- Drag Placeholder Silhouette -->
+            <div
+              *cdkDragPlaceholder
+              class="drag-placeholder widget-drop-silhouette"
+              [style.grid-column]="'span ' + getColSpan(widget)"
+              [style.grid-row]="'span ' + getRowSpan(widget)"
+              data-testid="widget-drop-silhouette"
+            >
+              <div class="silhouette-header">
+                <span class="silhouette-title">{{ widget.title }}</span>
+                <span class="silhouette-badge"
+                  >{{ getColSpan(widget) }}×{{ getRowSpan(widget) }}</span
+                >
+              </div>
+              <div class="silhouette-body">
+                <app-skeleton-loader
+                  [variant]="getWidgetSkeletonVariant(widget)"
+                ></app-skeleton-loader>
+              </div>
+            </div>
 
             <!-- Resize Handle -->
             @if (store.isEditMode() && !isTvMode()) {
@@ -111,6 +142,62 @@
                 (keydown.arrowDown)="resizeByKeyboard($event, widget, 1)"
               ></div>
             }
+          </div>
+        }
+
+        <!-- Prominent Add Widget CTA Card when dashboard has < 2 widgets (or in edit mode with 0 widgets) -->
+        @if (
+          !isTvMode() &&
+          (store.widgets().length === 1 || (store.widgets().length === 0 && store.isEditMode()))
+        ) {
+          <div
+            class="add-widget-cta-card"
+            style="grid-column: span 6; grid-row: span 6"
+            role="region"
+            i18n-aria-label
+            aria-label="Add a new widget to this dashboard"
+            data-testid="add-widget-cta-card"
+          >
+            <div class="cta-icon-circle">
+              <mat-icon aria-hidden="true">add_chart</mat-icon>
+            </div>
+            <h3 i18n class="cta-title">Add Another Widget to Your Dashboard</h3>
+            <p i18n class="cta-subtitle">
+              Combine multiple metrics, clinical tables, or trend charts side-by-side. Drag a
+              template from the Widget Gallery directly into this slot, or launch the wizard below.
+            </p>
+            <div class="cta-actions">
+              <button
+                i18n
+                type="button"
+                mat-flat-button
+                (click)="openWizard()"
+                data-testid="cta-btn-open-wizard"
+              >
+                <mat-icon aria-hidden="true">add</mat-icon>
+                Add Widget (Wizard)
+              </button>
+              <button
+                i18n
+                type="button"
+                mat-stroked-button
+                (click)="enableEditModeAndFocusGallery()"
+                data-testid="cta-btn-browse-gallery"
+              >
+                <mat-icon aria-hidden="true">library_add</mat-icon>
+                Drag from Gallery
+              </button>
+              <button
+                i18n
+                type="button"
+                mat-button
+                (click)="askDataService.open()"
+                data-testid="cta-btn-ask-ai"
+              >
+                <mat-icon aria-hidden="true">smart_toy</mat-icon>
+                Ask AI
+              </button>
+            </div>
           </div>
         }
       </div>
@@ -150,8 +237,10 @@
     tabindex="-1"
     appFocusTrap
     [attr.aria-label]="focused.title"
-    (keydown.escape)="store.setFocusedWidget(null)"
+    (escape)="store.setFocusedWidget(null)"
+    (keydown.escape)="onFocusOverlayClick($event)"
     (click)="onFocusOverlayClick($event)"
+    data-testid="focused-widget-modal"
   >
     <div class="focus-container mat-elevation-z24">
       <div class="focus-modal-bar">

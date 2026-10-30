@@ -29,6 +29,14 @@ export interface SqlConfig {
    */
   h?: number;
   /**
+   * Optional subtitle or caption explaining what the widget measures or displays.
+   */
+  subtitle?: string | null;
+  /**
+   * Optional description or clinical guidance for the widget.
+   */
+  description?: string | null;
+  /**
    * The raw SQL query to execute.
    */
   query?: string | null;

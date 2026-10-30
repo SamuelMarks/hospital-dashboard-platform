@@ -197,6 +197,7 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             id = "w-nl",
             dashboardId = "dash-1",
             title = "Interactive NL Widget",
+            subtitle = "Inpatient census query caption",
             type = "SQL",
             visualization = "table",
             config = kotlinx.serialization.json.buildJsonObject {
@@ -223,10 +224,30 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
         }
         waitForIdle()
         onNodeWithText("Interactive NL Widget").assertExists()
+        onNodeWithText("Inpatient census query caption").assertExists()
+        onNodeWithTag("widget_subtitle_w-nl").assertExists()
         onNodeWithText("ollama:llama3").assertExists()
         onNodeWithTag("widget_natural_text_run_w-nl").performClick()
         runOnIdle {
             assertEquals("Count patients", executedPrompt)
+        }
+    }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testAddWidgetPromptCardInteractions() = runComposeUiTest {
+        var clickCount = 0
+        setContent {
+            MaterialTheme {
+                AddWidgetPromptCard(onAddWidget = { clickCount++ })
+            }
+        }
+        waitForIdle()
+        onNodeWithTag("add_widget_cta_card").assertExists()
+        onNodeWithTag("cta_browse_templates_btn").performClick()
+        onNodeWithTag("cta_custom_sql_btn").performClick()
+        runOnIdle {
+            assertEquals(2, clickCount)
         }
     }
 }

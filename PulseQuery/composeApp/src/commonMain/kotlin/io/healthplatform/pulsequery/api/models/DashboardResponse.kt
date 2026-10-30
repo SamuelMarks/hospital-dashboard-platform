@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * API Response model for a Dashboard. Includes the nested list of Widgets and permission level.
  *
- * @param name
- * @param id
- * @param ownerId
- * @param permissionLevel
- * @param widgets
- */
+ * @property name * @param id
+ * @property ownerId * @param permissionLevel
+ * @property widgets */
 @Serializable
 data class DashboardResponse(
     @SerialName(value = "name") @Required val name: kotlin.String,

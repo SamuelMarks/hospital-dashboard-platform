@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for sending a message from the User. Role is implicitly 'user'.
  *
- * @param content
- * @param targetModels
+ * @property content * @param targetModels
  */
 @Serializable
 data class MessageCreate(

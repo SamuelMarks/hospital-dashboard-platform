@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Detailed view including message history.
  *
- * @param id
- * @param userId
- * @param createdAt
- * @param updatedAt
- * @param title
- * @param messages
+ * @property id * @param userId
+ * @property createdAt * @param updatedAt
+ * @property title * @param messages
  */
 @Serializable
 data class ConversationDetail(

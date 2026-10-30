@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Metadata for a database table, including its columns.
  *
- * @param tableName
- * @param columns
+ * @property tableName * @param columns
  */
 @Serializable
 data class TableInfo(

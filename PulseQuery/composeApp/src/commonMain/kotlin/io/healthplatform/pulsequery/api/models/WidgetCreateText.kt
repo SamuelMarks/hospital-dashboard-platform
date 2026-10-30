@@ -39,7 +39,7 @@ data class WidgetCreateText(
      * @property value Wire string representation ("TEXT").
      */
     @Serializable
-    enum class Type(val value: kotlin.String) {
+    enum class Type(/** Wire string representation. */ val value: kotlin.String) {
         /** Text widget type discriminator. */
         @SerialName(value = "TEXT")
         TEXT("TEXT")
@@ -51,7 +51,7 @@ data class WidgetCreateText(
      * @property value Wire string representation ("markdown").
      */
     @Serializable
-    enum class Visualization(val value: kotlin.String) {
+    enum class Visualization(/** Wire string representation. */ val value: kotlin.String) {
         /** Markdown visualization type. */
         @SerialName(value = "markdown")
         markdown("markdown")

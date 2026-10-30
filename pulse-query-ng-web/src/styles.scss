@@ -234,3 +234,85 @@ body {
     )
   );
 }
+
+/* Shared Drag-and-Drop Widget Silhouette & Add-Widget CTA Styles */
+.widget-drop-silhouette,
+.gallery-drop-silhouette,
+.add-widget-cta-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 260px;
+  width: 100%;
+  border: 2px dashed var(--sys-primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--sys-primary) 7%, var(--sys-surface));
+  padding: 16px;
+  box-sizing: border-box;
+  gap: 10px;
+}
+.add-widget-cta-card {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.cta-icon-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--sys-primary-container);
+  color: var(--sys-on-primary-container);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cta-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--sys-text-primary);
+  margin: 0;
+}
+.cta-subtitle {
+  font-size: 0.82rem;
+  color: var(--sys-text-secondary);
+  max-width: 440px;
+  line-height: 1.4;
+  margin: 0;
+}
+.cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.silhouette-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.silhouette-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--sys-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.silhouette-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: var(--sys-primary-container);
+  color: var(--sys-on-primary-container);
+}
+.silhouette-subtitle {
+  font-size: 0.75rem;
+  color: var(--sys-text-secondary);
+}
+.silhouette-body {
+  flex: 1 1 auto;
+  min-height: 150px;
+  opacity: 0.85;
+}

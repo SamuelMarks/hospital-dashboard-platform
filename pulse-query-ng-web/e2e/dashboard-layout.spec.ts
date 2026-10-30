@@ -33,7 +33,7 @@ test.describe('Dashboard Layout Management', () => {
     // Ensure empty state is visible
     await expect(loggedInPage.locator('app-empty-state')).toBeVisible({ timeout: 15000 });
 
-    const loadBtn = loggedInPage.getByLabel('Load Sample Data');
+    const loadBtn = loggedInPage.getByRole('button', { name: /Load Sample Data/i });
     await expect(loadBtn).toBeEnabled();
     await loadBtn.click();
 

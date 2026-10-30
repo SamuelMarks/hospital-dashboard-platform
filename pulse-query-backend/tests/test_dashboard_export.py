@@ -298,9 +298,9 @@ def test_generate_clinical_pdf_report_branches() -> None:
 
   custom_time = datetime(2026, 9, 15, 8, 30, 0, tzinfo=UTC)
 
-  # 1. Non-dict row in rows
+  # 1. Non-dict row in rows + widget with subtitle
   non_dict_widgets: list[JsonObject] = [
-    {"title": "Non Dict", "type": "SQL", "data": ["just a string"]},
+    {"title": "Non Dict", "subtitle": "Caption explaining the metric", "type": "SQL", "data": ["just a string"]},
     {"title": "Special Chars (\\()", "type": "SQL", "data": []},
   ]
   pdf_bytes = generate_clinical_pdf_report(
@@ -310,6 +310,7 @@ def test_generate_clinical_pdf_report_branches() -> None:
     census_timestamp=custom_time,
   )
   assert pdf_bytes.startswith(b"%PDF-1.4")
+  assert b"Caption: Caption explaining the metric" in pdf_bytes
 
   # 2. Page overflow (multi-page document pagination)
   many_widgets: list[JsonObject] = [

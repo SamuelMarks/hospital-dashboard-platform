@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for modifying user active account status.
  *
- * @param isActive
- */
+ * @property isActive */
 @Serializable
 data class UserStatusUpdate(
     @SerialName(value = "is_active") @Required val isActive: kotlin.Boolean

@@ -17,7 +17,7 @@ from app.services.benchmark_telemetry_service import (
   BenchmarkScenarioSchema,
   BenchmarkTelemetryService,
   BenchmarkTelemetryStateDict,
-  MpaxBenchmarkScenarioEntry,
+  OptimizationBenchmarkScenarioEntry,
   SqlBenchmarkEntry,
   benchmark_telemetry_service,
   read_benchmark_json_file as _read_json_file,
@@ -53,16 +53,17 @@ async def get_sql_benchmarks() -> list[BenchmarkScenarioSchema]:
   return unwrap_or_raise_http(res)
 
 
-@router.get("/mpax", response_model=list[BenchmarkScenarioSchema], response_model_exclude_unset=True)
-async def get_mpax_benchmarks() -> list[BenchmarkScenarioSchema]:
+@router.get("/optimization", response_model=list[BenchmarkScenarioSchema], response_model_exclude_unset=True)
+async def get_optimization_benchmarks() -> list[BenchmarkScenarioSchema]:
   """
-  Returns the generated MPAX what-if scenarios.
+  Returns the gold-standard Hospital Operations Optimization benchmarks across
+  Use Case 1 (`service_unit`), Use Case 2 (`surgical_scheduling`), and Use Case 3 (`staffing_optimization`).
 
   Returns:
-      list[BenchmarkScenarioSchema]: Parsed MPAX benchmark scenario items.
+      list[BenchmarkScenarioSchema]: Parsed optimization benchmark scenario items.
   """
-  file_path = Path(DATA_DIR) / "mpax_benchmark_scenarios.json"
-  res = await asyncio.to_thread(_read_json_file, file_path, "MPAX benchmarks not found.")
+  file_path = Path(DATA_DIR) / "optimization_benchmarks.json"
+  res = await asyncio.to_thread(_read_json_file, file_path, "Optimization benchmarks not found.")
   return unwrap_or_raise_http(res)
 
 
@@ -130,10 +131,10 @@ __all__ = [
   "BenchmarkProgressUpdateRequest",
   "BenchmarkScenarioSchema",
   "BenchmarkTelemetryService",
-  "MpaxBenchmarkScenarioEntry",
+  "OptimizationBenchmarkScenarioEntry",
   "SqlBenchmarkEntry",
   "benchmark_telemetry_service",
-  "get_mpax_benchmarks",
+  "get_optimization_benchmarks",
   "get_sql_benchmarks",
   "post_benchmark_progress",
   "router",

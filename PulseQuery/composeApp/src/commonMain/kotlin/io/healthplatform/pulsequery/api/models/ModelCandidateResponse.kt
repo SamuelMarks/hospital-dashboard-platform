@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,14 +25,10 @@ import kotlinx.serialization.Serializable
 /**
  * Public response schema for the frontend. Hides 'model_identifier' to maintain double-blind benchmarking.
  *
- * @param modelTag
- * @param generatedSql
- * @param id
- * @param experimentId
- * @param isSelected
- * @param sqlHash
- * @param latencyMs
- */
+ * @property modelTag * @param generatedSql
+ * @property id * @param experimentId
+ * @property isSelected * @param sqlHash
+ * @property latencyMs */
 @Serializable
 data class ModelCandidateResponse(
     @SerialName(value = "model_tag") @Required val modelTag: kotlin.String,

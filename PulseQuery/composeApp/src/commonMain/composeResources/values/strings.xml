@@ -311,4 +311,31 @@
     <string name="database_error">Database error</string>
     <string name="database_misconfiguration">Database Misconfiguration</string>
     <string name="retry_query">Retry Query</string>
+
+    <!-- Widget Subtitles, Skeleton Placeholders & Add Widget Prompt -->
+    <string name="widget_subtitle_label">Subtitle / Caption</string>
+    <string name="widget_subtitle_placeholder">Describe what this widget measures or displays...</string>
+    <string name="loading_widget_data">Loading widget data</string>
+    <string name="loading_dashboard_layout">Loading dashboard layout</string>
+    <string name="add_widget_prompt_title">Add Another Widget to Your Dashboard</string>
+    <string name="add_widget_prompt_subtitle">Combine clinical metrics, tables, or trend charts side-by-side. Choose a template or build a custom widget.</string>
+    <string name="browse_template_marketplace">Browse Template Marketplace</string>
+    <string name="no_table_rows_available">No matching records for the active filters.</string>
+    <string name="cancel_button">Cancel</string>
+
+    <!-- Hospital Operations Optimization Copilot & LiteRT Hot-Loading -->
+    <string name="optimization_copilot_title">Hospital Operations Optimization Copilot</string>
+    <string name="optimization_what_i_can_do">What I Can Do</string>
+    <string name="optimization_what_i_can_do_desc">Analyze patient census data and iteratively optimize hospital operations across Service-Unit Assignments, Surgical Scheduling (BEDS &amp; POINTS), and Nurse &amp; Physician Staffing.</string>
+    <string name="optimization_quick_actions">Quick Actions</string>
+    <string name="optimization_use_case_service_unit">1. Service-Unit Assignments</string>
+    <string name="optimization_use_case_surgical">2. Surgical Scheduling (BEDS/POINTS)</string>
+    <string name="optimization_use_case_staffing">3. Nurse &amp; Physician Staffing</string>
+    <string name="optimization_prompt_label">Type your message here...</string>
+    <string name="optimization_solve_button">Optimize with JAX &amp; MPAX</string>
+    <string name="optimization_litert_hot_load">Hot-Load On-Device LiteRT Model</string>
+    <string name="optimization_litert_active">LiteRT ODML Active</string>
+    <string name="optimization_des_baseline_title">JAX Discrete Event Simulation (DES) — Expert Baseline</string>
+    <string name="optimization_survey_button">Submit UX Evaluation Survey</string>
+    <string name="optimization_disclaimer">LLMs can make mistakes. Check important info.</string>
 </resources>

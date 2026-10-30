@@ -105,6 +105,17 @@ import { WidgetBuilderComponent } from '../widget-builder/widget-builder.compone
         background-color: var(--sys-secondary-container);
         color: var(--sys-on-secondary-container);
       }
+      .icon-gallery {
+        background-color: var(--sys-primary-container);
+        color: var(--sys-on-primary-container);
+      }
+      .hero-actions {
+        margin-top: 20px;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
 
       .card-title {
         font-size: 1.1rem;
@@ -169,6 +180,13 @@ export class EmptyStateComponent {
   /** Open Ai. */
   openAi(): void {
     this.askDataService.open();
+  }
+
+  /** Enables edit mode so the user can drag and drop widgets from the Widget Gallery sidebar. */
+  enableDragAndDropGallery(): void {
+    if (!this.store.isEditMode()) {
+      this.store.toggleEditMode();
+    }
   }
 
   /** Loads samples. */

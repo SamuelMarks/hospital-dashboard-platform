@@ -1,3 +1,7 @@
+/**
+ * @fileoverview E2E Test Suite for Offline & Reconnection Edge Cases.
+ */
+
 import { test, expect } from "@playwright/test";
 
 const BACKEND_URL = "http://localhost:8000/api/v1";

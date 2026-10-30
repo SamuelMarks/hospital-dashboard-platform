@@ -65,6 +65,9 @@ export interface WidgetBuilderData {
     WidgetBuilderVisualizeStepComponent,
   ],
   providers: [provideNativeDateAdapter(), WidgetBuilderStore],
+  host: {
+    '(keydown.escape)': 'cancel()',
+  },
   templateUrl: './widget-builder.component.html',
   styles: [
     `
@@ -209,6 +212,15 @@ export class WidgetBuilderComponent implements OnInit {
    */
   updateTitle(title: string): void {
     this.vizFormModel.update((m) => ({ ...m, title }));
+  }
+
+  /**
+   * Updates the widget subtitle/caption in `vizFormModel`.
+   *
+   * @param subtitle - Updated widget subtitle string.
+   */
+  updateSubtitle(subtitle: string): void {
+    this.vizFormModel.update((m) => ({ ...m, subtitle }));
   }
 
   /**

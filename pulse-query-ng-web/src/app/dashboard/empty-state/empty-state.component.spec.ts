@@ -129,4 +129,15 @@ describe('EmptyStateComponent', () => {
     component.loadSamples();
     expect(mockStore.createDefaultDashboard).not.toHaveBeenCalled();
   });
+
+  it('should toggle edit mode when enableDragAndDropGallery is called and not in edit mode', () => {
+    mockStore.isEditMode.set(false);
+    component.enableDragAndDropGallery();
+    expect(mockStore.toggleEditMode).toHaveBeenCalledTimes(1);
+
+    mockStore.isEditMode.set(true);
+    mockStore.toggleEditMode.mockClear();
+    component.enableDragAndDropGallery();
+    expect(mockStore.toggleEditMode).not.toHaveBeenCalled();
+  });
 });

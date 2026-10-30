@@ -32,6 +32,7 @@ import { CollaboratorPresenceComponent } from './collaborator-presence/collabora
 import { UndoRedoButtonsComponent } from '../shared/components/undo-redo-buttons.component';
 import { ThemeColorPickerDialogComponent } from './theme-picker/theme-color-picker.dialog';
 import { triggerBlobDownload } from '../shared/utils/csv-export.utils';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 
 /** Top application toolbar component hosting dashboard controls, exports, and user actions. */
 @Component({
@@ -271,9 +272,9 @@ export class ToolbarComponent {
    * @param event - The DOM input change event from the color input element.
    */
   onColorPickerChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.value) {
-      this.updateTheme(input.value);
+    const val = extractEventInputValue(event);
+    if (val) {
+      this.updateTheme(val);
     }
   }
 

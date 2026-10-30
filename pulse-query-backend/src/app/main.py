@@ -28,9 +28,8 @@ from app.api.routers import (
   chat,
   dashboards,
   execution,
-  mpax_arena,
+  optimization,
   schema,
-  simulation,
   system,
   templates,
   ws,
@@ -183,7 +182,7 @@ app.include_router(dashboards.router, prefix=f"{settings.API_V1_STR}/dashboards"
 app.include_router(execution.router, prefix=f"{settings.API_V1_STR}/dashboards", tags=["execution"])
 app.include_router(ai.router, prefix=f"{settings.API_V1_STR}/ai", tags=["ai"])
 app.include_router(templates.router, prefix=f"{settings.API_V1_STR}/templates", tags=["templates"])
-app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
+app.include_router(optimization.router, prefix=f"{settings.API_V1_STR}/optimization", tags=["optimization"])
 app.include_router(schema.router, prefix=f"{settings.API_V1_STR}/schema", tags=["schema"])
 # Register Chat Router
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/conversations", tags=["chat"])
@@ -195,7 +194,6 @@ app.include_router(ws.router, prefix=f"{settings.API_V1_STR}/ws", tags=["collabo
 # Register Admin Router
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(admin_users.router, prefix=f"{settings.API_V1_STR}/admin/users", tags=["admin-users"])
-app.include_router(mpax_arena.router, prefix=f"{settings.API_V1_STR}/mpax_arena", tags=["mpax_arena"])
 app.include_router(benchmarks.router, prefix=f"{settings.API_V1_STR}/benchmarks", tags=["benchmarks"])
 app.include_router(system.router, prefix=f"{settings.API_V1_STR}/system", tags=["system"])
 

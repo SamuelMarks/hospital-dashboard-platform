@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -23,17 +24,19 @@ import kotlinx.serialization.Serializable
 /**
  * Configuration schema for SQL-type widgets (including natural-text-enabled SQL widgets).
  *
- * @param query The raw SQL query to execute.
- * @param x Grid X position
- * @param y Grid Y position
- * @param w Grid Width (cols)
- * @param h Grid Height (rows)
- * @param xKey Column for X-Axis/Labels
- * @param yKey Column for Y-Axis/Values
- * @param allowNaturalText Whether the widget allows the user to enter natural text on the dashboard.
- * @param processor Processor identifier (`'SQL'` [no model], `'ollama:<model>'`, or `'<provider>:<model>'`).
- * @param naturalTextPrompt Default or saved natural text prompt for this widget.
- * @param placeholderText Optional placeholder shown in the widget's natural text input.
+ * @property query The raw SQL query to execute.
+ * @property x Grid X position
+ * @property y Grid Y position
+ * @property w Grid Width (cols)
+ * @property h Grid Height (rows)
+ * @property xKey Column for X-Axis/Labels
+ * @property yKey Column for Y-Axis/Values
+ * @property allowNaturalText Whether the widget allows the user to enter natural text on the dashboard.
+ * @property processor Processor identifier (`'SQL'` [no model], `'ollama:<model>'`, or `'<provider>:<model>'`).
+ * @property naturalTextPrompt Default or saved natural text prompt for this widget.
+ * @property placeholderText Optional placeholder shown in the widget's natural text input.
+ * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
+ * @property description Optional description or clinical guidance for the widget.
  */
 @Serializable
 data class SqlConfig(
@@ -52,5 +55,7 @@ data class SqlConfig(
     @SerialName(value = "allow_natural_text") val allowNaturalText: kotlin.Boolean = false,
     @SerialName(value = "processor") val processor: kotlin.String = "SQL",
     @SerialName(value = "natural_text_prompt") val naturalTextPrompt: kotlin.String? = null,
-    @SerialName(value = "placeholder_text") val placeholderText: kotlin.String? = null
+    @SerialName(value = "placeholder_text") val placeholderText: kotlin.String? = null,
+    @SerialName(value = "subtitle") val subtitle: kotlin.String? = null,
+    @SerialName(value = "description") val description: kotlin.String? = null
 )

@@ -166,9 +166,42 @@ describe('App', () => {
     expect(mockThemeService.setTvMode).not.toHaveBeenCalled();
   });
 
-  it('should hide toolbar in tv mode', () => {
+  it('should hide toolbar and footer in tv mode', () => {
+    const footerBefore = fixture.debugElement.query(By.css('footer.app-footer'));
+    expect(footerBefore).toBeTruthy();
+    const footerText = (footerBefore.nativeElement as HTMLElement).textContent ?? '';
+    expect(footerText).toContain(`Built on ${component.buildTimestampUtc}`);
+    expect(footerText).toContain('Copyright © 2026 Samuel Marks');
+    const ghLink = footerBefore.query(By.css('a[data-testid="footer-github-link"]'));
+    expect(ghLink).toBeTruthy();
+    expect(ghLink.attributes['href']).toBe(
+      'https://github.com/SamuelMarks/hospital-dashboard-platform',
+    );
+
     mockThemeService.isTvMode.set(true);
     fixture.detectChanges();
     expect(fixture.debugElement.query(By.css('app-toolbar'))).toBeFalsy();
+    expect(fixture.debugElement.query(By.css('footer.app-footer'))).toBeFalsy();
+  });
+
+  it('should close Ask Data drawer on Escape when open and no CDK overlay is active', () => {
+    mockAskDataService.isOpen.set(false);
+    component.onDocumentEscape();
+    expect(mockAskDataService.close).not.toHaveBeenCalled();
+
+    mockAskDataService.isOpen.set(true);
+    const overlay = document.createElement('div');
+    overlay.className = 'cdk-overlay-container';
+    const dialog = document.createElement('div');
+    dialog.className = 'mat-mdc-dialog-container';
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    component.onDocumentEscape();
+    expect(mockAskDataService.close).not.toHaveBeenCalled();
+
+    document.body.removeChild(overlay);
+    component.onDocumentEscape();
+    expect(mockAskDataService.close).toHaveBeenCalledTimes(1);
   });
 });

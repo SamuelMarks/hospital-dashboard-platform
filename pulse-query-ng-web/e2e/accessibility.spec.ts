@@ -156,8 +156,12 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
         await expect(loggedInPage.locator('app-share-dashboard-dialog')).toBeVisible({
           timeout: 10000,
         });
+        await loggedInPage.waitForTimeout(250);
         await checkA11y(loggedInPage, 'Share Dashboard Dialog');
         await loggedInPage.keyboard.press('Escape');
+        await expect(loggedInPage.locator('app-share-dashboard-dialog')).toBeHidden({
+          timeout: 10000,
+        });
       }
 
       // Theme Color Picker Dialog
@@ -170,8 +174,12 @@ test.describe('Accessibility Standards (WCAG AA)', () => {
           await expect(loggedInPage.locator('app-theme-color-picker-dialog')).toBeVisible({
             timeout: 10000,
           });
+          await loggedInPage.waitForTimeout(250);
           await checkA11y(loggedInPage, 'Theme Color Picker Dialog');
           await loggedInPage.keyboard.press('Escape');
+          await expect(loggedInPage.locator('app-theme-color-picker-dialog')).toBeHidden({
+            timeout: 10000,
+          });
         }
       }
     });

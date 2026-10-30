@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,8 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for registering a new user.
  *
- * @param email
- * @param password
- * @param languagePreference
- */
+ * @property email * @param password
+ * @property languagePreference */
 @Serializable
 data class UserCreate(
     @SerialName(value = "email") @Required val email: kotlin.String,

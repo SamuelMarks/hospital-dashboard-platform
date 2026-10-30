@@ -52,6 +52,14 @@ describe('OnboardingService', () => {
     expect(svc.isComplete()).toBe(true);
   });
 
+  it('should not show wizard if complete() is called before the 500ms timeout fires', () => {
+    const svc = createService();
+    svc.complete();
+    vi.advanceTimersByTime(500);
+    expect(svc.isVisible()).toBe(false);
+    expect(svc.isComplete()).toBe(true);
+  });
+
   it('should not show wizard on server platform', () => {
     const svc = createService('server');
     vi.advanceTimersByTime(500);

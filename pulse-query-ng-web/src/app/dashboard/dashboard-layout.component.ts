@@ -24,7 +24,10 @@ import { WidgetComponent } from '../widget/widget.component';
 import { WidgetGalleryComponent } from './widget-gallery/widget-gallery.component';
 import { QueryCartComponent } from './query-cart/query-cart.component';
 import { WidgetEditorDialog, WidgetEditorData } from './widget-editor.dialog';
-import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component';
+import {
+  SkeletonLoaderComponent,
+  SkeletonVariant,
+} from '../shared/components/skeleton-loader.component';
 import { ThemeService } from '../core/theme/theme.service';
 import { ProvisioningService } from './provisioning.service';
 import { EmptyStateComponent } from './empty-state/empty-state.component';
@@ -36,6 +39,8 @@ import { DATE_NOW } from '../core/time.token';
 import { UndoRedoService } from '../core/undo/undo-redo.service';
 import { DeleteWidgetCommand } from '../core/undo/dashboard-commands';
 import { FocusTrapDirective } from '../core/accessibility/focus-trap.directive';
+import { AskDataService } from '../global/ask-data.service';
+import { WidgetBuilderComponent } from './widget-builder/widget-builder.component';
 
 /**
  * Minimal drag-drop event contract required by `DashboardLayoutComponent.onDrop`.
@@ -107,11 +112,54 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   private readonly dateNow = inject(DATE_NOW);
   /** Injected DOM document reference. */
   private readonly document = inject(DOCUMENT);
+  /** Service controlling the global Ask Data conversational assistant drawer. */
+  public readonly askDataService = inject(AskDataService);
   /** DestroyRef for cleaning up route subscriptions. */
   private readonly destroyRef = inject(DestroyRef);
 
   /** Whether the app is in TV Mode (Kiosk). */
   readonly isTvMode = this.themeService.isTvMode;
+
+  /**
+   * Returns true when the active dashboard is the default Hospital Command Center.
+   *
+   * @returns True if the dashboard name matches Hospital Command Center.
+   */
+  isHospitalCommandCenter(): boolean {
+    const name = this.store.dashboard()?.name || '';
+    return name.toLowerCase().includes('hospital command center');
+  }
+
+  /**
+   * Opens the Widget Builder wizard modal for adding a new widget.
+   */
+  openWizard(): void {
+    if (this.isTvMode()) return;
+    const dashboard = this.store.dashboard();
+    if (!dashboard) return;
+
+    const ref = this.dialog.open(WidgetBuilderComponent, {
+      data: { dashboardId: dashboard.id },
+      width: '1200px',
+      maxWidth: '95vw',
+      height: '90vh',
+      panelClass: 'no-padding-dialog',
+    });
+
+    ref.afterClosed().subscribe((res: boolean) => {
+      if (res) this.store.loadDashboard(dashboard.id);
+    });
+  }
+
+  /**
+   * Enables edit mode so the user can drag and drop templates from the Widget Gallery sidebar.
+   */
+  enableEditModeAndFocusGallery(): void {
+    if (this.isTvMode()) return;
+    if (!this.store.isEditMode()) {
+      this.store.toggleEditMode();
+    }
+  }
 
   /** Subscribes to route parameters, collaboration socket updates, and global filter query params. */
   ngOnInit(): void {
@@ -161,7 +209,19 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
 
       // CASE: Query Cart Item
       if (this.isQueryCartItem(data)) {
+        const dropIndex = event.currentIndex;
+        const tempId = `optimistic-drop-${this.dateNow().getTime()}`;
+        const optimisticWidget: WidgetResponse = {
+          id: tempId,
+          dashboard_id: dashboard.id,
+          title: data.title,
+          type: 'SQL',
+          visualization: 'table',
+          config: { query: data.sql, w: 6, h: 6, order: dropIndex },
+        };
+        this.store.optimisticRestoreWidget(optimisticWidget);
         this.store.setLoading(true);
+
         this.cartProvisioning.addToDashboard(data, dashboard.id).subscribe({
           next: () => {
             this.snackBar.open($localize`Added query: ${data.title}`, $localize`OK`, {
@@ -171,6 +231,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
           },
           error: (err: unknown) => {
             console.error(err);
+            this.store.optimisticRemoveWidget(tempId);
             this.snackBar.open($localize`Failed to add query to dashboard`, $localize`Close`);
             this.store.setLoading(false);
           },
@@ -181,6 +242,24 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
       // CASE: Template Item
       // Type assertion handles the TemplateResponse default path
       const template = data as TemplateResponse;
+      const dropIndex = event.currentIndex;
+      const tempId = `optimistic-drop-${this.dateNow().getTime()}`;
+      const optimisticWidget: WidgetResponse = {
+        id: tempId,
+        dashboard_id: dashboard.id,
+        title: template.title,
+        subtitle: template.description || null,
+        type: 'SQL',
+        visualization: 'table',
+        config: {
+          query: template.sql_template,
+          subtitle: template.description || null,
+          w: 6,
+          h: 6,
+          order: dropIndex,
+        },
+      };
+      this.store.optimisticRestoreWidget(optimisticWidget);
       this.store.setLoading(true);
 
       this.provisioning.provisionWidget(template, dashboard.id).subscribe({
@@ -192,6 +271,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
         },
         error: (err: unknown) => {
           console.error(err);
+          this.store.optimisticRemoveWidget(tempId);
           this.snackBar.open($localize`Failed to create widget from template`, $localize`Close`);
           this.store.setLoading(false);
         },
@@ -207,7 +287,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
    */
   isQueryCartItem(value: unknown): value is QueryCartItem {
     return (
-      !!value && typeof value === 'object' && (value as QueryCartItem).kind === QUERY_CART_ITEM_KIND
+      !!value && typeof value === 'object' && 'kind' in value && value.kind === QUERY_CART_ITEM_KIND
     );
   }
 
@@ -223,14 +303,30 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Calculates the Row Span.
+   * Calculates the Row Span (1-8) for the grid, ensuring table and chart widgets have sufficient height.
    *
    * @param {WidgetResponse} widget - The widget configuration.
-   * @returns {number} Span between 1 and 4.
+   * @returns {number} Span between 1 and 8.
    */
   getRowSpan(widget: WidgetResponse): number {
     const h = Number(widget.config?.['h']);
-    return Math.max(1, Math.min(4, h || 2));
+    return Math.max(1, Math.min(8, h || 2));
+  }
+
+  /**
+   * Maps a widget's visualization type to the corresponding `SkeletonVariant` for drag-drop silhouettes.
+   *
+   * @param widget - Target widget being dragged.
+   * @returns Matching `SkeletonVariant`.
+   */
+  getWidgetSkeletonVariant(widget: WidgetResponse): SkeletonVariant {
+    const viz = (widget.visualization || 'table').toLowerCase();
+    if (viz.includes('chart') || viz.includes('graph')) return 'chart';
+    if (viz === 'pie') return 'pie';
+    if (viz === 'heatmap') return 'heatmap';
+    if (viz.includes('metric') || viz.includes('scalar')) return 'metric';
+    if (viz === 'table') return 'table';
+    return 'card';
   }
 
   /**
@@ -309,11 +405,11 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Closes the focus/zen mode overlay when the user clicks directly on the backdrop.
+   * Closes the focus/zen mode overlay when the user clicks or presses Escape directly on the backdrop.
    *
-   * @param event - DOM mouse click event on the overlay backdrop.
+   * @param event - DOM click or keyboard event on the overlay backdrop.
    */
-  onFocusOverlayClick(event: MouseEvent): void {
+  onFocusOverlayClick(event: Event): void {
     if (event.target === event.currentTarget) {
       this.store.setFocusedWidget(null);
     }

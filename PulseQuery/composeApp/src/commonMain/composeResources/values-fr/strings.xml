@@ -311,4 +311,31 @@
     <string name="database_error">Erreur de base de données</string>
     <string name="database_misconfiguration">Mauvaise Configuration de la Base de Données</string>
     <string name="retry_query">Réessayer la Requête</string>
+
+    <!-- Widget Subtitles, Skeleton Placeholders & Add Widget Prompt -->
+    <string name="widget_subtitle_label">Sous-titre / Légende</string>
+    <string name="widget_subtitle_placeholder">Décrivez ce que ce widget mesure ou affiche...</string>
+    <string name="loading_widget_data">Chargement des données du widget</string>
+    <string name="loading_dashboard_layout">Chargement de la disposition du tableau de bord</string>
+    <string name="add_widget_prompt_title">Ajoutez un Autre Widget à Votre Tableau de Bord</string>
+    <string name="add_widget_prompt_subtitle">Combinez des indicateurs cliniques, des tableaux ou des graphiques de tendances côte à côte. Choisissez un modèle ou créez un widget personnalisé.</string>
+    <string name="browse_template_marketplace">Parcourir la Bibliothèque de Modèles</string>
+    <string name="no_table_rows_available">Aucun enregistrement correspondant aux filtres actifs.</string>
+    <string name="cancel_button">Annuler</string>
+
+    <!-- Hospital Operations Optimization Copilot & LiteRT Hot-Loading -->
+    <string name="optimization_copilot_title">Copilote d’Optimisation des Opérations Hospitalières</string>
+    <string name="optimization_what_i_can_do">Ce Que Je Peux Faire</string>
+    <string name="optimization_what_i_can_do_desc">Analysez les données de recensement des patients et optimisez de manière itérative les affectations service-unité, la planification chirurgicale (BEDS et POINTS) et les effectifs infirmiers.</string>
+    <string name="optimization_quick_actions">Actions Rapides</string>
+    <string name="optimization_use_case_service_unit">1. Affectations Service-Unité</string>
+    <string name="optimization_use_case_surgical">2. Planification Chirurgicale (BEDS/POINTS)</string>
+    <string name="optimization_use_case_staffing">3. Planification Médecins et Infirmiers</string>
+    <string name="optimization_prompt_label">Écrivez votre message ici...</string>
+    <string name="optimization_solve_button">Optimiser avec JAX et MPAX</string>
+    <string name="optimization_litert_hot_load">Charger le Modèle LiteRT sur l’Appareil</string>
+    <string name="optimization_litert_active">LiteRT ODML Actif</string>
+    <string name="optimization_des_baseline_title">Simulation à Événements Discrets (DES) JAX — Référence Experte</string>
+    <string name="optimization_survey_button">Soumettre l’Enquête d’Évaluation UX</string>
+    <string name="optimization_disclaimer">Les LLM peuvent faire des erreurs. Vérifiez les informations importantes.</string>
 </resources>

@@ -65,7 +65,7 @@ class DashboardWidgetService:
       pass
 
     factory = conn_factory if conn_factory is not None else duckdb_manager.get_readonly_connection
-    with contextlib.closing(factory()) as conn:
+    with duckdb_manager._write_lock, contextlib.closing(factory()) as conn:
       try:
         conn.execute(f"PREPARE v AS {clean_query}")
         conn.execute("DEALLOCATE v")
@@ -132,12 +132,16 @@ class DashboardWidgetService:
       if isinstance(val_res, Err):
         return val_res
 
+    config_dump = widget_in.config.model_dump(mode="json")
+    if widget_in.subtitle is not None and widget_in.subtitle.strip():
+      config_dump["subtitle"] = widget_in.subtitle.strip()
+
     widget = Widget(
       dashboard_id=dashboard_id,
       title=widget_in.title,
       type=widget_in.type,
       visualization=widget_in.visualization,
-      config=widget_in.config.model_dump(mode="json"),
+      config=config_dump,
     )
     db.add(widget)
     await db.commit()
@@ -215,7 +219,18 @@ class DashboardWidgetService:
 
     widget.title = widget_in.title if widget_in.title is not None else widget.title
     widget.visualization = widget_in.visualization if widget_in.visualization is not None else widget.visualization
-    widget.config = widget_in.config if widget_in.config is not None else widget.config
+    if widget_in.config is not None:
+      merged_config = dict(widget_in.config)
+      if (
+        "subtitle" not in merged_config
+        and widget_in.subtitle is None
+        and isinstance(widget.config, dict)
+        and "subtitle" in widget.config
+      ):
+        merged_config["subtitle"] = widget.config["subtitle"]
+      widget.config = merged_config
+    if widget_in.subtitle is not None:
+      widget.subtitle = widget_in.subtitle
 
     await db.commit()
     return Ok(widget)

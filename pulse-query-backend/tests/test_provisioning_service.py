@@ -251,3 +251,78 @@ async def test_provisioning_edge_branches(db_session: AsyncSession) -> None:
     parameters_schema={"properties": {"num": {"default": 10}, "s": {"default": "a"}, "no_default": {}}},
   )
   assert svc._build_config(t4, "table") == {"query": "SELECT 10 a"}
+  t5 = WidgetTemplate(
+    title="Custom Template",
+    description="  Explains patient flow  ",
+    sql_template="SELECT 1",
+    parameters_schema={},
+  )
+  assert svc._build_config(t5, "table") == {
+    "query": "SELECT 1",
+    "subtitle": "Explains patient flow",
+    "description": "Explains patient flow",
+  }
+
+
+def test_widget_model_subtitle_property_and_setter() -> None:
+  """Verifies `Widget.subtitle` getter fallback and setter branches on `Widget` ORM model."""
+  w = Widget(title="Test", type="SQL", visualization="table", config={})
+  assert w.subtitle is None
+
+  # Fallback to description when subtitle is absent
+  w.config = {"description": "  From description  "}
+  assert w.subtitle == "From description"
+
+  # Explicit subtitle takes precedence over description
+  w.subtitle = "  Explicit Subtitle  "
+  assert w.subtitle == "Explicit Subtitle"
+  assert w.config["subtitle"] == "Explicit Subtitle"
+
+  # Clearing subtitle removes it from config
+  w.subtitle = "   "
+  assert "subtitle" not in w.config
+  assert w.subtitle == "From description"
+
+  w.subtitle = None
+  w.config = {"description": ""}
+  assert w.subtitle is None
+
+
+def test_all_initial_templates_execute_and_return_rows() -> None:
+  """
+  Verifies that every template in `initial_templates.json` has a blueprint subtitle,
+  executes cleanly against the seeded DuckDB tables, and returns non-empty rows.
+  """
+  import json
+  from pathlib import Path
+
+  from app.database.duckdb import duckdb_manager
+  from app.services.runners.sql import run_sql_widget
+
+  templates_path = Path(__file__).resolve().parent.parent / "data" / "initial_templates.json"
+  raw_templates = json.loads(templates_path.read_text(encoding="utf-8"))
+  assert len(raw_templates) >= 30
+
+  svc = ProvisioningService()
+  conn = duckdb_manager.get_readonly_connection()
+  try:
+    cursor = conn.cursor()
+    for item in raw_templates:
+      tmpl = WidgetTemplate(
+        title=item["title"],
+        description=item["description"],
+        category=item["category"],
+        sql_template=item["sql_template"],
+        parameters_schema=item.get("parameters_schema", {}),
+      )
+      viz = svc._determine_visual_type(tmpl)
+      cfg = svc._build_config(tmpl, viz)
+      assert "subtitle" in cfg
+      assert isinstance(cfg["subtitle"], str)
+      assert len(cfg["subtitle"]) > 10
+      res = run_sql_widget(cursor, cfg)
+      assert res.get("error") is None, f"Template '{tmpl.title}' failed with error: {res.get('error')}"
+      rows = res.get("data", [])
+      assert len(rows) >= 1, f"Template '{tmpl.title}' returned 0 rows"
+  finally:
+    conn.close()

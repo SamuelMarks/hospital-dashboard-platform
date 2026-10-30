@@ -137,7 +137,7 @@ def test_readonly_connection_zero_retries() -> None:
 
 @pytest.mark.asyncio
 async def test_duckdb_udf_available_across_multiple_readonly_connections_and_threads(tmp_path: Path) -> None:
-  """Verifies `OPTIMIZE_ASSIGNMENTS` UDF is registered on every read-only connection and works concurrently."""
+  """Verifies `OPTIMIZE_SERVICE_UNIT_BEDS` UDF is registered on every read-only connection and works concurrently."""
   import asyncio
   import json
   from app.database.duckdb import run_in_duckdb_thread
@@ -151,14 +151,12 @@ async def test_duckdb_udf_available_across_multiple_readonly_connections_and_thr
   from app.schemas.json_types import JsonObject
 
   def _query_udf() -> list[JsonObject]:
-    """Opens a read-only connection, invokes `OPTIMIZE_ASSIGNMENTS`, and returns parsed JSON rows."""
+    """Opens a read-only connection, invokes `OPTIMIZE_SERVICE_UNIT_BEDS`, and returns parsed JSON rows."""
     ro_conn = manager.get_readonly_connection()
     try:
-      row = ro_conn.execute(
-        "SELECT OPTIMIZE_ASSIGNMENTS('{\"Cardio\": 5}', '{\"ICU\": 10}', '{\"Cardio\": {\"ICU\": 1.0}}', '[]')"
-      ).fetchone()
+      row = ro_conn.execute("SELECT OPTIMIZE_SERVICE_UNIT_BEDS('stanford_childrens', '[]')").fetchone()
       assert row is not None
-      parsed: list[JsonObject] = json.loads(row[0])
+      parsed: list[JsonObject] = json.loads(str(row[0]))
       return parsed
     finally:
       ro_conn.close()
@@ -168,5 +166,5 @@ async def test_duckdb_udf_available_across_multiple_readonly_connections_and_thr
     run_in_duckdb_thread(_query_udf),
   )
   assert len(results) == 2
-  assert results[0][0]["Patient_Count"] == 5.0
-  assert results[1][0]["Patient_Count"] == 5.0
+  assert len(results[0]) > 0
+  assert len(results[1]) > 0

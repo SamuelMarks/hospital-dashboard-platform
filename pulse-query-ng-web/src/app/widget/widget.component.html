@@ -3,18 +3,29 @@
   <!-- Header -->
   <div class="widget-header-row">
     <div class="title-area">
-      <span class="title-text" [title]="widgetInput().title">
-        {{ widgetInput().title }}
-      </span>
-      <!-- Use Standard Chip with minimal styling -->
-      <mat-chip-set>
-        <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
-        @if (allowsNaturalText()) {
-          <mat-chip class="widget-chip" data-testid="chip-widget-processor">
-            {{ processorUsed() === 'SQL' ? 'SQL [no model]' : processorUsed() }}
-          </mat-chip>
-        }
-      </mat-chip-set>
+      <div class="title-row">
+        <span class="title-text" [title]="widgetInput().title">
+          {{ widgetInput().title }}
+        </span>
+        <!-- Use Standard Chip with minimal styling -->
+        <mat-chip-set>
+          <mat-chip class="widget-chip" highlighted>{{ widgetInput().type }}</mat-chip>
+          @if (allowsNaturalText()) {
+            <mat-chip class="widget-chip" data-testid="chip-widget-processor">
+              {{ processorUsed() === 'SQL' ? 'SQL [no model]' : processorUsed() }}
+            </mat-chip>
+          }
+        </mat-chip-set>
+      </div>
+      @if (widgetSubtitle(); as sub) {
+        <span
+          class="subtitle-text"
+          [title]="sub"
+          [matTooltip]="sub"
+          data-testid="widget-subtitle"
+          >{{ sub }}</span
+        >
+      }
     </div>
 
     <div class="action-group">
@@ -26,6 +37,7 @@
         class="icon-btn-compact"
         (click)="toggleFocus()"
         [matTooltip]="focusLabel()"
+        data-testid="focus-widget-btn"
         style="color: var(--sys-secondary)"
       >
         <mat-icon aria-hidden="true">{{

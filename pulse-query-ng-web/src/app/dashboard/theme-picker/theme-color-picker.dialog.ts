@@ -4,7 +4,7 @@
  */
 
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
-import { FormField, FormRoot, form, maxLength } from '@angular/forms/signals';
+import { form, maxLength } from '@angular/forms/signals';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -79,8 +79,6 @@ export const CLINICAL_PALETTES: ClinicalPalette[] = [
 @Component({
   selector: 'app-theme-color-picker-dialog',
   imports: [
-    FormRoot,
-    FormField,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -186,7 +184,7 @@ export class ThemeColorPickerDialogComponent {
    * @returns Localized ARIA label string.
    */
   getPaletteAriaLabel(palette: ClinicalPalette): string {
-    return $localize`Select ${palette.name}`;
+    return $localize`Select ${palette.name} - ${palette.description} (${palette.hex})`;
   }
 
   /**
@@ -212,8 +210,13 @@ export class ThemeColorPickerDialogComponent {
 
   /**
    * Handles text input changes for custom hex string.
+   *
+   * @param event - Optional DOM input event from the hex text input element.
    */
-  onHexInputChange(): void {
+  onHexInputChange(event?: Event): void {
+    if (event) {
+      this.customHex = extractEventInputValue(event);
+    }
     const val = this.customHex.trim();
     if (isValidHex(val)) {
       this.selectedColor.set(val);

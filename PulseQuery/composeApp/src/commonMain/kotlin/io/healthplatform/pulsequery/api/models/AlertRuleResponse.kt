@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,11 @@ import kotlinx.serialization.Serializable
 /**
  * Response model representing a persisted clinical alert rule.  Attributes:     id (UUID): Unique rule identifier.     created_at (datetime): Rule registration timestamp.
  *
- * @param unitCategory Unit or department category
- * @param thresholdPercentage Trigger occupancy percentage
- * @param id
- * @param createdAt
- * @param severity Alert severity level
- * @param isActive Active status flag
+ * @property unitCategory Unit or department category
+ * @property thresholdPercentage Trigger occupancy percentage
+ * @property id * @param createdAt
+ * @property severity Alert severity level
+ * @property isActive Active status flag
  */
 @Serializable
 data class AlertRuleResponse(

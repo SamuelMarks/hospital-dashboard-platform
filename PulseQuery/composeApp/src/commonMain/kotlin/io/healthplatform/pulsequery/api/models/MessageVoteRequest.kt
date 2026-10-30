@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for voting on a candidate.
  *
- * @param candidateId
- */
+ * @property candidateId */
 @Serializable
 data class MessageVoteRequest(
     @SerialName(value = "candidate_id") @Required val candidateId: kotlin.String

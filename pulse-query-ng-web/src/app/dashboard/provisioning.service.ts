@@ -53,19 +53,23 @@ export class ProvisioningService {
     dashboardId: string,
     position: GridPosition = { x: 0, y: 0 },
   ): Observable<WidgetResponse> {
-    const baseConfig = this.templateConfig.buildDefaultConfig(template);
+    const config = this.templateConfig.buildDefaultConfig(template);
     const vizType = this.templateConfig.inferVisualization(template);
+    const subtitle = template.description?.trim() || undefined;
+    const defaultH = vizType === 'table' ? 6 : vizType === 'bar_chart' || vizType === 'pie' ? 5 : 4;
 
     const payload: WidgetCreateSql = {
       title: template.title,
+      ...(subtitle ? { subtitle } : {}),
       type: 'SQL',
       visualization: vizType,
       config: {
-        query: baseConfig.query,
+        ...config,
+        ...(subtitle ? { subtitle, description: subtitle } : {}),
         x: position.x,
         y: position.y,
         w: 6,
-        h: 4,
+        h: defaultH,
       },
     };
 

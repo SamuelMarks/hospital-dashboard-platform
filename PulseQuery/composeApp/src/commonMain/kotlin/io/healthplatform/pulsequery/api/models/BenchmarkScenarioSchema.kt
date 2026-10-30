@@ -2,10 +2,13 @@
  * Generated OpenAPI model representing a Text-to-SQL or MPAX What-If benchmark scenario entry.
  */
 @file:Suppress(
+    "REDUNDANT_CALL_OF_CONVERSION_METHOD",
+    "UNNECESSARY_SAFE_CALL",
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
     "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models

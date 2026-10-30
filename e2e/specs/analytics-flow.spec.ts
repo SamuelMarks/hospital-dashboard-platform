@@ -1,3 +1,7 @@
+/**
+ * @fileoverview E2E Test Suite for Hospital Analytics Global Flow (Create -> Ask AI -> Save -> Bulk Refresh).
+ */
+
 import { test, expect } from "@playwright/test";
 
 /**

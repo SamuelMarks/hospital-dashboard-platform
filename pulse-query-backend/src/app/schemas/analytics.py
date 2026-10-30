@@ -15,10 +15,10 @@ from app.models.alert_rule import AlertSeverity
 
 class LlmOutputAnalyticsRow(BaseModel):
   """
-  Flattened analytics row representing a single LLM candidate response.
+  Flattened analytics row representing a single LLM candidate response or optimization iteration.
   """
 
-  source: Literal["chat", "ai", "mpax_arena"]
+  source: Literal["chat", "ai", "optimization"]
   candidate_id: UUID
   assistant_message_id: UUID | None = None
   conversation_id: UUID | None = None

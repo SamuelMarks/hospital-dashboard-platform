@@ -37,9 +37,8 @@ import io.healthplatform.pulsequery.ui.screens.ChatScreen
 import io.healthplatform.pulsequery.ui.screens.DashboardScreen
 import io.healthplatform.pulsequery.ui.screens.EditorScreen
 import io.healthplatform.pulsequery.ui.screens.LoginScreen
-import io.healthplatform.pulsequery.ui.screens.MpaxArenaScreen
+import io.healthplatform.pulsequery.ui.screens.OptimizationScreen
 import io.healthplatform.pulsequery.ui.screens.RegisterScreen
-import io.healthplatform.pulsequery.ui.screens.SimulationScreen
 import io.healthplatform.pulsequery.ui.screens.admin.UserManagementScreen
 import io.healthplatform.pulsequery.ui.screens.wizard.WizardScreen
 import io.healthplatform.pulsequery.ui.theme.PulseQueryTheme
@@ -81,17 +80,14 @@ enum class AppRoute(
     /** Ad-hoc SQL editor screen route. */
     EDITOR("editor", true),
 
-    /** What-If capacity simulation screen route. */
-    SIMULATION("simulation", true),
+    /** LLM + JAX + MPAX Hospital Operations Optimization screen route. */
+    OPTIMIZATION("optimization", true),
 
-    /** Text-to-SQL and MPAX benchmark suite screen route. */
+    /** Optimization screen route pre-populated with a benchmark prompt. */
+    OPTIMIZATION_WITH_PROMPT("optimization?prompt={prompt}", true),
+
+    /** Text-to-SQL and Hospital Optimization benchmark suite screen route. */
     BENCHMARKS("benchmarks", true),
-
-    /** MPAX Arena evaluation screen route. */
-    MPAX_ARENA("mpax_arena", true),
-
-    /** MPAX Arena evaluation screen route pre-populated with a benchmark prompt. */
-    MPAX_ARENA_WITH_PROMPT("mpax_arena?prompt={prompt}", true),
 
     /** System administration configuration screen route. */
     ADMIN("admin", true),
@@ -142,13 +138,13 @@ enum class AppRoute(
             if (dashboardId.isBlank()) WIZARD.route else "wizard/$dashboardId"
 
         /**
-         * Formats the MPAX Arena navigation destination path with an optional [prompt].
+         * Formats the Hospital Optimization navigation destination path with an optional [prompt].
          *
          * @param prompt Optional scenario prompt string.
          * @return Formatted navigation path string.
          */
-        fun mpaxArenaRoute(prompt: String): String =
-            if (prompt.isBlank()) MPAX_ARENA.route else "mpax_arena?prompt=$prompt"
+        fun optimizationRoute(prompt: String): String =
+            if (prompt.isBlank()) OPTIMIZATION.route else "optimization?prompt=$prompt"
     }
 }
 
@@ -174,7 +170,7 @@ fun App() {
             AppRoute.CHAT.route to Icons.AutoMirrored.Filled.Chat,
             AppRoute.ANALYTICS.route to Icons.Filled.Analytics,
             AppRoute.EDITOR.route to Icons.Filled.Edit,
-            AppRoute.SIMULATION.route to Icons.Filled.Science,
+            AppRoute.OPTIMIZATION.route to Icons.Filled.Science,
             AppRoute.ADMIN.route to Icons.Filled.Settings
         )
 
@@ -267,18 +263,17 @@ fun App() {
                 }
                 composable(AppRoute.ALERT_RULES.route) { AlertRulesScreen() }
                 composable(AppRoute.EDITOR.route) { EditorScreen() }
-                composable(AppRoute.SIMULATION.route) { SimulationScreen() }
+                composable(AppRoute.OPTIMIZATION.route) { OptimizationScreen() }
+                composable(AppRoute.OPTIMIZATION_WITH_PROMPT.route) { backStackEntry ->
+                    val scenarioPrompt = backStackEntry.savedStateHandle.get<String>("prompt")
+                    OptimizationScreen(initialPrompt = scenarioPrompt)
+                }
                 composable(AppRoute.BENCHMARKS.route) {
                     BenchmarksScreen(
                         onSimulateMpax = { prompt ->
-                            navController.navigate(AppRoute.mpaxArenaRoute(prompt))
+                            navController.navigate(AppRoute.optimizationRoute(prompt))
                         }
                     )
-                }
-                composable(AppRoute.MPAX_ARENA.route) { MpaxArenaScreen() }
-                composable(AppRoute.MPAX_ARENA_WITH_PROMPT.route) { backStackEntry ->
-                    val scenarioPrompt = backStackEntry.savedStateHandle.get<String>("prompt")
-                    MpaxArenaScreen(initialPrompt = scenarioPrompt)
                 }
                 composable(AppRoute.ADMIN.route) {
                     AdminScreen(

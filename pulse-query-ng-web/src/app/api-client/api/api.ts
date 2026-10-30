@@ -23,12 +23,10 @@ export * from './default.service';
 import { DefaultService } from './default.service';
 export * from './execution.service';
 import { ExecutionService } from './execution.service';
-export * from './mpax-arena.service';
-import { MpaxArenaService } from './mpax-arena.service';
+export * from './optimization.service';
+import { OptimizationService } from './optimization.service';
 export * from './schema.service';
 import { SchemaService } from './schema.service';
-export * from './simulation.service';
-import { SimulationService } from './simulation.service';
 export * from './system.service';
 import { SystemService } from './system.service';
 export * from './templates.service';
@@ -45,9 +43,8 @@ export const APIS = [
   DashboardsService,
   DefaultService,
   ExecutionService,
-  MpaxArenaService,
+  OptimizationService,
   SchemaService,
-  SimulationService,
   SystemService,
   TemplatesService,
 ];

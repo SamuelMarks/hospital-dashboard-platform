@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,11 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for creating a new template. Inherits validation from TemplateBase.
  *
- * @param title
- * @param sqlTemplate SQL with {{handlebars}} placeholders
- * @param category
- * @param description
- * @param parametersSchema JSON Schema definition for dynamic form generation.
+ * @property title * @param sqlTemplate SQL with {{handlebars}} placeholders
+ * @property category * @param description
+ * @property parametersSchema JSON Schema definition for dynamic form generation.
  */
 @Serializable
 data class TemplateCreate(

@@ -16,9 +16,11 @@ import { DOCUMENT } from '@angular/common';
 import { AskDataComponent } from './global/ask-data.component';
 import { AskDataService } from './global/ask-data.service';
 import { ConnectionStatusService } from './core/health/connection-status.service';
+import { KeyboardShortcutsService } from './core/keyboard/keyboard-shortcuts.service';
 import { ThemeService } from './core/theme/theme.service';
 import { ToolbarComponent } from './dashboard/toolbar.component';
 import { SystemHealthBannerComponent } from './shared/components/system-health-banner.component';
+import { environment } from '../environments/environment';
 
 /**
  * The Root Component class.
@@ -42,6 +44,9 @@ import { SystemHealthBannerComponent } from './shared/components/system-health-b
     ToolbarComponent,
     SystemHealthBannerComponent,
   ],
+  host: {
+    '(document:keydown.escape)': 'onDocumentEscape()',
+  },
   templateUrl: './app.html',
   styles: [
     `
@@ -72,9 +77,9 @@ import { SystemHealthBannerComponent } from './shared/components/system-health-b
         background-color: var(--sys-background);
         color: var(--sys-text-primary);
       }
-      /* Flex layout for Toolbar + Content */
+      /* Flex layout for Toolbar + Content + Footer */
       .main-content-layout {
-        display: flex;
+        display: flex !important;
         flex-direction: column;
         height: 100%;
         overflow: hidden;
@@ -84,11 +89,17 @@ import { SystemHealthBannerComponent } from './shared/components/system-health-b
         z-index: 1000;
       }
       .page-container {
-        flex-grow: 1;
-        overflow: hidden;
+        flex: 1 1 0%;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
         position: relative;
         display: flex;
         flex-direction: column;
+      }
+      .page-container > :not(router-outlet) {
+        flex: 1 1 auto;
+        min-height: 0;
       }
       /* Drawer styling with border for high contrast separation */
       .search-drawer {
@@ -97,10 +108,39 @@ import { SystemHealthBannerComponent } from './shared/components/system-health-b
         border-left: 1px solid var(--sys-surface-border);
         background-color: var(--sys-surface);
       }
+      .app-footer {
+        flex-shrink: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 6px 16px;
+        font-size: 12px;
+        line-height: 1.4;
+        background-color: var(--sys-surface);
+        color: var(--sys-text-secondary);
+        border-top: 1px solid var(--sys-surface-border);
+      }
+      .footer-divider {
+        opacity: 0.6;
+      }
+      .footer-link {
+        color: var(--sys-text-primary);
+        text-decoration: underline;
+        font-weight: 500;
+      }
+      .footer-link:hover,
+      .footer-link:focus-visible {
+        color: var(--sys-primary);
+      }
     `,
   ],
 })
 export class App implements OnInit {
+  /** UTC build timestamp displayed in the global application footer. */
+  readonly buildTimestampUtc = environment.buildTimestampUtc;
   /**
    * Service controlling the visibility state of the side drawer.
    * Bound to the `[opened]` property of the sidenav.
@@ -112,6 +152,8 @@ export class App implements OnInit {
   readonly themeService = inject(ThemeService);
   /** Service monitoring backend and database health status. */
   readonly connectionService = inject(ConnectionStatusService);
+  /** Global keyboard shortcuts service initializing document keydown listeners. */
+  readonly keyboardShortcuts = inject(KeyboardShortcutsService);
   /** Activated route reference used to observe global query parameters such as `?mode=tv`. */
   private readonly route = inject(ActivatedRoute);
 
@@ -135,5 +177,20 @@ export class App implements OnInit {
         this.themeService.setTvMode(true);
       }
     });
+  }
+
+  /**
+   * Closes the global Ask Data drawer when the Escape key is pressed and no
+   * modal dialog, menu, or listbox overlay is currently open on top.
+   */
+  onDocumentEscape(): void {
+    if (
+      this.askData.isOpen() &&
+      !this.document.querySelector(
+        '.cdk-overlay-container .mat-mdc-dialog-container, .cdk-overlay-container [role="dialog"], .cdk-overlay-container [role="menu"], .cdk-overlay-container [role="listbox"]',
+      )
+    ) {
+      this.askData.close();
+    }
   }
 }

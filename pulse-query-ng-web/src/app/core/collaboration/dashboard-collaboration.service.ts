@@ -66,12 +66,7 @@ export interface CollaborationMessage {
  * @returns True if `val` is a non-null object containing a string `type` property.
  */
 export function isCollaborationMessage(val: unknown): val is CollaborationMessage {
-  return (
-    typeof val === 'object' &&
-    val !== null &&
-    'type' in val &&
-    typeof (val as { type?: unknown }).type === 'string'
-  );
+  return typeof val === 'object' && val !== null && 'type' in val && typeof val.type === 'string';
 }
 
 /**

@@ -12,13 +12,13 @@ import { Router } from '@angular/router';
 import { forkJoin, Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
-import { BenchmarksService, SqlBenchmark, MpaxBenchmark } from './benchmarks.service';
+import { BenchmarksService, SqlBenchmark, OptimizationBenchmark } from './benchmarks.service';
 import { BenchmarkProgressService } from './benchmark-progress.service';
 import { SqlSnippetComponent } from '../chat/conversation/sql-snippet.component';
 
 /**
- * Component providing exploration of gold-standard text-to-SQL and MPAX benchmark datasets
- * along with real-time SSE progress tracking during active evaluation runs.
+ * Component providing exploration of gold-standard text-to-SQL and Hospital Operations Optimization
+ * benchmark datasets along with real-time SSE progress tracking during active evaluation runs.
  */
 @Component({
   selector: 'app-benchmarks',
@@ -66,13 +66,13 @@ export class BenchmarksComponent implements OnInit, OnDestroy {
 
   /** Parsed SQL benchmark scenario items. */
   readonly sqlBenchmarks = signal<SqlBenchmark[]>([]);
-  /** Parsed MPAX benchmark scenario items. */
-  readonly mpaxBenchmarks = signal<MpaxBenchmark[]>([]);
+  /** Parsed Hospital Operations Optimization benchmark scenario items. */
+  readonly optimizationBenchmarks = signal<OptimizationBenchmark[]>([]);
 
   /** Valid text-to-SQL benchmark count. */
   readonly sqlCount = signal<number>(0);
-  /** Valid MPAX benchmark count. */
-  readonly mpaxCount = signal<number>(0);
+  /** Valid optimization benchmark count. */
+  readonly optimizationCount = signal<number>(0);
 
   /** Signal exposing live benchmark progress telemetry. */
   readonly progress = this.progressService.progress;
@@ -96,16 +96,16 @@ export class BenchmarksComponent implements OnInit, OnDestroy {
 
     forkJoin({
       sql: this.benchmarksService.getSqlBenchmarks(),
-      mpax: this.benchmarksService.getMpaxBenchmarks(),
+      optimization: this.benchmarksService.getOptimizationBenchmarks(),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
-        next: ({ sql, mpax }) => {
+        next: ({ sql, optimization }) => {
           this.sqlBenchmarks.set(sql);
           this.sqlCount.set(sql.filter((s) => s.question).length);
 
-          this.mpaxBenchmarks.set(mpax);
-          this.mpaxCount.set(mpax.length);
+          this.optimizationBenchmarks.set(optimization);
+          this.optimizationCount.set(optimization.length);
         },
         error: (err: { message?: string }) => {
           this.error.set(err.message || $localize`Failed to load benchmarks.`);
@@ -122,11 +122,16 @@ export class BenchmarksComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Navigates to the MPAX Arena pre-filled with the selected benchmark prompt.
+   * Navigates to the Hospital Optimization Copilot pre-filled with the selected benchmark prompt and use case.
    *
-   * @param item Selected MPAX benchmark scenario item.
+   * @param item Selected optimization benchmark scenario item.
    */
-  simulateMpax(item: MpaxBenchmark): void {
-    this.router.navigate(['/mpax-arena'], { queryParams: { prompt: item.prompt } });
+  launchOptimizationScenario(item: OptimizationBenchmark): void {
+    this.router.navigate(['/optimization'], {
+      queryParams: {
+        prompt: item.prompt,
+        useCase: item.use_case ?? 'service_unit',
+      },
+    });
   }
 }

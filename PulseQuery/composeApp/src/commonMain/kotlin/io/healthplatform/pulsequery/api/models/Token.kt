@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,8 @@ import kotlinx.serialization.Serializable
 /**
  * OAuth2 access and refresh token response payload.
  *
- * @param accessToken
- * @param tokenType
- * @param refreshToken
- * @param expiresIn
+ * @property accessToken * @param tokenType
+ * @property refreshToken * @param expiresIn
  */
 @Serializable
 data class Token(

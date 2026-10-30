@@ -29,17 +29,23 @@ export class QueryCartProvisioningService {
    * @returns Observable of the created widget.
    */
   addToDashboard(item: QueryCartItem, dashboardId: string): Observable<WidgetResponse> {
+    const sqlPreview = item.sql.replace(/\s+/g, ' ').trim();
+    const subtitle =
+      sqlPreview.length > 90 ? `${sqlPreview.slice(0, 90)}...` : sqlPreview || undefined;
+
     // Construct valid SQL Widget Payload from Cart Item
     const payload: WidgetCreateSql = {
       title: item.title,
+      ...(subtitle ? { subtitle } : {}),
       type: 'SQL',
       visualization: 'table', // Default visualization for ad-hoc
       config: {
         query: item.sql,
+        ...(subtitle ? { subtitle } : {}),
         x: 0, // Placement logic handled by API defaults or layout manager
         y: 0,
         w: 6,
-        h: 4,
+        h: 6,
       },
     };
 

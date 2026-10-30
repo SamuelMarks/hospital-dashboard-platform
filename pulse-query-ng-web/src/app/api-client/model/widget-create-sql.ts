@@ -15,6 +15,8 @@ import { SqlConfig } from './sql-config';
 export interface WidgetCreateSql {
   /** Property `title`. */
   title: string;
+  /** Optional subtitle or caption explaining what the widget measures or displays. */
+  subtitle?: string | null;
   /** Property `type`. */
   type: WidgetCreateSql.TypeEnum;
   /**

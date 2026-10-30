@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -23,13 +24,13 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for updating a widget. Note: Polymorphism is relaxed on Updates because 'type' is often immutable or missing in partial PATCH requests. We allow a loose dict for config, but individual fields are validated if matched.  Attributes:     title (Optional[str]): New title.     visualization (Optional[str]): New visualization type.     config (Optional[Dict]): Partial configuration updates.
  *
- * @param title
- * @param visualization
- * @param config
+ * @property title * @param subtitle Optional subtitle or caption explaining what the widget measures or displays.
+ * @property visualization * @param config
  */
 @Serializable
 data class WidgetUpdate(
     @SerialName(value = "title") val title: kotlin.String? = null,
+    @SerialName(value = "subtitle") val subtitle: kotlin.String? = null,
     @SerialName(value = "visualization") val visualization: kotlin.String? = null,
     @SerialName(value = "config") val config: kotlinx.serialization.json.JsonObject? = null
 )

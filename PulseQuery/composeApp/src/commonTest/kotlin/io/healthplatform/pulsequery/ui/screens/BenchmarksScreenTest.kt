@@ -69,7 +69,7 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
                     }
                 ]"""
                 respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()))
-            } else if (path.endsWith("/benchmarks/mpax")) {
+            } else if (path.endsWith("/benchmarks/optimization")) {
                 val body = if (isEmpty) "[]" else """[
                     {
                         "title": "Surge Response",

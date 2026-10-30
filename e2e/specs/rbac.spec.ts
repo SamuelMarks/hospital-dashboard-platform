@@ -1,3 +1,7 @@
+/**
+ * @fileoverview E2E Test Suite for Role-Based Access Control (RBAC) and Route Guards.
+ */
+
 import { test, expect } from "@playwright/test";
 
 const BACKEND_URL = "http://localhost:8000/api/v1";

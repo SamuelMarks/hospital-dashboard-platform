@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for updating a user's clinical role.
  *
- * @param role
- */
+ * @property role */
 @Serializable
 data class UserRoleUpdate(
     @SerialName(value = "role") @Required val role: kotlin.String

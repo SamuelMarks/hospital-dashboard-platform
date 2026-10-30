@@ -78,7 +78,6 @@ import { TemplateResponse } from '../../api-client';
               tabindex="0"
               role="button"
               [attr.aria-pressed]="selectedTemplateId() === t.id"
-              [attr.aria-label]="getTemplateAriaLabel(t)"
             >
               <div class="font-medium text-primary mb-1" style="color: var(--sys-primary)">
                 {{ t.title }}
@@ -157,6 +156,6 @@ export class WidgetBuilderMarketplaceStepComponent {
    * @returns Localized ARIA label string.
    */
   getTemplateAriaLabel(t: TemplateResponse): string {
-    return $localize`Select template: ${t.title}`;
+    return $localize`Select template: ${t.title} - ${t.category || ''} - ${t.description || ''}`;
   }
 }

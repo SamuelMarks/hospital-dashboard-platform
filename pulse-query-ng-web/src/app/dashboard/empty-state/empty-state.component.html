@@ -3,6 +3,28 @@
   <p i18n class="hero-subtitle">
     This dashboard is currently empty. Choose how you would like to begin.
   </p>
+  <div class="hero-actions">
+    <button
+      i18n
+      type="button"
+      mat-flat-button
+      (click)="openWizard()"
+      data-testid="empty-state-primary-add-btn"
+    >
+      <mat-icon aria-hidden="true">add_chart</mat-icon>
+      Add Your First Widget
+    </button>
+    <button
+      i18n
+      type="button"
+      mat-stroked-button
+      (click)="enableDragAndDropGallery()"
+      data-testid="empty-state-drag-gallery-btn"
+    >
+      <mat-icon aria-hidden="true">drag_indicator</mat-icon>
+      Drag &amp; Drop from Gallery
+    </button>
+  </div>
 </div>
 
 <div class="cards-grid">
@@ -16,8 +38,6 @@
     (keydown.enter)="openWizard()"
     (keydown.space)="openWizard(); $event.preventDefault()"
     role="button"
-    i18n-aria-label
-    aria-label="Start with a Template"
   >
     <div class="card-content-wrapper">
       <div class="card-icon-bg icon-wizard">
@@ -41,8 +61,6 @@
     (keydown.enter)="openAi()"
     (keydown.space)="openAi(); $event.preventDefault()"
     role="button"
-    i18n-aria-label
-    aria-label="Ask AI a Question"
   >
     <div class="card-content-wrapper">
       <div class="card-icon-bg icon-ai"><mat-icon aria-hidden="true">smart_toy</mat-icon></div>
@@ -55,7 +73,6 @@
   </mat-card>
 
   <!-- Card 3: Seeder -->
-  <!-- FIX: Added accessible label for E2E targeting -->
   <mat-card
     appearance="outlined"
     matRipple
@@ -66,8 +83,6 @@
     (keydown.space)="!store.isLoading() && loadSamples(); $event.preventDefault()"
     role="button"
     [attr.aria-disabled]="store.isLoading()"
-    i18n-aria-label
-    aria-label="Load Sample Data"
   >
     <div class="card-content-wrapper">
       <div class="card-icon-bg icon-seed"><mat-icon aria-hidden="true">restore</mat-icon></div>

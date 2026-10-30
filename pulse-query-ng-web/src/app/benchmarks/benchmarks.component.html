@@ -2,7 +2,7 @@
   <div class="header">
     <h1 i18n class="text-2xl font-light mb-1">Benchmark Datasets</h1>
     <p i18n style="color: var(--sys-text-secondary)">
-      Explore the gold standard scenarios used to evaluate Arena performance.
+      Explore the gold-standard Text-to-SQL and JAX/MPAX Hospital Operations Optimization scenarios.
     </p>
   </div>
 
@@ -102,10 +102,10 @@
         </div>
       </mat-tab>
 
-      <mat-tab i18n-label label="MPAX Optimization ({{ mpaxCount() }})">
+      <mat-tab i18n-label label="Hospital Optimization ({{ optimizationCount() }})">
         <div class="tab-content pt-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            @for (item of mpaxBenchmarks(); track item.id) {
+            @for (item of optimizationBenchmarks(); track item.id) {
               <mat-card
                 class="p-4 border flex flex-col cursor-pointer transition-colors"
                 style="
@@ -114,9 +114,9 @@
                 "
                 tabindex="0"
                 role="button"
-                (click)="simulateMpax(item)"
-                (keydown.enter)="simulateMpax(item)"
-                (keydown.space)="simulateMpax(item); $event.preventDefault()"
+                (click)="launchOptimizationScenario(item)"
+                (keydown.enter)="launchOptimizationScenario(item)"
+                (keydown.space)="launchOptimizationScenario(item); $event.preventDefault()"
               >
                 <div class="flex justify-between items-start mb-2">
                   <h3
@@ -148,20 +148,12 @@
                   "
                 >
                   <div i18n>
-                    <strong>Demand:</strong>
-                    {{ item.expected_metrics?.['total_demand'] || 0 }} pts
+                    <strong>Use Case:</strong>
+                    {{ item.use_case || 'service_unit' }}
                   </div>
                   <div i18n>
-                    <strong>Capacity:</strong>
-                    {{ item.expected_metrics?.['total_capacity'] || 0 }} beds
-                  </div>
-                  <div class="col-span-2">
-                    <strong i18n>Expected Overflow:</strong>
-                    <span
-                      [class.text-red-500]="(item.expected_metrics?.['expected_overflow'] || 0) > 0"
-                    >
-                      {{ item.expected_metrics?.['expected_overflow'] || 0 }}
-                    </span>
+                    <strong>Institution:</strong>
+                    {{ item.institution_id || 'stanford_childrens' }}
                   </div>
                 </div>
               </mat-card>

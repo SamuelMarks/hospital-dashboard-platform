@@ -18,7 +18,7 @@ import duckdb
 import duckdb.sqltypes as sqltypes
 
 from app.database.duckdb import DuckDBFetchableProtocol, duckdb_manager
-from app.services.mpax_bridge import mpax_bridge
+from app.services.optimization.service_unit_solver import optimize_service_unit_beds_udf
 
 logger = logging.getLogger(__name__)
 
@@ -173,18 +173,52 @@ def create_hospital_macros(conn: DuckDBMacroConnProtocol | duckdb.DuckDBPyConnec
             SELECT unnest(generate_series(CAST(start_dt AS TIMESTAMP), CAST(end_dt AS TIMESTAMP), INTERVAL 1 DAY)) AS spine_date
         """)
 
+    # --- Bed-Use Census Quick Action Table Macros ---
+    conn.execute("""
+            CREATE OR REPLACE MACRO CENSUS_PATIENT_DAYS_BY_UNIT() AS TABLE
+            SELECT Location AS Unit, COUNT(*) AS Patient_Days
+            FROM synthetic_hospital_data
+            GROUP BY Location
+            ORDER BY Patient_Days DESC
+        """)
+
+    conn.execute("""
+            CREATE OR REPLACE MACRO CENSUS_PATIENT_DAYS_BY_SERVICE() AS TABLE
+            SELECT Clinical_Service, COUNT(*) AS Patient_Days
+            FROM synthetic_hospital_data
+            GROUP BY Clinical_Service
+            ORDER BY Patient_Days DESC
+        """)
+
+    conn.execute("""
+            CREATE OR REPLACE MACRO CENSUS_COMBINED_BREAKDOWN() AS TABLE
+            SELECT Clinical_Service, Location AS Unit, COUNT(*) AS Patient_Days
+            FROM synthetic_hospital_data
+            GROUP BY Clinical_Service, Location
+            ORDER BY Patient_Days DESC
+        """)
+
+    conn.execute("""
+            CREATE OR REPLACE MACRO CENSUS_SUMMARY_STATISTICS() AS TABLE
+            SELECT
+                COUNT(*) AS Total_Patient_Days,
+                COUNT(DISTINCT Location) AS Distinct_Units,
+                COUNT(DISTINCT Clinical_Service) AS Distinct_Services
+            FROM synthetic_hospital_data
+        """)
+
     # --- UDFs (Python Bridges) ---
 
     with contextlib.suppress(duckdb.Error):
       conn.create_function(
-        "OPTIMIZE_ASSIGNMENTS",
-        mpax_bridge.solve_unit_assignment,
-        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR],
+        "OPTIMIZE_SERVICE_UNIT_BEDS",
+        optimize_service_unit_beds_udf,
+        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR],
         return_type=sqltypes.VARCHAR,
         side_effects=True,
       )
 
-    logger.info("✅ DuckDB Statistical Macros (Dynamic Shift) & MPAX Solver UDF registered successfully.")
+    logger.info("✅ DuckDB Statistical Macros & JAX/MPAX Service-Unit Optimization UDF registered successfully.")
 
   except Exception as e:
     logger.error(f"❌ Failed to register DuckDB macros ({type(e).__name__}): {e}")

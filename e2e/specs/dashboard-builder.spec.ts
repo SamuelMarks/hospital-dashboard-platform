@@ -1,3 +1,7 @@
+/**
+ * @fileoverview E2E Test Suite for Dashboard Builder Workflow.
+ */
+
 import { test, expect } from "@playwright/test";
 
 /**
@@ -92,11 +96,22 @@ test.describe("Dashboard Builder Workflow", () => {
       `UI Dashboard ${timestamp}`,
     );
 
+    // Verify 0-widget empty state primary CTA and always-visible toolbar Add Widget button
+    await expect(
+      page.locator('[data-testid="empty-state-primary-add-btn"]'),
+    ).toBeVisible();
+    const btnAddWidget = page.locator('[data-testid="btn-add-widget"]');
+    await expect(btnAddWidget).toBeVisible();
+
     // --- Step 3: Enable Edit Mode ---
     await page.locator('[data-testid="toggle-edit-mode"]').click();
 
+    // Verify 0-widget edit mode displays the prominent Add Widget CTA slot
+    await expect(
+      page.locator('[data-testid="add-widget-cta-card"]'),
+    ).toBeVisible();
+
     // --- Step 4: Open Widget Builder ---
-    const btnAddWidget = page.locator('[data-testid="btn-add-widget"]');
     await btnAddWidget.click();
 
     // --- Step 5: Select Custom Query -> Static Markdown ---
@@ -138,5 +153,10 @@ test.describe("Dashboard Builder Workflow", () => {
       hasText: "This is a static markdown widget.",
     });
     await expect(markdownText).toBeVisible();
+
+    // With 1 widget (< 2 widgets), the prominent Add Another Widget CTA card is shown alongside it
+    await expect(
+      page.locator('[data-testid="add-widget-cta-card"]'),
+    ).toBeVisible();
   });
 });

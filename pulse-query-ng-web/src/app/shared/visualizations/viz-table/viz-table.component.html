@@ -9,7 +9,9 @@
   >
     @for (col of finalColumns(); track col) {
       <ng-container [matColumnDef]="col">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col">{{ col }}</th>
+        <th mat-header-cell *matHeaderCellDef mat-sort-header scope="col" [title]="col">
+          {{ formatHeaderLabel(col) }}
+        </th>
         <td mat-cell *matCellDef="let row">
           <!-- Applied heuristic styling and threshold class binding -->
           <span [class]="getCellClass(row, col)" [attr.aria-label]="getCellAriaLabel(row, col)">
@@ -25,8 +27,8 @@
     <tr *matNoDataRow>
       <td
         i18n
-        [attr.colspan]="finalColumns().length"
-        class="p-8 text-center italic"
+        [attr.colspan]="finalColumns().length || 1"
+        class="p-6 text-center italic"
         style="color: var(--sys-text-secondary)"
       >
         No data available
@@ -41,6 +43,7 @@
   [pageSizeOptions]="[5, 10, 20]"
   showFirstLastButtons
   class="border-t"
+  [style.display]="showPaginator() ? 'block' : 'none'"
   i18n-aria-label
   aria-label="Table Paginator"
 ></mat-paginator>

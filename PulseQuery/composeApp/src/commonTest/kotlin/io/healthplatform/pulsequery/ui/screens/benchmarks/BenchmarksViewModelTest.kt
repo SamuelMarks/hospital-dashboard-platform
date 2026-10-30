@@ -120,6 +120,12 @@ class BenchmarksViewModelTest {
                     "description": "Rebalance beds",
                     "target_service": "Med-Surg"
                 },
+                {
+                    "theme": "Surgical BEDS/POINTS",
+                    "complexity": "High",
+                    "prompt": "Smooth surgical blocks",
+                    "use_case": "surgical_scheduling"
+                },
                 {}
             ]
         """.trimIndent()
@@ -150,12 +156,16 @@ class BenchmarksViewModelTest {
         assertEquals("Question fallback", loadedState.sqlBenchmarks[1].description)
         assertEquals("", loadedState.sqlBenchmarks[2].description)
 
-        assertEquals(2, loadedState.mpaxBenchmarks.size)
+        assertEquals(3, loadedState.mpaxBenchmarks.size)
         assertEquals("Ward Rebalancing", loadedState.mpaxBenchmarks[0].title)
         assertEquals("Med-Surg", loadedState.mpaxBenchmarks[0].targetService)
-        assertEquals("Optimization Scenario", loadedState.mpaxBenchmarks[1].title)
-        assertEquals("Standard", loadedState.mpaxBenchmarks[1].difficulty)
-        assertEquals("Hospital Wide", loadedState.mpaxBenchmarks[1].targetService)
+        assertEquals("Surgical BEDS/POINTS", loadedState.mpaxBenchmarks[1].title)
+        assertEquals("High", loadedState.mpaxBenchmarks[1].difficulty)
+        assertEquals("Smooth surgical blocks", loadedState.mpaxBenchmarks[1].description)
+        assertEquals("surgical_scheduling", loadedState.mpaxBenchmarks[1].targetService)
+        assertEquals("Optimization Scenario", loadedState.mpaxBenchmarks[2].title)
+        assertEquals("Standard", loadedState.mpaxBenchmarks[2].difficulty)
+        assertEquals("Hospital Wide", loadedState.mpaxBenchmarks[2].targetService)
     }
 
     @Test

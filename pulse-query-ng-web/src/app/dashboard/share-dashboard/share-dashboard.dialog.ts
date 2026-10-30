@@ -3,7 +3,7 @@
  */
 
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { FormRoot, FormField, form, required } from '@angular/forms/signals';
+import { form, required } from '@angular/forms/signals';
 import { HttpClient } from '@angular/common/http';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -48,8 +48,6 @@ export interface DashboardShareItem {
 @Component({
   selector: 'app-share-dashboard-dialog',
   imports: [
-    FormRoot,
-    FormField,
     MatDialogModule,
     MatButtonModule,
     MatFormFieldModule,

@@ -37,7 +37,6 @@
           [attr.aria-pressed]="selectedColor() === pal.hex"
           (keydown.enter)="selectPalette(pal)"
           (keydown.space)="selectPalette(pal); $event.preventDefault()"
-          [attr.aria-label]="getPaletteAriaLabel(pal)"
         >
           <div class="color-swatch shadow-sm" [style.background-color]="pal.hex"></div>
           <div class="flex-1 min-w-0">
@@ -53,7 +52,7 @@
   </div>
 
   <!-- Custom Hex Input -->
-  <form [formRoot]="hexForm" class="mb-4">
+  <form (submit)="$event.preventDefault()" class="mb-4">
     <span i18n class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2 block">
       Custom Color Seed
     </span>
@@ -70,9 +69,9 @@
         <mat-label i18n>Hex Color Code</mat-label>
         <input
           matInput
-          [formField]="hexForm.customHex"
+          [value]="customHex"
           cdkFocusInitial
-          (input)="onHexInputChange()"
+          (input)="onHexInputChange($event)"
           placeholder="#1565C0"
           i18n-placeholder
         />

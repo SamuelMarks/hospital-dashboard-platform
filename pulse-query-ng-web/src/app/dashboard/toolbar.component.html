@@ -24,15 +24,12 @@
       class="nav-link"
       >Dashboards</a
     >
-    <a i18n mat-button routerLink="/simulation" routerLinkActive="active-link" class="nav-link"
-      >Simulation</a
+    <a i18n mat-button routerLink="/optimization" routerLinkActive="active-link" class="nav-link"
+      >Optimization</a
     >
     <a i18n mat-button routerLink="/chat" routerLinkActive="active-link" class="nav-link">Ad-Hoc</a>
     <a i18n mat-button routerLink="/analytics" routerLinkActive="active-link" class="nav-link"
       >Analytics</a
-    >
-    <a i18n mat-button routerLink="/mpax-arena" routerLinkActive="active-link" class="nav-link"
-      >MPAX Arena</a
     >
     <a i18n mat-button routerLink="/benchmarks" routerLinkActive="active-link" class="nav-link"
       >Benchmarks</a
@@ -81,19 +78,23 @@
 
       @if (store.isEditMode()) {
         <app-undo-redo-buttons class="mr-2"></app-undo-redo-buttons>
-
-        <button
-          i18n
-          type="button"
-          mat-stroked-button
-          class="action-btn"
-          (click)="openWidgetBuilder()"
-          [disabled]="!store.dashboard()"
-          data-testid="btn-add-widget"
-        >
-          <mat-icon aria-hidden="true">add</mat-icon> <span>Widget</span>
-        </button>
       }
+
+      <button
+        i18n
+        type="button"
+        mat-stroked-button
+        class="action-btn"
+        [style.border-color]="
+          (store.dashboard()?.widgets?.length ?? 0) < 2 ? 'var(--sys-primary)' : null
+        "
+        [style.font-weight]="(store.dashboard()?.widgets?.length ?? 0) < 2 ? '600' : null"
+        (click)="openWidgetBuilder()"
+        [disabled]="!store.dashboard()"
+        data-testid="btn-add-widget"
+      >
+        <mat-icon aria-hidden="true">add</mat-icon> <span>Widget</span>
+      </button>
 
       <button
         type="button"
@@ -280,8 +281,8 @@
       <button i18n type="button" mat-menu-item routerLink="/">
         <mat-icon aria-hidden="true">dashboard</mat-icon><span>My Dashboards</span>
       </button>
-      <button i18n type="button" mat-menu-item routerLink="/mpax-arena">
-        <mat-icon aria-hidden="true">sports_score</mat-icon><span>MPAX Arena</span>
+      <button i18n type="button" mat-menu-item routerLink="/optimization">
+        <mat-icon aria-hidden="true">tune</mat-icon><span>Hospital Optimization</span>
       </button>
       <button i18n type="button" mat-menu-item routerLink="/benchmarks">
         <mat-icon aria-hidden="true">speed</mat-icon><span>Benchmarks</span>

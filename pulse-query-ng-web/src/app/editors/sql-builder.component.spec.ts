@@ -5,6 +5,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SqlBuilderComponent } from './sql-builder.component';
 import {
+  AiService,
   DashboardsService,
   ExecutionService,
   SchemaService,
@@ -12,6 +13,7 @@ import {
   ChatService,
 } from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
+import { LOCAL_DRAFT_WIDGET_ID } from '../dashboard/widget-builder/widget-builder.store';
 import { signal, WritableSignal, NO_ERRORS_SCHEMA, Component, input } from '@angular/core';
 import { HttpErrorResponse, withXhr, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -52,6 +54,9 @@ describe('SqlBuilderComponent', () => {
   let mockExecApi: {
     refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
   };
+  let mockAiApi: {
+    executeSqlPreviewApiV1AiExecutePost: ReturnType<typeof vi.fn>;
+  };
   let mockSchemaApi: {
     getDatabaseSchemaApiV1SchemaGet: ReturnType<typeof vi.fn>;
   };
@@ -71,6 +76,7 @@ describe('SqlBuilderComponent', () => {
   beforeEach(async () => {
     mockDashApi = { updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn() };
     mockExecApi = { refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn() };
+    mockAiApi = { executeSqlPreviewApiV1AiExecutePost: vi.fn() };
     mockSchemaApi = { getDatabaseSchemaApiV1SchemaGet: vi.fn().mockReturnValue(of([])) };
     mockChatApi = {
       listConversationsApiV1ConversationsGet: vi.fn().mockReturnValue(of([])),
@@ -109,6 +115,7 @@ describe('SqlBuilderComponent', () => {
         provideHttpClientTesting(),
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ExecutionService, useValue: mockExecApi },
+        { provide: AiService, useValue: mockAiApi },
         { provide: SchemaService, useValue: mockSchemaApi },
         { provide: ChatService, useValue: mockChatApi },
         { provide: DashboardStore, useValue: mockStore },
@@ -142,6 +149,42 @@ describe('SqlBuilderComponent', () => {
         config: { query: "SELECT * FROM t WHERE d='Cardiology'" },
       }),
     );
+  });
+
+  it('should execute single-query preview via AiService when widgetId is LOCAL_DRAFT_WIDGET_ID', () => {
+    fixture.componentRef.setInput('widgetId', LOCAL_DRAFT_WIDGET_ID);
+    fixture.detectChanges();
+
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(
+      of({ columns: ['col1'], data: [{ col1: 42 }] }),
+    );
+    component.runQuery();
+
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+    expect(mockAiApi.executeSqlPreviewApiV1AiExecutePost).toHaveBeenCalledWith({
+      sql: "SELECT * FROM t WHERE d='Cardiology'",
+    });
+    expect(component.latestResult()).toEqual({ columns: ['col1'], data: [{ col1: 42 }] });
+
+    // Nullish columns/data fallback
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(of({}));
+    component.runQuery();
+    expect(component.latestResult()).toEqual({ columns: [], data: [] });
+
+    // Embedded error branch
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(
+      of({ error: 'Draft syntax error' }),
+    );
+    component.runQuery();
+    expect(component.validationError()).toBe('Draft syntax error');
+    expect(component.latestResult()).toBeNull();
+
+    // Network failure branch
+    mockAiApi.executeSqlPreviewApiV1AiExecutePost.mockReturnValue(
+      throwError(() => new Error('network error')),
+    );
+    component.runQuery();
+    expect(component.validationError()).toBe('Network execution failed.');
   });
 
   it('should display available parameters in menu', () => {
@@ -335,6 +378,9 @@ describe('SqlBuilderComponent template wiring', () => {
   let mockExecApi: {
     refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
   };
+  let mockAiApi: {
+    executeSqlPreviewApiV1AiExecutePost: ReturnType<typeof vi.fn>;
+  };
   let mockSchemaApi: {
     getDatabaseSchemaApiV1SchemaGet: ReturnType<typeof vi.fn>;
   };
@@ -353,6 +399,7 @@ describe('SqlBuilderComponent template wiring', () => {
         .fn()
         .mockReturnValue(of({ w1: { columns: [], data: [] } })),
     };
+    mockAiApi = { executeSqlPreviewApiV1AiExecutePost: vi.fn() };
     mockSchemaApi = { getDatabaseSchemaApiV1SchemaGet: vi.fn().mockReturnValue(of([])) };
     mockStore = { globalParams: signal<Record<string, unknown>>({}) };
 
@@ -363,6 +410,7 @@ describe('SqlBuilderComponent template wiring', () => {
         provideHttpClientTesting(),
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: ExecutionService, useValue: mockExecApi },
+        { provide: AiService, useValue: mockAiApi },
         { provide: SchemaService, useValue: mockSchemaApi },
         { provide: ChatService, useValue: {} },
         { provide: DashboardStore, useValue: mockStore },

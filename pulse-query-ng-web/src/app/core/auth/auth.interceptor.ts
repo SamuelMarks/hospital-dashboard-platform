@@ -39,10 +39,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: unknown) => {
       const isUnauthorized =
         (error instanceof HttpErrorResponse && error.status === 401) ||
-        (error !== null &&
-          typeof error === 'object' &&
-          'status' in error &&
-          (error as { status: unknown }).status === 401);
+        (error !== null && typeof error === 'object' && 'status' in error && error.status === 401);
 
       if (isUnauthorized) {
         const isAuthRoute = req.url.includes('/auth/login') || req.url.includes('/auth/refresh');

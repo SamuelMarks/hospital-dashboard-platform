@@ -119,7 +119,7 @@ export class ProcessorCatalogService {
         includeSql: true,
         discoverOllama: true,
       })
-      .pipe(catchError(() => of([] as ModelInfo[])))
+      .pipe(catchError(() => of<ModelInfo[]>([])))
       .subscribe((models) => {
         const mapped = (models ?? []).map(mapModelInfoToProcessorOption);
         const hasSql = mapped.some((opt) => opt.id === 'SQL');

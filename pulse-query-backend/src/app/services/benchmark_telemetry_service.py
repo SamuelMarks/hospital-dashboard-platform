@@ -2,7 +2,7 @@
 Benchmark Dataset and Real-Time Execution Progress Telemetry Service.
 
 Encapsulates thread-safe benchmark execution telemetry state (`BenchmarkTelemetryService`)
-and dataset file loading (`benchmark_gold.json` and `mpax_benchmark_scenarios.json`).
+and dataset file loading (`benchmark_gold.json` and `optimization_benchmarks.json`).
 """
 
 from __future__ import annotations
@@ -23,37 +23,45 @@ DATA_DIR = BACKEND_ROOT / "data"
 
 class BenchmarkScenarioSchema(BaseModel):
   """
-  Strongly typed Pydantic schema for a Text-to-SQL or MPAX What-If benchmark scenario entry.
+  Strongly typed Pydantic schema for a Text-to-SQL or Hospital Optimization benchmark scenario entry.
 
   Attributes:
-      id (str | None): Optional scenario UUID string.
+      id (str | None): Optional scenario UUID or slug string.
+      use_case (str | None): Optimization use case (`'service_unit'`, `'surgical_scheduling'`, `'staffing_optimization'`).
+      institution_id (str | None): Partner hospital profile identifier.
       theme (str | None): Analytical or clinical optimization theme name.
       question (str | None): Natural language clinical question (SQL benchmark).
       gold_sql (str | None): Ground-truth DuckDB SQL query (SQL benchmark).
       complexity (str | None): Complexity tier (`'Low'`, `'Medium'`, `'High'`, `'Easy'`, `'Hard'`).
-      prompt (str | None): Natural language scenario prompt (MPAX benchmark).
+      prompt (str | None): Natural language scenario prompt (Optimization benchmark).
       scenario (str | None): Optional scenario identifier or summary label.
-      demand_data (list[JsonObject] | None): List of clinical service demand objects.
-      base_capacity (dict[str, float] | None): Unit capacity dictionary.
-      expected_metrics (dict[str, float] | None): Expected demand/capacity/overflow metrics.
+      expected_constraints_json (JsonObject | None): Gold-standard extracted constraint payload.
+      expert_baseline_metrics (dict[str, float] | None): Expert-attained DES baseline metrics for scoring.
+      demand_data (list[JsonObject] | None): Optional clinical service demand objects.
+      base_capacity (dict[str, float] | None): Optional unit capacity dictionary.
+      expected_metrics (dict[str, float] | None): Optional expected metrics dictionary.
   """
 
   model_config = ConfigDict(extra="allow")
 
   id: str | None = None
+  use_case: str | None = None
+  institution_id: str | None = None
   theme: str | None = None
   question: str | None = None
   gold_sql: str | None = None
   complexity: str | None = None
   prompt: str | None = None
   scenario: str | None = None
+  expected_constraints_json: JsonObject | None = None
+  expert_baseline_metrics: dict[str, float] | None = None
   demand_data: list[JsonObject] | None = None
   base_capacity: dict[str, float] | None = None
   expected_metrics: dict[str, float] | None = None
 
 
 SqlBenchmarkEntry = BenchmarkScenarioSchema
-MpaxBenchmarkScenarioEntry = BenchmarkScenarioSchema
+OptimizationBenchmarkScenarioEntry = BenchmarkScenarioSchema
 
 
 class BenchmarkTelemetryStateDict(TypedDict):

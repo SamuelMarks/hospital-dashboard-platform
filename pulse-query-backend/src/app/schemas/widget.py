@@ -46,20 +46,31 @@ def is_valid_processor_identifier(processor: str) -> bool:
 
 class WidgetLayout(BaseModel):
   """
-  Common layout properties shared by all widget configurations.
-  Used by the frontend grid system.
+  Common layout and metadata properties shared by all widget configurations.
+  Used by the frontend grid system and header captions.
 
   Attributes:
       x (int): Horizontal grid position (0-12).
       y (int): Vertical grid position.
       w (int): Width in grid columns.
       h (int): Height in grid rows.
+      subtitle (str | None): Optional subtitle or caption explaining what the widget measures or displays.
+      description (str | None): Optional template description or supplementary notes.
   """
 
   x: int = Field(0, ge=0, description="Grid X position")
   y: int = Field(0, ge=0, description="Grid Y position")
   w: int = Field(6, ge=1, le=12, description="Grid Width (cols)")
   h: int = Field(4, ge=1, description="Grid Height (rows)")
+  subtitle: str | None = Field(
+    default=None,
+    max_length=300,
+    description="Optional subtitle or caption explaining what the widget measures or displays.",
+  )
+  description: str | None = Field(
+    default=None,
+    description="Optional description or clinical guidance for the widget.",
+  )
 
 
 class SqlConfig(WidgetLayout):
@@ -174,6 +185,11 @@ class WidgetCreateSql(BaseModel):
   """
 
   title: str = Field(..., min_length=1, max_length=100)
+  subtitle: str | None = Field(
+    default=None,
+    max_length=300,
+    description="Optional subtitle or caption explaining what the widget measures or displays.",
+  )
   type: Literal["SQL"]
   visualization: str = Field(..., description="Visualization ID (e.g. 'table', 'bar_chart')")
   config: SqlConfig = Field(..., description="SQL-specific configuration")
@@ -186,6 +202,11 @@ class WidgetCreateHttp(BaseModel):
   """
 
   title: str = Field(..., min_length=1, max_length=100)
+  subtitle: str | None = Field(
+    default=None,
+    max_length=300,
+    description="Optional subtitle or caption explaining what the widget measures or displays.",
+  )
   type: Literal["HTTP"]
   visualization: str = Field(..., description="Visualization ID (e.g. 'table', 'metric')")
   config: HttpConfig = Field(..., description="HTTP-specific configuration")
@@ -198,6 +219,11 @@ class WidgetCreateText(BaseModel):
   """
 
   title: str = Field(..., min_length=1, max_length=100)
+  subtitle: str | None = Field(
+    default=None,
+    max_length=300,
+    description="Optional subtitle or caption explaining what the widget measures or displays.",
+  )
   type: Literal["TEXT"]
   visualization: Literal["markdown"] = Field("markdown", description="Fixed visualization ID for text.")
   config: TextConfig = Field(..., description="Text-specific configuration")
@@ -271,6 +297,8 @@ def parse_sql_config_lenient(raw_config: Mapping[str, JsonValue]) -> SqlConfig:
   placeholder_val = str(raw_placeholder) if isinstance(raw_placeholder, str) else None
   raw_x = raw_config.get("xKey")
   raw_y = raw_config.get("yKey")
+  raw_sub = raw_config.get("subtitle")
+  raw_desc = raw_config.get("description")
   return SqlConfig.model_construct(
     query=query_val,
     xKey=str(raw_x) if isinstance(raw_x, str) else None,
@@ -279,6 +307,8 @@ def parse_sql_config_lenient(raw_config: Mapping[str, JsonValue]) -> SqlConfig:
     processor=proc_val,
     natural_text_prompt=prompt_val,
     placeholder_text=placeholder_val,
+    subtitle=str(raw_sub) if isinstance(raw_sub, str) else None,
+    description=str(raw_desc) if isinstance(raw_desc, str) else None,
   )
 
 
@@ -291,11 +321,17 @@ class WidgetUpdate(BaseModel):
 
   Attributes:
       title (str | None): New title.
+      subtitle (str | None): Optional new subtitle or caption.
       visualization (str | None): New visualization type.
       config (JsonObject | None): Partial configuration updates.
   """
 
   title: str | None = None
+  subtitle: str | None = Field(
+    default=None,
+    max_length=300,
+    description="Optional subtitle or caption explaining what the widget measures or displays.",
+  )
   visualization: str | None = None
   # We allow loose configuration on update to support partial patches
   # without requiring the 'type' field to be resent.

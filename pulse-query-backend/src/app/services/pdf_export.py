@@ -20,12 +20,14 @@ class WidgetPdfSnapshot:
 
   Attributes:
       title (str): Display title of the widget.
+      subtitle (str | None): Optional subtitle or caption describing the widget.
       type (str): Widget execution type (`'SQL'`, `'HTTP'`, `'TEXT'`).
       data (Sequence[SqlRow]): Tabular rows executed for the widget.
       error (str | None): Optional error message if widget execution failed.
   """
 
   title: str = "Untitled Widget"
+  subtitle: str | None = None
   type: str = "SQL"
   data: Sequence[SqlRow] = field(default_factory=list)
   error: str | None = None
@@ -48,6 +50,8 @@ def _coerce_widget_snapshot(widget: WidgetPdfInput) -> WidgetPdfSnapshot:
     return widget
   raw_title = widget.get("title")
   title = str(raw_title) if raw_title is not None else "Untitled Widget"
+  raw_sub = widget.get("subtitle")
+  subtitle = str(raw_sub).strip() if isinstance(raw_sub, str) and str(raw_sub).strip() else None
   raw_type = widget.get("type")
   w_type = str(raw_type) if raw_type is not None else "SQL"
   raw_data = widget.get("data")
@@ -58,7 +62,7 @@ def _coerce_widget_snapshot(widget: WidgetPdfInput) -> WidgetPdfSnapshot:
   )
   raw_err = widget.get("error")
   err = str(raw_err) if raw_err else None
-  return WidgetPdfSnapshot(title=title, type=w_type, data=rows, error=err)
+  return WidgetPdfSnapshot(title=title, subtitle=subtitle, type=w_type, data=rows, error=err)
 
 
 def _escape_pdf_text(text: str) -> str:
@@ -157,6 +161,11 @@ def _render_widget_block(widget: WidgetPdfInput, y_pos: int) -> tuple[list[str],
   escaped_w_title = _escape_pdf_text(f"Widget: {snap.title} [{snap.type}]")
   cmds.append(f"BT /F1 11 Tf 50 {y_pos} Td ({escaped_w_title}) Tj ET")
   y_pos -= 15
+
+  if snap.subtitle:
+    escaped_sub = _escape_pdf_text(f"Caption: {snap.subtitle}")
+    cmds.append(f"BT /F1 9 Tf 65 {y_pos} Td ({escaped_sub}) Tj ET")
+    y_pos -= 13
 
   if snap.data:
     first_row = snap.data[0]
@@ -281,7 +290,7 @@ def generate_clinical_pdf_report(
   current_y = 655
 
   for widget in normalized_widgets:
-    w_height = 45 if widget.data else 31
+    w_height = (45 if widget.data else 31) + (13 if widget.subtitle else 0)
 
     if current_y - w_height < 80 and current_group:
       pages_widget_groups.append(current_group)

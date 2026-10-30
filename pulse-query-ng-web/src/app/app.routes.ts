@@ -15,7 +15,7 @@ import { adminGuard } from './core/auth/admin.guard';
  *
  * Architecture Decisions:
  * - All leaf components are lazy-loaded using `loadComponent` to reduce the initial bundle size.
- * - Feature modules (like Simulation) are lazy-loaded using `loadChildren`.
+ * - Feature modules (like Optimization) are lazy-loaded using `loadChildren`.
  * - Guards are applied at the route level to protect lazy chunks from loading unnecessarily if access is denied.
  */
 export const routes: Routes = [
@@ -85,14 +85,6 @@ export const routes: Routes = [
     title: $localize`:@@routeTitleAlertRules:Alert Rules - Pulse Query`,
   },
 
-  {
-    path: 'mpax-arena',
-    canActivate: [authGuard],
-    loadComponent: () =>
-      import('./mpax-arena/mpax-arena.component').then((m) => m.MpaxArenaComponent),
-    title: $localize`:@@routeTitleMpaxArena:MPAX Arena - Pulse Query`,
-  },
-
   // --- Benchmarks ---
   {
     path: 'benchmarks',
@@ -102,12 +94,13 @@ export const routes: Routes = [
     title: $localize`:@@routeTitleBenchmarks:Benchmarks - Pulse Query`,
   },
 
-  // --- Feature Modules (Lazy Loaded) ---
+  // --- Hospital Operations Optimization (LLM + JAX + MPAX) ---
   {
-    path: 'simulation',
+    path: 'optimization',
     canActivate: [authGuard],
-    loadChildren: () => import('./simulation/simulation.routes').then((m) => m.simulationRoutes),
-    title: $localize`:@@routeTitleSimulation:Simulation - Pulse Query`,
+    loadChildren: () =>
+      import('./optimization/optimization.routes').then((m) => m.optimizationRoutes),
+    title: $localize`:@@routeTitleOptimization:Optimization - Pulse Query`,
   },
 
   // --- Fallback ---

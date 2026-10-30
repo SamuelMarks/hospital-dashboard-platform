@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const frontendPort = process.env["E2E_FRONTEND_PORT"] ?? "4217";
+const frontendUrl = `http://localhost:${frontendPort}`;
+
 /**
  * Playwright Configuration.
  *
@@ -22,7 +25,7 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: "http://localhost:4200",
+    baseURL: frontendUrl,
 
     /* Collect trace when retrying the failed test. */
     trace: "on-first-retry",
@@ -46,19 +49,20 @@ export default defineConfig({
   webServer: [
     {
       command:
-        "cd ../pulse-query-backend && uv run --active alembic upgrade head && uv run --active uvicorn app.main:app --port 8000",
+        "cd ../pulse-query-backend && uv run --active alembic upgrade head && uv run --active uvicorn --app-dir src app.main:app --port 8000",
       url: "http://127.0.0.1:8000/api/v1/openapi.json",
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
       env: {
         USE_SQLITE_ALEMBIC:
           process.env["USE_SQLITE_ALEMBIC"] ?? (process.env["CI"] ? "0" : "1"),
-        DUCKDB_PATH: process.env["DUCKDB_PATH"] || "e2e_test.duckdb",
+        DUCKDB_PATH: "e2e_test.duckdb",
+        BACKEND_CORS_ORIGINS: `http://localhost:4200,http://127.0.0.1:4200,${frontendUrl},http://127.0.0.1:${frontendPort}`,
       },
     },
     {
-      command: "cd ../pulse-query-ng-web && npm start",
-      url: "http://localhost:4200",
+      command: `cd ../pulse-query-ng-web && npm start -- --port ${frontendPort}`,
+      url: frontendUrl,
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
       env: { NG_CLI_ANALYTICS: "false" },

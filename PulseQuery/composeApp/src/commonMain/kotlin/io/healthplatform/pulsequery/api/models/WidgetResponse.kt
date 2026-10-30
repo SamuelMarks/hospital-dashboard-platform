@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,10 @@ import kotlinx.serialization.Serializable
 /**
  * API Response model for a persisted Widget.
  *
- * @param title
- * @param type
- * @param visualization
- * @param config
- * @param id
- * @param dashboardId
+ * @property title * @param type
+ * @property visualization * @param config
+ * @property id * @param dashboardId
+ * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
  */
 @Serializable
 data class WidgetResponse(
@@ -38,5 +37,6 @@ data class WidgetResponse(
     @SerialName(value = "visualization") @Required val visualization: kotlin.String,
     @SerialName(value = "config") @Required val config: kotlinx.serialization.json.JsonObject,
     @SerialName(value = "id") @Required val id: kotlin.String,
-    @SerialName(value = "dashboard_id") @Required val dashboardId: kotlin.String
+    @SerialName(value = "dashboard_id") @Required val dashboardId: kotlin.String,
+    @SerialName(value = "subtitle") val subtitle: kotlin.String? = null
 )

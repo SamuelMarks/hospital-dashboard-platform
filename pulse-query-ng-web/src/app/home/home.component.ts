@@ -25,6 +25,7 @@ import { AuthService } from '../core/auth/auth.service';
 import { ThemeToggleComponent } from '../shared/components/theme-toggle.component';
 import { OnboardingWizardComponent } from '../shared/components/onboarding/onboarding-wizard.component';
 import { OnboardingService } from '../shared/components/onboarding/onboarding.service';
+import { SkeletonLoaderComponent } from '../shared/components/skeleton-loader.component';
 
 /**
  * Landing page component listing available hospital analytics dashboards and management actions.
@@ -43,6 +44,7 @@ import { OnboardingService } from '../shared/components/onboarding/onboarding.se
     MatSnackBarModule,
     ThemeToggleComponent,
     OnboardingWizardComponent,
+    SkeletonLoaderComponent,
   ],
 
   templateUrl: './home.component.html',
@@ -50,7 +52,8 @@ import { OnboardingService } from '../shared/components/onboarding/onboarding.se
     `
       :host {
         display: block;
-        min-height: 100vh;
+        flex: 1 1 auto;
+        box-sizing: border-box;
         /* Dynamic Theme Vars */
         background-color: var(--sys-background);
         color: var(--sys-text-primary);

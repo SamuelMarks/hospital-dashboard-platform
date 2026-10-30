@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Public representation of a user returned by the API.
  *
- * @param id
- * @param email
- * @param isActive
- * @param isAdmin
- * @param languagePreference
- * @param role
+ * @property id * @param email
+ * @property isActive * @param isAdmin
+ * @property languagePreference * @param role
  */
 @Serializable
 data class UserResponse(

@@ -23,6 +23,7 @@ class WidgetBase(BaseModel):
   """
 
   title: str
+  subtitle: str | None = None
   type: str
   visualization: str
   config: JsonObject | WidgetConfigUnion

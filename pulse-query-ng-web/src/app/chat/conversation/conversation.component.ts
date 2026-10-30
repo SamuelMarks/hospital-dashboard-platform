@@ -79,7 +79,7 @@ import { ArenaSqlService } from '../arena-sql.service';
         align-items: center;
         justify-content: center;
         height: 100%;
-        color: var(--sys-outline);
+        color: var(--sys-text-secondary);
         user-select: none;
       }
       .icon-hero {
@@ -280,7 +280,7 @@ export class ConversationComponent {
    * @param e - The keyboard event triggered on Enter.
    */
   handleEnter(e: Event): void {
-    if ('shiftKey' in e && Boolean((e as { shiftKey?: boolean }).shiftKey)) return;
+    if ('shiftKey' in e && Boolean(e.shiftKey)) return;
     e.preventDefault();
     this.send();
   }
@@ -339,13 +339,13 @@ export class ConversationComponent {
   }
 
   /**
-   * Navigates to the scenario simulation view pre-populated with the given SQL query.
+   * Navigates to the optimization workspace pre-populated with the given SQL query or prompt.
    *
-   * @param sql - The SQL query string to simulate.
+   * @param sql - The SQL query string to inspect.
    */
   simulateQuery(sql: string): void {
     if (!sql) return;
-    this.router.navigate(['/simulation'], { queryParams: { sql } });
+    this.router.navigate(['/optimization'], { queryParams: { prompt: sql } });
   }
 
   /**
@@ -382,10 +382,15 @@ export class ConversationComponent {
         error: (err: HttpErrorResponse) => {
           // Enhanced Error Extraction (Handles status 0/undefined detail)
           let msg = err?.message || $localize`Unknown error`;
-          const errBody = err.error as { detail?: unknown } | null | undefined;
+          const errBody: unknown = err.error;
           if (err.status === 0) {
             msg = $localize`Network Error: Cannot reach server.`;
-          } else if (errBody && errBody.detail) {
+          } else if (
+            errBody &&
+            typeof errBody === 'object' &&
+            'detail' in errBody &&
+            errBody.detail
+          ) {
             msg = String(errBody.detail);
           }
 

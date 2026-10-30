@@ -83,7 +83,9 @@ describe('ThemeColorPickerDialogComponent', () => {
 
     expect(component.selectedColor()).toBe(target.hex);
     expect(component.customHex).toBe(target.hex);
-    expect(component.getPaletteAriaLabel(target)).toBe(`Select ${target.name}`);
+    expect(component.getPaletteAriaLabel(target)).toBe(
+      `Select ${target.name} - ${target.description} (${target.hex})`,
+    );
   });
 
   it('should handle color picker input event', () => {
@@ -98,8 +100,11 @@ describe('ThemeColorPickerDialogComponent', () => {
   });
 
   it('should update selected color on valid hex text input', () => {
-    component.customHex = '#7B1FA2';
-    component.onHexInputChange();
+    const input = document.createElement('input');
+    input.value = '#7B1FA2';
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
+    component.onHexInputChange(event);
 
     expect(component.selectedColor()).toBe('#7B1FA2');
   });

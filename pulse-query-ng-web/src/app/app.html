@@ -1,5 +1,5 @@
 <a i18n class="skip-link" href="#main-content">Skip to main content</a>
-<mat-sidenav-container class="h-full-container" autosize>
+<mat-sidenav-container class="h-full-container" autosize (backdropClick)="askData.close()">
   <!-- Side Drawer (Right aligned) -->
   <mat-sidenav
     #sidenav
@@ -30,5 +30,28 @@
     <main id="main-content" class="page-container" tabindex="-1">
       <router-outlet></router-outlet>
     </main>
+
+    <!-- Global Footer (Hidden in TV Mode) -->
+    @if (!themeService.isTvMode()) {
+      <footer class="app-footer" role="contentinfo" data-testid="app-footer">
+        <span i18n class="footer-copyright" data-testid="footer-copyright"
+          >Copyright © 2026 Samuel Marks</span
+        >
+        <span class="footer-divider" aria-hidden="true">•</span>
+        <span i18n class="footer-build" data-testid="footer-built-on"
+          >Built on {{ buildTimestampUtc }}</span
+        >
+        <span class="footer-divider" aria-hidden="true">•</span>
+        <a
+          href="https://github.com/SamuelMarks/hospital-dashboard-platform"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="footer-link"
+          data-testid="footer-github-link"
+          i18n
+          >GitHub</a
+        >
+      </footer>
+    }
   </mat-sidenav-content>
 </mat-sidenav-container>

@@ -6,15 +6,14 @@ import io.healthplatform.pulsequery.api.apis.BenchmarksApi
 import io.healthplatform.pulsequery.api.apis.ChatApi
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
 import io.healthplatform.pulsequery.api.apis.ExecutionApi
-import io.healthplatform.pulsequery.api.apis.MpaxArenaApi
+import io.healthplatform.pulsequery.api.apis.OptimizationApi
 import io.healthplatform.pulsequery.api.apis.SchemaApi
-import io.healthplatform.pulsequery.api.apis.SimulationApi
 import io.healthplatform.pulsequery.api.apis.SystemApi
 import io.healthplatform.pulsequery.api.apis.TemplatesApi
 import io.healthplatform.pulsequery.api.models.DashboardCreate
-import io.healthplatform.pulsequery.api.models.MpaxArenaRequest
-import io.healthplatform.pulsequery.api.models.ScenarioConstraint
-import io.healthplatform.pulsequery.api.models.ScenarioRunRequest
+import io.healthplatform.pulsequery.api.models.OptimizationSolutionPayload
+import io.healthplatform.pulsequery.api.models.OptimizationSolveRequest
+import io.healthplatform.pulsequery.api.models.ServiceUnitConstraint
 import io.healthplatform.pulsequery.createInspectingMockEngine
 import io.healthplatform.pulsequery.createMockClient
 import io.healthplatform.pulsequery.readBodyText
@@ -142,8 +141,8 @@ class ApiTests {
         val benchmarksApi = BenchmarksApi(baseUrl = "http://localhost:8000", httpClient = client)
         val sqlRes = benchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet()
         assertTrue(sqlRes.body().isNotEmpty())
-        val mpaxRes = benchmarksApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet()
-        assertTrue(mpaxRes.body().isNotEmpty())
+        val optRes = benchmarksApi.getOptimizationBenchmarksApiV1BenchmarksOptimizationGet()
+        assertTrue(optRes.body().isNotEmpty())
     }
 
     @Test
@@ -180,38 +179,31 @@ class ApiTests {
     }
 
     @Test
-    fun testSimulationAndMpaxArenaRequestBodyStructure() = runTest {
+    fun testOptimizationSolveRequestBodyStructure() = runTest {
         val requests = mutableListOf<HttpRequestData>()
         val engine = createInspectingMockEngine(recordedRequests = requests)
         val client = createMockClient(engine = engine)
 
-        val simApi = SimulationApi(baseUrl = "http://localhost:8000", httpClient = client)
-        val simReq = ScenarioRunRequest(
-            demandSourceSql = "SELECT service, count FROM demand",
-            capacityParameters = mapOf("ICU" to 20.0),
-            constraints = listOf(ScenarioConstraint(type = "min", service = "Cardiology", unit = "ICU", min = 5.0))
+        val optApi = OptimizationApi(baseUrl = "http://localhost:8000", httpClient = client)
+        val solveReq = OptimizationSolveRequest(
+            useCase = OptimizationSolveRequest.UseCase.surgical_scheduling,
+            institutionId = "chop",
+            prompt = "Open 10 additional beds on PCU 360",
+            serviceConstraints = listOf(
+                ServiceUnitConstraint(
+                    constraintType = ServiceUnitConstraint.ConstraintType.unit_capacity_delta,
+                    unit = "PCU 360",
+                    `value` = 10.0
+                )
+            )
         )
-        val simRes = simApi.runSimulationApiV1SimulationRunPost(simReq)
-        assertEquals("optimal", simRes.body().status)
-        assertEquals(1, simRes.body().assignments.size)
+        val solveRes = optApi.solveOptimizationStatelessApiV1OptimizationSolvePost(solveReq)
+        assertEquals(OptimizationSolutionPayload.SolverStatus.OPTIMAL, solveRes.body().solverStatus)
 
-        val sentSimJson = Json.parseToJsonElement(requests.last().body.readBodyText()).jsonObject
-        assertEquals("SELECT service, count FROM demand", sentSimJson["demand_source_sql"]?.jsonPrimitive?.content)
-        assertEquals(20.0, sentSimJson["capacity_parameters"]?.jsonObject?.get("ICU")?.jsonPrimitive?.doubleOrNull)
-        assertEquals(1, sentSimJson["constraints"]?.jsonArray?.size)
-
-        val arenaApi = MpaxArenaApi(baseUrl = "http://localhost:8000", httpClient = client)
-        val arenaReq = MpaxArenaRequest(
-            prompt = "Optimize ICU bed allocation",
-            mode = "critic"
-        )
-        val arenaRes = arenaApi.runMpaxArenaModeApiV1MpaxArenaRunPost(arenaReq)
-        assertEquals("critic", arenaRes.body().mode)
-        assertEquals("exp-1", arenaRes.body().experimentId)
-
-        val sentArenaJson = Json.parseToJsonElement(requests.last().body.readBodyText()).jsonObject
-        assertEquals("Optimize ICU bed allocation", sentArenaJson["prompt"]?.jsonPrimitive?.content)
-        assertEquals("critic", sentArenaJson["mode"]?.jsonPrimitive?.content)
+        val sentJson = Json.parseToJsonElement(requests.last().body.readBodyText()).jsonObject
+        assertEquals("surgical_scheduling", sentJson["use_case"]?.jsonPrimitive?.content)
+        assertEquals("chop", sentJson["institution_id"]?.jsonPrimitive?.content)
+        assertEquals(1, sentJson["service_constraints"]?.jsonArray?.size)
     }
 
     @Test

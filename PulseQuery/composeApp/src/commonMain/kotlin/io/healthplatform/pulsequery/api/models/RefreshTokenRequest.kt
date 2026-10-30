@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload requesting rotation of an active refresh token.
  *
- * @param refreshToken
- */
+ * @property refreshToken */
 @Serializable
 data class RefreshTokenRequest(
     @SerialName(value = "refresh_token") @Required val refreshToken: kotlin.String

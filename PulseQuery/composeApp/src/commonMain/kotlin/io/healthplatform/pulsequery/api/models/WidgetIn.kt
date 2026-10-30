@@ -18,7 +18,7 @@ object WidgetInSerializer : JsonContentPolymorphicSerializer<WidgetIn>(WidgetIn:
     /**
      * Selects the concrete [DeserializationStrategy] based on the `"type"` field in [element].
      *
-     * @param element Parsed JSON payload.
+     * @property element Parsed JSON payload.
      * @return Concrete [WidgetIn] subtype serializer.
      */
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<WidgetIn> {
@@ -39,6 +39,9 @@ sealed class WidgetIn {
     /** Display title of the widget. */
     abstract val title: String
 
+    /** Optional subtitle or caption explaining what the widget measures or displays. */
+    abstract val subtitle: String?
+
     /** Discriminator type of the widget ("SQL", "TEXT", or "HTTP"). */
     abstract val type: String
 
@@ -49,6 +52,7 @@ sealed class WidgetIn {
      * SQL widget creation payload.
      *
      * @property title Display title of the SQL widget.
+     * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
      * @property type Widget source discriminator ("SQL").
      * @property visualization Selected chart or table visualization identifier.
      * @property config SQL query configuration payload.
@@ -57,6 +61,7 @@ sealed class WidgetIn {
     @SerialName("SQL")
     data class Sql(
         override val title: String,
+        override val subtitle: String? = null,
         override val type: String = "SQL",
         override val visualization: String,
         val config: SqlConfig
@@ -66,6 +71,7 @@ sealed class WidgetIn {
      * Text / Markdown widget creation payload.
      *
      * @property title Display title of the text widget.
+     * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
      * @property type Widget source discriminator ("TEXT").
      * @property visualization Selected visualization identifier ("markdown").
      * @property config Text content configuration payload.
@@ -74,6 +80,7 @@ sealed class WidgetIn {
     @SerialName("TEXT")
     data class Text(
         override val title: String,
+        override val subtitle: String? = null,
         override val type: String = "TEXT",
         override val visualization: String = "markdown",
         val config: TextConfig
@@ -83,6 +90,7 @@ sealed class WidgetIn {
      * External HTTP endpoint widget creation payload.
      *
      * @property title Display title of the HTTP widget.
+     * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
      * @property type Widget source discriminator ("HTTP").
      * @property visualization Selected visualization identifier ("table").
      * @property config HTTP request configuration payload.
@@ -91,6 +99,7 @@ sealed class WidgetIn {
     @SerialName("HTTP")
     data class Http(
         override val title: String,
+        override val subtitle: String? = null,
         override val type: String = "HTTP",
         override val visualization: String = "table",
         val config: HttpConfig

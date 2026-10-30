@@ -76,3 +76,36 @@ class Widget(Base):
   config: Mapped[JsonObject] = mapped_column(JSONB, default=dict)
 
   dashboard: Mapped["Dashboard"] = relationship("Dashboard", back_populates="widgets")
+
+  @property
+  def subtitle(self) -> str | None:
+    """
+    Returns the widget's optional subtitle or caption from `config`.
+
+    Falls back to `config["description"]` when `config["subtitle"]` is not set.
+
+    Returns:
+        str | None: Non-empty subtitle string or None.
+    """
+    raw = self.config.get("subtitle")
+    if isinstance(raw, str) and raw.strip():
+      return raw.strip()
+    desc = self.config.get("description")
+    if isinstance(desc, str) and desc.strip():
+      return desc.strip()
+    return None
+
+  @subtitle.setter
+  def subtitle(self, value: str | None) -> None:
+    """
+    Updates the widget's `subtitle` inside `config`.
+
+    Args:
+        value (str | None): Subtitle string to store, or None to clear.
+    """
+    updated: JsonObject = dict(self.config)
+    if value is not None and value.strip():
+      updated["subtitle"] = value.strip()
+    else:
+      updated.pop("subtitle", None)
+    self.config = updated

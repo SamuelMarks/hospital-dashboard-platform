@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,14 +25,10 @@ import kotlinx.serialization.Serializable
 /**
  * API Response model for a persisted Message.
  *
- * @param content
- * @param id
- * @param conversationId
- * @param role
- * @param createdAt
- * @param sqlSnippet
- * @param candidates
- */
+ * @property content * @param id
+ * @property conversationId * @param role
+ * @property createdAt * @param sqlSnippet
+ * @property candidates */
 @Serializable
 data class MessageResponse(
     @SerialName(value = "content") @Required val content: kotlin.String,

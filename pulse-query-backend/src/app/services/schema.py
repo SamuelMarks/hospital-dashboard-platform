@@ -156,22 +156,16 @@ class SchemaService:
       )
 
       functions_doc = (
-        f"{nl}AVAILABLE ANALYTIC EXTENSIONS (User Defined Functions):{nl}"
-        f"1. OPTIMIZE_ASSIGNMENTS(demand_json, capacity_json, affinity_json, constraints_json) -> JSON String{nl}"
-        f"   - Description: Solves linear programming optimization for patient placement.{nl}"
+        f"{nl}AVAILABLE ANALYTIC EXTENSIONS (User Defined Functions & Census Macros):{nl}"
+        f"1. OPTIMIZE_SERVICE_UNIT_BEDS(institution_id, constraints_json) -> JSON String{nl}"
+        f"   - Description: Solves Use Case 1 JAX/MPAX Service-Unit Assignment optimization.{nl}"
         f"   - Arguments:{nl}"
-        "       - demand_json (VARCHAR): JSON object mapping Service Name to Patient Count (e.g., '{\"Cardio\": 10}')."
+        "       - institution_id (VARCHAR): Partner hospital identifier (e.g., 'stanford_childrens')."
         f"{nl}"
-        "       - capacity_json (VARCHAR): JSON object mapping Unit Name to Bed Capacity (e.g., '{\"ICU\": 5}')."
+        '       - constraints_json (VARCHAR): JSON list of ServiceUnitConstraint objects (e.g., \'[{"constraint_type": "unit_capacity_delta", "unit": "PCU 360", "value": 10}]\').'
         f"{nl}"
-        '       - affinity_json (VARCHAR): JSON object mapping Service->Unit->Score (e.g., \'{"Cardio": {"ICU": 1.0}}\').'
-        f"{nl}"
-        '       - constraints_json (VARCHAR): JSON list of hard rules (e.g., \'[{"type": "force_flow", "service": "Gen_Peds", "unit": "PCU_A", "min": 5}]\').'
-        f"{nl}"
-        f"   - Output: A JSON String representing a list of assignment objects.{nl}"
-        f"   - Usage Pattern (DuckDB): {nl}"
-        "     Use `unnest(from_json(OPTIMIZE_ASSIGNMENTS(...), '[\"json\"]'))` to convert the result back into rows."
-        f"{nl}"
+        f"   - Output: A JSON String representing solved Service x Unit bed allocations.{nl}"
+        f"2. CENSUS_PATIENT_DAYS_BY_UNIT(), CENSUS_PATIENT_DAYS_BY_SERVICE(), CENSUS_COMBINED_BREAKDOWN(), CENSUS_SUMMARY_STATISTICS() -> TABLE{nl}"
       )
 
       examples_doc = (
@@ -237,25 +231,26 @@ class SchemaService:
         list[TableSchemaDict]: List of table objects containing name and columns.
     """
     owns_conn = conn is None
-    active_conn: DuckDBConnectionProtocol = conn if conn is not None else self.manager.get_readonly_connection()
-    try:
-      tables_list: list[TableSchemaDict] = []
-      tables = active_conn.execute("SHOW TABLES").fetchall()
+    with duckdb_manager._write_lock:
+      active_conn: DuckDBConnectionProtocol = conn if conn is not None else self.manager.get_readonly_connection()
+      try:
+        tables_list: list[TableSchemaDict] = []
+        tables = active_conn.execute("SHOW TABLES").fetchall()
 
-      for (table_name,) in tables:
-        t_str = str(table_name)
-        safe_table = t_str.replace('"', '""')
-        cols_data: list[ColumnSchemaDict] = []
-        columns = active_conn.execute(f'DESCRIBE "{safe_table}"').fetchall()
+        for (table_name,) in tables:
+          t_str = str(table_name)
+          safe_table = t_str.replace('"', '""')
+          cols_data: list[ColumnSchemaDict] = []
+          columns = active_conn.execute(f'DESCRIBE "{safe_table}"').fetchall()
 
-        for col in columns:
-          cols_data.append({"name": str(col[0]), "type": str(col[1])})
+          for col in columns:
+            cols_data.append({"name": str(col[0]), "type": str(col[1])})
 
-        tables_list.append({"table_name": t_str, "columns": cols_data})
-      return tables_list
-    finally:
-      if owns_conn:
-        active_conn.close()
+          tables_list.append({"table_name": t_str, "columns": cols_data})
+        return tables_list
+      finally:
+        if owns_conn:
+          active_conn.close()
 
   async def get_schema_json_async(self, conn: DuckDBConnectionProtocol | None = None) -> list[TableSchemaDict]:
     """

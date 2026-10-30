@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,11 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for PostgreSQL status.
  *
- * @param status Connection status (e.g. connected, error, unknown).
- * @param latencyMs
- * @param details
- * @param error
- */
+ * @property status Connection status (e.g. connected, error, unknown).
+ * @property latencyMs * @param details
+ * @property error */
 @Serializable
 data class PostgresHealthSchema(
     // Connection status (e.g. connected, error, unknown).

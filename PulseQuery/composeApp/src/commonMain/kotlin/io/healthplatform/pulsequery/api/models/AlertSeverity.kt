@@ -7,7 +7,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -21,7 +22,7 @@ import kotlinx.serialization.Serializable
  * @property value Wire string representation of the severity level.
  */
 @Serializable
-enum class AlertSeverity(val value: kotlin.String) {
+enum class AlertSeverity(/** Wire string representation. */ val value: kotlin.String) {
 
     /** Informational occupancy alert level. */
     @SerialName(value = "INFO")
@@ -49,7 +50,7 @@ enum class AlertSeverity(val value: kotlin.String) {
         /**
          * Converts the provided [data] to a [String] on success, null otherwise.
          *
-         * @param data Candidate [AlertSeverity] instance.
+         * @property data Candidate [AlertSeverity] instance.
          * @return Wire string or null.
          */
         fun encode(data: AlertSeverity?): kotlin.String? = data?.value
@@ -57,7 +58,7 @@ enum class AlertSeverity(val value: kotlin.String) {
         /**
          * Returns a valid [AlertSeverity] for [data], null otherwise.
          *
-         * @param data Raw wire string or enum representation.
+         * @property data Raw wire string or enum representation.
          * @return Matching [AlertSeverity] or null.
          */
         fun decode(data: kotlin.String?): AlertSeverity? = data?.let { raw ->

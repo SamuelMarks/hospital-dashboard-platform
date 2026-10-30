@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,9 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for LLM swarm configuration and readiness.
  *
- * @param providersCount Number of configured LLM providers.
- * @param mockMode True if running in mock/fallback AI mode.
- * @param models List of active model display names.
+ * @property providersCount Number of configured LLM providers.
+ * @property mockMode True if running in mock/fallback AI mode.
+ * @property models List of active model display names.
  */
 @Serializable
 data class LlmHealthSchema(

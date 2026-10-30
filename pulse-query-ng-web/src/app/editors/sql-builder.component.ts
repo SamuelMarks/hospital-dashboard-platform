@@ -39,8 +39,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { DashboardsService, ExecutionService, WidgetUpdate, SchemaService } from '../api-client';
+import {
+  AiService,
+  DashboardsService,
+  ExecutionService,
+  WidgetUpdate,
+  SchemaService,
+} from '../api-client';
 import { DashboardStore } from '../dashboard/dashboard.store';
+import { LOCAL_DRAFT_WIDGET_ID } from '../dashboard/widget-builder/widget-builder.store';
 import {
   VizTableComponent,
   TableDataSet,
@@ -140,6 +147,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly boardsApi = inject(DashboardsService);
   /** Generated OpenAPI client for executing ad-hoc SQL preview queries. */
   private readonly executionApi = inject(ExecutionService);
+  /** Generated OpenAPI client for executing single-query SQL previews on in-memory drafts. */
+  private readonly aiApi = inject(AiService);
   /** Generated OpenAPI client for fetching DuckDB table and column metadata for autocomplete. */
   private readonly schemaApi = inject(SchemaService);
   /** Centralized reactive state store for the active hospital dashboard. */
@@ -271,6 +280,26 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.validationError.set(null);
 
     const runnableSql = this.injectParameters(this.currentSql());
+
+    if (this.widgetId() === LOCAL_DRAFT_WIDGET_ID) {
+      this.sqlChange.emit(this.currentSql());
+      this.aiApi
+        .executeSqlPreviewApiV1AiExecutePost({ sql: runnableSql })
+        .pipe(finalize(() => this.isRunning.set(false)))
+        .subscribe({
+          next: (res) => {
+            if (res.error) {
+              this.validationError.set(res.error);
+              this.latestResult.set(null);
+            } else {
+              this.latestResult.set({ columns: res.columns ?? [], data: res.data ?? [] });
+            }
+          },
+          error: () => this.validationError.set($localize`Network execution failed.`),
+        });
+      return;
+    }
+
     const update: WidgetUpdate = { config: { query: runnableSql } };
 
     this.boardsApi

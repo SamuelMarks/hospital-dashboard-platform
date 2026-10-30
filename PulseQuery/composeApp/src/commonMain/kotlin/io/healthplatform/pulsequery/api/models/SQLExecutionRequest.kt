@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,8 @@ import kotlinx.serialization.Serializable
 /**
  * Request model for executing SQL and returning a preview result.
  *
- * @param sql
- * @param maxRows
- * @param globalParams
- */
+ * @property sql * @param maxRows
+ * @property globalParams */
 @Serializable
 data class SQLExecutionRequest(
     @SerialName(value = "sql") @Required val sql: kotlin.String,

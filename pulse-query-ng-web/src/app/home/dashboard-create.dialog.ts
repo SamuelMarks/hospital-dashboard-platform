@@ -2,7 +2,7 @@
  * @fileoverview Modal dialog component for creating a new analytics dashboard.
  */
 import { Component, inject, signal } from '@angular/core';
-import { FormRoot, FormField, form, required, minLength } from '@angular/forms/signals';
+import { form, required, minLength } from '@angular/forms/signals';
 import { MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { finalize } from 'rxjs/operators';
 import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-client';
+import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 
 /**
  * Dialog component for creating a new Dashboard.
@@ -19,15 +20,7 @@ import { DashboardsService, DashboardCreate, DashboardResponse } from '../api-cl
  */
 @Component({
   selector: 'app-dashboard-create-dialog',
-  imports: [
-    FormRoot,
-    FormField,
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatIconModule,
-  ],
+  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
   templateUrl: './dashboard-create.dialog.html',
 })
 export class DashboardCreateDialog {
@@ -51,6 +44,15 @@ export class DashboardCreateDialog {
     required(f.name, { message: $localize`Name is required` });
     minLength(f.name, 3, { message: $localize`Name must be at least 3 characters` });
   });
+
+  /**
+   * Updates the dashboard name in `formModel` when the input value changes.
+   *
+   * @param event - DOM input event from the dashboard name field.
+   */
+  onNameInput(event: Event): void {
+    this.formModel.set({ name: extractEventInputValue(event) });
+  }
 
   /**
    * Handles the form submission.

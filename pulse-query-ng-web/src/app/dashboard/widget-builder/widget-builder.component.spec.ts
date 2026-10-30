@@ -157,10 +157,13 @@ describe('WidgetBuilderComponent', () => {
   it('should sync local controls with previewWidget state on value changes', () => {
     component.draftWidget.set(MOCK_DRAFT);
     component.updateTitle('Updated Title');
+    component.updateSubtitle('Updated Subtitle');
     fixture.detectChanges();
     expect(component.previewWidget()?.title).toBe('Updated Title');
+    expect(component.previewWidget()?.subtitle).toBe('Updated Subtitle');
 
     component.updateTitle('');
+    component.updateSubtitle('');
     expect(component.previewWidget()?.title).toBe('New Widget');
   });
 

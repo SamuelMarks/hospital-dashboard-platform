@@ -14,6 +14,8 @@
 export interface WidgetUpdate {
   /** Property `title`. */
   title?: string | null;
+  /** Optional subtitle or caption explaining what the widget measures or displays. */
+  subtitle?: string | null;
   /** Property `visualization`. */
   visualization?: string | null;
   /** Property `config`. */

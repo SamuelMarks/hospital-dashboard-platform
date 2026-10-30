@@ -11,7 +11,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { formatDate } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
-import { FormRoot, FormField, form } from '@angular/forms/signals';
+import { form } from '@angular/forms/signals';
 import { DATE_NOW } from '../core/time.token';
 
 // Material Imports
@@ -32,8 +32,6 @@ import { DashboardStore } from './dashboard.store';
 @Component({
   selector: 'app-filter-ribbon',
   imports: [
-    FormRoot,
-    FormField,
     MatToolbarModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -122,10 +120,14 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
   /** Form model containing the current filter values. */
-  readonly formModel = signal({
-    dept: null as string | null,
-    startDate: null as Date | null,
-    endDate: null as Date | null,
+  readonly formModel = signal<{
+    dept: string | null;
+    startDate: Date | null;
+    endDate: Date | null;
+  }>({
+    dept: null,
+    startDate: null,
+    endDate: null,
   });
 
   /** The form control for the ribbon. */
@@ -162,6 +164,7 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
    * @param value The selected department.
    */
   onDeptChange(value: string | null): void {
+    this.formModel.update((m) => ({ ...m, dept: value }));
     if (this.isSyncingFromRoute) return;
     this.updateFilter('dept', value);
   }
@@ -170,6 +173,26 @@ export class FilterRibbonComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  /**
+   * Updates the start date in the filter model and synchronizes route query parameters when both bounds are set.
+   *
+   * @param date - The newly selected start Date or null.
+   */
+  onStartDateChange(date: Date | null): void {
+    this.formModel.update((m) => ({ ...m, startDate: date }));
+    this.onDateChange();
+  }
+
+  /**
+   * Updates the end date in the filter model and synchronizes route query parameters when both bounds are set.
+   *
+   * @param date - The newly selected end Date or null.
+   */
+  onEndDateChange(date: Date | null): void {
+    this.formModel.update((m) => ({ ...m, endDate: date }));
+    this.onDateChange();
   }
 
   /** Handles date Change. */

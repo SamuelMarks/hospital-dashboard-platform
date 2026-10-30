@@ -332,8 +332,83 @@ describe('DashboardLayoutComponent', () => {
     expect(component.getColSpan(makeWidget({ config: { w: 20 } }))).toBe(12);
     expect(component.getColSpan(makeWidget({ config: {} }))).toBe(6);
     expect(component.getRowSpan(makeWidget({ config: { h: 1 } }))).toBe(1);
-    expect(component.getRowSpan(makeWidget({ config: { h: 10 } }))).toBe(4);
+    expect(component.getRowSpan(makeWidget({ config: { h: 10 } }))).toBe(8);
     expect(component.getRowSpan(makeWidget({ config: {} }))).toBe(2);
+  });
+
+  it('should identify Hospital Command Center, open wizard, toggle gallery edit mode, and map skeleton variants', () => {
+    const component = setup();
+    expect(component.isHospitalCommandCenter()).toBe(false);
+    mockStore.dashboard.set({ id: 'd1', name: 'Hospital Command Center' } as { id: string });
+    expect(component.isHospitalCommandCenter()).toBe(true);
+    mockStore.dashboard.set(null);
+    expect(component.isHospitalCommandCenter()).toBe(false);
+
+    // openWizard branches: TV mode, null dashboard, dialog closed true / false
+    mockStore.dashboard.set({ id: 'd1' });
+    mockTheme.isTvMode.set(true);
+    component.openWizard();
+    expect(mockDialog.open).not.toHaveBeenCalled();
+
+    mockTheme.isTvMode.set(false);
+    mockStore.dashboard.set(null);
+    component.openWizard();
+    expect(mockDialog.open).not.toHaveBeenCalled();
+
+    mockStore.dashboard.set({ id: 'd1' });
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
+    component.openWizard();
+    expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
+
+    mockStore.loadDashboard.mockClear();
+    mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
+    component.openWizard();
+    expect(mockStore.loadDashboard).not.toHaveBeenCalled();
+
+    // enableEditModeAndFocusGallery branches
+    const toggleSpy = vi.fn();
+    Object.assign(mockStore, { toggleEditMode: toggleSpy });
+    mockTheme.isTvMode.set(true);
+    component.enableEditModeAndFocusGallery();
+    expect(toggleSpy).not.toHaveBeenCalled();
+
+    mockTheme.isTvMode.set(false);
+    mockStore.isEditMode.set(true);
+    component.enableEditModeAndFocusGallery();
+    expect(toggleSpy).not.toHaveBeenCalled();
+
+    mockStore.isEditMode.set(false);
+    component.enableEditModeAndFocusGallery();
+    expect(toggleSpy).toHaveBeenCalledTimes(1);
+
+    // getWidgetSkeletonVariant branches
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: 'bar_chart' }))).toBe(
+      'chart',
+    );
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: 'pie' }))).toBe('pie');
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: 'heatmap' }))).toBe(
+      'heatmap',
+    );
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: 'metric' }))).toBe(
+      'metric',
+    );
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: 'table' }))).toBe(
+      'table',
+    );
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: 'markdown' }))).toBe(
+      'card',
+    );
+    expect(component.getWidgetSkeletonVariant(makeWidget({ visualization: '' }))).toBe('table');
+
+    // Template drop with undefined description
+    mockProvisioning.provisionWidget.mockReturnValue(of({ id: 'w3' }));
+    component.onDrop({
+      previousContainer: {},
+      container: {},
+      item: { data: { ...makeTemplate(), description: undefined } },
+      previousIndex: 0,
+      currentIndex: 0,
+    });
   });
 
   it('should return early from startResizing in TV mode', () => {

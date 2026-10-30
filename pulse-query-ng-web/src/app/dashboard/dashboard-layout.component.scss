@@ -1,120 +1,149 @@
-/* Root Viewport */
 :host {
   display: flex;
   flex-direction: column;
-  /* CHANGE: Using percentage height instead of viewport height because it is now wrapped in App flex container */
+  flex: 1 1 0%;
   height: 100%;
-  /* Ensure min-height resets so it doesn't overflow parent */
   min-height: 0;
-  background-color: var(--sys-background);
+  overflow: hidden;
+  background: var(--sys-background);
 }
-
 .dashboard-sidnav-container {
-  flex-grow: 1;
-  background-color: transparent;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+  background: transparent;
 }
-
 .editor-sidenav {
   width: 340px;
-  background-color: var(--sys-surface);
+  background: var(--sys-surface);
   border-left: 1px solid var(--sys-surface-border);
 }
-
-.sidebar-stack {
+.sidebar-stack,
+.view-port,
+.banner-text,
+.focus-container {
   display: flex;
   flex-direction: column;
+}
+.sidebar-stack,
+.view-port,
+.grid-item,
+.widget-content {
   height: 100%;
+}
+.sidebar-stack,
+.gallery-pane,
+.focus-widget-body {
   min-height: 0;
 }
-
-.cart-pane {
+.cart-pane,
+.banner-icon,
+.focus-modal-bar {
   flex: 0 0 auto;
 }
-
-.gallery-pane {
+.gallery-pane,
+.focus-widget-body {
   flex: 1 1 auto;
-  min-height: 0;
 }
-
 .view-port {
   padding: 16px;
   box-sizing: border-box;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
 }
-
-/* Ensure grid centers locally */
 .dashboard-grid,
 .ghost-grid,
-.empty-state {
+.empty-state,
+.command-center-banner {
   width: 100%;
   max-width: 1920px;
   margin: 0 auto;
 }
-
-/* TV Mode Override */
 .tv-view {
   overflow: hidden;
   padding: 24px;
 }
-
+.command-center-banner {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background-color: var(--sys-surface);
+  border: 1px solid var(--sys-surface-border);
+  border-left: 4px solid var(--sys-primary);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-sizing: border-box;
+}
+.banner-icon,
+.drag-handle-overlay,
+.focus-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: var(--sys-primary-container);
+  color: var(--sys-on-primary-container);
+}
+.banner-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--sys-text-primary);
+}
+.banner-subtitle,
+.focus-modal-title,
+.tv-last-updated {
+  color: var(--sys-text-secondary);
+}
+.banner-subtitle {
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 24px;
-  min-height: 150px;
-  align-items: start;
+  grid-auto-rows: minmax(58px, auto);
+  gap: 20px;
+  min-height: 180px;
+  align-items: stretch;
+  padding-bottom: 24px;
 }
-
 .grid-item {
   position: relative;
   min-width: 0;
-  height: 100%;
-  min-height: 150px;
+  min-height: 280px;
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
-
 .widget-content {
-  height: 100%;
   width: 100%;
 }
-
-.item-draggable {
+.item-draggable,
+.drag-handle-overlay {
   cursor: grab;
 }
-.item-draggable:active {
+.item-draggable:active,
+.drag-handle-overlay:active {
   cursor: grabbing;
 }
-
 .drag-handle-overlay {
   position: absolute;
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
-  cursor: grab;
   background-color: var(--sys-surface);
   border: 1px solid var(--sys-surface-border);
   border-radius: 4px;
   padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   opacity: 0;
   transition: opacity 150ms ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-
 .grid-item:hover .drag-handle-overlay,
 .grid-item:focus-within .drag-handle-overlay {
   opacity: 1;
 }
-
-.drag-handle-overlay:active {
-  cursor: grabbing;
-}
-
 .cdk-drag-preview {
   box-sizing: border-box;
   border-radius: 8px;
@@ -124,21 +153,9 @@
   z-index: 10000;
   pointer-events: none !important;
 }
-
-.drag-placeholder {
-  background: rgba(0, 0, 0, 0.05);
-  border: 2px dashed var(--sys-primary);
-  border-radius: 8px;
-  opacity: 0.8;
-  height: 100%;
-  width: 100%;
-  display: block;
-}
-
 .cdk-drag-animating {
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
 }
-
 .resize-handle {
   position: absolute;
   bottom: 0;
@@ -157,37 +174,22 @@
   border-style: solid;
   border-width: 0 0 12px 12px;
   border-color: transparent transparent var(--sys-primary) transparent;
-  opacity: 0.7;
 }
 .grid-item:hover .resize-handle,
 .grid-item:focus-within .resize-handle {
   display: block;
 }
-
 .ghost-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 24px;
   padding-bottom: 24px;
 }
-.ghost-card {
-  background: var(--sys-surface);
-  border: 1px solid var(--sys-surface-border);
-  border-radius: 8px;
-  padding: 8px;
-}
-.h-2 {
-  height: 320px;
-}
 .focus-overlay {
   position: fixed;
   inset: 0;
   z-index: 10000;
   background-color: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 48px;
 }
 .focus-container {
@@ -197,51 +199,37 @@
   max-height: 850px;
   background-color: var(--sys-background);
   border-radius: 8px;
-  box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14);
   overflow: hidden;
   position: relative;
-  display: flex;
-  flex-direction: column;
 }
-.focus-modal-bar {
+.focus-modal-bar,
+.tv-carousel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+.focus-modal-bar {
   padding: 4px 8px 4px 16px;
-  background-color: var(--sys-surface);
+  background: var(--sys-surface);
   border-bottom: 1px solid var(--sys-surface-border);
-  flex-shrink: 0;
 }
 .focus-modal-title {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--sys-text-secondary);
 }
-.focus-widget-body {
-  flex: 1;
-  min-height: 0;
+.focus-widget-body,
+.tv-view {
   overflow: hidden;
 }
-
 .tv-carousel-header {
   padding: 24px;
   background: var(--sys-surface);
   border-bottom: 4px solid var(--sys-primary);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 .tv-dashboard-title {
   font-size: 2.5rem;
-  font-weight: 300;
   color: var(--sys-text-primary);
 }
-.tv-last-updated {
-  font-size: 1rem;
-  color: var(--sys-text-secondary);
-  font-family: monospace;
-}
-
 @media (max-width: 1024px) {
   .dashboard-grid {
     grid-template-columns: repeat(2, 1fr);

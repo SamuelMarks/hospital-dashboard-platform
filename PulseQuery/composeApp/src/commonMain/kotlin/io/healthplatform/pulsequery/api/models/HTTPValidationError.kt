@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -23,8 +24,7 @@ import kotlinx.serialization.Serializable
 /**
  *
  *
- * @param detail
- */
+ * @property detail */
 @Serializable
 data class HTTPValidationError(
     @SerialName(value = "detail") val detail: kotlin.collections.List<ValidationError>? = null

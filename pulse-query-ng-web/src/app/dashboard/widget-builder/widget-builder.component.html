@@ -158,6 +158,7 @@
         <ng-template i18n matStepLabel>Visualize</ng-template>
         <app-widget-builder-visualize-step
           [title]="vizFormModel().title"
+          [subtitle]="vizFormModel().subtitle"
           [selectedVisualization]="draftWidget()?.visualization"
           [visualizations]="visualizations"
           [showAxesConfig]="showAxesConfig()"
@@ -172,6 +173,7 @@
           [(placeholderText)]="placeholderText"
           [processors]="processorCatalog.processors()"
           (titleChange)="updateTitle($event)"
+          (subtitleChange)="updateSubtitle($event)"
           (vizTypeChange)="updateVizType($event)"
           (xKeyChange)="updateXKey($event)"
           (yKeyChange)="updateYKey($event)"

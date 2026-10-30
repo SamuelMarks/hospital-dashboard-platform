@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload supplying reset token and the replacement password.
  *
- * @param token
- * @param newPassword
+ * @property token * @param newPassword
  */
 @Serializable
 data class ResetPasswordRequest(

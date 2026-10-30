@@ -121,10 +121,10 @@ class BenchmarksViewModel(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         runCatchingPulseAsync {
             val sqlRaw = currentBenchmarksApi.getSqlBenchmarksApiV1BenchmarksSqlGet().asResult().getOrThrow()
-            val mpaxRaw = currentBenchmarksApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet().asResult().getOrThrow()
+            val optRaw = currentBenchmarksApi.getOptimizationBenchmarksApiV1BenchmarksOptimizationGet().asResult().getOrThrow()
             val sqlItems = sqlRaw.map { parseSqlBenchmarkItem(it) }
-            val mpaxItems = mpaxRaw.map { parseMpaxBenchmarkItem(it) }
-            Pair(sqlItems, mpaxItems)
+            val optItems = optRaw.map { parseMpaxBenchmarkItem(it) }
+            Pair(sqlItems, optItems)
         }.fold(
             onSuccess = { (sqlItems, mpaxItems) ->
                 _state.update {
@@ -172,10 +172,18 @@ class BenchmarksViewModel(
      */
     private fun parseMpaxBenchmarkItem(elemMap: Map<String, JsonElement>): MpaxBenchmarkItem {
         return MpaxBenchmarkItem(
-            title = extractField(elemMap, "title") ?: "Optimization Scenario",
-            difficulty = extractField(elemMap, "difficulty") ?: "Standard",
-            description = extractField(elemMap, "description").orEmpty(),
-            targetService = extractField(elemMap, "target_service") ?: "Hospital Wide"
+            title = extractField(elemMap, "title")
+                ?: extractField(elemMap, "theme")
+                ?: "Optimization Scenario",
+            difficulty = extractField(elemMap, "difficulty")
+                ?: extractField(elemMap, "complexity")
+                ?: "Standard",
+            description = extractField(elemMap, "description")
+                ?: extractField(elemMap, "prompt")
+                    .orEmpty(),
+            targetService = extractField(elemMap, "target_service")
+                ?: extractField(elemMap, "use_case")
+                ?: "Hospital Wide"
         )
     }
 

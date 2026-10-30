@@ -6,7 +6,8 @@
     <span i18n class="label-text">Data Filters</span>
   </div>
 
-  <form [formRoot]="ribbonForm" class="filter-group">
+  <!-- Controls Section -->
+  <div class="filter-group" role="search" i18n-aria-label aria-label="Dashboard Data Filters">
     <!-- 1. Department -->
     <mat-form-field
       appearance="outline"
@@ -16,7 +17,7 @@
     >
       <mat-label i18n>Department</mat-label>
       <mat-select
-        [formField]="ribbonForm.dept"
+        [value]="formModel().dept"
         (selectionChange)="onDeptChange($event.value)"
         i18n-placeholder
         placeholder="All Departments"
@@ -44,8 +45,8 @@
           matStartDate
           i18n-placeholder
           placeholder="Start"
-          [formField]="ribbonForm.startDate"
-          (dateChange)="onDateChange()"
+          [value]="formModel().startDate"
+          (dateChange)="onStartDateChange($event.value)"
           i18n-aria-label
           aria-label="Start Date"
         />
@@ -53,8 +54,8 @@
           matEndDate
           i18n-placeholder
           placeholder="End"
-          [formField]="ribbonForm.endDate"
-          (dateChange)="onDateChange()"
+          [value]="formModel().endDate"
+          (dateChange)="onEndDateChange($event.value)"
           i18n-aria-label
           aria-label="End Date"
         />
@@ -76,5 +77,5 @@
         <mat-icon aria-hidden="true">highlight_off</mat-icon> Clear
       </button>
     }
-  </form>
+  </div>
 </mat-toolbar>

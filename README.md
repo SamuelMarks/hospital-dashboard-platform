@@ -108,7 +108,7 @@ flowchart TD
 - **🧰 Query Cart**: Stage ad‑hoc SQL and drag it into dashboards for rapid iteration and collaboration.
 - **🧩 Template Marketplace**: Pre‑packaged analytics templates ("Utilization Spikes", "Seasonal Growth") with parameterized inputs.
 - **📐 Widget Builder**: Configure SQL widgets, HTTP‑backed widgets, and text/markdown summaries in one flow.
-- **🔮 Simulation & Optimization**: Run complex scenarios to optimize patient‑to‑bed allocation using mathematical solvers.
+- **🏥 Self-Service Hospital Operations Optimization (LLM + JAX + MPAX)**: Iterative natural-language optimization copilot across **Service-Unit Assignments**, **Surgical Scheduling (BEDS & POINTS)**, and **Physician & Nurse Staffing**, benchmarked against a vectorized **JAX Discrete Event Simulation (DES)** expert baseline and supporting **LiteRT** On-Device ML hot-loading on Android and Chrome/Wasm.
 - **🛡️ Analytical Security**: AST‑based SQL validation ensures only safe `SELECT` and `CTE` queries are executed.
 - **🔗 Contract‑First Frontend**: OpenAPI‑generated Angular client ensures frontend/pulse-query-backend schema consistency.
 

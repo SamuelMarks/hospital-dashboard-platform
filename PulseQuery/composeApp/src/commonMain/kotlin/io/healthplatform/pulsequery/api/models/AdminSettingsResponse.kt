@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,10 @@ import kotlinx.serialization.Serializable
 /**
  * Response schema containing the currently configured admin settings.
  *
- * @param apiKeys Map of provider slugs to configured API keys.
- * @param visibleModels List of visible model IDs.
- * @param configuredModels Additional `any-llm` model identifiers.
- * @param ollamaApiBase Optional custom Ollama base URL override.
+ * @property apiKeys Map of provider slugs to configured API keys.
+ * @property visibleModels List of visible model IDs.
+ * @property configuredModels Additional `any-llm` model identifiers.
+ * @property ollamaApiBase Optional custom Ollama base URL override.
  */
 @Serializable
 data class AdminSettingsResponse(

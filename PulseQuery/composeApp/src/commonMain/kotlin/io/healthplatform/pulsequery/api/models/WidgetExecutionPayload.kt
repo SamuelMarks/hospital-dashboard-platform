@@ -2,10 +2,13 @@
  * Generated OpenAPI sealed hierarchy for discriminated widget execution payloads.
  */
 @file:Suppress(
+    "REDUNDANT_CALL_OF_CONVERSION_METHOD",
+    "UNNECESSARY_SAFE_CALL",
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
     "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models

@@ -1,3 +1,7 @@
+/**
+ * @fileoverview E2E Test Suite for Dashboard Management, Cloning, Renaming, and Layout Reordering.
+ */
+
 import { test, expect } from "@playwright/test";
 
 const BACKEND_URL = "http://localhost:8000/api/v1";
@@ -82,6 +86,17 @@ test.describe("Dashboard Management & Layout", () => {
 
     const dashTitle = page.locator("span.title-main");
     await expect(dashTitle).toContainText("Hospital Command Center");
+
+    // Verify Hospital Command Center summary banner, widget subtitles, and visible data rows beyond table headers
+    await expect(
+      page.locator('[data-testid="command-center-banner"]'),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="widget-subtitle"]').first(),
+    ).toBeVisible();
+    await expect(page.locator("viz-table tbody tr").first()).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test("Widget Deletion", async ({ page }) => {

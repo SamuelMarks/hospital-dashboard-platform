@@ -19,7 +19,9 @@ export function extractApiErrorMessage(
   fallback = $localize`An unexpected error occurred`,
 ): string {
   if (err instanceof HttpErrorResponse) {
-    const detail = (err.error as { detail?: unknown } | null | undefined)?.detail;
+    const errBody: unknown = err.error;
+    const detail =
+      errBody && typeof errBody === 'object' && 'detail' in errBody ? errBody.detail : undefined;
     if (detail !== undefined && detail !== null && detail !== '') {
       return typeof detail === 'string' ? detail : JSON.stringify(detail);
     }
@@ -31,11 +33,15 @@ export function extractApiErrorMessage(
   }
 
   if (err && typeof err === 'object') {
-    const maybeDetail = (err as { error?: { detail?: unknown } }).error?.detail;
+    const innerErr = 'error' in err ? err.error : undefined;
+    const maybeDetail =
+      innerErr && typeof innerErr === 'object' && 'detail' in innerErr
+        ? innerErr.detail
+        : undefined;
     if (maybeDetail !== undefined && maybeDetail !== null && maybeDetail !== '') {
       return typeof maybeDetail === 'string' ? maybeDetail : JSON.stringify(maybeDetail);
     }
-    const maybeMsg = (err as { message?: unknown }).message;
+    const maybeMsg = 'message' in err ? err.message : undefined;
     if (typeof maybeMsg === 'string' && maybeMsg.trim().length > 0) {
       return maybeMsg;
     }

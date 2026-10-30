@@ -67,17 +67,18 @@ describe('ProvisioningService', () => {
           x: 2,
           y: 3,
           w: 6,
-          h: 4,
+          h: 5,
         },
       },
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
   });
 
-  it('provisions widget with default position (0, 0) when position argument is omitted', () => {
+  it('provisions widget with default position (0, 0), subtitle, and scalar height when applicable', () => {
     const template: TemplateResponse = {
       id: 't2',
       title: 'Raw Table',
+      description: '  Detailed inpatient table  ',
       category: 'Ops',
       sql_template: 'SELECT 1',
       parameters_schema: {},
@@ -100,10 +101,34 @@ describe('ProvisioningService', () => {
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
       expect.objectContaining({
+        subtitle: 'Detailed inpatient table',
         visualization: 'table',
-        config: expect.objectContaining({ x: 0, y: 0, query: 'SELECT 1' }) as unknown,
+        config: expect.objectContaining({
+          x: 0,
+          y: 0,
+          h: 6,
+          subtitle: 'Detailed inpatient table',
+          query: 'SELECT 1',
+        }) as unknown,
       }),
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w2');
+
+    // Scalar template (h = 4)
+    const scalarTpl: TemplateResponse = {
+      id: 't3',
+      title: 'Risk Rate',
+      category: 'Risk',
+      sql_template: 'SELECT 0.5',
+      parameters_schema: {},
+    };
+    service.provisionWidget(scalarTpl, 'd1').subscribe();
+    expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
+      'd1',
+      expect.objectContaining({
+        visualization: 'scalar',
+        config: expect.objectContaining({ h: 4 }) as unknown,
+      }),
+    );
   });
 });

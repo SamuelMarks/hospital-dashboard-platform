@@ -79,12 +79,10 @@ class DomainTypesTest {
         assertEquals(WidgetHttpMethod.PUT, WidgetHttpMethod.fromWire("put"))
         assertEquals(WidgetHttpMethod.GET, WidgetHttpMethod.fromWire("unknown"))
 
-        assertEquals(MpaxArenaEvaluationMode.CRITIC, MpaxArenaEvaluationMode.fromWire("critic"))
-        assertEquals(MpaxArenaEvaluationMode.TRANSLATOR, MpaxArenaEvaluationMode.fromWire("translator"))
-        assertEquals(MpaxArenaEvaluationMode.CONSTRAINTS, MpaxArenaEvaluationMode.fromWire("constraints"))
-        assertEquals(MpaxArenaEvaluationMode.JUDGE, MpaxArenaEvaluationMode.fromWire("judge"))
-        assertEquals(MpaxArenaEvaluationMode.SQL_VS_MPAX, MpaxArenaEvaluationMode.fromWire("sql_vs_mpax"))
-        assertEquals(MpaxArenaEvaluationMode.SQL_VS_MPAX, MpaxArenaEvaluationMode.fromWire("other"))
+        assertEquals(OptimizationUseCaseType.SERVICE_UNIT, OptimizationUseCaseType.fromWire("service_unit"))
+        assertEquals(OptimizationUseCaseType.SURGICAL_SCHEDULING, OptimizationUseCaseType.fromWire("surgical_scheduling"))
+        assertEquals(OptimizationUseCaseType.STAFFING_OPTIMIZATION, OptimizationUseCaseType.fromWire("staffing_optimization"))
+        assertEquals(OptimizationUseCaseType.SERVICE_UNIT, OptimizationUseCaseType.fromWire("other"))
 
         assertEquals(
             io.healthplatform.pulsequery.network.SseEventType.START,
@@ -124,11 +122,16 @@ class DomainTypesTest {
             io.healthplatform.pulsequery.network.CollaborationEventType.fromWire("PING")
         )
 
-        assertEquals(SimulationOutcomeStatus.OPTIMAL, SimulationOutcomeStatus.fromWire("OPTIMAL"))
-        assertEquals(SimulationOutcomeStatus.SUCCESS, SimulationOutcomeStatus.fromWire("success"))
-        assertEquals(SimulationOutcomeStatus.INFEASIBLE, SimulationOutcomeStatus.fromWire("infeasible"))
-        assertEquals(SimulationOutcomeStatus.ERROR, SimulationOutcomeStatus.fromWire("error"))
-        assertEquals(SimulationOutcomeStatus.ERROR, SimulationOutcomeStatus.fromWire("unknown"))
+        assertEquals(SolverOutcomeStatus.OPTIMAL, SolverOutcomeStatus.fromWire("OPTIMAL"))
+        assertEquals(SolverOutcomeStatus.FEASIBLE, SolverOutcomeStatus.fromWire("feasible"))
+        assertEquals(SolverOutcomeStatus.INFEASIBLE, SolverOutcomeStatus.fromWire("infeasible"))
+        assertEquals(SolverOutcomeStatus.OPTIMAL, SolverOutcomeStatus.fromWire("unknown"))
+
+        assertEquals(1, SurveyScore.clamped(0).value)
+        assertEquals(5, SurveyScore.clamped(9).value)
+        assertEquals("sess-1", OptimizationSessionId("sess-1").value)
+        assertEquals("stanford_childrens", InstitutionId("stanford_childrens").value)
+        assertEquals("patient_days_by_unit", QuickActionId("patient_days_by_unit").value)
 
         assertEquals(ConstraintRuleType.FORCE_FLOW, ConstraintRuleType.fromWire("force_flow"))
         assertEquals(ConstraintRuleType.MIN_CAPACITY, ConstraintRuleType.fromWire("min_capacity"))
@@ -249,8 +252,12 @@ class DomainTypesTest {
         assertTrue(WidgetSourceType.serializer().descriptor.serialName.isNotEmpty())
         assertTrue(VisualizationType.serializer().descriptor.serialName.isNotEmpty())
         assertTrue(WidgetHttpMethod.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(MpaxArenaEvaluationMode.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SimulationOutcomeStatus.serializer().descriptor.serialName.isNotEmpty())
+        assertTrue(OptimizationSessionId.serializer().descriptor.serialName.isNotEmpty())
+        assertTrue(InstitutionId.serializer().descriptor.serialName.isNotEmpty())
+        assertTrue(QuickActionId.serializer().descriptor.serialName.isNotEmpty())
+        assertTrue(SurveyScore.serializer().descriptor.serialName.isNotEmpty())
+        assertTrue(OptimizationUseCaseType.serializer().descriptor.serialName.isNotEmpty())
+        assertTrue(SolverOutcomeStatus.serializer().descriptor.serialName.isNotEmpty())
         assertTrue(ConstraintRuleType.serializer().descriptor.serialName.isNotEmpty())
         assertTrue(SqlCellValue.serializer().descriptor.serialName.isNotEmpty())
         assertTrue(SqlCellValue.TextCell.serializer().descriptor.serialName.isNotEmpty())
@@ -297,13 +304,13 @@ class DomainTypesTest {
         dashVm.executeWidgetNaturalText(WidgetId("w1"), "SELECT 1", ProcessorId.SQL_NO_MODEL)
         assertTrue(io.healthplatform.pulsequery.api.infrastructure.ApiClient.UNSAFE_HEADERS.isNotEmpty())
 
-        val mpaxVm = io.healthplatform.pulsequery.ui.screens.mpax.MpaxArenaViewModel(
+        val optVm = io.healthplatform.pulsequery.ui.screens.optimization.OptimizationViewModel(
             scope = scope,
-            mpaxArenaApi = io.healthplatform.pulsequery.api.apis.MpaxArenaApi(
+            optimizationApi = io.healthplatform.pulsequery.api.apis.OptimizationApi(
                 baseUrl = "http://localhost:8000",
                 httpClientEngine = io.healthplatform.pulsequery.mockEngine
             )
         )
-        mpaxVm.voteCandidate(CandidateId("c1"))
+        optVm.selectInstitution(InstitutionId("chop"))
     }
 }

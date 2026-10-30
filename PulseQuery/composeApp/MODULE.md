@@ -1,6 +1,6 @@
 # Module composeApp
 
-PulseQuery Compose Multiplatform clinical operations dashboard, Text-to-SQL conversational arena, and MPAX mathematical bed capacity simulation client targeting Android, iOS, Desktop JVM, JavaScript, and WebAssembly.
+PulseQuery Compose Multiplatform clinical operations dashboard, Text-to-SQL conversational arena, and LLM + JAX + MPAX Hospital Operations Optimization client targeting Android, iOS, Desktop JVM, JavaScript, and WebAssembly.
 
 # Package io.healthplatform.pulsequery
 
@@ -8,7 +8,7 @@ Root application entry points, multiplatform `Platform` expect/actual abstractio
 
 # Package io.healthplatform.pulsequery.api.apis
 
-Strongly typed OpenAPI REST service clients communicating with the PulseQuery FastAPI backend (`/api/v1/*`).
+Strongly typed OpenAPI REST service clients communicating with the PulseQuery FastAPI backend (`/api/v1/*`), including `OptimizationApi` and `BenchmarksApi`.
 
 # Package io.healthplatform.pulsequery.api.auth
 
@@ -28,7 +28,7 @@ Unified sealed `PulseQueryError` domain error hierarchy encapsulating network, H
 
 # Package io.healthplatform.pulsequery.core.model
 
-Strongly typed domain value classes (`DashboardId`, `WidgetId`, `ConversationId`, `MessageId`, `CandidateId`, `UserId`, `AlertRuleId`, `ColumnName`), clinical enumerations, and `SqlCellValue` / `ChartDataPoint` models.
+Strongly typed domain value classes (`DashboardId`, `WidgetId`, `ConversationId`, `MessageId`, `CandidateId`, `UserId`, `AlertRuleId`, `ColumnName`, `OptimizationSessionId`, `InstitutionId`, `QuickActionId`, `SurveyScore`), clinical enumerations (`OptimizationUseCaseType`, `SolverOutcomeStatus`), and `SqlCellValue` / `ChartDataPoint` models.
 
 # Package io.healthplatform.pulsequery.core.result
 
@@ -45,6 +45,10 @@ SQLDelight persistence abstractions (`DatabaseDriverFactory`, `KeyValueStorage`,
 # Package io.healthplatform.pulsequery.di
 
 Immutable `ApiServiceRegistry` and `AppContainer` dependency injection container managing session state and service lifecycles.
+
+# Package io.healthplatform.pulsequery.ml
+
+`LiteRtModelManager`, `LiteRtModelDescriptor`, and `LiteRtRuntimeState` providing SHA-256 verification and live hot-loading of quantized On-Device ML (ODML) LiteRT models across Android and Chrome/WebAssembly.
 
 # Package io.healthplatform.pulsequery.network
 
@@ -64,7 +68,7 @@ Canvas and Material 3 data visualization components (`BarChart`, `LineChart`, `P
 
 # Package io.healthplatform.pulsequery.ui.screens
 
-Top-level Compose Multiplatform screen composables (`DashboardScreen`, `ChatScreen`, `SimulationScreen`, `EditorScreen`, `AnalyticsScreen`, `AdminScreen`, `AlertRulesScreen`, `BenchmarksScreen`, `MpaxArenaScreen`, `LoginScreen`, `RegisterScreen`).
+Top-level Compose Multiplatform screen composables (`DashboardScreen`, `ChatScreen`, `OptimizationScreen`, `EditorScreen`, `AnalyticsScreen`, `AdminScreen`, `AlertRulesScreen`, `BenchmarksScreen`, `LoginScreen`, `RegisterScreen`).
 
 # Package io.healthplatform.pulsequery.ui.screens.admin
 
@@ -84,7 +88,7 @@ Administrative ViewModels (`AdminViewModel`, `UserManagementViewModel`) and `Use
 
 # Package io.healthplatform.pulsequery.ui.screens.benchmarks
 
-`BenchmarksViewModel` orchestrating gold-standard Text-to-SQL and MPAX optimization benchmark retrieval.
+`BenchmarksViewModel` orchestrating gold-standard Text-to-SQL and Hospital Operations Optimization benchmark retrieval.
 
 # Package io.healthplatform.pulsequery.ui.screens.chat
 
@@ -98,13 +102,9 @@ Administrative ViewModels (`AdminViewModel`, `UserManagementViewModel`) and `Use
 
 `EditorViewModel` and `SaveQueryDialog` for ad-hoc SQL query execution and widget/template persistence.
 
-# Package io.healthplatform.pulsequery.ui.screens.mpax
+# Package io.healthplatform.pulsequery.ui.screens.optimization
 
-`MpaxArenaViewModel` orchestrating competitive LLM vs mathematical optimization arena evaluations.
-
-# Package io.healthplatform.pulsequery.ui.screens.simulation
-
-`SimulationViewModel` orchestrating hospital bed capacity simulations, custom flow constraints, and affinity overrides.
+`OptimizationViewModel` and `OptimizationUiState` orchestrating iterative natural-language hospital optimization across Service-Unit Assignments, Surgical Scheduling (BEDS/POINTS), and Physician & Nurse Staffing, Quick Actions, LiteRT model hot-loading, and qualitative UX surveys.
 
 # Package io.healthplatform.pulsequery.ui.screens.tv
 

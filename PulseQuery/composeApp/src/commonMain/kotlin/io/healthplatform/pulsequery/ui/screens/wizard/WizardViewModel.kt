@@ -14,7 +14,6 @@ import io.healthplatform.pulsequery.api.models.TextConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.core.error.UiErrorKey
-import io.healthplatform.pulsequery.core.model.DashboardId
 import io.healthplatform.pulsequery.core.model.ProcessorCategory
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
@@ -271,6 +270,23 @@ class WizardViewModel(
     }
 
     /**
+     * Updates the optional subtitle or caption for the widget being configured.
+     *
+     * @param subtitle New subtitle or caption string.
+     */
+    fun updateWidgetSubtitle(subtitle: String) {
+        when (val current = _state.value) {
+            is WizardState.CustomWidgetConfiguration -> {
+                _state.value = current.copy(widgetSubtitle = subtitle)
+            }
+            is WizardState.ParameterConfiguration -> {
+                _state.value = current.copy(widgetSubtitle = subtitle)
+            }
+            else -> Unit
+        }
+    }
+
+    /**
      * Updates the custom widget title in custom creation mode.
      *
      * @param title New title string.
@@ -395,8 +411,10 @@ class WizardViewModel(
             parameters = current.parameterValues,
             fields = current.parameterFields
         )
+        val resolvedSub = current.widgetSubtitle.trim().takeIf { it.isNotEmpty() }
         val widgetIn = WidgetIn.Sql(
             title = current.widgetTitle.trim(),
+            subtitle = resolvedSub,
             type = WidgetSourceType.SQL.wireValue,
             visualization = current.visualization,
             config = SqlConfig(
@@ -404,7 +422,8 @@ class WizardViewModel(
                 allowNaturalText = current.allowNaturalText,
                 processor = current.selectedProcessor.value,
                 naturalTextPrompt = current.naturalTextPrompt.trim().takeIf { it.isNotEmpty() },
-                placeholderText = current.placeholderText.trim().takeIf { it.isNotEmpty() }
+                placeholderText = current.placeholderText.trim().takeIf { it.isNotEmpty() },
+                subtitle = resolvedSub
             )
         )
         persistWidget(widgetIn, onSuccess)
@@ -491,12 +510,14 @@ private fun validateCustomWidgetConfig(
 private fun buildCustomWidgetPayload(
     current: WizardState.CustomWidgetConfiguration
 ): WidgetIn {
+    val resolvedSub = current.widgetSubtitle.trim().takeIf { it.isNotEmpty() }
     return when (WidgetSourceType.fromWire(current.creationType)) {
         WidgetSourceType.TEXT -> WidgetIn.Text(
             title = current.widgetTitle.trim(),
+            subtitle = resolvedSub,
             type = WidgetSourceType.TEXT.wireValue,
             visualization = current.visualization,
-            config = TextConfig(content = current.queryOrUrlOrContent)
+            config = TextConfig(content = current.queryOrUrlOrContent, subtitle = resolvedSub)
         )
         WidgetSourceType.HTTP -> {
             val methodEnum = HttpConfig.Method.entries.firstOrNull {
@@ -504,13 +525,15 @@ private fun buildCustomWidgetPayload(
             } ?: HttpConfig.Method.GET
             WidgetIn.Http(
                 title = current.widgetTitle.trim(),
+                subtitle = resolvedSub,
                 type = WidgetSourceType.HTTP.wireValue,
                 visualization = current.visualization,
-                config = HttpConfig(url = current.queryOrUrlOrContent.trim(), method = methodEnum)
+                config = HttpConfig(url = current.queryOrUrlOrContent.trim(), method = methodEnum, subtitle = resolvedSub)
             )
         }
         WidgetSourceType.SQL -> WidgetIn.Sql(
             title = current.widgetTitle.trim(),
+            subtitle = resolvedSub,
             type = WidgetSourceType.SQL.wireValue,
             visualization = current.visualization,
             config = SqlConfig(
@@ -518,7 +541,8 @@ private fun buildCustomWidgetPayload(
                 allowNaturalText = current.allowNaturalText,
                 processor = current.selectedProcessor.value,
                 naturalTextPrompt = current.naturalTextPrompt.trim().takeIf { it.isNotEmpty() },
-                placeholderText = current.placeholderText.trim().takeIf { it.isNotEmpty() }
+                placeholderText = current.placeholderText.trim().takeIf { it.isNotEmpty() },
+                subtitle = resolvedSub
             )
         )
     }

@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,9 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for comprehensive system diagnostics and troubleshooting guides.
  *
- * @param health Current system health summary.
- * @param environmentChecks Environment variables and runtime parameters.
- * @param troubleshootingGuides Curated troubleshooting steps.
+ * @property health Current system health summary.
+ * @property environmentChecks Environment variables and runtime parameters.
+ * @property troubleshootingGuides Curated troubleshooting steps.
  */
 @Serializable
 data class SystemDiagnosticsResponse(

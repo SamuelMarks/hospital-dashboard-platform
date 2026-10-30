@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Return schema containing the UUID and list of anonymous candidates.
  *
- * @param promptText
- * @param id
- * @param userId
- * @param createdAt
- * @param promptStrategy
- * @param candidates
+ * @property promptText * @param id
+ * @property userId * @param createdAt
+ * @property promptStrategy * @param candidates
  */
 @Serializable
 data class ExperimentResponse(

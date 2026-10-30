@@ -1156,12 +1156,20 @@ def normalize_model_file(path: Path) -> None:
       text = f"/**{NL} * @fileoverview Generated OpenAPI model definition.{NL} */{NL}" + text
 
   text = text.replace(f"// @ts-ignore{NL}", "")
+  text = text.replace("JsonValueOutput", "unknown").replace("JsonValueInput", "unknown")
+  text = re.sub(r"\[\s*key:\s*string\s*\]:\s*any(?:\s*\|\s*any)?\s*;?", "[key: string]: unknown;", text)
   text = _normalize_indexed_objects(text)
   text = _replace_array_syntax(text)
   text = re.sub(r"export\s+namespace\s+[A-Za-z0-9_]+\s*\{\s*\}", "", text)
-  text = text.replace(
-    "export interface ValidationErrorLocInner {}",
+  text = re.sub(
+    r"export\s+interface\s+ValidationErrorLocInner\s*\{\s*\}",
     "export type ValidationErrorLocInner = string | number;",
+    text,
+  )
+  text = re.sub(
+    r"export\s+interface\s+([A-Za-z0-9_]+)\s*\{\s*\}",
+    r"export type \1 = string | number | boolean | Record<string, unknown> | null;",
+    text,
   )
   if path.name == "dashboard-response.ts":
     text = text.replace("widgets?: WidgetResponse[];", "widgets: WidgetResponse[];")
@@ -1212,9 +1220,16 @@ def _strip_unused_service_imports(text: str) -> str:
   body_code = re.sub(r"/\*[\s\S]*?\*/", "", NL.join(lines[class_idx:]))
 
   if not re.search(r"\bCOLLECTION_FORMATS\b", body_code):
-    text = text.replace(
-      "import { BASE_PATH, COLLECTION_FORMATS } from '../variables';",
+    text = re.sub(
+      r"import\s*\{\s*BASE_PATH,\s*COLLECTION_FORMATS\s*\}\s*from\s*'\.\./variables';",
       "import { BASE_PATH } from '../variables';",
+      text,
+    )
+
+  if re.search(r"\bHttpParams\b", body_code):
+    text = text.replace(
+      "import { HttpClient, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';",
+      "import { HttpClient, HttpParams, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';",
     )
 
   optional_checks = (
@@ -1273,7 +1288,12 @@ def normalize_service_file(path: Path) -> None:
     text,
   )
   text = re.sub(
-    r"constructor\(\s*protected\s+httpClient:\s*HttpClient,\s*@Optional\(\)\s*@Inject\(BASE_PATH\)\s*basePath:\s*string\s*\|\s*string\[\],\s*@Optional\(\)\s*configuration\?:\s*Configuration,\s*\)\s*\{\s*super\(basePath,\s*configuration\);\s*\}",
+    r"import\s*\{\s*HttpClient[\s\S]*?from\s*'@angular/common/http';",
+    "import { HttpClient, HttpResponse, HttpEvent, HttpContext } from '@angular/common/http';",
+    text,
+  )
+  text = re.sub(
+    r"constructor\(\s*protected\s+httpClient:\s*HttpClient,\s*@Optional\(\)\s*@Inject\(BASE_PATH\)\s*basePath:\s*string\s*\|\s*string\[\],\s*@Optional\(\)\s*configuration\?:\s*Configuration,?\s*\)\s*\{\s*super\(basePath,\s*configuration\);\s*\}",
     """/** Angular HttpClient used to dispatch REST requests. */
   protected readonly httpClient = inject(HttpClient);
 
@@ -1304,9 +1324,10 @@ def normalize_service_file(path: Path) -> None:
     "const canConsumeForm = this.canConsumeForm(consumes);",
     "void this.canConsumeForm(consumes);",
   )
-  text = text.replace(
-    "let localVarFormParams: { append(param: string, value: any): any };",
+  text = re.sub(
+    r"let\s+localVarFormParams:\s*\{\s*append\(param:\s*string,\s*value:\s*any\):\s*any;?\s*\};",
     "let localVarFormParams: HttpParams | FormData;",
+    text,
   )
   text = text.replace("let localVarUseForm = false;", "const localVarUseForm = false;")
   text = text.replace(
@@ -1315,7 +1336,7 @@ def normalize_service_file(path: Path) -> None:
   )
   text = text.replace("let localVarPath =", "const localVarPath =")
   text = re.sub(
-    r"localVarFormParams\s*=\s*\(localVarFormParams\.append\('([^']+)',\s*<any>([A-Za-z0-9_]+)\)\s*as\s*any\)\s*\|\|\s*localVarFormParams;",
+    r"localVarFormParams\s*=\s*\(?localVarFormParams\.append\('([^']+)',\s*(?:<any>)?([A-Za-z0-9_]+)\)\)?\s*as\s*any\)?\s*\|\|\s*localVarFormParams;",
     r"localVarFormParams = this.appendFormParam(localVarFormParams, '\1', \2);",
     text,
   )
@@ -1380,10 +1401,195 @@ def normalize_angular_client(client_dir: Path = ANGULAR_CLIENT_DIR) -> None:
       normalize_service_file(service_file)
 
 
+def _normalize_kmp_model_file(kt_file: Path) -> None:
+  """
+  Normalizes a generated Kotlin Multiplatform OpenAPI model file so it passes Detekt
+  (`WildcardImport`, `UndocumentedPublicClass`, `UndocumentedPublicProperty`, `EnumNaming`).
+
+  Args:
+      kt_file (Path): Path to the `.kt` model file under `api/models/`.
+  """
+  text = kt_file.read_text(encoding="utf-8").replace("(0.0).toDouble()", "0.0")
+  if "typealias SqlScalar" in text:
+    return
+
+  text = re.sub(
+    r"@file:Suppress\([\s\S]*?\)",
+    """@file:Suppress(
+    "REDUNDANT_CALL_OF_CONVERSION_METHOD",
+    "UNNECESSARY_SAFE_CALL",
+    "ArrayInDataClass",
+    "EnumEntryName",
+    "RemoveRedundantQualifierName",
+    "UnusedImport",
+    "EnumNaming"
+)""",
+    text,
+    count=1,
+  )
+  text = re.sub(
+    r"import\s+kotlinx\.serialization\.\*\s*\nimport\s+kotlinx\.serialization\.descriptors\.\*\s*\nimport\s+kotlinx\.serialization\.encoding\.\*",
+    "import kotlinx.serialization.Required\nimport kotlinx.serialization.SerialName\nimport kotlinx.serialization.Serializable",
+    text,
+  )
+  text = re.sub(
+    r"^(\s*\*\s*)@param\s+([A-Za-z0-9_`]+)\s*(.*)$",
+    lambda m: f"{m.group(1)}@property {m.group(2).strip('`')} {m.group(3).strip() or f'Property {m.group(2)}.'}",
+    text,
+    flags=re.MULTILINE,
+  )
+  text = re.sub(
+    r"/\*\*\s*\n\s*\*\s*\n\s*\*\s*Values:([^\n]*)\n\s*\*/\s*\n(\s*)@Serializable\s*\n\s*enum class\s+([A-Za-z0-9_]+)\((?:\/\*\*[^*]*\*\/\s*)?val value:\s*kotlin\.String\)",
+    r"/**\n     * Enumerated values (\1).\n     *\n     * @property value Wire string representation.\n     */\n\2@Serializable\n\2enum class \3(/** Wire string representation. */ val value: kotlin.String)",
+    text,
+  )
+  text = re.sub(
+    r"enum class\s+([A-Za-z0-9_]+)\(val value:\s*kotlin\.String\)",
+    r"enum class \1(/** Wire string representation. */ val value: kotlin.String)",
+    text,
+  )
+  text = re.sub(
+    r"(?<!\*/\n)(\s*)(@SerialName\(value = \"value\"\)\s+val `value`:)",
+    r"\1/** Numeric constraint value. */\n\1\2",
+    text,
+  )
+  text = re.sub(r"\)\s*\{\s*\}\s*$", ")\n", text)
+  out_lines: list[str] = []
+  in_enum = False
+  prev_stripped = ""
+  for line in text.splitlines():
+    stripped = line.strip()
+    if stripped.startswith("enum class "):
+      in_enum = True
+    elif in_enum and stripped == "}":
+      in_enum = False
+    elif in_enum and stripped.startswith("@SerialName(") and not prev_stripped.endswith("*/"):
+      indent = line[: len(line) - len(line.lstrip())]
+      out_lines.append(f"{indent}/** Enumerated wire option. */")
+    out_lines.append(line)
+    if stripped:
+      prev_stripped = stripped
+  kt_file.write_text(NL.join(out_lines) + NL, encoding="utf-8")
+
+
+def _normalize_kmp_api_file(kt_file: Path) -> None:
+  """
+  Normalizes a generated Kotlin Multiplatform OpenAPI service file under `api/apis/`
+  so it passes Detekt without wildcard imports or undocumented classes/constructors.
+
+  Args:
+      kt_file (Path): Path to the `.kt` API service file.
+  """
+  text = kt_file.read_text(encoding="utf-8")
+  if "import kotlinx.serialization.*" not in text and "open class OptimizationApi" not in text:
+    return
+
+  text = re.sub(
+    r"@file:Suppress\([\s\S]*?\)",
+    """@file:Suppress(
+    "REDUNDANT_CALL_OF_CONVERSION_METHOD",
+    "UNNECESSARY_SAFE_CALL",
+    "ArrayInDataClass",
+    "EnumEntryName",
+    "RemoveRedundantQualifierName",
+    "UnusedImport",
+    "LargeClass",
+    "FunctionNaming",
+    "ktlint:standard:function-naming"
+)""",
+    text,
+    count=1,
+  )
+  text = text.replace(
+    "import io.healthplatform.pulsequery.api.infrastructure.*",
+    """import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.map
+import io.healthplatform.pulsequery.api.infrastructure.wrap""",
+  )
+  text = re.sub(
+    r"import\s+kotlinx\.serialization\.\*\s*\nimport\s+kotlinx\.serialization\.descriptors\.\*\s*\nimport\s+kotlinx\.serialization\.encoding\.\*",
+    """import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.serializer""",
+    text,
+  )
+  text = re.sub(
+    r"(?<!/\*\*\n)\bopen class OptimizationApi : ApiClient \{",
+    """/**
+ * OpenAPI client for `/api/v1/optimization` Hospital Operations Optimization endpoints.
+ */
+open class OptimizationApi : ApiClient {""",
+    text,
+  )
+  text = re.sub(
+    r"    constructor\(\n        baseUrl: String = ApiClient\.BASE_URL,",
+    """    /**
+     * Constructs an [OptimizationApi] instance with an optional [HttpClientEngine] and [Json] serializer.
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClientEngine Optional Ktor engine for HTTP requests.
+     * @param httpClientConfig Optional configuration block for the Ktor client.
+     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
+     */
+    constructor(
+        baseUrl: String = ApiClient.BASE_URL,""",
+    text,
+  )
+  text = re.sub(
+    r"    constructor\(\n        baseUrl: String,\n        httpClient: HttpClient\n    \)",
+    """    /**
+     * Constructs an [OptimizationApi] instance backed by a pre-configured [HttpClient].
+     *
+     * @param baseUrl Base URL of the PulseQuery backend server.
+     * @param httpClient Pre-configured Ktor [HttpClient] instance.
+     */
+    constructor(
+        baseUrl: String,
+        httpClient: HttpClient
+    )""",
+    text,
+  )
+  text = re.sub(
+    r"^(\s*\*\s*@param\s+([A-Za-z0-9_]+))\s*$",
+    r"\1 Parameter `\2`.",
+    text,
+    flags=re.MULTILINE,
+  )
+  text = re.sub(
+    r"    @Serializable\(([A-Za-z0-9_]+)\.Companion::class\)\n    private class \1\(val value: List<([A-Za-z0-9_]+)>\)\s*\{\n        companion object : KSerializer<\1>\s*\{\n            private val serializer: KSerializer<List<\2>> = serializer<List<\2>>\(\)\n            override val descriptor = serializer\.descriptor\n            override fun serialize\(encoder: Encoder, value: \1\) = serializer\.serialize\(encoder, value\.value\)\n            override fun deserialize\(decoder: Decoder\) = \1\(serializer\.deserialize\(decoder\)\)\n        \}\n    \}",
+    r"""    /**
+     * Internal serializable wrapper for a list of [\2] items.
+     *
+     * @property value Deserialized list of [\2] items.
+     */
+    @Serializable(\1.Companion::class)
+    private class \1(val value: List<\2>) {
+        /** Custom [KSerializer] delegating to `List<\2>`. */
+        companion object : KSerializer<\1> {
+            private val serializer: KSerializer<List<\2>> = serializer<List<\2>>()
+            /** Serial descriptor for the list payload. */
+            override val descriptor: SerialDescriptor = serializer.descriptor
+            /** Serializes [value] into [encoder]. */
+            override fun serialize(encoder: Encoder, value: \1) = serializer.serialize(encoder, value.value)
+            /** Deserializes a [\1] from [decoder]. */
+            override fun deserialize(decoder: Decoder) = \1(serializer.deserialize(decoder))
+        }
+    }""",
+    text,
+  )
+  kt_file.write_text(text, encoding="utf-8")
+
+
 def normalize_kmp_client(kmp_api_dir: Path = KMP_API_DIR) -> None:
   """
   Normalizes generated Kotlin Multiplatform OpenAPI client files under `PulseQuery`
-  by stripping redundant `@Suppress("UNCHECKED_CAST")` annotations.
+  by stripping redundant `@Suppress("UNCHECKED_CAST")` annotations and formatting KDoc/imports.
 
   Args:
       kmp_api_dir (Path): Root directory of the KMP OpenAPI package.
@@ -1391,10 +1597,15 @@ def normalize_kmp_client(kmp_api_dir: Path = KMP_API_DIR) -> None:
   apis_dir = kmp_api_dir / "apis"
   if not apis_dir.exists():
     return
-  for kt_file in sorted(apis_dir.glob("*.kt")):
-    lines = [
-      line for line in kt_file.read_text(encoding="utf-8").splitlines() if line.strip() != '@Suppress("UNCHECKED_CAST")'
-    ]
+  models_dir = kmp_api_dir / "models"
+  if models_dir.exists():
+    for model_kt in sorted(models_dir.glob("*.kt")):
+      _normalize_kmp_model_file(model_kt)
+  for api_kt in sorted(apis_dir.glob("*.kt")):
+    _normalize_kmp_api_file(api_kt)
+  for kt_file in sorted(kmp_api_dir.rglob("*.kt")):
+    raw_text = kt_file.read_text(encoding="utf-8").replace("(0.0).toDouble()", "0.0")
+    lines = [line for line in raw_text.splitlines() if line.strip() != '@Suppress("UNCHECKED_CAST")']
     kt_file.write_text(NL.join(lines) + NL, encoding="utf-8")
 
 

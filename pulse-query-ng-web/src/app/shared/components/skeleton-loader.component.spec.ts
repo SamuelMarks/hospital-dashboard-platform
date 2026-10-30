@@ -61,4 +61,15 @@ describe('SkeletonLoaderComponent', () => {
     const el = fixture.debugElement.query(By.css('.layout-pie'));
     expect(el).toBeTruthy();
   });
+
+  it('should render heatmap, list, and dashboard-grid variants', () => {
+    setVariant('heatmap');
+    expect(fixture.debugElement.query(By.css('.layout-heatmap'))).toBeTruthy();
+
+    setVariant('list');
+    expect(fixture.debugElement.query(By.css('.layout-list'))).toBeTruthy();
+
+    setVariant('dashboard-grid');
+    expect(fixture.debugElement.query(By.css('.layout-dashboard-grid'))).toBeTruthy();
+  });
 });

@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for a copyable troubleshooting remediation step.
  *
- * @param title Step title or action description.
- * @param description Contextual explanation for why this step resolves the issue.
- * @param command
- */
+ * @property title Step title or action description.
+ * @property description Contextual explanation for why this step resolves the issue.
+ * @property command */
 @Serializable
 data class TroubleshootingStep(
     // Step title or action description.

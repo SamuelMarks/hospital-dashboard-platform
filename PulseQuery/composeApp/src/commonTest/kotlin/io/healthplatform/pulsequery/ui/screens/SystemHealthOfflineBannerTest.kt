@@ -158,7 +158,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
 
         setContent {
             MaterialTheme {
-                SimulationScreen()
+                OptimizationScreen()
             }
         }
 

@@ -15,7 +15,6 @@ if [ "${SCRIPT_NAME-}" ]; then
 elif [ "${BASH_SOURCE-}" ]; then
   THIS_FILE="${BASH_SOURCE}"
 elif [ "${ZSH_VERSION-}" ]; then
-  # libscript-allow-eval
   # shellcheck disable=SC2296
   THIS_FILE="${(%):-%x}"
 else
@@ -24,16 +23,13 @@ fi
 
 case "${STACK+x}" in
   *':'"${THIS_FILE}"':'*)
-    printf '[STOP]     processing "%s"
-' "${THIS_FILE}" >&2
+    printf '[STOP]     processing "%s"\n' "${THIS_FILE}" >&2
     if (return 0 2>/dev/null); then return; else exit 0; fi ;;
-  *) printf '[CONTINUE] processing "%s"
-' "${THIS_FILE}" >&2 ;;
+  *) printf '[CONTINUE] processing "%s"\n' "${THIS_FILE}" >&2 ;;
 esac
 export STACK="${STACK:-}${THIS_FILE}"':'
 SCRIPT_DIR=$(cd -- "$(dirname -- "${THIS_FILE}")" && pwd)
-: "${LIBSCRIPT_ROOT_DIR:=$(d="$SCRIPT_DIR"; while [ ! -f "$d/libscript.sh" ]; do n="${d%/*}"; [ -z "$n" ] && n="/"; [ "$d" = "$n" ] && break; d="$n"; done; printf '%s
-' "$d")}"
+: "${LIBSCRIPT_ROOT_DIR:=$(d="$SCRIPT_DIR"; while [ ! -f "$d/libscript.sh" ]; do n="${d%/*}"; [ -z "$n" ] && n="/"; [ "$d" = "$n" ] && break; d="$n"; done; printf '%s\n' "$d")}"
 
 # ## sed_inplace
 # Applies a portable sed replacement to a target file across BSD/macOS and GNU sed.
@@ -53,91 +49,80 @@ BACKEND_DIR="${SCRIPT_DIR}/pulse-query-backend"
 FRONTEND_DEST="${SCRIPT_DIR}/pulse-query-ng-web/src/app/api-client"
 KMP_DEST="${SCRIPT_DIR}/PulseQuery/composeApp/src/commonMain/kotlin/io/healthplatform/pulsequery/api"
 SCHEMA_FILE="${SCRIPT_DIR}/openapi.json"
-TMP_KMP_DIR="${TMPDIR:-/tmp}/kmp_client_gen"
+TMP_KMP_DIR="${SCRIPT_DIR}/.tmp_kmp_client_gen"
 
 export UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/uv_cache}"
 export npm_config_cache="${npm_config_cache:-/tmp/npm_cache}"
 
-printf '%s
-' "=================================================="
-printf '%s
-' "Starting Full-Stack Client Generation Process"
-printf '%s
-' "=================================================="
+printf '%s\n' '=================================================='
+printf '%s\n' 'Starting Full-Stack Client Generation Process'
+printf '%s\n' '=================================================='
 
-printf '
-%s
-' "Step 1: Extracting OpenAPI JSON from Backend..."
+printf '\n%s\n' 'Step 1: Extracting OpenAPI JSON from Backend...'
 (
   cd "$BACKEND_DIR"
   uv run python scripts/extract_openapi.py --output "$SCHEMA_FILE"
 )
 
 if [ ! -f "$SCHEMA_FILE" ]; then
-  printf '%s
-' "Error: openapi.json was not generated." >&2
+  printf '%s\n' 'Error: openapi.json was not generated.' >&2
   exit 1
 fi
 
-for critical_type in "ScenarioConstraint" "SystemHealthResponse" "SystemDiagnosticsResponse" "ReingestResponse" "DashboardShareResponse"; do
+for critical_type in "ServiceUnitConstraint" "OptimizationSolutionPayload" "SystemHealthResponse" "SystemDiagnosticsResponse" "ReingestResponse" "DashboardShareResponse"; do
   if ! grep -q "$critical_type" "$SCHEMA_FILE"; then
-    printf '%s
-' "Error: Schema is missing critical type '$critical_type'." >&2
+    printf '%s\n' "Error: Schema is missing critical type '$critical_type'." >&2
     exit 1
   fi
 done
 
-printf '
-%s
-' "Step 2: Cleaning old Angular client files..."
+printf '\n%s\n' 'Step 2: Cleaning old Angular client files...'
 if [ -d "$FRONTEND_DEST" ]; then
   rm -rf "$FRONTEND_DEST"
 fi
 mkdir -p "$FRONTEND_DEST"
 
-printf '
-%s
-' "Step 3: Generating Angular TypeScript Client..."
+printf '\n%s\n' 'Step 3: Generating Angular TypeScript Client...'
 if ! command -v npx >/dev/null 2>&1; then
-  printf '%s
-' "Error: 'npx' is not installed. Please install Node.js." >&2
+  printf '%s\n' "Error: 'npx' is not installed. Please install Node.js." >&2
   exit 1
 fi
 
-npx -y @openapitools/openapi-generator-cli generate 
-  -i "$SCHEMA_FILE" 
-  -g typescript-angular 
-  -o "$FRONTEND_DEST" 
-  --additional-properties=ngVersion=17.0.0,fileNaming=kebab-case 
+npx -y @openapitools/openapi-generator-cli generate \
+  -i "$SCHEMA_FILE" \
+  -g typescript-angular \
+  -o "$FRONTEND_DEST" \
+  --additional-properties=ngVersion=17.0.0,fileNaming=kebab-case \
   --skip-validate-spec
 
+set +f
 for _ts_f in "$FRONTEND_DEST/model/"*.ts; do
   [ -f "$_ts_f" ] || continue
   sed_inplace 's/?:  | null/?: Record<string, any> | null/g' "$_ts_f"
   sed_inplace 's/?: | null/?: Record<string, any> | null/g' "$_ts_f"
 done
+set -f
 
-printf '
-%s
-' "Step 4: Generating Kotlin Multiplatform (KMP) Client..."
+printf '\n%s\n' 'Step 4: Generating Kotlin Multiplatform (KMP) Client...'
 rm -rf "$TMP_KMP_DIR"
 mkdir -p "$TMP_KMP_DIR"
 
-npx -y @openapitools/openapi-generator-cli generate 
-  -i "$SCHEMA_FILE" 
-  -g kotlin 
-  --library multiplatform 
-  -o "$TMP_KMP_DIR" 
-  --additional-properties=packageName=io.healthplatform.pulsequery.api,collectionType=list,dateLibrary=kotlinx-datetime 
+npx -y @openapitools/openapi-generator-cli generate \
+  -i "$SCHEMA_FILE" \
+  -g kotlin \
+  --library multiplatform \
+  -o "$TMP_KMP_DIR" \
+  --additional-properties=packageName=io.healthplatform.pulsequery.api,collectionType=list,dateLibrary=kotlinx-datetime \
   --skip-validate-spec
 
+rm -rf "$KMP_DEST/apis" "$KMP_DEST/models"
 mkdir -p "$KMP_DEST/apis"
 mkdir -p "$KMP_DEST/models"
 mkdir -p "$KMP_DEST/infrastructure"
 
-cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/apis/"* "$KMP_DEST/apis/"
-cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/models/"* "$KMP_DEST/models/"
-cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/infrastructure/"* "$KMP_DEST/infrastructure/"
+cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/apis/." "$KMP_DEST/apis/"
+cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/models/." "$KMP_DEST/models/"
+cp -r "$TMP_KMP_DIR/src/commonMain/kotlin/io/healthplatform/pulsequery/api/infrastructure/." "$KMP_DEST/infrastructure/"
 
 cat << 'EOF' > "$KMP_DEST/models/WidgetIn.kt"
 /**
@@ -241,30 +226,27 @@ sed_inplace 's/RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(requ
 sed_inplace 's/serializer<Map<String, kotlin\.Any>>()/serializer<Map<String, kotlinx.serialization.json.JsonElement>>()/g' "$KMP_DEST/apis/ExecutionApi.kt"
 sed_inplace 's/List<kotlin\.collections\.Map>/List<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>>/g' "$KMP_DEST/apis/BenchmarksApi.kt"
 
+set +f
 for _kt_f in "$KMP_DEST/models/"*.kt; do
   [ -f "$_kt_f" ] || continue
   sed_inplace 's/import io\.healthplatform\.pulsequery\.api\.models\.AnyOfLessThanGreaterThan//g' "$_kt_f"
   sed_inplace 's/AnyOfLessThanGreaterThan/kotlinx.serialization.json.JsonElement/g' "$_kt_f"
+  sed_inplace 's/kotlin\.collections\.Map<kotlin\.String, kotlin\.Any>/kotlinx.serialization.json.JsonObject/g' "$_kt_f"
 done
+set -f
 
 rm -rf "$TMP_KMP_DIR"
 
 if [ -x "$BACKEND_DIR/.venv/bin/python" ]; then
-  "$BACKEND_DIR/.venv/bin/python" "$ROOT_DIR/scripts/normalize_api_client.py"
+  "$BACKEND_DIR/.venv/bin/python" "$SCRIPT_DIR/scripts/normalize_api_client.py"
 else
-  python3 "$ROOT_DIR/scripts/normalize_api_client.py"
+  python3 "$SCRIPT_DIR/scripts/normalize_api_client.py"
 fi
 
 rm -f "$SCHEMA_FILE"
 
-printf '
-%s
-' "=================================================="
-printf '%s
-' "Full-Stack Client Generation Complete!"
-printf '%s
-' "Angular Client: $FRONTEND_DEST"
-printf '%s
-' "KMP Client:     $KMP_DEST"
-printf '%s
-' "=================================================="
+printf '\n%s\n' '=================================================='
+printf '%s\n' 'Full-Stack Client Generation Complete!'
+printf '%s\n' "Angular Client: $FRONTEND_DEST"
+printf '%s\n' "KMP Client:     $KMP_DEST"
+printf '%s\n' '=================================================='

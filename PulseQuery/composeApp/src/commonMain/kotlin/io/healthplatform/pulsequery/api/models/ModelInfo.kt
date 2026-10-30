@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,11 +25,11 @@ import kotlinx.serialization.Serializable
 /**
  * Information about a configured LLM or SQL processor in the platform.
  *
- * @param id Unique processor identifier (e.g. `'SQL'`, `'ollama:llama3'`, `'openai/gpt-4o'`).
- * @param name Human-readable display label.
- * @param provider Provider slug (`'sql'`, `'ollama'`, `'openai'`, etc.).
- * @param isLocal True if the processor executes locally.
- * @param processorType High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`).
+ * @property id Unique processor identifier (e.g. `'SQL'`, `'ollama:llama3'`, `'openai/gpt-4o'`).
+ * @property name Human-readable display label.
+ * @property provider Provider slug (`'sql'`, `'ollama'`, `'openai'`, etc.).
+ * @property isLocal True if the processor executes locally.
+ * @property processorType High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`).
  */
 @Serializable
 data class ModelInfo(

@@ -155,22 +155,6 @@ fun createInspectingMockEngine(
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )
-        "/api/v1/simulation/run" -> {
-            val bodyText = request.body.readBodyText()
-            if (request.method != HttpMethod.Post || !bodyText.contains("demand_source_sql")) {
-                respond(
-                    content = """{"detail": "Invalid simulation payload"}""",
-                    status = HttpStatusCode.BadRequest,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
-            } else {
-                respond(
-                    content = """{"assignments": [{"Service":"ICU","Unit":"ICU","Patient_Count":15.0}], "status": "optimal", "message": "Simulation executed successfully"}""",
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
-            }
-        }
         "/api/v1/dashboards/1/refresh" -> respond(
             content = """{"w1": {"data": [{"label": "ICU", "value": 12}]}}""",
             status = HttpStatusCode.OK,
@@ -200,22 +184,22 @@ fun createInspectingMockEngine(
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )
-        "/api/v1/benchmarks/mpax" -> respond(
-            content = """[{"id": "m1", "title": "Surge Scenario", "difficulty": "Medium", "description": "ICU surge", "target_service": "ICU"}]""",
+        "/api/v1/benchmarks/optimization" -> respond(
+            content = """[{"id": "opt-uc1-001", "use_case": "service_unit", "theme": "Service-Unit Reassignment", "complexity": "Medium", "prompt": "Place all Gen Peds on PCU 350"}]""",
             status = HttpStatusCode.OK,
             headers = headersOf(HttpHeaders.ContentType, "application/json")
         )
-        "/api/v1/mpax-arena/run", "/api/v1/mpax_arena/run" -> {
+        "/api/v1/optimization/solve" -> {
             val bodyText = request.body.readBodyText()
             if (request.method != HttpMethod.Post || !bodyText.contains("prompt")) {
                 respond(
-                    content = """{"detail": "Invalid MPAX arena payload"}""",
+                    content = """{"detail": "Invalid optimization solve payload"}""",
                     status = HttpStatusCode.BadRequest,
                     headers = headersOf(HttpHeaders.ContentType, "application/json")
                 )
             } else {
                 respond(
-                    content = """{"experiment_id": "exp-1", "mode": "critic", "candidates": [{"id":"c1","model_name":"gpt-4o","content":"Allocated","is_selected":false}], "ground_truth_mpax": null}""",
+                    content = """{"use_case":"surgical_scheduling","institution_id":"stanford_childrens","solver_status":"OPTIMAL","objective_value":100.0,"solve_time_ms":3.2,"service_unit_assignments":[],"surgical_schedule_assignments":[],"staffing_assignments":[],"des_evaluation":{"use_case":"surgical_scheduling","replications":128,"horizon_days":180,"overall_expert_gap_pct":1.2,"metrics":[]}}""",
                     status = HttpStatusCode.OK,
                     headers = headersOf(HttpHeaders.ContentType, "application/json")
                 )

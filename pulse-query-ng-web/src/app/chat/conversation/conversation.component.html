@@ -164,7 +164,6 @@
           <mat-chip-option
             [selected]="store.selectedModelIds().includes(model.id)"
             (click)="store.toggleModelSelection(model.id)"
-            [matTooltip]="model.name"
           >
             {{ model.name }}
           </mat-chip-option>

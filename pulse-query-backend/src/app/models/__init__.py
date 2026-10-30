@@ -6,7 +6,11 @@ from app.models.alert_rule import AlertRule, AlertSeverity
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.dashboard import Dashboard, DashboardShare, Widget
 from app.models.feedback import ExperimentLog, ModelCandidate
-from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
+from app.models.optimization import (
+  OptimizationIteration,
+  OptimizationSession,
+  OptimizationUserSurvey,
+)
 from app.models.template import WidgetTemplate
 from app.models.token import RefreshToken
 from app.models.user import Role, User, UserRole
@@ -21,8 +25,9 @@ ORM_MODEL_CLASSES: tuple[type[Base], ...] = (
   Message,
   MessageCandidate,
   ModelCandidate,
-  MpaxArenaCandidateRecord,
-  MpaxArenaRun,
+  OptimizationIteration,
+  OptimizationSession,
+  OptimizationUserSurvey,
   RefreshToken,
   User,
   Widget,
@@ -52,8 +57,9 @@ __all__ = [
   "Message",
   "MessageCandidate",
   "ModelCandidate",
-  "MpaxArenaCandidateRecord",
-  "MpaxArenaRun",
+  "OptimizationIteration",
+  "OptimizationSession",
+  "OptimizationUserSurvey",
   "RefreshToken",
   "Role",
   "User",

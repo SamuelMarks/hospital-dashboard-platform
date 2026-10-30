@@ -73,14 +73,14 @@ describe('AppRoutes', () => {
     expect(component).toBe(DashboardLayoutComponent);
   });
 
-  it('should lazy load the simulation feature module routes', async () => {
-    const { simulationRoutes } = await import('./simulation/simulation.routes');
-    const route = routes.find((r) => r.path === 'simulation');
+  it('should lazy load the optimization feature module routes', async () => {
+    const { optimizationRoutes } = await import('./optimization/optimization.routes');
+    const route = routes.find((r) => r.path === 'optimization');
     expect(route).toBeDefined();
     expect(route?.loadChildren).toBeDefined();
 
     const childRoutes: unknown = await route?.loadChildren?.();
-    expect(childRoutes).toBe(simulationRoutes);
+    expect(childRoutes).toBe(optimizationRoutes);
   });
 
   it('should define the chat route with Auth Guard and ChatLayoutComponent', async () => {
@@ -128,14 +128,6 @@ describe('AppRoutes', () => {
     expect(route).toBeDefined();
     const component = await route?.loadComponent?.();
     expect(component).toBe(AdminComponent);
-  });
-
-  it('should define mpax-arena route with MpaxArenaComponent', async () => {
-    const { MpaxArenaComponent } = await import('./mpax-arena/mpax-arena.component');
-    const route = routes.find((r) => r.path === 'mpax-arena');
-    expect(route).toBeDefined();
-    const component = await route?.loadComponent?.();
-    expect(component).toBe(MpaxArenaComponent);
   });
 
   it('should define benchmarks route with BenchmarksComponent', async () => {

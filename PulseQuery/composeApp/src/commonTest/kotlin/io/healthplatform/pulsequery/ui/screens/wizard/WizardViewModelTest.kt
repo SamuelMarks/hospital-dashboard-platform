@@ -380,6 +380,7 @@ class WizardViewModelTest {
         assertEquals("table", state.visualization)
 
         viewModel.updateCustomWidgetTitle("My Ad-Hoc SQL")
+        viewModel.updateWidgetSubtitle("  Explains SQL metric  ")
         viewModel.updateCustomWidgetContent("SELECT 1;")
         viewModel.updateCustomWidgetViz("bar_chart")
 
@@ -511,6 +512,7 @@ class WizardViewModelTest {
         // Calling parameter/custom methods when state is TemplateSelection (early returns)
         vm.loadAvailableProcessors()
         kotlinx.coroutines.delay(50)
+        vm.updateWidgetSubtitle("ignored")
         vm.updateCustomWidgetTitle("ignored")
         vm.updateCustomWidgetContent("ignored")
         vm.updateCustomWidgetViz("ignored")
@@ -539,6 +541,8 @@ class WizardViewModelTest {
 
         vm.selectTemplate(tplCensus)
         assertEquals("bar_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+        vm.updateWidgetSubtitle("  Custom Template Subtitle  ")
+        assertEquals("  Custom Template Subtitle  ", (vm.state.value as WizardState.ParameterConfiguration).widgetSubtitle)
         vm.selectTemplate(tplBottlenecks)
         assertEquals("line_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
         vm.selectTemplate(tplUtilization)
@@ -559,6 +563,7 @@ class WizardViewModelTest {
         // Custom HTTP widget with unknown HTTP method falls back to GET
         vm.startCustomWidget("HTTP")
         vm.updateCustomWidgetTitle("Valid Title")
+        vm.updateWidgetSubtitle("  Custom HTTP Subtitle  ")
         vm.updateCustomWidgetContent("https://api.example.com")
         vm.updateCustomWidgetHttpMethod("INVALID_VERB")
         vm.submitCustomWidget {}

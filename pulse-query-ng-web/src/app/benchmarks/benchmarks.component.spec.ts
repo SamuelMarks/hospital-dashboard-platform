@@ -29,7 +29,7 @@ describe('BenchmarksComponent', () => {
   let fixture: ComponentFixture<BenchmarksComponent>;
   let mockService: {
     getSqlBenchmarks: ReturnType<typeof vi.fn>;
-    getMpaxBenchmarks: ReturnType<typeof vi.fn>;
+    getOptimizationBenchmarks: ReturnType<typeof vi.fn>;
   };
   let mockProgressService: {
     connect: ReturnType<typeof vi.fn>;
@@ -48,13 +48,14 @@ describe('BenchmarksComponent', () => {
             { theme: 'T1', question: 'Q1', complexity: 'Low', gold_sql: 'S1' },
           ]),
         ),
-      getMpaxBenchmarks: vi.fn().mockReturnValue(
+      getOptimizationBenchmarks: vi.fn().mockReturnValue(
         of([
           {
-            id: '1',
-            theme: 'T1',
-            prompt: 'P1',
-            expected_metrics: { total_demand: 10, total_capacity: 5, expected_overflow: 5 },
+            id: 'opt-uc1-001',
+            use_case: 'service_unit',
+            institution_id: 'stanford_childrens',
+            theme: 'Service-Unit Reassignment',
+            prompt: 'Place all Gen Peds on PCU 350',
           },
         ]),
       ),
@@ -98,8 +99,8 @@ describe('BenchmarksComponent', () => {
 
     expect(component.loading()).toBe(false);
     expect(component.error()).toBeNull();
-    expect(component.sqlCount()).toBe(1); // filtered metadata
-    expect(component.mpaxCount()).toBe(1);
+    expect(component.sqlCount()).toBe(1);
+    expect(component.optimizationCount()).toBe(1);
     expect(component.sqlBenchmarks().length).toBe(2);
     expect(mockProgressService.connect).toHaveBeenCalled();
   });
@@ -107,10 +108,8 @@ describe('BenchmarksComponent', () => {
   it('should compute progressPercent correctly', () => {
     fixture.detectChanges();
 
-    // When progress is null
     expect(component.progressPercent()).toBe(0);
 
-    // When progress has total <= 0
     mockProgressService.progress.set({
       active: true,
       completed: 0,
@@ -121,12 +120,11 @@ describe('BenchmarksComponent', () => {
     });
     expect(component.progressPercent()).toBe(0);
 
-    // When progress has valid values
     mockProgressService.progress.set({
       active: true,
       completed: 4,
       total: 10,
-      current_model: 'gemini-1.5',
+      current_model: 'gemini-2.5-pro',
       status: 'running',
       eta_seconds: 20,
     });
@@ -141,17 +139,25 @@ describe('BenchmarksComponent', () => {
     expect(component.error()).toBe('Network error');
   });
 
-  it('should navigate on mpax click', () => {
+  it('should navigate on optimization scenario click with explicit and default use_case', () => {
     fixture.detectChanges();
-    const item = {
-      id: '1',
-      theme: 'T1',
-      prompt: 'Test prompt',
-      expected_metrics: { total_demand: 10, total_capacity: 5, expected_overflow: 5 },
-    };
-    component.simulateMpax(item);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/mpax-arena'], {
-      queryParams: { prompt: 'Test prompt' },
+    component.launchOptimizationScenario({
+      id: 'opt-uc2-001',
+      use_case: 'surgical_scheduling',
+      theme: 'POINTS',
+      prompt: 'Smooth CVICU admits',
+    });
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/optimization'], {
+      queryParams: { prompt: 'Smooth CVICU admits', useCase: 'surgical_scheduling' },
+    });
+
+    component.launchOptimizationScenario({
+      id: 'opt-uc1-default',
+      theme: 'Default UC',
+      prompt: 'Default prompt',
+    });
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/optimization'], {
+      queryParams: { prompt: 'Default prompt', useCase: 'service_unit' },
     });
   });
 

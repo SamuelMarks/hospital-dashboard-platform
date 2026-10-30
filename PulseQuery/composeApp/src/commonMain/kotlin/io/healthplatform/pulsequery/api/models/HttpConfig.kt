@@ -7,7 +7,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -32,6 +33,8 @@ import kotlinx.serialization.json.JsonElement
  * @property metaForwardAuth If true, forwards the user's JWT to the target.
  * @property xKey Optional key path for X-Axis/Labels.
  * @property yKey Optional key path for Y-Axis/Values.
+ * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
+ * @property description Optional description or clinical guidance for the widget.
  */
 @Serializable
 data class HttpConfig(
@@ -46,7 +49,9 @@ data class HttpConfig(
     @SerialName(value = "body") val body: JsonElement? = null,
     @SerialName(value = "meta_forward_auth") val metaForwardAuth: kotlin.Boolean? = false,
     @SerialName(value = "xKey") val xKey: kotlin.String? = null,
-    @SerialName(value = "yKey") val yKey: kotlin.String? = null
+    @SerialName(value = "yKey") val yKey: kotlin.String? = null,
+    @SerialName(value = "subtitle") val subtitle: kotlin.String? = null,
+    @SerialName(value = "description") val description: kotlin.String? = null
 ) {
 
     /**
@@ -55,7 +60,7 @@ data class HttpConfig(
      * @property value Wire string representation of the HTTP method.
      */
     @Serializable
-    enum class Method(val value: kotlin.String) {
+    enum class Method(/** Wire string representation. */ val value: kotlin.String) {
         /** HTTP GET method. */
         @SerialName(value = "GET")
         GET("GET"),

@@ -596,7 +596,8 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
 
   assert config["ml"]["backend"] == "jax"
   assert "run_benchmark.py" in config["ml"]["train_command"]
-  assert "score_mpax_arena.py" in config["ml"]["infer_command"]
+  assert "train_tpu_optimization_llm.py" in config["ml"]["train_command"]
+  assert "evaluate_optimization_models.py" in config["ml"]["infer_command"]
 
   deploy_md = (REPO_ROOT / "DEPLOY.md").read_text(encoding="utf-8")
   assert "libscript.sh install-deps libscript.json" in deploy_md

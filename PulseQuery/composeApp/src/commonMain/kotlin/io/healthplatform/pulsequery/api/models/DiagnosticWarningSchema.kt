@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,11 +25,11 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for diagnostic warning items.
  *
- * @param code Unique code identifying the warning category.
- * @param message Human-readable warning message.
- * @param severity Severity classification (e.g., info, warning, critical).
- * @param remediation Recommended troubleshooting action.
- * @param timestamp ISO timestamp when warning was recorded.
+ * @property code Unique code identifying the warning category.
+ * @property message Human-readable warning message.
+ * @property severity Severity classification (e.g., info, warning, critical).
+ * @property remediation Recommended troubleshooting action.
+ * @property timestamp ISO timestamp when warning was recorded.
  */
 @Serializable
 data class DiagnosticWarningSchema(

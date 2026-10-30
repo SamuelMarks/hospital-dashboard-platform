@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Bulk update payload for persisting drag-and-drop results.
  *
- * @param items
- */
+ * @property items */
 @Serializable
 data class WidgetReorderRequest(
     @SerialName(value = "items") @Required val items: kotlin.collections.List<WidgetReorderItem>

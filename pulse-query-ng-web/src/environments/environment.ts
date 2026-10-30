@@ -10,4 +10,6 @@ export const environment = {
   apiUrl: '',
   /** Feature flag: Allow public user registration. */
   registrationEnabled: true,
+  /** UTC timestamp indicating when the application bundle was built. */
+  buildTimestampUtc: '2026-10-28 22:50:00 UTC',
 };

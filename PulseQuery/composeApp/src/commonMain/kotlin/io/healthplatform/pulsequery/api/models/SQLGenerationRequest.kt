@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Request model for generating SQL from natural language.
  *
- * @param prompt
- */
+ * @property prompt */
 @Serializable
 data class SQLGenerationRequest(
     @SerialName(value = "prompt") @Required val prompt: kotlin.String

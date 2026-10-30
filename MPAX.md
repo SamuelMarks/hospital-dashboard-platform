@@ -1,103 +1,103 @@
-# MPAX & LLM Arena Integration
+# Self-Service Hospital Operations Optimization Platform (LLM + JAX + MPAX)
 
-> **Purpose:** This file documents the integration of the JAX-based MPAX mathematical solver into the Multi-LLM Arena, detailing the five evaluation modes and the automated scoring methodology for capacity planning scenarios.
+> **Purpose:** This document describes the architecture, mathematical formulations, Discrete Event Simulation (DES) expert baselines, LLM copilot workflow, and Google Cloud TPU / LiteRT tooling for the **Stanford Medicine Children's Health / Scheinker Lab Hospital Operations Optimization Platform**.
 
-The Pulse Query platform natively integrates **MPAX**, a JAX-based mathematical optimization solver, into the Multi-LLM Arena. This allows us to compare deterministic "Symbolic AI" (linear programming) against Generative AI (LLMs) across five distinct "What-If" evaluation modes.
+---
 
-## The 5 Integration Modes
+## 1. Executive Summary & Clinical Motivation
 
-### 1. MPAX as Ground Truth Judge
+Developing and deploying mathematical optimization models in hospitals has historically required teams of optimization experts, clinicians, and graduate students exchanging emails, spreadsheets, and meetings over **weeks to months** for every single iteration.
 
-**Concept:** Evaluate an LLM's raw math and logic capabilities against a deterministic solver.
-**Workflow:**
+Pulse Query replaces that manual bottleneck with a **Self-Service, Interpretable LLM + JAX + MPAX Hospital Operations Optimization Platform** (`/optimization`, `/api/v1/optimization`). Doctors, nurse leaders, and hospital executives interact directly in natural language to:
 
-- The user provides a scenario (e.g., "15 Cardiac patients, 10 MedSurg beds").
-- The system simultaneously asks the LLMs to calculate the routing and runs MPAX.
-- The Arena displays the LLMs' answers alongside the MPAX "Gold Standard" baseline.
+1. Specify operational goals and constraints (e.g., _"Place all General Pediatrics patients on PCU 350 and assume we open PCU 360 with 10 additional beds"_).
+2. Solve the resulting mathematical program in milliseconds using **MPAX** (Mathematical Programming in **JAX**).
+3. Evaluate the optimized policy against both historical manual hospital rules and a pre-solved **Expert-Attained Baseline** using a vectorized **JAX Discrete Event Simulation (DES)** engine.
+4. Receive clear, clinically interpretable explanations and suggested follow-up iterations.
 
-### 2. LLMs as Translators
+---
 
-**Concept:** Test an LLM's ability to interpret dense mathematical output and perform clinical data storytelling.
-**Workflow:**
+## 2. Three Core Clinical Optimization Use Cases
 
-- The system runs an MPAX simulation based on the user's prompt.
-- The resulting tabular data (overflows, assignments) is injected into the LLMs' system prompt.
-- The LLMs generate a human-readable clinical briefing.
-- The Arena compares which LLM generated the most accurate and actionable summary.
+### Use Case 1: LLM-Enabled Service-Unit Assignments & Bed-Use Optimization (`service_unit`)
 
-### 3. LLMs Generating Constraints
+- **Clinical Problem:** Hospital patient units (e.g., PCU 350, PCU 360, PCU 380, PICU, CVICU, NICU) are staffed and equipped for specific clinical services (General Pediatrics, Neurosurgery, Cardiology, Oncology, Neonatal, Pulmonary). Placing patients on "off-service" units degrades specialized care, increases Length of Stay (LOS), and triggers transfer denials (diverts).
+- **JAX + MPAX Formulation (`service_unit_solver.py`):**
+  - **Decision Variables:** Bed allocations $b_{s,u}$ and daily patient routing flows $x_{s,u,t}$ solved via `mpax.create_lp` + `mpax.r2HPDHG` in JAX with deterministic capacity-preserving integer repair.
+  - **Objective:** Minimize weighted **Off-Service Patient Days** and **Denied Transfer Requests (Diverts)**.
+  - **Propensity-Matched LOS Estimator:** Quantifies expected patient-days saved from increased on-service placement.
+  - **Built-In Alpha Bed-Use Quick Actions:**
+    - `📊 Patient Days by Unit` (`patient_days_by_unit`)
+    - `🏥 Patient Days by Service` (`patient_days_by_service`)
+    - `📈 Combined Analysis` (`combined_analysis`)
+    - `📋 Summary Statistics` (`summary_statistics`)
 
-**Concept:** Use Natural Language to dynamically program constraints for the mathematical solver.
-**Workflow:**
+### Use Case 2: LLM-Enabled Surgical Scheduling — BEDS & POINTS (`surgical_scheduling`)
 
-- The user describes a hypothetical crisis ("Flu outbreak drops staff by 30%").
-- The LLMs translate this into a JSON structure representing `capacity_parameters`.
-- The system executes a distinct MPAX run for each LLM's generated constraints.
-- The Arena displays the resulting MPAX simulations side-by-side.
+- **Clinical Problem:** Uncoordinated elective surgical block schedules cause post-operative inpatient unit surges, leading to **short-notice elective surgical cancellations** and long-tailed daily post-op admission distributions.
+- **JAX + MPAX Formulation (`surgical_scheduling_solver.py`):**
+  - **BEDS:** Non-cardiovascular elective surgical procedures.
+  - **POINTS:** Cardiovascular surgical procedures requiring CVICU and step-down recovery beds.
+  - Convolves scheduled daily surgical blocks with JAX post-operative Length of Stay (LOS) recovery kernels (`estimate_postop_los_distribution`) and solves a Min-Max / CVaR peak-smoothing LP in MPAX to minimize short-notice cancellations and bring **mean daily post-op admissions closer to median daily admissions**.
 
-### 4. Rule-Based SQL vs. Global Optimization
+### Use Case 3: LLM-Enabled Physician & Nurse Scheduling (`staffing_optimization`)
 
-**Concept:** Pit SQL heuristics against Linear Programming.
-**Workflow:**
+- **Clinical Problem:** Single-unit manual nurse and physician scheduling ignores cross-unit float pools and weekday/monthly seasonality, causing high burnout from **unexpected overtime** and **Administrative Days (A-days)** (when RNs are sent home due to low census).
+- **JAX + MPAX Formulation (`staffing_scheduling_solver.py`):**
+  - Multi-unit shift allocation LP incorporating weekday and month-of-year seasonality and cross-trained float pool eligibility.
+  - **Dual Objectives:**
+    1. **Burnout Reduction:** Minimize shifts with unexpected RN overtime and minimize RN Administrative Days (A-days).
+    2. **Cost & Productivity:** Minimize total RN staffing cost per patient day while maintaining safe nurse-to-patient acuity ratios.
 
-- The user asks for a patient routing query.
-- The LLM writes standard DuckDB SQL using `CASE WHEN` statements to guess routing.
-- The system executes this SQL _and_ runs a true MPAX global optimization on the same underlying data.
-- The Arena contrasts the rigid SQL heuristic against the optimal LP routing.
+---
 
-### 5. Feedback Critic (Iterative Planning)
+## 3. Quantitative & Qualitative Evaluation Framework
 
-**Concept:** MPAX scores and validates high-level policies suggested by LLMs.
-**Workflow:**
+1. **Metric 1 — Quantitative JAX Discrete Event Simulation (DES) Expert Baseline (`des_baseline_engine.py`):**
+   - Vectorized Monte Carlo DES replications (`128` replications $ imes$ `180`-day horizon) compare:
+     - **Manual Historical Policy**
+     - **Expert-Attained Baseline** (pre-solved expert OR model)
+     - **User + LLM Iterative MPAX Policy**
+   - Reports % improvement over manual rules, % of expert baseline attained, and overall optimality gap (%).
+2. **Metric 2 — Structured User Experience Survey (`POST /api/v1/optimization/surveys`):**
+   - Captures 1–5 Likert ratings from physicians, nurse leaders, and operations executives comparing the tool against (A) the manual graduate-student email process and (B) other hospital workflow technology, plus clinical interpretability ratings and qualitative feedback.
 
-- The user asks for a hospital routing policy.
-- The LLM suggests a policy (and an accompanying JSON constraint payload).
-- MPAX runs the payload and calculates a "Feasibility Score" (e.g., total patient overflow).
-- The Arena displays the LLM's text, annotated with its MPAX Validation Score.
+---
 
-## Architecture
+## 4. Multi-Institutional Collaboration & Model Compendium
 
-These modes are implemented in the `MpaxArenaService` and exposed via the `/api/v1/mpax_arena` endpoint. The frontend `ConversationComponent` detects the selected mode and delegates execution accordingly.
+### Supported Partner Hospital Profiles (`institution_profiles.py`)
 
-## Automated Benchmarking & Scoring
+- **Stanford Medicine Children's Health** (`stanford_childrens`)
+- **Stanford Health Care** (`stanford_health_care`)
+- **The Children's Hospital of Philadelphia (CHOP)** (`chop`)
+- **Children's Mercy Kansas City** (`childrens_mercy_kc`)
+- **Rady Children's Health (UCSD)** (`rady_childrens_ucsd`)
+- **UCSD Health** (`ucsd_health`)
+- **Massachusetts General Hospital (MGH)** (`mgh`)
 
-To consistently evaluate Local vs Remote LLMs against MPAX, we have expanded the 30+ Gold Standard Analytics questions into **200 distinct What-If Optimization Scenarios**.
+Includes privacy-preserving federated parameter aggregation (`aggregate_federated_institution_priors`) across partner hospitals without sharing row-level patient records.
 
-### Generating the Dataset
+### Model Compendium & LiteRT On-Device Hot-Loading
 
-Run the scenario generator to create the variations:
+- **Cloud & Open-Weights Models:** **Gemini 2.5 Pro** (`gemini-2.5-pro`), **MedGemma** (`medgemma-27b-text-it`, `medgemma-4b-it`), **VaultGemma** (`vaultgemma-9b`, differentially private), **Gemma** (`gemma4:26b`, `gemma2:27b`), **DeepSeek** (`deepseek-r1`), and **Llama** (`llama-3.3-70b`).
+- **On-Device ML (ODML) LiteRT Hot-Loading (`LiteRtModelManager.kt`):** Supports SHA-256 verification and live hot-loading of quantized `.litertlm` / `.tflite` models (`litert-medgemma-4b-int4`, `litert-vaultgemma-2b-int4`) on **Android** and **Chrome/WebAssembly** in Kotlin Multiplatform.
 
-```bash
-uv run python pulse-query-backend/scripts/generate_mpax_benchmarks.py
-```
+---
 
-This generates `pulse-query-backend/data/mpax_benchmark_scenarios.json`, varying patient volumes, clinical services, unit capacities, and themes (e.g., Weekend Surges, Bottlenecks, Affinity Priorities).
-
-### Scoring Methodology (`score_mpax_arena.py`)
-
-A new script has been provided to programmatically score LLM responses against the MPAX ground truth.
-
-| Mode            | Scoring Metric            | Description                                                                                                                                                                             |
-| :-------------- | :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Judge**       | Mean Absolute Error (MAE) | Parses the LLM's suggested routing and calculates the absolute difference between the LLM's patient counts and MPAX's optimal counts. `Score = 100 - (MAE * Penalty)`.                  |
-| **Constraints** | Logical Constraint Match  | Compares the resulting MPAX overflow (when driven by LLM constraints) against the mathematically expected overflow defined in the benchmark JSON.                                       |
-| **Critic**      | Feasibility Penalty       | Directly uses the `mpax_score` generated by the backend, which assigns a `100` base score and subtracts points for every patient forced into "Virtual Overflow" due to poor LLM policy. |
-| **SQL vs MPAX** | Distribution Delta        | Executes the LLM's `CASE WHEN` SQL on DuckDB, compares the resulting table distribution to the MPAX global optimization output.                                                         |
-
-### How to Run
-
-You can loop over the generated scenarios, send them to the `/api/v1/mpax_arena/run` endpoint with your target models (e.g., `llama-3` locally, `gpt-4o` remotely), and feed the `MpaxArenaResponse` directly into the scoring functions defined in `pulse-query-backend/scripts/score_mpax_arena.py`.
-
-Alternatively, execute the entire MPAX benchmark and arena scoring lifecycle declaratively via **LibScript** (`libscript.json` `.ml` block) across local hardware (`local`, `cuda`, `mlx`, `ollama`, `vllm`) or cloud accelerators (`gcp-tpu-vm`, `gcp-gpu-vm`, `gke-xpk`):
+## 5. CLI & LibScript ML Commands
 
 ```bash
-# Run benchmark evaluation (executes .ml.train_command)
-~/repos/libscript/libscript.sh train libscript.json
+# Declarative LibScript ML lifecycle commands
+libscript.sh train libscript.json
+libscript.sh infer libscript.json
 
-# Run MPAX arena scoring (executes .ml.infer_command)
-~/repos/libscript/libscript.sh infer libscript.json
+# 1. Generate gold-standard optimization benchmarks across all 3 use cases
+cd pulse-query-backend && uv run python scripts/generate_optimization_benchmarks.py
 
-# Or via Makefile / make.bat targets:
-make train_ml
-make infer_ml
+# 2. Prepare JAX/Keras/MaxText TPU instruction-tuning dataset & LiteRT ODML manifest
+cd pulse-query-backend && uv run python scripts/train_tpu_optimization_llm.py
+
+# 3. Evaluate the full model compendium against the JAX DES Expert Baseline
+cd pulse-query-backend && uv run python scripts/evaluate_optimization_models.py
 ```

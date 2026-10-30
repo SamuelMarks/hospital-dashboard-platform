@@ -5,20 +5,20 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { vi, type Mock } from 'vitest';
-import { BenchmarksService, MpaxBenchmark, SqlBenchmark } from './benchmarks.service';
+import { BenchmarksService, OptimizationBenchmark, SqlBenchmark } from './benchmarks.service';
 import { BenchmarksService as GeneratedBenchmarksService } from '../api-client';
 
 describe('BenchmarksService', () => {
   let service: BenchmarksService;
   let mockApi: {
     getSqlBenchmarksApiV1BenchmarksSqlGet: Mock;
-    getMpaxBenchmarksApiV1BenchmarksMpaxGet: Mock;
+    getOptimizationBenchmarksApiV1BenchmarksOptimizationGet: Mock;
   };
 
   beforeEach(() => {
     mockApi = {
       getSqlBenchmarksApiV1BenchmarksSqlGet: vi.fn(),
-      getMpaxBenchmarksApiV1BenchmarksMpaxGet: vi.fn(),
+      getOptimizationBenchmarksApiV1BenchmarksOptimizationGet: vi.fn(),
     };
 
     TestBed.configureTestingModule({
@@ -38,14 +38,16 @@ describe('BenchmarksService', () => {
     expect(mockApi.getSqlBenchmarksApiV1BenchmarksSqlGet).toHaveBeenCalledOnce();
   });
 
-  it('should fetch mpax benchmarks via generated BenchmarksService', () => {
-    const dummy: MpaxBenchmark[] = [{ id: '1', theme: 'Surge' }];
-    mockApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet.mockReturnValue(of(dummy));
+  it('should fetch optimization benchmarks via generated BenchmarksService', () => {
+    const dummy: OptimizationBenchmark[] = [
+      { id: 'opt-uc1-001', use_case: 'service_unit', theme: 'Service-Unit Reassignment' },
+    ];
+    mockApi.getOptimizationBenchmarksApiV1BenchmarksOptimizationGet.mockReturnValue(of(dummy));
 
-    service.getMpaxBenchmarks().subscribe((res) => {
+    service.getOptimizationBenchmarks().subscribe((res) => {
       expect(res).toEqual(dummy);
     });
 
-    expect(mockApi.getMpaxBenchmarksApiV1BenchmarksMpaxGet).toHaveBeenCalledOnce();
+    expect(mockApi.getOptimizationBenchmarksApiV1BenchmarksOptimizationGet).toHaveBeenCalledOnce();
   });
 });

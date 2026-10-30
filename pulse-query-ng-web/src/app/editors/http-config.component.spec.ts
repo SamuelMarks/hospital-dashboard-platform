@@ -3,8 +3,10 @@
  */
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpClient } from '@angular/common/http';
 import { HttpConfigComponent } from './http-config.component';
 import { DashboardsService, ExecutionService } from '../api-client';
+import { LOCAL_DRAFT_WIDGET_ID } from '../dashboard/widget-builder/widget-builder.store';
 import { of, throwError } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { vi } from 'vitest';
@@ -19,6 +21,9 @@ describe('HttpConfigComponent', () => {
   let mockExecutionApi: {
     refreshDashboardApiV1DashboardsDashboardIdRefreshPost: ReturnType<typeof vi.fn>;
   };
+  let mockHttpClient: {
+    request: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     mockDashboardsApi = {
@@ -27,12 +32,16 @@ describe('HttpConfigComponent', () => {
     mockExecutionApi = {
       refreshDashboardApiV1DashboardsDashboardIdRefreshPost: vi.fn(),
     };
+    mockHttpClient = {
+      request: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [HttpConfigComponent],
       providers: [
         { provide: DashboardsService, useValue: mockDashboardsApi },
         { provide: ExecutionService, useValue: mockExecutionApi },
+        { provide: HttpClient, useValue: mockHttpClient },
       ],
     }).compileComponents();
 
@@ -208,6 +217,25 @@ describe('HttpConfigComponent', () => {
       );
       component.saveAndTest();
       expect((component.result() as Record<string, unknown>)?.['info']).toContain('No Data');
+    });
+
+    it('should execute direct HTTP preview when widgetId is LOCAL_DRAFT_WIDGET_ID', () => {
+      fixture.componentRef.setInput('widgetId', LOCAL_DRAFT_WIDGET_ID);
+      fixture.detectChanges();
+
+      mockHttpClient.request.mockReturnValue(of({ userId: 1, title: 'Test' }));
+      component.saveAndTest();
+
+      expect(
+        mockDashboardsApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut,
+      ).not.toHaveBeenCalled();
+      expect(mockHttpClient.request).toHaveBeenCalled();
+      expect(component.result()).toEqual({ userId: 1, title: 'Test' });
+
+      // Error branch for in-memory draft HTTP preview
+      mockHttpClient.request.mockReturnValue(throwError(() => new Error('http fail')));
+      component.saveAndTest();
+      expect((component.result() as Record<string, unknown>)?.['error']).toBe('Run failed');
     });
 
     it('should send null body when body field is empty', () => {

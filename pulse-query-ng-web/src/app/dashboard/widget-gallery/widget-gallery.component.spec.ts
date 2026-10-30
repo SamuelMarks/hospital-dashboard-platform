@@ -131,5 +131,74 @@ describe('WidgetGalleryComponent', () => {
     expect(groups.length).toBe(1);
     expect(groups[0]?.items.length).toBe(2);
     expect(component.getEventValue(createMockInputEvent('abc'))).toBe('abc');
+
+    // Test getTemplateSkeletonVariant and getTemplateRowSpan across template types
+    expect(
+      component.getTemplateSkeletonVariant({
+        id: 'p',
+        title: 'Service Breakdown',
+        category: 'Ops',
+        sql_template: 'SELECT 1',
+      }),
+    ).toBe('pie');
+    expect(
+      component.getTemplateRowSpan({
+        id: 'p',
+        title: 'Service Breakdown',
+        category: 'Ops',
+        sql_template: 'SELECT 1',
+      }),
+    ).toBe(5);
+
+    expect(
+      component.getTemplateSkeletonVariant({
+        id: 'c',
+        title: 'Daily Trend',
+        category: 'Ops',
+        sql_template: 'SELECT 1 GROUP BY 1',
+      }),
+    ).toBe('chart');
+    expect(
+      component.getTemplateRowSpan({
+        id: 'c',
+        title: 'Daily Trend',
+        category: 'Ops',
+        sql_template: 'SELECT 1 GROUP BY 1',
+      }),
+    ).toBe(5);
+
+    expect(
+      component.getTemplateSkeletonVariant({
+        id: 'm',
+        title: 'Risk Probability',
+        category: 'Risk',
+        sql_template: 'SELECT 1',
+      }),
+    ).toBe('metric');
+    expect(
+      component.getTemplateRowSpan({
+        id: 'm',
+        title: 'Risk Probability',
+        category: 'Risk',
+        sql_template: 'SELECT 1',
+      }),
+    ).toBe(4);
+
+    expect(
+      component.getTemplateSkeletonVariant({
+        id: 't',
+        title: 'Raw Visits',
+        category: 'Ops',
+        sql_template: 'SELECT * FROM t',
+      }),
+    ).toBe('table');
+    expect(
+      component.getTemplateRowSpan({
+        id: 't',
+        title: 'Raw Visits',
+        category: 'Ops',
+        sql_template: 'SELECT * FROM t',
+      }),
+    ).toBe(6);
   });
 });

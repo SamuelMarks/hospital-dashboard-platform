@@ -52,37 +52,40 @@ async def test_get_sql_benchmarks_read_error(tmp_path: Path, monkeypatch: pytest
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-  """Verify `GET /mpax` returns parsed MPAX benchmark scenario items from a real temporary JSON file."""
-  mpax_file = tmp_path / "mpax_benchmark_scenarios.json"
-  mpax_file.write_text(json.dumps([{"scenario": "test", "theme": "Capacity"}]), encoding="utf-8")
+async def test_get_optimization_benchmarks_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /optimization` returns parsed optimization benchmark scenario items from a temporary JSON file."""
+  opt_file = tmp_path / "optimization_benchmarks.json"
+  opt_file.write_text(
+    json.dumps([{"id": "opt-uc1-001", "use_case": "service_unit", "theme": "Capacity"}]),
+    encoding="utf-8",
+  )
   monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
 
   async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-    response = await client.get("/mpax")
+    response = await client.get("/optimization")
     assert response.status_code == 200
-    assert response.json() == [{"scenario": "test", "theme": "Capacity"}]
+    assert response.json() == [{"id": "opt-uc1-001", "use_case": "service_unit", "theme": "Capacity"}]
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_not_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-  """Verify `GET /mpax` returns 404 when scenario file is missing in `DATA_DIR`."""
+async def test_get_optimization_benchmarks_not_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+  """Verify `GET /optimization` returns 404 when scenario file is missing in `DATA_DIR`."""
   monkeypatch.setattr(benchmarks_router, "DATA_DIR", tmp_path)
   async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-    response = await client.get("/mpax")
+    response = await client.get("/optimization")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_get_mpax_benchmarks_read_error() -> None:
-  """Verify `GET /mpax` returns 500 when reading the scenario file raises an OS error."""
+async def test_get_optimization_benchmarks_read_error() -> None:
+  """Verify `GET /optimization` returns 500 when reading the scenario file raises an OS error."""
   with (
     patch("app.api.routers.benchmarks.Path.exists", return_value=True),
     patch("builtins.open", side_effect=OSError("Read error")),
   ):
     async with AsyncClient(transport=ASGITransport(app=app), base_url=BASE_URL) as client:
-      response = await client.get("/mpax")
+      response = await client.get("/optimization")
       assert response.status_code == 500
       assert "Read error" in response.json()["detail"]
 

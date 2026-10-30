@@ -64,10 +64,13 @@ export default defineConfig({
        * set in the user's shell, ensuring it finds installed packages like 'any_llm'.
        */
       command:
-        'cd ../pulse-query-backend && uv run --active uvicorn --app-dir src app.main:app --port 8000',
+        'cd ../pulse-query-backend && uv run --active alembic upgrade head && uv run --active uvicorn --app-dir src app.main:app --port 8000',
       url: 'http://127.0.0.1:8000/api/v1/openapi.json', // Healthcheck endpoint to wait for
       reuseExistingServer: !process.env['CI'],
-      env: { USE_SQLITE_ALEMBIC: '1' },
+      env: {
+        USE_SQLITE_ALEMBIC: '1',
+        DUCKDB_PATH: 'e2e_test.duckdb',
+      },
       stdout: 'pipe',
       stderr: 'pipe',
       timeout: 120 * 1000,

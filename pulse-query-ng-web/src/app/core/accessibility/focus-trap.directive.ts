@@ -61,7 +61,8 @@ export class FocusTrapDirective implements OnInit, AfterViewInit, OnDestroy {
    * Lifecycle hook: Capture the previously focused element before trapping focus.
    */
   ngOnInit(): void {
-    this.previousActiveElement = this.document.activeElement as HTMLElement | null;
+    this.previousActiveElement =
+      this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
   }
 
   /**
@@ -89,7 +90,9 @@ export class FocusTrapDirective implements OnInit, AfterViewInit, OnDestroy {
    */
   handleKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
-      this.escape.emit();
+      if (!this.hasActiveCdkModalOverlay()) {
+        this.escape.emit();
+      }
       return;
     }
 
@@ -122,15 +125,32 @@ export class FocusTrapDirective implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /**
-   * Emits `escape` when the Escape key is pressed while focus is outside the host element.
+   * Emits `escape` when the Escape key is pressed while focus is outside the host element,
+   * ignoring Escape events when an active CDK dialog/menu/listbox overlay is open.
    *
    * @param event - Document-level Escape keyboard event.
    */
   handleDocumentEscape(event: Event): void {
-    const target = event.target as Node | null;
+    if (this.hasActiveCdkModalOverlay()) {
+      return;
+    }
+    const target = event.target instanceof Node ? event.target : null;
     if (!target || !this.elementRef.nativeElement.contains(target)) {
       this.escape.emit();
     }
+  }
+
+  /**
+   * Checks whether a Material dialog, menu, or listbox overlay is currently open in `.cdk-overlay-container`.
+   *
+   * @returns True when a higher-layer CDK overlay is active.
+   */
+  private hasActiveCdkModalOverlay(): boolean {
+    return (
+      this.document.querySelector(
+        '.cdk-overlay-container .mat-mdc-dialog-container, .cdk-overlay-container [role="dialog"], .cdk-overlay-container [role="menu"], .cdk-overlay-container [role="listbox"]',
+      ) !== null
+    );
   }
 
   /**
@@ -159,9 +179,9 @@ export class FocusTrapDirective implements OnInit, AfterViewInit, OnDestroy {
       '[tabindex]:not([tabindex="-1"])',
     ].join(', ');
 
-    const nodes = this.elementRef.nativeElement.querySelectorAll(selector);
+    const nodes = this.elementRef.nativeElement.querySelectorAll<HTMLElement>(selector);
     const view = this.document.defaultView;
-    return Array.from(nodes as NodeListOf<HTMLElement>).filter((el: HTMLElement) => {
+    return Array.from(nodes).filter((el: HTMLElement) => {
       return (
         el.offsetWidth > 0 &&
         el.offsetHeight > 0 &&

@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for creating a Dashboard.
  *
- * @param name
- */
+ * @property name */
 @Serializable
 data class DashboardCreate(
     @SerialName(value = "name") @Required val name: kotlin.String

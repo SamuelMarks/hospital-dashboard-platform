@@ -29,6 +29,45 @@
   </button>
 </div>
 
+<!-- Title & Subtitle Metadata Bar -->
+<div
+  class="px-6 py-3 border-b flex flex-wrap items-center gap-4"
+  style="background-color: var(--sys-surface); border-color: var(--sys-surface-border)"
+  data-testid="editor-metadata-bar"
+>
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[220px]">
+    <mat-label i18n>Widget Title</mat-label>
+    <input
+      matInput
+      data-testid="editor-input-title"
+      [value]="title()"
+      (input)="title.set(getEventValue($event))"
+    />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-grow min-w-[280px]">
+    <mat-label i18n>Subtitle / Caption (describes what this widget shows)</mat-label>
+    <input
+      matInput
+      data-testid="editor-input-subtitle"
+      i18n-placeholder
+      placeholder="e.g. Daily inpatient admission trends across acute care units"
+      [value]="subtitle()"
+      (input)="subtitle.set(getEventValue($event))"
+    />
+  </mat-form-field>
+
+  <button
+    i18n
+    type="button"
+    mat-stroked-button
+    data-testid="btn-save-metadata"
+    (click)="saveSettings()"
+  >
+    Save Caption
+  </button>
+</div>
+
 <!-- Content (Editor Implementation) -->
 <mat-dialog-content>
   @switch (widget.type) {

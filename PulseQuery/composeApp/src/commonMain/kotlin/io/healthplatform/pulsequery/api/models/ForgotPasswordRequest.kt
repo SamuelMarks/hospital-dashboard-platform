@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload requesting a time-bound password reset token.
  *
- * @param email
- */
+ * @property email */
 @Serializable
 data class ForgotPasswordRequest(
     @SerialName(value = "email") @Required val email: kotlin.String

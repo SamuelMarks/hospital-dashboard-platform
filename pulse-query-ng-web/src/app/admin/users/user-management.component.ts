@@ -23,6 +23,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AdminUsersService } from '../../api-client/api/admin-users.service';
 import { UserResponse } from '../../api-client/model/user-response';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 
 /**
  * Component for administering platform users and RBAC roles.
@@ -181,7 +182,7 @@ export class UserManagementComponent implements OnInit {
    * @param event - DOM input event from the search input.
    */
   onSearchInput(event: Event): void {
-    this.searchQuery.set((event.target as HTMLInputElement).value);
+    this.searchQuery.set(extractEventInputValue(event));
   }
 
   /**

@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,10 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for DuckDB analytics engine status.
  *
- * @param status Storage and query engine status (e.g. ready, error).
- * @param path
- * @param tables Map of table names to row counts.
- * @param totalTables Total number of registered analytics tables.
- * @param error
- */
+ * @property status Storage and query engine status (e.g. ready, error).
+ * @property path * @param tables Map of table names to row counts.
+ * @property totalTables Total number of registered analytics tables.
+ * @property error */
 @Serializable
 data class DuckDbHealthSchema(
     // Storage and query engine status (e.g. ready, error).

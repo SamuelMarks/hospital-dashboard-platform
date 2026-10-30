@@ -40,6 +40,7 @@ import {
 } from './template-wizard-preview-step.component';
 import { WidgetBuilderMarketplaceStepComponent } from '../widget-builder/widget-builder-marketplace-step.component';
 import { TemplateConfigurationService } from '../template-configuration.service';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
 
 /**
  * Dialog input data passed to `TemplateWizardComponent`.
@@ -55,6 +56,9 @@ export interface WizardData {
 @Component({
   selector: 'app-template-wizard',
   providers: [provideNativeDateAdapter()],
+  host: {
+    '(keydown.escape)': 'cancel()',
+  },
   imports: [
     FormRoot,
     FormField,
@@ -266,8 +270,7 @@ export class TemplateWizardComponent implements OnInit {
    * @param event - DOM input event from the search field.
    */
   updateSearch(event: Event): void {
-    const val = (event.target as HTMLInputElement).value;
-    this.searchQuery.set(val);
+    this.searchQuery.set(extractEventInputValue(event));
   }
 
   /**

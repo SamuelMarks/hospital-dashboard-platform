@@ -119,10 +119,16 @@ export class WidgetBuilderStore {
   readonly templateFormValid = signal(true);
 
   /** Signal model for visual configurations. */
-  readonly vizFormModel = signal({
+  readonly vizFormModel = signal<{
+    title: string;
+    subtitle: string;
+    xKey: string | null;
+    yKey: string | null;
+  }>({
     title: '',
-    xKey: null as string | null,
-    yKey: null as string | null,
+    subtitle: '',
+    xKey: null,
+    yKey: null,
   });
 
   /** Canonical list of supported visualizations. */
@@ -199,15 +205,23 @@ export class WidgetBuilderStore {
         extraSqlConfig['placeholder_text'] = this.placeholderText().trim();
       }
     }
+    const trimmedSubtitle = formVal.subtitle.trim();
+    const mergedConfig: Record<string, unknown> = {
+      ...w.config,
+      xKey: formVal.xKey,
+      yKey: formVal.yKey,
+      ...extraSqlConfig,
+    };
+    if (trimmedSubtitle) {
+      mergedConfig['subtitle'] = trimmedSubtitle;
+    } else if ('subtitle' in mergedConfig && formVal.subtitle === '') {
+      delete mergedConfig['subtitle'];
+    }
     return {
       ...w,
       title: formVal.title || w.title,
-      config: {
-        ...w.config,
-        xKey: formVal.xKey,
-        yKey: formVal.yKey,
-        ...extraSqlConfig,
-      },
+      ...(trimmedSubtitle ? { subtitle: trimmedSubtitle } : {}),
+      config: mergedConfig,
     };
   });
 
@@ -300,10 +314,15 @@ export class WidgetBuilderStore {
     let visualization = 'table';
 
     const selectedTemplate = this.selectedTemplate();
+    let subtitle = '';
     if (selectedTemplate) {
       title = selectedTemplate.title;
+      subtitle = selectedTemplate.description?.trim() ?? '';
       type = 'SQL';
-      config = { query: selectedTemplate.sql_template };
+      config = {
+        query: selectedTemplate.sql_template,
+        ...(subtitle ? { subtitle, description: subtitle } : {}),
+      };
     } else if (type === 'SQL') {
       config = { query: 'SELECT * FROM hospital_data LIMIT 5' };
     } else if (type === 'HTTP') {
@@ -322,13 +341,18 @@ Edit this content.`,
       id: LOCAL_DRAFT_WIDGET_ID,
       dashboard_id: dashboardId,
       title,
+      ...(subtitle ? { subtitle } : {}),
       type,
       visualization,
       config,
     };
 
     this.draftWidget.set(inMemoryDraft);
-    this.vizFormModel.update((m) => ({ ...m, title: inMemoryDraft.title }));
+    this.vizFormModel.update((m) => ({
+      ...m,
+      title: inMemoryDraft.title,
+      subtitle,
+    }));
     if (stepper) {
       stepper.next();
     }
@@ -438,12 +462,14 @@ Edit this content.`,
 
     this.isBusy.set(true);
     const resolvedTitle = this.vizFormModel().title || w.title;
+    const resolvedSubtitle = this.vizFormModel().subtitle.trim() || null;
 
     if (w.id === LOCAL_DRAFT_WIDGET_ID) {
       let payload: WidgetIn;
       if (w.type === 'HTTP') {
         payload = {
           title: resolvedTitle,
+          subtitle: resolvedSubtitle,
           type: 'HTTP',
           visualization: w.visualization,
           config: buildHttpWidgetConfig(w.config),
@@ -451,6 +477,7 @@ Edit this content.`,
       } else if (w.type === 'TEXT') {
         payload = {
           title: resolvedTitle,
+          subtitle: resolvedSubtitle,
           type: 'TEXT',
           visualization: 'markdown',
           config: buildTextWidgetConfig(w.config),
@@ -458,6 +485,7 @@ Edit this content.`,
       } else {
         payload = {
           title: resolvedTitle,
+          subtitle: resolvedSubtitle,
           type: 'SQL',
           visualization: w.visualization,
           config: buildSqlWidgetConfig(w.config),

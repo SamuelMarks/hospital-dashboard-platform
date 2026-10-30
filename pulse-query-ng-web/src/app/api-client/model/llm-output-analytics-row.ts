@@ -9,7 +9,7 @@
  */
 
 /**
- * Flattened analytics row for LLM candidate outputs.
+ * Flattened analytics row representing a single LLM candidate response or optimization iteration.
  */
 export interface LlmOutputAnalyticsRow {
   /** Property `source`. */
@@ -46,6 +46,7 @@ export namespace LlmOutputAnalyticsRow {
   export const SourceEnum = {
     Chat: 'chat',
     Ai: 'ai',
+    Optimization: 'optimization',
   } as const;
   /** Generated OpenAPI type definition. */
   export type SourceEnum = (typeof SourceEnum)[keyof typeof SourceEnum];

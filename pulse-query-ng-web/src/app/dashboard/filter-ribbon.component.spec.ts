@@ -90,14 +90,14 @@ describe('FilterRibbonComponent', () => {
     );
   });
 
-  it('should navigate when BOTH dates are set', () => {
+  it('should navigate when BOTH dates are set via onStartDateChange and onEndDateChange', () => {
     const d1 = new Date('2023-01-01');
     const d2 = new Date('2023-01-31');
 
-    component.formModel.update((m) => ({ ...m, startDate: d1, endDate: d2 }));
+    component.onStartDateChange(d1);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
 
-    // Trigger the change handler manually (as UI picker would)
-    component.onDateChange();
+    component.onEndDateChange(d2);
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       [],

@@ -49,7 +49,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.done
-import pulsequery.composeapp.generated.resources.share_dashboard
 
 /**
  * State representation for the Dashboard Sharing Dialog.

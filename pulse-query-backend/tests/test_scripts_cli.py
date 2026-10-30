@@ -3,9 +3,11 @@ Unit and integration tests for CLI utility scripts in `pulse-query-backend/scrip
 
 Covers:
 1. `scripts/extract_openapi.py`
-2. `scripts/generate_mpax_benchmarks.py`
-3. `scripts/ingest.py`
-4. `scripts/seed_templates.py`
+2. `scripts/generate_optimization_benchmarks.py`
+3. `scripts/evaluate_optimization_models.py`
+4. `scripts/train_tpu_optimization_llm.py`
+5. `scripts/ingest.py`
+6. `scripts/seed_templates.py`
 """
 
 import asyncio
@@ -21,10 +23,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.duckdb import duckdb_manager
 from app.models.template import WidgetTemplate
+from scripts import evaluate_optimization_models as eval_opt_mod
 from scripts import extract_openapi as extract_openapi_mod
-from scripts import generate_mpax_benchmarks as gen_mpax_mod
+from scripts import generate_optimization_benchmarks as gen_opt_mod
 from scripts import ingest as ingest_mod
 from scripts import seed_templates as seed_templates_mod
+from scripts import train_tpu_optimization_llm as train_tpu_mod
 
 
 def test_extract_openapi_and_main(tmp_path: Path) -> None:
@@ -42,26 +46,68 @@ def test_extract_openapi_and_main(tmp_path: Path) -> None:
   assert plain_file.exists()
 
 
-def test_generate_mpax_benchmarks_and_main(tmp_path: Path) -> None:
-  """Verify MPAX benchmark scenario generation and CLI main entrypoint."""
-  scenarios = gen_mpax_mod.generate_scenarios(count=25)
-  assert len(scenarios) == 25
-  assert all("expected_metrics" in s for s in scenarios)
-  assert any(s["complexity"] == "High" for s in scenarios)
-  assert any(s["complexity"] == "Medium" for s in scenarios)
+def test_generate_and_evaluate_optimization_benchmarks_and_tpu_pipeline(tmp_path: Path) -> None:
+  """Verify optimization benchmark generation, model evaluation, and TPU/LiteRT training scripts."""
+  scenarios = gen_opt_mod.generate_optimization_scenarios()
+  assert len(scenarios) == 7
+  assert all("expert_baseline_metrics" in s for s in scenarios)
+  assert any(s["use_case"] == "service_unit" for s in scenarios)
+  assert any(s["use_case"] == "surgical_scheduling" for s in scenarios)
+  assert any(s["use_case"] == "staffing_optimization" for s in scenarios)
 
-  custom_out = tmp_path / "sub" / "mpax.json"
-  written_path = gen_mpax_mod.main(out_file=custom_out, count=5)
+  custom_out = tmp_path / "sub" / "opt_bench.json"
+  written_path = gen_opt_mod.main(output_path=custom_out)
   assert written_path == custom_out
-  assert len(json.loads(custom_out.read_text(encoding="utf-8"))) == 5
+  assert len(json.loads(custom_out.read_text(encoding="utf-8"))) == 7
 
   with (
     patch.object(Path, "mkdir"),
     patch("builtins.open", MagicMock()),
-    patch("scripts.generate_mpax_benchmarks.json.dump"),
+    patch("scripts.generate_optimization_benchmarks.json.dump"),
   ):
-    default_path = gen_mpax_mod.main(out_file=None, count=2)
-    assert default_path.name == "mpax_benchmark_scenarios.json"
+    default_path = gen_opt_mod.main(output_path=None)
+    assert default_path.name == "optimization_benchmarks.json"
+
+  # Evaluate models on benchmarks
+  eval_out = tmp_path / "eval_results.json"
+  rows = eval_opt_mod.main(output_path=eval_out)
+  assert len(rows) > 0
+  assert eval_out.exists()
+  assert eval_opt_mod.main(output_path=None) == rows
+  assert eval_opt_mod.score_constraint_translation({}, {}) == 100.0
+  assert (
+    eval_opt_mod.score_constraint_translation(
+      {"service_constraints": [{"constraint_type": "lock_service_to_unit"}]},
+      {"service_constraints": [{"constraint_type": "unit_capacity_delta"}]},
+    )
+    == 0.0
+  )
+  assert eval_opt_mod.score_explanation_faithfulness("", [1.0]) == 0.0
+  assert eval_opt_mod.score_explanation_faithfulness("non-empty", []) == 100.0
+
+  # Error branch in evaluate_all_models_on_benchmarks (invalid institution_id)
+  bad_scen: list[gen_opt_mod.OptimizationBenchmarkDict] = [
+    {
+      "id": "bad-1",
+      "use_case": "service_unit",
+      "institution_id": "invalid_hospital_id",
+      "theme": "Err",
+      "complexity": "Low",
+      "prompt": "test",
+      "expected_constraints_json": {},
+      "expert_baseline_metrics": {},
+    }
+  ]
+  err_rows = eval_opt_mod.evaluate_all_models_on_benchmarks(scenarios=bad_scen)
+  assert all(r["composite_score"] == 0.0 for r in err_rows)
+
+  # TPU curriculum and LiteRT export
+  tpu_cfg = train_tpu_mod.main(output_dir=tmp_path)
+  assert tpu_cfg["dataset_examples"] == 7
+  assert tpu_cfg["final_loss"] < tpu_cfg["initial_loss"]
+  assert (tmp_path / "litert_odml_manifest.json").exists()
+  with patch.object(train_tpu_mod, "export_litert_manifest"):
+    assert train_tpu_mod.main(output_dir=None)["dataset_examples"] == 7
 
 
 def test_ingest_script_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

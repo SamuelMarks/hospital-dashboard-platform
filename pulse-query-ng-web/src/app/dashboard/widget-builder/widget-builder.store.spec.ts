@@ -249,24 +249,39 @@ describe('WidgetBuilderStore', () => {
     );
     expect(onSaved).toHaveBeenCalledTimes(1);
 
-    // Save local HTTP draft
+    // Save local HTTP draft with subtitle
     store.selectCustomType('HTTP');
     store.initializeDraft('d1');
-    store.vizFormModel.update((m) => ({ ...m, title: '' }));
+    store.vizFormModel.update((m) => ({ ...m, title: '', subtitle: '  HTTP caption  ' }));
+    expect(store.previewWidget()?.subtitle).toBe('HTTP caption');
     store.saveAndClose('d1', onSaved);
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
-      expect.objectContaining({ type: 'HTTP' }),
+      expect.objectContaining({ type: 'HTTP', subtitle: 'HTTP caption' }),
     );
 
-    // Save local TEXT draft
+    // Save local TEXT draft with subtitle
     store.selectCustomType('TEXT');
     store.initializeDraft('d1');
+    store.vizFormModel.update((m) => ({ ...m, subtitle: '  Markdown note  ' }));
     store.saveAndClose('d1', onSaved);
     expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
       'd1',
-      expect.objectContaining({ type: 'TEXT', visualization: 'markdown' }),
+      expect.objectContaining({
+        type: 'TEXT',
+        visualization: 'markdown',
+        subtitle: 'Markdown note',
+      }),
     );
+
+    // Template with description pre-populates subtitle, and clearing subtitle removes it from previewWidget
+    store.selectTemplate({ ...MOCK_TEMPLATE, description: '  Template desc  ' });
+    store.initializeDraft('d1');
+    expect(store.vizFormModel().subtitle).toBe('Template desc');
+    store.vizFormModel.update((m) => ({ ...m, subtitle: '' }));
+    expect(store.previewWidget()?.config['subtitle']).toBeUndefined();
+    store.vizFormModel.update((m) => ({ ...m, subtitle: 'SQL sub' }));
+    store.saveAndClose('d1', onSaved);
 
     // Error on createWidget
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);

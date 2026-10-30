@@ -43,20 +43,23 @@ enum class UiErrorKey(
     /** Failed to create widget in widget builder wizard. */
     CREATE_WIDGET("error_create_widget", "Failed to create widget"),
 
-    /** Failed to record candidate vote in chat or MPAX arena. */
+    /** Failed to record candidate vote in chat. */
     RECORD_VOTE("error_record_vote", "Failed to record vote"),
 
-    /** Failed to record MPAX candidate vote. */
-    RECORD_CANDIDATE_VOTE("error_record_candidate_vote", "Failed to record candidate vote"),
+    /** Failed to execute JAX/MPAX hospital optimization solve or iteration. */
+    OPTIMIZATION_FAILED("optimization_failed", "Optimization failed"),
 
-    /** Failed to execute MPAX Arena evaluation. */
-    EXECUTE_MPAX_ARENA("error_mpax_arena", "Failed to execute MPAX Arena evaluation"),
+    /** Failed to execute census or optimization Quick Action. */
+    QUICK_ACTION_FAILED("quick_action_failed", "Quick Action execution failed"),
 
-    /** Failed to load SQL and MPAX benchmarks. */
+    /** Failed to submit qualitative UX evaluation survey. */
+    SURVEY_SUBMISSION_FAILED("survey_submission_failed", "Failed to submit evaluation survey"),
+
+    /** Failed to hot-load on-device LiteRT model artifact. */
+    LITERT_HOT_LOAD_FAILED("litert_hot_load_failed", "Failed to hot-load LiteRT model"),
+
+    /** Failed to load SQL and optimization benchmarks. */
     LOAD_BENCHMARKS("error_load_benchmarks", "Failed to load benchmarks"),
-
-    /** Failed to run capacity simulation. */
-    SIMULATION_FAILED("simulation_failed", "Simulation failed"),
 
     /** Failed to load capacity alert rules. */
     LOAD_ALERT_RULES("error_load_alert_rules", "Failed to load alert rules"),

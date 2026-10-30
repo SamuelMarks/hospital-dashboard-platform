@@ -7,7 +7,7 @@ import { serverRoutes } from './app.routes.server';
 
 describe('serverRoutes', () => {
   it('marks protected routes as client-rendered', () => {
-    const protectedPaths = ['', 'dashboard/:id', 'chat', 'analytics', 'simulation'];
+    const protectedPaths = ['', 'dashboard/:id', 'chat', 'analytics', 'optimization'];
     protectedPaths.forEach((path) => {
       const route = serverRoutes.find((r) => r.path === path);
       expect(route).toBeTruthy();

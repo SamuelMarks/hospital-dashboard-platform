@@ -10,7 +10,7 @@
     >smart_toy</mat-icon
   >
   <div class="flex flex-col leading-tight">
-    <h1 i18n class="font-medium text-base m-0">Ask Data</h1>
+    <h2 i18n class="font-medium text-base m-0">Ask Data</h2>
     <span
       i18n
       class="text-[10px] text-secondary uppercase tracking-widest font-bold"
@@ -30,8 +30,6 @@
       [class.active]="cartCount() > 0"
       i18n-matTooltip
       matTooltip="Dragging saved queries to dashboards"
-      i18n-aria-label
-      aria-label="Cart Button"
     >
       <mat-icon aria-hidden="true" class="icon-small text-lg mr-1">{{
         cartCount() > 0 ? 'shopping_cart_checkout' : 'shopping_cart'

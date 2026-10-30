@@ -179,10 +179,10 @@ export class AdminComponent implements OnInit {
   }
 
   /** Reactive signal model backing the admin settings form. */
-  formModel = signal({
+  formModel = signal<{ openai: string; anthropic: string; models: boolean[] }>({
     openai: '',
     anthropic: '',
-    models: [] as boolean[],
+    models: [],
   });
 
   /** Signal-based form instance bound to `formModel`. */

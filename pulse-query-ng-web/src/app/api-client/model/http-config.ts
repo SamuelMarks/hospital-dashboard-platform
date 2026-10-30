@@ -29,6 +29,14 @@ export interface HttpConfig {
    */
   h?: number;
   /**
+   * Optional subtitle or caption explaining what the widget measures or displays.
+   */
+  subtitle?: string | null;
+  /**
+   * Optional description or clinical guidance for the widget.
+   */
+  description?: string | null;
+  /**
    * The fully qualified target URL.
    */
   url: string;

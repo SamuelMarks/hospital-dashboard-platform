@@ -7,7 +7,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -46,7 +47,7 @@ data class BedCapacityAlert(
      * @property value Wire string representation ("INFO", "WARNING", or "CRITICAL").
      */
     @Serializable
-    enum class Severity(val value: kotlin.String) {
+    enum class Severity(/** Wire string representation. */ val value: kotlin.String) {
         /** Informational capacity alert. */
         @SerialName(value = "INFO")
         INFO("INFO"),

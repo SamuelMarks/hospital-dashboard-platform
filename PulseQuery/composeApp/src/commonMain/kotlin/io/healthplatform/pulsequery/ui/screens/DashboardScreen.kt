@@ -47,6 +47,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -72,11 +74,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.model.VisualizationType
 import io.healthplatform.pulsequery.core.model.extractWidgetSqlConfig
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.saveFileToDevice
+import io.healthplatform.pulsequery.ui.components.DashboardGridSkeleton
 import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import io.healthplatform.pulsequery.ui.components.FilterRibbon
+import io.healthplatform.pulsequery.ui.components.WidgetSkeletonPlaceholder
 import io.healthplatform.pulsequery.ui.components.cart.QueryCartBottomSheet
 import io.healthplatform.pulsequery.ui.components.charts.BarChart
 import io.healthplatform.pulsequery.ui.components.charts.HeatmapChart
@@ -91,12 +96,14 @@ import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardShareDialog
 import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardViewModel
 import io.healthplatform.pulsequery.ui.screens.dashboard.EditWidgetDialog
 import io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState
+import io.healthplatform.pulsequery.ui.screens.dashboard.extractWidgetSubtitle
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.add_widget
+import pulsequery.composeapp.generated.resources.add_widget_prompt_subtitle
+import pulsequery.composeapp.generated.resources.add_widget_prompt_title
+import pulsequery.composeapp.generated.resources.browse_template_marketplace
 import pulsequery.composeapp.generated.resources.cancel
 import pulsequery.composeapp.generated.resources.create
 import pulsequery.composeapp.generated.resources.create_dashboard
@@ -129,6 +136,7 @@ import pulsequery.composeapp.generated.resources.retry
 import pulsequery.composeapp.generated.resources.run_natural_text_button
 import pulsequery.composeapp.generated.resources.select_dashboard
 import pulsequery.composeapp.generated.resources.share_dashboard
+import pulsequery.composeapp.generated.resources.source_custom_sql
 import pulsequery.composeapp.generated.resources.sql_input_placeholder_default
 import pulsequery.composeapp.generated.resources.undo
 
@@ -364,7 +372,12 @@ fun DashboardScreen(
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
             val currentError = uiState.errorMessage
             when {
-                uiState.isLoading -> CircularProgressIndicator()
+                uiState.isLoading -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        DashboardGridSkeleton()
+                    }
+                }
                 !isDatabaseHealthy -> {
                     val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: "Database service is experiencing storage or configuration errors."
                     DatabaseErrorCard(
@@ -418,8 +431,17 @@ fun DashboardScreen(
                         }
 
                         if (widgets.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                            ) {
                                 Text(stringResource(Res.string.dashboard_is_empty))
+                                AddWidgetPromptCard(
+                                    onAddWidget = { onAddWidget?.invoke(activeDashboard.id) }
+                                )
                             }
                         } else {
                             LazyVerticalGrid(
@@ -444,6 +466,13 @@ fun DashboardScreen(
                                             vm.executeWidgetNaturalText(widget.id, text)
                                         }
                                     )
+                                }
+                                if (widgets.size < 2) {
+                                    item {
+                                        AddWidgetPromptCard(
+                                            onAddWidget = { onAddWidget?.invoke(activeDashboard.id) }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -506,6 +535,75 @@ fun DashboardScreen(
 }
 
 /**
+ * Prominent call-to-action card rendered when a dashboard has fewer than 2 widgets (`0` or `1` widget),
+ * making it immediately obvious how to add a new widget from templates or custom SQL/Markdown.
+ *
+ * @param onAddWidget Callback invoked when the user clicks to add a widget.
+ * @param modifier Optional [Modifier] applied to the card.
+ */
+@Composable
+fun AddWidgetPromptCard(
+    onAddWidget: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val promptTitle = stringResource(Res.string.add_widget_prompt_title)
+    val promptSubtitle = stringResource(Res.string.add_widget_prompt_subtitle)
+    OutlinedCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("add_widget_cta_card")
+            .semantics { contentDescription = promptTitle },
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            Text(
+                text = promptTitle,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = promptSubtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onAddWidget,
+                    modifier = Modifier.testTag("cta_browse_templates_btn")
+                ) {
+                    Text(stringResource(Res.string.browse_template_marketplace))
+                }
+                OutlinedButton(
+                    onClick = onAddWidget,
+                    modifier = Modifier.testTag("cta_custom_sql_btn")
+                ) {
+                    Text(stringResource(Res.string.source_custom_sql))
+                }
+            }
+        }
+    }
+}
+
+/**
  * Stateless card container rendering an analytical widget with header controls for editing, reordering, and deletion,
  * plus an interactive natural-text / SQL execution bar when `allow_natural_text` is enabled.
  *
@@ -539,12 +637,13 @@ fun WidgetElevatedCard(
         renderState.processor.value
     }
     val cfgPrompt = sqlCfg.naturalTextPrompt
+    val subtitle = extractWidgetSubtitle(widget)
     var naturalInput by remember(widget.id, renderState.naturalTextPrompt, cfgPrompt) {
         mutableStateOf(renderState.naturalTextPrompt.ifBlank { cfgPrompt })
     }
 
     ElevatedCard(
-        modifier = Modifier.fillMaxWidth().height(if (allowNaturalText) 370.dp else 300.dp),
+        modifier = Modifier.fillMaxWidth().height(if (allowNaturalText) 390.dp else 330.dp),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -561,6 +660,15 @@ fun WidgetElevatedCard(
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1
                     )
+                    if (!subtitle.isNullOrBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            modifier = Modifier.testTag("widget_subtitle_${widget.id}")
+                        )
+                    }
                     if (allowNaturalText) {
                         val procLabel = if (cfgProcessor.equals("SQL", ignoreCase = true)) {
                             stringResource(Res.string.processor_sql_no_model)
@@ -657,6 +765,11 @@ fun WidgetContent(
 
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when {
+            renderState.isExecutingNaturalText -> {
+                WidgetSkeletonPlaceholder(
+                    visualization = VisualizationType.fromWire(widget.visualization)
+                )
+            }
             errText != null -> {
                 val errorTxt = stringResource(Res.string.error, errText)
                 Text(text = errorTxt, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

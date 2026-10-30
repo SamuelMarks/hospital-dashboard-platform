@@ -1,0 +1,8 @@
+{
+  "model_id": "litert-medgemma-4b-int4",
+  "quantization": "INT4_AWQ",
+  "target_platforms": ["android_arm64", "chrome_wasm_webgpu", "jvm_desktop"],
+  "artifact_filename": "medgemma_4b_mpax_int4.litertlm",
+  "sha256_checksum": "0bc4e6f4d1acfd6a9dd0730d99a04209cd84de2a2065ce876531fb11f5b2559e",
+  "hot_load_compatible": true
+}

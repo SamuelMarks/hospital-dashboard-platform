@@ -1,0 +1,579 @@
+<div
+  class="optimization-workspace"
+  role="region"
+  i18n-aria-label
+  aria-label="Hospital Operations Optimization Copilot"
+>
+  <!-- Top Header & Controls -->
+  <header class="workspace-header">
+    <div class="header-titles">
+      <span i18n class="eyebrow-badge">LLM + JAX + MPAX Self-Service Optimization</span>
+      <h1 i18n data-testid="optimization-heading">Hospital Operations Optimization Copilot</h1>
+      <p i18n class="subtitle">
+        Democratizing access to mathematical programming across Service-Unit Assignments, Surgical
+        Scheduling (BEDS &amp; POINTS), and Physician &amp; Nurse Staffing.
+      </p>
+    </div>
+
+    <div class="header-selectors">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="selector-field">
+        <mat-label i18n>Partner Institution</mat-label>
+        <mat-select
+          [value]="store.selectedInstitutionId()"
+          (selectionChange)="onSelectInstitution($event.value)"
+          data-testid="select-institution"
+          i18n-aria-label
+          aria-label="Partner hospital institution"
+        >
+          @for (inst of store.institutions(); track inst.institution_id) {
+            <mat-option i18n [value]="inst.institution_id">
+              {{ inst.short_name }} ({{ inst.total_licensed_beds }} beds)
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="selector-field">
+        <mat-label i18n>Optimization Agent / Model</mat-label>
+        <mat-select
+          [value]="store.selectedModelId()"
+          (selectionChange)="onSelectModel($event.value)"
+          data-testid="select-model"
+          i18n-aria-label
+          aria-label="Optimization LLM or LiteRT model"
+        >
+          @for (m of store.models(); track m.model_id) {
+            <mat-option [value]="m.model_id">{{ m.display_name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button
+        i18n
+        type="button"
+        mat-stroked-button
+        (click)="toggleSurveyPanel()"
+        data-testid="btn-toggle-survey"
+      >
+        <mat-icon aria-hidden="true">rate_review</mat-icon>
+        <span>Evaluate Workflow UX</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Three Core Clinical Use Case Selector Pills -->
+  <nav
+    class="use-case-tabs"
+    role="tablist"
+    i18n-aria-label
+    aria-label="Clinical Optimization Use Cases"
+  >
+    <button
+      type="button"
+      role="tab"
+      class="use-case-pill"
+      [class.active]="store.selectedUseCase() === 'service_unit'"
+      [attr.aria-selected]="store.selectedUseCase() === 'service_unit'"
+      (click)="onSelectUseCase('service_unit')"
+      data-testid="tab-use-case-service-unit"
+    >
+      <strong i18n>Use Case 1: Service-Unit Assignments</strong>
+      <span i18n>Minimize off-service days, transfer diverts &amp; propensity-matched LOS</span>
+    </button>
+
+    <button
+      type="button"
+      role="tab"
+      class="use-case-pill"
+      [class.active]="store.selectedUseCase() === 'surgical_scheduling'"
+      [attr.aria-selected]="store.selectedUseCase() === 'surgical_scheduling'"
+      (click)="onSelectUseCase('surgical_scheduling')"
+      data-testid="tab-use-case-surgical"
+    >
+      <strong i18n>Use Case 2: Surgical Scheduling (BEDS &amp; POINTS)</strong>
+      <span i18n>Smooth post-operative bed demand &amp; prevent short-notice cancellations</span>
+    </button>
+
+    <button
+      type="button"
+      role="tab"
+      class="use-case-pill"
+      [class.active]="store.selectedUseCase() === 'staffing_optimization'"
+      [attr.aria-selected]="store.selectedUseCase() === 'staffing_optimization'"
+      (click)="onSelectUseCase('staffing_optimization')"
+      data-testid="tab-use-case-staffing"
+    >
+      <strong i18n>Use Case 3: Physician &amp; Nurse Scheduling</strong>
+      <span i18n>Reduce unexpected RN overtime, A-days &amp; staffing cost per patient day</span>
+    </button>
+  </nav>
+
+  <!-- Alpha Bed-Use Tool Hero Card: "What I Can Do" & "Quick Actions" + Conversational Bar -->
+  <section class="alpha-copilot-card" aria-labelledby="what-i-can-do-heading">
+    <h2 i18n id="what-i-can-do-heading" class="alpha-section-heading">What I Can Do</h2>
+    <p i18n class="alpha-intro">
+      I can help you analyze this patient census data and iteratively optimize hospital operations:
+    </p>
+    <ul class="alpha-capabilities-list">
+      <li i18n>
+        <strong>Patient days by unit</strong> - How many patient days each hospital unit had
+      </li>
+      <li i18n>
+        <strong>Patient days by service</strong> - How many patient days each medical service had
+      </li>
+      <li i18n>
+        <strong>Combined breakdowns</strong> - Detailed analysis by both unit and service
+      </li>
+      <li i18n>
+        <strong>Specific queries &amp; MPAX constraints</strong> - Iteratively add or modify bed
+        capacities, service-unit locks, BEDS/POINTS blocks, and nurse staffing rules
+      </li>
+    </ul>
+
+    <h2 i18n id="quick-actions-heading" class="alpha-section-heading">Quick Actions</h2>
+    <p i18n class="alpha-intro">
+      Use the buttons below for common analyses, or ask me any question about your data:
+    </p>
+
+    <div class="quick-actions-grid" role="group" aria-labelledby="quick-actions-heading">
+      @for (qa of store.visibleQuickActions(); track qa.action_id) {
+        <button
+          type="button"
+          class="quick-action-chip"
+          (click)="onExecuteQuickAction(qa.action_id)"
+          [disabled]="store.isLoading()"
+          [attr.data-testid]="'quick-action-' + qa.action_id"
+        >
+          <span class="chip-icon" aria-hidden="true">{{ qa.icon }}</span>
+          <span class="chip-label">{{ qa.label }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- Conversational Prompt Input Bar (Matching Alpha Screenshot) -->
+    <form class="alpha-chat-composer" [formRoot]="promptForm" (submit)="onSubmitPrompt()">
+      <label for="optimization-prompt-input" class="sr-only" i18n>
+        Natural language optimization prompt
+      </label>
+      <textarea
+        id="optimization-prompt-input"
+        rows="2"
+        class="alpha-chat-textarea"
+        [formField]="promptForm.prompt"
+        placeholder="Type your message here..."
+        i18n-placeholder
+        data-testid="input-optimization-prompt"
+      ></textarea>
+      <div class="alpha-composer-actions">
+        <span i18n class="composer-context-badge">
+          Active Model: <strong>{{ store.selectedModelId() }}</strong>
+        </span>
+        <button
+          type="submit"
+          class="alpha-send-btn"
+          [disabled]="store.isLoading() || promptForm().invalid()"
+          i18n-aria-label
+          aria-label="Submit optimization prompt"
+          data-testid="btn-submit-optimization"
+        >
+          <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+        </button>
+      </div>
+    </form>
+    <p i18n class="alpha-disclaimer">LLMs can make mistakes. Check important info.</p>
+
+    @if (store.followUpSuggestions().length > 0) {
+      <div
+        class="suggestions-bar"
+        role="region"
+        i18n-aria-label
+        aria-label="Suggested follow-up iterations"
+      >
+        <span i18n class="suggestions-label">Try next iteration:</span>
+        @for (suggestion of store.followUpSuggestions(); track suggestion) {
+          <button
+            type="button"
+            class="suggestion-pill"
+            (click)="onApplySuggestion(suggestion)"
+            data-testid="btn-followup-suggestion"
+          >
+            {{ suggestion }}
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  <!-- Loading Indicator -->
+  @if (store.isLoading()) {
+    <div class="loading-box" role="status" aria-live="polite" data-testid="optimization-loading">
+      <mat-progress-bar
+        mode="indeterminate"
+        i18n-aria-label
+        aria-label="Running JAX and MPAX optimization"
+      ></mat-progress-bar>
+      <p i18n>
+        Solving mathematical program in JAX &amp; MPAX and running Discrete Event Simulation...
+      </p>
+    </div>
+  }
+
+  <!-- Error Alert -->
+  @if (store.error()) {
+    <div class="error-banner" role="alert" data-testid="optimization-error">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ store.error() }}</span>
+    </div>
+  }
+
+  <!-- Qualitative User Experience Survey Drawer/Card (Metric 2 of Technical Addendum) -->
+  @if (showSurveyPanel()) {
+    <mat-card
+      class="survey-card"
+      role="region"
+      i18n-aria-label
+      aria-label="Clinical User Experience Evaluation Survey"
+      data-testid="survey-panel"
+    >
+      <h2 i18n class="section-title">Qualitative &amp; Workflow Comparison Survey</h2>
+      <p i18n class="section-subtitle">
+        Help us evaluate this self-service LLM-MPAX interface against (A) the manual
+        graduate-student email process and (B) existing hospital workflow technology.
+      </p>
+
+      <div class="survey-grid">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label i18n>Clinical / Operational Role</mat-label>
+          <mat-select
+            [value]="surveyRole()"
+            (selectionChange)="surveyRole.set($event.value)"
+            data-testid="select-survey-role"
+          >
+            <mat-option value="Physician" i18n>Physician / Surgeon</mat-option>
+            <mat-option value="Nurse Leader" i18n>Nurse Manager / Staffing Leader</mat-option>
+            <mat-option value="Operations Executive" i18n>Hospital Operations Executive</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label i18n>Vs. Manual Graduate-Student Email Process (1-5)</mat-label>
+          <mat-select
+            [value]="surveyScoreManual()"
+            (selectionChange)="surveyScoreManual.set($event.value)"
+            data-testid="select-score-manual"
+          >
+            @for (score of [5, 4, 3, 2, 1]; track score) {
+              <mat-option [value]="score">{{ score }} / 5</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label i18n>Vs. Existing Hospital Workflow Tech (1-5)</mat-label>
+          <mat-select
+            [value]="surveyScoreTech()"
+            (selectionChange)="surveyScoreTech.set($event.value)"
+            data-testid="select-score-tech"
+          >
+            @for (score of [5, 4, 3, 2, 1]; track score) {
+              <mat-option [value]="score">{{ score }} / 5</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label i18n>Result Transparency &amp; Interpretability (1-5)</mat-label>
+          <mat-select
+            [value]="surveyScoreInterpretability()"
+            (selectionChange)="surveyScoreInterpretability.set($event.value)"
+            data-testid="select-score-interp"
+          >
+            @for (score of [5, 4, 3, 2, 1]; track score) {
+              <mat-option [value]="score">{{ score }} / 5</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+        <mat-label i18n>Qualitative Feedback</mat-label>
+        <input
+          matInput
+          [value]="surveyFeedback()"
+          (input)="surveyFeedback.set(getEventValue($event))"
+          placeholder="How did iterative constraint refinement compare to emailing graduate students?"
+          i18n-placeholder
+          data-testid="input-survey-feedback"
+        />
+      </mat-form-field>
+
+      <div class="survey-actions">
+        <button
+          i18n
+          type="button"
+          mat-flat-button
+          (click)="onSubmitSurvey()"
+          [disabled]="store.isSubmittingSurvey()"
+          data-testid="btn-submit-survey"
+        >
+          Submit Evaluation Survey
+        </button>
+        @if (store.surveySuccessMessage()) {
+          <span class="survey-success" role="status" data-testid="survey-success-msg">
+            {{ store.surveySuccessMessage() }}
+          </span>
+        }
+      </div>
+    </mat-card>
+  }
+
+  <!-- Quick Action Tabular Report Output (When a Census Quick Action is Clicked) -->
+  @if (store.quickActionResult(); as qaRes) {
+    <mat-card
+      class="results-card"
+      role="region"
+      [attr.aria-label]="qaRes.title"
+      data-testid="quick-action-result-card"
+    >
+      <div class="card-header-row">
+        <h2 class="section-title">{{ qaRes.title }}</h2>
+        <span i18n class="solver-pill">Quick Action Report</span>
+      </div>
+      <p class="clinical-narrative">{{ qaRes.summary_markdown }}</p>
+
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              @for (col of qaRes.columns; track col) {
+                <th scope="col">{{ col }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of qaRes.rows; track $index) {
+              <tr>
+                @for (col of qaRes.columns; track col) {
+                  <td>{{ row[col] }}</td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </mat-card>
+  }
+
+  <!-- Latest Conversational Copilot Explanation -->
+  @if (store.latestExplanation(); as explanation) {
+    <mat-card
+      class="explanation-card"
+      role="region"
+      i18n-aria-label
+      aria-label="Copilot Clinical Interpretation"
+      data-testid="copilot-explanation-card"
+    >
+      <div class="card-header-row">
+        <h2 i18n class="section-title">Interpretable Clinical Briefing</h2>
+        <span class="solver-pill">{{ store.selectedModelId() }}</span>
+      </div>
+      <pre class="explanation-pre">{{ explanation }}</pre>
+    </mat-card>
+  }
+
+  <!-- Quantitative JAX Discrete Event Simulation (DES) Expert Baseline Comparison -->
+  @if (store.latestSolution(); as sol) {
+    <section
+      class="des-baseline-section"
+      aria-labelledby="des-baseline-heading"
+      data-testid="des-baseline-section"
+    >
+      <div class="section-header-bar">
+        <div>
+          <h2 i18n id="des-baseline-heading" class="section-title">
+            JAX Discrete Event Simulation (DES) — Expert Baseline Comparison
+          </h2>
+          <p i18n class="section-subtitle">
+            Evaluated across {{ sol.des_evaluation.replications }} Monte Carlo trajectories over a
+            {{ sol.des_evaluation.horizon_days }}-day horizon · Solver status:
+            <strong>{{ sol.solver_status }}</strong> ({{ sol.solve_time_ms }} ms)
+          </p>
+        </div>
+        <span i18n class="expert-gap-badge" data-testid="expert-gap-badge">
+          Expert Baseline Optimality Gap: {{ sol.des_evaluation.overall_expert_gap_pct }}%
+        </span>
+      </div>
+
+      <div class="metrics-kpi-grid">
+        @for (m of sol.des_evaluation.metrics; track m.metric_key) {
+          <mat-card class="kpi-card" [attr.data-testid]="'metric-card-' + m.metric_key">
+            <h3 class="kpi-title">{{ m.label }}</h3>
+            <div class="kpi-values-row">
+              <div class="kpi-col">
+                <span i18n class="kpi-sublabel">Manual Historical</span>
+                <strong class="kpi-num muted">{{ m.manual_historical_value }}</strong>
+              </div>
+              <div class="kpi-col">
+                <span i18n class="kpi-sublabel">Expert Baseline</span>
+                <strong class="kpi-num">{{ m.expert_baseline_value }}</strong>
+              </div>
+              <div class="kpi-col highlight">
+                <span i18n class="kpi-sublabel">Your LLM+MPAX Policy</span>
+                <strong class="kpi-num primary">{{ m.llm_mpax_value }}</strong>
+              </div>
+            </div>
+            <div class="kpi-footer">
+              <span i18n class="improvement-tag">
+                {{ m.improvement_vs_manual_pct }}% improvement vs. manual ({{ m.unit_label }})
+              </span>
+              <span i18n class="attainment-tag">
+                {{ m.expert_attainment_pct }}% of expert gain captured
+              </span>
+            </div>
+          </mat-card>
+        }
+      </div>
+
+      <!-- Use Case 1 Table: Service-Unit Assignments -->
+      @if (sol.use_case === 'service_unit' && (sol.service_unit_assignments?.length ?? 0) > 0) {
+        <mat-card class="results-card" data-testid="table-service-unit-assignments">
+          <h3 i18n class="section-title">Solved Service × Unit Bed Allocations</h3>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col" i18n>Clinical Service</th>
+                  <th scope="col" i18n>Hospital Unit</th>
+                  <th scope="col" i18n>Placement Type</th>
+                  <th scope="col" i18n>Historical Days</th>
+                  <th scope="col" i18n>Expert Baseline Days</th>
+                  <th scope="col" i18n>MPAX Optimized Days</th>
+                  <th scope="col" i18n>Allocated Beds</th>
+                  <th scope="col" i18n>Delta Days</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of sol.service_unit_assignments; track row.service + row.unit) {
+                  <tr>
+                    <td>
+                      <strong>{{ row.service }}</strong>
+                    </td>
+                    <td>{{ row.unit }}</td>
+                    <td>
+                      @if (row.is_home_unit) {
+                        <span i18n class="badge-on-service">On-Service Home Unit</span>
+                      } @else {
+                        <span i18n class="badge-off-service">Off-Service</span>
+                      }
+                    </td>
+                    <td>{{ row.baseline_patient_days }}</td>
+                    <td>{{ row.expert_baseline_patient_days }}</td>
+                    <td>
+                      <strong>{{ row.optimized_patient_days }}</strong>
+                    </td>
+                    <td>{{ row.allocated_beds }}</td>
+                    <td>{{ row.delta_patient_days > 0 ? '+' : '' }}{{ row.delta_patient_days }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </mat-card>
+      }
+
+      <!-- Use Case 2 Table: Surgical Scheduling (BEDS & POINTS) -->
+      @if (
+        sol.use_case === 'surgical_scheduling' &&
+        (sol.surgical_schedule_assignments?.length ?? 0) > 0
+      ) {
+        <mat-card class="results-card" data-testid="table-surgical-schedule">
+          <h3 i18n class="section-title">Solved BEDS &amp; POINTS Master Surgical Schedule</h3>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col" i18n>Program</th>
+                  <th scope="col" i18n>Surgical Procedure Cohort</th>
+                  <th scope="col" i18n>Recovery Unit</th>
+                  <th scope="col" i18n>Operating Day</th>
+                  <th scope="col" i18n>Historical Cases</th>
+                  <th scope="col" i18n>Smoothed Cases</th>
+                  <th scope="col" i18n>Expected Post-Op LOS (Days)</th>
+                  <th scope="col" i18n>Expected Recovery Occupancy</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (
+                  row of sol.surgical_schedule_assignments;
+                  track row.procedure_group + row.day_of_week
+                ) {
+                  <tr>
+                    <td>
+                      <span class="badge-on-service">{{ row.program }}</span>
+                    </td>
+                    <td>
+                      <strong>{{ row.procedure_group }}</strong>
+                    </td>
+                    <td>{{ row.recovery_unit }}</td>
+                    <td>{{ row.day_of_week }}</td>
+                    <td>{{ row.baseline_cases }}</td>
+                    <td>
+                      <strong>{{ row.optimized_cases }}</strong>
+                    </td>
+                    <td>{{ row.expected_postop_los_days }}</td>
+                    <td i18n>{{ row.expected_unit_occupancy }} / {{ row.unit_capacity }} beds</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </mat-card>
+      }
+
+      <!-- Use Case 3 Table: Physician & Nurse Staffing -->
+      @if (
+        sol.use_case === 'staffing_optimization' && (sol.staffing_assignments?.length ?? 0) > 0
+      ) {
+        <mat-card class="results-card" data-testid="table-staffing-assignments">
+          <h3 i18n class="section-title">
+            Solved Cross-Unit Physician &amp; Nurse Seasonal Schedule
+          </h3>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th scope="col" i18n>Unit</th>
+                  <th scope="col" i18n>Seasonal Volume Window</th>
+                  <th scope="col" i18n>Core RNs / Day</th>
+                  <th scope="col" i18n>Float Pool RNs</th>
+                  <th scope="col" i18n>Physicians</th>
+                  <th scope="col" i18n>Unexpected Overtime (Shifts/Wk)</th>
+                  <th scope="col" i18n>Admin A-Days (Shifts/Wk)</th>
+                  <th scope="col" i18n>RN Cost / Patient-Day</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of sol.staffing_assignments; track row.unit + row.season_window) {
+                  <tr>
+                    <td>
+                      <strong>{{ row.unit }}</strong>
+                    </td>
+                    <td>{{ row.season_window }}</td>
+                    <td>{{ row.scheduled_core_rns }}</td>
+                    <td>{{ row.scheduled_float_rns }}</td>
+                    <td>{{ row.scheduled_physicians }}</td>
+                    <td>{{ row.unexpected_overtime_shifts }}</td>
+                    <td>{{ row.administrative_a_days }}</td>
+                    <td>
+                      <strong>${{ row.staffing_cost_per_patient_day }}</strong>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </mat-card>
+      }
+    </section>
+  }
+</div>

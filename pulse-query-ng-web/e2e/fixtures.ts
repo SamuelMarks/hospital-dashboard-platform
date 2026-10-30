@@ -39,6 +39,15 @@ export const test = base.extend<PulseFixtures>({
       );
     }
 
+    // Prevent the 500ms onboarding overlay from blocking clicks unless a test explicitly resets it.
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem('pulse_onboarding_complete', 'true');
+      } catch {
+        // Ignore storage errors in restricted contexts
+      }
+    });
+
     // 2. Perform UI Login
     await page.goto('/login');
 

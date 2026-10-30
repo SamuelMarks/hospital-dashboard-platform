@@ -782,5 +782,64 @@ class DashboardViewModelTest {
         vm.executeWidgetNaturalText("w-unmapped", "Show ICU")
         kotlinx.coroutines.delay(50)
         assertEquals("LLM error", assertNotNull(vm.state.value.widgetDataMap["w-unmapped"]).errorMessage)
+
+        // Verify extractWidgetSubtitle branches
+        val wTopSub = WidgetResponse(
+            title = "T",
+            type = "SQL",
+            visualization = "table",
+            config = JsonObject(emptyMap()),
+            id = "w1",
+            dashboardId = "d1",
+            subtitle = "  Top Sub  "
+        )
+        assertEquals("Top Sub", extractWidgetSubtitle(wTopSub))
+
+        val wCfgSub = WidgetResponse(
+            title = "T",
+            type = "SQL",
+            visualization = "table",
+            config = buildJsonObject { put("subtitle", JsonPrimitive("  Config Sub  ")) },
+            id = "w2",
+            dashboardId = "d1",
+            subtitle = "   "
+        )
+        assertEquals("Config Sub", extractWidgetSubtitle(wCfgSub))
+
+        val wCfgDesc = WidgetResponse(
+            title = "T",
+            type = "SQL",
+            visualization = "table",
+            config = buildJsonObject {
+                put("subtitle", JsonPrimitive("   "))
+                put("description", JsonPrimitive("  Desc Sub  "))
+            },
+            id = "w3",
+            dashboardId = "d1",
+            subtitle = null
+        )
+        assertEquals("Desc Sub", extractWidgetSubtitle(wCfgDesc))
+
+        val wEmptySub = WidgetResponse(
+            title = "T",
+            type = "SQL",
+            visualization = "table",
+            config = buildJsonObject { put("description", JsonPrimitive("   ")) },
+            id = "w4",
+            dashboardId = "d1",
+            subtitle = null
+        )
+        assertNull(extractWidgetSubtitle(wEmptySub))
+
+        val wMissingAll = WidgetResponse(
+            title = "T",
+            type = "SQL",
+            visualization = "table",
+            config = JsonObject(emptyMap()),
+            id = "w5",
+            dashboardId = "d1",
+            subtitle = null
+        )
+        assertNull(extractWidgetSubtitle(wMissingAll))
     }
 }

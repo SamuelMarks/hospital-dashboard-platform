@@ -108,8 +108,12 @@ The backend is built on **FastAPI** using Python 3.12+. It is designed around th
     - **SQL Widgets:** Validated via `sqlglot` -> Executed against DuckDB.
     - **HTTP Widgets:** Executed locally via `httpx` (proxy behavior).
 
-3.  **Optimization Bridge (MPAX):**
-    The system includes a bridge to **MPAX**, a JAX-based linear programming solver. This allows the backend to perform "What-If" capacity planning by pulling live demand from DuckDB and solving allocation constraints in memory.
+3.  **Hospital Operations Optimization Copilot (`app.services.optimization`):**
+    The system includes a full **LLM + JAX + MPAX** mathematical optimization and **Discrete Event Simulation (DES)** engine supporting three clinical use cases:
+    - **Use Case 1 (`service_unit_solver.py`):** Service-Unit Assignments & Bed-Use Optimization with Propensity-Matched LOS estimation and one-click census Quick Actions.
+    - **Use Case 2 (`surgical_scheduling_solver.py`):** Surgical Scheduling (BEDS non-cardiovascular & POINTS cardiovascular) post-operative bed demand smoothing.
+    - **Use Case 3 (`staffing_scheduling_solver.py`):** Cross-unit Physician & Nurse shift optimization across weekday and monthly seasonality.
+    - **Expert Baseline Engine (`des_baseline_engine.py`):** Vectorized JAX Discrete Event Simulation comparing manual rules, expert baselines, and LLM+MPAX policies across 7 partner institutions.
 
 ### Data Ingestion Pipeline
 

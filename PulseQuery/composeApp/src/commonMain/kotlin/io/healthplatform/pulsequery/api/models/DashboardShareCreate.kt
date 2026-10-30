@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for sharing a dashboard with another user by email.
  *
- * @param userEmail
- * @param permissionLevel
+ * @property userEmail * @param permissionLevel
  */
 @Serializable
 data class DashboardShareCreate(

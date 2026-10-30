@@ -9,5 +9,6 @@ describe('environment', () => {
     expect(environment.production).toBe(false);
     expect(environment.apiUrl).toBe('');
     expect(environment.registrationEnabled).toBe(true);
+    expect(environment.buildTimestampUtc).toMatch(/UTC$/);
   });
 });

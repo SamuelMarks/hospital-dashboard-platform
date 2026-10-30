@@ -15,6 +15,8 @@ import { HttpConfig } from './http-config';
 export interface WidgetCreateHttp {
   /** Property `title`. */
   title: string;
+  /** Optional subtitle or caption explaining what the widget measures or displays. */
+  subtitle?: string | null;
   /** Property `type`. */
   type: WidgetCreateHttp.TypeEnum;
   /**

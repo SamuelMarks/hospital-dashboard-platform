@@ -7,7 +7,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -38,7 +39,7 @@ data class WidgetCreateHttp(
      * @property value Wire string representation ("HTTP").
      */
     @Serializable
-    enum class Type(val value: kotlin.String) {
+    enum class Type(/** Wire string representation. */ val value: kotlin.String) {
         /** HTTP widget type discriminator. */
         @SerialName(value = "HTTP")
         HTTP("HTTP")

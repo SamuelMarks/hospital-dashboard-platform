@@ -56,37 +56,36 @@ test.describe("Template Wizard & Dynamic Parameter Form Flow", () => {
     await wizardBtn.click();
 
     // Assert dialog opened
-    const dialogTitle = page
+    const dialog = page.locator("mat-dialog-container");
+    const dialogTitle = dialog
       .getByRole("heading", {
         name: /Add Widget from Marketplace|Template/i,
       })
       .first();
     await expect(dialogTitle).toBeVisible({ timeout: 10000 });
 
-    // Select first marketplace template card
-    const templateCard = page
-      .getByRole("button", { name: /Select template/i })
-      .first();
+    // Select first marketplace template card inside the dialog
+    const templateCard = dialog.locator(".template-card").first();
     await expect(templateCard).toBeVisible({ timeout: 10000 });
-    await templateCard.click({ force: true });
+    await templateCard.click();
 
     // Step 1 -> Step 2: Advance to configure parameters
-    const nextConfigureBtn = page.getByRole("button", {
+    const nextConfigureBtn = dialog.getByRole("button", {
       name: /Next: Configure/i,
     });
-    await expect(nextConfigureBtn).toBeVisible({ timeout: 10000 });
+    await expect(nextConfigureBtn).toBeEnabled({ timeout: 10000 });
     await nextConfigureBtn.click();
 
     // Step 2: Configure / Preview
-    const previewBtn = page.getByRole("button", {
+    const previewBtn = dialog.getByRole("button", {
       name: /Run & Preview|Next: Visualize/i,
     });
-    await expect(previewBtn).toBeVisible({ timeout: 10000 });
+    await expect(previewBtn).toBeEnabled({ timeout: 10000 });
     await previewBtn.click();
 
     // Step 3: Save Widget to dashboard
-    const saveWidgetBtn = page.getByRole("button", { name: /Save Widget/i });
-    await expect(saveWidgetBtn).toBeVisible({ timeout: 10000 });
+    const saveWidgetBtn = dialog.getByRole("button", { name: /Save Widget/i });
+    await expect(saveWidgetBtn).toBeEnabled({ timeout: 15000 });
     await saveWidgetBtn.click();
 
     // Assert widget card appears on dashboard

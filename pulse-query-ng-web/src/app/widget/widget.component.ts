@@ -122,26 +122,46 @@ const DEFAULT_WIDGET: WidgetResponse = {
         padding: 12px 16px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         border-bottom: 1px solid var(--sys-surface-border);
         min-height: 48px;
+        gap: 8px;
       }
 
       .title-area {
         flex: 1;
         min-width: 0;
         display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+      }
+      .title-row {
+        display: flex;
         align-items: center;
         gap: 8px;
+        width: 100%;
+        min-width: 0;
       }
       .title-text {
         font-size: 0.875rem;
-        font-weight: 500;
+        font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+      .subtitle-text {
+        font-size: 0.75rem;
+        line-height: 1.35;
+        color: var(--sys-text-secondary);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
       }
 
       .widget-chip {
@@ -307,11 +327,30 @@ export class WidgetComponent {
     return (this.widgetInput().visualization || 'table').toLowerCase();
   });
 
+  /** Resolves the widget's subtitle or caption from top-level `subtitle` or `config` metadata. */
+  readonly widgetSubtitle = computed<string | null>(() => {
+    const w = this.widgetInput();
+    if (typeof w.subtitle === 'string' && w.subtitle.trim().length > 0) {
+      return w.subtitle.trim();
+    }
+    const cfg = w.config;
+    const rawSub = cfg?.['subtitle'];
+    if (typeof rawSub === 'string' && rawSub.trim().length > 0) {
+      return rawSub.trim();
+    }
+    const rawDesc = cfg?.['description'];
+    if (typeof rawDesc === 'string' && rawDesc.trim().length > 0) {
+      return rawDesc.trim();
+    }
+    return null;
+  });
+
   /** Skeleton loader variant matching the widget's visualization type. */
   readonly skeletonType = computed<SkeletonVariant>(() => {
     const viz = this.visualizationType();
     if (viz.includes('chart') || viz.includes('graph')) return 'chart';
     if (viz === 'pie') return 'pie';
+    if (viz === 'heatmap') return 'heatmap';
     if (viz.includes('metric') || viz.includes('scalar')) return 'metric';
     if (viz === 'table') return 'table';
     return 'card';
@@ -403,15 +442,15 @@ export class WidgetComponent {
     this.connectionService.openDiagnosticsDialog();
   }
 
-  /** Navigates to the scenario simulation page pre-populated with this widget's SQL query or template ID. */
+  /** Navigates to the optimization workspace pre-populated with this widget's SQL query or template ID. */
   simulateWidget(): void {
     const widget = this.widgetInput();
     if (widget.type === 'SQL' && widget.config['query']) {
-      this.router.navigate(['/simulation'], {
-        queryParams: { sql: String(widget.config['query']) },
+      this.router.navigate(['/optimization'], {
+        queryParams: { prompt: String(widget.config['query']) },
       });
     } else if (widget.type === 'TEMPLATE' && widget.config['template_id']) {
-      this.router.navigate(['/simulation'], {
+      this.router.navigate(['/optimization'], {
         queryParams: { templateId: String(widget.config['template_id']) },
       });
     }
@@ -425,16 +464,19 @@ export class WidgetComponent {
   }
 
   /**
-   * Handles the Escape key press to clear widget focus or emit delete in edit mode.
+   * Handles the Escape key press to clear widget fullscreen focus when no higher-layer CDK dialog/menu overlay is open.
    *
    * @param event - Keyboard event triggered by pressing Escape.
    */
   onEscape(event: Event): void {
-    event.stopPropagation();
-    if (this.isFocused()) {
+    if (
+      this.isFocused() &&
+      !this.document.querySelector(
+        '.cdk-overlay-container .mat-mdc-dialog-container, .cdk-overlay-container [role="dialog"], .cdk-overlay-container [role="menu"], .cdk-overlay-container [role="listbox"]',
+      )
+    ) {
+      event.stopPropagation();
       this.store.setFocusedWidget(null);
-    } else if (this.isEditMode()) {
-      this.delete.emit();
     }
   }
 

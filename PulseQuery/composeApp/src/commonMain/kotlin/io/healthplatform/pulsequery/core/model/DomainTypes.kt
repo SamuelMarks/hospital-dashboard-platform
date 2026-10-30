@@ -268,82 +268,119 @@ enum class WidgetHttpMethod(val wireValue: String) {
 }
 
 /**
- * Enumerated MPAX Arena competitive evaluation modes.
+ * Strongly typed wrapper for an iterative hospital optimization session UUID identifier.
  *
- * @property wireValue Backend wire string.
+ * @property value Underlying session UUID string.
  */
+@JvmInline
 @Serializable
-enum class MpaxArenaEvaluationMode(val wireValue: String) {
-    /** Evaluate candidate critic analysis of mathematical optimization outputs. */
-    @SerialName("critic")
-    CRITIC("critic"),
+value class OptimizationSessionId(val value: String)
 
-    /** Translate natural-language clinical constraints into linear programming inputs. */
-    @SerialName("translator")
-    TRANSLATOR("translator"),
+/**
+ * Strongly typed wrapper for a partner hospital institution profile identifier.
+ *
+ * @property value Underlying institution identifier slug (e.g., `"stanford_childrens"`).
+ */
+@JvmInline
+@Serializable
+value class InstitutionId(val value: String)
 
-    /** Evaluate linear programming constraint formulation and overflow penalties. */
-    @SerialName("constraints")
-    CONSTRAINTS("constraints"),
+/**
+ * Strongly typed wrapper for a deterministic Quick Action identifier.
+ *
+ * @property value Underlying Quick Action slug (e.g., `"patient_days_by_unit"`).
+ */
+@JvmInline
+@Serializable
+value class QuickActionId(val value: String)
 
-    /** Compare SQL generation vs MPAX mathematical optimization. */
-    @SerialName("sql_vs_mpax")
-    SQL_VS_MPAX("sql_vs_mpax"),
-
-    /** Judge mode scoring candidate allocations against MPAX ground truth. */
-    @SerialName("judge")
-    JUDGE("judge");
-
+/**
+ * Strongly typed wrapper for a 1-5 Likert survey score in the qualitative UX evaluation.
+ *
+ * @property value Underlying integer score clamped to `[1, 5]`.
+ */
+@JvmInline
+@Serializable
+value class SurveyScore(val value: Int) {
     /**
-     * Companion utilities for resolving [MpaxArenaEvaluationMode] from wire strings.
+     * Companion utilities for clamping [SurveyScore] values safely without exceptions.
      */
     companion object {
         /**
-         * Resolves an [MpaxArenaEvaluationMode] from [raw], defaulting to [SQL_VS_MPAX].
+         * Clamps [raw] into `[1, 5]` and returns a [SurveyScore].
          *
-         * @param raw Raw wire string.
-         * @return Matching [MpaxArenaEvaluationMode].
+         * @param raw Raw integer rating.
+         * @return Clamped [SurveyScore].
          */
-        fun fromWire(raw: String): MpaxArenaEvaluationMode =
-            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: SQL_VS_MPAX
+        fun clamped(raw: Int): SurveyScore = SurveyScore(raw.coerceIn(1, 5))
     }
 }
 
 /**
- * Enumerated optimization solver outcome statuses for capacity simulations.
+ * Enumerated clinical operational optimization use cases from `MPAX_PROJECT_PLAN.md`.
+ *
+ * @property wireValue Backend wire representation.
+ */
+@Serializable
+enum class OptimizationUseCaseType(val wireValue: String) {
+    /** Use Case 1: LLM-Enabled Service-Unit Assignments & Bed-Use Optimization. */
+    @SerialName("service_unit")
+    SERVICE_UNIT("service_unit"),
+
+    /** Use Case 2: LLM-Enabled Surgical Scheduling (BEDS & POINTS Post-Op Smoothing). */
+    @SerialName("surgical_scheduling")
+    SURGICAL_SCHEDULING("surgical_scheduling"),
+
+    /** Use Case 3: LLM-Enabled Physician & Nurse Scheduling Optimization. */
+    @SerialName("staffing_optimization")
+    STAFFING_OPTIMIZATION("staffing_optimization");
+
+    /**
+     * Companion utilities for resolving [OptimizationUseCaseType] from wire strings.
+     */
+    companion object {
+        /**
+         * Resolves an [OptimizationUseCaseType] from [raw], defaulting to [SERVICE_UNIT].
+         *
+         * @param raw Raw wire string.
+         * @return Matching [OptimizationUseCaseType].
+         */
+        fun fromWire(raw: String): OptimizationUseCaseType =
+            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: SERVICE_UNIT
+    }
+}
+
+/**
+ * Enumerated JAX/MPAX optimization solver outcome statuses.
  *
  * @property wireValue Backend wire string.
  */
 @Serializable
-enum class SimulationOutcomeStatus(val wireValue: String) {
-    /** Solver found an optimal feasible bed assignment. */
+enum class SolverOutcomeStatus(val wireValue: String) {
+    /** Solver converged to a globally optimal solution. */
     @SerialName("OPTIMAL")
     OPTIMAL("OPTIMAL"),
 
-    /** Solver completed with a feasible solution. */
-    @SerialName("SUCCESS")
-    SUCCESS("SUCCESS"),
+    /** Solver returned a feasible solution within tolerance. */
+    @SerialName("FEASIBLE")
+    FEASIBLE("FEASIBLE"),
 
     /** Constraints could not be simultaneously satisfied. */
     @SerialName("INFEASIBLE")
-    INFEASIBLE("INFEASIBLE"),
-
-    /** Solver encountered an execution error. */
-    @SerialName("ERROR")
-    ERROR("ERROR");
+    INFEASIBLE("INFEASIBLE");
 
     /**
-     * Companion utilities for resolving [SimulationOutcomeStatus] from wire strings.
+     * Companion utilities for resolving [SolverOutcomeStatus] from wire strings.
      */
     companion object {
         /**
-         * Resolves a [SimulationOutcomeStatus] from [raw], defaulting to [ERROR].
+         * Resolves a [SolverOutcomeStatus] from [raw], defaulting to [OPTIMAL].
          *
          * @param raw Raw wire string.
-         * @return Matching [SimulationOutcomeStatus].
+         * @return Matching [SolverOutcomeStatus].
          */
-        fun fromWire(raw: String): SimulationOutcomeStatus =
-            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: ERROR
+        fun fromWire(raw: String): SolverOutcomeStatus =
+            entries.firstOrNull { it.wireValue.equals(raw, ignoreCase = true) } ?: OPTIMAL
     }
 }
 

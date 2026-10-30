@@ -59,9 +59,21 @@ export interface VisualizationOption {
           Settings
         </h4>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-3">
           <mat-label i18n>Widget Title</mat-label>
           <input matInput [value]="title()" (input)="title.set(getEventValue($event))" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4">
+          <mat-label i18n>Subtitle / Caption</mat-label>
+          <input
+            matInput
+            data-testid="input-widget-subtitle"
+            i18n-placeholder
+            placeholder="Describe what this widget displays..."
+            [value]="subtitle()"
+            (input)="subtitle.set(getEventValue($event))"
+          />
         </mat-form-field>
 
         @if (previewWidget()?.type !== 'HTTP' && previewWidget()?.type !== 'TEXT') {
@@ -233,6 +245,8 @@ export interface VisualizationOption {
 export class WidgetBuilderVisualizeStepComponent {
   /** Current widget title string (two-way bound). */
   readonly title = model<string>('');
+  /** Current widget subtitle or caption string (two-way bound). */
+  readonly subtitle = model<string>('');
   /** Currently selected visualization identifier (two-way bound). */
   readonly selectedVisualization = model<string | null | undefined>(undefined);
   /** Available visualization options. */

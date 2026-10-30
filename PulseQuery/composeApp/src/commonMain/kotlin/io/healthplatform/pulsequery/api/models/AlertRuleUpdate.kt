@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -23,10 +24,8 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for updating an existing clinical alert rule with partial attributes.  Attributes:     unit_category (str | None): Updated unit or department category.     threshold_percentage (float | None): Updated trigger percentage.     severity (AlertSeverity | None): Updated severity classification.     is_active (bool | None): Updated active evaluation flag.
  *
- * @param unitCategory
- * @param thresholdPercentage
- * @param severity
- * @param isActive
+ * @property unitCategory * @param thresholdPercentage
+ * @property severity * @param isActive
  */
 @Serializable
 data class AlertRuleUpdate(

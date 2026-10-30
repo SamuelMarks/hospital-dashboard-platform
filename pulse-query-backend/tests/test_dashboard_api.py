@@ -42,6 +42,7 @@ async def test_dashboard_crud_flow(client: AsyncClient) -> None:
   # NOTE: We use 'hospital_data' table which corresponds to the default CSV ingest
   widget_payload = {
     "title": "Visits Count",
+    "subtitle": "Total inpatient visits recorded in hospital_data",
     "type": "SQL",
     "visualization": "metric",
     "config": {
@@ -58,7 +59,28 @@ async def test_dashboard_crud_flow(client: AsyncClient) -> None:
     headers=headers,
   )
   assert widget_res.status_code == 200
-  assert widget_res.json()["title"] == "Visits Count"
+  widget_json = widget_res.json()
+  assert widget_json["title"] == "Visits Count"
+  assert widget_json["subtitle"] == "Total inpatient visits recorded in hospital_data"
+  widget_id = widget_json["id"]
+
+  # 3b. Update Widget config without resending subtitle (should preserve subtitle)
+  upd_res1 = await client.put(
+    f"/api/v1/dashboards/widgets/{widget_id}",
+    json={"config": {"query": "SELECT count(*) FROM hospital_data", "x": 1, "y": 0, "w": 4, "h": 2}},
+    headers=headers,
+  )
+  assert upd_res1.status_code == 200
+  assert upd_res1.json()["subtitle"] == "Total inpatient visits recorded in hospital_data"
+
+  # 3c. Update Widget subtitle explicitly via top-level subtitle field
+  upd_res2 = await client.put(
+    f"/api/v1/dashboards/widgets/{widget_id}",
+    json={"title": "Updated Visits Count", "subtitle": "Updated clinical subtitle"},
+    headers=headers,
+  )
+  assert upd_res2.status_code == 200
+  assert upd_res2.json()["subtitle"] == "Updated clinical subtitle"
 
   # 4. List Dashboards (Verify widget presence)
   list_res = await client.get("/api/v1/dashboards/", headers=headers)

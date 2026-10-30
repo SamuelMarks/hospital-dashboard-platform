@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -23,12 +24,9 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for updating an existing template. Partial fields allowed.
  *
- * @param title
- * @param description
- * @param sqlTemplate
- * @param category
- * @param parametersSchema
- */
+ * @property title * @param description
+ * @property sqlTemplate * @param category
+ * @property parametersSchema */
 @Serializable
 data class TemplateUpdate(
     @SerialName(value = "title") val title: kotlin.String? = null,

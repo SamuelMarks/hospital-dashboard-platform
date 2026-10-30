@@ -5,7 +5,7 @@ import os
 import tempfile
 
 from httpx import ASGITransport, AsyncClient
-from pydantic import RootModel
+import pydantic.root_model as pydantic_root_model
 import pytest
 import pytest_asyncio
 from sqlalchemy import create_engine
@@ -21,14 +21,14 @@ from app.services.data_ingestion import DataIngestionService
 from app.services.llm_client import llm_client
 
 
-def _prewarm_pydantic_imports() -> type[RootModel[int]]:
+def _prewarm_pydantic_imports() -> type[pydantic_root_model.RootModel[int]]:
   """
   Pre-warms `pydantic.root_model.RootModel` at test suite import time.
 
   Returns:
-      type[RootModel[int]]: Parameterized `RootModel` class.
+      type[pydantic_root_model.RootModel[int]]: Parameterized `RootModel` class.
   """
-  return RootModel[int]
+  return pydantic_root_model.RootModel[int]
 
 
 _prewarm_pydantic_imports()

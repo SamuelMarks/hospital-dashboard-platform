@@ -352,4 +352,4 @@ class ChatViewModel(
      */
     fun messagesByRole(role: MessageAuthorRole): List<MessageResponse> =
         _state.value.messages.filter { MessageAuthorRole.fromWire(it.role) == role }
-    }
+}

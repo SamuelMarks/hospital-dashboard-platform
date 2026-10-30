@@ -248,6 +248,15 @@ describe('KeyboardShortcutsService', () => {
     });
     document.dispatchEvent(shiftOnlyEvent);
     expect(handler).toHaveBeenCalledTimes(1); // Still 1
+
+    // Pressing '?' with shiftKey: true should match '?' shortcut
+    const questionEvent = new KeyboardEvent('keydown', {
+      key: '?',
+      shiftKey: true,
+      bubbles: true,
+    });
+    document.dispatchEvent(questionEvent);
+    expect(service.isHelpVisible()).toBe(true);
   });
 
   it('should normalize ctrl, meta, cmd, command in shortcut definition', () => {
@@ -369,12 +378,12 @@ describe('KeyboardShortcutsService', () => {
     const navHome = nav.find((s) => s.id === 'nav-home');
     const navChat = nav.find((s) => s.id === 'nav-chat');
     const navAnalytics = nav.find((s) => s.id === 'nav-analytics');
-    const navSim = nav.find((s) => s.id === 'nav-simulation');
+    const navOpt = nav.find((s) => s.id === 'nav-optimization');
 
     expect(() => navHome?.handler()).not.toThrow();
     expect(() => navChat?.handler()).not.toThrow();
     expect(() => navAnalytics?.handler()).not.toThrow();
-    expect(() => navSim?.handler()).not.toThrow();
+    expect(() => navOpt?.handler()).not.toThrow();
 
     const viewTheme = view.find((s) => s.id === 'view-theme');
     expect(() => viewTheme?.handler()).not.toThrow();

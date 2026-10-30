@@ -3,7 +3,7 @@
     "title": "Predictive Availability",
     "description": "Calculate probability of bed availability on a specific future day given current high utilization. Useful for weekend staffing planning.",
     "category": "Availability",
-    "sql_template": "WITH daily_stats AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date, \n    dayofweek(Midnight_Census_DateTime) as dow_idx, \n    COUNT(*) as current_census\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%{{target_ward}}%'\n  GROUP BY 1, 2\n),\nscenarios AS (\n  SELECT \n    t1.census_date as condition_date,\n    t1.current_census as condition_load,\n    t2.current_census as outcome_load,\n    ({{capacity}} - t2.current_census) as outcome_available\n  FROM daily_stats t1\n  JOIN daily_stats t2 ON t2.census_date = t1.census_date + INTERVAL {{days_gap}} DAY\n  WHERE t1.dow_idx = {{start_dow}}\n)\nSELECT \n  COALESCE(PROBABILITY(outcome_available >= {{target_beds}}), 0) as probability_pct,\n  COUNT(*) as sample_size\nFROM scenarios\nWHERE (condition_load::FLOAT / {{capacity}}) > {{util_threshold}};",
+    "sql_template": "WITH daily_stats AS (\n  SELECT \n    CAST(Midnight_Census_DateTime AS DATE) as census_date, \n    dayofweek(Midnight_Census_DateTime) as dow_idx, \n    COUNT(*) as current_census\n  FROM synthetic_hospital_data\n  WHERE Location LIKE '%{{target_ward}}%'\n  GROUP BY 1, 2\n),\nscenarios AS (\n  SELECT \n    t1.census_date as condition_date,\n    t1.current_census as condition_load,\n    t2.current_census as outcome_load,\n    ({{capacity}} - t2.current_census) as outcome_available\n  FROM daily_stats t1\n  JOIN daily_stats t2 ON t2.census_date = t1.census_date + INTERVAL {{days_gap}} DAY\n  WHERE t1.dow_idx = {{start_dow}}\n)\nSELECT \n  ROUND(COALESCE(PROBABILITY(outcome_available >= {{target_beds}}), 0), 2) as probability_pct,\n  COUNT(*) as sample_size\nFROM scenarios\nWHERE (condition_load::FLOAT / {{capacity}}) > {{util_threshold}};",
     "parameters_schema": {
       "type": "object",
       "properties": {
@@ -231,7 +231,7 @@
     "title": "Clinical Service 'Rent'",
     "description": "Which Clinical Service consumes the most bed-hours in mixed units.",
     "category": "Utilization",
-    "sql_template": "SELECT \n  Clinical_Service, \n  SUM(date_diff('hour', Admit_DT, COALESCE(Discharge_DT, CURRENT_TIMESTAMP))) as total_bed_hours\nFROM synthetic_hospital_data \nWHERE Location LIKE '%Mixed%'\nGROUP BY 1 \nORDER BY 2 DESC\nLIMIT 10;",
+    "sql_template": "SELECT \n  Clinical_Service, \n  SUM(date_diff('hour', Admit_DT, COALESCE(Discharge_DT, (SELECT MAX(Midnight_Census_DateTime) FROM synthetic_hospital_data)))) as total_bed_hours\nFROM synthetic_hospital_data \nWHERE Location LIKE '%Mixed%'\nGROUP BY 1 \nORDER BY 2 DESC\nLIMIT 10;",
     "parameters_schema": { "type": "object", "properties": {} }
   },
   {

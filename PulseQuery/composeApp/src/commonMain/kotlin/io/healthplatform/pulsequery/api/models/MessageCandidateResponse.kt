@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * DTO for a single Arena Candidate.
  *
- * @param id
- * @param modelName
- * @param content
- * @param isSelected
- * @param sqlSnippet
- * @param sqlHash
+ * @property id * @param modelName
+ * @property content * @param isSelected
+ * @property sqlSnippet * @param sqlHash
  */
 @Serializable
 data class MessageCandidateResponse(

@@ -24,6 +24,25 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.stringResource
+import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.no_table_rows_available
+import kotlin.math.roundToInt
+
+/**
+ * Formats a table cell string, rounding raw floating-point numbers with excessive decimal precision to 2 decimal places.
+ *
+ * @param cell Raw string cell value.
+ * @return Formatted cell display string.
+ */
+internal fun formatTableCell(cell: String): String {
+    val dbl = cell.toDoubleOrNull() ?: return cell
+    if (cell.contains('.')) {
+        val rounded = (dbl * 100.0).roundToInt() / 100.0
+        return rounded.toString()
+    }
+    return cell
+}
 
 /**
  * A tabular representation of key-value analytics data.
@@ -124,7 +143,7 @@ fun MultiColumnTableView(
         ) {
             columns.forEach { col ->
                 Text(
-                    text = col,
+                    text = col.replace('_', ' '),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -134,26 +153,35 @@ fun MultiColumnTableView(
         }
         HorizontalDivider()
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            items(rows) { row ->
-                Row(
-                    modifier = Modifier.padding(vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    row.forEach { cell ->
-                        Text(
-                            text = cell,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.widthIn(min = 100.dp)
-                        )
+        if (rows.isEmpty()) {
+            Text(
+                text = stringResource(Res.string.no_table_rows_available),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 12.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(rows) { row ->
+                    Row(
+                        modifier = Modifier.padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        row.forEach { cell ->
+                            Text(
+                                text = formatTableCell(cell),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.widthIn(min = 100.dp)
+                            )
+                        }
                     }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             }
         }
     }

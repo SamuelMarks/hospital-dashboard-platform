@@ -88,7 +88,7 @@ class AppContainerTest {
         val initialAuthApi = AppContainer.authApi
         val initialDashboardsApi = AppContainer.dashboardsApi
         val initialChatApi = AppContainer.chatApi
-        val initialSimApi = AppContainer.simulationApi
+        val initialOptApi = AppContainer.optimizationApi
         assertNotNull(initialAuthApi)
 
         AppContainer.currentBaseUrl = "https://example.com/api"
@@ -96,7 +96,7 @@ class AppContainerTest {
         assertNotSame(initialAuthApi, AppContainer.authApi)
         assertNotSame(initialDashboardsApi, AppContainer.dashboardsApi)
         assertNotSame(initialChatApi, AppContainer.chatApi)
-        assertNotSame(initialSimApi, AppContainer.simulationApi)
+        assertNotSame(initialOptApi, AppContainer.optimizationApi)
         assertSame(AppContainer.dashboardsApi, AppContainer.dashboardsApi)
     }
 
@@ -119,9 +119,9 @@ class AppContainerTest {
         assertNotNull(analytics)
         assertEquals(analytics, AppContainer.analyticsApi)
 
-        val simulation = AppContainer.simulationApi
-        assertNotNull(simulation)
-        assertEquals(simulation, AppContainer.simulationApi)
+        val optimization = AppContainer.optimizationApi
+        assertNotNull(optimization)
+        assertEquals(optimization, AppContainer.optimizationApi)
 
         val admin = AppContainer.adminApi
         assertNotNull(admin)
@@ -151,9 +151,9 @@ class AppContainerTest {
         assertNotNull(benchmarks)
         assertEquals(benchmarks, AppContainer.benchmarksApi)
 
-        val mpaxArena = AppContainer.mpaxArenaApi
-        assertNotNull(mpaxArena)
-        assertEquals(mpaxArena, AppContainer.mpaxArenaApi)
+        val liteRt = AppContainer.liteRtModelManager
+        assertNotNull(liteRt)
+        assertEquals(liteRt, AppContainer.liteRtModelManager)
 
         val alertRules = AppContainer.alertRulesApi
         assertNotNull(alertRules)

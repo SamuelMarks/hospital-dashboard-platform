@@ -4,6 +4,7 @@
  */
 import { Component, input, output, inject, signal, linkedSignal } from '@angular/core';
 import { JsonPipe } from '@angular/common';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import {
   FormRoot,
   FormField,
@@ -17,6 +18,7 @@ import {
 import { finalize } from 'rxjs/operators';
 
 import { DashboardsService, ExecutionService, WidgetUpdate } from '../api-client';
+import { LOCAL_DRAFT_WIDGET_ID } from '../dashboard/widget-builder/widget-builder.store';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -151,6 +153,8 @@ export class HttpConfigComponent {
   private readonly dashboardsApi = inject(DashboardsService);
   /** Execution API. */
   private readonly executionApi = inject(ExecutionService);
+  /** HTTP client for testing in-memory draft HTTP configurations. */
+  private readonly httpClient = inject(HttpClient);
 
   /** ID of the dashboard. */
   readonly dashboardId = input<string>('');
@@ -232,8 +236,8 @@ export class HttpConfigComponent {
     }
 
     return {
-      method: (config['method'] as string) || 'GET',
-      url: (config['url'] as string) || '',
+      method: typeof config['method'] === 'string' && config['method'] ? config['method'] : 'GET',
+      url: typeof config['url'] === 'string' ? config['url'] : '',
       forward_auth: !!config['meta_forward_auth'],
       body: bodyText,
       params,
@@ -289,6 +293,22 @@ export class HttpConfigComponent {
       body: bodyObj,
       meta_forward_auth: f.forward_auth,
     };
+
+    if (this.widgetId() === LOCAL_DRAFT_WIDGET_ID) {
+      this.configChange.emit(newConfig);
+      this.httpClient
+        .request(f.method, f.url, {
+          params: new HttpParams({ fromObject: newConfig.params }),
+          headers: new HttpHeaders(newConfig.headers),
+          body: bodyObj,
+        })
+        .pipe(finalize(() => this.isRunning.set(false)))
+        .subscribe({
+          next: (res: unknown) => this.result.set(res),
+          error: (err: unknown) => this.result.set({ error: 'Run failed', detail: err }),
+        });
+      return;
+    }
 
     const update: WidgetUpdate = { config: newConfig };
     this.dashboardsApi

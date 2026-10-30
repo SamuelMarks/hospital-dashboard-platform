@@ -27,7 +27,7 @@ import { KeyboardShortcutsService } from '../../../core/keyboard/keyboard-shortc
   imports: [MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
 
   template: `
-    <div class="dialog-container">
+    <div class="dialog-container" data-testid="shortcuts-dialog">
       <div class="dialog-header">
         <h2 i18n mat-dialog-title>Keyboard Shortcuts</h2>
         <button

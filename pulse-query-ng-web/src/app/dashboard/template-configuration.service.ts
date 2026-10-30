@@ -5,6 +5,7 @@
 
 import { Service } from '@angular/core';
 import { TemplateResponse } from '../api-client';
+import { narrowRecordPayload } from '../widget/widget-data.guards';
 
 /**
  * Stateless helper service shared by `TemplateWizardComponent` and `ProvisioningService`.
@@ -21,11 +22,11 @@ export class TemplateConfigurationService {
     if (!schema || typeof schema !== 'object') {
       return false;
     }
-    const props = schema['properties'];
-    if (!props || typeof props !== 'object') {
+    const props = narrowRecordPayload(schema['properties']);
+    if (!props) {
       return false;
     }
-    return Object.keys(props as Record<string, unknown>).length > 0;
+    return Object.keys(props).length > 0;
   }
 
   /**
@@ -39,15 +40,14 @@ export class TemplateConfigurationService {
     if (!schema || typeof schema !== 'object') {
       return defaults;
     }
-    const props = schema['properties'];
-    if (!props || typeof props !== 'object') {
+    const props = narrowRecordPayload(schema['properties']);
+    if (!props) {
       return defaults;
     }
-    const propMap = props as Record<string, Record<string, unknown> | undefined>;
-    for (const key of Object.keys(propMap)) {
-      const propDef = propMap[key];
-      if (propDef && propDef['default'] !== undefined) {
-        defaults[key] = propDef['default'];
+    for (const [key, propDef] of Object.entries(props)) {
+      const defRecord = narrowRecordPayload(propDef);
+      if (defRecord && defRecord['default'] !== undefined) {
+        defaults[key] = defRecord['default'];
       }
     }
     return defaults;

@@ -14,6 +14,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 
 import { TemplatesService, TemplateResponse } from '../../api-client';
+import { extractEventInputValue } from '../../shared/utils/dom-event.utils';
+import {
+  SkeletonLoaderComponent,
+  SkeletonVariant,
+} from '../../shared/components/skeleton-loader.component';
+import { TemplateConfigurationService } from '../template-configuration.service';
 
 /**
  * Displays a searchable gallery of widget templates grouped by clinical category.
@@ -30,6 +36,7 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
     MatChipsModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
+    SkeletonLoaderComponent,
   ],
 
   styles: [
@@ -109,6 +116,49 @@ import { TemplatesService, TemplateResponse } from '../../api-client';
       .text-gray-500 {
         color: var(--sys-text-secondary);
       }
+      .gallery-drop-silhouette {
+        grid-column: span 6;
+        min-height: 260px;
+        height: 100%;
+        width: 100%;
+        border: 2px dashed var(--sys-primary);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--sys-primary) 8%, var(--sys-surface));
+        padding: 14px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .silhouette-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .silhouette-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--sys-primary);
+      }
+      .silhouette-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background-color: var(--sys-primary-container);
+        color: var(--sys-on-primary-container);
+      }
+      .silhouette-subtitle {
+        font-size: 0.75rem;
+        color: var(--sys-text-secondary);
+      }
+      .silhouette-body {
+        flex: 1;
+        min-height: 160px;
+        opacity: 0.85;
+      }
     `,
   ],
   templateUrl: './widget-gallery.component.html',
@@ -121,17 +171,46 @@ export class WidgetGalleryComponent implements OnInit {
    * @returns Current string value of the target HTMLInputElement.
    */
   getEventValue(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+    return extractEventInputValue(event);
   }
 
   /** Backend templates API service. */
   private readonly templatesApi = inject(TemplatesService);
+  /** Shared template configuration service for inferring visualization types. */
+  private readonly templateConfig = inject(TemplateConfigurationService);
   /** Full list of templates loaded from the backend. */
   readonly templates = signal<TemplateResponse[]>([]);
   /** Whether templates are currently loading from the server. */
   readonly loading = signal(true);
   /** Current search query string used to filter templates. */
   readonly searchQuery = signal('');
+
+  /**
+   * Infers the skeleton variant (`'table'`, `'chart'`, `'metric'`, or `'pie'`) for a template's drag silhouette.
+   *
+   * @param template - Template being dragged.
+   * @returns Matching `SkeletonVariant` for the silhouette preview.
+   */
+  getTemplateSkeletonVariant(template: TemplateResponse): SkeletonVariant {
+    const viz = this.templateConfig.inferVisualization(template);
+    if (viz === 'pie') return 'pie';
+    if (viz.includes('chart')) return 'chart';
+    if (viz === 'metric' || viz === 'scalar') return 'metric';
+    return 'table';
+  }
+
+  /**
+   * Computes the target grid row span (`h`) for a template's drag silhouette on the dashboard grid.
+   *
+   * @param template - Template being dragged.
+   * @returns Grid row span (`4`, `5`, or `6`).
+   */
+  getTemplateRowSpan(template: TemplateResponse): number {
+    const viz = this.templateConfig.inferVisualization(template);
+    if (viz === 'table') return 6;
+    if (viz === 'bar_chart' || viz === 'pie') return 5;
+    return 4;
+  }
 
   /** Loads available widget templates when the gallery initializes. */
   ngOnInit(): void {

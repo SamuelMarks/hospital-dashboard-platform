@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -23,10 +24,8 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for starting a new conversation. If 'message' is provided, the conversation is initialized with it.
  *
- * @param title
- * @param message
- * @param targetModels
- */
+ * @property title * @param message
+ * @property targetModels */
 @Serializable
 data class ConversationCreate(
     @SerialName(value = "title") val title: kotlin.String? = null,

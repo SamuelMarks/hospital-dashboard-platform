@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,10 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for clinical dataset health and availability.
  *
- * @param hasDefaultData True if default hospital_data.csv was found.
- * @param fallbackGenerated True if synthetic fallback sample data was generated.
- * @param missingFiles List of expected files not found.
- * @param rowCounts Row count per ingested dataset.
+ * @property hasDefaultData True if default hospital_data.csv was found.
+ * @property fallbackGenerated True if synthetic fallback sample data was generated.
+ * @property missingFiles List of expected files not found.
+ * @property rowCounts Row count per ingested dataset.
  */
 @Serializable
 data class DataHealthSchema(

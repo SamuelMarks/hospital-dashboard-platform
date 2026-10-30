@@ -81,6 +81,23 @@
         </button>
       </div>
 
+      <!-- Drag Placeholder Silhouette when hovering over dashboard grid -->
+      <div
+        *cdkDragPlaceholder
+        class="gallery-drop-silhouette widget-drop-silhouette"
+        style="grid-column: span 6; grid-row: span 6"
+        data-testid="cart-drop-silhouette"
+      >
+        <div class="silhouette-header">
+          <span class="silhouette-title">{{ item.title }}</span>
+          <span i18n class="silhouette-badge">Drop to place (6×6)</span>
+        </div>
+        <div class="item-sql">{{ previewSql(item.sql) }}</div>
+        <div class="silhouette-body">
+          <app-skeleton-loader variant="table"></app-skeleton-loader>
+        </div>
+      </div>
+
       <!-- Ghost Preview when dragging -->
       <div *cdkDragPreview class="cart-item">
         <div class="item-title">{{ item.title }}</div>

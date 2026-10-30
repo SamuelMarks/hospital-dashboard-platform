@@ -49,12 +49,31 @@ describe('QueryCartProvisioningService', () => {
       'd1',
       expect.objectContaining({
         title: 'Test Query',
+        subtitle: 'SELECT 1',
         type: 'SQL',
         visualization: 'table',
-        config: expect.objectContaining({ query: 'SELECT 1', w: 6, h: 4 }) as unknown,
+        config: expect.objectContaining({
+          query: 'SELECT 1',
+          subtitle: 'SELECT 1',
+          w: 6,
+          h: 6,
+        }) as unknown,
       }),
     );
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
     expect(mockCart.remove).toHaveBeenCalledWith('q1');
+
+    // Long SQL (>90 chars) and blank SQL branches
+    const longItem: QueryCartItem = {
+      ...item,
+      sql: 'SELECT ' + 'a_very_long_column_name, '.repeat(6) + 'FROM hospital_data',
+    };
+    service.addToDashboard(longItem, 'd1').subscribe();
+
+    const emptySqlItem: QueryCartItem = {
+      ...item,
+      sql: '   ',
+    };
+    service.addToDashboard(emptySqlItem, 'd1').subscribe();
   });
 });

@@ -60,10 +60,18 @@ export interface TableConfig {
         color: var(--sys-on-surface-variant);
         text-transform: uppercase;
         font-size: 11px;
+        letter-spacing: 0.04em;
+        padding: 8px 12px;
+        white-space: nowrap;
       }
       td.mat-cell {
         color: var(--sys-on-surface);
         border-bottom-color: var(--sys-surface-variant);
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+      tr.mat-mdc-row:hover {
+        background-color: color-mix(in srgb, var(--sys-primary) 6%, transparent);
       }
       .val-pos {
         color: var(--sys-success, #2e7d32);
@@ -128,9 +136,22 @@ export class VizTableComponent {
   /** Computed array of column identifiers to render in the table header and rows. */
   readonly finalColumns = computed(() => this.dataSet()?.columns || []);
 
+  /** Whether the table has enough rows (`> 5`) to warrant showing the full pagination footer. */
+  readonly showPaginator = computed(() => (this.dataSet()?.data?.length ?? 0) > 5);
+
   /**
-   * Formats a raw cell value for display, adding explicit `+` signs to positive delta columns
-   * and serializing nested objects as JSON.
+   * Formats a raw column identifier into a human-readable header label while preserving uppercase acronyms.
+   *
+   * @param col - Raw column identifier from the SQL result set.
+   * @returns Human-readable header label.
+   */
+  formatHeaderLabel(col: string): string {
+    return col.replace(/_/g, ' ');
+  }
+
+  /**
+   * Formats a raw cell value for display, adding explicit `+` signs to positive delta columns,
+   * rounding floating-point numbers with excessive decimal places, and serializing nested objects as JSON.
    *
    * @param row - Data record representing the current table row.
    * @param col - Column key whose value should be formatted.
@@ -140,8 +161,14 @@ export class VizTableComponent {
     const val = row[col];
     if (val === null || val === undefined) return '-';
     if (typeof val === 'object') return JSON.stringify(val);
-    if (this.isDeltaColumn(col) && typeof val === 'number') {
-      return (val > 0 ? '+' : '') + val;
+    if (typeof val === 'number') {
+      const formattedNum = Number.isInteger(val)
+        ? String(val)
+        : String(Math.round(val * 100) / 100);
+      if (this.isDeltaColumn(col)) {
+        return (val > 0 ? '+' : '') + formattedNum;
+      }
+      return formattedNum;
     }
     return String(val);
   }

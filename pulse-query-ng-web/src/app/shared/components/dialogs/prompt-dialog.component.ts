@@ -3,12 +3,13 @@
  */
 
 import { Component, computed, signal, inject } from '@angular/core';
-import { FormRoot, FormField, form, required } from '@angular/forms/signals';
+import { form, required } from '@angular/forms/signals';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
+import { extractEventInputValue } from '../../utils/dom-event.utils';
 
 /**
  * Input configuration payload passed into `PromptDialogComponent`.
@@ -29,15 +30,7 @@ export interface PromptDialogData {
  */
 @Component({
   selector: 'app-prompt-dialog',
-  imports: [
-    FormRoot,
-    FormField,
-    MatDialogModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatIconModule,
-  ],
+  imports: [MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatIconModule],
 
   template: `
     <div class="dialog-title-row">
@@ -57,10 +50,16 @@ export interface PromptDialogData {
       @if (data.message) {
         <p class="mb-4 text-sm text-secondary">{{ data.message }}</p>
       }
-      <form [formRoot]="promptForm" (submit)="save()">
+      <form (submit)="$event.preventDefault(); save()">
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>{{ data.label || defaultLabel }}</mat-label>
-          <input matInput [formField]="promptForm.value" cdkFocusInitial (keydown.enter)="save()" />
+          <input
+            matInput
+            [value]="value()"
+            (input)="setValue(getEventValue($event))"
+            cdkFocusInitial
+            (keydown.enter)="$event.preventDefault(); save()"
+          />
         </mat-form-field>
       </form>
     </mat-dialog-content>
@@ -104,7 +103,7 @@ export class PromptDialogComponent {
    * @returns Current string value of the target `HTMLInputElement`.
    */
   getEventValue(event: Event): string {
-    return (event.target as HTMLInputElement).value;
+    return extractEventInputValue(event);
   }
 
   /** Injected dialog configuration data containing the title, label, and initial value. */

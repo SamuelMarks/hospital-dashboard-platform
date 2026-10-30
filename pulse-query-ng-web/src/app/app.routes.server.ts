@@ -26,7 +26,7 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
-    path: 'simulation',
+    path: 'optimization',
     renderMode: RenderMode.Client,
   },
   {

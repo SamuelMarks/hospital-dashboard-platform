@@ -3,7 +3,7 @@ Analytics Domain Service Module.
 
 Encapsulates real-time hospital bed capacity alert evaluation (joining PostgreSQL
 `AlertRule` thresholds with DuckDB census telemetry) and unified multi-source
-LLM candidate telemetry (`UNION ALL` across Chat, AI Arena, and MPAX Arena).
+LLM candidate telemetry (`UNION ALL` across Chat, AI Arena, and Optimization Copilot).
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from app.models.alert_rule import AlertRule
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.feedback import ExperimentLog
 from app.models.feedback import ModelCandidate as ExperimentCandidate
-from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
+from app.models.optimization import OptimizationIteration, OptimizationSession
 from app.models.user import User
 from app.schemas.analytics import BedCapacityAlert, LlmOutputAnalyticsRow
 
@@ -69,36 +69,37 @@ class AnalyticsService:
     Returns:
         list[tuple[str, int, int]]: Tuples of `(unit_category, occupied_count, max_capacity)`.
     """
-    conn = conn_factory()
-    try:
-      cur = conn.cursor()
-      query = """
-        WITH latest_census AS (
-            SELECT COALESCE(Unit_Category, 'General') AS unit_cat, COUNT(*) AS occupied
-            FROM synthetic_hospital_data
-            WHERE Midnight_Census_DateTime = (SELECT MAX(Midnight_Census_DateTime) FROM synthetic_hospital_data)
-            GROUP BY 1
-        ),
-        historic_capacity AS (
-            SELECT COALESCE(Unit_Category, 'General') AS unit_cat, MAX(daily_census) AS capacity
-            FROM (
-                SELECT Unit_Category, CAST(Midnight_Census_DateTime AS DATE), COUNT(*) AS daily_census
-                FROM synthetic_hospital_data
-                GROUP BY 1, 2
-            )
-            GROUP BY 1
-        )
-        SELECT
-            l.unit_cat,
-            l.occupied,
-            GREATEST(COALESCE(h.capacity, l.occupied), l.occupied) AS capacity
-        FROM latest_census l
-        LEFT JOIN historic_capacity h ON l.unit_cat = h.unit_cat;
-      """
-      cur.execute(query)
-      return list(cur.fetchall())
-    finally:
-      conn.close()
+    with duckdb_manager._write_lock:
+      conn = conn_factory()
+      try:
+        cur = conn.cursor()
+        query = """
+          WITH latest_census AS (
+              SELECT COALESCE(Unit_Category, 'General') AS unit_cat, COUNT(*) AS occupied
+              FROM synthetic_hospital_data
+              WHERE Midnight_Census_DateTime = (SELECT MAX(Midnight_Census_DateTime) FROM synthetic_hospital_data)
+              GROUP BY 1
+          ),
+          historic_capacity AS (
+              SELECT COALESCE(Unit_Category, 'General') AS unit_cat, MAX(daily_census) AS capacity
+              FROM (
+                  SELECT Unit_Category, CAST(Midnight_Census_DateTime AS DATE), COUNT(*) AS daily_census
+                  FROM synthetic_hospital_data
+                  GROUP BY 1, 2
+              )
+              GROUP BY 1
+          )
+          SELECT
+              l.unit_cat,
+              l.occupied,
+              GREATEST(COALESCE(h.capacity, l.occupied), l.occupied) AS capacity
+          FROM latest_census l
+          LEFT JOIN historic_capacity h ON l.unit_cat = h.unit_cat;
+        """
+        cur.execute(query)
+        return list(cur.fetchall())
+      finally:
+        conn.close()
 
   async def get_capacity_alerts_result(
     self,
@@ -233,28 +234,28 @@ class AnalyticsService:
       .join(User, ExperimentLog.user_id == User.id)
     )
 
-    mpax_stmt = (
+    opt_stmt = (
       select(
-        literal("mpax_arena").label("source"),
-        MpaxArenaCandidateRecord.id.label("candidate_id"),
+        literal("optimization").label("source"),
+        OptimizationIteration.id.label("candidate_id"),
         cast(null(), Message.id.type).label("assistant_message_id"),
-        cast(null(), Conversation.id.type).label("conversation_id"),
-        cast(null(), String).label("conversation_title"),
+        OptimizationSession.id.label("conversation_id"),
+        OptimizationSession.title.label("conversation_title"),
         User.id.label("user_id"),
         User.email.label("user_email"),
-        MpaxArenaRun.prompt.label("query_text"),
-        MpaxArenaRun.mode.label("prompt_strategy"),
-        MpaxArenaCandidateRecord.model_name.label("llm"),
-        MpaxArenaCandidateRecord.sql_snippet.label("sql_snippet"),
+        OptimizationIteration.user_prompt.label("query_text"),
+        OptimizationSession.use_case.label("prompt_strategy"),
+        OptimizationIteration.model_id.label("llm"),
+        OptimizationIteration.assistant_explanation.label("sql_snippet"),
         cast(null(), String).label("sql_hash"),
-        MpaxArenaCandidateRecord.is_winner.label("is_selected"),
-        MpaxArenaRun.created_at.label("created_at"),
+        literal(True).label("is_selected"),
+        OptimizationIteration.created_at.label("created_at"),
       )
-      .join(MpaxArenaRun, MpaxArenaCandidateRecord.run_id == MpaxArenaRun.id)
-      .join(User, MpaxArenaRun.user_id == User.id)
+      .join(OptimizationSession, OptimizationIteration.session_id == OptimizationSession.id)
+      .join(User, OptimizationSession.user_id == User.id)
     )
 
-    combined_subq = union_all(chat_stmt, ai_stmt, mpax_stmt).subquery()
+    combined_subq = union_all(chat_stmt, ai_stmt, opt_stmt).subquery()
     final_stmt = (
       select(combined_subq)
       .order_by(combined_subq.c.created_at.desc(), combined_subq.c.llm.asc())

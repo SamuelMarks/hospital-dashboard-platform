@@ -39,7 +39,16 @@ describe('WidgetBuilderMarketplaceStepComponent', () => {
     fixture.componentRef.setInput('selectedTemplateId', 't1');
     fixture.detectChanges();
 
-    expect(component.getTemplateAriaLabel(mockTemplate)).toBe('Select template: Admissions');
+    expect(component.getTemplateAriaLabel(mockTemplate)).toBe(
+      'Select template: Admissions - Operational - Admissions trend',
+    );
+    expect(
+      component.getTemplateAriaLabel({
+        ...mockTemplate,
+        category: '',
+        description: undefined,
+      }),
+    ).toBe('Select template: Admissions -  - ');
 
     const searchSpy = vi.spyOn(component.searchInput, 'emit');
     const selectSpy = vi.spyOn(component.templateSelect, 'emit');

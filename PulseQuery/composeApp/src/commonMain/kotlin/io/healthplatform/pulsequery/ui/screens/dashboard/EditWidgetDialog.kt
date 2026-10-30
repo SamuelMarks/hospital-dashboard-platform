@@ -52,13 +52,14 @@ import io.healthplatform.pulsequery.ui.screens.wizard.mapModelInfoToProcessorSel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.allow_natural_text_label
 import pulsequery.composeapp.generated.resources.natural_text_prompt_label
 import pulsequery.composeapp.generated.resources.processor_label
 import pulsequery.composeapp.generated.resources.select_processor_content_desc
+import pulsequery.composeapp.generated.resources.widget_subtitle_label
+import pulsequery.composeapp.generated.resources.widget_subtitle_placeholder
 
 /**
  * Standard visualization options available for dashboard widgets.
@@ -92,6 +93,7 @@ fun EditWidgetDialog(
     aiApi: AiApi? = null
 ) {
     var title by remember { mutableStateOf(widget.title) }
+    var subtitle by remember { mutableStateOf(extractWidgetSubtitle(widget).orEmpty()) }
     var selectedViz by remember { mutableStateOf(widget.visualization.lowercase()) }
     var showVizDropdown by remember { mutableStateOf(false) }
 
@@ -152,6 +154,15 @@ fun EditWidgetDialog(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("Widget Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = subtitle,
+                    onValueChange = { subtitle = it },
+                    label = { Text(stringResource(Res.string.widget_subtitle_label)) },
+                    placeholder = { Text(stringResource(Res.string.widget_subtitle_placeholder)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -294,8 +305,15 @@ fun EditWidgetDialog(
                                     }
                                 }
                             }
+                            val trimmedSub = subtitle.trim().takeIf { it.isNotEmpty() }
+                            if (trimmedSub != null) {
+                                newConfigMap["subtitle"] = JsonPrimitive(trimmedSub)
+                            } else {
+                                newConfigMap.remove("subtitle")
+                            }
                             val updateReq = WidgetUpdate(
                                 title = title,
+                                subtitle = trimmedSub,
                                 visualization = selectedViz,
                                 config = JsonObject(newConfigMap)
                             )

@@ -40,6 +40,9 @@ class ChartsTest {
         assertEquals(4, columns.size)
         assertEquals(3, rows.size)
         assertEquals("CRITICAL", rows[0][3])
+        assertEquals("ICU", formatTableCell("ICU"))
+        assertEquals("42", formatTableCell("42"))
+        assertEquals("16.67", formatTableCell("16.6666679"))
     }
 
     @Test

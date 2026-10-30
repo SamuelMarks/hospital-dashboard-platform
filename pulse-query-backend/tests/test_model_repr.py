@@ -14,7 +14,11 @@ from app.models.alert_rule import AlertRule
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.dashboard import Dashboard, DashboardShare, Widget
 from app.models.feedback import ExperimentLog, ModelCandidate
-from app.models.mpax_arena import MpaxArenaCandidateRecord, MpaxArenaRun
+from app.models.optimization import (
+  OptimizationIteration,
+  OptimizationSession,
+  OptimizationUserSurvey,
+)
 from app.models.template import WidgetTemplate
 from app.models.token import RefreshToken
 from app.models.user import User
@@ -113,24 +117,39 @@ async def test_dashboard_widget_and_feedback_model_invariants(db_session: AsyncS
     generated_sql="SELECT 1",
     is_selected=True,
   )
-  arena_run = MpaxArenaRun(
+  opt_session = OptimizationSession(
     user_id=owner.id,
-    prompt="Allocate 10 ICU patients",
-    mode="judge",
-    ground_truth_mpax={"status": "OPTIMAL", "assignments": []},
+    use_case="service_unit",
+    institution_id="stanford_childrens",
+    title="Bed-Use Optimization",
   )
-  db_session.add_all([cand, arena_run])
+  db_session.add_all([cand, opt_session])
   await db_session.flush()
 
-  arena_cand = MpaxArenaCandidateRecord(
-    run_id=arena_run.id,
-    model_name="GPT-4o",
-    content="Allocation summary",
-    mpax_score=95,
-    is_winner=True,
+  opt_iter = OptimizationIteration(
+    session_id=opt_session.id,
+    turn_index=1,
+    user_prompt="Place all Gen Peds on PCU 350",
+    model_id="gemini-2.5-pro",
+    assistant_explanation="Explanation",
+    expert_baseline_gap=1.5,
   )
-  db_session.add(arena_cand)
+  opt_survey = OptimizationUserSurvey(
+    user_id=owner.id,
+    session_id=opt_session.id,
+    use_case="service_unit",
+    role_category="Physician",
+    score_vs_manual_process=5,
+    score_vs_other_workflow_tech=5,
+    interpretability_score=5,
+    qualitative_feedback="Much faster than email!",
+  )
+  db_session.add_all([opt_iter, opt_survey])
   await db_session.commit()
+
+  assert "OptimizationSession" in repr(opt_session)
+  assert "OptimizationIteration" in repr(opt_iter)
+  assert "OptimizationUserSurvey" in repr(opt_survey)
 
   loaded_dash = (
     (

@@ -66,6 +66,7 @@ sealed class WizardState {
      * @property selectedProcessor Selected [ProcessorId] for the widget.
      * @property naturalTextPrompt Default natural text prompt for the widget.
      * @property placeholderText Optional custom placeholder text for the widget's natural text input.
+     * @property widgetSubtitle Optional subtitle or caption explaining what the widget measures or displays.
      */
     data class ParameterConfiguration(
         val template: TemplateResponse,
@@ -78,7 +79,8 @@ sealed class WizardState {
         val allowNaturalText: Boolean = false,
         val selectedProcessor: ProcessorId = ProcessorId.SQL_NO_MODEL,
         val naturalTextPrompt: String = "",
-        val placeholderText: String = ""
+        val placeholderText: String = "",
+        val widgetSubtitle: String = template.description?.trim().orEmpty()
     ) : WizardState()
 
     /**
@@ -95,6 +97,7 @@ sealed class WizardState {
      * @property selectedProcessor Selected [ProcessorId] for the widget.
      * @property naturalTextPrompt Default natural text prompt for the widget.
      * @property placeholderText Optional custom placeholder text for the widget's natural text input.
+     * @property widgetSubtitle Optional subtitle or caption explaining what the widget measures or displays.
      */
     data class CustomWidgetConfiguration(
         val creationType: String,
@@ -107,7 +110,8 @@ sealed class WizardState {
         val allowNaturalText: Boolean = false,
         val selectedProcessor: ProcessorId = ProcessorId.SQL_NO_MODEL,
         val naturalTextPrompt: String = "",
-        val placeholderText: String = ""
+        val placeholderText: String = "",
+        val widgetSubtitle: String = ""
     ) : WizardState()
 
     /**

@@ -15,15 +15,15 @@
 <mat-dialog-content class="share-dialog-content">
   <!-- Add Collaborator Form -->
   <form
-    [formRoot]="shareForm"
-    (submit)="addShare()"
+    (submit)="$event.preventDefault(); addShare()"
     class="share-form flex gap-2 items-center mb-4"
   >
     <mat-form-field appearance="outline" class="flex-1" subscriptSizing="dynamic">
       <mat-label i18n>Collaborator Email</mat-label>
       <input
         matInput
-        [formField]="shareForm"
+        [value]="emailInput()"
+        (input)="onEmailInput($event)"
         cdkFocusInitial
         placeholder="doctor@hospital.org"
         type="email"

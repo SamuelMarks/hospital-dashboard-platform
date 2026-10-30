@@ -4,6 +4,7 @@
   aria-modal="true"
   tabindex="-1"
   appFocusTrap
+  (escape)="skip()"
   (keydown.escape)="skip()"
   (click)="onOverlayClick($event)"
   [attr.aria-label]="dialogAriaLabel()"

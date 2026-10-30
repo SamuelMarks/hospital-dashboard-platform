@@ -164,8 +164,8 @@ describe('ConversationComponent', () => {
     const snippet = fixture.debugElement.query(By.directive(SqlSnippetComponent));
     snippet.triggerEventHandler('simulate', 'SELECT * FROM patients');
 
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/simulation'], {
-      queryParams: { sql: 'SELECT * FROM patients' },
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/optimization'], {
+      queryParams: { prompt: 'SELECT * FROM patients' },
     });
   });
 

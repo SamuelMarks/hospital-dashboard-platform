@@ -76,9 +76,8 @@ export function isJsonSchema(value: unknown): value is JsonSchema {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
-  const record = value as Record<string, unknown>;
-  if (record['properties'] !== undefined) {
-    return typeof record['properties'] === 'object' && record['properties'] !== null;
+  if ('properties' in value && value.properties !== undefined) {
+    return typeof value.properties === 'object' && value.properties !== null;
   }
   return true;
 }

@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,12 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * API Response model for a Conversation metadata wrapper.
  *
- * @param id
- * @param userId
- * @param createdAt
- * @param updatedAt
- * @param title
- */
+ * @property id * @param userId
+ * @property createdAt * @param updatedAt
+ * @property title */
 @Serializable
 data class ConversationResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,

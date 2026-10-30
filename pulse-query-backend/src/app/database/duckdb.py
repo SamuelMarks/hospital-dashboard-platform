@@ -26,7 +26,7 @@ from app.core.diagnostics import (
 )
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.schemas.json_types import SqlScalar
-from app.services.mpax_bridge import mpax_bridge
+from app.services.optimization.service_unit_solver import optimize_service_unit_beds_udf
 
 logger = logging.getLogger(__name__)
 
@@ -252,7 +252,7 @@ def register_duckdb_udfs(
   Registers Python User-Defined Functions (UDFs) on a DuckDB connection if supported.
 
   Because DuckDB Python UDFs are connection-scoped (unlike catalog SQL macros),
-  this helper ensures `OPTIMIZE_ASSIGNMENTS` is available on every connection.
+  this helper ensures `OPTIMIZE_SERVICE_UNIT_BEDS` is available on every connection.
 
   Args:
       conn (duckdb.DuckDBPyConnection | DuckDBUdfConnectionProtocol | DuckDBConnectionProtocol):
@@ -261,9 +261,9 @@ def register_duckdb_udfs(
   if isinstance(conn, DuckDBUdfConnectionProtocol):
     with contextlib.suppress(Exception):
       conn.create_function(
-        "OPTIMIZE_ASSIGNMENTS",
-        mpax_bridge.solve_unit_assignment,
-        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR, sqltypes.VARCHAR],
+        "OPTIMIZE_SERVICE_UNIT_BEDS",
+        optimize_service_unit_beds_udf,
+        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR],
         return_type=sqltypes.VARCHAR,
         side_effects=True,
       )
@@ -335,36 +335,37 @@ class DuckDBManager:
           return diagnostics_registry.duckdb_status.to_dict()
 
     try:
-      conn = self.get_connection()
-      try:
-        raw_tables = conn.execute("SHOW TABLES").fetchall()
-        tables_map: dict[str, int] = {}
-        for row in raw_tables:
-          table_name = str(row[0])
-          safe_table = table_name.replace('"', '""')
-          try:
-            count_res = conn.execute(f'SELECT COUNT(*) FROM "{safe_table}"').fetchone()
-            tables_map[table_name] = int(str(count_res[0])) if count_res and count_res[0] is not None else 0
-          except Exception:
-            tables_map[table_name] = -1
+      with self._write_lock:
+        conn = self.get_connection()
+        try:
+          raw_tables = conn.execute("SHOW TABLES").fetchall()
+          tables_map: dict[str, int] = {}
+          for row in raw_tables:
+            table_name = str(row[0])
+            safe_table = table_name.replace('"', '""')
+            try:
+              count_res = conn.execute(f'SELECT COUNT(*) FROM "{safe_table}"').fetchone()
+              tables_map[table_name] = int(str(count_res[0])) if count_res and count_res[0] is not None else 0
+            except Exception:
+              tables_map[table_name] = -1
 
-        diagnostics_registry.duckdb_status = DuckDBDiagnosticState(
-          status="ready",
-          path=self.db_path,
-          tables=tables_map,
-          total_tables=len(tables_map),
-          error=None,
-        )
-        if not tables_map:
-          diagnostics_registry.add_warning(
-            code="NO_DUCKDB_TABLES",
-            message="No analytics tables found in DuckDB. Auto-ingestion may be pending.",
-            severity="warning",
-            remediation="Run data ingestion or place CSV files in pulse-query-backend/data/.",
+          diagnostics_registry.duckdb_status = DuckDBDiagnosticState(
+            status="ready",
+            path=self.db_path,
+            tables=tables_map,
+            total_tables=len(tables_map),
+            error=None,
           )
-        return diagnostics_registry.duckdb_status.to_dict()
-      finally:
-        conn.close()
+          if not tables_map:
+            diagnostics_registry.add_warning(
+              code="NO_DUCKDB_TABLES",
+              message="No analytics tables found in DuckDB. Auto-ingestion may be pending.",
+              severity="warning",
+              remediation="Run data ingestion or place CSV files in pulse-query-backend/data/.",
+            )
+          return diagnostics_registry.duckdb_status.to_dict()
+        finally:
+          conn.close()
     except Exception as e:
       error_str = str(e)
       banner = format_duckdb_error_banner(self.db_path, error_str)

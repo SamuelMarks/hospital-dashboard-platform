@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,9 +25,9 @@ import kotlinx.serialization.Serializable
 /**
  * Schema for dataset re-ingestion operation result.
  *
- * @param success True if re-ingestion completed without fatal errors.
- * @param message Status message describing the result.
- * @param tables Updated table row counts.
+ * @property success True if re-ingestion completed without fatal errors.
+ * @property message Status message describing the result.
+ * @property tables Updated table row counts.
  */
 @Serializable
 data class ReingestResponse(

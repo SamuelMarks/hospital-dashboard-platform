@@ -45,6 +45,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -52,7 +53,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.core.model.VisualizationType
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
+import io.healthplatform.pulsequery.ui.components.DashboardGridSkeleton
+import io.healthplatform.pulsequery.ui.components.WidgetSkeletonPlaceholder
+import io.healthplatform.pulsequery.ui.screens.dashboard.extractWidgetSubtitle
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.clinical_status_wallboard
@@ -141,7 +146,10 @@ fun TvDashboardScreen(
             when {
                 uiState.isLoading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
+                            DashboardGridSkeleton()
+                        }
                     }
                 }
                 uiState.errorMessage != null -> {
@@ -249,6 +257,15 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
                     color = Color.White,
                     maxLines = 1
                 )
+                extractWidgetSubtitle(widget)?.let { sub ->
+                    Text(
+                        text = sub,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF94A3B8),
+                        maxLines = 2,
+                        modifier = Modifier.testTag("widget_subtitle_${widget.id}")
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 SuggestionChip(
                     onClick = {},
@@ -263,6 +280,9 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
+                WidgetSkeletonPlaceholder(
+                    visualization = VisualizationType.fromWire(widget.visualization)
+                )
                 Text(
                     text = stringResource(Res.string.live_telemetry_feed),
                     style = MaterialTheme.typography.bodyLarge,

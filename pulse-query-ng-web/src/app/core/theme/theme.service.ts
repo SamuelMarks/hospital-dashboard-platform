@@ -112,7 +112,7 @@ export class ThemeService {
    * Loads saved theme mode and seed color from browser storage, falling back to OS color scheme preferences.
    */
   private loadPreferences(): void {
-    const savedMode = safeStorage.getItem(STORAGE_KEY_MODE) as ThemeMode;
+    const savedMode = safeStorage.getItem(STORAGE_KEY_MODE);
     const savedSeed = safeStorage.getItem(STORAGE_KEY_SEED);
 
     if (savedMode && (savedMode === 'light' || savedMode === 'dark')) {

@@ -1,0 +1,214 @@
+[
+  {
+    "id": "opt-uc1-001",
+    "use_case": "service_unit",
+    "institution_id": "stanford_childrens",
+    "theme": "Service-Unit Reassignment & PCU Expansion",
+    "complexity": "Medium",
+    "prompt": "Place all General Pediatrics patients on PCU 350 and assume we open PCU 360 with 10 additional beds.",
+    "expected_constraints_json": {
+      "service_constraints": [
+        {
+          "constraint_type": "lock_service_to_unit",
+          "service": "General Pediatrics",
+          "unit": "PCU 350",
+          "value": 1.0,
+          "rationale": "Lock General Pediatrics exclusively to PCU 350."
+        }
+      ],
+      "surgical_constraints": [],
+      "staffing_constraints": []
+    },
+    "expert_baseline_metrics": {
+      "off_service_patient_days": 1415.3,
+      "denied_transfers_diverts": 0.0,
+      "propensity_matched_los": 4.675
+    }
+  },
+  {
+    "id": "opt-uc1-002",
+    "use_case": "service_unit",
+    "institution_id": "stanford_childrens",
+    "theme": "Neurosurgery Cohort Specialization",
+    "complexity": "High",
+    "prompt": "Reserve at least 10 beds for Neurosurgery on PCU 380 and open 4 additional beds on PCU 380.",
+    "expected_constraints_json": {
+      "service_constraints": [
+        {
+          "constraint_type": "unit_capacity_delta",
+          "service": null,
+          "unit": "PCU 380",
+          "value": 4.0,
+          "rationale": "Add 4 beds on PCU 380 per natural-language request."
+        },
+        {
+          "constraint_type": "min_service_beds",
+          "service": "Neurosurgery",
+          "unit": "PCU 380",
+          "value": 10.0,
+          "rationale": "Reserve at least 10 beds for Neurosurgery on PCU 380."
+        }
+      ],
+      "surgical_constraints": [],
+      "staffing_constraints": []
+    },
+    "expert_baseline_metrics": {
+      "off_service_patient_days": 1415.3,
+      "denied_transfers_diverts": 0.0,
+      "propensity_matched_los": 4.675
+    }
+  },
+  {
+    "id": "opt-uc1-003",
+    "use_case": "service_unit",
+    "institution_id": "chop",
+    "theme": "Multi-Institutional Pediatric Surge Balancing",
+    "complexity": "Medium",
+    "prompt": "Assume we open PCU West with 8 additional beds and reserve at least 10 beds for Cardiology on CICU.",
+    "expected_constraints_json": {
+      "service_constraints": [
+        {
+          "constraint_type": "unit_capacity_delta",
+          "service": null,
+          "unit": "PCU West",
+          "value": 8.0,
+          "rationale": "Add 8 beds on PCU West per natural-language request."
+        },
+        {
+          "constraint_type": "min_service_beds",
+          "service": "Cardiology",
+          "unit": "PCU West",
+          "value": 10.0,
+          "rationale": "Reserve at least 10 beds for Cardiology on PCU West."
+        }
+      ],
+      "surgical_constraints": [],
+      "staffing_constraints": []
+    },
+    "expert_baseline_metrics": {
+      "off_service_patient_days": 1723.6,
+      "denied_transfers_diverts": 0.0,
+      "propensity_matched_los": 4.675
+    }
+  },
+  {
+    "id": "opt-uc2-001",
+    "use_case": "surgical_scheduling",
+    "institution_id": "stanford_childrens",
+    "theme": "POINTS Cardiovascular Recovery Smoothing",
+    "complexity": "High",
+    "prompt": "Cap daily CVICU post-op admissions for POINTS cardiac procedures at 4 cases to prevent cancellations.",
+    "expected_constraints_json": {
+      "service_constraints": [],
+      "surgical_constraints": [
+        {
+          "constraint_type": "max_daily_postop_admits",
+          "program": "POINTS",
+          "procedure_group": null,
+          "recovery_unit": "CVICU",
+          "day_of_week": null,
+          "value": 4.0,
+          "rationale": "Cap daily post-operative admissions on CVICU at 4."
+        }
+      ],
+      "staffing_constraints": []
+    },
+    "expert_baseline_metrics": {
+      "short_notice_surgical_cancellations": 6.3,
+      "postop_mean_to_median_ratio": 1.03
+    }
+  },
+  {
+    "id": "opt-uc2-002",
+    "use_case": "surgical_scheduling",
+    "institution_id": "stanford_childrens",
+    "theme": "BEDS Non-Cardiovascular Spine & Trauma Buffer",
+    "complexity": "Medium",
+    "prompt": "Reserve 4 emergency recovery beds on PICU and avoid scheduling elective BEDS procedures on Monday.",
+    "expected_constraints_json": {
+      "service_constraints": [],
+      "surgical_constraints": [
+        {
+          "constraint_type": "prohibit_procedure_day",
+          "program": "BEDS",
+          "procedure_group": null,
+          "recovery_unit": null,
+          "day_of_week": "Mon",
+          "value": 0.0,
+          "rationale": "Avoid scheduling elective BEDS procedures on Mon."
+        }
+      ],
+      "staffing_constraints": []
+    },
+    "expert_baseline_metrics": {
+      "short_notice_surgical_cancellations": 6.3,
+      "postop_mean_to_median_ratio": 1.03
+    }
+  },
+  {
+    "id": "opt-uc3-001",
+    "use_case": "staffing_optimization",
+    "institution_id": "stanford_childrens",
+    "theme": "Nurse Burnout & Overtime Reduction",
+    "complexity": "Medium",
+    "prompt": "Cap unexpected RN overtime shifts at 2 per week and expand cross-unit float pool to 6 shifts.",
+    "expected_constraints_json": {
+      "service_constraints": [],
+      "surgical_constraints": [],
+      "staffing_constraints": [
+        {
+          "constraint_type": "max_overtime_shifts",
+          "unit": "ALL",
+          "provider_role": "RN",
+          "value": 2.0,
+          "rationale": "Cap unexpected RN overtime shifts at 2 per unit/week."
+        },
+        {
+          "constraint_type": "float_pool_cap",
+          "unit": "ALL",
+          "provider_role": "FLOAT_RN",
+          "value": 6.0,
+          "rationale": "Configure cross-unit float pool capacity at 6 FTE shifts."
+        }
+      ]
+    },
+    "expert_baseline_metrics": {
+      "unexpected_rn_overtime_shifts": 9.8,
+      "rn_administrative_a_days": 1.5,
+      "rn_staffing_cost_per_patient_day": 409.18
+    }
+  },
+  {
+    "id": "opt-uc3-002",
+    "use_case": "staffing_optimization",
+    "institution_id": "stanford_health_care",
+    "theme": "Seasonal A-Day & Staffing Cost Optimization",
+    "complexity": "High",
+    "prompt": "Limit RN Administrative Days (A-days) to 2 per week and cap overtime shifts at 3 per week.",
+    "expected_constraints_json": {
+      "service_constraints": [],
+      "surgical_constraints": [],
+      "staffing_constraints": [
+        {
+          "constraint_type": "max_overtime_shifts",
+          "unit": "ALL",
+          "provider_role": "RN",
+          "value": 3.0,
+          "rationale": "Cap unexpected RN overtime shifts at 3 per unit/week."
+        },
+        {
+          "constraint_type": "max_a_days",
+          "unit": "ALL",
+          "provider_role": "RN",
+          "value": 2.0,
+          "rationale": "Cap RN Administrative Days (A-days) at 2 per unit/week."
+        }
+      ]
+    },
+    "expert_baseline_metrics": {
+      "unexpected_rn_overtime_shifts": 15.7,
+      "rn_administrative_a_days": 1.5,
+      "rn_staffing_cost_per_patient_day": 409.61
+    }
+  }
+]

@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
+import io.healthplatform.pulsequery.ui.components.TemplateListSkeleton
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.all_categories
@@ -92,6 +93,8 @@ import pulsequery.composeapp.generated.resources.template_marketplace
 import pulsequery.composeapp.generated.resources.visualization_format
 import pulsequery.composeapp.generated.resources.visualization_type
 import pulsequery.composeapp.generated.resources.widget_created_success
+import pulsequery.composeapp.generated.resources.widget_subtitle_label
+import pulsequery.composeapp.generated.resources.widget_subtitle_placeholder
 import pulsequery.composeapp.generated.resources.widget_title
 
 /**
@@ -154,11 +157,14 @@ fun WizardScreen(
             when (val s = state) {
                 is WizardState.Loading -> {
                     Column(
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         CircularProgressIndicator()
                         Text(stringResource(Res.string.loading_templates))
+                        TemplateListSkeleton()
                     }
                 }
 
@@ -176,6 +182,7 @@ fun WizardScreen(
                     ParameterConfigurationContent(
                         state = s,
                         onTitleChanged = { vm.updateWidgetTitle(it) },
+                        onSubtitleChanged = { vm.updateWidgetSubtitle(it) },
                         onVisualizationChanged = { vm.updateVisualization(it) },
                         onParameterChanged = { k, v -> vm.updateParameterValue(k, v) },
                         onAllowNaturalTextChanged = { vm.updateAllowNaturalText(it) },
@@ -190,6 +197,7 @@ fun WizardScreen(
                     CustomWidgetConfigurationContent(
                         state = s,
                         onTitleChanged = { vm.updateCustomWidgetTitle(it) },
+                        onSubtitleChanged = { vm.updateWidgetSubtitle(it) },
                         onContentChanged = { vm.updateCustomWidgetContent(it) },
                         onVisualizationChanged = { vm.updateCustomWidgetViz(it) },
                         onHttpMethodChanged = { vm.updateCustomWidgetHttpMethod(it) },
@@ -524,6 +532,7 @@ fun ProcessorNaturalTextSection(
  * @param onParameterChanged Callback when parameter input value is modified.
  * @param onSubmit Callback when submitting the widget creation.
  * @param onBack Callback when returning to the template marketplace.
+ * @param onSubtitleChanged Callback when widget subtitle/caption is updated.
  * @param onAllowNaturalTextChanged Callback when natural-text mode is toggled.
  * @param onProcessorSelected Callback when a query processor is selected.
  * @param onNaturalTextPromptChanged Callback when the default natural text prompt changes.
@@ -536,6 +545,7 @@ fun ParameterConfigurationContent(
     onParameterChanged: (String, String) -> Unit,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
+    onSubtitleChanged: (String) -> Unit = {},
     onAllowNaturalTextChanged: (Boolean) -> Unit = {},
     onProcessorSelected: (ProcessorId) -> Unit = {},
     onNaturalTextPromptChanged: (String) -> Unit = {}
@@ -555,6 +565,17 @@ fun ParameterConfigurationContent(
                 label = { Text(stringResource(Res.string.widget_title)) },
                 isError = state.fieldErrors.containsKey("title"),
                 supportingText = state.fieldErrors["title"]?.let { { Text(it) } },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value = state.widgetSubtitle,
+                onValueChange = onSubtitleChanged,
+                label = { Text(stringResource(Res.string.widget_subtitle_label)) },
+                placeholder = { Text(stringResource(Res.string.widget_subtitle_placeholder)) },
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -656,6 +677,7 @@ fun ParameterConfigurationContent(
  * @param onHttpMethodChanged Callback when HTTP verb is modified.
  * @param onSubmit Callback when submitting the widget creation.
  * @param onBack Callback when returning to the marketplace.
+ * @param onSubtitleChanged Callback when widget subtitle/caption is modified.
  * @param onAllowNaturalTextChanged Callback when natural-text mode is toggled.
  * @param onProcessorSelected Callback when a query processor is selected.
  * @param onNaturalTextPromptChanged Callback when the default natural text prompt changes.
@@ -669,6 +691,7 @@ fun CustomWidgetConfigurationContent(
     onHttpMethodChanged: (String) -> Unit,
     onSubmit: () -> Unit,
     onBack: () -> Unit,
+    onSubtitleChanged: (String) -> Unit = {},
     onAllowNaturalTextChanged: (Boolean) -> Unit = {},
     onProcessorSelected: (ProcessorId) -> Unit = {},
     onNaturalTextPromptChanged: (String) -> Unit = {}
@@ -697,6 +720,17 @@ fun CustomWidgetConfigurationContent(
                 label = { Text(stringResource(Res.string.widget_title)) },
                 isError = state.fieldErrors.containsKey("title"),
                 supportingText = state.fieldErrors["title"]?.let { { Text(it) } },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            OutlinedTextField(
+                value = state.widgetSubtitle,
+                onValueChange = onSubtitleChanged,
+                label = { Text(stringResource(Res.string.widget_subtitle_label)) },
+                placeholder = { Text(stringResource(Res.string.widget_subtitle_placeholder)) },
+                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
         }

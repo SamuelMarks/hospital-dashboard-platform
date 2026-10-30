@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,10 +25,8 @@ import kotlinx.serialization.Serializable
 /**
  * Represents a single widget's new position.
  *
- * @param id
- * @param order
- * @param group
- */
+ * @property id * @param order
+ * @property group */
 @Serializable
 data class WidgetReorderItem(
     @SerialName(value = "id") @Required val id: kotlin.String,

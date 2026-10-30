@@ -2860,12 +2860,281 @@
         }
       }
     },
-    "/api/v1/simulation/run": {
+    "/api/v1/optimization/institutions": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Institutions",
+        "description": "Lists all partner hospital institution profiles and their operational baseline parameters.\n\nArgs:\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    list[InstitutionProfileSchema]: Partner hospital profiles.",
+        "operationId": "get_optimization_institutions_api_v1_optimization_institutions_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InstitutionProfileSchema"
+                  },
+                  "title": "Response Get Optimization Institutions Api V1 Optimization Institutions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/models": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Model Compendium",
+        "description": "Lists the compendium of out-of-the-box, JAX/TPU fine-tuned, and LiteRT on-device models.\n\nArgs:\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    list[ModelCompendiumEntrySchema]: Supported LLM and LiteRT models.",
+        "operationId": "get_optimization_model_compendium_api_v1_optimization_models_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelCompendiumEntrySchema"
+                  },
+                  "title": "Response Get Optimization Model Compendium Api V1 Optimization Models Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/quick-actions": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Quick Actions",
+        "description": "Lists Quick Action buttons available in the Hospital Optimization Workspace.\n\nArgs:\n    current_user (User): Authenticated hospital user.\n    use_case (str | None): Optional optimization use case filter.\n\nReturns:\n    list[QuickActionDefinitionSchema]: Quick Action button definitions.",
+        "operationId": "get_optimization_quick_actions_api_v1_optimization_quick_actions_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "use_case",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional use case filter",
+              "title": "Use Case"
+            },
+            "description": "Optional use case filter"
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuickActionDefinitionSchema"
+                  },
+                  "title": "Response Get Optimization Quick Actions Api V1 Optimization Quick Actions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/quick-actions/{action_id}": {
       "post": {
-        "tags": ["simulation"],
-        "summary": "Run Simulation",
-        "description": "Executes an optimization scenario.\n\nThis endpoint takes a snapshot of demand (defined by SQL) and applies\nuser-defined capacity and constraints to solve the bed allocation problem.\n\nArgs:\n    request (ScenarioRunRequest): Configuration containing SQL source and capacity map.\n    current_user (User): Authenticated user.\n\nReturns:\n    ScenarioResult: The calculated assignments.",
-        "operationId": "run_simulation_api_v1_simulation_run_post",
+        "tags": ["optimization"],
+        "summary": "Execute Optimization Quick Action",
+        "description": "Executes a deterministic Quick Action (`patient_days_by_unit`, `patient_days_by_service`,\n`combined_analysis`, `summary_statistics`, `optimize_service_units`, `smooth_surgical_schedule`,\nor `optimize_nurse_staffing`).\n\nArgs:\n    action_id (str): Quick Action identifier.\n    request (QuickActionExecutionRequest): Institution and use-case request parameters.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    QuickActionExecutionResponse: Tabular rows and optional solved MPAX payload.",
+        "operationId": "execute_optimization_quick_action_api_v1_optimization_quick_actions__action_id__post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "action_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Action Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickActionExecutionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickActionExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/solve": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Solve Optimization Stateless",
+        "description": "Solves Use Case 1, Use Case 2, or Use Case 3 statelessly in JAX/MPAX and evaluates\nagainst the JAX Discrete Event Simulation (DES) expert baseline.\n\nArgs:\n    request (OptimizationSolveRequest): Stateless optimization solve payload.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSolutionPayload: Solved assignments/schedule and DES baseline metrics.",
+        "operationId": "solve_optimization_stateless_api_v1_optimization_solve_post",
         "security": [
           {
             "OAuth2PasswordBearer": []
@@ -2896,7 +3165,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ScenarioRunRequest"
+                "$ref": "#/components/schemas/OptimizationSolveRequest"
               }
             }
           }
@@ -2907,7 +3176,453 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScenarioResult"
+                  "$ref": "#/components/schemas/OptimizationSolutionPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/sessions": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Create Optimization Session",
+        "description": "Creates a new iterative Hospital Optimization session for Use Case 1, 2, or 3.\n\nArgs:\n    payload (OptimizationSessionCreate): Session creation parameters.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSessionResponse: Created session state with initial MPAX baseline solution.",
+        "operationId": "create_optimization_session_api_v1_optimization_sessions_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationSessionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["optimization"],
+        "summary": "List Optimization Sessions",
+        "description": "Lists all iterative Hospital Optimization sessions owned by the authenticated user.\n\nArgs:\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    list[OptimizationSessionResponse]: User's optimization sessions.",
+        "operationId": "list_optimization_sessions_api_v1_optimization_sessions_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OptimizationSessionResponse"
+                  },
+                  "title": "Response List Optimization Sessions Api V1 Optimization Sessions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/sessions/{session_id}": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Session",
+        "description": "Retrieves a specific Hospital Optimization session and its iteration history.\n\nArgs:\n    session_id (str): Target session UUID string.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSessionResponse: Session state and chronological iteration history.",
+        "operationId": "get_optimization_session_api_v1_optimization_sessions__session_id__get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["optimization"],
+        "summary": "Delete Optimization Session",
+        "description": "Deletes an iterative Hospital Optimization session owned by the authenticated user.\n\nArgs:\n    session_id (str): Target session UUID string.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    dict[str, str]: Deletion confirmation dictionary.",
+        "operationId": "delete_optimization_session_api_v1_optimization_sessions__session_id__delete",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Delete Optimization Session Api V1 Optimization Sessions  Session Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/sessions/{session_id}/iterate": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Iterate Optimization Session",
+        "description": "Submits a natural-language prompt or constraint update to an active optimization session,\nsolves the updated JAX/MPAX model, and returns the clinical explanation + DES comparison.\n\nArgs:\n    session_id (str): Target optimization session UUID string.\n    request (OptimizationIterationRequest): Conversational turn request.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationIterationResponse: Completed turn with updated MPAX solution and explanation.",
+        "operationId": "iterate_optimization_session_api_v1_optimization_sessions__session_id__iterate_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationIterationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationIterationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/surveys": {
+      "post": {
+        "tags": ["optimization"],
+        "summary": "Submit Optimization Survey",
+        "description": "Submits a qualitative and quantitative UX evaluation survey comparing the self-service\nLLM-MPAX workflow against (A) the manual graduate-student email loop and (B) other hospital tech.\n\nArgs:\n    payload (OptimizationSurveyCreate): Survey submission payload.\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationSurveyResponse: Persisted survey record.",
+        "operationId": "submit_optimization_survey_api_v1_optimization_surveys_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptimizationSurveyCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationSurveyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/optimization/surveys/summary": {
+      "get": {
+        "tags": ["optimization"],
+        "summary": "Get Optimization Evaluation Summary",
+        "description": "Returns aggregated quantitative (DES Expert Baseline gap) and qualitative (User Survey)\nevaluation metrics across all hospital optimization sessions.\n\nArgs:\n    db (AsyncSession): Active PostgreSQL async session.\n    current_user (User): Authenticated hospital user.\n\nReturns:\n    OptimizationEvaluationSummaryResponse: Aggregated quantitative and qualitative metrics.",
+        "operationId": "get_optimization_evaluation_summary_api_v1_optimization_surveys_summary_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationEvaluationSummaryResponse"
                 }
               }
             }
@@ -5310,144 +6025,6 @@
         }
       }
     },
-    "/api/v1/mpax_arena/run": {
-      "post": {
-        "tags": ["mpax_arena"],
-        "summary": "Run Mpax Arena Mode",
-        "description": "Executes an MPAX Arena evaluation mode.\nModes: judge, translator, constraints, sql_vs_mpax, critic.\n\nArgs:\n    request (MpaxArenaRequest): Arena evaluation mode and scenario configuration.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active transactional database session.\n\nReturns:\n    MpaxArenaResponse: Evaluated candidate responses and ground-truth MPAX output.",
-        "operationId": "run_mpax_arena_mode_api_v1_mpax_arena_run_post",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "token",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "JWT token query parameter for direct browser downloads",
-              "title": "Token"
-            },
-            "description": "JWT token query parameter for direct browser downloads"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MpaxArenaRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MpaxArenaResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/mpax_arena/runs/{run_id}/candidates/{candidate_id}/vote": {
-      "post": {
-        "tags": ["mpax_arena"],
-        "summary": "Vote Mpax Arena Candidate",
-        "description": "Records a winning vote for an LLM candidate in an MPAX Arena run.\n\nArgs:\n    run_id (str): UUID string identifying the MPAX Arena experiment.\n    candidate_id (str): UUID string identifying the candidate voted for.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active transactional database session.\n\nReturns:\n    MpaxArenaResponse: Updated experiment results with is_selected true for winning candidate.",
-        "operationId": "vote_mpax_arena_candidate_api_v1_mpax_arena_runs__run_id__candidates__candidate_id__vote_post",
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "run_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Run Id"
-            }
-          },
-          {
-            "name": "candidate_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Candidate Id"
-            }
-          },
-          {
-            "name": "token",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "JWT token query parameter for direct browser downloads",
-              "title": "Token"
-            },
-            "description": "JWT token query parameter for direct browser downloads"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MpaxArenaResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/benchmarks/sql": {
       "get": {
         "tags": ["benchmarks"],
@@ -5472,12 +6049,12 @@
         }
       }
     },
-    "/api/v1/benchmarks/mpax": {
+    "/api/v1/benchmarks/optimization": {
       "get": {
         "tags": ["benchmarks"],
-        "summary": "Get Mpax Benchmarks",
-        "description": "Returns the generated MPAX what-if scenarios.\n\nReturns:\n    list[BenchmarkScenarioSchema]: Parsed MPAX benchmark scenario items.",
-        "operationId": "get_mpax_benchmarks_api_v1_benchmarks_mpax_get",
+        "summary": "Get Optimization Benchmarks",
+        "description": "Returns the gold-standard Hospital Operations Optimization benchmarks across\nUse Case 1 (`service_unit`), Use Case 2 (`surgical_scheduling`), and Use Case 3 (`staffing_optimization`).\n\nReturns:\n    list[BenchmarkScenarioSchema]: Parsed optimization benchmark scenario items.",
+        "operationId": "get_optimization_benchmarks_api_v1_benchmarks_optimization_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -5488,7 +6065,7 @@
                     "$ref": "#/components/schemas/BenchmarkScenarioSchema"
                   },
                   "type": "array",
-                  "title": "Response Get Mpax Benchmarks Api V1 Benchmarks Mpax Get"
+                  "title": "Response Get Optimization Benchmarks Api V1 Benchmarks Optimization Get"
                 }
               }
             }
@@ -6147,6 +6724,28 @@
             ],
             "title": "Id"
           },
+          "use_case": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Case"
+          },
+          "institution_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution Id"
+          },
           "theme": {
             "anyOf": [
               {
@@ -6213,6 +6812,30 @@
             ],
             "title": "Scenario"
           },
+          "expected_constraints_json": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JsonObject-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expert_baseline_metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expert Baseline Metrics"
+          },
           "demand_data": {
             "anyOf": [
               {
@@ -6259,7 +6882,7 @@
         "additionalProperties": true,
         "type": "object",
         "title": "BenchmarkScenarioSchema",
-        "description": "Strongly typed Pydantic schema for a Text-to-SQL or MPAX What-If benchmark scenario entry.\n\nAttributes:\n    id (str | None): Optional scenario UUID string.\n    theme (str | None): Analytical or clinical optimization theme name.\n    question (str | None): Natural language clinical question (SQL benchmark).\n    gold_sql (str | None): Ground-truth DuckDB SQL query (SQL benchmark).\n    complexity (str | None): Complexity tier (`'Low'`, `'Medium'`, `'High'`, `'Easy'`, `'Hard'`).\n    prompt (str | None): Natural language scenario prompt (MPAX benchmark).\n    scenario (str | None): Optional scenario identifier or summary label.\n    demand_data (list[JsonObject] | None): List of clinical service demand objects.\n    base_capacity (dict[str, float] | None): Unit capacity dictionary.\n    expected_metrics (dict[str, float] | None): Expected demand/capacity/overflow metrics."
+        "description": "Strongly typed Pydantic schema for a Text-to-SQL or Hospital Optimization benchmark scenario entry.\n\nAttributes:\n    id (str | None): Optional scenario UUID or slug string.\n    use_case (str | None): Optimization use case (`'service_unit'`, `'surgical_scheduling'`, `'staffing_optimization'`).\n    institution_id (str | None): Partner hospital profile identifier.\n    theme (str | None): Analytical or clinical optimization theme name.\n    question (str | None): Natural language clinical question (SQL benchmark).\n    gold_sql (str | None): Ground-truth DuckDB SQL query (SQL benchmark).\n    complexity (str | None): Complexity tier (`'Low'`, `'Medium'`, `'High'`, `'Easy'`, `'Hard'`).\n    prompt (str | None): Natural language scenario prompt (Optimization benchmark).\n    scenario (str | None): Optional scenario identifier or summary label.\n    expected_constraints_json (JsonObject | None): Gold-standard extracted constraint payload.\n    expert_baseline_metrics (dict[str, float] | None): Expert-attained DES baseline metrics for scoring.\n    demand_data (list[JsonObject] | None): Optional clinical service demand objects.\n    base_capacity (dict[str, float] | None): Optional unit capacity dictionary.\n    expected_metrics (dict[str, float] | None): Optional expected metrics dictionary."
       },
       "BenchmarkTelemetryStateDict": {
         "properties": {
@@ -6691,6 +7314,66 @@
         "title": "DatabaseSummarySchema",
         "description": "Schema for boolean connectivity summary across PostgreSQL and DuckDB."
       },
+      "DesEvaluationSummary": {
+        "properties": {
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "replications": {
+            "type": "integer",
+            "title": "Replications",
+            "default": 128
+          },
+          "horizon_days": {
+            "type": "integer",
+            "title": "Horizon Days",
+            "default": 180
+          },
+          "overall_expert_gap_pct": {
+            "type": "number",
+            "title": "Overall Expert Gap Pct"
+          },
+          "metrics": {
+            "items": {
+              "$ref": "#/components/schemas/ExpertBaselineMetricItem"
+            },
+            "type": "array",
+            "title": "Metrics"
+          },
+          "propensity_los_impact": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PropensityLosImpactSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "postop_mean_to_median_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postop Mean To Median Ratio"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["use_case", "overall_expert_gap_pct", "metrics"],
+        "title": "DesEvaluationSummary",
+        "description": "JAX Discrete Event Simulation (DES) evaluation summary comparing the user's MPAX solution\nagainst the manual hospital baseline and the expert-attained baseline.\n\nAttributes:\n    use_case (OptimizationUseCase): Evaluated use case.\n    replications (int): Number of vectorized JAX Monte Carlo DES trajectories simulated.\n    horizon_days (int): Simulated operational horizon in days.\n    overall_expert_gap_pct (float): Relative optimality gap (%) vs. the expert baseline (0% = matches expert).\n    metrics (list[ExpertBaselineMetricItem]): Breakdown of primary clinical and financial metrics.\n    propensity_los_impact (PropensityLosImpactSchema | None): Propensity-matched LOS estimate (for Use Case 1).\n    postop_mean_to_median_ratio (float | None): Post-op admission tail ratio (for Use Case 2)."
+      },
       "DiagnosticWarningSchema": {
         "properties": {
           "code": {
@@ -6909,6 +7592,61 @@
         "title": "ExperimentResponse",
         "description": "Return schema containing the UUID and list of anonymous candidates."
       },
+      "ExpertBaselineMetricItem": {
+        "properties": {
+          "metric_key": {
+            "type": "string",
+            "title": "Metric Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "unit_label": {
+            "type": "string",
+            "title": "Unit Label"
+          },
+          "lower_is_better": {
+            "type": "boolean",
+            "title": "Lower Is Better",
+            "default": true
+          },
+          "manual_historical_value": {
+            "type": "number",
+            "title": "Manual Historical Value"
+          },
+          "expert_baseline_value": {
+            "type": "number",
+            "title": "Expert Baseline Value"
+          },
+          "llm_mpax_value": {
+            "type": "number",
+            "title": "Llm Mpax Value"
+          },
+          "improvement_vs_manual_pct": {
+            "type": "number",
+            "title": "Improvement Vs Manual Pct"
+          },
+          "expert_attainment_pct": {
+            "type": "number",
+            "title": "Expert Attainment Pct"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_key",
+          "label",
+          "unit_label",
+          "manual_historical_value",
+          "expert_baseline_value",
+          "llm_mpax_value",
+          "improvement_vs_manual_pct",
+          "expert_attainment_pct"
+        ],
+        "title": "ExpertBaselineMetricItem",
+        "description": "Quantitative comparison of a single operational KPI across Manual Historical,\nExpert-Attained Baseline (Gurobi/MPAX reference), and User + LLM MPAX Policy.\n\nAttributes:\n    metric_key (str): Machine-readable metric key.\n    label (str): Human-readable metric label.\n    unit_label (str): Measurement unit (e.g., `'patient-days'`, `'cancellations/mo'`, `'$/patient-day'`).\n    lower_is_better (bool): True if lower values represent better clinical/operational performance.\n    manual_historical_value (float): Value under current unoptimized hospital operations.\n    expert_baseline_value (float): Value attained by optimization experts (graduate-student baseline).\n    llm_mpax_value (float): Value attained by the decision maker using the LLM + JAX/MPAX interface.\n    improvement_vs_manual_pct (float): Percentage improvement of `llm_mpax_value` over `manual_historical_value`.\n    expert_attainment_pct (float): Percentage of the expert baseline improvement captured by the user's policy."
+      },
       "FeedbackUpdate": {
         "properties": {
           "is_selected": {
@@ -6998,6 +7736,31 @@
             "title": "H",
             "description": "Grid Height (rows)",
             "default": 4
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
           },
           "url": {
             "type": "string",
@@ -7100,6 +7863,31 @@
             "title": "H",
             "description": "Grid Height (rows)",
             "default": 4
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
           },
           "url": {
             "type": "string",
@@ -7212,6 +8000,82 @@
         "title": "HttpExecutionPayload",
         "description": "Strongly typed Pydantic model for an HTTP widget execution payload.\n\nAttributes:\n    kind (Literal[\"http\"]): Discriminator tag identifying an HTTP widget execution payload.\n    data (JsonValue): Parsed JSON or raw text payload returned by the target HTTP endpoint.\n    status (int | str): HTTP status code (or status label).\n    error (str | None): Error message if the HTTP request failed, else None."
       },
+      "InstitutionProfileSchema": {
+        "properties": {
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "short_name": {
+            "type": "string",
+            "title": "Short Name"
+          },
+          "hospital_type": {
+            "type": "string",
+            "enum": ["pediatric", "adult"],
+            "title": "Hospital Type"
+          },
+          "total_licensed_beds": {
+            "type": "integer",
+            "title": "Total Licensed Beds"
+          },
+          "unit_capacities": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Unit Capacities"
+          },
+          "clinical_services": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Clinical Services"
+          },
+          "home_unit_map": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Home Unit Map"
+          },
+          "surgical_programs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Surgical Programs"
+          },
+          "federated_node_enabled": {
+            "type": "boolean",
+            "title": "Federated Node Enabled",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "institution_id",
+          "name",
+          "short_name",
+          "hospital_type",
+          "total_licensed_beds",
+          "unit_capacities",
+          "clinical_services",
+          "home_unit_map",
+          "surgical_programs"
+        ],
+        "title": "InstitutionProfileSchema",
+        "description": "Describes a partner hospital institution profile and its non-PHI operational baseline parameters.\n\nAttributes:\n    institution_id (str): Canonical identifier (e.g., `'stanford_childrens'`).\n    name (str): Full hospital name.\n    short_name (str): Concise display name.\n    hospital_type (Literal[\"pediatric\", \"adult\"]): Pediatric or adult academic medical center.\n    total_licensed_beds (int): Total licensed inpatient beds across modeled units.\n    unit_capacities (dict[str, int]): Default bed capacity per clinical unit.\n    clinical_services (list[str]): Modeled clinical services.\n    home_unit_map (dict[str, list[str]]): Specialized home units for each clinical service.\n    surgical_programs (list[str]): Supported surgical scheduling algorithms (e.g., `['BEDS', 'POINTS']`).\n    federated_node_enabled (bool): Whether privacy-preserving federated parameter sharing is active."
+      },
       "JsonObject-Input": {
         "additionalProperties": {
           "$ref": "#/components/schemas/JsonValue-Input"
@@ -7311,7 +8175,7 @@
         "properties": {
           "source": {
             "type": "string",
-            "enum": ["chat", "ai", "mpax_arena"],
+            "enum": ["chat", "ai", "optimization"],
             "title": "Source"
           },
           "candidate_id": {
@@ -7432,7 +8296,7 @@
           "created_at"
         ],
         "title": "LlmOutputAnalyticsRow",
-        "description": "Flattened analytics row representing a single LLM candidate response."
+        "description": "Flattened analytics row representing a single LLM candidate response or optimization iteration."
       },
       "MessageCandidateResponse": {
         "properties": {
@@ -7651,6 +8515,56 @@
         "title": "ModelCandidateResponse",
         "description": "Public response schema for the frontend.\nHides 'model_identifier' to maintain double-blind benchmarking."
       },
+      "ModelCompendiumEntrySchema": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "gemini",
+              "gemma",
+              "medgemma",
+              "vaultgemma",
+              "deepseek",
+              "llama",
+              "litert_odml"
+            ],
+            "title": "Family"
+          },
+          "deployment_target": {
+            "type": "string",
+            "enum": [
+              "gcp_cloud",
+              "tpu_fine_tuned",
+              "local_ollama",
+              "litert_on_device"
+            ],
+            "title": "Deployment Target"
+          },
+          "supports_differential_privacy": {
+            "type": "boolean",
+            "title": "Supports Differential Privacy",
+            "default": false
+          },
+          "supports_hot_loading": {
+            "type": "boolean",
+            "title": "Supports Hot Loading",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["model_id", "display_name", "family", "deployment_target"],
+        "title": "ModelCompendiumEntrySchema",
+        "description": "Metadata for an LLM or On-Device ML (LiteRT) model in the optimization compendium.\n\nAttributes:\n    model_id (str): Canonical model identifier (e.g., `'gemini-2.5-pro'`, `'medgemma-27b-text-it'`).\n    display_name (str): Human-readable model name.\n    family (Literal[\"gemini\", \"gemma\", \"medgemma\", \"vaultgemma\", \"deepseek\", \"llama\", \"litert_odml\"]): Model family.\n    deployment_target (Literal[\"gcp_cloud\", \"tpu_fine_tuned\", \"local_ollama\", \"litert_on_device\"]): Execution runtime.\n    supports_differential_privacy (bool): True for privacy-hardened models such as VaultGemma.\n    supports_hot_loading (bool): True if hot-loadable via LiteRT on Android/Chrome."
+      },
       "ModelInfo": {
         "properties": {
           "id": {
@@ -7681,81 +8595,162 @@
         "title": "ModelInfo",
         "description": "Information about a configured LLM or SQL processor in the platform.\n\nAttributes:\n    id (str): Unique processor identifier (e.g. `'SQL'`, `'ollama/llama3'`, `'openai/gpt-4o'`).\n    name (str): Human-readable display label (e.g. `'SQL [no model]'`, `'GPT-4o'`).\n    provider (str): Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'anthropic'`, etc.).\n    is_local (bool): True if the processor executes locally (DuckDB SQL or local Ollama).\n    processor_type (ProcessorType): High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`)."
       },
-      "MpaxArenaCandidate": {
+      "OptimizationEvaluationSummaryResponse": {
         "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
+          "total_sessions": {
+            "type": "integer",
+            "title": "Total Sessions"
           },
-          "model_name": {
-            "type": "string",
-            "title": "Model Name"
+          "total_iterations": {
+            "type": "integer",
+            "title": "Total Iterations"
           },
-          "content": {
-            "type": "string",
-            "title": "Content"
+          "mean_expert_baseline_gap_pct": {
+            "type": "number",
+            "title": "Mean Expert Baseline Gap Pct"
           },
-          "is_selected": {
-            "type": "boolean",
-            "title": "Is Selected",
-            "default": false
+          "survey_count": {
+            "type": "integer",
+            "title": "Survey Count"
           },
-          "mpax_result": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MpaxSolverTruth"
-              },
-              {
-                "$ref": "#/components/schemas/MpaxSolverErrorPayload"
-              },
-              {
-                "$ref": "#/components/schemas/JsonObject-Output"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mpax Result"
+          "mean_score_vs_manual_process": {
+            "type": "number",
+            "title": "Mean Score Vs Manual Process"
           },
-          "mpax_score": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mpax Score"
+          "mean_score_vs_other_workflow_tech": {
+            "type": "number",
+            "title": "Mean Score Vs Other Workflow Tech"
           },
-          "sql_snippet": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sql Snippet"
+          "mean_interpretability_score": {
+            "type": "number",
+            "title": "Mean Interpretability Score"
+          },
+          "recent_surveys": {
+            "items": {
+              "$ref": "#/components/schemas/OptimizationSurveyResponse"
+            },
+            "type": "array",
+            "title": "Recent Surveys"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["id", "model_name", "content"],
-        "title": "MpaxArenaCandidate",
-        "description": "Individual LLM candidate result in an MPAX Arena experiment."
+        "required": [
+          "total_sessions",
+          "total_iterations",
+          "mean_expert_baseline_gap_pct",
+          "survey_count",
+          "mean_score_vs_manual_process",
+          "mean_score_vs_other_workflow_tech",
+          "mean_interpretability_score"
+        ],
+        "title": "OptimizationEvaluationSummaryResponse",
+        "description": "Aggregated quantitative (DES Expert Baseline) and qualitative (User Survey) evaluation metrics.\n\nAttributes:\n    total_sessions (int): Total optimization sessions created.\n    total_iterations (int): Total conversational MPAX iterations executed.\n    mean_expert_baseline_gap_pct (float): Average optimality gap (%) relative to expert baseline.\n    survey_count (int): Total qualitative user experience surveys submitted.\n    mean_score_vs_manual_process (float): Mean 1-5 rating comparing against the manual graduate-student loop.\n    mean_score_vs_other_workflow_tech (float): Mean 1-5 rating comparing against other hospital workflow tech.\n    mean_interpretability_score (float): Mean 1-5 rating of result transparency and interpretability.\n    recent_surveys (list[OptimizationSurveyResponse]): Most recent survey submissions."
       },
-      "MpaxArenaRequest": {
+      "OptimizationIterationRequest": {
         "properties": {
           "prompt": {
             "type": "string",
             "title": "Prompt"
           },
-          "mode": {
-            "type": "string",
-            "title": "Mode"
+          "quick_action_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "patient_days_by_unit",
+                  "patient_days_by_service",
+                  "combined_analysis",
+                  "summary_statistics",
+                  "optimize_service_units",
+                  "smooth_surgical_schedule",
+                  "optimize_nurse_staffing"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quick Action Id"
           },
-          "demand_sql": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": "gemini-2.5-pro"
+          },
+          "service_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ServiceUnitConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Service Constraints"
+          },
+          "surgical_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SurgicalScheduleConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surgical Constraints"
+          },
+          "staffing_constraints": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StaffingConstraint"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Staffing Constraints"
+          },
+          "reset_constraints": {
+            "type": "boolean",
+            "title": "Reset Constraints",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["prompt"],
+        "title": "OptimizationIterationRequest",
+        "description": "Request payload for submitting a conversational prompt or constraint update in an active session.\n\nAttributes:\n    prompt (str): Natural language instruction from the hospital decision maker.\n    quick_action_id (QuickActionType | None): Optional Quick Action triggered alongside the turn.\n    model_id (str): Selected LLM or LiteRT model ID (`'gemini-2.5-pro'`, `'medgemma-27b-text-it'`, `'vaultgemma-9b'`, etc.).\n    service_constraints (list[ServiceUnitConstraint] | None): Optional explicit Use Case 1 constraint overrides.\n    surgical_constraints (list[SurgicalScheduleConstraint] | None): Optional explicit Use Case 2 constraint overrides.\n    staffing_constraints (list[StaffingConstraint] | None): Optional explicit Use Case 3 constraint overrides.\n    reset_constraints (bool): If True, clears prior session constraints before applying the new turn."
+      },
+      "OptimizationIterationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "turn_index": {
+            "type": "integer",
+            "title": "Turn Index"
+          },
+          "user_prompt": {
+            "type": "string",
+            "title": "User Prompt"
+          },
+          "quick_action_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -7764,140 +8759,276 @@
                 "type": "null"
               }
             ],
-            "title": "Demand Sql",
-            "default": "SELECT department as Service, department as Unit, COUNT(*) as Count FROM hospital_data GROUP BY department;"
+            "title": "Quick Action Id"
           },
-          "base_capacity": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "type": "integer"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Base Capacity"
-          }
-        },
-        "type": "object",
-        "required": ["prompt", "mode"],
-        "title": "MpaxArenaRequest",
-        "description": "Request payload for executing an MPAX vs LLM comparison."
-      },
-      "MpaxArenaResponse": {
-        "properties": {
-          "experiment_id": {
+          "model_id": {
             "type": "string",
-            "title": "Experiment Id"
+            "title": "Model Id"
           },
-          "mode": {
+          "assistant_explanation": {
             "type": "string",
-            "title": "Mode"
+            "title": "Assistant Explanation"
           },
-          "ground_truth_mpax": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/MpaxSolverTruth"
-              },
-              {
-                "$ref": "#/components/schemas/MpaxSolverErrorPayload"
-              },
-              {
-                "$ref": "#/components/schemas/JsonObject-Output"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ground Truth Mpax"
-          },
-          "candidates": {
+          "follow_up_suggestions": {
             "items": {
-              "$ref": "#/components/schemas/MpaxArenaCandidate"
+              "type": "string"
             },
             "type": "array",
-            "title": "Candidates"
+            "title": "Follow Up Suggestions"
+          },
+          "solution": {
+            "$ref": "#/components/schemas/OptimizationSolutionPayload"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "title": "Latency Ms"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["experiment_id", "mode", "candidates"],
-        "title": "MpaxArenaResponse",
-        "description": "Response returned after executing an MPAX Arena scenario."
+        "required": [
+          "id",
+          "session_id",
+          "turn_index",
+          "user_prompt",
+          "model_id",
+          "assistant_explanation",
+          "solution",
+          "latency_ms",
+          "created_at"
+        ],
+        "title": "OptimizationIterationResponse",
+        "description": "Response representing a completed conversational optimization iteration.\n\nAttributes:\n    id (str): Iteration UUID string.\n    session_id (str): Parent session UUID string.\n    turn_index (int): 1-based sequential turn index.\n    user_prompt (str): Submitted user prompt.\n    quick_action_id (str | None): Optional Quick Action identifier.\n    model_id (str): Model identifier that translated constraints and explained the solution.\n    assistant_explanation (str): Transparent, clinician-friendly explanation of the MPAX optimization result.\n    follow_up_suggestions (list[str]): Suggested next-step prompts for iterative refinement.\n    solution (OptimizationSolutionPayload): Deterministic JAX/MPAX solution and DES baseline evaluation.\n    latency_ms (int): End-to-end turn execution time in milliseconds.\n    created_at (datetime): Turn completion timestamp."
       },
-      "MpaxAssignmentRow": {
+      "OptimizationSessionCreate": {
         "properties": {
-          "Service": {
+          "use_case": {
             "type": "string",
-            "title": "Service"
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
           },
-          "Unit": {
+          "institution_id": {
             "type": "string",
-            "title": "Unit"
+            "title": "Institution Id",
+            "default": "stanford_childrens"
           },
-          "Patient_Count": {
-            "type": "number",
-            "title": "Patient Count"
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "initial_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Prompt"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": "gemini-2.5-pro"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["Service", "Unit", "Patient_Count"],
-        "title": "MpaxAssignmentRow",
-        "description": "Single patient-flow assignment row produced by the MPAX optimization solver.\n\nAttributes:\n    Service (str): Clinical service name.\n    Unit (str): Hospital nursing unit name.\n    Patient_Count (float): Optimized number of assigned patients."
+        "title": "OptimizationSessionCreate",
+        "description": "Request payload to create a new iterative Hospital Optimization session.\n\nAttributes:\n    use_case (OptimizationUseCase): Clinical use case (`'service_unit'`, `'surgical_scheduling'`, or `'staffing_optimization'`).\n    institution_id (str): Partner hospital institution profile ID.\n    title (str | None): Optional custom session title.\n    initial_prompt (str | None): Optional initial natural-language instruction to execute immediately.\n    model_id (str): Default LLM or LiteRT model identifier for the session."
       },
-      "MpaxSolverErrorPayload": {
+      "OptimizationSessionResponse": {
         "properties": {
-          "status": {
+          "id": {
             "type": "string",
-            "const": "error",
-            "title": "Status",
-            "default": "error"
+            "title": "Id"
           },
-          "message": {
+          "user_id": {
             "type": "string",
-            "title": "Message"
+            "title": "User Id"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "latest_solution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptimizationSolutionPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "iterations": {
+            "items": {
+              "$ref": "#/components/schemas/OptimizationIterationResponse"
+            },
+            "type": "array",
+            "title": "Iterations"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["message"],
-        "title": "MpaxSolverErrorPayload",
-        "description": "Structured error payload when an LLM candidate's constraints fail JSON parsing or solver execution.\n\nAttributes:\n    status (Literal[\"error\"]): Fixed `'error'` status discriminator.\n    message (str): Detailed validation or solver failure message."
+        "required": [
+          "id",
+          "user_id",
+          "use_case",
+          "institution_id",
+          "title",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "OptimizationSessionResponse",
+        "description": "Full state of an iterative Hospital Optimization session including its history of turns.\n\nAttributes:\n    id (str): Session UUID string.\n    user_id (str): Owner user UUID string.\n    use_case (OptimizationUseCase): Session optimization use case.\n    institution_id (str): Partner hospital institution ID.\n    title (str): Session title.\n    latest_solution (OptimizationSolutionPayload | None): Most recent JAX/MPAX solution payload.\n    iterations (list[OptimizationIterationResponse]): Chronological list of conversational turns.\n    created_at (datetime): Session creation timestamp.\n    updated_at (datetime): Session last update timestamp."
       },
-      "MpaxSolverTruth": {
+      "OptimizationSolutionPayload": {
         "properties": {
-          "status": {
+          "use_case": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "solver_status": {
+            "type": "string",
+            "enum": ["OPTIMAL", "FEASIBLE", "INFEASIBLE"],
+            "title": "Solver Status",
+            "default": "OPTIMAL"
           },
           "objective_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "number",
             "title": "Objective Value"
           },
-          "assignments": {
+          "solve_time_ms": {
+            "type": "number",
+            "title": "Solve Time Ms"
+          },
+          "service_unit_assignments": {
             "items": {
-              "anyOf": [
-                {
-                  "$ref": "#/components/schemas/MpaxAssignmentRow"
-                },
-                {
-                  "$ref": "#/components/schemas/SimulationAssignment"
-                }
-              ]
+              "$ref": "#/components/schemas/ServiceUnitAssignmentRow"
             },
             "type": "array",
-            "title": "Assignments",
-            "default": []
+            "title": "Service Unit Assignments"
           },
-          "message": {
+          "surgical_schedule_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/SurgicalBlockAssignmentRow"
+            },
+            "type": "array",
+            "title": "Surgical Schedule Assignments"
+          },
+          "staffing_assignments": {
+            "items": {
+              "$ref": "#/components/schemas/StaffingShiftAssignmentRow"
+            },
+            "type": "array",
+            "title": "Staffing Assignments"
+          },
+          "des_evaluation": {
+            "$ref": "#/components/schemas/DesEvaluationSummary"
+          },
+          "applied_service_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceUnitConstraint"
+            },
+            "type": "array",
+            "title": "Applied Service Constraints"
+          },
+          "applied_surgical_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/SurgicalScheduleConstraint"
+            },
+            "type": "array",
+            "title": "Applied Surgical Constraints"
+          },
+          "applied_staffing_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/StaffingConstraint"
+            },
+            "type": "array",
+            "title": "Applied Staffing Constraints"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "use_case",
+          "objective_value",
+          "solve_time_ms",
+          "des_evaluation"
+        ],
+        "title": "OptimizationSolutionPayload",
+        "description": "Unified JAX/MPAX optimization result payload across all three clinical use cases.\n\nAttributes:\n    use_case (OptimizationUseCase): Use case that was solved.\n    institution_id (str): Target hospital institution identifier.\n    solver_status (Literal[\"OPTIMAL\", \"FEASIBLE\", \"INFEASIBLE\"]): MPAX solver convergence status.\n    objective_value (float): Optimal objective value from MPAX `r2HPDHG` / `raPDHG`.\n    solve_time_ms (float): JAX/MPAX solver execution duration in milliseconds.\n    service_unit_assignments (list[ServiceUnitAssignmentRow]): Assignments for Use Case 1.\n    surgical_schedule_assignments (list[SurgicalBlockAssignmentRow]): Assignments for Use Case 2.\n    staffing_assignments (list[StaffingShiftAssignmentRow]): Assignments for Use Case 3.\n    des_evaluation (DesEvaluationSummary): Quantitative JAX DES comparison against the expert baseline.\n    applied_service_constraints (list[ServiceUnitConstraint]): Active Use Case 1 constraints.\n    applied_surgical_constraints (list[SurgicalScheduleConstraint]): Active Use Case 2 constraints.\n    applied_staffing_constraints (list[StaffingConstraint]): Active Use Case 3 constraints."
+      },
+      "OptimizationSolveRequest": {
+        "properties": {
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          },
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "prompt": {
             "anyOf": [
               {
                 "type": "string"
@@ -7906,13 +9037,173 @@
                 "type": "null"
               }
             ],
-            "title": "Message"
+            "title": "Prompt"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": "gemini-2.5-pro"
+          },
+          "service_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/ServiceUnitConstraint"
+            },
+            "type": "array",
+            "title": "Service Constraints"
+          },
+          "surgical_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/SurgicalScheduleConstraint"
+            },
+            "type": "array",
+            "title": "Surgical Constraints"
+          },
+          "staffing_constraints": {
+            "items": {
+              "$ref": "#/components/schemas/StaffingConstraint"
+            },
+            "type": "array",
+            "title": "Staffing Constraints"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["status"],
-        "title": "MpaxSolverTruth",
-        "description": "Ground-truth or candidate optimization outcome returned by the MPAX solver.\n\nAttributes:\n    status (str): Solver completion status (`'OPTIMAL'`, `'FEASIBLE'`, `'INFEASIBLE'`, `'ERROR'`, `'success'`).\n    objective_value (float | None): Optimal objective value if solved.\n    assignments (list[MpaxAssignmentRow | SimulationAssignment]): List of unit-service patient assignments.\n    message (str | None): Optional diagnostic or infeasibility explanation."
+        "title": "OptimizationSolveRequest",
+        "description": "Stateless request payload for solving any of the three JAX/MPAX clinical optimization models directly.\n\nAttributes:\n    use_case (OptimizationUseCase): Clinical use case to solve.\n    institution_id (str): Partner hospital institution profile identifier.\n    prompt (str | None): Optional natural-language constraint instruction to parse and apply.\n    model_id (str): LLM or LiteRT model ID used when translating `prompt`.\n    service_constraints (list[ServiceUnitConstraint]): Explicit Use Case 1 constraints.\n    surgical_constraints (list[SurgicalScheduleConstraint]): Explicit Use Case 2 constraints.\n    staffing_constraints (list[StaffingConstraint]): Explicit Use Case 3 constraints."
+      },
+      "OptimizationSurveyCreate": {
+        "properties": {
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          },
+          "role_category": {
+            "type": "string",
+            "title": "Role Category",
+            "default": "Physician"
+          },
+          "score_vs_manual_process": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score Vs Manual Process"
+          },
+          "score_vs_other_workflow_tech": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Score Vs Other Workflow Tech"
+          },
+          "interpretability_score": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Interpretability Score"
+          },
+          "qualitative_feedback": {
+            "type": "string",
+            "title": "Qualitative Feedback",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "score_vs_manual_process",
+          "score_vs_other_workflow_tech",
+          "interpretability_score"
+        ],
+        "title": "OptimizationSurveyCreate",
+        "description": "Payload for submitting the structured qualitative & quantitative UX evaluation survey\nmandated in `[Technical_addendum]_MPAX_PROJECT_PLAN.md`.\n\nAttributes:\n    session_id (str | None): Optional optimization session UUID being evaluated.\n    use_case (OptimizationUseCase): Evaluated optimization use case.\n    role_category (str): Clinical/operational role of the respondent.\n    score_vs_manual_process (int): 1-5 rating vs. the current manual graduate-student email loop.\n    score_vs_other_workflow_tech (int): 1-5 rating vs. other hospital workflow technology (EHR/spreadsheets).\n    interpretability_score (int): 1-5 rating of result transparency and clinical interpretability.\n    qualitative_feedback (str): Free-text feedback on workflow impact and suggested improvements."
+      },
+      "OptimizationSurveyResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "role_category": {
+            "type": "string",
+            "title": "Role Category"
+          },
+          "score_vs_manual_process": {
+            "type": "integer",
+            "title": "Score Vs Manual Process"
+          },
+          "score_vs_other_workflow_tech": {
+            "type": "integer",
+            "title": "Score Vs Other Workflow Tech"
+          },
+          "interpretability_score": {
+            "type": "integer",
+            "title": "Interpretability Score"
+          },
+          "qualitative_feedback": {
+            "type": "string",
+            "title": "Qualitative Feedback"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "use_case",
+          "role_category",
+          "score_vs_manual_process",
+          "score_vs_other_workflow_tech",
+          "interpretability_score",
+          "qualitative_feedback",
+          "created_at"
+        ],
+        "title": "OptimizationSurveyResponse",
+        "description": "Persisted user survey record returned by the API.\n\nAttributes:\n    id (str): Survey UUID string.\n    user_id (str): Respondent user UUID string.\n    session_id (str | None): Linked session UUID string if provided.\n    use_case (OptimizationUseCase): Evaluated use case.\n    role_category (str): Respondent role category.\n    score_vs_manual_process (int): 1-5 rating vs. manual graduate-student email loop.\n    score_vs_other_workflow_tech (int): 1-5 rating vs. other hospital workflow technology.\n    interpretability_score (int): 1-5 rating of clinical interpretability.\n    qualitative_feedback (str): Respondent's qualitative comments.\n    created_at (datetime): Survey submission timestamp."
       },
       "PasswordResetResponse": {
         "properties": {
@@ -7985,6 +9276,176 @@
         "required": ["status"],
         "title": "PostgresHealthSchema",
         "description": "Schema for PostgreSQL status."
+      },
+      "PropensityLosImpactSchema": {
+        "properties": {
+          "baseline_mean_los_days": {
+            "type": "number",
+            "title": "Baseline Mean Los Days"
+          },
+          "optimized_mean_los_days": {
+            "type": "number",
+            "title": "Optimized Mean Los Days"
+          },
+          "estimated_patient_days_saved": {
+            "type": "number",
+            "title": "Estimated Patient Days Saved"
+          },
+          "off_service_los_penalty_days": {
+            "type": "number",
+            "title": "Off Service Los Penalty Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "baseline_mean_los_days",
+          "optimized_mean_los_days",
+          "estimated_patient_days_saved",
+          "off_service_los_penalty_days"
+        ],
+        "title": "PropensityLosImpactSchema",
+        "description": "Propensity-matched Length of Stay (LOS) impact estimate for Use Case 1.\n\nAttributes:\n    baseline_mean_los_days (float): Historical mean length of stay in days.\n    optimized_mean_los_days (float): Propensity-matched estimated mean LOS after reducing off-service placements.\n    estimated_patient_days_saved (float): Annualized inpatient bed-days saved from on-service care specialization.\n    off_service_los_penalty_days (float): Estimated additional LOS per off-service admission from propensity matching."
+      },
+      "QuickActionDefinitionSchema": {
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "enum": [
+              "patient_days_by_unit",
+              "patient_days_by_service",
+              "combined_analysis",
+              "summary_statistics",
+              "optimize_service_units",
+              "smooth_surgical_schedule",
+              "optimize_nurse_staffing"
+            ],
+            "title": "Action Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "icon": {
+            "type": "string",
+            "title": "Icon"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case"
+          },
+          "default_prompt": {
+            "type": "string",
+            "title": "Default Prompt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action_id",
+          "label",
+          "icon",
+          "description",
+          "use_case",
+          "default_prompt"
+        ],
+        "title": "QuickActionDefinitionSchema",
+        "description": "Metadata describing a one-click Quick Action button in the Hospital Optimization Workspace.\n\nAttributes:\n    action_id (QuickActionType): Canonical Quick Action identifier.\n    label (str): Display label shown on the Quick Action chip.\n    icon (str): Icon identifier or emoji badge matching the alpha bed-use tool.\n    description (str): Explanation of the analysis or optimization performed.\n    use_case (OptimizationUseCase): Associated clinical optimization use case.\n    default_prompt (str): Default natural-language prompt associated with this action."
+      },
+      "QuickActionExecutionRequest": {
+        "properties": {
+          "institution_id": {
+            "type": "string",
+            "title": "Institution Id",
+            "default": "stanford_childrens"
+          },
+          "use_case": {
+            "type": "string",
+            "enum": [
+              "service_unit",
+              "surgical_scheduling",
+              "staffing_optimization"
+            ],
+            "title": "Use Case",
+            "default": "service_unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuickActionExecutionRequest",
+        "description": "Request payload for executing a deterministic Quick Action (`patient_days_by_unit`, etc.).\n\nAttributes:\n    institution_id (str): Target hospital institution profile ID.\n    use_case (OptimizationUseCase): Active optimization use case."
+      },
+      "QuickActionExecutionResponse": {
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "enum": [
+              "patient_days_by_unit",
+              "patient_days_by_service",
+              "combined_analysis",
+              "summary_statistics",
+              "optimize_service_units",
+              "smooth_surgical_schedule",
+              "optimize_nurse_staffing"
+            ],
+            "title": "Action Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary_markdown": {
+            "type": "string",
+            "title": "Summary Markdown"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/SqlScalar"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "optimization_solution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptimizationSolutionPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action_id",
+          "title",
+          "summary_markdown",
+          "columns",
+          "rows"
+        ],
+        "title": "QuickActionExecutionResponse",
+        "description": "Response returned when a user clicks one of the Quick Action buttons in the workspace.\n\nAttributes:\n    action_id (QuickActionType): Executed Quick Action identifier.\n    title (str): Human-readable report title.\n    summary_markdown (str): Concise clinical narrative explaining the table/optimization output.\n    columns (list[str]): Ordered column headers for tabular display.\n    rows (list[dict[str, SqlScalar]]): Tabular rows computed from DuckDB census data or MPAX.\n    optimization_solution (OptimizationSolutionPayload | None): Populated when the Quick Action runs an MPAX solve."
       },
       "RefreshTokenRequest": {
         "properties": {
@@ -8116,13 +9577,8 @@
         "title": "SQLGenerationRequest",
         "description": "Request model for generating SQL from natural language."
       },
-      "ScenarioConstraint": {
+      "ServiceUnitAssignmentRow": {
         "properties": {
-          "type": {
-            "type": "string",
-            "title": "Type",
-            "description": "Constraint type (e.g., 'force_flow')"
-          },
           "service": {
             "type": "string",
             "title": "Service"
@@ -8131,48 +9587,61 @@
             "type": "string",
             "title": "Unit"
           },
-          "min": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Min"
+          "is_home_unit": {
+            "type": "boolean",
+            "title": "Is Home Unit"
           },
-          "max": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max"
+          "baseline_patient_days": {
+            "type": "number",
+            "title": "Baseline Patient Days"
+          },
+          "expert_baseline_patient_days": {
+            "type": "number",
+            "title": "Expert Baseline Patient Days"
+          },
+          "optimized_patient_days": {
+            "type": "number",
+            "title": "Optimized Patient Days"
+          },
+          "allocated_beds": {
+            "type": "integer",
+            "title": "Allocated Beds"
+          },
+          "delta_patient_days": {
+            "type": "number",
+            "title": "Delta Patient Days"
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["type", "service", "unit"],
-        "title": "ScenarioConstraint",
-        "description": "Represents a specific rule for the solver.\nExample: Force 'Gen_Peds' into 'Nursery' with minimum 5 beds."
+        "required": [
+          "service",
+          "unit",
+          "is_home_unit",
+          "baseline_patient_days",
+          "expert_baseline_patient_days",
+          "optimized_patient_days",
+          "allocated_beds",
+          "delta_patient_days"
+        ],
+        "title": "ServiceUnitAssignmentRow",
+        "description": "Single row in the Use Case 1 Service-Unit Assignment MPAX optimization output.\n\nAttributes:\n    service (str): Clinical service name.\n    unit (str): Hospital unit name.\n    is_home_unit (bool): True if `unit` is a designated specialized home unit for `service`.\n    baseline_patient_days (float): Historical/manual patient days assigned to this `(service, unit)` pair.\n    expert_baseline_patient_days (float): Expert Gurobi/MPAX reference patient days.\n    optimized_patient_days (float): User + LLM iterative MPAX optimized patient days.\n    allocated_beds (int): Integer beds dedicated to `service` on `unit`.\n    delta_patient_days (float): Change in patient days (`optimized_patient_days - baseline_patient_days`)."
       },
-      "ScenarioResult": {
+      "ServiceUnitConstraint": {
         "properties": {
-          "assignments": {
-            "items": {
-              "$ref": "#/components/schemas/SimulationAssignment"
-            },
-            "type": "array",
-            "title": "Assignments"
-          },
-          "status": {
+          "constraint_type": {
             "type": "string",
-            "title": "Status"
+            "enum": [
+              "lock_service_to_unit",
+              "prohibit_service_on_unit",
+              "unit_capacity_delta",
+              "unit_capacity_override",
+              "min_service_beds",
+              "max_service_beds"
+            ],
+            "title": "Constraint Type"
           },
-          "message": {
+          "service": {
             "anyOf": [
               {
                 "type": "string"
@@ -8181,85 +9650,35 @@
                 "type": "null"
               }
             ],
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": ["assignments", "status"],
-        "title": "ScenarioResult",
-        "description": "Response containing the optimization outcome."
-      },
-      "ScenarioRunRequest": {
-        "properties": {
-          "demand_source_sql": {
-            "type": "string",
-            "title": "Demand Source Sql",
-            "description": "SQL Query. Supports 2 cols (Service, Count) or 3 cols (Service, CurrentUnit, Count)."
-          },
-          "capacity_parameters": {
-            "additionalProperties": {
-              "type": "number"
-            },
-            "type": "object",
-            "title": "Capacity Parameters",
-            "description": "Map of Unit Name to available bed capacity."
-          },
-          "constraints": {
-            "items": {
-              "$ref": "#/components/schemas/ScenarioConstraint"
-            },
-            "type": "array",
-            "title": "Constraints",
-            "description": "List of hard constraints to apply."
-          },
-          "affinity_overrides": {
-            "additionalProperties": {
-              "additionalProperties": {
-                "type": "number"
-              },
-              "type": "object"
-            },
-            "type": "object",
-            "title": "Affinity Overrides",
-            "description": "Optional overrides for clinical affinity scores."
-          }
-        },
-        "type": "object",
-        "required": ["demand_source_sql", "capacity_parameters"],
-        "title": "ScenarioRunRequest",
-        "description": "Payload to trigger a simulation run."
-      },
-      "SimulationAssignment": {
-        "properties": {
-          "Service": {
-            "type": "string",
             "title": "Service"
           },
-          "Unit": {
-            "type": "string",
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Unit"
           },
-          "Patient_Count": {
+          "value": {
             "type": "number",
-            "title": "Patient Count"
-          },
-          "Original_Count": {
-            "type": "number",
-            "title": "Original Count",
-            "description": "Count in this unit before optimization (if provided).",
+            "title": "Value",
             "default": 0.0
           },
-          "Delta": {
-            "type": "number",
-            "title": "Delta",
-            "description": "Net change (Proposed - Original).",
-            "default": 0.0
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
           }
         },
+        "additionalProperties": false,
         "type": "object",
-        "required": ["Service", "Unit", "Patient_Count"],
-        "title": "SimulationAssignment",
-        "description": "Single row in the optimization result.\n\nProvides both PEP 8 snake_case accessors (`service`, `unit`, `patient_count`,\n`original_count`, `delta`) and wire-compatible PascalCase fields (`Service`,\n`Unit`, `Patient_Count`, `Original_Count`, `Delta`)."
+        "required": ["constraint_type"],
+        "title": "ServiceUnitConstraint",
+        "description": "Mathematical constraint for Use Case 1 (Service-Unit Assignments & Bed-Use Optimization).\n\nAttributes:\n    constraint_type (Literal[\"lock_service_to_unit\", \"prohibit_service_on_unit\", \"unit_capacity_delta\", \"unit_capacity_override\", \"min_service_beds\", \"max_service_beds\"]): Type of rule.\n    service (str | None): Target clinical service (e.g., `'General Pediatrics'`, `'Neurosurgery'`).\n    unit (str | None): Target hospital unit (e.g., `'PCU 350'`, `'PCU 360'`, `'PICU'`).\n    value (float): Numeric bed count, delta, or bound.\n    rationale (str): Human-readable clinical rationale extracted from the leader's prompt."
       },
       "SqlConfig": {
         "properties": {
@@ -8291,6 +9710,31 @@
             "title": "H",
             "description": "Grid Height (rows)",
             "default": 4
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
           },
           "query": {
             "anyOf": [
@@ -8499,6 +9943,235 @@
             "type": "null"
           }
         ]
+      },
+      "StaffingConstraint": {
+        "properties": {
+          "constraint_type": {
+            "type": "string",
+            "enum": [
+              "max_overtime_shifts",
+              "max_a_days",
+              "min_nurse_to_patient_ratio",
+              "float_pool_cap",
+              "seasonality_surge_multiplier"
+            ],
+            "title": "Constraint Type"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "provider_role": {
+            "type": "string",
+            "enum": ["RN", "MD", "NP_PA", "FLOAT_RN"],
+            "title": "Provider Role",
+            "default": "RN"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value",
+            "default": 0.0
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["constraint_type"],
+        "title": "StaffingConstraint",
+        "description": "Mathematical constraint for Use Case 3 (Physician & Nurse Scheduling Optimization).\n\nAttributes:\n    constraint_type (Literal[\"max_overtime_shifts\", \"max_a_days\", \"min_nurse_to_patient_ratio\", \"float_pool_cap\", \"seasonality_surge_multiplier\"]): Type of staffing rule.\n    unit (str | None): Target unit or `'ALL'` for cross-unit rules.\n    provider_role (Literal[\"RN\", \"MD\", \"NP_PA\", \"FLOAT_RN\"]): Clinical provider category.\n    value (float): Numeric ratio, shift cap, or seasonal multiplier.\n    rationale (str): Clinical burnout or productivity rationale."
+      },
+      "StaffingShiftAssignmentRow": {
+        "properties": {
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "season_window": {
+            "type": "string",
+            "title": "Season Window"
+          },
+          "scheduled_core_rns": {
+            "type": "number",
+            "title": "Scheduled Core Rns"
+          },
+          "scheduled_float_rns": {
+            "type": "number",
+            "title": "Scheduled Float Rns"
+          },
+          "scheduled_physicians": {
+            "type": "number",
+            "title": "Scheduled Physicians"
+          },
+          "unexpected_overtime_shifts": {
+            "type": "number",
+            "title": "Unexpected Overtime Shifts"
+          },
+          "administrative_a_days": {
+            "type": "number",
+            "title": "Administrative A Days"
+          },
+          "staffing_cost_per_patient_day": {
+            "type": "number",
+            "title": "Staffing Cost Per Patient Day"
+          },
+          "net_margin_contribution": {
+            "type": "number",
+            "title": "Net Margin Contribution"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "unit",
+          "season_window",
+          "scheduled_core_rns",
+          "scheduled_float_rns",
+          "scheduled_physicians",
+          "unexpected_overtime_shifts",
+          "administrative_a_days",
+          "staffing_cost_per_patient_day",
+          "net_margin_contribution"
+        ],
+        "title": "StaffingShiftAssignmentRow",
+        "description": "Single row in the Use Case 3 (Physician & Nurse Scheduling) MPAX optimization output.\n\nAttributes:\n    unit (str): Hospital unit name.\n    season_window (str): Weekday / month-of-year seasonal demand window (e.g., `'Winter Mon-Wed Surge'`).\n    scheduled_core_rns (float): Scheduled core unit RN FTE shifts per day.\n    scheduled_float_rns (float): Cross-unit float pool RN FTE shifts allocated.\n    scheduled_physicians (float): Scheduled attending/fellow physician shifts.\n    unexpected_overtime_shifts (float): Expected non-voluntary overtime shifts per week.\n    administrative_a_days (float): Expected A-days (shifts sent home due to low volume) per week.\n    staffing_cost_per_patient_day (float): Total RN staffing cost per patient day ($ USD).\n    net_margin_contribution (float): Estimated net revenue minus staffing cost per patient day ($ USD)."
+      },
+      "SurgicalBlockAssignmentRow": {
+        "properties": {
+          "program": {
+            "type": "string",
+            "enum": ["BEDS", "POINTS"],
+            "title": "Program"
+          },
+          "procedure_group": {
+            "type": "string",
+            "title": "Procedure Group"
+          },
+          "recovery_unit": {
+            "type": "string",
+            "title": "Recovery Unit"
+          },
+          "day_of_week": {
+            "type": "string",
+            "enum": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+            "title": "Day Of Week"
+          },
+          "baseline_cases": {
+            "type": "number",
+            "title": "Baseline Cases"
+          },
+          "optimized_cases": {
+            "type": "number",
+            "title": "Optimized Cases"
+          },
+          "expected_postop_los_days": {
+            "type": "number",
+            "title": "Expected Postop Los Days"
+          },
+          "expected_unit_occupancy": {
+            "type": "number",
+            "title": "Expected Unit Occupancy"
+          },
+          "unit_capacity": {
+            "type": "integer",
+            "title": "Unit Capacity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program",
+          "procedure_group",
+          "recovery_unit",
+          "day_of_week",
+          "baseline_cases",
+          "optimized_cases",
+          "expected_postop_los_days",
+          "expected_unit_occupancy",
+          "unit_capacity"
+        ],
+        "title": "SurgicalBlockAssignmentRow",
+        "description": "Single row in the Use Case 2 (BEDS & POINTS) Surgical Scheduling MPAX optimization output.\n\nAttributes:\n    program (Literal[\"BEDS\", \"POINTS\"]): Non-cardiovascular (`BEDS`) or cardiovascular (`POINTS`) program.\n    procedure_group (str): Elective surgical procedure cohort name.\n    recovery_unit (str): Primary post-operative recovery unit (`PICU`, `CVICU`, `PCU 380`, etc.).\n    day_of_week (Literal[\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"]): Assigned day of surgery.\n    baseline_cases (float): Historical number of cases scheduled on this day.\n    optimized_cases (float): MPAX-smoothed number of cases scheduled on this day.\n    expected_postop_los_days (float): JAX ML estimated mean post-operative LOS (accounting for long tail).\n    expected_unit_occupancy (float): Resulting expected recovery unit bed demand on this day.\n    unit_capacity (int): Total recovery unit bed capacity."
+      },
+      "SurgicalScheduleConstraint": {
+        "properties": {
+          "constraint_type": {
+            "type": "string",
+            "enum": [
+              "max_daily_postop_admits",
+              "lock_procedure_day",
+              "prohibit_procedure_day",
+              "reserve_emergency_beds",
+              "surgeon_block_cap"
+            ],
+            "title": "Constraint Type"
+          },
+          "program": {
+            "type": "string",
+            "enum": ["BEDS", "POINTS", "ALL"],
+            "title": "Program",
+            "default": "ALL"
+          },
+          "procedure_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Procedure Group"
+          },
+          "recovery_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovery Unit"
+          },
+          "day_of_week": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["Mon", "Tue", "Wed", "Thu", "Fri"]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value",
+            "default": 0.0
+          },
+          "rationale": {
+            "type": "string",
+            "title": "Rationale",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": ["constraint_type"],
+        "title": "SurgicalScheduleConstraint",
+        "description": "Mathematical constraint for Use Case 2 (Surgical Scheduling \u2014 BEDS & POINTS).\n\nAttributes:\n    constraint_type (Literal[\"max_daily_postop_admits\", \"lock_procedure_day\", \"prohibit_procedure_day\", \"reserve_emergency_beds\", \"surgeon_block_cap\"]): Type of surgical rule.\n    program (Literal[\"BEDS\", \"POINTS\", \"ALL\"]): Target surgical scheduling program.\n    procedure_group (str | None): Surgical procedure cohort (e.g., `'Spine Fusion'`, `'VSD Repair'`).\n    recovery_unit (str | None): Target post-operative recovery unit (e.g., `'PICU'`, `'CVICU'`, `'PCU 380'`).\n    day_of_week (Literal[\"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\"] | None): Target operating day.\n    value (float): Numeric cap or reservation count.\n    rationale (str): Clinical rationale for the scheduling constraint."
       },
       "SystemDiagnosticsResponse": {
         "properties": {
@@ -8862,6 +10535,31 @@
             "description": "Grid Height (rows)",
             "default": 4
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Optional description or clinical guidance for the widget."
+          },
           "content": {
             "type": "string",
             "title": "Content",
@@ -9097,6 +10795,19 @@
             "minLength": 1,
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
           "type": {
             "type": "string",
             "const": "HTTP",
@@ -9125,6 +10836,19 @@
             "minLength": 1,
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
           "type": {
             "type": "string",
             "const": "SQL",
@@ -9152,6 +10876,19 @@
             "maxLength": 100,
             "minLength": 1,
             "title": "Title"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
           },
           "type": {
             "type": "string",
@@ -9339,6 +11076,17 @@
             "type": "string",
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
           "type": {
             "type": "string",
             "title": "Type"
@@ -9400,6 +11148,19 @@
             ],
             "title": "Title"
           },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle",
+            "description": "Optional subtitle or caption explaining what the widget measures or displays."
+          },
           "visualization": {
             "anyOf": [
               {
@@ -9424,7 +11185,7 @@
         },
         "type": "object",
         "title": "WidgetUpdate",
-        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a typed JSON object for config, and individual fields\nare validated if matched.\n\nAttributes:\n    title (str | None): New title.\n    visualization (str | None): New visualization type.\n    config (JsonObject | None): Partial configuration updates."
+        "description": "Payload for updating a widget.\nNote: Polymorphism is relaxed on Updates because 'type' is often immutable or missing\nin partial PATCH requests. We allow a typed JSON object for config, and individual fields\nare validated if matched.\n\nAttributes:\n    title (str | None): New title.\n    subtitle (str | None): Optional new subtitle or caption.\n    visualization (str | None): New visualization type.\n    config (JsonObject | None): Partial configuration updates."
       }
     },
     "securitySchemes": {

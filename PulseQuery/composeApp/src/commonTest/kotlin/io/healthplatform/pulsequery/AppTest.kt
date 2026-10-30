@@ -22,7 +22,7 @@ class AppTest {
         assertEquals(AppRoute.LOGIN, AppRoute.fromRoute("login"))
         assertEquals(AppRoute.DASHBOARD, AppRoute.fromRoute("dashboard"))
         assertEquals(AppRoute.CHAT, AppRoute.fromRoute("chat"))
-        assertEquals(AppRoute.SIMULATION, AppRoute.fromRoute("simulation"))
+        assertEquals(AppRoute.OPTIMIZATION, AppRoute.fromRoute("optimization"))
         assertEquals(AppRoute.TV_DASHBOARD, AppRoute.fromRoute("tv/dashboard"))
         assertEquals(AppRoute.WEAR_CENSUS, AppRoute.fromRoute("wear/census"))
         assertNull(AppRoute.fromRoute(null))
@@ -48,7 +48,7 @@ class AppTest {
     }
 
     /**
-     * Verifies parameterized route builders [AppRoute.wizardRoute] and [AppRoute.mpaxArenaRoute].
+     * Verifies parameterized route builders [AppRoute.wizardRoute] and [AppRoute.optimizationRoute].
      */
     @Test
     fun testParameterizedRouteBuilders() {
@@ -56,8 +56,8 @@ class AppTest {
         assertEquals("wizard", AppRoute.wizardRoute("   "))
         assertEquals("wizard/dash-99", AppRoute.wizardRoute("dash-99"))
 
-        assertEquals("mpax_arena", AppRoute.mpaxArenaRoute(""))
-        assertEquals("mpax_arena", AppRoute.mpaxArenaRoute("  "))
-        assertEquals("mpax_arena?prompt=Route ICU", AppRoute.mpaxArenaRoute("Route ICU"))
+        assertEquals("optimization", AppRoute.optimizationRoute(""))
+        assertEquals("optimization", AppRoute.optimizationRoute("  "))
+        assertEquals("optimization?prompt=Route ICU", AppRoute.optimizationRoute("Route ICU"))
     }
 }

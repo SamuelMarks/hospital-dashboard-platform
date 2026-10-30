@@ -372,6 +372,13 @@ describe('WidgetEditorDialog', () => {
         config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) as unknown,
       }),
     );
+
+    // Test host keydown.escape closes dialog
+    fixture.debugElement.triggerEventHandler(
+      'keydown.escape',
+      new KeyboardEvent('keydown', { key: 'Escape' }),
+    );
+    expect(mockDialogRef.close).toHaveBeenCalledWith(false);
   });
 
   it('should initialize and persist natural text and processor settings', () => {
@@ -442,6 +449,92 @@ describe('WidgetEditorDialog', () => {
     // Also test when prompt and placeholder are blank
     nlInst.naturalTextPrompt.set('  ');
     nlInst.placeholderText.set('');
+    nlInst.title.set('   ');
+    nlInst.subtitle.set('  Custom caption  ');
     nlInst.saveSettings();
+
+    // Test subtitle initialization from top-level subtitle and config.subtitle
+    const topSubWidget: WidgetResponse = {
+      ...sqlWidget,
+      title: '',
+      subtitle: '  Top Sub  ',
+      config: {},
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: topSubWidget } },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
+      ],
+    });
+    const topSubInst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
+    expect(topSubInst.title()).toBe('');
+    expect(topSubInst.subtitle()).toBe('Top Sub');
+
+    const cfgSubWidget: WidgetResponse = {
+      ...sqlWidget,
+      subtitle: null,
+      config: { subtitle: '  Cfg Sub  ' },
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: cfgSubWidget } },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
+      ],
+    });
+    const cfgSubInst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
+    expect(cfgSubInst.subtitle()).toBe('Cfg Sub');
+
+    const cfgDescWidget: WidgetResponse = {
+      ...sqlWidget,
+      subtitle: null,
+      config: { description: '  Desc Sub  ' },
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { dashboardId: 'd1', widget: cfgDescWidget } },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DashboardsService, useValue: mockDashApi },
+        { provide: DashboardStore, useValue: mockStore },
+        {
+          provide: ProcessorCatalogService,
+          useValue: {
+            processors: signal([SQL_NO_MODEL_OPTION]),
+            sqlProcessors: signal([SQL_NO_MODEL_OPTION]),
+            ollamaProcessors: signal([]),
+            anyLlmProcessors: signal([]),
+            loadProcessors: vi.fn(),
+          },
+        },
+      ],
+    });
+    const cfgDescInst = TestBed.runInInjectionContext(() => new WidgetEditorDialog());
+    expect(cfgDescInst.subtitle()).toBe('Desc Sub');
   });
 });

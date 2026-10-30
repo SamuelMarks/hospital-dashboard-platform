@@ -291,11 +291,22 @@ describe('WidgetComponent', () => {
     expect(mockStore.setFocusedWidget).toHaveBeenCalledWith(null);
     expect(deleteEmitted).toBe(false);
 
+    mockStore.setFocusedWidget.mockClear();
+    const overlay = document.createElement('div');
+    overlay.className = 'cdk-overlay-container';
+    const dialogEl = document.createElement('div');
+    dialogEl.setAttribute('role', 'dialog');
+    overlay.appendChild(dialogEl);
+    document.body.appendChild(overlay);
+    component.onEscape(event);
+    expect(mockStore.setFocusedWidget).not.toHaveBeenCalled();
+    overlay.remove();
+
     focusedWidgetIdSig.set(null);
     isEditModeSig.set(true);
     fixture.detectChanges();
     component.onEscape(event);
-    expect(deleteEmitted).toBe(true);
+    expect(deleteEmitted).toBe(false);
   });
 
   it('should ignore escape when not focused and not edit mode', () => {
@@ -420,21 +431,22 @@ describe('WidgetComponent', () => {
 
   it('should simulate widget if SQL', () => {
     component.simulateWidget();
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/simulation'], {
-      queryParams: { sql: 'SELECT 1' },
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/optimization'], {
+      queryParams: { prompt: 'SELECT 1' },
     });
   });
 
-  it('should navigate to simulation with templateId if widget is TEMPLATE', () => {
+  it('should navigate to optimization with templateId if widget is TEMPLATE', () => {
     fixture.componentRef.setInput('widget', {
       ...mockWidget,
       type: 'TEMPLATE',
-      config: { template_id: 't1' },
+      config: { template_id: 'tpl-123' },
     });
     fixture.detectChanges();
+
     component.simulateWidget();
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/simulation'], {
-      queryParams: { templateId: 't1' },
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/optimization'], {
+      queryParams: { templateId: 'tpl-123' },
     });
   });
 
@@ -638,5 +650,29 @@ describe('WidgetComponent', () => {
     expect(component.placeholderText()).toBe('Enter DuckDB SQL query...');
     expect(component.generatedSql()).toBeNull();
     expect(component.processorUsed()).toBe('SQL');
+
+    // Test widgetSubtitle and heatmap skeletonType branches
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      subtitle: '  Top-level subtitle  ',
+      visualization: 'heatmap',
+      config: {},
+    });
+    expect(component.widgetSubtitle()).toBe('Top-level subtitle');
+    expect(component.skeletonType()).toBe('heatmap');
+
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      subtitle: null,
+      config: { subtitle: '  Config subtitle  ' },
+    });
+    expect(component.widgetSubtitle()).toBe('Config subtitle');
+
+    fixture.componentRef.setInput('widget', {
+      ...mockWidget,
+      subtitle: '',
+      config: { description: '  Description fallback  ' },
+    });
+    expect(component.widgetSubtitle()).toBe('Description fallback');
   });
 });

@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Payload for updating conversation metadata (e.g. rename).
  *
- * @param title
- */
+ * @property title */
 @Serializable
 data class ConversationUpdate(
     @SerialName(value = "title") @Required val title: kotlin.String

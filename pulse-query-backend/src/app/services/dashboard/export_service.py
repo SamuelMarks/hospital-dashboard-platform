@@ -129,7 +129,7 @@ class DashboardExportService:
     try:
       cursor = conn.cursor()
       if export_format == "json":
-        exported_widgets: list[dict[str, str | JsonObject | list[SqlRow]]] = []
+        exported_widgets: list[dict[str, str | None | JsonObject | list[SqlRow]]] = []
         for widget in dashboard.widgets:
           data_records: list[SqlRow] = []
           if widget.type == "SQL":
@@ -141,6 +141,7 @@ class DashboardExportService:
             {
               "id": str(widget.id),
               "title": widget.title,
+              "subtitle": widget.subtitle,
               "type": widget.type,
               "visualization": widget.visualization,
               "config": widget.config,
@@ -229,6 +230,7 @@ class DashboardExportService:
         "dashboard_id": str(dashboard.id),
         "widget_id": str(widget.id),
         "title": widget.title,
+        "subtitle": widget.subtitle,
         "type": widget.type,
         "visualization": widget.visualization,
         "config": widget.config,
@@ -276,8 +278,8 @@ class DashboardExportService:
         AppResult[tuple[bytes, str]]: `Ok((pdf_bytes, filename))`.
     """
     safe_title = sanitize_filename_title(dashboard.name)
-    widget_snapshots: list[tuple[str, str, JsonObject]] = [
-      (w.title, w.type, self.prepare_sql_run_config(w.config, global_params)) for w in dashboard.widgets
+    widget_snapshots: list[tuple[str, str | None, str, JsonObject]] = [
+      (w.title, w.subtitle, w.type, self.prepare_sql_run_config(w.config, global_params)) for w in dashboard.widgets
     ]
 
     def _build_pdf_sync() -> bytes:
@@ -292,7 +294,7 @@ class DashboardExportService:
       conn = factory()
       try:
         cursor = conn.cursor()
-        for w_title, w_type, w_cfg in widget_snapshots:
+        for w_title, w_sub, w_type, w_cfg in widget_snapshots:
           rows: list[SqlRow] = []
           err: str | None = None
           if w_type == "SQL":
@@ -302,6 +304,7 @@ class DashboardExportService:
           widgets_data.append(
             WidgetPdfSnapshot(
               title=w_title,
+              subtitle=w_sub,
               type=w_type,
               data=rows,
               error=err,

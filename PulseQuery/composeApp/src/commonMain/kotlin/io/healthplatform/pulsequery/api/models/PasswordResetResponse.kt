@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,8 +25,7 @@ import kotlinx.serialization.Serializable
 /**
  * Status confirmation after password reset or email dispatch.
  *
- * @param message
- * @param resetToken
+ * @property message * @param resetToken
  */
 @Serializable
 data class PasswordResetResponse(

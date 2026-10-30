@@ -240,6 +240,20 @@ internal fun deserializeCachedDashboardWidgets(
 }
 
 /**
+ * Resolves the display subtitle or caption for [widget] from top-level [WidgetResponse.subtitle],
+ * falling back to `config["subtitle"]` or `config["description"]`.
+ *
+ * @param widget Target [WidgetResponse].
+ * @return Trimmed non-empty subtitle string, or null if absent.
+ */
+internal fun extractWidgetSubtitle(widget: WidgetResponse): String? =
+    listOf(
+        widget.subtitle,
+        extractConfigString(widget.config, "subtitle"),
+        extractConfigString(widget.config, "description")
+    ).firstOrNull { !it.isNullOrBlank() }?.trim()
+
+/**
  * Converts a [WidgetResponse] into a polymorphic [WidgetIn] creation payload for undo restoration.
  *
  * @param widget Source [WidgetResponse] instance.
@@ -247,13 +261,15 @@ internal fun deserializeCachedDashboardWidgets(
  */
 internal fun convertResponseToWidgetIn(widget: WidgetResponse): WidgetIn {
     val resolvedViz = VisualizationType.fromWire(widget.visualization).wireValue
+    val resolvedSub = extractWidgetSubtitle(widget)
     return when (WidgetSourceType.fromWire(widget.type)) {
         WidgetSourceType.TEXT -> {
             WidgetIn.Text(
                 title = widget.title,
+                subtitle = resolvedSub,
                 type = WidgetSourceType.TEXT.wireValue,
                 visualization = resolvedViz,
-                config = TextConfig(content = extractTextWidgetContent(widget))
+                config = TextConfig(content = extractTextWidgetContent(widget), subtitle = resolvedSub)
             )
         }
         WidgetSourceType.HTTP -> {
@@ -264,18 +280,20 @@ internal fun convertResponseToWidgetIn(widget: WidgetResponse): WidgetIn {
             } ?: HttpConfig.Method.GET
             WidgetIn.Http(
                 title = widget.title,
+                subtitle = resolvedSub,
                 type = WidgetSourceType.HTTP.wireValue,
                 visualization = resolvedViz,
-                config = HttpConfig(url = url, method = methodEnum)
+                config = HttpConfig(url = url, method = methodEnum, subtitle = resolvedSub)
             )
         }
         WidgetSourceType.SQL -> {
             val query = extractConfigString(widget.config, "query") ?: "SELECT 1"
             WidgetIn.Sql(
                 title = widget.title,
+                subtitle = resolvedSub,
                 type = WidgetSourceType.SQL.wireValue,
                 visualization = resolvedViz,
-                config = SqlConfig(query = query)
+                config = SqlConfig(query = query, subtitle = resolvedSub)
             )
         }
     }

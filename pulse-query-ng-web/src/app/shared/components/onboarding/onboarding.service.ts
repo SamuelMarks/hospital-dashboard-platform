@@ -226,7 +226,11 @@ export class OnboardingService {
 
     if (!isComplete) {
       // Small delay to let the app fully render before showing the wizard
-      setTimeout(() => this._isVisible.set(true), 500);
+      setTimeout(() => {
+        if (!this._isComplete() && safeStorage.getItem(STORAGE_KEY) !== 'true') {
+          this._isVisible.set(true);
+        }
+      }, 500);
     } else {
       this._isComplete.set(true);
     }

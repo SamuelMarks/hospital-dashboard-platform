@@ -101,4 +101,13 @@ describe('DashboardCreateDialog', () => {
     expect(mockApi.createDashboardApiV1DashboardsPost).not.toHaveBeenCalled();
     expect(component.isSubmitting()).toBe(false);
   });
+
+  it('should update formModel name via onNameInput', () => {
+    const input = document.createElement('input');
+    input.value = 'Telemetry Hub';
+    const event = new Event('input');
+    Object.defineProperty(event, 'target', { value: input });
+    component.onNameInput(event);
+    expect(component.formModel().name).toBe('Telemetry Hub');
+  });
 });

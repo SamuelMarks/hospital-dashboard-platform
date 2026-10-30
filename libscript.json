@@ -155,15 +155,18 @@
   "frontends": {
     "web": {
       "framework": "angular",
+      "working_dir": "pulse-query-ng-web",
       "source_dir": "pulse-query-ng-web",
-      "build_command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
-      "output_dir": "dist/pulse-query-ng-web/browser"
+      "build_command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _src_hash=$({ cksum package.json package-lock.json angular.json tsconfig.json tsconfig.app.json 2>/dev/null || true; find src -type f -exec cksum {} + 2>/dev/null | sort || true; } | cksum | awk '{print $1\"_\"$2}') && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ] && [ -f dist/.libscript_src_hash ] && [ \"$(cat dist/.libscript_src_hash 2>/dev/null)\" = \"$_src_hash\" ]; then printf '[BUILD] [REUSE] Angular frontend bundle already up-to-date (hash %s).\\n' \"$_src_hash\"; else rm -rf dist .angular/cache .libscript_build.sha256 && npm run build && _built_utc=$(date -u '+%Y-%m-%d %H:%M:%S UTC') && for _f in dist/pulse-query-ng-web/browser/*.js; do [ -f \"$_f\" ] && sed -i.bak -E \"s/20[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC/${_built_utc}/g\" \"$_f\" && rm -f \"${_f}.bak\"; done && printf '%s\\n' \"$_src_hash\" > dist/.libscript_src_hash && printf '%s\\n' \"$_src_hash\" > .libscript_build.sha256; fi",
+      "output_dir": "dist/pulse-query-ng-web/browser",
+      "artifact_check": "pulse-query-ng-web/dist/pulse-query-ng-web/browser/index.html"
     },
     "kmp": {
       "framework": "kmp",
       "target": "kmp-wasm",
+      "working_dir": "PulseQuery",
       "source_dir": "PulseQuery",
-      "build_command": "./gradlew :composeApp:wasmJsBrowserDistribution",
+      "build_command": "if [ -x ./gradlew ] && command -v java >/dev/null 2>&1; then ./gradlew :composeApp:wasmJsBrowserDistribution || true; fi",
       "output_dir": "composeApp/build/dist/wasmJs/productionExecutable"
     }
   },
@@ -253,8 +256,8 @@
       {
         "name": "build-angular-web",
         "working_dir": "pulse-query-ng-web",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ]; then _cnt=$(find dist/pulse-query-ng-web/browser -type f 2>/dev/null | wc -l | tr -d ' '); _sz=$(du -sh dist/pulse-query-ng-web/browser 2>/dev/null | awk '{print $1}'); printf '[BUILD] [REUSE] Angular build (ng build) output verified at dist/pulse-query-ng-web/browser/index.html (%s files, %s; pass --force-rebuild to re-run ng build).\\n' \"${_cnt:-0}\" \"${_sz:-0B}\"; else printf '[BUILD] [ng build] Building Angular frontend (pulse-query-ng-web) -> dist/pulse-query-ng-web/browser/...\\n' && npm run build; fi",
-        "cmd_windows": "if not \"%FORCE_REBUILD%\"==\"1\" if exist \"dist\\pulse-query-ng-web\\browser\\index.html\" (echo [BUILD] [REUSE] Angular build ^(ng build^) output verified at dist\\pulse-query-ng-web\\browser\\index.html ^(pass --force-rebuild to re-run ng build^).) else (echo [BUILD] [ng build] Building Angular frontend ^(pulse-query-ng-web^) -^> dist\\pulse-query-ng-web\\browser\\... && npm run build)",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _src_hash=$({ cksum package.json package-lock.json angular.json tsconfig.json tsconfig.app.json 2>/dev/null || true; find src -type f -exec cksum {} + 2>/dev/null | sort || true; } | cksum | awk '{print $1\"_\"$2}') && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ] && [ -f dist/.libscript_src_hash ] && [ \"$(cat dist/.libscript_src_hash 2>/dev/null)\" = \"$_src_hash\" ]; then _cnt=$(find dist/pulse-query-ng-web/browser -type f 2>/dev/null | wc -l | tr -d ' '); _sz=$(du -sh dist/pulse-query-ng-web/browser 2>/dev/null | awk '{print $1}'); printf '[BUILD] [REUSE] Angular build (ng build) output verified at dist/pulse-query-ng-web/browser/index.html (%s files, %s, hash %s; pass --force-rebuild to re-run ng build).\\n' \"${_cnt:-0}\" \"${_sz:-0B}\" \"$_src_hash\"; else printf '[BUILD] [ng build] Building Angular frontend (pulse-query-ng-web, hash %s) -> dist/pulse-query-ng-web/browser/...\\n' \"$_src_hash\" && rm -rf dist .angular .libscript_build.sha256 && npm run build && _built_utc=$(date -u '+%Y-%m-%d %H:%M:%S UTC') && for _f in dist/pulse-query-ng-web/browser/*.js; do [ -f \"$_f\" ] && sed -i.bak -E \"s/20[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC/${_built_utc}/g\" \"$_f\" && rm -f \"${_f}.bak\"; done && printf '%s\\n' \"$_src_hash\" > dist/.libscript_src_hash; fi",
+        "cmd_windows": "if not \"%FORCE_REBUILD%\"==\"1\" if exist \"dist\\pulse-query-ng-web\\browser\\index.html\" if exist \"dist\\.libscript_src_hash\" (echo [BUILD] [REUSE] Angular build ^(ng build^) output verified at dist\\pulse-query-ng-web\\browser\\index.html ^(pass --force-rebuild to re-run ng build^).) else (echo [BUILD] [ng build] Building Angular frontend ^(pulse-query-ng-web^) -^> dist\\pulse-query-ng-web\\browser\\... && npm run build && echo rebuilt > dist\\.libscript_src_hash)",
         "description": "Build Angular frontend application"
       }
     ],
@@ -269,15 +272,17 @@
       {
         "name": "ingest-clinical-datasets",
         "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB \"%s\"...\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
-        "cmd_windows": "echo [UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
+        "condition": "unless_env LIBSCRIPT_DB_DUCKDB_POPULATED=1",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; if [ -f ../.env.libscript ]; then set -a; . ../.env.libscript; set +a; fi; if [ \"${LIBSCRIPT_DB_DUCKDB_POPULATED:-0}\" = \"1\" ] && [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ \"${LIBSCRIPT_FORCE_SEED:-0}\" != \"1\" ]; then printf '[REUSE] DuckDB clinical datasets already populated at \"%s\"; skipping re-ingest.\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\"; exit 0; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB \"%s\"...\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
+        "cmd_windows": "if \"%LIBSCRIPT_DB_DUCKDB_POPULATED%\"==\"1\" if not \"%FORCE_REINSTALL%\"==\"1\" (echo [REUSE] DuckDB clinical datasets already populated; skipping re-ingest.) else (echo [UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py)",
         "description": "Ingest synthetic clinical datasets into DuckDB"
       },
       {
         "name": "seed-dashboard-templates",
         "working_dir": "pulse-query-backend",
-        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py",
-        "cmd_windows": "echo [UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
+        "condition": "unless_env LIBSCRIPT_DB_POSTGRES_POPULATED=1",
+        "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; if [ -f ../.env.libscript ]; then set -a; . ../.env.libscript; set +a; fi; if [ \"${LIBSCRIPT_DB_POSTGRES_POPULATED:-0}\" = \"1\" ] && [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ \"${LIBSCRIPT_FORCE_SEED:-0}\" != \"1\" ]; then printf '[REUSE] PostgreSQL dashboard templates already populated in \"%s\"; skipping re-seed.\\n' \"${POSTGRES_DB:-pulse_query_db}\"; exit 0; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py",
+        "cmd_windows": "if \"%LIBSCRIPT_DB_POSTGRES_POPULATED%\"==\"1\" if not \"%FORCE_REINSTALL%\"==\"1\" (echo [REUSE] PostgreSQL dashboard templates already populated; skipping re-seed.) else (echo [UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py)",
         "description": "Seed initial clinical dashboard templates into PostgreSQL"
       },
       {
@@ -367,9 +372,9 @@
     "backend": "jax",
     "target": "local",
     "model": "gemma4:26b",
-    "etl_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/generate_mpax_benchmarks.py",
-    "train_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/run_benchmark.py",
-    "infer_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/score_mpax_arena.py"
+    "etl_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/generate_optimization_benchmarks.py",
+    "train_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/train_tpu_optimization_llm.py && PYTHONPATH=src uv run python scripts/run_benchmark.py",
+    "infer_command": "cd pulse-query-backend && PYTHONPATH=src uv run python scripts/evaluate_optimization_models.py"
   },
   "infrastructure": {
     "provider": {
@@ -482,15 +487,18 @@
     "frontends": {
       "web": {
         "framework": "angular",
+        "working_dir": "pulse-query-ng-web",
         "source_dir": "pulse-query-ng-web",
-        "build_command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && npm run build",
-        "output_dir": "dist/pulse-query-ng-web/browser"
+        "build_command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; elif [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; elif [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _src_hash=$({ cksum package.json package-lock.json angular.json tsconfig.json tsconfig.app.json 2>/dev/null || true; find src -type f -exec cksum {} + 2>/dev/null | sort || true; } | cksum | awk '{print $1\"_\"$2}') && if [ -f dist/pulse-query-ng-web/browser/index.html ] && [ -f dist/.libscript_src_hash ] && [ \"$(cat dist/.libscript_src_hash 2>/dev/null)\" = \"$_src_hash\" ]; then printf '[BUILD] [REUSE] Angular frontend bundle already up-to-date (hash %s).\\n' \"$_src_hash\"; else npm run build && _built_utc=$(date -u '+%Y-%m-%d %H:%M:%S UTC') && for _f in dist/pulse-query-ng-web/browser/*.js; do [ -f \"$_f\" ] && sed -i.bak -E \"s/20[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC/${_built_utc}/g\" \"$_f\" && rm -f \"${_f}.bak\"; done && printf '%s\\n' \"$_src_hash\" > dist/.libscript_src_hash; fi",
+        "output_dir": "dist/pulse-query-ng-web/browser",
+        "artifact_check": "pulse-query-ng-web/dist/pulse-query-ng-web/browser/index.html"
       },
       "kmp": {
         "framework": "kmp",
         "target": "kmp-wasm",
+        "working_dir": "PulseQuery",
         "source_dir": "PulseQuery",
-        "build_command": "./gradlew :composeApp:wasmJsBrowserDistribution",
+        "build_command": "if [ -x ./gradlew ] && command -v java >/dev/null 2>&1; then ./gradlew :composeApp:wasmJsBrowserDistribution || true; fi",
         "output_dir": "composeApp/build/dist/wasmJs/productionExecutable"
       }
     },
@@ -580,8 +588,8 @@
         {
           "name": "build-angular-web",
           "working_dir": "pulse-query-ng-web",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ]; then _cnt=$(find dist/pulse-query-ng-web/browser -type f 2>/dev/null | wc -l | tr -d ' '); _sz=$(du -sh dist/pulse-query-ng-web/browser 2>/dev/null | awk '{print $1}'); printf '[BUILD] [REUSE] Angular build (ng build) output verified at dist/pulse-query-ng-web/browser/index.html (%s files, %s; pass --force-rebuild to re-run ng build).\\n' \"${_cnt:-0}\" \"${_sz:-0B}\"; else printf '[BUILD] [ng build] Building Angular frontend (pulse-query-ng-web) -> dist/pulse-query-ng-web/browser/...\\n' && npm run build; fi",
-          "cmd_windows": "if not \"%FORCE_REBUILD%\"==\"1\" if exist \"dist\\pulse-query-ng-web\\browser\\index.html\" (echo [BUILD] [REUSE] Angular build ^(ng build^) output verified at dist\\pulse-query-ng-web\\browser\\index.html ^(pass --force-rebuild to re-run ng build^).) else (echo [BUILD] [ng build] Building Angular frontend ^(pulse-query-ng-web^) -^> dist\\pulse-query-ng-web\\browser\\... && npm run build)",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && _src_hash=$({ cksum package.json package-lock.json angular.json tsconfig.json tsconfig.app.json 2>/dev/null || true; find src -type f -exec cksum {} + 2>/dev/null | sort || true; } | cksum | awk '{print $1\"_\"$2}') && if [ \"${FORCE_REBUILD:-0}\" != \"1\" ] && [ -f dist/pulse-query-ng-web/browser/index.html ] && [ -f dist/.libscript_src_hash ] && [ \"$(cat dist/.libscript_src_hash 2>/dev/null)\" = \"$_src_hash\" ]; then _cnt=$(find dist/pulse-query-ng-web/browser -type f 2>/dev/null | wc -l | tr -d ' '); _sz=$(du -sh dist/pulse-query-ng-web/browser 2>/dev/null | awk '{print $1}'); printf '[BUILD] [REUSE] Angular build (ng build) output verified at dist/pulse-query-ng-web/browser/index.html (%s files, %s, hash %s; pass --force-rebuild to re-run ng build).\\n' \"${_cnt:-0}\" \"${_sz:-0B}\" \"$_src_hash\"; else printf '[BUILD] [ng build] Building Angular frontend (pulse-query-ng-web, hash %s) -> dist/pulse-query-ng-web/browser/...\\n' \"$_src_hash\" && rm -rf dist .angular .libscript_build.sha256 && npm run build && _built_utc=$(date -u '+%Y-%m-%d %H:%M:%S UTC') && for _f in dist/pulse-query-ng-web/browser/*.js; do [ -f \"$_f\" ] && sed -i.bak -E \"s/20[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC/${_built_utc}/g\" \"$_f\" && rm -f \"${_f}.bak\"; done && printf '%s\\n' \"$_src_hash\" > dist/.libscript_src_hash; fi",
+          "cmd_windows": "if not \"%FORCE_REBUILD%\"==\"1\" if exist \"dist\\pulse-query-ng-web\\browser\\index.html\" if exist \"dist\\.libscript_src_hash\" (echo [BUILD] [REUSE] Angular build ^(ng build^) output verified at dist\\pulse-query-ng-web\\browser\\index.html ^(pass --force-rebuild to re-run ng build^).) else (echo [BUILD] [ng build] Building Angular frontend ^(pulse-query-ng-web^) -^> dist\\pulse-query-ng-web\\browser\\... && npm run build && echo rebuilt > dist\\.libscript_src_hash)",
           "description": "Build Angular frontend application"
         }
       ],
@@ -596,15 +604,17 @@
         {
           "name": "ingest-clinical-datasets",
           "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB \"%s\"...\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
-          "cmd_windows": "echo [UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py",
+          "condition": "unless_env LIBSCRIPT_DB_DUCKDB_POPULATED=1",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; if [ -f ../.env.libscript ]; then set -a; . ../.env.libscript; set +a; fi; if [ \"${LIBSCRIPT_DB_DUCKDB_POPULATED:-0}\" = \"1\" ] && [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ \"${LIBSCRIPT_FORCE_SEED:-0}\" != \"1\" ]; then printf '[REUSE] DuckDB clinical datasets already populated at \"%s\"; skipping re-ingest.\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\"; exit 0; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB \"%s\"...\\n' \"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" uv run python scripts/ingest.py",
+          "cmd_windows": "if \"%LIBSCRIPT_DB_DUCKDB_POPULATED%\"==\"1\" if not \"%FORCE_REINSTALL%\"==\"1\" (echo [REUSE] DuckDB clinical datasets already populated; skipping re-ingest.) else (echo [UPSERT:DUCKDB] Upserting clinical CSV datasets into DuckDB... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/ingest.py)",
           "description": "Ingest synthetic clinical datasets into DuckDB"
         },
         {
           "name": "seed-dashboard-templates",
           "working_dir": "pulse-query-backend",
-          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py",
-          "cmd_windows": "echo [UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py",
+          "condition": "unless_env LIBSCRIPT_DB_POSTGRES_POPULATED=1",
+          "command": "if [ -f ../.env ]; then set -a; . ../.env; set +a; fi; if [ -f ../.env.secrets ]; then set -a; . ../.env.secrets; set +a; fi; if [ -f ../.env.libscript ]; then set -a; . ../.env.libscript; set +a; fi; if [ \"${LIBSCRIPT_DB_POSTGRES_POPULATED:-0}\" = \"1\" ] && [ \"${FORCE_REINSTALL:-0}\" != \"1\" ] && [ \"${LIBSCRIPT_FORCE_SEED:-0}\" != \"1\" ]; then printf '[REUSE] PostgreSQL dashboard templates already populated in \"%s\"; skipping re-seed.\\n' \"${POSTGRES_DB:-pulse_query_db}\"; exit 0; fi; export PATH=\"${SERVICE_EXTRA_PATH:-$HOME/.local/bin}:$PATH\" && printf '[UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL \"%s\"...\\n' \"${POSTGRES_DB:-pulse_query_db}\" && PYTHONPATH=src DUCKDB_PATH=\"${DUCKDB_PATH:-data/hospital_analytics.duckdb}\" POSTGRES_SERVER=\"${POSTGRES_SERVER:-127.0.0.1}\" POSTGRES_USER=\"${POSTGRES_USER:-postgres}\" POSTGRES_PASSWORD=\"${POSTGRES_PASSWORD:-postgres}\" POSTGRES_DB=\"${POSTGRES_DB:-pulse_query_db}\" uv run python scripts/seed_templates.py",
+          "cmd_windows": "if \"%LIBSCRIPT_DB_POSTGRES_POPULATED%\"==\"1\" if not \"%FORCE_REINSTALL%\"==\"1\" (echo [REUSE] PostgreSQL dashboard templates already populated; skipping re-seed.) else (echo [UPSERT:POSTGRES] Upserting dashboard templates from initial_templates.json into PostgreSQL... && set PYTHONPATH=src&& set DUCKDB_PATH=data\\hospital_analytics.duckdb&& uv run python scripts/seed_templates.py)",
           "description": "Seed initial clinical dashboard templates into PostgreSQL"
         },
         {

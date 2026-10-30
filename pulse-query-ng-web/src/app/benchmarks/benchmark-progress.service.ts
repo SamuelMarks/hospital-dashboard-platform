@@ -34,14 +34,19 @@ export function isBenchmarkProgress(raw: unknown): raw is BenchmarkProgress {
   if (!raw || typeof raw !== 'object') {
     return false;
   }
-  const candidate = raw as Record<string, unknown>;
   return (
-    typeof candidate['active'] === 'boolean' &&
-    typeof candidate['completed'] === 'number' &&
-    typeof candidate['total'] === 'number' &&
-    typeof candidate['current_model'] === 'string' &&
-    typeof candidate['status'] === 'string' &&
-    typeof candidate['eta_seconds'] === 'number'
+    'active' in raw &&
+    typeof raw.active === 'boolean' &&
+    'completed' in raw &&
+    typeof raw.completed === 'number' &&
+    'total' in raw &&
+    typeof raw.total === 'number' &&
+    'current_model' in raw &&
+    typeof raw.current_model === 'string' &&
+    'status' in raw &&
+    typeof raw.status === 'string' &&
+    'eta_seconds' in raw &&
+    typeof raw.eta_seconds === 'number'
   );
 }
 

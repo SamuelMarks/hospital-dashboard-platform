@@ -12,7 +12,8 @@
     "ArrayInDataClass",
     "EnumEntryName",
     "RemoveRedundantQualifierName",
-    "UnusedImport"
+    "UnusedImport",
+    "EnumNaming"
 )
 
 package io.healthplatform.pulsequery.api.models
@@ -24,11 +25,13 @@ import kotlinx.serialization.Serializable
 /**
  * Configuration schema for Static Text/Markdown widgets.  Attributes:     content (str): The static text content (Markdown supported).
  *
- * @param content Markdown text content.
- * @param x Grid X position
- * @param y Grid Y position
- * @param w Grid Width (cols)
- * @param h Grid Height (rows)
+ * @property content Markdown text content.
+ * @property x Grid X position
+ * @property y Grid Y position
+ * @property w Grid Width (cols)
+ * @property h Grid Height (rows)
+ * @property subtitle Optional subtitle or caption explaining what the widget measures or displays.
+ * @property description Optional description or clinical guidance for the widget.
  */
 @Serializable
 data class TextConfig(
@@ -41,5 +44,7 @@ data class TextConfig(
     // Grid Width (cols)
     @SerialName(value = "w") val w: kotlin.Int? = 6,
     // Grid Height (rows)
-    @SerialName(value = "h") val h: kotlin.Int? = 4
+    @SerialName(value = "h") val h: kotlin.Int? = 4,
+    @SerialName(value = "subtitle") val subtitle: kotlin.String? = null,
+    @SerialName(value = "description") val description: kotlin.String? = null
 )

@@ -320,7 +320,7 @@ describe('FocusTrapDirective', () => {
     fEl.remove();
   });
 
-  it('should emit escape on document Escape keydown when target is outside or null', () => {
+  it('should emit escape on document Escape keydown when target is outside or null, and ignore .cdk-overlay-container targets', () => {
     const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
     const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
 
@@ -338,5 +338,31 @@ describe('FocusTrapDirective', () => {
     Object.defineProperty(insideEvent, 'target', { value: first });
     directiveInstance.handleDocumentEscape(insideEvent);
     expect(component.onEscape).toHaveBeenCalledTimes(2);
+
+    const overlayContainer = document.createElement('div');
+    overlayContainer.className = 'cdk-overlay-container';
+    const dialogInput = document.createElement('input');
+    dialogInput.setAttribute('role', 'dialog');
+    overlayContainer.appendChild(dialogInput);
+    document.body.appendChild(overlayContainer);
+
+    const overlayEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    Object.defineProperty(overlayEvent, 'target', { value: dialogInput });
+    directiveInstance.handleDocumentEscape(overlayEvent);
+    directiveInstance.handleKeydown(overlayEvent);
+    expect(component.onEscape).toHaveBeenCalledTimes(2);
+
+    overlayContainer.remove();
+  });
+
+  it('should set previousActiveElement to null when document.activeElement is not an HTMLElement', () => {
+    const directiveEl = fixture.debugElement.query(By.directive(FocusTrapDirective));
+    const directiveInstance = directiveEl.injector.get(FocusTrapDirective);
+    const activeElementSpy = vi.spyOn(document, 'activeElement', 'get').mockReturnValue(null);
+
+    directiveInstance.ngOnInit();
+    expect(directiveInstance.previousActiveElement).toBeNull();
+
+    activeElementSpy.mockRestore();
   });
 });

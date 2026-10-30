@@ -15,6 +15,7 @@ import { MatInputModule } from '@angular/material/input';
 
 import { WidgetResponse, DashboardsService, WidgetUpdate, DashboardResponse } from '../api-client';
 import { DashboardStore } from './dashboard.store';
+import { extractWidgetColumns } from './dashboard.models';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
 import { HttpConfigComponent } from '../editors/http-config.component';
 import { ProcessorCatalogService } from '../shared/services/processor-catalog.service';
@@ -52,6 +53,9 @@ export interface WidgetEditorData {
     SqlBuilderComponent,
     HttpConfigComponent,
   ],
+  host: {
+    '(keydown.escape)': 'dialogRef.close(false)',
+  },
 
   styles: [
     `
@@ -98,6 +102,23 @@ export class WidgetEditorDialog implements OnInit {
   private readonly store = inject(DashboardStore);
   /** Processor catalog service providing `SQL [no model]`, Ollama models, and `any-llm` models. */
   readonly processorCatalog = inject(ProcessorCatalogService);
+
+  /** Editable widget title synchronized from widget configuration. */
+  readonly title = linkedSignal<string>(() => this.data.widget.title || '');
+
+  /** Editable widget subtitle or caption synchronized from widget metadata or config. */
+  readonly subtitle = linkedSignal<string>(() => {
+    const topSub = this.data.widget.subtitle;
+    if (typeof topSub === 'string' && topSub.trim().length > 0) {
+      return topSub.trim();
+    }
+    const cfgSub = this.data.widget.config['subtitle'];
+    if (typeof cfgSub === 'string' && cfgSub.trim().length > 0) {
+      return cfgSub.trim();
+    }
+    const cfgDesc = this.data.widget.config['description'];
+    return typeof cfgDesc === 'string' ? cfgDesc.trim() : '';
+  });
 
   /** Selected horizontal axis or category column key synchronized from widget configuration. */
   readonly xKey = linkedSignal<string | null>(() => {
@@ -156,7 +177,8 @@ export class WidgetEditorDialog implements OnInit {
 
   /** Extract SQL for the editor. */
   readonly initialSql: Signal<string> = computed(() => {
-    return (this.widget.config['query'] as string | undefined) || '';
+    const query = this.widget.config['query'];
+    return typeof query === 'string' ? query : '';
   });
 
   /**
@@ -180,11 +202,7 @@ export class WidgetEditorDialog implements OnInit {
 
   /** Available columns from the latest execution result. */
   readonly columns = computed(() => {
-    const result = this.store.dataMap()[this.widget.id];
-    if (result && Array.isArray((result as Record<string, unknown>)['columns'])) {
-      return (result as Record<string, unknown>)['columns'] as string[];
-    }
-    return [];
+    return extractWidgetColumns(this.store.dataMap()[this.widget.id]);
   });
 
   /**
@@ -230,16 +248,28 @@ export class WidgetEditorDialog implements OnInit {
           }
         }
 
+        const trimmedTitle = this.title().trim() || freshWidget.title;
+        const trimmedSubtitle = this.subtitle().trim();
+
         // 2. Merge Updates
-        const newConfig = {
+        const newConfig: Record<string, unknown> = {
           ...currentConfig,
           xKey: this.xKey(),
           yKey: this.yKey(),
           ...extraSqlConfig,
         };
+        if (trimmedSubtitle) {
+          newConfig['subtitle'] = trimmedSubtitle;
+        } else {
+          delete newConfig['subtitle'];
+        }
 
         // 3. Persist
-        const update: WidgetUpdate = { config: newConfig };
+        const update: WidgetUpdate = {
+          title: trimmedTitle,
+          subtitle: trimmedSubtitle || null,
+          config: newConfig,
+        };
         this.dashboardsApi
           .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(this.widget.id, update)
           .subscribe(() => {
