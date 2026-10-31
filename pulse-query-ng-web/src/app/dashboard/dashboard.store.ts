@@ -438,6 +438,34 @@ export class DashboardStore implements OnDestroy {
   }
 
   /**
+   * Resets a widget's configuration and visualization to safe-mode defaults and reloads the dashboard.
+   *
+   * @param widget - Target widget model to reset.
+   */
+  resetWidgetToSafeMode(widget: WidgetResponse): void {
+    const safeConfig: Record<string, unknown> =
+      widget.type === 'SQL' ? { query: 'SELECT 1 as SafeMode' } : {};
+    this.dashboardApi
+      .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(widget.id, {
+        visualization: 'table',
+        config: safeConfig,
+      })
+      .pipe(
+        takeUntil(this.dashboardSwitch$),
+        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.loadDashboard(widget.dashboard_id);
+        },
+        error: (err: unknown) => {
+          this.handleError(err);
+        },
+      });
+  }
+
+  /**
    * Optimistically deletes a widget by ID and persists deletion to the backend,
    * rolling back the removed widget if the API call fails.
    *

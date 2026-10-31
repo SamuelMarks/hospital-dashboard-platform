@@ -6,7 +6,7 @@
 
 import { safeStorage } from '../../../core/storage.utils';
 
-import { Service, inject, PLATFORM_ID, signal, computed, Signal } from '@angular/core';
+import { Service, inject, PLATFORM_ID, signal, computed, Signal, DestroyRef } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 /** Storage key for onboarding completion flag. */
@@ -62,8 +62,8 @@ export const ONBOARDING_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
     title: $localize`Simulation & Optimization`,
     description: $localize`Run what-if scenarios to optimize bed allocation, staffing levels, and resource distribution using mathematical solvers.`,
     icon: 'science',
-    actionLabel: $localize`Open Simulation`,
-    actionRoute: '/simulation',
+    actionLabel: $localize`Open Optimization`,
+    actionRoute: '/optimization',
   },
   {
     id: 'shortcuts',
@@ -84,6 +84,10 @@ export const ONBOARDING_STEPS: [OnboardingStep, ...OnboardingStep[]] = [
 @Service()
 export class OnboardingService {
   /** Injected PLATFORM_ID. */ private readonly platformId = inject(PLATFORM_ID);
+  /** Destroy reference for cancelling pending onboarding timers on teardown. */
+  private readonly destroyRef = inject(DestroyRef);
+  /** Active onboarding visibility timer handle, if scheduled. */
+  private showTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /** Is visible. */ private readonly _isVisible = signal(false);
   /** Current step index. */ private readonly _currentStepIndex = signal(0);
@@ -226,11 +230,18 @@ export class OnboardingService {
 
     if (!isComplete) {
       // Small delay to let the app fully render before showing the wizard
-      setTimeout(() => {
+      this.showTimerId = setTimeout(() => {
+        this.showTimerId = null;
         if (!this._isComplete() && safeStorage.getItem(STORAGE_KEY) !== 'true') {
           this._isVisible.set(true);
         }
       }, 500);
+      this.destroyRef.onDestroy(() => {
+        if (this.showTimerId !== null) {
+          clearTimeout(this.showTimerId);
+          this.showTimerId = null;
+        }
+      });
     } else {
       this._isComplete.set(true);
     }

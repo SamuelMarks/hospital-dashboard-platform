@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping
 import contextlib
+from dataclasses import dataclass
 import logging
 from typing import Protocol, TypeGuard
 from uuid import UUID
@@ -19,13 +20,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
-from app.database.duckdb import duckdb_manager
+from app.database.duckdb import DuckDBReadableConnectionProtocol, duckdb_manager
 from app.models.dashboard import Dashboard, Widget
 from app.schemas.execution import (
+  EarlyWidgetErrorPayload,
   HttpRunnerResultDict,
+  PreparedSqlQuery,
   ResolvedSqlQuery,
+  SingleWidgetPreparationOutcome,
   SqlRunnerResultDict,
   TextWidgetExecutionResult,
+  WidgetExecutionErrorDict,
   WidgetExecutionErrorResult,
   WidgetTypeLiteral,
 )
@@ -65,9 +70,27 @@ class DuckDBCursorFactoryProtocol(Protocol):
     """Closes the connection."""
 
 
-SqlRunnerCallable = Callable[[DuckDBCursorProtocol, Mapping[str, JsonValue]], SqlRunnerResultDict | JsonObject]
-HttpRunnerCallable = Callable[..., Awaitable[HttpRunnerResultDict | JsonObject]]
-ConnFactoryCallable = Callable[[], DuckDBCursorFactoryProtocol | duckdb.DuckDBPyConnection]
+@dataclass(frozen=True)
+class ClassifiedDashboardWidgets:
+  """
+  Immutable partition of dashboard widgets into pre-resolved/cached results, SQL execution queue, and HTTP execution queue.
+
+  Attributes:
+      cached_results (dict[UUID, WidgetCachePayload]): Immediate results for TEXT widgets, unknown widget types, and cache hits.
+      sql_queue (list[tuple[Widget, JsonObject, str]]): SQL widgets requiring DuckDB batch execution.
+      http_queue (list[tuple[Widget, JsonObject, str]]): HTTP widgets requiring async HTTP runner execution.
+  """
+
+  cached_results: dict[UUID, WidgetCachePayload]
+  sql_queue: list[tuple[Widget, JsonObject, str]]
+  http_queue: list[tuple[Widget, JsonObject, str]]
+
+
+SqlRunnerCallable = Callable[
+  [DuckDBCursorProtocol, Mapping[str, JsonValue]], SqlRunnerResultDict | WidgetExecutionErrorDict | JsonObject
+]
+HttpRunnerCallable = Callable[..., Awaitable[HttpRunnerResultDict | WidgetExecutionErrorDict | JsonObject]]
+ConnFactoryCallable = Callable[[], DuckDBReadableConnectionProtocol | DuckDBCursorFactoryProtocol]
 
 
 class ExecutionService:
@@ -92,29 +115,31 @@ class ExecutionService:
   def execute_sql_batch(
     self,
     widgets_info: list[tuple[Widget, JsonObject, str]],
-    results_map: dict[UUID, WidgetCachePayload],
     sql_runner_fn: SqlRunnerCallable = run_sql_widget,
     conn_factory: ConnFactoryCallable = duckdb_manager.get_readonly_connection,
     cache_svc: ResultCacheService[WidgetCachePayload] = cache_service,
-  ) -> None:
+  ) -> dict[UUID, WidgetCachePayload]:
     """
-    Executes a batch of SQL widgets over a shared DuckDB connection and updates `results_map`.
+    Executes a batch of SQL widgets over a shared DuckDB connection and returns the batch results dictionary.
 
     Args:
         widgets_info (list[tuple[Widget, JsonObject, str]]): Tuples of `(Widget, InjectedConfig, CacheKey)`.
-        results_map (dict[UUID, WidgetCachePayload]): Mutable dictionary populated with execution results.
         sql_runner_fn (SqlRunnerCallable): SQL runner function.
         conn_factory (ConnFactoryCallable): Connection factory returning a DuckDB connection.
         cache_svc (ResultCacheService[WidgetCachePayload]): Result cache service instance.
+
+    Returns:
+        dict[UUID, WidgetCachePayload]: Dictionary mapping widget UUID to execution payload.
     """
-    with duckdb_manager._write_lock:
+    batch_results: dict[UUID, WidgetCachePayload] = {}
+    with duckdb_manager.read_write_lock():
       try:
         with contextlib.closing(conn_factory()) as active_conn:
           cursor = active_conn.cursor()
 
           for widget, config, cache_key in widgets_info:
             res = sql_runner_fn(cursor, config)
-            results_map[widget.id] = res
+            batch_results[widget.id] = res
 
             if not res.get("error"):
               cache_svc.set(cache_key, res)
@@ -122,41 +147,43 @@ class ExecutionService:
       except (duckdb.Error, RuntimeError, ValueError, TypeError, OSError) as e:
         logger.error(f"DuckDB Execution Error: {e}")
         for widget, _, _ in widgets_info:
-          if widget.id not in results_map:
-            results_map[widget.id] = {"error": "Internal Database Error"}
+          if widget.id not in batch_results:
+            err_payload: WidgetExecutionErrorDict = {"error": "Internal Database Error"}
+            batch_results[widget.id] = err_payload
+
+    return batch_results
 
   def _classify_dashboard_widgets(
     self,
     dashboard: Dashboard,
     global_params: Mapping[str, JsonValue],
-    results_map: dict[UUID, WidgetCachePayload],
     cache_svc: ResultCacheService[WidgetCachePayload],
-  ) -> tuple[list[tuple[Widget, JsonObject, str]], list[tuple[Widget, JsonObject, str]]]:
+  ) -> ClassifiedDashboardWidgets:
     """
-    Partitions dashboard widgets into cached results, SQL batch queue, and HTTP batch queue.
+    Partitions dashboard widgets into an immutable `ClassifiedDashboardWidgets` containing cached results,
+    SQL batch queue, and HTTP batch queue.
 
     Args:
         dashboard (Dashboard): Dashboard with loaded `widgets`.
         global_params (Mapping[str, JsonValue]): Global filter parameters.
-        results_map (dict[UUID, WidgetCachePayload]): Output map populated with TEXT and cache-hit results.
         cache_svc (ResultCacheService[WidgetCachePayload]): Result cache service instance.
 
     Returns:
-        tuple[list[tuple[Widget, JsonObject, str]], list[tuple[Widget, JsonObject, str]]]:
-            Tuple of `(sql_widgets_to_run, http_widgets_to_run)`.
+        ClassifiedDashboardWidgets: Immutable classification of immediate results and execution queues.
     """
+    cached_results: dict[UUID, WidgetCachePayload] = {}
     sql_widgets_to_run: list[tuple[Widget, JsonObject, str]] = []
     http_widgets_to_run: list[tuple[Widget, JsonObject, str]] = []
 
     for widget in dashboard.widgets:
       if not is_supported_widget_type(widget.type):
-        results_map[widget.id] = WidgetExecutionErrorResult(error=f"Unknown widget type: {widget.type}").model_dump(
+        cached_results[widget.id] = WidgetExecutionErrorResult(error=f"Unknown widget type: {widget.type}").model_dump(
           exclude_none=True
         )
         continue
 
       if widget.type == "TEXT":
-        results_map[widget.id] = TextWidgetExecutionResult().model_dump()
+        cached_results[widget.id] = TextWidgetExecutionResult().model_dump()
         continue
 
       run_config: JsonObject = widget.config.copy()
@@ -168,13 +195,17 @@ class ExecutionService:
       cached_result = cache_svc.get(cache_key)
 
       if cached_result:
-        results_map[widget.id] = cached_result
+        cached_results[widget.id] = cached_result
       elif widget.type == "SQL":
         sql_widgets_to_run.append((widget, run_config, cache_key))
       else:
         http_widgets_to_run.append((widget, run_config, cache_key))
 
-    return sql_widgets_to_run, http_widgets_to_run
+    return ClassifiedDashboardWidgets(
+      cached_results=cached_results,
+      sql_queue=sql_widgets_to_run,
+      http_queue=http_widgets_to_run,
+    )
 
   async def refresh_dashboard_widgets(
     self,
@@ -202,30 +233,27 @@ class ExecutionService:
         AppResult[dict[UUID, WidgetCachePayload]]: `Ok(results_map)` mapping widget UUID to execution payload.
     """
     forward_token = self.extract_token(authorization)
-    results_map: dict[UUID, WidgetCachePayload] = {}
+    classified = self._classify_dashboard_widgets(dashboard, global_params, cache_svc)
+    results_map: dict[UUID, WidgetCachePayload] = dict(classified.cached_results)
 
-    sql_widgets_to_run, http_widgets_to_run = self._classify_dashboard_widgets(
-      dashboard, global_params, results_map, cache_svc
-    )
-
-    if http_widgets_to_run:
-      tasks = [http_runner_fn(w_info[1], forward_auth_token=forward_token) for w_info in http_widgets_to_run]
+    if classified.http_queue:
+      tasks = [http_runner_fn(w_info[1], forward_auth_token=forward_token) for w_info in classified.http_queue]
       http_results_list = await asyncio.gather(*tasks)
 
-      for (widget, _, cache_key), res in zip(http_widgets_to_run, http_results_list, strict=False):
+      for (widget, _, cache_key), res in zip(classified.http_queue, http_results_list, strict=False):
         results_map[widget.id] = res
         if not res.get("error"):
           cache_svc.set(cache_key, res)
 
-    if sql_widgets_to_run:
-      await asyncio.to_thread(
+    if classified.sql_queue:
+      sql_results = await asyncio.to_thread(
         self.execute_sql_batch,
-        sql_widgets_to_run,
-        results_map,
+        classified.sql_queue,
         sql_runner_fn,
         conn_factory,
         cache_svc,
       )
+      results_map.update(sql_results)
 
     return Ok(results_map)
 
@@ -234,7 +262,7 @@ class ExecutionService:
     run_config: JsonObject,
     sql_runner_fn: SqlRunnerCallable,
     conn_factory: ConnFactoryCallable,
-  ) -> SqlRunnerResultDict | JsonObject:
+  ) -> SqlRunnerResultDict | WidgetExecutionErrorDict | JsonObject:
     """
     Synchronously executes a single SQL widget in a worker thread.
 
@@ -244,15 +272,16 @@ class ExecutionService:
         conn_factory (ConnFactoryCallable): DuckDB connection factory.
 
     Returns:
-        SqlRunnerResultDict | JsonObject: Query execution result dictionary.
+        SqlRunnerResultDict | WidgetExecutionErrorDict | JsonObject: Query execution result dictionary.
     """
-    with duckdb_manager._write_lock:
+    with duckdb_manager.read_write_lock():
       try:
         with contextlib.closing(conn_factory()) as active_conn:
           cursor = active_conn.cursor()
           return sql_runner_fn(cursor, run_config)
       except (duckdb.Error, RuntimeError, ValueError, TypeError, OSError) as e:
-        return {"error": str(e)}
+        err_dict: WidgetExecutionErrorDict = {"error": str(e)}
+        return err_dict
 
   async def _resolve_sql_widget_run_config_result(
     self,
@@ -353,9 +382,10 @@ class ExecutionService:
     natural_text: str | None,
     processor: str | None,
     has_interactive_meta: bool,
-  ) -> AppResult[tuple[ResolvedSqlQuery, dict[UUID, WidgetCachePayload] | None]]:
+  ) -> AppResult[SingleWidgetPreparationOutcome]:
     """
-    Prepares `ResolvedSqlQuery` for a single SQL widget execution or returns an early error/result map.
+    Prepares `SingleWidgetPreparationOutcome` (`PreparedSqlQuery` or `EarlyWidgetErrorPayload`)
+    for a single SQL widget execution, or returns `Err(AppError)` for request-level validation errors.
 
     Args:
         widget (Widget): Target SQL widget ORM instance.
@@ -367,20 +397,20 @@ class ExecutionService:
         has_interactive_meta (bool): Whether natural-text or processor metadata is active.
 
     Returns:
-        AppResult[tuple[ResolvedSqlQuery, dict[UUID, WidgetCachePayload] | None]]:
-            `Ok((resolved_sql_query, early_response))` or `Err(AppError)`.
+        AppResult[SingleWidgetPreparationOutcome]:
+            `Ok(PreparedSqlQuery | EarlyWidgetErrorPayload)` or `Err(AppError)`.
     """
+    _ = widget
     parsed_sql = parse_sql_config_lenient(run_config)
     if not has_interactive_meta:
       run_config["query"] = process_global_filters(parsed_sql.query or "", global_params or {})
       return Ok(
-        (
-          ResolvedSqlQuery(
+        PreparedSqlQuery(
+          resolved_query=ResolvedSqlQuery(
             run_config=run_config,
             effective_processor="SQL",
             effective_natural_text=None,
-          ),
-          None,
+          )
         )
       )
 
@@ -402,21 +432,18 @@ class ExecutionService:
         processor_used=(processor or parsed_sql.processor).strip(),
         natural_text=natural_text,
       )
-      early_payload: dict[UUID, WidgetCachePayload] = {
-        widget.id: err_model.model_dump(),
-      }
       return Ok(
-        (
-          ResolvedSqlQuery(
+        EarlyWidgetErrorPayload(
+          resolved_query=ResolvedSqlQuery(
             run_config=run_config,
             effective_processor="SQL",
             effective_natural_text=natural_text,
           ),
-          early_payload,
+          error_payload=err_model,
         )
       )
 
-    return Ok((resolved_res.value, None))
+    return Ok(PreparedSqlQuery(resolved_query=resolved_res.value))
 
   async def refresh_single_widget_result(
     self,
@@ -472,12 +499,13 @@ class ExecutionService:
       )
       if isinstance(prep_res, Err):
         return Err(prep_res.error)
-      resolved_query, early_resp = prep_res.value
+      prep_outcome = prep_res.value
+      if isinstance(prep_outcome, EarlyWidgetErrorPayload):
+        return Ok({widget.id: prep_outcome.error_payload.model_dump()})
+      resolved_query = prep_outcome.resolved_query
       run_config = resolved_query.run_config
       effective_processor = resolved_query.effective_processor
       effective_text = resolved_query.effective_natural_text
-      if early_resp is not None:
-        return Ok(early_resp)
 
     cache_key = cache_svc.generate_key(widget.type, run_config)
     if not force_refresh:
@@ -539,7 +567,8 @@ class ExecutionService:
       return res
     if widget_type == "HTTP":
       return await http_runner_fn(run_config, forward_auth_token=forward_token)
-    return {"error": f"Unknown widget type: {widget_type}"}
+    unknown_err: WidgetExecutionErrorDict = {"error": f"Unknown widget type: {widget_type}"}
+    return unknown_err
 
 
 execution_service = ExecutionService()

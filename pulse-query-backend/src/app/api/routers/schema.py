@@ -6,6 +6,7 @@ Used primarily by the Frontend SQL Editor to provide schema-aware autocomplete/I
 """
 
 import asyncio
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -15,6 +16,7 @@ from app.models.user import User
 from app.schemas.db_schema import TableInfo
 from app.services.schema import schema_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -32,6 +34,6 @@ async def get_database_schema(current_user: Annotated[User, Depends(deps.get_cur
   Returns:
       list[TableInfo]: A structured list of tables and their column definitions.
   """
-  _ = current_user
+  logger.debug(f"Introspecting DuckDB schema for user={current_user.id}")
   raw_tables = await asyncio.to_thread(schema_service.get_schema_json)
   return [TableInfo.model_validate(t) for t in raw_tables]

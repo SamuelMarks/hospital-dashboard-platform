@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.core.result import AppResult, Ok
-from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
+from app.database.duckdb import DuckDBReadableConnectionProtocol, duckdb_manager, run_in_duckdb_thread
 from app.models.alert_rule import AlertRule
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.feedback import ExperimentLog
@@ -58,18 +58,18 @@ class AnalyticsService:
 
   def _fetch_census_rows_sync(
     self,
-    conn_factory: Callable[[], duckdb.DuckDBPyConnection],
+    conn_factory: Callable[[], DuckDBReadableConnectionProtocol],
   ) -> list[tuple[str, int, int]]:
     """
     Queries DuckDB synchronously for the latest unit census and historic peak capacity.
 
     Args:
-        conn_factory (Callable[[], duckdb.DuckDBPyConnection]): Read-only DuckDB connection factory.
+        conn_factory (Callable[[], DuckDBReadableConnectionProtocol]): Read-only DuckDB connection factory.
 
     Returns:
         list[tuple[str, int, int]]: Tuples of `(unit_category, occupied_count, max_capacity)`.
     """
-    with duckdb_manager._write_lock:
+    with duckdb_manager.read_write_lock():
       conn = conn_factory()
       try:
         cur = conn.cursor()
@@ -97,14 +97,15 @@ class AnalyticsService:
           LEFT JOIN historic_capacity h ON l.unit_cat = h.unit_cat;
         """
         cur.execute(query)
-        return list(cur.fetchall())
+        raw_rows = cur.fetchall()
+        return [(str(r[0]), int(str(r[1])), int(str(r[2]))) for r in raw_rows]
       finally:
         conn.close()
 
   async def get_capacity_alerts_result(
     self,
     db: AsyncSession,
-    conn_factory: Callable[[], duckdb.DuckDBPyConnection] | None = None,
+    conn_factory: Callable[[], DuckDBReadableConnectionProtocol] | None = None,
   ) -> AppResult[list[BedCapacityAlert]]:
     """
     Evaluates real-time DuckDB hospital census against active `AlertRule` records.

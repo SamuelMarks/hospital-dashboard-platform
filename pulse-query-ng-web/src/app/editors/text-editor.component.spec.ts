@@ -62,7 +62,7 @@ describe('TextEditorComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith('Emit Text');
   });
 
-  it('should handle API errors', () => {
+  it('should handle API errors and render accessible alert banner', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     mockApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
@@ -70,8 +70,13 @@ describe('TextEditorComponent', () => {
     );
     component.formModel.set({ content: 'Err Text' });
     component.save();
+    fixture.detectChanges();
 
     expect(component.isRunning()).toBe(false);
+    expect(component.saveError()).toBe('fail');
+    const alertEl = fixture.debugElement.query(By.css('[data-testid="text-editor-error"]'));
+    expect(alertEl).toBeTruthy();
+    expect((alertEl.nativeElement as HTMLElement).getAttribute('role')).toBe('alert');
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();
   });

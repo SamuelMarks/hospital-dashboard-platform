@@ -86,7 +86,31 @@ enum class UiErrorKey(
     LOAD_TV_DASHBOARD("error_load_tv_dashboard", "Failed to load TV dashboard"),
 
     /** Failed to load wearable census alerts. */
-    LOAD_WEAR_ALERTS("error_load_wear_alerts", "Failed to load wearable census alerts");
+    LOAD_WEAR_ALERTS("error_load_wear_alerts", "Failed to load wearable census alerts"),
+
+    /** Failed to export dashboard as CSV. */
+    EXPORT_CSV_FAILED("export_csv_failed", "Failed to export CSV"),
+
+    /** Failed to export dashboard as PDF. */
+    EXPORT_PDF_FAILED("export_pdf_failed", "Failed to export PDF"),
+
+    /** Failed to export dashboard as JSON. */
+    EXPORT_JSON_FAILED("export_json_failed", "Failed to export JSON"),
+
+    /** Confirmation message when a widget is added to a dashboard. */
+    WIDGET_SAVED_SUCCESS("widget_saved_to_dashboard_success", "Widget successfully added to dashboard"),
+
+    /** Confirmation message when a template is registered in the library. */
+    TEMPLATE_REGISTERED_SUCCESS("template_registered_success", "Template successfully registered in library"),
+
+    /** Network error during SSE chat token streaming. */
+    CHAT_STREAM_NETWORK_ERROR("chat_stream_network_error", "Network error during token streaming"),
+
+    /** Non-2xx HTTP status returned by SSE chat stream endpoint. */
+    CHAT_STREAM_HTTP_ERROR("chat_stream_http_error", "Server returned"),
+
+    /** Generic SSE chat streaming failure or malformed packet. */
+    CHAT_STREAM_FAILED("chat_stream_failed", "Streaming failed");
 
     /**
      * Companion utilities for mapping [PulseQueryError] subtypes to [UiErrorKey].

@@ -210,7 +210,7 @@ class TemplateService:
       parameters_schema=schema_dict,
       param_overrides=payload.parameters,
     )
-    viz_type = provisioning_service._determine_visual_type(template)
+    viz_type = provisioning_service.determine_visual_type(template)
 
     return Ok(
       TemplateInstantiateResponse(

@@ -15,13 +15,13 @@ import sqlglot
 
 from app.core.i18n import get_translated_message
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
-from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
+from app.database.duckdb import DuckDBReadableConnectionProtocol, duckdb_manager, run_in_duckdb_thread
 from app.models.dashboard import Dashboard, Widget
 from app.models.user import User
 from app.schemas.dashboard import WidgetReorderRequest
 from app.schemas.widget import WidgetCreate, WidgetUpdate, is_valid_processor_identifier, parse_sql_config_lenient
 
-ConnFactoryCallable = Callable[[], duckdb.DuckDBPyConnection]
+ConnFactoryCallable = Callable[[], DuckDBReadableConnectionProtocol]
 
 
 class DashboardWidgetService:

@@ -54,8 +54,18 @@
   }
 
   @if (loading()) {
-    <div class="loading flex justify-center py-12">
-      <mat-progress-spinner mode="indeterminate" diameter="40"></mat-progress-spinner>
+    <div
+      class="loading flex justify-center py-12"
+      role="status"
+      aria-live="polite"
+      [attr.aria-busy]="loading()"
+    >
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="40"
+        i18n-aria-label
+        aria-label="Loading benchmark datasets"
+      ></mat-progress-spinner>
     </div>
   } @else {
     <mat-tab-group animationDuration="0ms">

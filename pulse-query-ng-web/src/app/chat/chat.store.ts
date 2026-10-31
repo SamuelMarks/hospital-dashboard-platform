@@ -88,8 +88,8 @@ export class ChatStore implements OnDestroy {
   private readonly stateContainer = createSignalStateContainer<ChatState>(initialState);
   /** Internal writable signal holding the complete chat store state. */
   private readonly _state = this.stateContainer.writableState;
-  /** Subject emitting when the store is destroyed to cancel active subscriptions. */
-  private readonly destroy$ = new Subject<void>();
+  /** Subject emitting when the active conversation changes to cancel in-flight message loads. */
+  private readonly conversationSwitch$ = new Subject<void>();
 
   /** Read-only signal exposing the complete chat store state snapshot. */
   readonly state = this.stateContainer.state;
@@ -118,8 +118,8 @@ export class ChatStore implements OnDestroy {
   /** Completes active RxJS streams and aborts any active SSE connection when the store is destroyed. */
   ngOnDestroy(): void {
     this.sseClient.abortActiveStream();
-    this.destroy$.next();
-    this.destroy$.complete();
+    this.conversationSwitch$.next();
+    this.conversationSwitch$.complete();
   }
 
   /** Loads the user's conversation history and available LLM arena models from the backend. */
@@ -130,7 +130,6 @@ export class ChatStore implements OnDestroy {
       .pipe(
         retry(2),
         finalize(() => this.patch({ isLoadingList: false })),
-        takeUntil(this.destroy$),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -138,20 +137,13 @@ export class ChatStore implements OnDestroy {
         error: (err: unknown) => this.handleError(err),
       });
 
-    // Load Models logic
-    try {
-      if (this.aiApi.listAvailableModelsApiV1AiModelsGet) {
-        this.aiApi
-          .listAvailableModelsApiV1AiModelsGet()
-          .pipe(retry(2), takeUntil(this.destroy$), takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (models: ModelInfo[]) => this.patch({ availableModels: models }),
-            error: (err: unknown) => this.logger.error('Failed to load models', err),
-          });
-      }
-    } catch {
-      this.logger.warn('AI Models endpoint not available in client');
-    }
+    this.aiApi
+      .listAvailableModelsApiV1AiModelsGet()
+      .pipe(retry(2), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (models: ModelInfo[]) => this.patch({ availableModels: models }),
+        error: (err: unknown) => this.logger.error('Failed to load models', err),
+      });
   }
 
   /**
@@ -161,13 +153,14 @@ export class ChatStore implements OnDestroy {
    */
   selectConversation(id: string): void {
     this.sseClient.abortActiveStream();
+    this.conversationSwitch$.next();
     this.patch({ activeConversationId: id, messages: [], error: null, isLoadingList: true });
     this.chatApi
       .getMessagesApiV1ConversationsConversationIdMessagesGet(id)
       .pipe(
         retry(2),
         finalize(() => this.patch({ isLoadingList: false })),
-        takeUntil(this.destroy$),
+        takeUntil(this.conversationSwitch$),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
@@ -179,6 +172,7 @@ export class ChatStore implements OnDestroy {
   /** Clears the active conversation selection and message list to begin a fresh chat session. */
   createNewChat(): void {
     this.sseClient.abortActiveStream();
+    this.conversationSwitch$.next();
     if (!this.activeConversationId() && this.messages().length === 0) return;
     this.patch({ activeConversationId: null, messages: [], error: null });
   }
@@ -227,6 +221,7 @@ export class ChatStore implements OnDestroy {
         .pipe(
           retry(2),
           finalize(() => this.patch({ isGenerating: false })),
+          takeUntilDestroyed(this.destroyRef),
         )
         .subscribe({
           next: (convResponse: ConversationDetail | ConversationResponse) => {
@@ -255,6 +250,7 @@ export class ChatStore implements OnDestroy {
         .pipe(
           retry(2),
           finalize(() => this.patch({ isGenerating: false })),
+          takeUntilDestroyed(this.destroyRef),
         )
         .subscribe({
           next: (aiMsg: MessageResponse) => {
@@ -350,7 +346,7 @@ export class ChatStore implements OnDestroy {
       .voteCandidateApiV1ConversationsConversationIdMessagesMessageIdVotePost(activeId, messageId, {
         candidate_id: candidateId,
       })
-      .pipe(retry(2))
+      .pipe(retry(2), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (serverMsg: MessageResponse) => {
           // Re-synchronize with server truth
@@ -384,7 +380,7 @@ export class ChatStore implements OnDestroy {
 
     this.chatApi
       .deleteConversationApiV1ConversationsConversationIdDelete(id)
-      .pipe(retry(2))
+      .pipe(retry(2), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         error: (err: unknown) => {
           this.patch({ conversations: currentList }); // Rollback
@@ -410,7 +406,7 @@ export class ChatStore implements OnDestroy {
 
     this.chatApi
       .updateConversationApiV1ConversationsConversationIdPut(id, { title: newTitle })
-      .pipe(retry(2))
+      .pipe(retry(2), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         error: (err: unknown) => {
           this.patch({ conversations: currentList });

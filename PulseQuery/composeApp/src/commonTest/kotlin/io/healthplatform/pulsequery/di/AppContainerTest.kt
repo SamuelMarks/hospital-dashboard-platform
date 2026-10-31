@@ -4,6 +4,9 @@
 package io.healthplatform.pulsequery.di
 
 import io.healthplatform.pulsequery.api.models.UserResponse
+import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.result.launchResult
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -32,7 +35,7 @@ class AppContainerTest {
     /** Restores default base URL and logs out after each test. */
     @AfterTest
     fun tearDown() {
-        AppContainer.logout()
+        AppContainer.resetForTest()
         AppContainer.currentBaseUrl = "http://localhost:8080"
     }
 
@@ -47,6 +50,11 @@ class AppContainerTest {
         AppContainer.currentToken = "test-token"
         AppContainer.refreshToken = "in-mem-refresh"
         assertEquals("in-mem-refresh", AppContainer.refreshToken)
+        val sessionCfg = AppContainer.currentSessionConfig()
+        assertEquals(AppContainer.currentBaseUrl, sessionCfg.baseUrl)
+        assertEquals("test-token", sessionCfg.accessToken)
+        assertEquals("test-token", sessionCfg.copy(baseUrl = "http://custom").accessToken)
+        assertNotNull(PulseSessionConfig(baseUrl = "http://localhost").toString())
         AppContainer.refreshToken = null
         assertNull(AppContainer.refreshToken)
         assertTrue(AppContainer.sessionState.value.isAuthenticated)
@@ -174,6 +182,7 @@ class AppContainerTest {
         val chatStreaming = AppContainer.chatStreamingRepository
         assertNotNull(chatStreaming)
         assertEquals(chatStreaming, AppContainer.chatStreamingRepository)
+        client.close()
     }
 
     @Test
@@ -254,5 +263,33 @@ class AppContainerTest {
         }
         val dbFailResult = AppContainer.initDatabase(failingDriverFactory)
         kotlin.test.assertTrue(dbFailResult.isFailure)
+
+        // Verify launchResult extension on both success and failure
+        var loadingCount = 0
+        var successVal = 0
+        var errorMsg: String? = null
+        val jobOk = launchResult(
+            onLoading = { loadingCount++ },
+            operation = { Result.success(42) },
+            onSuccess = { v: Int -> successVal = v },
+            onError = { _: PulseQueryError, msg: String -> errorMsg = msg }
+        )
+        jobOk.join()
+        assertEquals(1, loadingCount)
+        assertEquals(42, successVal)
+        assertNull(errorMsg)
+
+        val jobFail = launchResult<Int>(
+            defaultErrorKey = UiErrorKey.OPTIMIZATION_FAILED,
+            operation = {
+                Result.failure(
+                    PulseQueryError.General("Unknown failure", RuntimeException(null as String?))
+                )
+            },
+            onSuccess = { v: Int -> successVal = v },
+            onError = { _: PulseQueryError, msg: String -> errorMsg = msg }
+        )
+        jobFail.join()
+        assertEquals("Optimization failed", errorMsg)
     }
 }

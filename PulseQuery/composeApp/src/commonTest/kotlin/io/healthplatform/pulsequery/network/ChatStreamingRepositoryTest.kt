@@ -144,11 +144,12 @@ class ChatStreamingRepositoryTest {
 
         val events = repo.streamTokens("conv-fallback", token = "   ", modelId = null).toList()
 
-        assertEquals(4, events.size)
-        assertEquals(ChatStreamEvent.StreamStarted("conv-fallback"), events[0])
-        assertEquals(ChatStreamEvent.TokenChunk("valid"), events[1])
-        assertEquals(ChatStreamEvent.StreamDone(messageId = "", content = "", sqlSnippet = null), events[2])
-        assertEquals(ChatStreamEvent.StreamError("Streaming failed"), events[3])
+        assertEquals(5, events.size)
+        assertTrue(events[0] is ChatStreamEvent.StreamError)
+        assertEquals(ChatStreamEvent.StreamStarted("conv-fallback"), events[1])
+        assertEquals(ChatStreamEvent.TokenChunk("valid"), events[2])
+        assertEquals(ChatStreamEvent.StreamDone(messageId = "", content = "", sqlSnippet = null), events[3])
+        assertEquals(ChatStreamEvent.StreamError("Streaming failed"), events[4])
     }
 
     @Test

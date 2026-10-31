@@ -16,13 +16,10 @@ Implements the two-stage conversational optimization workflow specified in
 
 from __future__ import annotations
 
-import json
-import re
+import logging
 import time
-from typing import Literal
 import uuid
 
-from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -55,6 +52,12 @@ from app.schemas.optimization import (
   validate_quick_action_result,
   validate_use_case_result,
 )
+from app.services.optimization.constraint_parser import (
+  extract_service_unit_constraints_from_prompt,
+  extract_staffing_constraints_from_prompt,
+  extract_surgical_constraints_from_prompt,
+  parse_llm_constraints_json_result,
+)
 from app.services.optimization.institution_profiles import (
   INSTITUTION_PROFILES,
   get_institution_profile_result,
@@ -70,312 +73,66 @@ from app.services.optimization.surgical_scheduling_solver import (
   solve_surgical_scheduling_result,
 )
 
-
-_SERVICE_CONSTRAINTS_ADAPTER: TypeAdapter[list[ServiceUnitConstraint]] = TypeAdapter(list[ServiceUnitConstraint])
-_SURGICAL_CONSTRAINTS_ADAPTER: TypeAdapter[list[SurgicalScheduleConstraint]] = TypeAdapter(
-  list[SurgicalScheduleConstraint]
-)
-_STAFFING_CONSTRAINTS_ADAPTER: TypeAdapter[list[StaffingConstraint]] = TypeAdapter(list[StaffingConstraint])
+logger = logging.getLogger(__name__)
 
 
-def parse_llm_constraints_json_result(
-  use_case: OptimizationUseCase,
-  raw_llm_output: str,
-  fallback_prompt: str,
-  profile: InstitutionProfileSchema,
-) -> AppResult[list[ServiceUnitConstraint] | list[SurgicalScheduleConstraint] | list[StaffingConstraint]]:
+def _coerce_stored_use_case(raw_use_case: str, context_label: str) -> OptimizationUseCase:
   """
-  Parses raw or markdown-fenced JSON constraint arrays returned by an LLM using `pydantic.TypeAdapter`,
-  falling back to deterministic rule-based extraction when `raw_llm_output` is empty or non-JSON.
+  Validates a stored database `use_case` string and logs a structured warning if fallback coercion is required.
 
   Args:
-      use_case (OptimizationUseCase): Target optimization use case (`'service_unit'`, `'surgical_scheduling'`, or `'staffing_optimization'`).
-      raw_llm_output (str): Raw text or JSON response from the LLM constraint translator.
-      fallback_prompt (str): Original user prompt used for deterministic fallback extraction.
+      raw_use_case (str): Stored `use_case` column value from PostgreSQL.
+      context_label (str): Diagnostic context identifier (e.g., session or survey ID).
+
+  Returns:
+      OptimizationUseCase: Validated optimization use case literal.
+  """
+  uc_res = validate_use_case_result(raw_use_case)
+  if isinstance(uc_res, Ok):
+    return uc_res.value
+  logger.warning(
+    f"Invalid stored optimization use_case '{raw_use_case}' in {context_label}; falling back to 'service_unit'."
+  )
+  return "service_unit"
+
+
+def generate_follow_up_suggestions(
+  use_case: OptimizationUseCase,
+  profile: InstitutionProfileSchema,
+) -> list[str]:
+  """
+  Generates actionable follow-up prompt suggestions for iterative refinement without
+  recomputing full clinical Markdown explanations.
+
+  Args:
+      use_case (OptimizationUseCase): Active optimization use case.
       profile (InstitutionProfileSchema): Active partner hospital profile.
 
   Returns:
-      AppResult[list[ServiceUnitConstraint] | list[SurgicalScheduleConstraint] | list[StaffingConstraint]]:
-          `Ok(constraints)` when valid JSON or fallback succeeds, or `Err(AppError)` when JSON is explicitly invalid against the schema.
+      list[str]: Suggested follow-up natural-language prompts.
   """
-  cleaned = raw_llm_output.strip()
-  fenced = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", cleaned, flags=re.DOTALL | re.IGNORECASE)
-  json_candidate = fenced.group(1).strip() if fenced else (cleaned if cleaned.startswith("[") else "")
-
-  if json_candidate:
-    try:
-      if use_case == "service_unit":
-        return Ok(_SERVICE_CONSTRAINTS_ADAPTER.validate_json(json_candidate))
-      if use_case == "surgical_scheduling":
-        return Ok(_SURGICAL_CONSTRAINTS_ADAPTER.validate_json(json_candidate))
-      return Ok(_STAFFING_CONSTRAINTS_ADAPTER.validate_json(json_candidate))
-    except ValidationError as exc:
-      return Err(
-        AppError(
-          code=ErrorCode.OPTIMIZATION_INVALID_CONSTRAINT,
-          message=f"Invalid LLM constraint JSON for {use_case}: {exc}",
-          status_code=400,
-        )
-      )
-
   if use_case == "service_unit":
-    return Ok(extract_service_unit_constraints_from_prompt(fallback_prompt, profile))
+    units = list(profile.unit_capacities.keys())
+    u0 = units[0]
+    u1 = units[1] if len(units) > 1 else u0
+    s0 = profile.clinical_services[0]
+    s1 = profile.clinical_services[1] if len(profile.clinical_services) > 1 else s0
+    return [
+      f"Place all {s0} patients on {u0} and open {u1} with 10 additional beds",
+      f"Reserve at least 10 beds for {s1} on {u1}",
+      f"What happens if we close 4 beds on {u0} for renovation?",
+    ]
   if use_case == "surgical_scheduling":
-    return Ok(extract_surgical_constraints_from_prompt(fallback_prompt, profile))
-  return Ok(extract_staffing_constraints_from_prompt(fallback_prompt))
-
-
-def _match_clinical_service(lower_text: str, services: list[str]) -> str | None:
-  """
-  Matches a clinical service name or clinical abbreviation (`gen peds`, `neuro`, `cardio`, `onc`) in `lower_text`.
-
-  Args:
-      lower_text (str): Lowercased user prompt.
-      services (list[str]): Institution clinical service names.
-
-  Returns:
-      str | None: Canonical clinical service name if matched.
-  """
-  service_aliases: dict[str, str] = {}
-  for svc in services:
-    svc_low = svc.lower()
-    service_aliases[svc_low] = svc
-    if "pediatric" in svc_low:
-      service_aliases["gen peds"] = svc
-      service_aliases["general peds"] = svc
-    elif "neuro" in svc_low:
-      service_aliases["neuro"] = svc
-    elif "cardio" in svc_low:
-      service_aliases["cardio"] = svc
-    elif "oncol" in svc_low:
-      service_aliases["onc"] = svc
-
-  for alias, canonical_svc in sorted(service_aliases.items(), key=lambda kv: len(kv[0]), reverse=True):
-    if alias in lower_text:
-      return canonical_svc
-  return None
-
-
-def extract_service_unit_constraints_from_prompt(
-  prompt: str,
-  profile: InstitutionProfileSchema,
-) -> list[ServiceUnitConstraint]:
-  """
-  Extracts Use Case 1 (`ServiceUnitConstraint`) mathematical rules from a natural-language prompt.
-
-  Args:
-      prompt (str): Natural language request from the hospital leader.
-      profile (InstitutionProfileSchema): Active institution profile for matching service/unit names.
-
-  Returns:
-      list[ServiceUnitConstraint]: Extracted mathematical constraints.
-  """
-  lower_text = prompt.strip().lower()
-  if not lower_text:
-    return []
-
-  extracted: list[ServiceUnitConstraint] = []
-  matched_service = _match_clinical_service(lower_text, profile.clinical_services)
-  matched_units = [u for u in profile.unit_capacities if u.lower() in lower_text]
-  primary_unit = matched_units[0] if matched_units else next(iter(profile.unit_capacities.keys()))
-  secondary_unit = matched_units[1] if len(matched_units) > 1 else primary_unit
-
-  add_match = re.search(
-    r"(?:open|add|expand|increase|additional)[^0-9]*?(\d+(?:\.\d+)?)\s*(?:additional\s+)?beds?",
-    lower_text,
-  )
-  if add_match:
-    bed_delta = float(add_match.group(1))
-    cap_unit = secondary_unit if ("place all" in lower_text and len(matched_units) > 1) else primary_unit
-    extracted.append(
-      ServiceUnitConstraint(
-        constraint_type="unit_capacity_delta",
-        unit=cap_unit,
-        value=bed_delta,
-        rationale=f"Add {bed_delta:g} beds on {cap_unit} per natural-language request.",
-      )
-    )
-
-  close_match = re.search(r"(?:close|remove|reduce)[^0-9]*?(\d+(?:\.\d+)?)\s*beds?", lower_text)
-  if close_match:
-    bed_reduction = -float(close_match.group(1))
-    extracted.append(
-      ServiceUnitConstraint(
-        constraint_type="unit_capacity_delta",
-        unit=primary_unit,
-        value=bed_reduction,
-        rationale=f"Reduce {abs(bed_reduction):g} beds on {primary_unit} per natural-language request.",
-      )
-    )
-
-  if matched_service:
-    if any(k in lower_text for k in ("place all", "lock", "assign all")):
-      extracted.append(
-        ServiceUnitConstraint(
-          constraint_type="lock_service_to_unit",
-          service=matched_service,
-          unit=primary_unit,
-          value=1.0,
-          rationale=f"Lock {matched_service} exclusively to {primary_unit}.",
-        )
-      )
-    if any(k in lower_text for k in ("prohibit", "do not place", "exclude")):
-      extracted.append(
-        ServiceUnitConstraint(
-          constraint_type="prohibit_service_on_unit",
-          service=matched_service,
-          unit=primary_unit,
-          value=0.0,
-          rationale=f"Prohibit {matched_service} placements on {primary_unit}.",
-        )
-      )
-    min_match = re.search(r"(?:at least|minimum|reserve)\s+(\d+(?:\.\d+)?)\s*beds?", lower_text)
-    if min_match:
-      min_beds = float(min_match.group(1))
-      extracted.append(
-        ServiceUnitConstraint(
-          constraint_type="min_service_beds",
-          service=matched_service,
-          unit=primary_unit,
-          value=min_beds,
-          rationale=f"Reserve at least {min_beds:g} beds for {matched_service} on {primary_unit}.",
-        )
-      )
-
-  return extracted
-
-
-def extract_surgical_constraints_from_prompt(
-  prompt: str,
-  profile: InstitutionProfileSchema,
-) -> list[SurgicalScheduleConstraint]:
-  """
-  Extracts Use Case 2 (`SurgicalScheduleConstraint`) BEDS & POINTS rules from a natural-language prompt.
-
-  Args:
-      prompt (str): Natural language instruction from the surgical or operational leader.
-      profile (InstitutionProfileSchema): Active institution profile.
-
-  Returns:
-      list[SurgicalScheduleConstraint]: Extracted surgical scheduling constraints.
-  """
-  lower_text = prompt.strip().lower()
-  if not lower_text:
-    return []
-
-  unit_names = list(profile.unit_capacities.keys())
-  cvicu_unit = next((u for u in unit_names if "CVICU" in u or "CICU" in u or "Cardiac" in u), unit_names[-1])
-  picu_unit = next((u for u in unit_names if "PICU" in u or "ICU" in u), unit_names[0])
-
-  extracted: list[SurgicalScheduleConstraint] = []
-  program: Literal["BEDS", "POINTS", "ALL"] = (
-    "POINTS" if "points" in lower_text or "cardiac" in lower_text else ("BEDS" if "beds" in lower_text else "ALL")
-  )
-
-  cap_match = re.search(r"(?:cap|max|limit)[^0-9]*?(\d+(?:\.\d+)?)", lower_text)
-  if cap_match:
-    val = max(float(cap_match.group(1)), 2.0)
-    target_unit = cvicu_unit if "cvicu" in lower_text or program == "POINTS" else picu_unit
-    extracted.append(
-      SurgicalScheduleConstraint(
-        constraint_type="max_daily_postop_admits",
-        program=program,
-        recovery_unit=target_unit,
-        value=val,
-        rationale=f"Cap daily post-operative admissions on {target_unit} at {val:g}.",
-      )
-    )
-
-  emerg_match = re.search(r"reserve[^0-9]*?(\d+(?:\.\d+)?)\s*(?:emergency|urgent)?\s*beds?", lower_text)
-  if emerg_match:
-    val = float(emerg_match.group(1))
-    extracted.append(
-      SurgicalScheduleConstraint(
-        constraint_type="reserve_emergency_beds",
-        program=program,
-        recovery_unit=picu_unit,
-        value=val,
-        rationale=f"Reserve {val:g} emergency recovery beds on {picu_unit}.",
-      )
-    )
-
-  day_map: dict[str, Literal["Mon", "Tue", "Wed", "Thu", "Fri"]] = {
-    "monday": "Mon",
-    "tuesday": "Tue",
-    "wednesday": "Wed",
-    "thursday": "Thu",
-    "friday": "Fri",
-  }
-  for day_word, day_code in day_map.items():
-    if day_word in lower_text and any(k in lower_text for k in ("prohibit", "no ", "avoid")):
-      extracted.append(
-        SurgicalScheduleConstraint(
-          constraint_type="prohibit_procedure_day",
-          program=program,
-          day_of_week=day_code,
-          value=0.0,
-          rationale=f"Avoid scheduling elective {program} procedures on {day_code}.",
-        )
-      )
-
-  return extracted
-
-
-def extract_staffing_constraints_from_prompt(prompt: str) -> list[StaffingConstraint]:
-  """
-  Extracts Use Case 3 (`StaffingConstraint`) physician and nurse scheduling rules from natural language.
-
-  Args:
-      prompt (str): Natural language staffing instruction.
-
-  Returns:
-      list[StaffingConstraint]: Extracted staffing optimization constraints.
-  """
-  lower_text = prompt.strip().lower()
-  if not lower_text:
-    return []
-
-  extracted: list[StaffingConstraint] = []
-  ot_match = re.search(r"overtime[^0-9]*?(\d+(?:\.\d+)?)", lower_text)
-  if ot_match:
-    val = max(float(ot_match.group(1)), 0.5)
-    extracted.append(
-      StaffingConstraint(
-        constraint_type="max_overtime_shifts",
-        unit="ALL",
-        provider_role="RN",
-        value=val,
-        rationale=f"Cap unexpected RN overtime shifts at {val:g} per unit/week.",
-      )
-    )
-
-  aday_match = re.search(r"a-?days?[^0-9]*?(\d+(?:\.\d+)?)", lower_text)
-  if aday_match:
-    val = max(float(aday_match.group(1)), 0.5)
-    extracted.append(
-      StaffingConstraint(
-        constraint_type="max_a_days",
-        unit="ALL",
-        provider_role="RN",
-        value=val,
-        rationale=f"Cap RN Administrative Days (A-days) at {val:g} per unit/week.",
-      )
-    )
-
-  float_match = re.search(r"float[^0-9]*?(\d+(?:\.\d+)?)", lower_text)
-  if float_match:
-    val = max(float(float_match.group(1)), 1.0)
-    extracted.append(
-      StaffingConstraint(
-        constraint_type="float_pool_cap",
-        unit="ALL",
-        provider_role="FLOAT_RN",
-        value=val,
-        rationale=f"Configure cross-unit float pool capacity at {val:g} FTE shifts.",
-      )
-    )
-
-  return extracted
+    return [
+      "Cap daily CVICU post-op admissions for POINTS cardiac procedures at 4 cases",
+      "Reserve 4 emergency recovery beds on PICU for trauma and urgent add-ons",
+      "Avoid scheduling elective BEDS spine fusion procedures on Monday",
+    ]
+  return [
+    "Cap unexpected RN overtime shifts at 2 per unit per week",
+    "Expand cross-unit float pool capacity to 6 FTE shifts during winter surge",
+    "Limit RN Administrative Days (A-days) to at most 2 per week",
+  ]
 
 
 def generate_clinical_explanation(
@@ -397,17 +154,13 @@ def generate_clinical_explanation(
   """
   metrics = solution.des_evaluation.metrics
   nl = chr(10)
+  suggestions = generate_follow_up_suggestions(solution.use_case, profile)
 
   if solution.use_case == "service_unit":
     off_m = metrics[0]
     div_m = metrics[1]
     los_impact = solution.des_evaluation.propensity_los_impact
     saved_days = los_impact.estimated_patient_days_saved if los_impact else 0.0
-    units = list(profile.unit_capacities.keys())
-    u0 = units[0]
-    u1 = units[1] if len(units) > 1 else u0
-    s0 = profile.clinical_services[0]
-    s1 = profile.clinical_services[1] if len(profile.clinical_services) > 1 else s0
 
     explanation = (
       f"### Service-Unit Assignment Optimization ({profile.short_name} · `{model_id}`){nl}{nl}"
@@ -419,11 +172,6 @@ def generate_clinical_explanation(
       f"- **Propensity-Matched LOS Impact:** Saves an estimated **{saved_days:,.1f} inpatient bed-days** "
       "by co-locating patients with specialized nursing teams."
     )
-    suggestions = [
-      f"Place all {s0} patients on {u0} and open {u1} with 10 additional beds",
-      f"Reserve at least 10 beds for {s1} on {u1}",
-      f"What happens if we close 4 beds on {u0} for renovation?",
-    ]
     return explanation, suggestions
 
   if solution.use_case == "surgical_scheduling":
@@ -437,11 +185,6 @@ def generate_clinical_explanation(
       f"**{tail_m.manual_historical_value:.2f}** to **{tail_m.llm_mpax_value:.2f}** "
       f"(expert baseline: **{tail_m.expert_baseline_value:.2f}**), eliminating early-week PICU/CVICU bottlenecks."
     )
-    suggestions = [
-      "Cap daily CVICU post-op admissions for POINTS cardiac procedures at 4 cases",
-      "Reserve 4 emergency recovery beds on PICU for trauma and urgent add-ons",
-      "Avoid scheduling elective BEDS spine fusion procedures on Monday",
-    ]
     return explanation, suggestions
 
   ot_m = metrics[0]
@@ -456,11 +199,6 @@ def generate_clinical_explanation(
     f"- **RN Staffing Cost per Patient Day:** Reduced from **${cost_m.manual_historical_value:,.2f}** "
     f"to **${cost_m.llm_mpax_value:,.2f} / patient-day** (**{cost_m.improvement_vs_manual_pct}% savings**)."
   )
-  suggestions = [
-    "Cap unexpected RN overtime shifts at 2 per unit per week",
-    "Expand cross-unit float pool capacity to 6 FTE shifts during winter surge",
-    "Limit RN Administrative Days (A-days) to at most 2 per week",
-  ]
   return explanation, suggestions
 
 
@@ -772,12 +510,12 @@ class LlmOptimizationCopilotService:
       institution_id=profile.institution_id,
       title=session_title,
       active_constraints_json={
-        "service_constraints": [json.loads(c.model_dump_json()) for c in initial_solution.applied_service_constraints],
-        "surgical_constraints": [json.loads(c.model_dump_json()) for c in initial_solution.applied_surgical_constraints],
-        "staffing_constraints": [json.loads(c.model_dump_json()) for c in initial_solution.applied_staffing_constraints],
+        "service_constraints": [c.model_dump(mode="json") for c in initial_solution.applied_service_constraints],
+        "surgical_constraints": [c.model_dump(mode="json") for c in initial_solution.applied_surgical_constraints],
+        "staffing_constraints": [c.model_dump(mode="json") for c in initial_solution.applied_staffing_constraints],
       },
-      latest_solution_json=json.loads(initial_solution.model_dump_json()),
-      baseline_comparison_json=json.loads(initial_solution.des_evaluation.model_dump_json()),
+      latest_solution_json=initial_solution.model_dump(mode="json"),
+      baseline_comparison_json=initial_solution.des_evaluation.model_dump(mode="json"),
     )
     db.add(session_record)
     await db.flush()
@@ -907,8 +645,7 @@ class LlmOptimizationCopilotService:
       return rec_res
     session_rec = rec_res.value
 
-    uc_res = validate_use_case_result(session_rec.use_case)
-    use_case: OptimizationUseCase = uc_res.value if isinstance(uc_res, Ok) else "service_unit"
+    use_case = _coerce_stored_use_case(session_rec.use_case, f"session:{session_rec.id}")
     profile = get_institution_profile_result(session_rec.institution_id).unwrap_or(
       INSTITUTION_PROFILES["stanford_childrens"]
     )
@@ -936,12 +673,12 @@ class LlmOptimizationCopilotService:
     latency_ms = max(1, round((time.perf_counter() - t0) * 1000.0))
 
     updated_constraints_json: JsonObject = {
-      "service_constraints": [json.loads(c.model_dump_json()) for c in solution.applied_service_constraints],
-      "surgical_constraints": [json.loads(c.model_dump_json()) for c in solution.applied_surgical_constraints],
-      "staffing_constraints": [json.loads(c.model_dump_json()) for c in solution.applied_staffing_constraints],
+      "service_constraints": [c.model_dump(mode="json") for c in solution.applied_service_constraints],
+      "surgical_constraints": [c.model_dump(mode="json") for c in solution.applied_surgical_constraints],
+      "staffing_constraints": [c.model_dump(mode="json") for c in solution.applied_staffing_constraints],
     }
-    solution_json: JsonObject = json.loads(solution.model_dump_json())
-    des_json: JsonObject = json.loads(solution.des_evaluation.model_dump_json())
+    solution_json: JsonObject = solution.model_dump(mode="json")
+    des_json: JsonObject = solution.des_evaluation.model_dump(mode="json")
 
     iter_record = OptimizationIteration(
       session_id=session_rec.id,
@@ -1094,8 +831,7 @@ class LlmOptimizationCopilotService:
     Returns:
         OptimizationSessionResponse: Serialized Pydantic response.
     """
-    uc_res = validate_use_case_result(record.use_case)
-    use_case: OptimizationUseCase = uc_res.value if isinstance(uc_res, Ok) else "service_unit"
+    use_case = _coerce_stored_use_case(record.use_case, f"session:{record.id}")
 
     latest_sol = (
       OptimizationSolutionPayload.model_validate(record.latest_solution_json) if record.latest_solution_json else None
@@ -1106,7 +842,7 @@ class LlmOptimizationCopilotService:
     iter_responses: list[OptimizationIterationResponse] = []
     for it in record.iterations:
       sol_payload = OptimizationSolutionPayload.model_validate(it.solver_output_json or record.latest_solution_json)
-      _, suggestions = generate_clinical_explanation(sol_payload, profile, it.model_id)
+      suggestions = generate_follow_up_suggestions(sol_payload.use_case, profile)
       iter_responses.append(
         OptimizationIterationResponse(
           id=str(it.id),
@@ -1145,8 +881,7 @@ class LlmOptimizationCopilotService:
     Returns:
         OptimizationSurveyResponse: Serialized Pydantic response.
     """
-    uc_res = validate_use_case_result(record.use_case)
-    use_case: OptimizationUseCase = uc_res.value if isinstance(uc_res, Ok) else "service_unit"
+    use_case = _coerce_stored_use_case(record.use_case, f"survey:{record.id}")
     return OptimizationSurveyResponse(
       id=str(record.id),
       user_id=str(record.user_id),
@@ -1169,6 +904,7 @@ __all__ = [
   "extract_staffing_constraints_from_prompt",
   "extract_surgical_constraints_from_prompt",
   "generate_clinical_explanation",
+  "generate_follow_up_suggestions",
   "llm_optimization_copilot",
   "parse_llm_constraints_json_result",
 ]

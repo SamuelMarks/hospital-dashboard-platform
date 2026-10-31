@@ -14,7 +14,7 @@ import io
 import json
 from typing import Literal
 
-from app.core.result import AppError, AppResult, Err, ErrorCode, Ok, unwrap_or_raise_http
+from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.database.duckdb import duckdb_manager
 from app.models.dashboard import Dashboard, Widget
 from app.schemas.execution import SqlRunnerResultDict
@@ -346,8 +346,9 @@ class DashboardExportService:
         sql_runner_fn=sql_runner_fn,
         global_params=global_params,
       )
-      pdf_bytes, filename = unwrap_or_raise_http(pdf_res)
-      return Ok(ExportedReportPayload(content=pdf_bytes, filename=filename, media_type="application/pdf"))
+      return pdf_res.map(
+        lambda pair: ExportedReportPayload(content=pair[0], filename=pair[1], media_type="application/pdf")
+      )
     if fmt in ("json", "csv"):
       export_res = await asyncio.to_thread(
         self.build_dashboard_export_content,
@@ -357,8 +358,13 @@ class DashboardExportService:
         sql_runner_fn,
         global_params,
       )
-      content_str, media_type, filename = unwrap_or_raise_http(export_res)
-      return Ok(ExportedReportPayload(content=content_str.encode("utf-8"), filename=filename, media_type=media_type))
+      return export_res.map(
+        lambda triple: ExportedReportPayload(
+          content=triple[0].encode("utf-8"),
+          filename=triple[2],
+          media_type=triple[1],
+        )
+      )
     return Err(
       AppError(
         code=ErrorCode.VALIDATION_ERROR,

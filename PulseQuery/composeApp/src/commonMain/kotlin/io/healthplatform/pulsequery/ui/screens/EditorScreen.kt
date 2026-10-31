@@ -47,6 +47,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel
@@ -90,7 +95,12 @@ fun EditorScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(Res.string.sql_editor)) },
+                title = {
+                    Text(
+                        stringResource(Res.string.sql_editor),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -114,8 +124,10 @@ fun EditorScreen(
             )
         },
         floatingActionButton = {
+            val execDesc = stringResource(Res.string.execute)
             ExtendedFloatingActionButton(
                 onClick = { vm.executeSql(errorPrefix = errExecFailed) },
+                modifier = Modifier.semantics { contentDescription = execDesc },
                 icon = {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -123,7 +135,7 @@ fun EditorScreen(
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     }
                 },
-                text = { Text(stringResource(Res.string.execute)) },
+                text = { Text(execDesc) },
                 expanded = !uiState.isLoading
             )
         }
@@ -145,7 +157,9 @@ fun EditorScreen(
             uiState.errorMessage?.let { err ->
                 ElevatedCard(
                     colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
                 ) {
                     Text(
                         text = err,
@@ -162,7 +176,9 @@ fun EditorScreen(
                 if (sqlErr != null) {
                     ElevatedCard(
                         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { liveRegion = LiveRegionMode.Assertive }
                     ) {
                         Text(
                             text = stringResource(Res.string.sql_error_msg, sqlErr),
@@ -174,7 +190,8 @@ fun EditorScreen(
                     Text(
                         text = pluralStringResource(Res.plurals.results_rows, res.data.size, res.data.size),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.semantics { heading() }
                     )
 
                     LazyColumn(

@@ -22,6 +22,7 @@ import {
   WidgetResponse,
 } from '../api-client';
 import { AuthService } from '../core/auth/auth.service';
+import { LoggerService } from '../core/logging/logger.service';
 import { QueryCartService } from './query-cart.service';
 
 /**
@@ -118,6 +119,8 @@ export class AskDataComponent implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   /** Material snackbar for user feedback notifications. */
   private readonly snackBar = inject(MatSnackBar);
+  /** Centralized diagnostic logger service. */
+  private readonly logger = inject(LoggerService);
 
   /** Reserved dashboard name used for the temporary scratchpad. */
   private readonly SCRATCHPAD_NAME = 'Scratchpad (Temp)';
@@ -163,7 +166,7 @@ export class AskDataComponent implements OnDestroy {
         this.dashboardsApi
           .deleteDashboardApiV1DashboardsDashboardIdDelete(ids.dashboardId)
           .subscribe({
-            error: (err) => console.warn('Failed to clean up scratchpad', err),
+            error: (err: unknown) => this.logger.warn('Failed to clean up scratchpad', err),
           });
       }
     }
@@ -240,7 +243,7 @@ export class AskDataComponent implements OnDestroy {
    * @param error - Raw error object for console diagnostics.
    */
   private handleError(msg: string, error: unknown): void {
-    console.error(error);
+    this.logger.error(msg, error);
     this.contextError.set(msg);
     this.loadingContext.set(false);
   }

@@ -206,7 +206,13 @@
 
   <!-- Loading Indicator -->
   @if (store.isLoading()) {
-    <div class="loading-box" role="status" aria-live="polite" data-testid="optimization-loading">
+    <div
+      class="loading-box"
+      role="status"
+      aria-live="polite"
+      [attr.aria-busy]="store.isLoading()"
+      data-testid="optimization-loading"
+    >
       <mat-progress-bar
         mode="indeterminate"
         i18n-aria-label
@@ -220,7 +226,7 @@
 
   <!-- Error Alert -->
   @if (store.error()) {
-    <div class="error-banner" role="alert" data-testid="optimization-error">
+    <div class="error-banner" role="alert" aria-live="assertive" data-testid="optimization-error">
       <mat-icon aria-hidden="true">error_outline</mat-icon>
       <span>{{ store.error() }}</span>
     </div>
@@ -319,7 +325,12 @@
           Submit Evaluation Survey
         </button>
         @if (store.surveySuccessMessage()) {
-          <span class="survey-success" role="status" data-testid="survey-success-msg">
+          <span
+            class="survey-success"
+            role="status"
+            aria-live="polite"
+            data-testid="survey-success-msg"
+          >
             {{ store.surveySuccessMessage() }}
           </span>
         }

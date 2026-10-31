@@ -269,6 +269,7 @@ def test_natural_language_constraint_extractors() -> None:
   assert extract_service_unit_constraints_from_prompt("Lock neuro patients to PCU 380", prof) != []
   assert extract_service_unit_constraints_from_prompt("Lock cardio patients to CVICU", prof) != []
   assert extract_service_unit_constraints_from_prompt("Lock onc patients to PCU 380", prof) != []
+  assert extract_service_unit_constraints_from_prompt("Prohibit neuro patients on PCU 350", prof) != []
   assert extract_service_unit_constraints_from_prompt("Add 4 beds on PCU 350", prof) != []
 
   c_surg = extract_surgical_constraints_from_prompt(
@@ -322,6 +323,24 @@ def test_natural_language_constraint_extractors() -> None:
     for row in sol_res.value.service_unit_assignments:
       assert row.optimized_patient_days >= 0.0
       assert row.baseline_patient_days >= 0.0
+
+  # Verify _coerce_stored_use_case fallback warning and generate_follow_up_suggestions across all use cases
+  from app.services.optimization.llm_optimization_copilot import (
+    _coerce_stored_use_case,
+    generate_follow_up_suggestions,
+  )
+
+  assert _coerce_stored_use_case("service_unit", "test") == "service_unit"
+  assert _coerce_stored_use_case("legacy_unknown_use_case", "test") == "service_unit"
+  assert len(generate_follow_up_suggestions("service_unit", prof)) == 3
+  assert len(generate_follow_up_suggestions("surgical_scheduling", prof)) == 3
+  assert len(generate_follow_up_suggestions("staffing_optimization", prof)) == 3
+
+  # Verify invalid JSON constraint schemas across all 3 use cases return OPTIMIZATION_INVALID_CONSTRAINT
+  for uc_invalid in ("service_unit", "surgical_scheduling", "staffing_optimization"):
+    err_res = parse_llm_constraints_json_result(uc_invalid, '[{"constraint_type": "invalid_xyz"}]', "", prof)
+    assert isinstance(err_res, Err)
+    assert err_res.error.code == ErrorCode.OPTIMIZATION_INVALID_CONSTRAINT
 
 
 @pytest.mark.asyncio

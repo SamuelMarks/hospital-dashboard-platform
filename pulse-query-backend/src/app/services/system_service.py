@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import os
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import BACKEND_ROOT, settings
@@ -21,8 +22,8 @@ from app.core.diagnostics import (
   check_configuration_hygiene,
   diagnostics_registry,
 )
-from app.core.result import AppResult, Ok
-from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
+from app.core.result import AppResult, Err, Ok
+from app.database.duckdb import DuckDBManager, duckdb_manager, run_in_duckdb_thread
 from app.database.postgres import AsyncSessionLocal, validate_postgres_connection
 from app.models.template import WidgetTemplate
 from app.schemas.json_types import JsonObject, JsonValue
@@ -33,11 +34,13 @@ from app.schemas.system import (
   DuckDbHealthSchema,
   LlmHealthSchema,
   PostgresHealthSchema,
+  ReingestResponse,
   SystemDiagnosticsResponse,
   SystemHealthResponse,
   TemplateHealthSchema,
   TroubleshootingStep,
 )
+from app.services.data_ingestion import DataIngestionService, data_ingestion_service
 
 DEFAULT_DATA_DIR = str(BACKEND_ROOT / "data")
 REQUIRED_CLINICAL_TABLES: tuple[str, ...] = (
@@ -85,7 +88,7 @@ class SystemDiagnosticsService:
       async with AsyncSessionLocal() as session:
         res = await session.execute(select(func.count()).select_from(WidgetTemplate))
         return int(res.scalar_one_or_none() or 0)
-    except Exception:
+    except (SQLAlchemyError, OSError, RuntimeError, ValueError, TypeError):
       return int(diagnostics_registry.template_status.templates_loaded)
 
   async def get_health_summary(
@@ -290,6 +293,39 @@ class SystemDiagnosticsService:
         AppResult[SystemDiagnosticsResponse]: `Ok(SystemDiagnosticsResponse)`.
     """
     return Ok(await self.build_diagnostics_response(db=db))
+
+  async def run_reingest_result(
+    self,
+    ingestion_svc: DataIngestionService = data_ingestion_service,
+    duck_mgr: DuckDBManager = duckdb_manager,
+  ) -> AppResult[ReingestResponse]:
+    """
+    Executes DuckDB CSV dataset re-ingestion on a worker thread and returns an `AppResult[ReingestResponse]`.
+
+    Args:
+        ingestion_svc (DataIngestionService): Data ingestion service instance.
+        duck_mgr (DuckDBManager): DuckDB connection manager instance.
+
+    Returns:
+        AppResult[ReingestResponse]: `Ok(ReingestResponse)` on success, or `Err(AppError)` on ingestion failure.
+    """
+    ingest_res = await run_in_duckdb_thread(ingestion_svc.ingest_all_csvs_result)
+    if isinstance(ingest_res, Err):
+      return ingest_res
+    storage_status = await run_in_duckdb_thread(duck_mgr.validate_duckdb_storage)
+    raw_tables = storage_status.get("tables")
+    tables: dict[str, int] = (
+      {str(k): int(v) for k, v in raw_tables.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+      if isinstance(raw_tables, dict)
+      else {}
+    )
+    return Ok(
+      ReingestResponse(
+        success=storage_status.get("status") != "error",
+        message=f"Ingestion completed. {len(tables)} tables indexed.",
+        tables=tables,
+      )
+    )
 
 
 system_diagnostics_service = SystemDiagnosticsService()

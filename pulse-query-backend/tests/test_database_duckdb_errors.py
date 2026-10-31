@@ -167,3 +167,37 @@ async def test_run_in_duckdb_thread_executes_callable() -> None:
   """Verify `run_in_duckdb_thread` offloads a synchronous function and returns its value."""
   res = await run_in_duckdb_thread(lambda a, b: a + b, 7, 8)
   assert res == 15
+
+
+@pytest.mark.asyncio
+async def test_get_readonly_connection_async_result_and_udf_skip() -> None:
+  """Verify `get_readonly_connection_async_result` and `register_duckdb_udfs` error logging branch."""
+  from app.core.result import Ok
+  from app.database.duckdb import DuckDBManager, DuckDBUdfConnectionProtocol, register_duckdb_udfs
+
+  mgr = DuckDBManager(":memory:")
+  res = await mgr.get_readonly_connection_async_result()
+  assert isinstance(res, Ok)
+  cur = res.value.cursor()
+  cur.execute("SELECT 1 UNION ALL SELECT 2")
+  assert len(cur.fetchmany(1)) == 1
+  cur.close()
+  res.value.close()
+
+  class FailingUdfConn(DuckDBUdfConnectionProtocol):
+    """Test double that raises RuntimeError on `create_function`."""
+
+    def create_function(
+      self,
+      name: str,
+      function: Callable[..., str],
+      parameters: list[sqltypes.DuckDBPyType] | None = None,
+      return_type: sqltypes.DuckDBPyType | None = None,
+      *,
+      side_effects: bool = False,
+    ) -> None:
+      """Raise RuntimeError to exercise the UDF registration skip diagnostic."""
+      _ = (name, function, parameters, return_type, side_effects)
+      raise RuntimeError("already registered")
+
+  register_duckdb_udfs(FailingUdfConn())

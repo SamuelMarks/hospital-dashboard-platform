@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -24,6 +25,7 @@ from app.services.benchmark_telemetry_service import (
   update_benchmark_progress,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -82,7 +84,7 @@ async def post_benchmark_progress(
   Returns:
       BenchmarkTelemetryStateDict: Updated telemetry state snapshot.
   """
-  _ = current_user
+  logger.debug(f"Updating benchmark progress for admin={current_user.id}")
   update_benchmark_progress(
     active=payload.active,
     completed=payload.completed,

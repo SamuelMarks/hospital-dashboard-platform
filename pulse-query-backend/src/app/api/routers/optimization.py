@@ -13,6 +13,7 @@ Exposes endpoints under `/api/v1/optimization` for:
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
@@ -45,6 +46,7 @@ from app.services.optimization import (
   llm_optimization_copilot,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -61,7 +63,7 @@ async def get_optimization_institutions(
   Returns:
       list[InstitutionProfileSchema]: Partner hospital profiles.
   """
-  _ = current_user
+  logger.debug(f"Listing partner institution profiles for user={current_user.id}")
   return list_institution_profiles()
 
 
@@ -78,7 +80,7 @@ async def get_optimization_model_compendium(
   Returns:
       list[ModelCompendiumEntrySchema]: Supported LLM and LiteRT models.
   """
-  _ = current_user
+  logger.debug(f"Listing optimization model compendium for user={current_user.id}")
   return list_model_compendium()
 
 
@@ -97,7 +99,7 @@ async def get_optimization_quick_actions(
   Returns:
       list[QuickActionDefinitionSchema]: Quick Action button definitions.
   """
-  _ = current_user
+  logger.debug(f"Listing quick actions (use_case={use_case}) for user={current_user.id}")
   return list_quick_actions(use_case=use_case)
 
 
@@ -120,7 +122,7 @@ async def execute_optimization_quick_action(
   Returns:
       QuickActionExecutionResponse: Tabular rows and optional solved MPAX payload.
   """
-  _ = current_user
+  logger.debug(f"Executing quick action '{action_id}' for user={current_user.id}")
   res = llm_optimization_copilot.execute_quick_action_result(action_id, request)
   return unwrap_or_raise_http(res)
 
@@ -141,7 +143,7 @@ async def solve_optimization_stateless(
   Returns:
       OptimizationSolutionPayload: Solved assignments/schedule and DES baseline metrics.
   """
-  _ = current_user
+  logger.debug(f"Stateless optimization solve ({request.use_case}) for user={current_user.id}")
   res = llm_optimization_copilot.solve_stateless_result(request)
   return unwrap_or_raise_http(res)
 
@@ -295,7 +297,7 @@ async def get_optimization_evaluation_summary(
   Returns:
       OptimizationEvaluationSummaryResponse: Aggregated quantitative and qualitative metrics.
   """
-  _ = current_user
+  logger.debug(f"Fetching optimization evaluation summary for user={current_user.id}")
   res = await llm_optimization_copilot.get_evaluation_summary_result(db)
   return unwrap_or_raise_http(res)
 

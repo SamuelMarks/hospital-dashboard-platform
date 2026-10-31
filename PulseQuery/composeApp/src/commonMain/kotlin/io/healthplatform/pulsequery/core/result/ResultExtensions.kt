@@ -11,6 +11,9 @@ import io.healthplatform.pulsequery.core.error.PulseQueryError
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -222,3 +225,36 @@ fun Throwable.messageOrDefault(defaultMessage: String): String {
  */
 fun Throwable.messageOrDefault(errorKey: UiErrorKey): String =
     messageOrDefault(errorKey.fallbackMessage)
+
+/**
+ * Launches a coroutine on this [CoroutineScope] that invokes [onLoading], executes the
+ * suspending [operation] wrapped in [runResultPulseAsync], and dispatches [onSuccess] or
+ * [onError] with the normalized [PulseQueryError] and resolved [UiErrorKey] message.
+ *
+ * @param T Successful result payload type.
+ * @param defaultErrorKey Fallback [UiErrorKey] used to localize failure messages.
+ * @param onLoading Callback invoked synchronously before [operation] starts.
+ * @param operation Suspending railway operation returning `Result<T>`.
+ * @param onSuccess Callback invoked with the unwrapped value [T] when [operation] succeeds.
+ * @param onError Callback invoked with `(PulseQueryError, resolvedMessage)` when [operation] fails.
+ * @return Launched [Job] instance.
+ */
+fun <T> CoroutineScope.launchResult(
+    defaultErrorKey: UiErrorKey = UiErrorKey.UNKNOWN_ERROR,
+    onLoading: () -> Unit = {},
+    operation: suspend () -> Result<T>,
+    onSuccess: (T) -> Unit,
+    onError: (PulseQueryError, String) -> Unit
+): Job {
+    onLoading()
+    return launch {
+        runResultPulseAsync { operation() }.fold(
+            onSuccess = onSuccess,
+            onFailure = { err ->
+                val pulseErr = PulseQueryError.fromThrowable(err)
+                val resolvedKey = UiErrorKey.fromPulseQueryError(pulseErr, defaultErrorKey)
+                onError(pulseErr, pulseErr.messageOrDefault(resolvedKey))
+            }
+        )
+    }
+}

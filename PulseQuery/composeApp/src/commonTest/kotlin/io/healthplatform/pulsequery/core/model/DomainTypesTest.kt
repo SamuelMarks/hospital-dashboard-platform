@@ -235,52 +235,104 @@ class DomainTypesTest {
     }
 
     /**
-     * Verifies companion object serializers, serialization failure cases, and ViewModel value-class integration.
+     * Verifies round-trip JSON serialization, non-throwing unknown wire fallback, and ViewModel value-class state transitions.
      */
     @Test
     fun testCompanionSerializersErrorsAndViewModelIntegration() {
-        assertTrue(DashboardId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(WidgetId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ConversationId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(MessageId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(CandidateId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(UserId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(AlertRuleId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ColumnName.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ClinicalRole.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(MessageAuthorRole.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(WidgetSourceType.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(VisualizationType.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(WidgetHttpMethod.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(OptimizationSessionId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(InstitutionId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(QuickActionId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SurveyScore.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(OptimizationUseCaseType.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SolverOutcomeStatus.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ConstraintRuleType.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SqlCellValue.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SqlCellValue.TextCell.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SqlCellValue.NumberCell.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SqlCellValue.BooleanCell.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(SqlCellValue.NullCell.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ChartDataPoint.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ProcessorId.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ProcessorCategory.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(ProcessorSelectionOption.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(io.healthplatform.pulsequery.network.SsePacket.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(io.healthplatform.pulsequery.network.SseEventType.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(io.healthplatform.pulsequery.network.CollaborationEvent.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(io.healthplatform.pulsequery.network.CollaborationEventType.serializer().descriptor.serialName.isNotEmpty())
-        assertTrue(io.healthplatform.pulsequery.network.CollaboratorPresence.serializer().descriptor.serialName.isNotEmpty())
+        assertEquals(ClinicalRole.PHYSICIAN, Json.decodeFromString<ClinicalRole>(Json.encodeToString(ClinicalRole.PHYSICIAN)))
+        assertEquals(ClinicalRole.ANALYST, Json.decodeFromString<ClinicalRole>("\"INVALID_ROLE\""))
 
-        var threwSerializationError = false
-        try {
-            Json.decodeFromString<ClinicalRole>("\"INVALID_ROLE\"")
-        } catch (_: kotlinx.serialization.SerializationException) {
-            threwSerializationError = true
-        }
-        assertTrue(threwSerializationError)
+        assertEquals(MessageAuthorRole.ASSISTANT, Json.decodeFromString<MessageAuthorRole>(Json.encodeToString(MessageAuthorRole.ASSISTANT)))
+        assertEquals(MessageAuthorRole.USER, Json.decodeFromString<MessageAuthorRole>("\"UNKNOWN_AUTHOR\""))
+
+        assertEquals(WidgetSourceType.HTTP, Json.decodeFromString<WidgetSourceType>(Json.encodeToString(WidgetSourceType.HTTP)))
+        assertEquals(WidgetSourceType.SQL, Json.decodeFromString<WidgetSourceType>("\"UNKNOWN_SOURCE\""))
+
+        assertEquals(VisualizationType.HEATMAP, Json.decodeFromString<VisualizationType>(Json.encodeToString(VisualizationType.HEATMAP)))
+        assertEquals(VisualizationType.TABLE, Json.decodeFromString<VisualizationType>("\"UNKNOWN_VIZ\""))
+
+        assertEquals(WidgetHttpMethod.POST, Json.decodeFromString<WidgetHttpMethod>(Json.encodeToString(WidgetHttpMethod.POST)))
+        assertEquals(WidgetHttpMethod.GET, Json.decodeFromString<WidgetHttpMethod>("\"DELETE\""))
+
+        assertEquals(OptimizationSessionId("s-1"), Json.decodeFromString<OptimizationSessionId>(Json.encodeToString(OptimizationSessionId("s-1"))))
+        assertEquals(InstitutionId("chop"), Json.decodeFromString<InstitutionId>(Json.encodeToString(InstitutionId("chop"))))
+        assertEquals(QuickActionId("qa-1"), Json.decodeFromString<QuickActionId>(Json.encodeToString(QuickActionId("qa-1"))))
+        assertEquals(SurveyScore(5), Json.decodeFromString<SurveyScore>(Json.encodeToString(SurveyScore(5))))
+
+        assertEquals(
+            OptimizationUseCaseType.SURGICAL_SCHEDULING,
+            Json.decodeFromString<OptimizationUseCaseType>(Json.encodeToString(OptimizationUseCaseType.SURGICAL_SCHEDULING))
+        )
+        assertEquals(OptimizationUseCaseType.SERVICE_UNIT, Json.decodeFromString<OptimizationUseCaseType>("\"UNKNOWN_UC\""))
+
+        assertEquals(
+            SolverOutcomeStatus.FEASIBLE,
+            Json.decodeFromString<SolverOutcomeStatus>(Json.encodeToString(SolverOutcomeStatus.FEASIBLE))
+        )
+        assertEquals(SolverOutcomeStatus.OPTIMAL, Json.decodeFromString<SolverOutcomeStatus>("\"UNKNOWN_STATUS\""))
+
+        assertEquals(
+            ConstraintRuleType.MIN_CAPACITY,
+            Json.decodeFromString<ConstraintRuleType>(Json.encodeToString(ConstraintRuleType.MIN_CAPACITY))
+        )
+        assertEquals(ConstraintRuleType.FORCE_FLOW, Json.decodeFromString<ConstraintRuleType>("\"UNKNOWN_RULE\""))
+
+        val textCell: SqlCellValue = SqlCellValue.TextCell("A")
+        val numCell: SqlCellValue = SqlCellValue.NumberCell(1.5)
+        val boolCell: SqlCellValue = SqlCellValue.BooleanCell(true)
+        val nullCell: SqlCellValue = SqlCellValue.NullCell
+        assertEquals(textCell, Json.decodeFromString<SqlCellValue>(Json.encodeToString(textCell)))
+        assertEquals(numCell, Json.decodeFromString<SqlCellValue>(Json.encodeToString(numCell)))
+        assertEquals(boolCell, Json.decodeFromString<SqlCellValue>(Json.encodeToString(boolCell)))
+        assertEquals(nullCell, Json.decodeFromString<SqlCellValue>(Json.encodeToString(nullCell)))
+        assertEquals(
+            SqlCellValue.TextCell("B"),
+            Json.decodeFromString(SqlCellValue.TextCell.serializer(), Json.encodeToString(SqlCellValue.TextCell.serializer(), SqlCellValue.TextCell("B")))
+        )
+        assertEquals(
+            SqlCellValue.NumberCell(2.5),
+            Json.decodeFromString(SqlCellValue.NumberCell.serializer(), Json.encodeToString(SqlCellValue.NumberCell.serializer(), SqlCellValue.NumberCell(2.5)))
+        )
+        assertEquals(
+            SqlCellValue.BooleanCell(false),
+            Json.decodeFromString(SqlCellValue.BooleanCell.serializer(), Json.encodeToString(SqlCellValue.BooleanCell.serializer(), SqlCellValue.BooleanCell(false)))
+        )
+        assertEquals(
+            SqlCellValue.NullCell,
+            Json.decodeFromString(SqlCellValue.NullCell.serializer(), Json.encodeToString(SqlCellValue.NullCell.serializer(), SqlCellValue.NullCell))
+        )
+
+        val chartPt = ChartDataPoint("NICU", 12f)
+        assertEquals(chartPt, Json.decodeFromString<ChartDataPoint>(Json.encodeToString(chartPt)))
+
+        assertEquals(
+            ProcessorCategory.OLLAMA,
+            Json.decodeFromString<ProcessorCategory>(Json.encodeToString(ProcessorCategory.OLLAMA))
+        )
+        assertEquals(ProcessorCategory.ANY_LLM, Json.decodeFromString<ProcessorCategory>("\"UNKNOWN_CAT\""))
+
+        val sseType = io.healthplatform.pulsequery.network.SseEventType.TOKEN
+        assertEquals(sseType, Json.decodeFromString<io.healthplatform.pulsequery.network.SseEventType>(Json.encodeToString(sseType)))
+        assertEquals(
+            io.healthplatform.pulsequery.network.SseEventType.UNKNOWN,
+            Json.decodeFromString<io.healthplatform.pulsequery.network.SseEventType>("\"heartbeat\"")
+        )
+        val ssePacket = io.healthplatform.pulsequery.network.SsePacket(event = "token", token = "hi")
+        assertEquals(ssePacket, Json.decodeFromString<io.healthplatform.pulsequery.network.SsePacket>(Json.encodeToString(ssePacket)))
+
+        val collabType = io.healthplatform.pulsequery.network.CollaborationEventType.WIDGET_UPDATED
+        assertEquals(
+            collabType,
+            Json.decodeFromString<io.healthplatform.pulsequery.network.CollaborationEventType>(Json.encodeToString(collabType))
+        )
+        assertEquals(
+            io.healthplatform.pulsequery.network.CollaborationEventType.UNKNOWN,
+            Json.decodeFromString<io.healthplatform.pulsequery.network.CollaborationEventType>("\"PING\"")
+        )
+        val presence = io.healthplatform.pulsequery.network.CollaboratorPresence(userId = "u1", email = "a@b.c", role = "ADMIN", connectedAt = "t0")
+        assertEquals(presence, Json.decodeFromString<io.healthplatform.pulsequery.network.CollaboratorPresence>(Json.encodeToString(presence)))
+        val collabEvt = io.healthplatform.pulsequery.network.CollaborationEvent(type = "USER_JOINED", user = presence)
+        assertEquals(collabEvt, Json.decodeFromString<io.healthplatform.pulsequery.network.CollaborationEvent>(Json.encodeToString(collabEvt)))
 
         val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
         val mockWsRepo = io.healthplatform.pulsequery.network.DashboardWebSocketRepository(
@@ -302,6 +354,7 @@ class DomainTypesTest {
         dashVm.deleteDashboard(DashboardId("1"))
         dashVm.executeWidgetNaturalText(WidgetId("w1"), "SELECT 1")
         dashVm.executeWidgetNaturalText(WidgetId("w1"), "SELECT 1", ProcessorId.SQL_NO_MODEL)
+        assertTrue(dashVm.state.value.dashboards.none { it.id == "1" })
         assertTrue(io.healthplatform.pulsequery.api.infrastructure.ApiClient.UNSAFE_HEADERS.isNotEmpty())
 
         val optVm = io.healthplatform.pulsequery.ui.screens.optimization.OptimizationViewModel(
@@ -312,5 +365,6 @@ class DomainTypesTest {
             )
         )
         optVm.selectInstitution(InstitutionId("chop"))
+        assertEquals(InstitutionId("chop"), optVm.state.value.selectedInstitutionId)
     }
 }

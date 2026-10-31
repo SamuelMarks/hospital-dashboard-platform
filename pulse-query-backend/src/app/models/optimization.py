@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 import uuid
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -44,6 +44,12 @@ class OptimizationSession(Base):
   """
 
   __tablename__ = "optimization_sessions"
+  __table_args__ = (
+    CheckConstraint(
+      "use_case IN ('service_unit', 'surgical_scheduling', 'staffing_optimization')",
+      name="ck_optimization_sessions_use_case",
+    ),
+  )
 
   id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
   user_id: Mapped[uuid.UUID] = mapped_column(
@@ -172,6 +178,12 @@ class OptimizationUserSurvey(Base):
   """
 
   __tablename__ = "optimization_surveys"
+  __table_args__ = (
+    CheckConstraint(
+      "use_case IN ('service_unit', 'surgical_scheduling', 'staffing_optimization')",
+      name="ck_optimization_surveys_use_case",
+    ),
+  )
 
   id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
   user_id: Mapped[uuid.UUID] = mapped_column(

@@ -176,7 +176,7 @@ class ProvisioningService:
 
       col_index = (idx % widgets_per_row) * col_width
 
-      viz_type = self._determine_visual_type(template)
+      viz_type = self.determine_visual_type(template)
       config = self._build_config(template, viz_type)
       widget_h = 6 if viz_type == "table" else (5 if viz_type in ("bar_chart", "pie") else 4)
       row_height = widget_h if idx % widgets_per_row == 0 else max(row_height, widget_h)
@@ -204,9 +204,9 @@ class ProvisioningService:
     logger.info(f"Provisioned dashboard '{title}' with {len(templates)} widgets.")
     return dashboard
 
-  def _determine_visual_type(self, template: WidgetTemplate) -> str:
+  def determine_visual_type(self, template: WidgetTemplate) -> str:
     """
-    Heuristic algorithm to guess the best visualization based on the query semantics.
+    Heuristic algorithm to select the best visualization based on the query semantics.
 
     Args:
         template (WidgetTemplate): The source template.
@@ -236,6 +236,18 @@ class ProvisioningService:
       return "bar_chart"
 
     return "table"
+
+  def _determine_visual_type(self, template: WidgetTemplate) -> str:
+    """
+    Backwards-compatible alias delegating to `determine_visual_type`.
+
+    Args:
+        template (WidgetTemplate): The source template.
+
+    Returns:
+        str: The visualization ID (e.g., 'metric', 'bar_chart', 'table').
+    """
+    return self.determine_visual_type(template)
 
   def _build_config(self, template: WidgetTemplate, viz_type: str) -> JsonObject:
     """

@@ -57,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,6 +67,11 @@ import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.ask_a_query
 import pulsequery.composeapp.generated.resources.assistant_streaming
+import pulsequery.composeapp.generated.resources.chat_candidate_selected_state
+import pulsequery.composeapp.generated.resources.chat_candidate_sql_title
+import pulsequery.composeapp.generated.resources.chat_candidate_unselected_state
+import pulsequery.composeapp.generated.resources.chat_model_variations_count
+import pulsequery.composeapp.generated.resources.chat_query_default_title
 import pulsequery.composeapp.generated.resources.close
 import pulsequery.composeapp.generated.resources.conversations_history
 import pulsequery.composeapp.generated.resources.delete
@@ -339,9 +345,10 @@ fun ChatBubble(
                         )
                     }
                     if (onStageToCart != null) {
+                        val defaultChatQueryTitle = stringResource(Res.string.chat_query_default_title)
                         Spacer(modifier = Modifier.height(4.dp))
                         TextButton(
-                            onClick = { onStageToCart("Chat Query", snippet) },
+                            onClick = { onStageToCart(defaultChatQueryTitle, snippet) },
                             modifier = Modifier.align(Alignment.End)
                         ) {
                             Text(stringResource(Res.string.stage_to_cart))
@@ -357,7 +364,7 @@ fun ChatBubble(
                             text = if (showCandidates) {
                                 stringResource(Res.string.hide_variations)
                             } else {
-                                "${candidateList.size} Model Variations"
+                                stringResource(Res.string.chat_model_variations_count, candidateList.size)
                             },
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.tertiary
@@ -370,9 +377,16 @@ fun ChatBubble(
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         ) {
                             candidateList.forEach { candidate ->
+                                val candStateDesc = if (candidate.isSelected) {
+                                    stringResource(Res.string.chat_candidate_selected_state)
+                                } else {
+                                    stringResource(Res.string.chat_candidate_unselected_state)
+                                }
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .semantics { stateDescription = candStateDesc }
                                 ) {
                                     Column(modifier = Modifier.padding(8.dp)) {
                                         Row(
@@ -409,7 +423,8 @@ fun ChatBubble(
                                             horizontalArrangement = Arrangement.End
                                         ) {
                                             if (!candSql.isNullOrBlank() && onStageToCart != null) {
-                                                TextButton(onClick = { onStageToCart("${candidate.modelName} SQL", candSql) }) {
+                                                val candTitle = stringResource(Res.string.chat_candidate_sql_title, candidate.modelName)
+                                                TextButton(onClick = { onStageToCart(candTitle, candSql) }) {
                                                     Text(stringResource(Res.string.stage))
                                                 }
                                             }

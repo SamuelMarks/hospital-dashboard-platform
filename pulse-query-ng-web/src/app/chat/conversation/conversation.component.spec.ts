@@ -440,10 +440,21 @@ describe('ConversationComponent', () => {
       expect(div.scrollTop).toBe(100);
       vi.useRealTimers();
     });
-    it('should do nothing if scrollContainer is missing', () => {
+    it('should do nothing if scrollContainer is missing and clean up pending timer on destroy', () => {
       vi.useFakeTimers();
       vi.spyOn(component, 'scrollContainer').mockReturnValue(undefined);
       component.scrollToBottom();
+      vi.advanceTimersByTime(50);
+
+      vi.spyOn(component, 'scrollContainer').mockReturnValue(
+        new ElementRef<HTMLElement>(undefined as unknown as HTMLElement),
+      );
+      component.scrollToBottom();
+      vi.advanceTimersByTime(50);
+
+      component.scrollToBottom();
+      component.scrollToBottom();
+      fixture.destroy();
       vi.advanceTimersByTime(50);
       vi.useRealTimers();
     });

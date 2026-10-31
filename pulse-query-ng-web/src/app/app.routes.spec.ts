@@ -5,10 +5,11 @@
  */
 
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, type Routes } from '@angular/router';
+import { ActivatedRouteSnapshot, provideRouter, UrlTree, type Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { guestGuard } from './core/auth/guest.guard';
 import { registrationGuard } from './core/auth/registration.guard';
+import { createMockRouterStateSnapshot } from '../test-utils/mock-factories';
 import { vi } from 'vitest';
 
 vi.mock('@material/material-color-utilities', () => ({
@@ -130,12 +131,19 @@ describe('AppRoutes', () => {
     expect(component).toBe(AdminComponent);
   });
 
-  it('should define benchmarks route with BenchmarksComponent', async () => {
+  it('should define benchmarks route with BenchmarksComponent and execute authGuard redirect when unauthenticated', async () => {
     const { BenchmarksComponent } = await import('./benchmarks/benchmarks.component');
+
     const route = routes.find((r) => r.path === 'benchmarks');
     expect(route).toBeDefined();
     expect(route?.canActivate).toContain(authGuard);
     const component = await route?.loadComponent?.();
     expect(component).toBe(BenchmarksComponent);
+
+    const guardResult = TestBed.runInInjectionContext(() =>
+      authGuard(new ActivatedRouteSnapshot(), createMockRouterStateSnapshot('/benchmarks')),
+    );
+    expect(guardResult).toBeInstanceOf(UrlTree);
+    expect(String(guardResult)).toContain('/login');
   });
 });

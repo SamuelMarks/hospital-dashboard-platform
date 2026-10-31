@@ -280,6 +280,27 @@ def test_trigger_reingest_endpoint_admin(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 @pytest.mark.asyncio
+async def test_run_reingest_result_propagates_err() -> None:
+  """Verifies `SystemDiagnosticsService.run_reingest_result` propagates `Err` when ingestion fails."""
+  from app.core.result import AppError, AppResult, Err, ErrorCode
+  from app.services.system_service import system_diagnostics_service
+
+  class _FailingIngestSvc:
+    """Stub ingestion service returning an `Err`."""
+
+    @staticmethod
+    def ingest_all_csvs_result() -> AppResult[dict[str, int]]:
+      """Returns an `Err` indicating ingestion failure."""
+      return Err(AppError(code=ErrorCode.DUCKDB_STORAGE_ERROR, message="disk full", status_code=500))
+
+  res = await system_diagnostics_service.run_reingest_result(
+    ingestion_svc=_FailingIngestSvc(),  # type: ignore[arg-type]
+  )
+  assert isinstance(res, Err)
+  assert res.error.code == ErrorCode.DUCKDB_STORAGE_ERROR
+
+
+@pytest.mark.asyncio
 async def test_duckdb_catalog_exception_handler() -> None:
   """duckdb_catalog_exception_handler should return structured 404 response."""
   dummy_request = MagicMock()

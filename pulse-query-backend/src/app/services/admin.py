@@ -13,7 +13,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.result import AppResult, Ok, unwrap_or_raise_http
+from app.core.result import AppResult, Err, Ok, unwrap_or_raise_http
 from app.models.admin_setting import AdminSetting
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
 from app.schemas.json_types import JsonValue
@@ -116,10 +116,12 @@ class AdminService:
 
     await db.commit()
     new_settings_res = await self.get_admin_settings_result(db)
-    new_settings = unwrap_or_raise_http(new_settings_res)
+    if isinstance(new_settings_res, Err):
+      return new_settings_res
+    new_settings = new_settings_res.value
     try:
       llm_client.reload_swarm(new_settings)
-    except Exception as exc:
+    except (RuntimeError, ValueError, TypeError, OSError, KeyError) as exc:
       logger.warning(f"Failed to reload LLM swarm after admin settings update: {exc}")
     return Ok(new_settings)
 

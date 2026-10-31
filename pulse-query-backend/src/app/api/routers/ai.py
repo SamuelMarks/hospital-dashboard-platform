@@ -5,6 +5,7 @@ Exposes endpoints for generating SQL, recording experiment feedback votes,
 and executing read-only SQL previews.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -29,6 +30,7 @@ from app.services.llm_client import llm_client
 from app.services.runners.sql import run_sql_widget
 from app.services.sql_generator import sql_generator
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -53,7 +55,7 @@ async def list_available_models(
   Returns:
       list[ModelInfo]: List of configured LLM combatants and/or SQL processor.
   """
-  _ = current_user
+  logger.debug(f"Listing available AI models for user={current_user.id}")
   admin_settings = await get_admin_settings(db) if not show_all else None
   if include_sql or discover_ollama:
     return await llm_client.get_available_processors_async(
@@ -147,7 +149,7 @@ async def execute_sql_preview(
   Returns:
       SQLExecutionResponse: Tabular rows, column names, or error details.
   """
-  _ = current_user
+  logger.debug(f"Executing SQL preview for user={current_user.id}")
   res = await sql_generator.execute_sql_preview_result(
     request=request,
     olap_conn=olap_conn,

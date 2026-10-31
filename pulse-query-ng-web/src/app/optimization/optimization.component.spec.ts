@@ -15,6 +15,7 @@ import {
   QuickActionExecutionResponse,
 } from '../api-client';
 import { readTemplate } from '../../test-utils/component-resources';
+import { createMockInputEvent } from '../../test-utils/mock-factories';
 import { OptimizationComponent } from './optimization.component';
 import { OptimizationStore } from './optimization.store';
 
@@ -195,9 +196,7 @@ describe('OptimizationComponent', () => {
     fixture.detectChanges();
     expect(component.showSurveyPanel()).toBe(true);
 
-    const inputEl = document.createElement('input');
-    inputEl.value = 'Much faster than email';
-    const ev = { target: inputEl } as unknown as Event;
+    const ev = createMockInputEvent('Much faster than email');
     expect(component.getEventValue(ev)).toBe('Much faster than email');
 
     component.surveyFeedback.set('Much faster than email');

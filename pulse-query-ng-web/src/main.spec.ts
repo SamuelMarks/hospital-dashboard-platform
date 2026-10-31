@@ -35,12 +35,15 @@ describe('main bootstrap', () => {
     bootstrapApplication.mockReset();
   });
 
-  it('bootstraps the application', async () => {
+  it('bootstraps the application with App and appConfig', async () => {
     bootstrapApplication.mockResolvedValue(undefined as never);
+    const { App } = await import('./app/app');
+    const { appConfig } = await import('./app/app.config');
 
     await import('./main');
 
-    expect(bootstrapApplication).toHaveBeenCalled();
+    expect(bootstrapApplication).toHaveBeenCalledTimes(1);
+    expect(bootstrapApplication).toHaveBeenCalledWith(App, appConfig);
   });
 
   it('logs when bootstrap fails', async () => {

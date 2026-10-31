@@ -15,7 +15,7 @@ import {
   ProcessorCatalogService,
   SQL_NO_MODEL_OPTION,
 } from '../shared/services/processor-catalog.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { readTemplate } from '../../test-utils/component-resources';
 import { createMockInputEvent } from '../../test-utils/mock-factories';
 import { vi } from 'vitest';
@@ -266,13 +266,38 @@ describe('WidgetEditorDialog', () => {
     component.yKey.set('y');
     component.saveSettings();
 
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'w1',
-      expect.objectContaining({
-        config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) as unknown,
-      }),
-    );
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
+      title: 'SQL',
+      subtitle: null,
+      config: { query: 'SELECT 2', xKey: 'x', yKey: 'y' },
+    });
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
+  });
+
+  it('should set errorMessage when getDashboard or updateWidget fails during saveSettings', () => {
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(
+      throwError(() => new Error('Dashboard fetch failed')),
+    );
+    component.saveSettings();
+    expect(component.isSaving()).toBe(false);
+    expect(component.errorMessage()).toBe('Dashboard fetch failed');
+
+    const freshDash: DashboardResponse = {
+      id: 'd1',
+      name: 'Dash',
+      owner_id: 'u1',
+      widgets: [{ ...sqlWidget, config: { query: 'SELECT 2' } }],
+    };
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+      throwError(() => new Error('Widget update failed')),
+    );
+    component.saveSettings();
+    fixture.detectChanges();
+    expect(component.isSaving()).toBe(false);
+    expect(component.errorMessage()).toBe('Widget update failed');
+    const errEl = fixture.debugElement.query(By.css('[data-testid="widget-editor-error"]'));
+    expect(errEl).toBeTruthy();
   });
 
   it('should trigger editor save handlers from template outputs', () => {
@@ -366,12 +391,11 @@ describe('WidgetEditorDialog', () => {
     component.yKey.set('y');
     component.saveSettings();
 
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'w1',
-      expect.objectContaining({
-        config: expect.objectContaining({ xKey: 'x', yKey: 'y' }) as unknown,
-      }),
-    );
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
+      title: 'SQL',
+      subtitle: null,
+      config: { xKey: 'x', yKey: 'y' },
+    });
 
     // Test host keydown.escape closes dialog
     fixture.debugElement.triggerEventHandler(
@@ -434,17 +458,19 @@ describe('WidgetEditorDialog', () => {
     mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(freshDash));
     nlInst.saveSettings();
 
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
-      'w1',
-      expect.objectContaining({
-        config: expect.objectContaining({
-          allow_natural_text: true,
-          processor: 'ollama:llama3',
-          natural_text_prompt: 'Updated prompt',
-          placeholder_text: 'Updated placeholder',
-        }) as unknown,
-      }),
-    );
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
+      title: 'SQL',
+      subtitle: null,
+      config: {
+        query: 'SELECT 1',
+        xKey: null,
+        yKey: null,
+        allow_natural_text: true,
+        processor: 'ollama:llama3',
+        natural_text_prompt: 'Updated prompt',
+        placeholder_text: 'Updated placeholder',
+      },
+    });
 
     // Also test when prompt and placeholder are blank
     nlInst.naturalTextPrompt.set('  ');

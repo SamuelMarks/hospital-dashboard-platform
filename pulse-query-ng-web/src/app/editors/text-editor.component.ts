@@ -4,6 +4,8 @@
 import { Component, input, output, signal, linkedSignal, inject } from '@angular/core';
 import { FormRoot, FormField, form, required } from '@angular/forms/signals';
 import { DashboardsService, WidgetUpdate } from '../api-client';
+import { extractApiErrorMessage } from '../core/error.utils';
+import { LoggerService } from '../core/logging/logger.service';
 import { LOCAL_DRAFT_WIDGET_ID } from '../dashboard/widget-builder/widget-builder.store';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -57,6 +59,14 @@ import { finalize } from 'rxjs';
         padding: 8px 16px;
         border-top: 1px solid var(--sys-surface-border);
       }
+      .save-error {
+        margin: 0 16px 8px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        background-color: var(--sys-error-container);
+        color: var(--sys-on-error-container);
+        font-size: 13px;
+      }
     `,
   ],
   template: `
@@ -76,6 +86,12 @@ import { finalize } from 'rxjs';
         <mat-hint i18n>Supports basic Markdown syntax.</mat-hint>
       </mat-form-field>
     </form>
+
+    @if (saveError()) {
+      <div class="save-error" role="alert" aria-live="assertive" data-testid="text-editor-error">
+        {{ saveError() }}
+      </div>
+    }
 
     <div class="footer">
       <button
@@ -101,6 +117,8 @@ import { finalize } from 'rxjs';
 export class TextEditorComponent {
   /** Backend dashboards API service. */
   private readonly dashboardsApi = inject(DashboardsService);
+  /** Centralized diagnostic logger service. */
+  private readonly logger = inject(LoggerService);
 
   /** Parent dashboard ID containing the widget. */
   readonly dashboardId = input<string>('');
@@ -117,6 +135,9 @@ export class TextEditorComponent {
   /** Whether a save request is currently in flight. */
   readonly isRunning = signal(false);
 
+  /** Localized error message when saving markdown content fails, or `null`. */
+  readonly saveError = signal<string | null>(null);
+
   /** Reactive signal model synchronized with `initialContent`. */
   readonly formModel = linkedSignal(() => ({ content: this.initialContent() }));
 
@@ -130,6 +151,7 @@ export class TextEditorComponent {
     if (this.form().invalid()) return;
 
     const val = this.formModel().content;
+    this.saveError.set(null);
     if (this.widgetId() === LOCAL_DRAFT_WIDGET_ID) {
       this.contentChange.emit(val);
       return;
@@ -146,7 +168,10 @@ export class TextEditorComponent {
       .pipe(finalize(() => this.isRunning.set(false)))
       .subscribe({
         next: () => this.contentChange.emit(val),
-        error: (err) => console.error('Failed to save text widget', err),
+        error: (err: unknown) => {
+          this.logger.error('Failed to save text widget', err);
+          this.saveError.set(extractApiErrorMessage(err, $localize`Failed to save text widget`));
+        },
       });
   }
 }

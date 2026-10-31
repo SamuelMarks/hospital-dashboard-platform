@@ -172,6 +172,7 @@ class DashboardWebSocketRepositoryTest {
         repo.sendWidgetUpdate("w-outbound")
         assertEquals(1, sentMessages.size)
         assertTrue(sentMessages.first().contains("w-outbound"))
+        assertTrue(repo.connectionErrors.replayCache.isNotEmpty())
 
         // Close incoming channel so listenToWebSocketSession finishes and triggers finally block
         sessionIncoming.close()
@@ -181,7 +182,7 @@ class DashboardWebSocketRepositoryTest {
         }
         assertFalse(repo.isConnected.value)
 
-        // Reconnect and then explicitly disconnect while sessionJob is active
+        // Reconnect with a session whose sendText fails to verify sendWidgetUpdate error capture
         val neverClosingChannel = Channel<Frame>(Channel.UNLIMITED)
         val repoActiveCancel = DashboardWebSocketRepository(
             httpClient = mockClient,
@@ -189,7 +190,9 @@ class DashboardWebSocketRepositoryTest {
             sessionFactory = { _, _ ->
                 object : CollaborationSocketSession {
                     override val incoming: ReceiveChannel<Frame> = neverClosingChannel
-                    override suspend fun sendText(text: String) = Unit
+                    override suspend fun sendText(text: String) {
+                        error("Socket broken")
+                    }
                 }
             }
         )
@@ -199,6 +202,8 @@ class DashboardWebSocketRepositoryTest {
             kotlinx.coroutines.delay(10)
         }
         assertTrue(repoActiveCancel.isConnected.value)
+        repoActiveCancel.sendWidgetUpdate("w-fail")
+        assertTrue(repoActiveCancel.connectionErrors.replayCache.isNotEmpty())
         repoActiveCancel.disconnect()
         assertFalse(repoActiveCancel.isConnected.value)
         neverClosingChannel.close()

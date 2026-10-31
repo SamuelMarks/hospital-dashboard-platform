@@ -1,9 +1,10 @@
 """API router for administrative configuration and operations."""
 
+import logging
 import secrets
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
@@ -14,6 +15,7 @@ from app.models.user import User
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
 from app.services.admin import admin_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -92,10 +94,7 @@ def require_admin(
   Raises:
       HTTPException: 403 Forbidden if user is not an administrator.
   """
-  res = require_admin_result(current_user, accept_language=accept_language)
-  if isinstance(res, Err):
-    raise HTTPException(status_code=res.error.status_code, detail=res.error.message)
-  return res.value
+  return unwrap_or_raise_http(require_admin_result(current_user, accept_language=accept_language))
 
 
 @router.get("/settings", response_model=AdminSettingsResponse)
@@ -112,7 +111,7 @@ async def read_admin_settings(
   Returns:
       AdminSettingsResponse: Current admin settings state.
   """
-  _ = current_user
+  logger.debug(f"Reading admin settings for admin={current_user.id}")
   return unwrap_or_raise_http(await admin_service.get_admin_settings_result(db))
 
 
@@ -133,5 +132,5 @@ async def write_admin_settings(
   Returns:
       AdminSettingsResponse: Updated admin settings state.
   """
-  _ = current_user
+  logger.debug(f"Updating admin settings for admin={current_user.id}")
   return unwrap_or_raise_http(await admin_service.update_admin_settings_result(db, request))

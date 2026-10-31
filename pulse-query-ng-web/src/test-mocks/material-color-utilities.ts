@@ -14,36 +14,46 @@ export interface MockThemeSchemes {
 }
 
 /**
- * Converts a hexadecimal color string into a 32-bit ARGB integer.
+ * Converts a hexadecimal color string into a 32-bit unsigned ARGB integer.
  *
- * @param _hex - Hexadecimal color string to convert.
- * @returns Deterministic ARGB color integer (`0xffffffff`).
+ * @param hex - Hexadecimal color string (e.g., `'#1565c0'` or `'1565c0'`).
+ * @returns 32-bit unsigned ARGB color integer (`0xffRRGGBB`), or `0xffffffff` for invalid input.
  */
-export function argbFromHex(_hex: string): number {
-  return 0xffffffff;
+export function argbFromHex(hex: string): number {
+  const normalized = hex.trim().replace(/^#/, '');
+  if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return 0xffffffff;
+  }
+  const rgb = parseInt(normalized, 16);
+  return (0xff000000 | rgb) >>> 0;
 }
 
 /**
- * Converts a 32-bit ARGB integer into a hexadecimal color string.
+ * Converts a 32-bit ARGB integer into a lowercase 6-digit hexadecimal color string.
  *
- * @param _argb - ARGB integer representation of a color.
- * @returns Deterministic hex color string (`'#ffffff'`).
+ * @param argb - ARGB integer representation of a color.
+ * @returns Lowercase `#rrggbb` hex color string.
  */
-export function hexFromArgb(_argb: number): string {
-  return '#ffffff';
+export function hexFromArgb(argb: number): string {
+  const rgb = (argb >>> 0) & 0x00ffffff;
+  return `#${rgb.toString(16).padStart(6, '0')}`;
 }
 
 /**
  * Generates a mock Material Design theme from a source ARGB color.
  *
- * @param _sourceArgb - Source seed color in ARGB format.
- * @returns Object containing light and dark `Scheme` instances.
+ * @param sourceArgb - Source seed color in ARGB format.
+ * @returns Object containing light and dark `Scheme` instances seeded with `sourceArgb`.
  */
-export function themeFromSourceColor(_sourceArgb: number): { schemes: MockThemeSchemes } {
+export function themeFromSourceColor(sourceArgb: number): { schemes: MockThemeSchemes } {
+  const light = new Scheme();
+  const dark = new Scheme();
+  light.primary = sourceArgb >>> 0;
+  dark.primary = sourceArgb >>> 0;
   return {
     schemes: {
-      light: new Scheme(),
-      dark: new Scheme(),
+      light,
+      dark,
     },
   };
 }

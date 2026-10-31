@@ -31,7 +31,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 
 import { extractEventInputValue } from '../shared/utils/dom-event.utils';
-import { OptimizationStore, OptimizationUseCase, QuickActionType } from './optimization.store';
+import {
+  isOptimizationUseCase,
+  OptimizationStore,
+  OptimizationUseCase,
+  QuickActionType,
+} from './optimization.store';
 
 /**
  * Self-service Hospital Operations Optimization Copilot & Workspace component.
@@ -61,8 +66,7 @@ export class OptimizationComponent implements OnInit {
 
   /** Underlying reactive signal model for the conversational optimization prompt form. */
   readonly promptModel = signal({
-    prompt:
-      'Place all General Pediatrics patients on PCU 350 and assume we open PCU 360 with 10 additional beds.',
+    prompt: $localize`:@@optDefaultPromptServiceUnit:Place all General Pediatrics patients on PCU 350 and assume we open PCU 360 with 10 additional beds.`,
   });
 
   /** Signal Form binding and schema validation for the conversational prompt input. */
@@ -73,7 +77,7 @@ export class OptimizationComponent implements OnInit {
   /** Whether the qualitative User Experience Survey drawer/card is expanded. */
   readonly showSurveyPanel = signal<boolean>(false);
   /** Selected clinical role category in the qualitative UX survey. */
-  readonly surveyRole = signal<string>('Physician');
+  readonly surveyRole = signal<string>($localize`:@@optDefaultSurveyRolePhysician:Physician`);
   /** 1-5 rating comparing against the manual graduate-student email loop. */
   readonly surveyScoreManual = signal<number>(5);
   /** 1-5 rating comparing against other hospital workflow technology (EHR/spreadsheets). */
@@ -88,9 +92,10 @@ export class OptimizationComponent implements OnInit {
    */
   ngOnInit(): void {
     const queryPrompt = this.route.snapshot.queryParamMap.get('prompt');
-    const queryUseCase = this.route.snapshot.queryParamMap.get(
-      'useCase',
-    ) as OptimizationUseCase | null;
+    const rawUseCase = this.route.snapshot.queryParamMap.get('useCase');
+    const queryUseCase: OptimizationUseCase | null = isOptimizationUseCase(rawUseCase)
+      ? rawUseCase
+      : null;
 
     if (queryPrompt && queryPrompt.trim()) {
       this.promptModel.update((m) => ({ ...m, prompt: queryPrompt.trim() }));
@@ -116,12 +121,9 @@ export class OptimizationComponent implements OnInit {
   onSelectUseCase(useCase: OptimizationUseCase): void {
     this.store.selectUseCase(useCase);
     const defaultPrompts: Record<OptimizationUseCase, string> = {
-      service_unit:
-        'Place all General Pediatrics patients on PCU 350 and assume we open PCU 360 with 10 additional beds.',
-      surgical_scheduling:
-        'Cap daily CVICU post-op admissions for POINTS cardiac procedures at 4 cases and reserve 4 emergency beds on PICU.',
-      staffing_optimization:
-        'Cap unexpected RN overtime shifts at 2 per week and expand cross-unit float pool capacity to 6 shifts.',
+      service_unit: $localize`:@@optDefaultPromptServiceUnit:Place all General Pediatrics patients on PCU 350 and assume we open PCU 360 with 10 additional beds.`,
+      surgical_scheduling: $localize`:@@optDefaultPromptSurgical:Cap daily CVICU post-op admissions for POINTS cardiac procedures at 4 cases and reserve 4 emergency beds on PICU.`,
+      staffing_optimization: $localize`:@@optDefaultPromptStaffing:Cap unexpected RN overtime shifts at 2 per week and expand cross-unit float pool capacity to 6 shifts.`,
     };
     this.promptModel.set({ prompt: defaultPrompts[useCase] });
   }

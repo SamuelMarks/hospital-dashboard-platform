@@ -22,14 +22,14 @@ import time
 from typing import Generic, TypeVar
 
 from app.core.config import settings
-from app.schemas.execution import HttpRunnerResultDict, SqlRunnerResultDict
+from app.schemas.execution import HttpRunnerResultDict, SqlRunnerResultDict, WidgetExecutionErrorDict
 from app.schemas.json_types import JsonObject, JsonValue
 
 logger = logging.getLogger("cache_service")
 
 T = TypeVar("T")
 
-type WidgetCachePayload = SqlRunnerResultDict | HttpRunnerResultDict | JsonObject
+type WidgetCachePayload = SqlRunnerResultDict | HttpRunnerResultDict | WidgetExecutionErrorDict | JsonObject
 
 
 class ResultCacheService(Generic[T]):

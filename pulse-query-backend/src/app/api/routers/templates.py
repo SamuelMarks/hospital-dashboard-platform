@@ -5,6 +5,7 @@ Exposes CRUD and instantiation endpoints for the Widget Template Registry
 by delegating domain logic to `TemplateService`.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -25,6 +26,7 @@ from app.schemas.template import (
 )
 from app.services.template_service import template_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -49,7 +51,7 @@ async def list_templates(
   Returns:
       list[WidgetTemplate]: Filtered list of templates.
   """
-  _ = current_user
+  logger.debug(f"Listing widget templates for user={current_user.id}")
   res = await template_service.list_templates_result(db=db, category=category, search=search, limit=limit)
   return unwrap_or_raise_http(res)
 
@@ -71,7 +73,7 @@ async def create_template(
   Returns:
       WidgetTemplate: The persisted template object.
   """
-  _ = current_user
+  logger.debug(f"Creating widget template for user={current_user.id}")
   res = await template_service.create_template_result(template_in, db)
   return unwrap_or_raise_http(res)
 
@@ -96,7 +98,7 @@ async def get_template(
   Raises:
       HTTPException: 404 if not found.
   """
-  _ = current_user
+  logger.debug(f"Fetching widget template {template_id} for user={current_user.id}")
   res = await template_service.get_template_result(template_id, db)
   return unwrap_or_raise_http(res)
 
@@ -123,7 +125,7 @@ async def update_template(
   Raises:
       HTTPException: 404 if not found.
   """
-  _ = current_user
+  logger.debug(f"Updating widget template {template_id} for user={current_user.id}")
   res = await template_service.update_template_result(template_id, template_in, db)
   return unwrap_or_raise_http(res)
 
@@ -145,7 +147,7 @@ async def delete_template(
   Raises:
       HTTPException: 404 if not found.
   """
-  _ = current_user
+  logger.debug(f"Deleting widget template {template_id} for user={current_user.id}")
   res = await template_service.delete_template_result(template_id, db)
   unwrap_or_raise_http(res)
 
@@ -192,6 +194,6 @@ async def instantiate_template(
   Raises:
       HTTPException: 404 if the template does not exist.
   """
-  _ = current_user
+  logger.debug(f"Instantiating widget template {template_id} for user={current_user.id}")
   res = await instantiate_template_result(template_id, payload, db)
   return unwrap_or_raise_http(res)

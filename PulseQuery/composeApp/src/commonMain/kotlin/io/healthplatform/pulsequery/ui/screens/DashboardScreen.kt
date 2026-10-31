@@ -111,14 +111,18 @@ import pulsequery.composeapp.generated.resources.create_new_dashboard
 import pulsequery.composeapp.generated.resources.dashboard_is_empty
 import pulsequery.composeapp.generated.resources.dashboard_name
 import pulsequery.composeapp.generated.resources.dashboards
+import pulsequery.composeapp.generated.resources.database_default_error
 import pulsequery.composeapp.generated.resources.database_misconfiguration
 import pulsequery.composeapp.generated.resources.delete_dashboard
 import pulsequery.composeapp.generated.resources.delete_widget
 import pulsequery.composeapp.generated.resources.edit_widget
 import pulsequery.composeapp.generated.resources.error
+import pulsequery.composeapp.generated.resources.export_csv_failed
 import pulsequery.composeapp.generated.resources.export_csv_snapshot
 import pulsequery.composeapp.generated.resources.export_dashboard
+import pulsequery.composeapp.generated.resources.export_json_failed
 import pulsequery.composeapp.generated.resources.export_json_snapshot
+import pulsequery.composeapp.generated.resources.export_pdf_failed
 import pulsequery.composeapp.generated.resources.export_pdf_report
 import pulsequery.composeapp.generated.resources.failed_to_create_dashboard
 import pulsequery.composeapp.generated.resources.failed_to_delete_dashboard
@@ -129,6 +133,8 @@ import pulsequery.composeapp.generated.resources.move_down
 import pulsequery.composeapp.generated.resources.move_up
 import pulsequery.composeapp.generated.resources.natural_text_placeholder_default
 import pulsequery.composeapp.generated.resources.no_dashboards_found
+import pulsequery.composeapp.generated.resources.no_data_returned_for_query
+import pulsequery.composeapp.generated.resources.offline_snapshot_mode
 import pulsequery.composeapp.generated.resources.processor_sql_no_model
 import pulsequery.composeapp.generated.resources.query_cart
 import pulsequery.composeapp.generated.resources.redo
@@ -275,6 +281,9 @@ fun DashboardScreen(
                             Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.share_dashboard))
                         }
                         Box {
+                            val errExportPdf = stringResource(Res.string.export_pdf_failed)
+                            val errExportCsv = stringResource(Res.string.export_csv_failed)
+                            val errExportJson = stringResource(Res.string.export_json_failed)
                             IconButton(onClick = { showExportMenu = true }) {
                                 Icon(Icons.Filled.FileDownload, contentDescription = stringResource(Res.string.export_dashboard))
                             }
@@ -298,7 +307,7 @@ fun DashboardScreen(
                                                     }
                                                 },
                                                 onFailure = { err ->
-                                                    snackbarHostState.showSnackbar(err.message ?: "Failed to export PDF")
+                                                    snackbarHostState.showSnackbar(err.message ?: errExportPdf)
                                                 }
                                             )
                                         }
@@ -320,7 +329,7 @@ fun DashboardScreen(
                                                     }
                                                 },
                                                 onFailure = { err ->
-                                                    snackbarHostState.showSnackbar(err.message ?: "Failed to export CSV")
+                                                    snackbarHostState.showSnackbar(err.message ?: errExportCsv)
                                                 }
                                             )
                                         }
@@ -342,7 +351,7 @@ fun DashboardScreen(
                                                     }
                                                 },
                                                 onFailure = { err ->
-                                                    snackbarHostState.showSnackbar(err.message ?: "Failed to export JSON")
+                                                    snackbarHostState.showSnackbar(err.message ?: errExportJson)
                                                 }
                                             )
                                         }
@@ -379,7 +388,7 @@ fun DashboardScreen(
                     }
                 }
                 !isDatabaseHealthy -> {
-                    val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: "Database service is experiencing storage or configuration errors."
+                    val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: stringResource(Res.string.database_default_error)
                     DatabaseErrorCard(
                         title = stringResource(Res.string.database_misconfiguration),
                         message = dbMsg,
@@ -422,7 +431,7 @@ fun DashboardScreen(
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = "Offline Snapshot Mode",
+                                    text = stringResource(Res.string.offline_snapshot_mode),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     modifier = Modifier.padding(8.dp)
@@ -779,7 +788,7 @@ fun WidgetContent(
             }
             data.isEmpty() && tableRows.isEmpty() -> {
                 Text(
-                    text = "No data returned for this query",
+                    text = stringResource(Res.string.no_data_returned_for_query),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

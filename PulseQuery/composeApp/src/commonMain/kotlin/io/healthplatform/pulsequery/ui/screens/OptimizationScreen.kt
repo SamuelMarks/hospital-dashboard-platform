@@ -55,12 +55,15 @@ import io.healthplatform.pulsequery.ui.screens.optimization.OptimizationUiState
 import io.healthplatform.pulsequery.ui.screens.optimization.OptimizationViewModel
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
+import pulsequery.composeapp.generated.resources.database_default_error
 import pulsequery.composeapp.generated.resources.database_misconfiguration
 import pulsequery.composeapp.generated.resources.optimization_copilot_title
 import pulsequery.composeapp.generated.resources.optimization_des_baseline_title
+import pulsequery.composeapp.generated.resources.optimization_des_header_with_gap
 import pulsequery.composeapp.generated.resources.optimization_disclaimer
 import pulsequery.composeapp.generated.resources.optimization_litert_active
 import pulsequery.composeapp.generated.resources.optimization_litert_hot_load
+import pulsequery.composeapp.generated.resources.optimization_metric_comparison_summary
 import pulsequery.composeapp.generated.resources.optimization_prompt_label
 import pulsequery.composeapp.generated.resources.optimization_quick_actions
 import pulsequery.composeapp.generated.resources.optimization_solve_button
@@ -146,7 +149,7 @@ fun OptimizationScreen(
         if (!isDatabaseHealthy) {
             item {
                 val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error
-                    ?: "Database service is experiencing storage or configuration errors."
+                    ?: stringResource(Res.string.database_default_error)
                 DatabaseErrorCard(
                     title = dbMisconfigTitle,
                     message = dbMsg,
@@ -386,7 +389,11 @@ fun OptimizationScreen(
         state.latestSolution?.let { sol ->
             item {
                 Text(
-                    text = "$desBaselineTitle (Gap: ${sol.desEvaluation.overallExpertGapPct}%)",
+                    text = stringResource(
+                        Res.string.optimization_des_header_with_gap,
+                        desBaselineTitle,
+                        sol.desEvaluation.overallExpertGapPct.toString()
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
@@ -407,7 +414,13 @@ fun OptimizationScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "Manual: ${metric.manualHistoricalValue} | Expert: ${metric.expertBaselineValue} | LLM+MPAX: ${metric.llmMpaxValue} (${metric.improvementVsManualPct}% improvement)",
+                            text = stringResource(
+                                Res.string.optimization_metric_comparison_summary,
+                                metric.manualHistoricalValue.toString(),
+                                metric.expertBaselineValue.toString(),
+                                metric.llmMpaxValue.toString(),
+                                metric.improvementVsManualPct.toString()
+                            ),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }

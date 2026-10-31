@@ -147,3 +147,23 @@ def test_verify_admin_key_constant_time_comparison() -> None:
   assert isinstance(verify_admin_key("wrong", "secret-123"), Err)
   assert isinstance(verify_admin_key(None, "secret-123"), Err)
   assert isinstance(verify_admin_key("secret-123", None), Err)
+
+
+@pytest.mark.asyncio
+async def test_update_admin_settings_result_propagates_err(
+  db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+  """Verifies `AdminService.update_admin_settings_result` propagates `Err` without raising."""
+  from app.core.result import AppError, AppResult, Err, ErrorCode
+  from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
+  from app.services.admin import admin_service
+
+  async def _fake_err(_db: AsyncSession) -> AppResult[AdminSettingsResponse]:
+    """Returns a deterministic `Err` result for testing error propagation."""
+    return Err(AppError(code=ErrorCode.POSTGRES_UNAVAILABLE, message="read failed", status_code=500))
+
+  monkeypatch.setattr(admin_service, "get_admin_settings_result", _fake_err)
+  req = AdminSettingsUpdateRequest(api_keys={"k": "v"}, visible_models=["m"])
+  res = await admin_service.update_admin_settings_result(db_session, req)
+  assert isinstance(res, Err)
+  assert res.error.code == ErrorCode.POSTGRES_UNAVAILABLE

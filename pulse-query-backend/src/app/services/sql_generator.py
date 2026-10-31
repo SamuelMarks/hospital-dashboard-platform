@@ -15,13 +15,12 @@ import logging
 from typing import Protocol
 from uuid import UUID
 
-import duckdb
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
-from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
+from app.database.duckdb import DuckDBReadableConnectionProtocol, duckdb_manager, run_in_duckdb_thread
 from app.models.feedback import ExperimentLog, ModelCandidate
 from app.models.user import User
 from app.schemas.ai import SQLExecutionRequest, SQLExecutionResponse
@@ -45,7 +44,7 @@ from app.services.sql_utils import (
 logger = logging.getLogger(__name__)
 
 SqlRunnerPreviewFn = Callable[[DuckDBCursorProtocol, Mapping[str, JsonValue]], SqlRunnerResultDict]
-ConnFactoryPreviewFn = Callable[[], duckdb.DuckDBPyConnection]
+ConnFactoryPreviewFn = Callable[[], DuckDBReadableConnectionProtocol]
 
 
 class ExperimentSessionProtocol(Protocol):
@@ -364,7 +363,7 @@ class SQLGeneratorService:
     self,
     runnable_sql: str,
     max_rows: int | None,
-    olap_conn: duckdb.DuckDBPyConnection | None = None,
+    olap_conn: DuckDBReadableConnectionProtocol | None = None,
     conn_factory: ConnFactoryPreviewFn = duckdb_manager.get_readonly_connection,
     sql_runner_fn: SqlRunnerPreviewFn = run_sql_widget,
   ) -> SqlRunnerResultDict:
@@ -374,7 +373,7 @@ class SQLGeneratorService:
     Args:
         runnable_sql (str): Processed SQL string.
         max_rows (int | None): Row limit for the preview.
-        olap_conn (duckdb.DuckDBPyConnection | None): Optional pre-opened DuckDB connection.
+        olap_conn (DuckDBReadableConnectionProtocol | None): Optional pre-opened DuckDB connection.
         conn_factory (ConnFactoryPreviewFn): Read-only DuckDB connection factory.
         sql_runner_fn (SqlRunnerPreviewFn): SQL runner callable.
 
@@ -382,8 +381,8 @@ class SQLGeneratorService:
         SqlRunnerResultDict: Query execution result dictionary.
     """
     owns_conn = olap_conn is None
-    conn: duckdb.DuckDBPyConnection | None = None
-    with duckdb_manager._write_lock:
+    conn: DuckDBReadableConnectionProtocol | None = None
+    with duckdb_manager.read_write_lock():
       try:
         conn = olap_conn if olap_conn is not None else conn_factory()
         cursor = conn.cursor()
@@ -397,7 +396,7 @@ class SQLGeneratorService:
   async def execute_sql_preview_result(
     self,
     request: SQLExecutionRequest,
-    olap_conn: duckdb.DuckDBPyConnection | None = None,
+    olap_conn: DuckDBReadableConnectionProtocol | None = None,
     conn_factory: ConnFactoryPreviewFn = duckdb_manager.get_readonly_connection,
     sql_runner_fn: SqlRunnerPreviewFn = run_sql_widget,
   ) -> AppResult[SQLExecutionResponse]:

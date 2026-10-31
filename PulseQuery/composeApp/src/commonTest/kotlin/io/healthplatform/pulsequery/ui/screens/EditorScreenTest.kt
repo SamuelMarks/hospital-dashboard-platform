@@ -68,6 +68,13 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
                         )
                     }
                 }
+                request.url.encodedPath.contains("widgets") -> {
+                    respond(
+                        """{"id":"w-1","dashboard_id":"1","title":"Census Widget","type":"SQL","visualization":"table","config":{"query":"SELECT 1"}}""",
+                        HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
                 request.url.encodedPath.contains("dashboards") -> {
                     respond(
                         """[{"id":"dash-1","name":"ICU Operational Board","is_auto_refresh":false,"refresh_interval_seconds":30,"theme":"light","created_at":"2026-09-01T00:00:00Z","updated_at":"2026-09-01T00:00:00Z"}]""",
@@ -206,12 +213,32 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
     }
 
     /**
-     * Verifies [SaveQueryDestination] enum entries.
+     * Verifies [SaveQueryDestination] enum entries and [io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel.saveQuery] localized confirmation messages.
      */
     @Test
-    fun testSaveQueryDestinationEnumValues() {
+    fun testSaveQueryDestinationEnumValues() = kotlinx.coroutines.test.runTest {
         assertEquals(2, SaveQueryDestination.entries.size)
         assertTrue(SaveQueryDestination.entries.contains(SaveQueryDestination.DASHBOARD_WIDGET))
         assertTrue(SaveQueryDestination.entries.contains(SaveQueryDestination.TEMPLATE))
+
+        setupMockApi(success = true)
+        val vm = io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel(scope = this)
+        val widgetRes = vm.saveQuery(
+            destination = SaveQueryDestination.DASHBOARD_WIDGET,
+            title = "Census Widget",
+            sql = "SELECT 1",
+            dashboardId = "1",
+            widgetSuccessMessage = "Custom Widget Saved"
+        )
+        assertEquals("Custom Widget Saved", widgetRes.getOrNull())
+
+        val tplRes = vm.saveQuery(
+            destination = SaveQueryDestination.TEMPLATE,
+            title = "Census Template",
+            sql = "SELECT 1",
+            dashboardId = null,
+            templateSuccessMessage = "Custom Template Saved"
+        )
+        assertEquals("Custom Template Saved", tplRes.getOrNull())
     }
 }

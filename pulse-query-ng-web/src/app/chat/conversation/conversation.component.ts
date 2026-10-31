@@ -2,7 +2,15 @@
  * @fileoverview Conversation thread component rendering chat messages, multi-model
  * arena candidate comparisons, inline SQL execution previews, and message composition.
  */
-import { Component, inject, viewChild, ElementRef, effect, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  viewChild,
+  ElementRef,
+  effect,
+  signal,
+} from '@angular/core';
 import { FormRoot, FormField, form, disabled } from '@angular/forms/signals';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
@@ -249,6 +257,10 @@ export class ConversationComponent {
   private readonly router = inject(Router);
   /** Access the snackbar. */
   private readonly snackBar = inject(MatSnackBar);
+  /** Destroy reference for cancelling pending scroll timers on component teardown. */
+  private readonly destroyRef = inject(DestroyRef);
+  /** Active scroll timer handle, if scheduled. */
+  private scrollTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /** Reference to the scroll container. */
   readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
@@ -271,6 +283,11 @@ export class ConversationComponent {
     effect(() => {
       const len = this.store.messages().length;
       if (len > 0) this.scrollToBottom();
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.scrollTimerId) {
+        clearTimeout(this.scrollTimerId);
+      }
     });
   }
 
@@ -493,7 +510,11 @@ export class ConversationComponent {
 
   /** Scrolls chat to bottom. */
   scrollToBottom(): void {
-    setTimeout(() => {
+    if (this.scrollTimerId) {
+      clearTimeout(this.scrollTimerId);
+    }
+    this.scrollTimerId = setTimeout(() => {
+      this.scrollTimerId = null;
       const el = this.scrollContainer()?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
     }, 50);

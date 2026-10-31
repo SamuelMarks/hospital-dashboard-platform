@@ -33,7 +33,7 @@ describe('ChatStore', () => {
     deleteConversationApiV1ConversationsConversationIdDelete: ReturnType<typeof vi.fn>;
     updateConversationApiV1ConversationsConversationIdPut: ReturnType<typeof vi.fn>;
   };
-  let mockAiApi: { listAvailableModelsApiV1AiModelsGet?: ReturnType<typeof vi.fn> };
+  let mockAiApi: { listAvailableModelsApiV1AiModelsGet: ReturnType<typeof vi.fn> };
 
   const MOCK_CONV: ConversationResponse = createMockConversation({
     id: 'c1',
@@ -72,7 +72,7 @@ describe('ChatStore', () => {
       updateConversationApiV1ConversationsConversationIdPut: vi.fn(),
     };
     mockAiApi = {
-      listAvailableModelsApiV1AiModelsGet: vi.fn(),
+      listAvailableModelsApiV1AiModelsGet: vi.fn().mockReturnValue(of([])),
     };
 
     TestBed.configureTestingModule({
@@ -137,22 +137,15 @@ describe('ChatStore', () => {
       expect(store.error()).toBe('Net Error');
     });
 
-    it('catches missing AI endpoint safely', () => {
+    it('catches AI endpoint error safely', () => {
       mockApi.listConversationsApiV1ConversationsGet.mockReturnValue(of([]));
-      mockAiApi.listAvailableModelsApiV1AiModelsGet?.mockReturnValue(
+      mockAiApi.listAvailableModelsApiV1AiModelsGet.mockReturnValue(
         throwError(() => new Error('bad')),
       );
       const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       store.loadHistory();
       expect(errSpy).toHaveBeenCalled();
       errSpy.mockRestore();
-    });
-
-    it('handles AI Models endpoint missing gracefully', () => {
-      mockApi.listConversationsApiV1ConversationsGet.mockReturnValue(of([]));
-      delete mockAiApi.listAvailableModelsApiV1AiModelsGet;
-      store.loadHistory();
-      expect(store.error()).toBeNull();
     });
   });
 

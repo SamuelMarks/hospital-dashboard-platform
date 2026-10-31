@@ -3,11 +3,55 @@
  */
 package io.healthplatform.pulsequery.core.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.jvm.JvmInline
+
+/**
+ * Reusable non-throwing [KSerializer] for wire-backed enumerations that resolves unknown
+ * wire values via a safe [fromWire] fallback instead of throwing `SerializationException`.
+ *
+ * @param E Target enumeration type.
+ * @param serialName Unique serializer descriptor name.
+ * @param toWire Function extracting the wire string from an enum instance.
+ * @param fromWire Safe factory resolving an enum instance from a raw wire string.
+ */
+open class WireSafeEnumSerializer<E : Enum<E>>(
+    serialName: String,
+    private val toWire: (E) -> String,
+    private val fromWire: (String) -> E
+) : KSerializer<E> {
+    /** Primitive string descriptor for the wire-backed enum. */
+    override val descriptor: SerialDescriptor =
+        PrimitiveSerialDescriptor(serialName, PrimitiveKind.STRING)
+
+    /**
+     * Encodes [value] as its canonical wire string.
+     *
+     * @param encoder Target [Encoder].
+     * @param value Enum instance to serialize.
+     */
+    override fun serialize(encoder: Encoder, value: E) {
+        encoder.encodeString(toWire(value))
+    }
+
+    /**
+     * Decodes a raw string from [decoder] and resolves the enum via [fromWire] without throwing.
+     *
+     * @param decoder Source [Decoder].
+     * @return Resolved enum instance [E].
+     */
+    override fun deserialize(decoder: Decoder): E =
+        fromWire(decoder.decodeString())
+}
 
 /**
  * Strongly typed wrapper for a dashboard UUID identifier.
@@ -82,11 +126,20 @@ value class AlertRuleId(val value: String)
 value class ColumnName(val value: String)
 
 /**
+ * Safe non-throwing [KSerializer] for [ClinicalRole].
+ */
+object ClinicalRoleSerializer : WireSafeEnumSerializer<ClinicalRole>(
+    serialName = "io.healthplatform.pulsequery.core.model.ClinicalRole",
+    toWire = { it.wireValue },
+    fromWire = ClinicalRole::fromWire
+)
+
+/**
  * Enumerated clinical and administrative user roles within the hospital platform.
  *
  * @property wireValue Backend wire representation of the role.
  */
-@Serializable
+@Serializable(with = ClinicalRoleSerializer::class)
 enum class ClinicalRole(val wireValue: String) {
     /** System administrator with full configuration and user management privileges. */
     @SerialName("ADMIN")
@@ -120,11 +173,20 @@ enum class ClinicalRole(val wireValue: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [MessageAuthorRole].
+ */
+object MessageAuthorRoleSerializer : WireSafeEnumSerializer<MessageAuthorRole>(
+    serialName = "io.healthplatform.pulsequery.core.model.MessageAuthorRole",
+    toWire = { it.wireValue },
+    fromWire = MessageAuthorRole::fromWire
+)
+
+/**
  * Enumerated author roles for conversational chat messages.
  *
  * @property wireValue Backend wire string ("user" or "assistant").
  */
-@Serializable
+@Serializable(with = MessageAuthorRoleSerializer::class)
 enum class MessageAuthorRole(val wireValue: String) {
     /** Message authored by the clinician or analyst user. */
     @SerialName("user")
@@ -150,11 +212,20 @@ enum class MessageAuthorRole(val wireValue: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [WidgetSourceType].
+ */
+object WidgetSourceTypeSerializer : WireSafeEnumSerializer<WidgetSourceType>(
+    serialName = "io.healthplatform.pulsequery.core.model.WidgetSourceType",
+    toWire = { it.wireValue },
+    fromWire = WidgetSourceType::fromWire
+)
+
+/**
  * Enumerated dashboard widget data source types.
  *
  * @property wireValue Backend wire string ("SQL", "HTTP", or "TEXT").
  */
-@Serializable
+@Serializable(with = WidgetSourceTypeSerializer::class)
 enum class WidgetSourceType(val wireValue: String) {
     /** Analytical SQL query widget. */
     @SerialName("SQL")
@@ -184,11 +255,20 @@ enum class WidgetSourceType(val wireValue: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [VisualizationType].
+ */
+object VisualizationTypeSerializer : WireSafeEnumSerializer<VisualizationType>(
+    serialName = "io.healthplatform.pulsequery.core.model.VisualizationType",
+    toWire = { it.wireValue },
+    fromWire = VisualizationType::fromWire
+)
+
+/**
  * Enumerated dashboard widget visualization types.
  *
  * @property wireValue Backend wire string.
  */
-@Serializable
+@Serializable(with = VisualizationTypeSerializer::class)
 enum class VisualizationType(val wireValue: String) {
     /** Tabular data grid visualization. */
     @SerialName("table")
@@ -234,11 +314,20 @@ enum class VisualizationType(val wireValue: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [WidgetHttpMethod].
+ */
+object WidgetHttpMethodSerializer : WireSafeEnumSerializer<WidgetHttpMethod>(
+    serialName = "io.healthplatform.pulsequery.core.model.WidgetHttpMethod",
+    toWire = { it.wireValue },
+    fromWire = WidgetHttpMethod::fromWire
+)
+
+/**
  * Enumerated HTTP verbs supported by external HTTP dashboard widgets.
  *
  * @property wireValue Backend wire string ("GET", "POST", or "PUT").
  */
-@Serializable
+@Serializable(with = WidgetHttpMethodSerializer::class)
 enum class WidgetHttpMethod(val wireValue: String) {
     /** HTTP GET request. */
     @SerialName("GET")
@@ -317,11 +406,20 @@ value class SurveyScore(val value: Int) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [OptimizationUseCaseType].
+ */
+object OptimizationUseCaseTypeSerializer : WireSafeEnumSerializer<OptimizationUseCaseType>(
+    serialName = "io.healthplatform.pulsequery.core.model.OptimizationUseCaseType",
+    toWire = { it.wireValue },
+    fromWire = OptimizationUseCaseType::fromWire
+)
+
+/**
  * Enumerated clinical operational optimization use cases from `MPAX_PROJECT_PLAN.md`.
  *
  * @property wireValue Backend wire representation.
  */
-@Serializable
+@Serializable(with = OptimizationUseCaseTypeSerializer::class)
 enum class OptimizationUseCaseType(val wireValue: String) {
     /** Use Case 1: LLM-Enabled Service-Unit Assignments & Bed-Use Optimization. */
     @SerialName("service_unit")
@@ -351,11 +449,20 @@ enum class OptimizationUseCaseType(val wireValue: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [SolverOutcomeStatus].
+ */
+object SolverOutcomeStatusSerializer : WireSafeEnumSerializer<SolverOutcomeStatus>(
+    serialName = "io.healthplatform.pulsequery.core.model.SolverOutcomeStatus",
+    toWire = { it.wireValue },
+    fromWire = SolverOutcomeStatus::fromWire
+)
+
+/**
  * Enumerated JAX/MPAX optimization solver outcome statuses.
  *
  * @property wireValue Backend wire string.
  */
-@Serializable
+@Serializable(with = SolverOutcomeStatusSerializer::class)
 enum class SolverOutcomeStatus(val wireValue: String) {
     /** Solver converged to a globally optimal solution. */
     @SerialName("OPTIMAL")
@@ -385,11 +492,20 @@ enum class SolverOutcomeStatus(val wireValue: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [ConstraintRuleType].
+ */
+object ConstraintRuleTypeSerializer : WireSafeEnumSerializer<ConstraintRuleType>(
+    serialName = "io.healthplatform.pulsequery.core.model.ConstraintRuleType",
+    toWire = { it.wireValue },
+    fromWire = ConstraintRuleType::fromWire
+)
+
+/**
  * Enumerated linear programming constraint rule types for capacity simulations.
  *
  * @property wireValue Backend wire string.
  */
-@Serializable
+@Serializable(with = ConstraintRuleTypeSerializer::class)
 enum class ConstraintRuleType(val wireValue: String) {
     /** Forces a specific patient flow between service and unit. */
     @SerialName("force_flow")
@@ -484,11 +600,20 @@ value class ProcessorId(val value: String) {
 }
 
 /**
+ * Safe non-throwing [KSerializer] for [ProcessorCategory].
+ */
+object ProcessorCategorySerializer : WireSafeEnumSerializer<ProcessorCategory>(
+    serialName = "io.healthplatform.pulsequery.core.model.ProcessorCategory",
+    toWire = { it.wireValue },
+    fromWire = ProcessorCategory::fromWire
+)
+
+/**
  * High-level processor category for grouping options in model/processor dropdowns.
  *
  * @property wireValue Backend wire representation (`"SQL"`, `"OLLAMA"`, or `"ANY_LLM"`).
  */
-@Serializable
+@Serializable(with = ProcessorCategorySerializer::class)
 enum class ProcessorCategory(val wireValue: String) {
     /** Direct DuckDB SQL execution without any LLM model. */
     @SerialName("SQL")

@@ -14,6 +14,9 @@ import io.healthplatform.pulsequery.api.models.DashboardCreate
 import io.healthplatform.pulsequery.api.models.OptimizationSolutionPayload
 import io.healthplatform.pulsequery.api.models.OptimizationSolveRequest
 import io.healthplatform.pulsequery.api.models.ServiceUnitConstraint
+import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.createInspectingMockEngine
 import io.healthplatform.pulsequery.createMockClient
 import io.healthplatform.pulsequery.readBodyText
@@ -209,29 +212,37 @@ class ApiTests {
     @Test
     fun testHttpErrorResponses400And401And403And404And500() = runTest {
         val errorStatuses = listOf(
-            HttpStatusCode.BadRequest,
-            HttpStatusCode.Unauthorized,
-            HttpStatusCode.Forbidden,
-            HttpStatusCode.NotFound,
-            HttpStatusCode.InternalServerError
+            HttpStatusCode.BadRequest to PulseQueryError.Http.BadRequest::class,
+            HttpStatusCode.Unauthorized to PulseQueryError.Http.Unauthorized::class,
+            HttpStatusCode.Forbidden to PulseQueryError.Http.Forbidden::class,
+            HttpStatusCode.NotFound to PulseQueryError.Http.NotFound::class,
+            HttpStatusCode.InternalServerError to PulseQueryError.Http.ServerError::class
         )
 
-        for (status in errorStatuses) {
+        for ((status, expectedErrorClass) in errorStatuses) {
             val engine = createInspectingMockEngine(
                 forcedStatus = status,
                 forcedErrorBody = """{"detail":"Error ${status.value}"}"""
             )
-            // 1. Verify non-throwing response status inspection when expectSuccess = false
+            // 1. Verify non-throwing .asResult() mapping into typed PulseQueryError.Http subtype
             val lenientClient = createMockClient(engine = engine, expectSuccess = false)
             val lenientApi = DashboardsApi(baseUrl = "http://localhost:8000", httpClient = lenientClient)
             val httpResponse = lenientApi.listDashboardsApiV1DashboardsGet()
             assertFalse(httpResponse.success, "Expected success=false for status ${status.value}")
             assertEquals(status.value, httpResponse.status)
+            val mappedRes = httpResponse.asResult()
+            assertTrue(mappedRes.isFailure)
+            val pulseErr = mappedRes.exceptionOrNull()
+            assertNotNull(pulseErr)
+            assertTrue(expectedErrorClass.isInstance(pulseErr), "Expected $expectedErrorClass for ${status.value}")
+            assertTrue(pulseErr.message.orEmpty().startsWith("HTTP ${status.value}: Error ${status.value}"))
 
-            // 2. Verify exception propagation when expectSuccess = true
+            // 2. Verify runResultPulseAsync catches Ktor strict client exceptions into PulseQueryError
             val strictClient = createMockClient(engine = engine, expectSuccess = true)
             val strictApi = DashboardsApi(baseUrl = "http://localhost:8000", httpClient = strictClient)
-            val caught = runCatching { strictApi.listDashboardsApiV1DashboardsGet().body() }
+            val caught = runResultPulseAsync {
+                strictApi.listDashboardsApiV1DashboardsGet().asResult()
+            }
             assertTrue(caught.isFailure, "Expected failure for status ${status.value}")
         }
     }

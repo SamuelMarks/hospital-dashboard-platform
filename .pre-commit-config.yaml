@@ -48,7 +48,7 @@ repos:
         pass_filenames: false
       - id: kmp-detekt-and-kover
         name: KMP Detekt and Kover
-        entry: bash -c "cd PulseQuery && ./gradlew detekt testDebugUnitTest jvmTest koverVerify"
+        entry: bash -c "cd PulseQuery && ./gradlew detekt testDebugUnitTest jvmTest koverVerify --no-daemon"
         language: system
         pass_filenames: false
       - id: e2e-test

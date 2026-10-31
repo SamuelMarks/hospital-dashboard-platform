@@ -138,6 +138,7 @@ describe('WidgetComponent', () => {
     setFocusedWidget: ReturnType<typeof vi.fn>;
     duplicateWidget: ReturnType<typeof vi.fn>;
     loadDashboard: ReturnType<typeof vi.fn>;
+    resetWidgetToSafeMode: ReturnType<typeof vi.fn>;
   };
   let mockDashApi: {
     updateWidgetApiV1DashboardsWidgetsWidgetIdPut: ReturnType<typeof vi.fn>;
@@ -165,6 +166,7 @@ describe('WidgetComponent', () => {
       setFocusedWidget: vi.fn(),
       duplicateWidget: vi.fn(),
       loadDashboard: vi.fn(),
+      resetWidgetToSafeMode: vi.fn(),
     };
     mockDashApi = {
       updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})),
@@ -185,7 +187,9 @@ describe('WidgetComponent', () => {
         set: {
           schemas: [NO_ERRORS_SCHEMA],
           template: readTemplate('./widget.component.html'),
+          styles: [],
           templateUrl: undefined,
+          styleUrl: undefined,
         },
       })
       .overrideComponent(WidgetComponent, {
@@ -420,13 +424,13 @@ describe('WidgetComponent', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
     component.resetWidget();
     expect(mockDialog.open).toHaveBeenCalledWith(ConfirmDialogComponent, expect.anything());
-    expect(mockStore.loadDashboard).toHaveBeenCalledWith('d1');
+    expect(mockStore.resetWidgetToSafeMode).toHaveBeenCalledWith(mockWidget);
   });
 
   it('should not reset widget when confirm is false', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
     component.resetWidget();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+    expect(mockStore.resetWidgetToSafeMode).not.toHaveBeenCalled();
   });
 
   it('should simulate widget if SQL', () => {
@@ -463,12 +467,10 @@ describe('WidgetComponent', () => {
 
   it('should reset non-SQL widget', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
-    fixture.componentRef.setInput('widget', { ...mockWidget, type: 'TEXT' });
+    const textWidget: WidgetResponse = { ...mockWidget, type: 'TEXT' };
+    fixture.componentRef.setInput('widget', textWidget);
     component.resetWidget();
-    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith('w1', {
-      visualization: 'table',
-      config: {},
-    });
+    expect(mockStore.resetWidgetToSafeMode).toHaveBeenCalledWith(textWidget);
   });
 
   it('should ignore simulate if SQL but no query', () => {

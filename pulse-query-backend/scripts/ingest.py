@@ -42,7 +42,7 @@ def main() -> None:
     try:
       for table_name in REQUIRED_TABLES:
         row = conn.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()
-        row_count = int(row[0]) if row else 0
+        row_count = int(str(row[0])) if row and row[0] is not None else 0
         print(f"Table {table_name}: {row_count} rows")
         if row_count <= 0:
           print(f"Error: Required clinical table {table_name} has {row_count} rows")

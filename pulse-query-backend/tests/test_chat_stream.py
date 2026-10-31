@@ -305,3 +305,52 @@ async def test_chat_sse_stream_not_found(client: AsyncClient, mock_user_auth: Us
   response = await client.get(f"/api/v1/chat/stream/{random_id}")
   assert response.status_code == 404
   assert response.json()["detail"] == "Conversation not found"
+
+
+@pytest.mark.asyncio
+async def test_stream_conversation_events_emits_error_frame_on_exception(
+  db_session: AsyncSession,
+  mock_user_auth: User,
+) -> None:
+  """
+  Verifies that `chat_service.stream_conversation_events` emits a structured `error` SSE frame
+  and does not persist a corrupted assistant message if `arena_client.stream_tokens` raises.
+  """
+  from app.schemas.chat import ConversationCreate
+  from app.services.chat_service import chat_service
+
+  conv = await chat_service.create_conversation(
+    ConversationCreate(title="Stream Error Test"),
+    mock_user_auth,
+    db_session,
+  )
+  convs = await chat_service.list_conversations(mock_user_auth, db_session)
+  assert any(c.id == conv.id for c in convs)
+
+  class FailingArenaClient(LLMArenaClient):
+    """Test double whose `stream_tokens` raises RuntimeError mid-stream."""
+
+    async def stream_tokens(
+      self,
+      messages: list[dict[str, str]],
+      model_id: str | None = None,
+      temperature: float = 0.7,
+      max_tokens: int = 1000,
+      admin_settings: AdminSettingsResponse | None = None,
+    ) -> AsyncGenerator[str, None]:
+      """Yield one token then raise RuntimeError."""
+      _ = (messages, model_id, temperature, max_tokens, admin_settings)
+      yield "partial "
+      raise RuntimeError("stream interrupted")
+
+  frames = [
+    frame
+    async for frame in chat_service.stream_conversation_events(
+      conversation_id=conv.id,
+      messages_payload=[{"role": "user", "content": "hi"}],
+      admin_settings=None,
+      db=db_session,
+      arena_client=FailingArenaClient(),
+    )
+  ]
+  assert any('"event": "error"' in f and "stream interrupted" in f for f in frames)

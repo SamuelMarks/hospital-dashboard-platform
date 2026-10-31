@@ -62,11 +62,24 @@
     type="button"
     mat-stroked-button
     data-testid="btn-save-metadata"
+    [disabled]="isSaving()"
     (click)="saveSettings()"
   >
     Save Caption
   </button>
 </div>
+
+@if (errorMessage()) {
+  <div
+    class="px-6 py-2 text-xs font-medium"
+    style="background-color: var(--sys-error-container); color: var(--sys-on-error-container)"
+    role="alert"
+    aria-live="assertive"
+    data-testid="widget-editor-error"
+  >
+    {{ errorMessage() }}
+  </div>
+}
 
 <!-- Content (Editor Implementation) -->
 <mat-dialog-content>

@@ -266,6 +266,71 @@ class ChatService:
     reloaded = reload_res.scalars().first()
     return reloaded if reloaded is not None else assistant_msg
 
+  async def generate_assistant_reply_result(
+    self,
+    db: AsyncSession,
+    conversation_id: UUID,
+    history_limit: int = 10,
+    target_models: list[str] | None = None,
+    arena_client: LLMArenaClient = llm_client,
+    schema_svc: SchemaService = schema_service,
+    admin_settings_fn: AdminSettingsFn = get_admin_settings,
+  ) -> AppResult[Message]:
+    """
+    Executes `generate_assistant_reply` and returns the persisted assistant `Message` wrapped in `AppResult[Message]`.
+
+    Args:
+        db (AsyncSession): Active transactional database session.
+        conversation_id (UUID): Target conversation UUID.
+        history_limit (int): Maximum number of prior turns to include.
+        target_models (list[str] | None): Optional list of specific model IDs to query.
+        arena_client (LLMArenaClient): LLM Arena client instance.
+        schema_svc (SchemaService): Schema service instance.
+        admin_settings_fn (AdminSettingsFn): Async callable returning admin settings.
+
+    Returns:
+        AppResult[Message]: `Ok(assistant_message)` with loaded `candidates`.
+    """
+    msg = await self.generate_assistant_reply(
+      db=db,
+      conversation_id=conversation_id,
+      history_limit=history_limit,
+      target_models=target_models,
+      arena_client=arena_client,
+      schema_svc=schema_svc,
+      admin_settings_fn=admin_settings_fn,
+    )
+    return Ok(msg)
+
+  async def list_conversations_result(
+    self,
+    current_user: User,
+    db: AsyncSession,
+    limit: int = 50,
+    offset: int = 0,
+  ) -> AppResult[list[Conversation]]:
+    """
+    Lists recent conversations owned by `current_user` wrapped in `AppResult`.
+
+    Args:
+        current_user (User): Authenticated user.
+        db (AsyncSession): Active database session.
+        limit (int): Maximum number of conversations to return.
+        offset (int): Pagination offset.
+
+    Returns:
+        AppResult[list[Conversation]]: `Ok(conversations)` ordered newest first.
+    """
+    stmt = (
+      select(Conversation)
+      .where(Conversation.user_id == current_user.id)
+      .order_by(desc(Conversation.updated_at))
+      .offset(offset)
+      .limit(limit)
+    )
+    result = await db.execute(stmt)
+    return Ok(list(result.scalars().all()))
+
   async def list_conversations(
     self,
     current_user: User,
@@ -285,25 +350,19 @@ class ChatService:
     Returns:
         list[Conversation]: Ordered list of user conversations.
     """
-    stmt = (
-      select(Conversation)
-      .where(Conversation.user_id == current_user.id)
-      .order_by(desc(Conversation.updated_at))
-      .offset(offset)
-      .limit(limit)
-    )
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
+    res = await self.list_conversations_result(current_user=current_user, db=db, limit=limit, offset=offset)
+    return res.unwrap_or([])
 
-  async def create_conversation(
+  async def create_conversation_result(
     self,
     payload: ConversationCreate,
     current_user: User,
     db: AsyncSession,
     reply_fn: Callable[..., Awaitable[Message]] | None = None,
-  ) -> Conversation:
+  ) -> AppResult[Conversation]:
     """
-    Creates a new conversation and optionally seeds the initial user message and assistant reply.
+    Creates a new conversation and optionally seeds the initial user message and assistant reply,
+    returning `AppResult[Conversation]`.
 
     Args:
         payload (ConversationCreate): Creation payload (`title`, `message`, `target_models`).
@@ -312,7 +371,7 @@ class ChatService:
         reply_fn (Callable[..., Awaitable[Message]] | None): Optional reply generator override.
 
     Returns:
-        Conversation: Newly created conversation with loaded `messages` and `candidates`.
+        AppResult[Conversation]: `Ok(conversation)` with loaded `messages` and `candidates`.
     """
     now = datetime.now(UTC)
     title = payload.title
@@ -342,7 +401,34 @@ class ChatService:
     )
     result = await db.execute(stmt)
     reloaded = result.scalars().first()
-    return reloaded if reloaded is not None else conv
+    return Ok(reloaded if reloaded is not None else conv)
+
+  async def create_conversation(
+    self,
+    payload: ConversationCreate,
+    current_user: User,
+    db: AsyncSession,
+    reply_fn: Callable[..., Awaitable[Message]] | None = None,
+  ) -> Conversation:
+    """
+    Creates a new conversation and optionally seeds the initial user message and assistant reply.
+
+    Args:
+        payload (ConversationCreate): Creation payload (`title`, `message`, `target_models`).
+        current_user (User): Authenticated owner.
+        db (AsyncSession): Active database session.
+        reply_fn (Callable[..., Awaitable[Message]] | None): Optional reply generator override.
+
+    Returns:
+        Conversation: Newly created conversation with loaded `messages` and `candidates`.
+    """
+    res = await self.create_conversation_result(
+      payload=payload,
+      current_user=current_user,
+      db=db,
+      reply_fn=reply_fn,
+    )
+    return res.unwrap_or(Conversation(user_id=current_user.id, title=payload.title or "New Chat"))
 
   async def get_owned_conversation_result(
     self,
@@ -500,7 +586,8 @@ class ChatService:
     Records a user's vote for a candidate belonging to `message_id` inside `conversation_id`.
 
     Verifies strict ownership and parent-child linkage (`Conversation -> Message -> MessageCandidate`)
-    to prevent cross-conversation or cross-message candidate tampering.
+    using eager loading (`selectinload(Message.candidates)`) and updates candidate selection in a
+    single transactional round-trip.
 
     Args:
         conversation_id (UUID): Target conversation UUID.
@@ -516,53 +603,39 @@ class ChatService:
     if isinstance(conv_res, Err):
       return conv_res
 
-    msg_stmt = select(Message).where(
-      and_(
-        Message.id == message_id,
-        Message.conversation_id == conversation_id,
-        Message.role == "assistant",
+    msg_stmt = (
+      select(Message)
+      .where(
+        and_(
+          Message.id == message_id,
+          Message.conversation_id == conversation_id,
+          Message.role == "assistant",
+        )
       )
+      .options(selectinload(Message.candidates))
     )
     msg_obj = (await db.execute(msg_stmt)).scalars().first()
     if msg_obj is None:
       return Err(AppError(code=ErrorCode.MESSAGE_NOT_FOUND, message="Message not found", status_code=404))
 
-    stmt_cand = select(MessageCandidate).where(MessageCandidate.id == payload.candidate_id)
-    target_candidate = (await db.execute(stmt_cand)).scalars().first()
-    if not target_candidate:
+    target_candidate = next((c for c in msg_obj.candidates if c.id == payload.candidate_id), None)
+    if target_candidate is None:
       return Err(AppError(code=ErrorCode.CANDIDATE_NOT_FOUND, message="Candidate not found", status_code=404))
-    if target_candidate.message_id != message_id:
-      return Err(AppError(code=ErrorCode.CANDIDATE_MESSAGE_MISMATCH, message="Candidate not found", status_code=404))
 
     winning_content = target_candidate.content or ""
     winning_sql = target_candidate.sql_snippet or None
     winning_hash = target_candidate.sql_hash
 
-    await db.execute(update(MessageCandidate).where(MessageCandidate.message_id == message_id).values(is_selected=False))
-    if winning_hash:
-      await db.execute(
-        update(MessageCandidate)
-        .where(and_(MessageCandidate.message_id == message_id, MessageCandidate.sql_hash == winning_hash))
-        .values(is_selected=True)
-      )
-    else:
-      await db.execute(
-        update(MessageCandidate)
-        .where(and_(MessageCandidate.id == payload.candidate_id, MessageCandidate.message_id == message_id))
-        .values(is_selected=True)
-      )
+    for cand in msg_obj.candidates:
+      if winning_hash:
+        cand.is_selected = cand.sql_hash == winning_hash
+      else:
+        cand.is_selected = cand.id == payload.candidate_id
 
-    await db.execute(
-      update(Message)
-      .where(and_(Message.id == message_id, Message.conversation_id == conversation_id))
-      .values(content=winning_content, sql_snippet=winning_sql)
-    )
+    msg_obj.content = winning_content
+    msg_obj.sql_snippet = winning_sql
     await db.commit()
-    db.expire_all()
-
-    final_stmt = select(Message).where(Message.id == message_id).options(selectinload(Message.candidates))
-    final_msg = (await db.execute(final_stmt)).scalars().first()
-    return Ok(final_msg if final_msg is not None else msg_obj)
+    return Ok(msg_obj)
 
   async def prepare_stream_context_result(
     self,
@@ -620,7 +693,7 @@ class ChatService:
     arena_client: LLMArenaClient = llm_client,
   ) -> AsyncGenerator[str, None]:
     """
-    Streams Server-Sent Events (`start`, `token`, `done`) and persists the final assistant `Message`.
+    Streams Server-Sent Events (`start`, `token`, `done`, or `error`) and persists the final assistant `Message`.
 
     Args:
         conversation_id (UUID): Target conversation UUID.
@@ -631,21 +704,27 @@ class ChatService:
         arena_client (LLMArenaClient): LLM Arena client instance.
 
     Yields:
-        str: Formatted SSE event frames (`start`, `token`, `done`).
+        str: Formatted SSE event frames (`start`, `token`, `done`, or `error`).
     """
     nl = chr(10)
     start_payload = json.dumps({"event": "start", "conversation_id": str(conversation_id)})
     yield f"data: {start_payload}{nl}{nl}"
 
     accumulated: list[str] = []
-    async for token in arena_client.stream_tokens(
-      messages=messages_payload,
-      model_id=model_id,
-      admin_settings=admin_settings,
-    ):
-      accumulated.append(token)
-      payload = json.dumps({"event": "token", "token": token})
-      yield f"data: {payload}{nl}{nl}"
+    try:
+      async for token in arena_client.stream_tokens(
+        messages=messages_payload,
+        model_id=model_id,
+        admin_settings=admin_settings,
+      ):
+        accumulated.append(token)
+        payload = json.dumps({"event": "token", "token": token})
+        yield f"data: {payload}{nl}{nl}"
+    except (httpx.HTTPError, SQLAlchemyError, RuntimeError, ValueError, TypeError, OSError) as exc:
+      logger.error(f"SSE token streaming failed for conversation {conversation_id}: {exc}")
+      err_payload = json.dumps({"event": "error", "error": str(exc)})
+      yield f"data: {err_payload}{nl}{nl}"
+      return
 
     full_text = "".join(accumulated)
     sql = extract_and_validate_chat_sql(full_text)

@@ -145,6 +145,15 @@ describe('Template and Style URL Resolution & DOM Rendering Verification', () =>
       const closeBraces = (rawHtml.match(/\}/g) || []).length;
       expect(openBraces).toBe(closeBraces);
 
+      // Verify every <mat-progress-bar> has an accessible aria-label
+      const progressBarMatches = rawHtml.match(/<mat-progress-bar[\s\S]*?>/g) || [];
+      for (const pbTag of progressBarMatches) {
+        expect(
+          pbTag.includes('aria-label'),
+          `Expected <mat-progress-bar> in ${ref.templatePath} to include aria-label`,
+        ).toBe(true);
+      }
+
       // Verify the corresponding .spec.ts file instantiates the component via Angular TestBed
       const specPath = ref.sourceFile.replace(/\.ts$/, '.spec.ts');
       expect(existsSync(specPath)).toBe(true);

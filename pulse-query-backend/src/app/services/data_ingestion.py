@@ -355,7 +355,7 @@ class DataIngestionService:
       )
 
     ingested_tables: list[str] = []
-    with duckdb_manager._write_lock:
+    with duckdb_manager.read_write_lock():
       conn = duckdb_manager.get_connection()
       files_processed = 0
 

@@ -5,6 +5,7 @@ Provides API endpoints to query system health, database readiness,
 active configuration warnings, and trigger data re-ingestion.
 """
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -12,7 +13,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from app.api import deps
 from app.api.routers.admin import require_admin
 from app.core.result import unwrap_or_raise_http
-from app.database.duckdb import duckdb_manager, run_in_duckdb_thread
+from app.database.duckdb import duckdb_manager
 from app.models.user import User
 from app.schemas.system import (
   ReingestResponse,
@@ -25,6 +26,7 @@ from app.services.system_service import (
   system_diagnostics_service,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -84,7 +86,7 @@ async def get_system_diagnostics(
   Returns:
       SystemDiagnosticsResponse: Detailed diagnostic summary with copyable fix commands.
   """
-  _ = current_user
+  logger.debug(f"Fetching system diagnostics for user={current_user.id}")
   response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
   response.headers["Pragma"] = "no-cache"
   response.headers["Expires"] = "0"
@@ -109,20 +111,19 @@ async def trigger_reingest(
   Returns:
       ReingestResponse: ReingestResponse with updated table row counts.
   """
-  _ = current_user
-  unwrap_or_raise_http(await run_in_duckdb_thread(data_ingestion_service.ingest_all_csvs_result))
-  storage_status = await run_in_duckdb_thread(duckdb_manager.validate_duckdb_storage)
-
-  tables = storage_status.get("tables", {})
-  return ReingestResponse(
-    success=storage_status.get("status") != "error",
-    message=f"Ingestion completed. {len(tables)} tables indexed.",
-    tables=tables,
+  logger.debug(f"Triggering manual DuckDB CSV re-ingestion for admin={current_user.id}")
+  return unwrap_or_raise_http(
+    await system_diagnostics_service.run_reingest_result(
+      ingestion_svc=data_ingestion_service,
+      duck_mgr=duckdb_manager,
+    )
   )
 
 
 __all__ = [
   "_inspect_data_directory",
+  "data_ingestion_service",
+  "duckdb_manager",
   "get_system_diagnostics",
   "get_system_health",
   "router",

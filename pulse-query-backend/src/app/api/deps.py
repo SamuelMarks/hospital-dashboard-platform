@@ -211,6 +211,35 @@ def require_role(*allowed_roles: str) -> Callable[..., Awaitable[User]]:
   return role_checker
 
 
+async def get_dashboard_with_access_result(
+  dashboard_id: UUID,
+  current_user: User,
+  db: AsyncSession,
+  required_level: PermissionLevel = "VIEW",
+  accept_language: str | None = None,
+) -> AppResult[tuple[Dashboard, str]]:
+  """
+  Verifies that the user has the required access level to the dashboard, returning an explicit `AppResult`.
+
+  Args:
+      dashboard_id (UUID): Target dashboard ID.
+      current_user (User): Requesting user.
+      db (AsyncSession): Database session.
+      required_level (PermissionLevel): Minimum required permission ('VIEW', 'EDIT', 'OWNER').
+      accept_language (str | None): Language preference.
+
+  Returns:
+      AppResult[tuple[Dashboard, str]]: `Ok((dashboard, permission_level))` or `Err(AppError)`.
+  """
+  return await dashboard_service.access_policy.get_dashboard_with_access_result(
+    dashboard_id=dashboard_id,
+    current_user=current_user,
+    db=db,
+    required_level=required_level,
+    accept_language=accept_language,
+  )
+
+
 async def get_dashboard_with_access(
   dashboard_id: UUID,
   current_user: User,
@@ -231,7 +260,7 @@ async def get_dashboard_with_access(
   Returns:
       tuple[Dashboard, str]: The dashboard and the resolved permission level ('OWNER', 'EDIT', 'VIEW').
   """
-  res = await dashboard_service.access_policy.get_dashboard_with_access_result(
+  res = await get_dashboard_with_access_result(
     dashboard_id=dashboard_id,
     current_user=current_user,
     db=db,

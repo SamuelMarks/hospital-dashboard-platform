@@ -54,6 +54,9 @@ import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksViewModel
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.ai_optimization_benchmarks
+import pulsequery.composeapp.generated.resources.benchmark_service_label
+import pulsequery.composeapp.generated.resources.benchmark_tab_mpax
+import pulsequery.composeapp.generated.resources.benchmark_tab_sql
 import pulsequery.composeapp.generated.resources.no_mpax_benchmarks
 import pulsequery.composeapp.generated.resources.no_sql_benchmarks
 import pulsequery.composeapp.generated.resources.refresh_benchmarks
@@ -151,13 +154,13 @@ fun BenchmarksScreen(
                 Tab(
                     selected = uiState.selectedTabIndex == 0,
                     onClick = { vm.selectTab(0) },
-                    text = { Text("Text-to-SQL (${uiState.sqlBenchmarks.size})") },
+                    text = { Text(stringResource(Res.string.benchmark_tab_sql, uiState.sqlBenchmarks.size)) },
                     modifier = Modifier.testTag("tab-sql")
                 )
                 Tab(
                     selected = uiState.selectedTabIndex == 1,
                     onClick = { vm.selectTab(1) },
-                    text = { Text("MPAX Scenarios (${uiState.mpaxBenchmarks.size})") },
+                    text = { Text(stringResource(Res.string.benchmark_tab_mpax, uiState.mpaxBenchmarks.size)) },
                     modifier = Modifier.testTag("tab-mpax")
                 )
             }
@@ -259,7 +262,8 @@ fun SqlBenchmarkCard(
                     text = item.theme,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { heading() }
                 )
                 AssistChip(
                     onClick = {},
@@ -324,7 +328,8 @@ fun MpaxBenchmarkCard(
                     text = item.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { heading() }
                 )
                 AssistChip(
                     onClick = {},
@@ -333,7 +338,7 @@ fun MpaxBenchmarkCard(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Service: ${item.targetService}",
+                text = stringResource(Res.string.benchmark_service_label, item.targetService),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.secondary
             )

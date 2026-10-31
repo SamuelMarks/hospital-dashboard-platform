@@ -629,9 +629,12 @@ describe('DashboardStore', () => {
 
       expect(mockDashApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost).toHaveBeenCalledWith(
         'd1',
-        expect.objectContaining({
-          config: expect.objectContaining({ x: 3, y: 4 }) as unknown,
-        }),
+        {
+          title: 'Copy of Original',
+          type: 'SQL',
+          visualization: 'table',
+          config: { query: 'SELECT 1', x: 3, y: 4 },
+        },
       );
     });
 
@@ -644,7 +647,7 @@ describe('DashboardStore', () => {
       store.patch({ widgets: [w1, w2, w3, w4] });
 
       const sorted = store.sortedWidgets();
-      expect(sorted.length).toBe(4);
+      expect(sorted.map((w) => w.id)).toEqual(['w2', 'w1', 'w4', 'w3']);
     });
 
     it('reads isWidgetLoading and globalParams', () => {
@@ -706,5 +709,37 @@ describe('DashboardStore', () => {
     store.loadDashboard('d1');
 
     expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).not.toHaveBeenCalled();
+  });
+
+  it('should reset SQL and non-SQL widgets to safe mode and handle errors', () => {
+    mockDashApi.getDashboardApiV1DashboardsDashboardIdGet.mockReturnValue(of(d1));
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(of(makeWidget()));
+
+    const sqlWidget = makeWidget({ id: 'w-sql', type: 'SQL', dashboard_id: 'd1' });
+    store.resetWidgetToSafeMode(sqlWidget);
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w-sql',
+      {
+        visualization: 'table',
+        config: { query: 'SELECT 1 as SafeMode' },
+      },
+    );
+    expect(mockDashApi.getDashboardApiV1DashboardsDashboardIdGet).toHaveBeenCalledWith('d1');
+
+    const textWidget = makeWidget({ id: 'w-txt', type: 'TEXT', dashboard_id: 'd1' });
+    store.resetWidgetToSafeMode(textWidget);
+    expect(mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut).toHaveBeenCalledWith(
+      'w-txt',
+      {
+        visualization: 'table',
+        config: {},
+      },
+    );
+
+    mockDashApi.updateWidgetApiV1DashboardsWidgetsWidgetIdPut.mockReturnValue(
+      throwError(() => new Error('Reset failed')),
+    );
+    store.resetWidgetToSafeMode(sqlWidget);
+    expect(store.error()).toBe('Reset failed');
   });
 });

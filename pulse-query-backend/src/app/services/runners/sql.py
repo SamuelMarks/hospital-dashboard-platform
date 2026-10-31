@@ -9,19 +9,16 @@ We perform basic syntax checking but defer execution policy to DuckDB.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 import logging
-from typing import Protocol
 
-import duckdb
-import duckdb.sqltypes as sqltypes
 import sqlglot
 from sqlglot import exp
 
 from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
-from app.database.duckdb import DuckDBFetchableProtocol
+from app.database.duckdb import DuckDBCursorProtocol as DuckDBCursorProtocol
 from app.schemas.execution import SqlRunnerPayload, SqlRunnerResultDict
-from app.schemas.json_types import JsonValue, SqlRow, SqlScalar
+from app.schemas.json_types import JsonValue, SqlRow
 
 logger = logging.getLogger(__name__)
 
@@ -37,46 +34,6 @@ _FORBIDDEN_AST_TYPES: tuple[type[exp.Expression], ...] = (
   exp.Attach,
   exp.Detach,
 )
-
-
-class DuckDBCursorProtocol(Protocol):
-  """
-  Structural protocol representing a DuckDB connection or cursor capable of executing SQL.
-  """
-
-  @property
-  def description(self) -> Sequence[Sequence[SqlScalar | sqltypes.DuckDBPyType]] | None:
-    """Column metadata sequence for the most recent query result."""
-
-  def execute(self, query: str) -> DuckDBFetchableProtocol | duckdb.DuckDBPyConnection | None:
-    """
-    Executes a SQL query string on the cursor.
-
-    Args:
-        query (str): SQL query string to execute.
-
-    Returns:
-        DuckDBFetchableProtocol | duckdb.DuckDBPyConnection | None: Cursor or execution result.
-    """
-
-  def fetchall(self) -> list[tuple[SqlScalar, ...]]:
-    """
-    Fetches all remaining rows from the last executed query.
-
-    Returns:
-        list[tuple[SqlScalar, ...]]: Sequence of row tuples.
-    """
-
-  def fetchmany(self, size: int = 1) -> list[tuple[SqlScalar, ...]]:
-    """
-    Fetches up to `size` rows from the last executed query.
-
-    Args:
-        size (int): Maximum number of rows to fetch.
-
-    Returns:
-        list[tuple[SqlScalar, ...]]: Sequence of row tuples.
-    """
 
 
 class SQLSecurityError(Exception):

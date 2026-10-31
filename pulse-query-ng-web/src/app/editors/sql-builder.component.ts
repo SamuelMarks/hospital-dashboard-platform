@@ -54,6 +54,7 @@ import {
 } from '../shared/visualizations/viz-table/viz-table.component';
 import { ConversationComponent } from '../chat/conversation/conversation.component';
 import { ChatStore } from '../chat/chat.store';
+import { LoggerService } from '../core/logging/logger.service';
 
 /** Interactive CodeMirror SQL editor and AI assistant builder component for authoring widget queries. */
 @Component({
@@ -153,6 +154,8 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly schemaApi = inject(SchemaService);
   /** Centralized reactive state store for the active hospital dashboard. */
   private readonly store = inject(DashboardStore);
+  /** Centralized diagnostic logger service. */
+  private readonly logger = inject(LoggerService);
 
   /** Dashboard Id. */
   readonly dashboardId = input<string>('');
@@ -238,7 +241,7 @@ export class SqlBuilderComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!this.editorView) return;
         this.codeMirrorAdapter.reconfigureSchemaAutocomplete(this.editorView, tables);
       },
-      error: (err) => console.warn('Failed to load schema for autocomplete', err),
+      error: (err: unknown) => this.logger.warn('Failed to load schema for autocomplete', err),
     });
   }
 

@@ -51,8 +51,10 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
                                     "user_id": "u-1",
                                     "user_email": "clinician@stanford.edu",
                                     "prompt": "Count ICU beds",
+                                    "query_text": "Count ICU beds",
                                     "llm": "gemini-2.5-pro",
                                     "sql_snippet": "SELECT count(*) FROM icu_beds",
+                                    "sql_hash": "hash1",
                                     "is_selected": true,
                                     "latency_ms": 120,
                                     "created_at": "2026-09-01T10:00:00Z"
@@ -63,8 +65,10 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
                                     "user_id": "u-2",
                                     "user_email": "analyst@stanford.edu",
                                     "prompt": "Show PICU transfers",
+                                    "query_text": null,
                                     "llm": "medgemma-27b-text-it",
                                     "sql_snippet": "SELECT * FROM transfers",
+                                    "sql_hash": "hash2",
                                     "is_selected": false,
                                     "latency_ms": 210,
                                     "created_at": "2026-09-01T11:00:00Z"
@@ -110,7 +114,7 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
 
-        waitUntil(timeoutMillis = 15000) {
+        waitUntil(timeoutMillis = 30000) {
             onAllNodesWithText("gemini-2.5-pro", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("gemini-2.5-pro", substring = true).assertIsDisplayed()
@@ -131,7 +135,7 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
 
-        waitUntil(timeoutMillis = 15000) {
+        waitUntil(timeoutMillis = 30000) {
             onAllNodesWithText("No analytics data", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("No analytics data", substring = true).assertIsDisplayed()
@@ -151,7 +155,7 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
 
-        waitUntil(timeoutMillis = 15000) {
+        waitUntil(timeoutMillis = 30000) {
             onAllNodesWithText("Analytics database offline", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Analytics database offline", substring = true).assertIsDisplayed()

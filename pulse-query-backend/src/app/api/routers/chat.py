@@ -72,7 +72,7 @@ async def _generate_assistant_reply(
   Returns:
       Message: The persisted assistant response object (parent of candidates).
   """
-  return await chat_service.generate_assistant_reply(
+  res = await chat_service.generate_assistant_reply_result(
     db=db,
     conversation_id=conversation_id,
     history_limit=history_limit,
@@ -81,6 +81,7 @@ async def _generate_assistant_reply(
     schema_svc=schema_service,
     admin_settings_fn=get_admin_settings,
   )
+  return unwrap_or_raise_http(res)
 
 
 @router.get("/", response_model=list[ConversationResponse])
@@ -102,7 +103,8 @@ async def list_conversations(
   Returns:
       list[Conversation]: Ordered list of conversations.
   """
-  return await chat_service.list_conversations(current_user, db, limit=limit, offset=offset)
+  res = await chat_service.list_conversations_result(current_user, db, limit=limit, offset=offset)
+  return unwrap_or_raise_http(res)
 
 
 @router.post("/", response_model=ConversationDetail)
@@ -122,12 +124,13 @@ async def create_conversation(
   Returns:
       Conversation: Created conversation with messages and candidates.
   """
-  return await chat_service.create_conversation(
+  res = await chat_service.create_conversation_result(
     payload=payload,
     current_user=current_user,
     db=db,
     reply_fn=_generate_assistant_reply,
   )
+  return unwrap_or_raise_http(res)
 
 
 @router.put("/{conversation_id}", response_model=ConversationResponse)

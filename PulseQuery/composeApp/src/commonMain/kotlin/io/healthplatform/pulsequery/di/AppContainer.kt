@@ -59,6 +59,30 @@ data class AuthSessionState(
 }
 
 /**
+ * Immutable snapshot of the active endpoint and authentication configuration.
+ *
+ * @property baseUrl Active backend base URL.
+ * @property accessToken Active JWT bearer token, or null when unauthenticated.
+ */
+data class PulseSessionConfig(
+    val baseUrl: String,
+    val accessToken: String? = null
+)
+
+/**
+ * Provider contract exposing the active [PulseSessionConfig] without coupling consumers
+ * directly to mutable singleton properties.
+ */
+fun interface SessionConfigProvider {
+    /**
+     * Returns the current [PulseSessionConfig] snapshot.
+     *
+     * @return Immutable [PulseSessionConfig] containing `baseUrl` and `accessToken`.
+     */
+    fun currentSessionConfig(): PulseSessionConfig
+}
+
+/**
  * Reactive session state manager encapsulating JWT token persistence and [AuthSessionState] updates.
  */
 class AuthSessionManager {
@@ -258,7 +282,15 @@ class ApiServiceRegistry(
  * Lightweight Dependency Injection container for PulseQuery.
  * Holds an immutable [ApiServiceRegistry] in a [StateFlow] and manages session persistence.
  */
-object AppContainer : AppDependencies {
+object AppContainer : AppDependencies, SessionConfigProvider {
+
+    /**
+     * Returns the current immutable [PulseSessionConfig] snapshot (`currentBaseUrl` and `currentToken`).
+     *
+     * @return Current [PulseSessionConfig].
+     */
+    override fun currentSessionConfig(): PulseSessionConfig =
+        PulseSessionConfig(baseUrl = currentBaseUrl, accessToken = currentToken)
 
     /** Storage key for the active JWT access token. */
     const val KEY_AUTH_TOKEN: String = "pulse_auth_token"

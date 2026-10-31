@@ -231,7 +231,7 @@ class SchemaService:
         list[TableSchemaDict]: List of table objects containing name and columns.
     """
     owns_conn = conn is None
-    with duckdb_manager._write_lock:
+    with duckdb_manager.read_write_lock():
       active_conn: DuckDBConnectionProtocol = conn if conn is not None else self.manager.get_readonly_connection()
       try:
         tables_list: list[TableSchemaDict] = []

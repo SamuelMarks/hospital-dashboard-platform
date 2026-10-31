@@ -11,6 +11,7 @@ import time
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase
@@ -112,7 +113,7 @@ async def validate_postgres_connection(raise_on_error: bool = False) -> Postgres
       error=None,
     )
     return diagnostics_registry.postgres_status.to_dict()
-  except Exception as e:
+  except (SQLAlchemyError, OSError, RuntimeError, ValueError, TimeoutError, Exception) as e:
     latency = round((time.perf_counter() - start_time) * 1000, 2)
     error_str = str(e)
     banner = format_postgres_error_banner(

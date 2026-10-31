@@ -4,6 +4,8 @@
  */
 package io.healthplatform.pulsequery.network
 
+import io.healthplatform.pulsequery.core.error.PulseQueryError
+import io.healthplatform.pulsequery.core.model.WireSafeEnumSerializer
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -48,11 +50,20 @@ data class CollaboratorPresence(
 )
 
 /**
+ * Safe non-throwing [WireSafeEnumSerializer] for [CollaborationEventType].
+ */
+object CollaborationEventTypeSerializer : WireSafeEnumSerializer<CollaborationEventType>(
+    serialName = "io.healthplatform.pulsequery.network.CollaborationEventType",
+    toWire = { it.wireValue },
+    fromWire = CollaborationEventType::fromWire
+)
+
+/**
  * Enumerated discriminator types for real-time WebSocket collaboration events.
  *
  * @property wireValue Raw wire event discriminator string.
  */
-@Serializable
+@Serializable(with = CollaborationEventTypeSerializer::class)
 enum class CollaborationEventType(val wireValue: String) {
     /** A peer collaborator joined the dashboard session. */
     @SerialName("USER_JOINED")
@@ -167,6 +178,10 @@ class DashboardWebSocketRepository(
     /** SharedFlow emitting widget IDs triggered for refresh by remote peers. */
     val remoteWidgetUpdates: SharedFlow<String> = _remoteWidgetUpdates.asSharedFlow()
 
+    private val _connectionErrors = MutableSharedFlow<PulseQueryError>(replay = 1, extraBufferCapacity = 16)
+    /** SharedFlow emitting typed [PulseQueryError] events when WebSocket connection or frame parsing fails. */
+    val connectionErrors: SharedFlow<PulseQueryError> = _connectionErrors.asSharedFlow()
+
     private var activeDashboardId: String? = null
     private var sessionJob: Job? = null
     private var activeSession: CollaborationSocketSession? = null
@@ -188,6 +203,8 @@ class DashboardWebSocketRepository(
             runCatchingPulseAsync {
                 val session = sessionFactory(client, wsUrl)
                 listenToWebSocketSession(session)
+            }.onFailure { err ->
+                _connectionErrors.emit(PulseQueryError.fromThrowable(err))
             }
             _isConnected.value = false
             activeSession = null
@@ -229,18 +246,24 @@ class DashboardWebSocketRepository(
      * @param text Raw JSON text frame received from the WebSocket channel.
      */
     private suspend fun handleIncomingTextFrame(text: String) {
-        val event = runCatchingPulse { json.decodeFromString<CollaborationEvent>(text) }.getOrNull() ?: return
-        when (event.eventType) {
-            CollaborationEventType.USER_JOINED, CollaborationEventType.USER_LEFT -> {
-                if (event.activeUsers.isNotEmpty()) {
-                    _activeCollaborators.value = event.activeUsers
+        runCatchingPulse { json.decodeFromString<CollaborationEvent>(text) }.fold(
+            onSuccess = { event ->
+                when (event.eventType) {
+                    CollaborationEventType.USER_JOINED, CollaborationEventType.USER_LEFT -> {
+                        if (event.activeUsers.isNotEmpty()) {
+                            _activeCollaborators.value = event.activeUsers
+                        }
+                    }
+                    CollaborationEventType.WIDGET_UPDATED -> {
+                        event.widgetId?.let { _remoteWidgetUpdates.emit(it) }
+                    }
+                    CollaborationEventType.UNKNOWN -> Unit
                 }
+            },
+            onFailure = { err ->
+                _connectionErrors.emit(PulseQueryError.fromThrowable(err))
             }
-            CollaborationEventType.WIDGET_UPDATED -> {
-                event.widgetId?.let { _remoteWidgetUpdates.emit(it) }
-            }
-            CollaborationEventType.UNKNOWN -> Unit
-        }
+        )
     }
 
     /**
@@ -259,6 +282,8 @@ class DashboardWebSocketRepository(
                     )
                 )
                 session.sendText(jsonMsg)
+            }.onFailure { err ->
+                _connectionErrors.emit(PulseQueryError.fromThrowable(err))
             }
         } else {
             _remoteWidgetUpdates.emit(widgetId)

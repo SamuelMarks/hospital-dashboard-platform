@@ -11,9 +11,10 @@
  * - Qualitative & quantitative User Experience Survey submissions (Metric 2 of Technical Addendum)
  */
 
-import { computed, inject, linkedSignal, Service, signal } from '@angular/core';
-import { forkJoin } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { computed, DestroyRef, inject, linkedSignal, Service, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { EMPTY, forkJoin } from 'rxjs';
+import { catchError, finalize, switchMap } from 'rxjs/operators';
 
 import {
   InstitutionProfileSchema,
@@ -36,12 +37,28 @@ export type OptimizationUseCase = OptimizationSolutionPayload.UseCaseEnum;
 export type QuickActionType = QuickActionDefinitionSchema.ActionIdEnum;
 
 /**
+ * Runtime type guard verifying whether a raw string is a valid `OptimizationUseCase`.
+ *
+ * @param value - Raw string value (e.g., from URL query parameters).
+ * @returns True if `value` is `'service_unit'`, `'surgical_scheduling'`, or `'staffing_optimization'`.
+ */
+export function isOptimizationUseCase(
+  value: string | null | undefined,
+): value is OptimizationUseCase {
+  return (
+    value === 'service_unit' || value === 'surgical_scheduling' || value === 'staffing_optimization'
+  );
+}
+
+/**
  * Signal-based singleton store managing state for the Hospital Optimization Copilot & Workspace.
  */
 @Service()
 export class OptimizationStore {
   /** Generated OpenAPI optimization service client. */
   private readonly api = inject(OptimizationService);
+  /** DestroyRef used to clean up in-flight subscriptions on store teardown. */
+  private readonly destroyRef = inject(DestroyRef);
 
   /** Partner hospital institution profiles loaded from `/api/v1/optimization/institutions`. */
   readonly institutions = signal<InstitutionProfileSchema[]>([]);
@@ -132,7 +149,10 @@ export class OptimizationStore {
       quickActions: this.api.getOptimizationQuickActionsApiV1OptimizationQuickActionsGet(),
       summary: this.api.getOptimizationEvaluationSummaryApiV1OptimizationSurveysSummaryGet(),
     })
-      .pipe(finalize(() => this.isLoading.set(false)))
+      .pipe(
+        finalize(() => this.isLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: ({ institutions, models, quickActions, summary }) => {
           this.institutions.set(institutions);
@@ -203,7 +223,10 @@ export class OptimizationStore {
         model_id: this.selectedModelId(),
         prompt: prompt ?? null,
       })
-      .pipe(finalize(() => this.isLoading.set(false)))
+      .pipe(
+        finalize(() => this.isLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (sol: OptimizationSolutionPayload) => {
           this.latestSolution.set(sol);
@@ -230,7 +253,10 @@ export class OptimizationStore {
         institution_id: this.selectedInstitutionId(),
         use_case: this.selectedUseCase(),
       })
-      .pipe(finalize(() => this.isLoading.set(false)))
+      .pipe(
+        finalize(() => this.isLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (res: QuickActionExecutionResponse) => {
           this.quickActionResult.set(res);
@@ -266,7 +292,10 @@ export class OptimizationStore {
           initial_prompt: cleaned,
           model_id: this.selectedModelId(),
         })
-        .pipe(finalize(() => this.isLoading.set(false)))
+        .pipe(
+          finalize(() => this.isLoading.set(false)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe({
           next: (session: OptimizationSessionResponse) => {
             this.activeSession.set(session);
@@ -288,7 +317,10 @@ export class OptimizationStore {
         prompt: cleaned,
         model_id: this.selectedModelId(),
       })
-      .pipe(finalize(() => this.isLoading.set(false)))
+      .pipe(
+        finalize(() => this.isLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (turn: OptimizationIterationResponse) => {
           this.latestSolution.set(turn.solution);
@@ -326,15 +358,21 @@ export class OptimizationStore {
 
     this.api
       .submitOptimizationSurveyApiV1OptimizationSurveysPost(requestPayload)
-      .pipe(finalize(() => this.isSubmittingSurvey.set(false)))
-      .subscribe({
-        next: () => {
+      .pipe(
+        finalize(() => this.isSubmittingSurvey.set(false)),
+        switchMap(() => {
           this.surveySuccessMessage.set(
             $localize`Thank you! Your clinical workflow evaluation has been recorded.`,
           );
-          this.api
+          return this.api
             .getOptimizationEvaluationSummaryApiV1OptimizationSurveysSummaryGet()
-            .subscribe((summary) => this.evaluationSummary.set(summary));
+            .pipe(catchError(() => EMPTY));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (summary: OptimizationEvaluationSummaryResponse) => {
+          this.evaluationSummary.set(summary);
         },
         error: (err: unknown) => {
           this.error.set(extractApiErrorMessage(err, $localize`Failed to submit user survey.`));

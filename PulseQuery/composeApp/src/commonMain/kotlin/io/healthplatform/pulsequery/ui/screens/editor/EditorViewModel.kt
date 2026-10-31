@@ -144,6 +144,8 @@ class EditorViewModel(
      * @param visualization Selected visualization type for dashboard widgets.
      * @param category Template category name when [destination] is [SaveQueryDestination.TEMPLATE].
      * @param description Template description when [destination] is [SaveQueryDestination.TEMPLATE].
+     * @param widgetSuccessMessage Localized confirmation string when saving a dashboard widget.
+     * @param templateSuccessMessage Localized confirmation string when registering a template.
      * @return [Result] containing a user-facing confirmation message on success.
      */
     @Suppress("LongParameterList")
@@ -154,7 +156,9 @@ class EditorViewModel(
         dashboardId: String?,
         visualization: String = "table",
         category: String = "Clinical",
-        description: String = ""
+        description: String = "",
+        widgetSuccessMessage: String = UiErrorKey.WIDGET_SAVED_SUCCESS.fallbackMessage,
+        templateSuccessMessage: String = UiErrorKey.TEMPLATE_REGISTERED_SUCCESS.fallbackMessage
     ): Result<String> {
         return runResultPulseAsync {
             if (destination == SaveQueryDestination.DASHBOARD_WIDGET && dashboardId != null) {
@@ -166,7 +170,7 @@ class EditorViewModel(
                 currentDashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
                     dashboardId,
                     widgetIn
-                ).asResultMap { "Widget successfully added to dashboard" }
+                ).asResultMap { widgetSuccessMessage }
             } else {
                 val templateCreate = TemplateCreate(
                     title = title.trim(),
@@ -175,7 +179,7 @@ class EditorViewModel(
                     description = description.trim()
                 )
                 currentTemplatesApi.createTemplateApiV1TemplatesPost(templateCreate).asResultMap {
-                    "Template successfully registered in library"
+                    templateSuccessMessage
                 }
             }
         }

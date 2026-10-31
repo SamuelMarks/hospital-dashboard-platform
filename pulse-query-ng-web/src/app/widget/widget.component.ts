@@ -15,7 +15,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 
 import { DashboardStore } from '../dashboard/dashboard.store';
-import { WidgetResponse, DashboardsService, WidgetUpdate } from '../api-client';
+import { WidgetResponse } from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
 import {
   SkeletonLoaderComponent,
@@ -81,196 +81,19 @@ const DEFAULT_WIDGET: WidgetResponse = {
 
   host: {
     tabindex: '0',
+    role: 'region',
     class: 'widget-host',
+    '[attr.aria-label]': 'widgetInput().title || "Dashboard widget"',
     '(keydown.escape)': 'onEscape($event)',
     '(focus)': 'onFocus()',
     '(blur)': 'onBlur()',
   },
   templateUrl: './widget.component.html',
-  styles: [
-    `
-      :host {
-        display: block;
-        height: 100%;
-        outline: none;
-        transition: transform 0.2s;
-      }
-
-      /* M3 Elevation & Focus States */
-      :host(:focus-visible) mat-card {
-        outline: 2px solid var(--sys-primary);
-        outline-offset: 2px;
-      }
-      /* Enhance elevation on focus within (Edit mode context) */
-      :host:focus-within mat-card {
-        border-color: var(--sys-primary);
-        /* Approximation of Elevation Level 2 */
-        box-shadow:
-          0px 3px 1px -2px rgba(0, 0, 0, 0.2),
-          0px 2px 2px 0px rgba(0, 0, 0, 0.14),
-          0px 1px 5px 0px rgba(0, 0, 0, 0.12);
-      }
-
-      mat-card {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        /* M3 Standard Surface Colors are handled by MatCard internally */
-        background-color: var(--sys-surface);
-        color: var(--sys-text-primary);
-      }
-
-      .widget-header-row {
-        padding: 12px 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        border-bottom: 1px solid var(--sys-surface-border);
-        min-height: 48px;
-        gap: 8px;
-      }
-
-      .title-area {
-        flex: 1;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-      }
-      .title-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        min-width: 0;
-      }
-      .title-text {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .subtitle-text {
-        font-size: 0.75rem;
-        line-height: 1.35;
-        color: var(--sys-text-secondary);
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100%;
-      }
-
-      .widget-chip {
-        --mdc-chip-label-text-color: var(--sys-on-surface-variant);
-        transform: scale(0.8);
-        margin-left: -4px;
-      }
-
-      .action-group {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-        margin-right: -8px;
-      }
-      .icon-btn-compact {
-        width: 32px;
-        height: 32px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .icon-btn-compact mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-      }
-
-      mat-card-content {
-        flex-grow: 1;
-        padding: 0;
-        position: relative;
-        overflow: hidden;
-        min-height: 100px;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .viz-container {
-        flex-grow: 1;
-        width: 100%;
-        overflow: auto;
-        position: relative;
-      }
-
-      /* Loading / Error Overlays */
-      .center-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: color-mix(in srgb, var(--sys-surface) 85%, transparent);
-        backdrop-filter: blur(2px);
-        z-index: 10;
-      }
-      .skeleton-wrapper {
-        padding: 16px;
-        height: 100%;
-        box-sizing: border-box;
-      }
-
-      .safe-mode-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        background-color: var(--sys-error-container);
-        color: var(--sys-on-error-container);
-        padding: 16px;
-        text-align: center;
-      }
-      .safe-mode-title {
-        font-weight: bold;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .safe-mode-desc {
-        font-size: 12px;
-        margin-bottom: 16px;
-        opacity: 0.8;
-        max-width: 90%;
-        word-break: break-word;
-      }
-      .animate-spin {
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-    `,
-  ],
+  styleUrl: './widget.component.scss',
 })
 export class WidgetComponent {
   /** Active dashboard state store. */
   private readonly store = inject(DashboardStore);
-  /** Backend dashboards API service. */
-  private readonly dashApi = inject(DashboardsService);
   /** Material dialog service for confirmation modals. */
   private readonly dialog = inject(MatDialog);
   /** Angular router for navigating to the scenario simulator. */
@@ -511,14 +334,7 @@ export class WidgetComponent {
       .afterClosed()
       .subscribe((res) => {
         if (res) {
-          const safeConfig =
-            this.widgetInput().type === 'SQL' ? { query: 'SELECT 1 as SafeMode' } : {};
-          const update: WidgetUpdate = { visualization: 'table', config: safeConfig };
-          this.dashApi
-            .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(this.widgetInput().id, update)
-            .subscribe(() => {
-              this.store.loadDashboard(this.widgetInput().dashboard_id);
-            });
+          this.store.resetWidgetToSafeMode(this.widgetInput());
         }
       });
   }

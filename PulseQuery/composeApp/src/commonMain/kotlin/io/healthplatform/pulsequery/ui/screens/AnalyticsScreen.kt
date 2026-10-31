@@ -54,9 +54,11 @@ import io.healthplatform.pulsequery.ui.screens.analytics.AnalyticsViewModel
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.alert_rules
+import pulsequery.composeapp.generated.resources.analytics_na_fallback
 import pulsequery.composeapp.generated.resources.bed_capacity_alert_rules
 import pulsequery.composeapp.generated.resources.bed_capacity_alert_rules_desc
 import pulsequery.composeapp.generated.resources.configure
+import pulsequery.composeapp.generated.resources.database_default_error
 import pulsequery.composeapp.generated.resources.database_misconfiguration
 import pulsequery.composeapp.generated.resources.llm_analytics
 import pulsequery.composeapp.generated.resources.model_msg
@@ -125,7 +127,7 @@ fun AnalyticsScreen(
                 uiState.isLoading -> CircularProgressIndicator()
                 !isDatabaseHealthy -> {
                     val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error
-                        ?: "Database service is experiencing storage or configuration errors."
+                        ?: stringResource(Res.string.database_default_error)
                     DatabaseErrorCard(
                         title = stringResource(Res.string.database_misconfiguration),
                         message = dbMsg,
@@ -236,7 +238,7 @@ fun AnalyticsRowElevatedCard(record: LlmOutputAnalyticsRow) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(Res.string.query_msg, record.queryText ?: "N/A"),
+                text = stringResource(Res.string.query_msg, record.queryText ?: stringResource(Res.string.analytics_na_fallback)),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis

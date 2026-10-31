@@ -5,6 +5,7 @@ Provides read-only analytics views over LLM outputs and user selections
 by delegating to `AnalyticsService`.
 """
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
@@ -18,6 +19,7 @@ from app.models.user import User
 from app.schemas.analytics import BedCapacityAlert, LlmOutputAnalyticsRow
 from app.services.analytics_service import analytics_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -36,7 +38,7 @@ async def get_capacity_alerts(
   Returns:
       list[BedCapacityAlert]: List of active capacity alerts exceeding configured thresholds.
   """
-  _ = current_user
+  logger.debug(f"Evaluating capacity alerts for user={current_user.id}")
   res = await analytics_service.get_capacity_alerts_result(
     db=db,
     conn_factory=duckdb_manager.get_readonly_connection,
@@ -63,6 +65,6 @@ async def list_llm_outputs(
   Returns:
       list[LlmOutputAnalyticsRow]: Combined and chronologically sorted LLM candidate telemetry rows.
   """
-  _ = current_user
+  logger.debug(f"Listing LLM output analytics for user={current_user.id}")
   res = await analytics_service.list_llm_outputs_result(db=db, limit=limit, offset=offset)
   return unwrap_or_raise_http(res)

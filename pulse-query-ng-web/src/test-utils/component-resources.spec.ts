@@ -44,7 +44,10 @@ describe('component-resources', () => {
   });
 
   it('resolves component resources with the shared loader', async () => {
-    await resolveComponentResourcesForTests();
-    expect(true).toBe(true);
+    const resolvedPromise = resolveComponentResourcesForTests();
+    await expect(resolvedPromise).resolves.toBeUndefined();
+
+    const optimizationHtml = readTemplate('optimization.component.html');
+    expect(optimizationHtml).toContain('data-testid="optimization-heading"');
   });
 });

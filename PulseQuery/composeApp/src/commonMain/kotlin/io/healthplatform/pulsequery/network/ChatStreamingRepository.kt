@@ -3,6 +3,8 @@
  */
 package io.healthplatform.pulsequery.network
 
+import io.healthplatform.pulsequery.core.error.UiErrorKey
+import io.healthplatform.pulsequery.core.model.WireSafeEnumSerializer
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runCatchingPulse
 import io.healthplatform.pulsequery.core.result.runCatchingPulseAsync
@@ -57,11 +59,20 @@ sealed interface ChatStreamEvent {
 }
 
 /**
+ * Safe non-throwing [WireSafeEnumSerializer] for [SseEventType].
+ */
+object SseEventTypeSerializer : WireSafeEnumSerializer<SseEventType>(
+    serialName = "io.healthplatform.pulsequery.network.SseEventType",
+    toWire = { it.wireValue },
+    fromWire = SseEventType::fromWire
+)
+
+/**
  * Enumerated discriminator types for Server-Sent Event packets in Chat Arena streaming.
  *
  * @property wireValue Raw wire discriminator string.
  */
-@Serializable
+@Serializable(with = SseEventTypeSerializer::class)
 enum class SseEventType(val wireValue: String) {
     /** Stream initialization packet. */
     @SerialName("start")
@@ -167,7 +178,7 @@ class ChatStreamingRepository(
                 processStreamResponse(response, conversationId)
             }
         }.onFailure { e ->
-            send(ChatStreamEvent.StreamError(e.messageOrDefault("Network error during token streaming")))
+            send(ChatStreamEvent.StreamError(e.messageOrDefault(UiErrorKey.CHAT_STREAM_NETWORK_ERROR)))
         }
     }
 
@@ -198,7 +209,11 @@ class ChatStreamingRepository(
         conversationId: String
     ) {
         if (!response.status.isSuccess()) {
-            send(ChatStreamEvent.StreamError("Server returned ${response.status}"))
+            send(
+                ChatStreamEvent.StreamError(
+                    "${UiErrorKey.CHAT_STREAM_HTTP_ERROR.fallbackMessage} ${response.status}"
+                )
+            )
             return
         }
         val rawText = response.bodyAsText()
@@ -232,11 +247,17 @@ class ChatStreamingRepository(
         jsonText: String,
         conversationId: String
     ) {
-        val packet = runCatchingPulse { json.decodeFromString<SsePacket>(jsonText) }.getOrNull() ?: return
-        val event = mapPacketToEvent(packet, conversationId)
-        if (event != null) {
-            send(event)
-        }
+        runCatchingPulse { json.decodeFromString<SsePacket>(jsonText) }.fold(
+            onSuccess = { packet ->
+                val event = mapPacketToEvent(packet, conversationId)
+                if (event != null) {
+                    send(event)
+                }
+            },
+            onFailure = { err ->
+                send(ChatStreamEvent.StreamError(err.messageOrDefault(UiErrorKey.CHAT_STREAM_FAILED)))
+            }
+        )
     }
 
     /**
@@ -255,7 +276,9 @@ class ChatStreamingRepository(
                 content = packet.content ?: "",
                 sqlSnippet = packet.sqlSnippet
             )
-            SseEventType.ERROR -> ChatStreamEvent.StreamError(packet.error ?: "Streaming failed")
+            SseEventType.ERROR -> ChatStreamEvent.StreamError(
+                packet.error ?: UiErrorKey.CHAT_STREAM_FAILED.fallbackMessage
+            )
             SseEventType.UNKNOWN -> null
         }
     }

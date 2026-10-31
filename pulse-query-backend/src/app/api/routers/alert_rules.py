@@ -6,6 +6,7 @@ to configure real-time bed capacity and occupancy alerting thresholds
 by delegating to `AlertRulesService`.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -20,6 +21,7 @@ from app.models.user import User
 from app.schemas.alert_rule import AlertRuleCreate, AlertRuleResponse, AlertRuleUpdate
 from app.services.alert_rules_service import alert_rules_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -39,7 +41,7 @@ async def list_alert_rules(
   Returns:
       list[AlertRule]: List of active and inactive alert rules.
   """
-  _ = current_user
+  logger.debug(f"Listing alert rules for user={current_user.id}")
   res = await alert_rules_service.list_alert_rules_result(db)
   return unwrap_or_raise_http(res)
 
@@ -62,7 +64,7 @@ async def create_alert_rule(
   Returns:
       AlertRule: The newly created and persisted alert rule.
   """
-  _ = current_user
+  logger.debug(f"Creating alert rule for user={current_user.id}")
   res = await alert_rules_service.create_alert_rule_result(request, db)
   return unwrap_or_raise_http(res)
 
@@ -87,7 +89,7 @@ async def get_alert_rule(
   Raises:
       HTTPException: 404 if the rule does not exist.
   """
-  _ = current_user
+  logger.debug(f"Fetching alert rule {rule_id} for user={current_user.id}")
   res = await alert_rules_service.get_alert_rule_result(rule_id, db)
   return unwrap_or_raise_http(res)
 
@@ -114,7 +116,7 @@ async def update_alert_rule(
   Raises:
       HTTPException: 404 if the rule does not exist.
   """
-  _ = current_user
+  logger.debug(f"Updating alert rule {rule_id} for user={current_user.id}")
   res = await alert_rules_service.update_alert_rule_result(rule_id, request, db)
   return unwrap_or_raise_http(res)
 
@@ -136,6 +138,6 @@ async def delete_alert_rule(
   Raises:
       HTTPException: 404 if the rule does not exist.
   """
-  _ = current_user
+  logger.debug(f"Deleting alert rule {rule_id} for user={current_user.id}")
   res = await alert_rules_service.delete_alert_rule_result(rule_id, db)
   unwrap_or_raise_http(res)

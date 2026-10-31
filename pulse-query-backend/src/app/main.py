@@ -38,10 +38,16 @@ from app.core.config import settings
 from app.core.diagnostics import check_configuration_hygiene, diagnostics_registry
 from app.database.duckdb import duckdb_manager
 from app.database.duckdb_init import init_duckdb_on_startup
-from app.database.postgres import Base, engine, validate_postgres_connection
+from app.database.postgres import (
+  Base,
+  DatabaseConfigurationError,
+  engine,
+  validate_postgres_connection,
+)
 from app.models import register_orm_models
 from app.services.data_ingestion import data_ingestion_service
 from app.services.template_seeder import TemplateSeeder
+from sqlalchemy.exc import SQLAlchemyError
 
 register_orm_models()
 
@@ -59,7 +65,7 @@ async def _background_ingest_loop(interval_minutes: int) -> None:
       data_ingestion_service.ingest_all_csvs()
     except asyncio.CancelledError:
       break
-    except Exception:
+    except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError):
       pass
 
 
@@ -82,7 +88,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
   try:
     async with engine.begin() as conn:
       await conn.run_sync(Base.metadata.create_all)
-  except Exception as pg_err:
+  except (SQLAlchemyError, OSError, RuntimeError, ValueError, DatabaseConfigurationError) as pg_err:
     logger.critical(f"❌ PostgreSQL schema initialization failed on startup: {pg_err}")
     diagnostics_registry.add_warning(
       code="POSTGRES_SCHEMA_INIT_FAILED",

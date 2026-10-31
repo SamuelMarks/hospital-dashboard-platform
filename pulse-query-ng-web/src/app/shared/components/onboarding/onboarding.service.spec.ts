@@ -220,12 +220,21 @@ describe('OnboardingService', () => {
     expect(ONBOARDING_STEPS.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('each step has required fields', () => {
+  it('each step has required fields and simulation routes to /optimization', () => {
     for (const step of ONBOARDING_STEPS) {
       expect(typeof step.id).toBe('string');
       expect(typeof step.title).toBe('string');
       expect(typeof step.description).toBe('string');
       expect(typeof step.icon).toBe('string');
     }
+    const simStep = ONBOARDING_STEPS.find((s) => s.id === 'simulation');
+    expect(simStep?.actionRoute).toBe('/optimization');
+  });
+
+  it('cleans up pending show timer when service injector is destroyed before 500ms', () => {
+    const svc = createService();
+    TestBed.resetTestingModule();
+    vi.advanceTimersByTime(500);
+    expect(svc.isVisible()).toBe(false);
   });
 });

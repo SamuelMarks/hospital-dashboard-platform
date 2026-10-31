@@ -121,6 +121,38 @@ class ErrorExecutionPayload(BaseModel):
   natural_text: str | None = None
 
 
+class PreparedSqlQuery(BaseModel):
+  """
+  Discriminated outcome representing a successfully resolved SQL widget configuration ready for execution.
+
+  Attributes:
+      outcome_kind (Literal["prepared"]): Discriminator tag identifying a prepared SQL query outcome.
+      resolved_query (ResolvedSqlQuery): Resolved SQL configuration and processor metadata.
+  """
+
+  outcome_kind: Literal["prepared"] = "prepared"
+  resolved_query: ResolvedSqlQuery
+
+
+class EarlyWidgetErrorPayload(BaseModel):
+  """
+  Discriminated outcome representing a widget-scoped preparation error returned as a 200 OK widget error state.
+
+  Attributes:
+      outcome_kind (Literal["early_error"]): Discriminator tag identifying an early widget error outcome.
+      resolved_query (ResolvedSqlQuery): Resolved SQL configuration context.
+      error_payload (ErrorExecutionPayload): Strongly typed widget error payload model.
+  """
+
+  outcome_kind: Literal["early_error"] = "early_error"
+  resolved_query: ResolvedSqlQuery
+  error_payload: ErrorExecutionPayload
+
+
+type SingleWidgetPreparationOutcome = PreparedSqlQuery | EarlyWidgetErrorPayload
+"""Discriminated union modeling single-widget SQL preparation outcomes."""
+
+
 def coerce_execution_payload(val: Mapping[str, JsonValue]) -> JsonObject:
   """
   Infers the discriminator `'kind'` field when validating raw runner dictionaries into `WidgetExecutionPayload`.
@@ -261,6 +293,29 @@ class HttpRunnerResultDict(TypedDict):
   data: JsonValue
   status: int
   error: str | None
+
+
+class WidgetExecutionErrorDict(TypedDict, total=False):
+  """
+  TypedDict representing an error or text-stub widget execution payload.
+
+  Attributes:
+      data (list[SqlRow] | None): Empty list or None on error/stub.
+      columns (list[str]): Column names (empty on error).
+      error (str | None): Error message string.
+      status (str | int): Status indicator (`'success'` for text stubs or HTTP code).
+      generated_sql (str | None): Optional SQL string generated prior to error.
+      processor_used (str | None): Optional processor identifier.
+      natural_text (str | None): Optional natural-language input prompt.
+  """
+
+  data: list[SqlRow] | None
+  columns: list[str]
+  error: str | None
+  status: str | int
+  generated_sql: str | None
+  processor_used: str | None
+  natural_text: str | None
 
 
 class SqlRunnerPayload(BaseModel):

@@ -176,7 +176,7 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
     }
 
     /**
-     * Verifies that an [AlertRuleResponse] model maps all expected fields for edit dialog pre-population.
+     * Verifies that an [AlertRuleResponse] model serializes/deserializes cleanly and integrates with [AlertRulesViewModel].
      */
     @Test
     fun testAlertRuleResponseMappingForEdit() {
@@ -190,11 +190,14 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
             createdAt = now
         )
 
-        assertNotNull(rule.createdAt)
-        assertEquals("rule-uuid-1234", rule.id)
-        assertEquals("Emergency", rule.unitCategory)
-        assertEquals(88.0, rule.thresholdPercentage)
-        assertEquals(AlertSeverity.WARNING, rule.severity)
-        assertTrue(rule.isActive ?: false)
+        val jsonStr = kotlinx.serialization.json.Json.encodeToString(rule)
+        val decoded = kotlinx.serialization.json.Json.decodeFromString<AlertRuleResponse>(jsonStr)
+        assertEquals(rule, decoded)
+        assertNotNull(decoded.createdAt)
+        assertEquals("rule-uuid-1234", decoded.id)
+        assertEquals("Emergency", decoded.unitCategory)
+        assertEquals(88.0, decoded.thresholdPercentage)
+        assertEquals(AlertSeverity.WARNING, decoded.severity)
+        assertTrue(decoded.isActive ?: false)
     }
 }

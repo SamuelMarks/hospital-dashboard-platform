@@ -2,7 +2,18 @@
  * @fileoverview Modal dialog component for editing an existing dashboard widget's
  * data source configuration and visualization column mappings.
  */
-import { Component, OnInit, computed, Signal, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  Signal,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { finalize } from 'rxjs';
 
 // Material Imports
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -14,6 +25,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 
 import { WidgetResponse, DashboardsService, WidgetUpdate, DashboardResponse } from '../api-client';
+import { extractApiErrorMessage } from '../core/error.utils';
 import { DashboardStore } from './dashboard.store';
 import { extractWidgetColumns } from './dashboard.models';
 import { SqlBuilderComponent } from '../editors/sql-builder.component';
@@ -100,8 +112,16 @@ export class WidgetEditorDialog implements OnInit {
 
   /** Access existing data to populate column dropdowns. */
   private readonly store = inject(DashboardStore);
+  /** Destroy reference for cancelling in-flight HTTP requests when the dialog closes. */
+  private readonly destroyRef = inject(DestroyRef);
   /** Processor catalog service providing `SQL [no model]`, Ollama models, and `any-llm` models. */
   readonly processorCatalog = inject(ProcessorCatalogService);
+
+  /** Whether a widget update operation is currently in progress. */
+  readonly isSaving = signal(false);
+
+  /** Latest error message encountered while saving widget settings, or `null`. */
+  readonly errorMessage = signal<string | null>(null);
 
   /** Editable widget title synchronized from widget configuration. */
   readonly title = linkedSignal<string>(() => this.data.widget.title || '');
@@ -222,59 +242,85 @@ export class WidgetEditorDialog implements OnInit {
    * Merges with existing config to prevent overwriting Query/URL logic.
    */
   saveSettings(): void {
+    this.isSaving.set(true);
+    this.errorMessage.set(null);
+
     // 1. Get fresh widget state (in case Editor modified config)
     this.dashboardsApi
       .getDashboardApiV1DashboardsDashboardIdGet(this.data.dashboardId)
-      .subscribe((dash: DashboardResponse) => {
-        const freshWidget = dash.widgets.find((w: WidgetResponse) => w.id === this.widget.id);
-        if (!freshWidget) return;
-
-        const currentConfig = freshWidget.config;
-        const extraSqlConfig: Record<string, unknown> = {};
-        if (
-          this.widget.type === 'SQL' &&
-          (this.allowNaturalText() ||
-            this.processor() !== 'SQL' ||
-            'allow_natural_text' in currentConfig ||
-            'processor' in currentConfig)
-        ) {
-          extraSqlConfig['allow_natural_text'] = this.allowNaturalText();
-          extraSqlConfig['processor'] = this.processor();
-          if (this.naturalTextPrompt().trim()) {
-            extraSqlConfig['natural_text_prompt'] = this.naturalTextPrompt().trim();
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (dash: DashboardResponse) => {
+          const freshWidget = dash.widgets.find((w: WidgetResponse) => w.id === this.widget.id);
+          if (!freshWidget) {
+            this.isSaving.set(false);
+            return;
           }
-          if (this.placeholderText().trim()) {
-            extraSqlConfig['placeholder_text'] = this.placeholderText().trim();
+
+          const currentConfig = freshWidget.config;
+          const extraSqlConfig: Record<string, unknown> = {};
+          if (
+            this.widget.type === 'SQL' &&
+            (this.allowNaturalText() ||
+              this.processor() !== 'SQL' ||
+              'allow_natural_text' in currentConfig ||
+              'processor' in currentConfig)
+          ) {
+            extraSqlConfig['allow_natural_text'] = this.allowNaturalText();
+            extraSqlConfig['processor'] = this.processor();
+            if (this.naturalTextPrompt().trim()) {
+              extraSqlConfig['natural_text_prompt'] = this.naturalTextPrompt().trim();
+            }
+            if (this.placeholderText().trim()) {
+              extraSqlConfig['placeholder_text'] = this.placeholderText().trim();
+            }
           }
-        }
 
-        const trimmedTitle = this.title().trim() || freshWidget.title;
-        const trimmedSubtitle = this.subtitle().trim();
+          const trimmedTitle = this.title().trim() || freshWidget.title;
+          const trimmedSubtitle = this.subtitle().trim();
 
-        // 2. Merge Updates
-        const newConfig: Record<string, unknown> = {
-          ...currentConfig,
-          xKey: this.xKey(),
-          yKey: this.yKey(),
-          ...extraSqlConfig,
-        };
-        if (trimmedSubtitle) {
-          newConfig['subtitle'] = trimmedSubtitle;
-        } else {
-          delete newConfig['subtitle'];
-        }
+          // 2. Merge Updates
+          const newConfig: Record<string, unknown> = {
+            ...currentConfig,
+            xKey: this.xKey(),
+            yKey: this.yKey(),
+            ...extraSqlConfig,
+          };
+          if (trimmedSubtitle) {
+            newConfig['subtitle'] = trimmedSubtitle;
+          } else {
+            delete newConfig['subtitle'];
+          }
 
-        // 3. Persist
-        const update: WidgetUpdate = {
-          title: trimmedTitle,
-          subtitle: trimmedSubtitle || null,
-          config: newConfig,
-        };
-        this.dashboardsApi
-          .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(this.widget.id, update)
-          .subscribe(() => {
-            this.dialogRef.close(true);
-          });
+          // 3. Persist
+          const update: WidgetUpdate = {
+            title: trimmedTitle,
+            subtitle: trimmedSubtitle || null,
+            config: newConfig,
+          };
+          this.dashboardsApi
+            .updateWidgetApiV1DashboardsWidgetsWidgetIdPut(this.widget.id, update)
+            .pipe(
+              takeUntilDestroyed(this.destroyRef),
+              finalize(() => this.isSaving.set(false)),
+            )
+            .subscribe({
+              next: () => {
+                this.dialogRef.close(true);
+              },
+              error: (err: unknown) => {
+                this.errorMessage.set(
+                  extractApiErrorMessage(err, $localize`Failed to update widget configuration.`),
+                );
+              },
+            });
+        },
+        error: (err: unknown) => {
+          this.isSaving.set(false);
+          this.errorMessage.set(
+            extractApiErrorMessage(err, $localize`Failed to update widget configuration.`),
+          );
+        },
       });
   }
 }

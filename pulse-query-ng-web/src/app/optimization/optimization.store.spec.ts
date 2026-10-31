@@ -17,7 +17,7 @@ import {
   QuickActionDefinitionSchema,
   QuickActionExecutionResponse,
 } from '../api-client';
-import { OptimizationStore } from './optimization.store';
+import { isOptimizationUseCase, OptimizationStore } from './optimization.store';
 
 const MOCK_INSTITUTIONS: InstitutionProfileSchema[] = [
   {
@@ -364,6 +364,12 @@ describe('OptimizationStore', () => {
   });
 
   it('should submit survey and handle survey errors', () => {
+    expect(isOptimizationUseCase('service_unit')).toBe(true);
+    expect(isOptimizationUseCase('surgical_scheduling')).toBe(true);
+    expect(isOptimizationUseCase('staffing_optimization')).toBe(true);
+    expect(isOptimizationUseCase('invalid')).toBe(false);
+    expect(isOptimizationUseCase(null)).toBe(false);
+
     mockApi.submitOptimizationSurveyApiV1OptimizationSurveysPost.mockReturnValue(
       of({ id: 'surv-1' }),
     );
@@ -372,6 +378,17 @@ describe('OptimizationStore', () => {
       score_vs_other_workflow_tech: 5,
       interpretability_score: 5,
       qualitative_feedback: 'Great!',
+    });
+    expect(store.surveySuccessMessage()).toContain('Thank you!');
+
+    // Also test when summary refresh fails gracefully via catchError(() => EMPTY)
+    mockApi.getOptimizationEvaluationSummaryApiV1OptimizationSurveysSummaryGet.mockReturnValue(
+      throwError(() => new Error('Summary refresh failed')),
+    );
+    store.submitSurvey({
+      score_vs_manual_process: 5,
+      score_vs_other_workflow_tech: 5,
+      interpretability_score: 5,
     });
     expect(store.surveySuccessMessage()).toContain('Thank you!');
 

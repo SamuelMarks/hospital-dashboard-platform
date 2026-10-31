@@ -6,6 +6,7 @@ update clinical role assignments, and suspend or activate user accounts
 by delegating to `AdminUsersService`.
 """
 
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -19,6 +20,7 @@ from app.models.user import User
 from app.schemas.user import UserResponse, UserRoleUpdate, UserStatusUpdate
 from app.services.admin_users_service import admin_users_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -46,7 +48,7 @@ async def list_users(
   Returns:
       list[User]: Filtered list of registered user profiles.
   """
-  _ = current_user
+  logger.debug(f"Listing platform users for admin={current_user.id}")
   res = await admin_users_service.list_users_result(
     db=db,
     limit=limit,
@@ -79,7 +81,7 @@ async def update_user_role(
   Raises:
       HTTPException: 400 if the role is invalid, 404 if the user is not found.
   """
-  _ = current_user
+  logger.debug(f"Updating user {user_id} role for admin={current_user.id}")
   res = await admin_users_service.update_user_role_result(user_id=user_id, payload=payload, db=db)
   return unwrap_or_raise_http(res)
 
