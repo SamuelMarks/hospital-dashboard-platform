@@ -24,7 +24,6 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ExperimentResponse
 import io.healthplatform.pulsequery.api.models.ModelInfo
@@ -34,12 +33,7 @@ import io.healthplatform.pulsequery.api.models.SQLGenerationRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/ai` ad-hoc SQL preview execution and multi-LLM arena comparison endpoints.
@@ -75,7 +69,7 @@ open class AiApi : ApiClient {
     /**
      * Execute Sql Preview
      * Executes SQL (read-only) and returns a small preview result. Intended for Arena candidate comparison in the UI.
-     * @param sqLExecutionRequest
+     * @param sqLExecutionRequest SQL execution request payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return SQLExecutionResponse
      */
@@ -109,7 +103,7 @@ open class AiApi : ApiClient {
     /**
      * Generate Sql Comparison
      * Generates SQL usage the Multi-LLM Arena.  This endpoint: 1. Broadcasts the prompt to all configured LLMs. 2. Persists the results as an Experiment. 3. Returns a list of candidates so the frontend can display a comparison view.  Args:     request (SQLGenerationRequest): The prompt payload.     current_user (User): Authenticated user.     db (AsyncSession): Database session for logging.  Returns:     ExperimentResponse: Object containing experiment ID and list of candidate SQLs.
-     * @param sqLGenerationRequest
+     * @param sqLGenerationRequest Natural language SQL generation request payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ExperimentResponse
      */
@@ -143,7 +137,7 @@ open class AiApi : ApiClient {
     /**
      * List Available Models
      * Returns the list of currently configured LLMs and processors available for the Arena or Widgets.
-     * @param showAll  (optional, default to false)
+     * @param showAll Whether to include unconfigured or hidden models (optional, default to false)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @param includeSql Whether to include the SQL [no model] processor option (optional, default to false)
      * @param discoverOllama Whether to dynamically query Ollama /api/tags (optional, default to false)
@@ -179,19 +173,6 @@ open class AiApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListAvailableModelsApiV1AiModelsGetResponse>().map { value }
-    }
-
-    @Serializable(ListAvailableModelsApiV1AiModelsGetResponse.Companion::class)
-    private class ListAvailableModelsApiV1AiModelsGetResponse(val value: List<ModelInfo>) {
-        companion object : KSerializer<ListAvailableModelsApiV1AiModelsGetResponse> {
-            private val serializer: KSerializer<List<ModelInfo>> = serializer<List<ModelInfo>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListAvailableModelsApiV1AiModelsGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListAvailableModelsApiV1AiModelsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 }

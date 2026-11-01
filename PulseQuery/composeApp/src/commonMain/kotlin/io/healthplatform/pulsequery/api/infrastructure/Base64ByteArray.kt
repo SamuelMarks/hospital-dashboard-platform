@@ -4,7 +4,6 @@
 package io.healthplatform.pulsequery.api.infrastructure
 
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -17,7 +16,6 @@ import kotlin.io.encoding.Base64
  *
  * @property value Underlying binary byte array content.
  */
-@Serializable(Base64ByteArray.Companion::class)
 class Base64ByteArray(val value: ByteArray) {
     /**
      * Custom [KSerializer] encoding [Base64ByteArray] instances as Base64 strings.

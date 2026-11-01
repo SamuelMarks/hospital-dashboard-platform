@@ -11,11 +11,10 @@ import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.core.result.toPulseQueryError
 import io.healthplatform.pulsequery.core.result.valueOrNull
 import io.ktor.client.engine.mock.respond
-import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.test.runTest
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull

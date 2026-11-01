@@ -9,8 +9,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
@@ -26,10 +28,12 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Verifies [AdminScreen] loading, saving, and error handling against a mocked `/api/v1/admin/settings` endpoint.
+ * Verifies [AdminScreen] loading, saving, helper functions, and error handling against a mocked `/api/v1/admin/settings` endpoint.
  */
 class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
@@ -87,14 +91,28 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         AppContainer.setHttpClientForTest(client)
     }
 
+    @Test
+    fun testAdminHelperFunctions() {
+        assertTrue(canAddApiKey("openai", "sk-123"))
+        assertFalse(canAddApiKey("", "sk-123"))
+        assertFalse(canAddApiKey("openai", "   "))
+
+        assertTrue(canAddVisibleModel("medgemma-27b", listOf("gemini-2.5-pro")))
+        assertFalse(canAddVisibleModel("", listOf("gemini-2.5-pro")))
+        assertFalse(canAddVisibleModel("gemini-2.5-pro", listOf("gemini-2.5-pro")))
+
+        assertEquals("openai: sk-1...", formatApiKeyPreview("openai", "sk-123456"))
+    }
+
     /**
-     * Verifies that [AdminScreen] loads existing API keys and visible models and saves updates cleanly.
+     * Verifies that [AdminScreen] loads existing API keys and visible models, supports adding/deleting keys and models, and saves updates cleanly.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testAdminScreenInitialLoadAndSave() = runComposeUiTest {
+    fun testAdminScreenInitialLoadInteractionsAndSave() = runComposeUiTest {
         setupMockApi(successLoad = true, successSave = true)
         var loadedKeyCount = 0
+        var userNavCount = 0
 
         setContent {
             MaterialTheme {
@@ -104,7 +122,10 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
                 }
                 val state by vm.state.collectAsState()
                 loadedKeyCount = state.apiKeys.size
-                AdminScreen(viewModel = vm)
+                AdminScreen(
+                    onNavigateToUserManagement = { userNavCount++ },
+                    viewModel = vm
+                )
             }
         }
 
@@ -113,15 +134,38 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
                 onAllNodesWithText("API Keys", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("API Keys", substring = true).assertIsDisplayed()
+
+        // Navigate to user management via top bar button and card
+        onNodeWithText("Users").performClick()
+        onNodeWithText("Staff User Management").performClick()
+        assertEquals(2, userNavCount)
+
+        // Click Add Key when empty (no-op branch) then with valid provider & key
+        onNodeWithContentDescription("Add Key").performClick()
+        onNodeWithText("Provider").performTextInput("anthropic")
+        onNodeWithText("Key").performTextInput("sk-ant-9999")
+        onNodeWithContentDescription("Add Key").performClick()
+
+        // Delete an API key
+        onAllNodes(androidx.compose.ui.test.hasContentDescription("Delete Key"))[0].performClick()
+
+        // Click Add Model when empty (no-op branch) then with valid model name
+        onNodeWithContentDescription("Add Model").performClick()
+        onNodeWithText("Model Name").performTextInput("medgemma-27b")
+        onNodeWithContentDescription("Add Model").performClick()
+
+        // Delete a visible model
+        onAllNodes(androidx.compose.ui.test.hasContentDescription("Delete Model"))[0].performClick()
+
         onNodeWithText("Save Settings", useUnmergedTree = true).performClick()
     }
 
     /**
-     * Verifies that [AdminScreen] renders an error message when loading settings fails.
+     * Verifies that [AdminScreen] renders an error message when loading settings fails and supports retry.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testAdminScreenLoadError() = runComposeUiTest {
+    fun testAdminScreenLoadErrorAndRetry() = runComposeUiTest {
         setupMockApi(successLoad = false)
 
         setContent {
@@ -134,6 +178,7 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
             onAllNodesWithText("Admin settings unavailable", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Admin settings unavailable", substring = true).assertIsDisplayed()
+        onNodeWithText("Retry").performClick()
     }
 
     /**

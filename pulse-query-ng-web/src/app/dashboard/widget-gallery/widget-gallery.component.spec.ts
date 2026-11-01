@@ -129,7 +129,7 @@ describe('WidgetGalleryComponent', () => {
     const groups = component.groupedTemplates();
 
     expect(groups.length).toBe(1);
-    expect(groups[0]?.items.length).toBe(2);
+    expect(groups[0]?.items?.length).toBe(2);
     expect(component.getEventValue(createMockInputEvent('abc'))).toBe('abc');
 
     // Test getTemplateSkeletonVariant and getTemplateRowSpan across template types

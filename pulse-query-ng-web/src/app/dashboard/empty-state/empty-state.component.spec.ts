@@ -73,7 +73,7 @@ describe('EmptyStateComponent', () => {
   it('should open wizard on template card click', () => {
     // Find first card (Wizard)
     const card = fixture.debugElement.queryAll(By.css('.action-card'))[0];
-    card.triggerEventHandler('click', null);
+    card?.triggerEventHandler('click', null);
 
     expect(mockStore.toggleEditMode).toHaveBeenCalled(); // Should auto-enable edit
     expect(mockDialog.open).toHaveBeenCalledWith(WidgetBuilderComponent, expect.anything());
@@ -81,14 +81,14 @@ describe('EmptyStateComponent', () => {
 
   it('should open AI sidebar on AI card click', () => {
     const card = fixture.debugElement.queryAll(By.css('.action-card'))[1];
-    card.triggerEventHandler('click', null);
+    card?.triggerEventHandler('click', null);
 
     expect(mockAskData.open).toHaveBeenCalled();
   });
 
   it('should trigger seeder on sample card click', () => {
     const card = fixture.debugElement.queryAll(By.css('.action-card'))[2];
-    card.triggerEventHandler('click', null);
+    card?.triggerEventHandler('click', null);
 
     expect(mockStore.createDefaultDashboard).toHaveBeenCalled();
   });

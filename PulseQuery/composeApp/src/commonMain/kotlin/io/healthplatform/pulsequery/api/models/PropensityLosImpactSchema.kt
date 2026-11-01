@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -30,15 +29,9 @@ import kotlinx.serialization.Serializable
  * @property estimatedPatientDaysSaved * @param offServiceLosPenaltyDays
  */
 @Serializable
-
-data class PropensityLosImpactSchema (
-
+data class PropensityLosImpactSchema(
     @SerialName(value = "baseline_mean_los_days") @Required val baselineMeanLosDays: kotlin.Double,
-
     @SerialName(value = "optimized_mean_los_days") @Required val optimizedMeanLosDays: kotlin.Double,
-
     @SerialName(value = "estimated_patient_days_saved") @Required val estimatedPatientDaysSaved: kotlin.Double,
-
     @SerialName(value = "off_service_los_penalty_days") @Required val offServiceLosPenaltyDays: kotlin.Double
-
 )

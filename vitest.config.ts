@@ -27,17 +27,16 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
-    setupFiles: ["src/test-setup.ts"],
+    setupFiles: ["src/test-utils/vitest-setup-entry.ts"],
     include: ["src/**/*.spec.ts"],
     coverage: {
       provider: "v8",
       all: true,
-      include: ["src/**/*.ts"],
+      allowExternal: true,
+      include: ["src/**/*.ts", "**/scripts/verify_docs.ts"],
       exclude: [
         "src/**/*.spec.ts",
-        "src/app/api-client/**",
         "src/setup-storage.ts",
-        "src/test-setup.ts",
         "src/test-utils/**",
         "src/main.server.ts",
         "src/app/app.config.server.ts",

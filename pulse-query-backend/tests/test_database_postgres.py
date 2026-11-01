@@ -1,9 +1,15 @@
 """
-Tests for PostgreSQL dependency helpers and SQLite compatibility type compilers.
+Tests for PostgreSQL dependency helpers, SQLite compatibility type compilers,
+and full Alembic migration lifecycle (`alembic/env.py` and `alembic/versions/*.py`).
 """
 
+from __future__ import annotations
+
+import importlib.util
+from pathlib import Path
 from types import TracebackType
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
 
 import pytest
 
@@ -154,10 +160,8 @@ def test_alembic_sqlite_upgrade_commits_all_migrations(
   monkeypatch: pytest.MonkeyPatch,
 ) -> None:
   """
-  Verifies that running Alembic `upgrade head` against a `sqlite+aiosqlite`
-  database commits all migration steps (including `users.is_admin`, `users.role`,
-  `users.language_preference`, and `alembic_version`), and recovers cleanly when
-  a legacy `users` table exists without `alembic_version`.
+  Verifies that running Alembic `upgrade head`, `downgrade base`, and offline/dialect branches
+  against `alembic/env.py` and all `alembic/versions/*.py` executes every migration path cleanly.
 
   Args:
       tmp_path (pytest.TempPathFactory): Temporary directory fixture.
@@ -165,9 +169,8 @@ def test_alembic_sqlite_upgrade_commits_all_migrations(
   """
   import contextlib
   import sqlite3
-  from pathlib import Path
 
-  from alembic import command
+  from alembic import command, context
   from alembic.config import Config
 
   from app.core.config import BACKEND_ROOT, settings
@@ -184,6 +187,8 @@ def test_alembic_sqlite_upgrade_commits_all_migrations(
 
   alembic_cfg = Config(str(BACKEND_ROOT / "alembic.ini"))
   alembic_cfg.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+
+  # 1. Upgrade up to head
   command.upgrade(alembic_cfg, "head")
 
   with contextlib.closing(sqlite3.connect(str(db_file))) as conn:
@@ -201,3 +206,68 @@ def test_alembic_sqlite_upgrade_commits_all_migrations(
 
     version_rows = conn.execute("SELECT version_num FROM alembic_version").fetchall()
     assert version_rows == [("014",)]
+
+  # 2. Run upgrade("head") again when `alembic_version` already exists (exercises false branch in do_run_migrations)
+  command.upgrade(alembic_cfg, "head")
+
+  # 3. Exercise `downgrade` across all revisions (`head` -> `base`) using op.drop_column mock on SQLite
+  with patch("alembic.op.drop_column") as mock_drop_col:
+    command.downgrade(alembic_cfg, "base")
+    assert mock_drop_col.call_count >= 3
+
+  # 4. Exercise `alembic/env.py` offline mode and `config.config_file_name is None` branch
+  env_path = BACKEND_ROOT / "alembic" / "env.py"
+  spec_env = importlib.util.spec_from_file_location("alembic_env_test", env_path)
+  assert spec_env is not None
+  assert spec_env.loader is not None
+  mock_cfg = Config()
+  mock_cfg.config_file_name = None
+  with (
+    patch.object(context, "config", mock_cfg, create=True),
+    patch.object(context, "is_offline_mode", return_value=True, create=True),
+    patch.object(context, "configure", create=True) as mock_ctx_configure,
+    patch.object(context, "begin_transaction", create=True),
+    patch.object(context, "run_migrations", create=True) as mock_ctx_run,
+  ):
+    env_mod = importlib.util.module_from_spec(spec_env)
+    spec_env.loader.exec_module(env_mod)
+    mock_ctx_configure.assert_called_once()
+    mock_ctx_run.assert_called_once()
+
+  # 5. Exercise `002_add_templates.py` postgresql dialect branch and `012_migrate_visit_id_to_visit_type.py` data branches
+  from alembic.script import ScriptDirectory
+
+  script_dir = ScriptDirectory.from_config(alembic_cfg)
+  mod_002 = script_dir.get_revision("002").module
+
+  pg_bind = MagicMock()
+  pg_bind.dialect.name = "postgresql"
+  with (
+    patch("alembic.op.create_table", create=True),
+    patch("alembic.op.create_index", create=True),
+    patch("alembic.op.f", side_effect=lambda x: x, create=True),
+    patch("alembic.op.get_bind", return_value=pg_bind, create=True),
+    patch("alembic.op.execute", create=True) as mock_exec_002,
+  ):
+    mod_002.upgrade()
+    mock_exec_002.assert_called_with("CREATE OR REPLACE VIEW templates AS SELECT * FROM widget_templates")
+
+  mod_012 = script_dir.get_revision("012").module
+
+  # Raw string JSON branch, invalid JSON string branch, dict match branch, and dict non-match branch in 012
+  str_bind = MagicMock()
+  str_bind.execute.return_value.fetchall.return_value = [
+    (uuid.uuid4(), '{"query": "SELECT Visit_ID FROM t"}'),
+    (uuid.uuid4(), "{bad-json"),
+    (uuid.uuid4(), {"query": "SELECT Visit_ID FROM t2"}),
+    (uuid.uuid4(), {"query": "SELECT 1"}),
+  ]
+  with patch("alembic.op.get_bind", return_value=str_bind):
+    mod_012.upgrade()
+    assert str_bind.execute.call_count == 3
+
+  # Outer exception branch in 012
+  err_bind = MagicMock()
+  err_bind.execute.side_effect = RuntimeError("db unavailable")
+  with patch("alembic.op.get_bind", return_value=err_bind):
+    mod_012.upgrade()

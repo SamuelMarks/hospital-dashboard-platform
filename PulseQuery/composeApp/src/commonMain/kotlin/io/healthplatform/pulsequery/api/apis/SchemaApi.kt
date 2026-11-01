@@ -24,18 +24,12 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.TableInfo
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/schema` DuckDB OLAP table and column schema introspection endpoints.
@@ -96,19 +90,6 @@ open class SchemaApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetDatabaseSchemaApiV1SchemaGetResponse>().map { value }
-    }
-
-    @Serializable(GetDatabaseSchemaApiV1SchemaGetResponse.Companion::class)
-    private class GetDatabaseSchemaApiV1SchemaGetResponse(val value: List<TableInfo>) {
-        companion object : KSerializer<GetDatabaseSchemaApiV1SchemaGetResponse> {
-            private val serializer: KSerializer<List<TableInfo>> = serializer<List<TableInfo>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: GetDatabaseSchemaApiV1SchemaGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = GetDatabaseSchemaApiV1SchemaGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 }

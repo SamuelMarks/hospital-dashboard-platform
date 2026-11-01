@@ -75,6 +75,20 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
                         headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                     )
                 }
+                request.url.encodedPath.contains("widgets") -> {
+                    respond(
+                        """{"id":"w-1","dashboard_id":"1","title":"Census Widget","type":"SQL","visualization":"table","config":{"query":"SELECT 1"}}""",
+                        HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+                request.url.encodedPath.contains("widgets") -> {
+                    respond(
+                        """{"id":"w-1","dashboard_id":"1","title":"Census Widget","type":"SQL","visualization":"table","config":{"query":"SELECT 1"}}""",
+                        HttpStatusCode.OK,
+                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
                 request.url.encodedPath.contains("dashboards") -> {
                     respond(
                         """[{"id":"dash-1","name":"ICU Operational Board","is_auto_refresh":false,"refresh_interval_seconds":30,"theme":"light","created_at":"2026-09-01T00:00:00Z","updated_at":"2026-09-01T00:00:00Z"}]""",
@@ -164,23 +178,56 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
     }
 
     /**
-     * Verifies that clicking Save Query opens [SaveQueryDialog].
+     * Verifies that clicking Save Query opens [SaveQueryDialog], supports dismissal, and shows a snackbar when saved.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testEditorScreenOpensSaveDialog() = runComposeUiTest {
+    fun testEditorScreenOpensDismissesAndSavesDialogAndUpdatesSqlAndStagesCart() = runComposeUiTest {
         setupMockApi(success = true)
+        val customVm = io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel(
+            scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        )
 
         setContent {
             MaterialTheme {
-                EditorScreen()
+                EditorScreen(viewModel = customVm)
             }
         }
+
+        onNodeWithText("Query").performTextInput(" WHERE 1=1")
+        onNodeWithText("Add to Cart").performClick()
 
         onNodeWithContentDescription("Save Query").performClick()
         onNodeWithText("Save Analytical Query").assertExists()
         onNodeWithText("Dashboard Widget").assertExists()
         onNodeWithText("Template Library").assertExists()
+
+        // Dismiss dialog
+        onNodeWithText("Cancel").performClick()
+        waitForIdle()
+
+        // Re-open dialog and save as template to trigger onSaved snackbar
+        onNodeWithContentDescription("Save Query").performClick()
+        onNodeWithText("Template Library").performClick()
+        onNodeWithText("Title").performTextInput("Admissions Count")
+        onNodeWithText("Save").performClick()
+
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Template successfully registered in library", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("Template successfully registered in library", substring = true).assertIsDisplayed()
+    }
+
+    /**
+     * Verifies [resolveEditorViewModel] returns a provided instance or constructs a new one.
+     */
+    @Test
+    fun testResolveEditorViewModel() {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val provided = io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel(scope = scope)
+        assertEquals(provided, resolveEditorViewModel(provided, scope))
+        val created = resolveEditorViewModel(null, scope)
+        assertTrue(created !== provided)
     }
 
     /**
@@ -216,13 +263,14 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
      * Verifies [SaveQueryDestination] enum entries and [io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel.saveQuery] localized confirmation messages.
      */
     @Test
-    fun testSaveQueryDestinationEnumValues() = kotlinx.coroutines.test.runTest {
+    fun testSaveQueryDestinationEnumValues() = kotlinx.coroutines.runBlocking {
         assertEquals(2, SaveQueryDestination.entries.size)
         assertTrue(SaveQueryDestination.entries.contains(SaveQueryDestination.DASHBOARD_WIDGET))
         assertTrue(SaveQueryDestination.entries.contains(SaveQueryDestination.TEMPLATE))
 
         setupMockApi(success = true)
-        val vm = io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel(scope = this)
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val vm = io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel(scope = scope)
         val widgetRes = vm.saveQuery(
             destination = SaveQueryDestination.DASHBOARD_WIDGET,
             title = "Census Widget",

@@ -65,8 +65,14 @@ describe('HomeComponent', () => {
   };
   let router: Router;
 
+  const mockFirstDashboard: DashboardResponse = {
+    id: 'd1',
+    name: 'Finance',
+    owner_id: 'u1',
+    widgets: [],
+  };
   const mockDashboardList: DashboardResponse[] = [
-    { id: 'd1', name: 'Finance', owner_id: 'u1', widgets: [] },
+    mockFirstDashboard,
     { id: 'd2', name: 'Operations', owner_id: 'u1', widgets: [] },
   ];
 
@@ -221,7 +227,7 @@ describe('HomeComponent', () => {
   // --- renameDashboard ---
   it('should ignore rename when dialog cancelled', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(undefined) });
-    component.renameDashboard(mockDashboardList[0]);
+    component.renameDashboard(mockFirstDashboard);
     expect(mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut).not.toHaveBeenCalled();
   });
 
@@ -229,7 +235,7 @@ describe('HomeComponent', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of('New Name') });
     mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut.mockReturnValue(of({}));
 
-    component.renameDashboard(mockDashboardList[0]);
+    component.renameDashboard(mockFirstDashboard);
 
     expect(mockDialog.open).toHaveBeenCalledWith(PromptDialogComponent, expect.anything());
     expect(mockDashApi.updateDashboardApiV1DashboardsDashboardIdPut).toHaveBeenCalledWith('d1', {
@@ -246,7 +252,7 @@ describe('HomeComponent', () => {
       throwError(() => new Error('update err')),
     );
 
-    component.renameDashboard(mockDashboardList[0]);
+    component.renameDashboard(mockFirstDashboard);
 
     // Should revert back to original
     expect(component.dashboards().find((d) => d.id === 'd1')?.name).toBe('Finance');
@@ -261,7 +267,7 @@ describe('HomeComponent', () => {
     const clonedDash = { id: 'd1-clone', name: 'Finance (Clone)' };
     mockDashApi.cloneDashboardApiV1DashboardsDashboardIdClonePost.mockReturnValue(of(clonedDash));
 
-    component.cloneDashboard(mockDashboardList[0]);
+    component.cloneDashboard(mockFirstDashboard);
 
     expect(component.dashboards()).toContainEqual(clonedDash);
     expect(mockSnackBar.open).toHaveBeenCalledWith('Cloned "Finance" successfully', 'Close', {
@@ -275,7 +281,7 @@ describe('HomeComponent', () => {
       throwError(() => new Error('clone err')),
     );
 
-    component.cloneDashboard(mockDashboardList[0]);
+    component.cloneDashboard(mockFirstDashboard);
 
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to clone.', 'Close', { duration: 5000 });
     consoleSpy.mockRestore();
@@ -286,7 +292,7 @@ describe('HomeComponent', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(true) });
     mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete.mockReturnValue(of({}));
 
-    component.deleteDashboard(mockDashboardList[0]);
+    component.deleteDashboard(mockFirstDashboard);
 
     // Check it's removed
     expect(component.dashboards().find((d) => d.id === 'd1')).toBeUndefined();
@@ -303,7 +309,7 @@ describe('HomeComponent', () => {
     // Initial State: 2 items
     expect(component.dashboards().length).toBe(2);
 
-    component.deleteDashboard(mockDashboardList[0]);
+    component.deleteDashboard(mockFirstDashboard);
 
     // Check restore happened
     expect(mockSnackBar.open).toHaveBeenCalledWith('Failed to delete. Restored item.', 'Close', {
@@ -316,15 +322,13 @@ describe('HomeComponent', () => {
 
   it('should do nothing if delete is cancelled', () => {
     mockDialog.open.mockReturnValue({ afterClosed: () => of(false) });
-    component.deleteDashboard(mockDashboardList[0]);
+    component.deleteDashboard(mockFirstDashboard);
     expect(mockDashApi.deleteDashboardApiV1DashboardsDashboardIdDelete).not.toHaveBeenCalled();
   });
 
   it('should navigate via openDashboard and format getDashboardOptionsAriaLabel', () => {
     component.openDashboard('d1');
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard', 'd1']);
-    expect(component.getDashboardOptionsAriaLabel(mockDashboardList[0])).toBe(
-      'Options for Finance',
-    );
+    expect(component.getDashboardOptionsAriaLabel(mockFirstDashboard)).toBe('Options for Finance');
   });
 });

@@ -37,10 +37,10 @@ describe('Dashboard Undo/Redo Commands', () => {
 
   let mockStore: DashboardCommandStore & {
     widgets: ReturnType<typeof signal<WidgetResponse[]>>;
-    setWidgets: ReturnType<typeof vi.fn>;
-    optimisticRemoveWidget: ReturnType<typeof vi.fn>;
-    optimisticRestoreWidget: ReturnType<typeof vi.fn>;
-    loadDashboard: ReturnType<typeof vi.fn>;
+    setWidgets: ReturnType<typeof vi.fn<(widgets: WidgetResponse[]) => void>>;
+    optimisticRemoveWidget: ReturnType<typeof vi.fn<(id: string) => void>>;
+    optimisticRestoreWidget: ReturnType<typeof vi.fn<(widget: WidgetResponse) => void>>;
+    loadDashboard: ReturnType<typeof vi.fn<(dashboardId: string) => void>>;
   };
 
   beforeEach(() => {
@@ -52,10 +52,10 @@ describe('Dashboard Undo/Redo Commands', () => {
 
     mockStore = {
       widgets: signal<WidgetResponse[]>([]),
-      setWidgets: vi.fn(),
-      optimisticRemoveWidget: vi.fn(),
-      optimisticRestoreWidget: vi.fn(),
-      loadDashboard: vi.fn(),
+      setWidgets: vi.fn<(widgets: WidgetResponse[]) => void>(),
+      optimisticRemoveWidget: vi.fn<(id: string) => void>(),
+      optimisticRestoreWidget: vi.fn<(widget: WidgetResponse) => void>(),
+      loadDashboard: vi.fn<(dashboardId: string) => void>(),
     };
   });
 

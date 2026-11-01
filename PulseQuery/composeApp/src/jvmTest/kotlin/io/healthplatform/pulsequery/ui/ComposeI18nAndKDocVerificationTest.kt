@@ -50,17 +50,24 @@ class ComposeI18nAndKDocVerificationTest {
 
     @Test
     fun testAllKotlinSourceFilesContainKDocComments() {
-        val srcRoot = File("src/commonMain/kotlin/io/healthplatform/pulsequery")
-        assertTrue(srcRoot.exists(), "commonMain source root must exist")
+        val sourceRoots = listOf(
+            File("src/commonMain/kotlin/io/healthplatform/pulsequery"),
+            File("src/androidMain/kotlin/io/healthplatform/pulsequery"),
+            File("src/jvmMain/kotlin/io/healthplatform/pulsequery"),
+            File("src/iosMain/kotlin/io/healthplatform/pulsequery"),
+            File("src/jsMain/kotlin/io/healthplatform/pulsequery"),
+            File("src/wasmJsMain/kotlin/io/healthplatform/pulsequery"),
+            File("src/webMain/kotlin/io/healthplatform/pulsequery")
+        )
 
-        val missingKDoc = srcRoot.walkTopDown()
-            .filter { it.isFile && it.extension == "kt" }
-            .filter { file ->
-                val content = file.readText()
-                !content.contains("/**")
-            }
-            .map { it.relativeTo(srcRoot).path }
-            .toList()
+        val missingKDoc = mutableListOf<String>()
+        for (srcRoot in sourceRoots) {
+            assertTrue(srcRoot.exists(), "Source root ${srcRoot.path} must exist")
+            srcRoot.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filter { file -> !file.readText().contains("/**") }
+                .forEach { missingKDoc.add(it.path) }
+        }
 
         assertTrue(
             missingKDoc.isEmpty(),

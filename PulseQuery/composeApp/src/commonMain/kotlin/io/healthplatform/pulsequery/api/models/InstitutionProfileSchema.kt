@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,33 +32,21 @@ import kotlinx.serialization.Serializable
  * @property surgicalPrograms * @param federatedNodeEnabled
  */
 @Serializable
-
-data class InstitutionProfileSchema (
-
+data class InstitutionProfileSchema(
     @SerialName(value = "institution_id") @Required val institutionId: kotlin.String,
-
     @SerialName(value = "name") @Required val name: kotlin.String,
-
     @SerialName(value = "short_name") @Required val shortName: kotlin.String,
-
     @SerialName(value = "hospital_type") @Required val hospitalType: InstitutionProfileSchema.HospitalType,
-
     @SerialName(value = "total_licensed_beds") @Required val totalLicensedBeds: kotlin.Int,
-
     @SerialName(value = "unit_capacities") @Required val unitCapacities: kotlin.collections.Map<kotlin.String, kotlin.Int>,
-
     @SerialName(value = "clinical_services") @Required val clinicalServices: kotlin.collections.List<kotlin.String>,
-
     @SerialName(value = "home_unit_map") @Required val homeUnitMap: kotlin.collections.Map<kotlin.String, kotlin.collections.List<kotlin.String>>,
-
     @SerialName(value = "surgical_programs") @Required val surgicalPrograms: kotlin.collections.List<kotlin.String>,
-
     @SerialName(value = "federated_node_enabled") val federatedNodeEnabled: kotlin.Boolean? = true
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: pediatric,adult
      */
@@ -68,8 +55,6 @@ data class InstitutionProfileSchema (
         /** Enumerated wire option. */
         @SerialName(value = "pediatric") pediatric("pediatric"),
         /** Enumerated wire option. */
-        @SerialName(value = "adult") adult("adult");
+        @SerialName(value = "adult") adult("adult")
     }
-
 }
-

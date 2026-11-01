@@ -41,7 +41,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.SqlConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
-import io.healthplatform.pulsequery.core.result.asResult
+import io.healthplatform.pulsequery.core.result.asResultMap
 import io.healthplatform.pulsequery.core.result.messageOrDefault
 import io.healthplatform.pulsequery.core.result.runResultPulseAsync
 import io.healthplatform.pulsequery.di.AppContainer
@@ -53,6 +53,38 @@ import pulsequery.composeapp.generated.resources.cart_empty_message
 import pulsequery.composeapp.generated.resources.clear_all
 import pulsequery.composeapp.generated.resources.query_cart
 import pulsequery.composeapp.generated.resources.remove_from_cart
+
+/**
+ * Batch-provisions a list of [StagedQuery] items as SQL widgets onto a target dashboard.
+ *
+ * @param dashboardId Target dashboard UUID.
+ * @param queries Ordered list of staged queries to deploy.
+ * @return [Result] indicating batch completion or the first encountered error.
+ */
+internal suspend fun deployStagedQueriesToDashboard(
+    dashboardId: String,
+    queries: List<StagedQuery>
+): Result<Unit> {
+    return runResultPulseAsync {
+        var batchResult: Result<Unit> = Result.success(Unit)
+        for (query in queries) {
+            val widgetIn = WidgetIn.Sql(
+                title = query.title,
+                visualization = query.visualization,
+                config = SqlConfig(query = query.sql)
+            )
+            val singleRes = AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
+                dashboardId,
+                widgetIn
+            ).asResultMap { }
+            if (singleRes.isFailure) {
+                batchResult = singleRes
+                break
+            }
+        }
+        batchResult
+    }
+}
 
 /**
  * Modal Bottom Sheet allowing users to review staged queries in their cart,
@@ -69,128 +101,144 @@ fun QueryCartBottomSheet(
     onDismiss: () -> Unit = {},
     onQueriesDeployed: () -> Unit = {}
 ) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss
+    ) {
+        QueryCartSheetContent(
+            activeDashboardId = activeDashboardId,
+            onDismiss = onDismiss,
+            onQueriesDeployed = onQueriesDeployed
+        )
+    }
+}
+
+/**
+ * Renders the interior content of [QueryCartBottomSheet] so it can be tested both inside and outside a modal sheet.
+ *
+ * @param activeDashboardId ID of active dashboard to deploy to, if available.
+ * @param onDismiss Callback to dismiss bottom sheet.
+ * @param onQueriesDeployed Callback executed when queries are successfully created.
+ */
+@Composable
+internal fun QueryCartSheetContent(
+    activeDashboardId: String? = null,
+    onDismiss: () -> Unit = {},
+    onQueriesDeployed: () -> Unit = {}
+) {
     val stagedQueries by AppContainer.queryCartRepository.stagedQueries.collectAsState()
     val scope = rememberCoroutineScope()
     var isDeploying by remember { mutableStateOf(false) }
     var deployError by remember { mutableStateOf<String?>(null) }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Text(
+                text = "${stringResource(Res.string.query_cart)} (${stagedQueries.size})",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            if (stagedQueries.isNotEmpty()) {
+                TextButton(onClick = { AppContainer.queryCartRepository.clearCart() }) {
+                    Text(stringResource(Res.string.clear_all))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        deployError?.let { errorText ->
+            Text(
+                text = errorText,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (stagedQueries.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${stringResource(Res.string.query_cart)} (${stagedQueries.size})",
-                    style = MaterialTheme.typography.titleLarge
+                    text = stringResource(Res.string.cart_empty_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                if (stagedQueries.isNotEmpty()) {
-                    TextButton(onClick = { AppContainer.queryCartRepository.clearCart() }) {
-                        Text(stringResource(Res.string.clear_all))
-                    }
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+            ) {
+                items(stagedQueries) { query ->
+                    StagedQueryCard(query = query)
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            if (deployError != null) {
-                Text(
-                    text = deployError ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            if (stagedQueries.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
+            if (!activeDashboardId.isNullOrBlank()) {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            isDeploying = true
+                            deployError = null
+                            deployStagedQueriesToDashboard(activeDashboardId, stagedQueries).fold(
+                                onSuccess = {
+                                    AppContainer.queryCartRepository.clearCart()
+                                    onQueriesDeployed()
+                                    onDismiss()
+                                },
+                                onFailure = { e ->
+                                    deployError = e.messageOrDefault("Failed to deploy queries to dashboard")
+                                }
+                            )
+                            isDeploying = false
+                        }
+                    },
+                    enabled = !isDeploying,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = stringResource(Res.string.cart_empty_message),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    DeployCartButtonContent(
+                        isDeploying = isDeploying,
+                        stagedCount = stagedQueries.size
                     )
                 }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                ) {
-                    items(stagedQueries, key = { it.id }) { query ->
-                        StagedQueryCard(
-                            query = query,
-                            onRemove = { AppContainer.queryCartRepository.removeQuery(query.id) }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (!activeDashboardId.isNullOrBlank()) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isDeploying = true
-                                deployError = null
-                                runResultPulseAsync {
-                                    var batchResult: Result<Unit> = Result.success(Unit)
-                                    for (query in stagedQueries) {
-                                        val widgetIn = WidgetIn.Sql(
-                                            title = query.title,
-                                            visualization = query.visualization,
-                                            config = SqlConfig(query = query.sql)
-                                        )
-                                        val singleRes = AppContainer.dashboardsApi.createWidgetApiV1DashboardsDashboardIdWidgetsPost(
-                                            activeDashboardId,
-                                            widgetIn
-                                        ).asResult()
-                                        if (singleRes.isFailure) {
-                                            batchResult = singleRes.map { }
-                                            break
-                                        }
-                                    }
-                                    batchResult
-                                }.fold(
-                                    onSuccess = {
-                                        AppContainer.queryCartRepository.clearCart()
-                                        onQueriesDeployed()
-                                        onDismiss()
-                                    },
-                                    onFailure = { e ->
-                                        deployError = e.messageOrDefault("Failed to deploy queries to dashboard")
-                                    }
-                                )
-                                isDeploying = false
-                            }
-                        },
-                        enabled = !isDeploying,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (isDeploying) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp))
-                        } else {
-                            Text("Add ${stagedQueries.size} Widgets to Dashboard")
-                        }
-                    }
-                }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+/**
+ * Renders the interior label or progress indicator for the deploy button in [QueryCartSheetContent].
+ *
+ * @param isDeploying Whether batch deployment is currently in progress.
+ * @param stagedCount Number of staged queries.
+ */
+@Composable
+private fun DeployCartButtonContent(
+    isDeploying: Boolean,
+    stagedCount: Int
+) {
+    if (isDeploying) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+    } else {
+        Text("Add $stagedCount Widgets to Dashboard")
     }
 }
 
@@ -198,12 +246,10 @@ fun QueryCartBottomSheet(
  * Card displaying an individual staged query item.
  *
  * @param query Staged query model.
- * @param onRemove Callback to delete query from cart.
  */
 @Composable
 private fun StagedQueryCard(
-    query: StagedQuery,
-    onRemove: () -> Unit
+    query: StagedQuery
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -218,7 +264,10 @@ private fun StagedQueryCard(
                     text = query.title,
                     style = MaterialTheme.typography.titleMedium
                 )
-                IconButton(onClick = onRemove, modifier = Modifier.size(28.dp)) {
+                IconButton(
+                    onClick = { AppContainer.queryCartRepository.removeQuery(query.id) },
+                    modifier = Modifier.size(28.dp)
+                ) {
                     Icon(
                         Icons.Default.Delete,
                         contentDescription = stringResource(Res.string.remove_from_cart),

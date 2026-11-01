@@ -39,23 +39,50 @@ actual fun getDefaultLocalHost(): String {
 /**
  * Determines whether the current Android runtime is executing inside an emulator.
  *
+ * @param fingerprint Build fingerprint string.
+ * @param model Build model string.
+ * @param manufacturer Build manufacturer string.
+ * @param brand Build brand string.
+ * @param device Build device string.
+ * @param product Build product string.
+ * @param hardware Build hardware string.
  * @return True if running on an emulator, false on physical hardware.
  */
-private fun isRunningOnAndroidEmulator(): Boolean {
-    return hasEmulatorBuildIdentity() || hasEmulatorProductOrHardware()
+internal fun isRunningOnAndroidEmulator(
+    fingerprint: String? = Build.FINGERPRINT,
+    model: String? = Build.MODEL,
+    manufacturer: String? = Build.MANUFACTURER,
+    brand: String? = Build.BRAND,
+    device: String? = Build.DEVICE,
+    product: String? = Build.PRODUCT,
+    hardware: String? = Build.HARDWARE
+): Boolean {
+    return hasEmulatorBuildIdentity(
+        fingerprint.orEmpty(),
+        model.orEmpty(),
+        manufacturer.orEmpty(),
+        brand.orEmpty(),
+        device.orEmpty()
+    ) || hasEmulatorProductOrHardware(product.orEmpty(), hardware.orEmpty())
 }
 
 /**
  * Checks [Build] identity properties (fingerprint, model, manufacturer, brand, device) for emulator markers.
  *
+ * @param fingerprint Build fingerprint string.
+ * @param model Build model string.
+ * @param manufacturer Build manufacturer string.
+ * @param brand Build brand string.
+ * @param device Build device string.
  * @return True if build identity matches known emulator patterns.
  */
-private fun hasEmulatorBuildIdentity(): Boolean {
-    val fingerprint = Build.FINGERPRINT.orEmpty()
-    val model = Build.MODEL.orEmpty()
-    val manufacturer = Build.MANUFACTURER.orEmpty()
-    val brand = Build.BRAND.orEmpty()
-    val device = Build.DEVICE.orEmpty()
+internal fun hasEmulatorBuildIdentity(
+    fingerprint: String,
+    model: String,
+    manufacturer: String,
+    brand: String,
+    device: String
+): Boolean {
     val modelTokens = listOf("google_sdk", "Emulator", "Android SDK built for x86")
     return fingerprint.startsWith("generic") ||
         fingerprint.startsWith("unknown") ||
@@ -67,15 +94,34 @@ private fun hasEmulatorBuildIdentity(): Boolean {
 /**
  * Checks [Build.PRODUCT] and [Build.HARDWARE] properties for emulator markers.
  *
+ * @param product Build product string.
+ * @param hardware Build hardware string.
  * @return True if product or hardware matches known emulator patterns.
  */
-private fun hasEmulatorProductOrHardware(): Boolean {
-    val product = Build.PRODUCT.orEmpty()
-    val hardware = Build.HARDWARE.orEmpty()
+internal fun hasEmulatorProductOrHardware(product: String, hardware: String): Boolean {
     val productTokens = listOf("google_sdk", "sdk_gphone", "sdk_google", "emulator", "simulator")
     val hardwareTokens = listOf("goldfish", "ranchu", "cutf_cvm")
     return productTokens.any { product.contains(it) } ||
         hardwareTokens.any { hardware.contains(it) }
+}
+
+/**
+ * Resolves the writable directory for Android file exports, preferring [downloadsDir] when
+ * available or creatable, and falling back to [tmpDirProp].
+ *
+ * @param downloadsDir Candidate public Downloads directory.
+ * @param tmpDirProp System temporary directory property value.
+ * @return Resolved target [java.io.File] directory.
+ */
+internal fun resolveAndroidTargetDir(
+    downloadsDir: java.io.File?,
+    tmpDirProp: String? = System.getProperty("java.io.tmpdir")
+): java.io.File {
+    return if (downloadsDir != null && (downloadsDir.exists() || downloadsDir.mkdirs())) {
+        downloadsDir
+    } else {
+        java.io.File(tmpDirProp ?: "/tmp")
+    }
 }
 
 /**
@@ -88,14 +134,10 @@ private fun hasEmulatorProductOrHardware(): Boolean {
  * @return [Result] containing absolute path or exception.
  */
 actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
-    val downloadsDir = runCatching {
-        android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-    }.getOrNull()
-    val targetDir = if (downloadsDir != null && (downloadsDir.exists() || downloadsDir.mkdirs())) {
-        downloadsDir
-    } else {
-        java.io.File(System.getProperty("java.io.tmpdir") ?: "/tmp")
-    }
+    val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(
+        android.os.Environment.DIRECTORY_DOWNLOADS
+    )
+    val targetDir = resolveAndroidTargetDir(downloadsDir)
     val targetFile = java.io.File(targetDir, filename)
     return runCatching {
         targetFile.writeBytes(bytes)

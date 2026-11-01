@@ -83,7 +83,7 @@ testpaths = ["tests"]
 markers = ["asyncio: mark test as async"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-addopts = "--cov=app --cov=scripts --cov-branch --cov-report=term-missing --cov-fail-under=100"
+addopts = "--cov=app --cov=scripts --cov=alembic --cov-branch --cov-report=term-missing --cov-fail-under=100"
 filterwarnings = [
     "ignore:'crypt' is deprecated:DeprecationWarning",
     "ignore:Accessing argon2.__version__ is deprecated:DeprecationWarning",
@@ -93,7 +93,7 @@ filterwarnings = [
 [tool.coverage.run]
 branch = true
 concurrency = ["greenlet", "thread"]
-source = ["app", "scripts"]
+source = ["app", "scripts", "alembic"]
 omit = [
     "*/tests/*",
 ]

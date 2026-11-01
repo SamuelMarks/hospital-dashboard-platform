@@ -102,7 +102,7 @@ export function flattenJsDocComment(
     return comment.trim();
   }
   return comment
-    .map((part) => part.text)
+    .map((part: ts.JSDocComment) => part.text)
     .join("")
     .trim();
 }
@@ -190,11 +190,12 @@ export function verifyParameterDocs(
   for (const param of params) {
     const pName = param.name.getText(sf).trim();
     const line = sf.getLineAndCharacterOfPosition(param.getStart(sf)).line + 1;
-    if (!paramTags.has(pName)) {
+    const paramDesc = paramTags.get(pName);
+    if (paramDesc === undefined) {
       errors.push(
         `${filePath}:${line} - Missing @param ${pName} TSDoc on ${label}`,
       );
-    } else if (isPlaceholderDoc(paramTags.get(pName) ?? "")) {
+    } else if (isPlaceholderDoc(paramDesc)) {
       errors.push(
         `${filePath}:${line} - Placeholder or empty @param ${pName} description on ${label}`,
       );
@@ -276,7 +277,7 @@ export function verifySourceFileText(
   }
   checkForbiddenTypes(sf);
 
-  ts.forEachChild(sf, (node) => {
+  ts.forEachChild(sf, (node: ts.Node) => {
     if (ts.isClassDeclaration(node)) {
       const clsName = node.name ? node.name.getText(sf) : "<anonymous class>";
       verifyNodeDoc(sf, node, `class ${clsName}`, relPath, errors);
@@ -415,6 +416,23 @@ export function verifyFrontendDocs(customSrcDir?: string): number {
   return 0;
 }
 
-if (require.main === module) {
-  process.exit(verifyFrontendDocs());
+/**
+ * Executes `verifyFrontendDocs` and exits the process when invoked as the main entrypoint.
+ *
+ * @param mainModule - Reference to `require.main`.
+ * @param currentModule - Reference to the current CommonJS `module`.
+ * @param exitFn - Process exit callback.
+ * @param customSrcDir - Optional source directory override.
+ */
+export function runCliIfMain(
+  mainModule: unknown = require.main,
+  currentModule: unknown = module,
+  exitFn: (code: number) => void = process.exit,
+  customSrcDir?: string,
+): void {
+  if (mainModule === currentModule) {
+    exitFn(verifyFrontendDocs(customSrcDir));
+  }
 }
+
+runCliIfMain();

@@ -91,10 +91,7 @@ class DashboardExportHelperTest {
             when {
                 request.url.encodedPath.contains("export") -> {
                     respond(
-                        """
-                        widget_id,title,value
-                        w-1,Census,42
-                        """.trimIndent(),
+                        "widget_id,title,value\nw-1,Census,42\n",
                         HttpStatusCode.OK,
                         headersOf(HttpHeaders.ContentType, "text/csv")
                     )
@@ -156,13 +153,7 @@ class DashboardExportHelperTest {
      */
     @Test
     fun testExportDashboardPdfSuccess() = runTest {
-        val fakePdfBytes = """
-            %PDF-1.4
-            1 0 obj
-            << /Title (Clinical Report) >>
-            endobj
-            %%EOF
-        """.trimIndent().encodeToByteArray()
+        val fakePdfBytes = "%PDF-1.4\n1 0 obj\n<< /Title (Clinical Report) >>\nendobj\n%%EOF".encodeToByteArray()
         val mockEngine = MockEngine { request ->
             when {
                 request.url.encodedPath.contains("export/pdf") -> {
@@ -230,13 +221,10 @@ class DashboardExportHelperTest {
         assertTrue(resNoStorage.isSuccess)
 
         val storage = io.healthplatform.pulsequery.database.KeyValueStorage(null)
-        AppContainer.currentToken = "preset-token"
         AppContainer.keyValueStorage = storage
-        AppContainer.currentToken = null
-        AppContainer.keyValueStorage = storage
-        val resWithStorage = DashboardExportHelper.saveExportedFile("test.json", """{"a":1}""")
+        val resWithStorage = DashboardExportHelper.saveExportedFile("test.json", "{\"a\":1}")
         assertTrue(resWithStorage.isSuccess)
-        assertEquals("""{"a":1}""", storage.get("export_test.json"))
+        assertEquals("{\"a\":1}", storage.get("export_test.json"))
 
         val throwingStorage = object : io.healthplatform.pulsequery.database.KeyValueStorage(null) {
             override fun save(key: String, value: String) {

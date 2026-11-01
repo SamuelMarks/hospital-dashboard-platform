@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,25 +31,14 @@ import kotlinx.serialization.Serializable
  * @property administrativeADays * @param staffingCostPerPatientDay
  * @property netMarginContribution */
 @Serializable
-
-data class StaffingShiftAssignmentRow (
-
+data class StaffingShiftAssignmentRow(
     @SerialName(value = "unit") @Required val unit: kotlin.String,
-
     @SerialName(value = "season_window") @Required val seasonWindow: kotlin.String,
-
     @SerialName(value = "scheduled_core_rns") @Required val scheduledCoreRns: kotlin.Double,
-
     @SerialName(value = "scheduled_float_rns") @Required val scheduledFloatRns: kotlin.Double,
-
     @SerialName(value = "scheduled_physicians") @Required val scheduledPhysicians: kotlin.Double,
-
     @SerialName(value = "unexpected_overtime_shifts") @Required val unexpectedOvertimeShifts: kotlin.Double,
-
     @SerialName(value = "administrative_a_days") @Required val administrativeADays: kotlin.Double,
-
     @SerialName(value = "staffing_cost_per_patient_day") @Required val staffingCostPerPatientDay: kotlin.Double,
-
     @SerialName(value = "net_margin_contribution") @Required val netMarginContribution: kotlin.Double
-
 )

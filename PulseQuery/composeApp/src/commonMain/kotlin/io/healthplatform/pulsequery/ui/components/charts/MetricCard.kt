@@ -22,6 +22,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
+ * Formats a metric numeric value, omitting trailing `.0` decimals for whole numbers.
+ *
+ * @param value Raw floating-point metric value.
+ * @return Formatted metric string for display.
+ */
+internal fun formatMetricValue(value: Float): String {
+    return if (value % 1.0f == 0.0f) {
+        value.toInt().toString()
+    } else {
+        value.toString()
+    }
+}
+
+/**
+ * Constructs the accessibility content description for a primary KPI metric card.
+ *
+ * @param label Metric title label.
+ * @param formattedValue Formatted numeric value string.
+ * @return Accessibility announcement string.
+ */
+internal fun buildMetricAccessibilityDescription(label: String, formattedValue: String): String {
+    return "Metric $label: $formattedValue"
+}
+
+/**
  * A prominent single or multi-value KPI metric card.
  *
  * @param data List of Pair<Label, Value> representing metrics to display.
@@ -35,13 +60,8 @@ fun MetricCard(
     if (data.isEmpty()) return
 
     val primary = data.first()
-    val valueFormatted = if (primary.second % 1.0f == 0.0f) {
-        primary.second.toInt().toString()
-    } else {
-        primary.second.toString()
-    }
-
-    val metricDescription = "Metric ${primary.first}: $valueFormatted"
+    val valueFormatted = formatMetricValue(primary.second)
+    val metricDescription = buildMetricAccessibilityDescription(primary.first, valueFormatted)
 
     Column(
         modifier = modifier
@@ -71,11 +91,7 @@ fun MetricCard(
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 data.drop(1).take(2).forEach { (secondaryLabel, secondaryVal) ->
-                    val secFormatted = if (secondaryVal % 1.0f == 0.0f) {
-                        secondaryVal.toInt().toString()
-                    } else {
-                        secondaryVal.toString()
-                    }
+                    val secFormatted = formatMetricValue(secondaryVal)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = secFormatted,

@@ -1,3 +1,6 @@
+/**
+ * Unit and Compose UI tests for [LoginScreen].
+ */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme
@@ -8,9 +11,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.screens.auth.AuthViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -23,12 +28,18 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/**
+ * Verifies [LoginScreen] authentication flows, settings dialog, and registration navigation.
+ */
 class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
     @BeforeTest
     fun setUp() {
+        AppContainer.resetForTest()
         AppContainer.currentBaseUrl = "http://localhost"
     }
 
@@ -62,17 +73,53 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         AppContainer.setHttpClientForTest(client)
     }
 
+    @Test
+    fun testHandleRegisterNavigationOrToggleHelper() {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val vm = AuthViewModel(scope = scope)
+        assertFalse(vm.state.value.isRegisterMode)
+
+        handleRegisterNavigationOrToggle(onNavigateToRegister = null, vm = vm)
+        assertTrue(vm.state.value.isRegisterMode)
+
+        var externalNavCalled = false
+        handleRegisterNavigationOrToggle(
+            onNavigateToRegister = { externalNavCalled = true },
+            vm = vm
+        )
+        assertTrue(externalNavCalled)
+    }
+
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testLoginScreenEmptyState() = runComposeUiTest {
+    fun testLoginScreenEmptyStateAndSettingsDialog() = runComposeUiTest {
+        var navigatedToRegister = false
         setContent {
             MaterialTheme {
-                LoginScreen(onLoginSuccess = {})
+                LoginScreen(
+                    onLoginSuccess = {},
+                    onNavigateToRegister = { navigatedToRegister = true }
+                )
             }
         }
 
         onNodeWithText("Welcome to PulseQuery").assertIsDisplayed()
         onNodeWithText("Login / Register").assertIsDisplayed()
+
+        // Open settings dialog, edit URL, and cancel
+        onNodeWithText("⚙️").performClick()
+        onNodeWithText("Settings").assertIsDisplayed()
+        onNodeWithText("Cancel").performClick()
+
+        // Re-open settings dialog, edit URL, and save
+        onNodeWithText("⚙️").performClick()
+        onNodeWithText("http://localhost").performTextReplacement("http://10.0.2.2:8000")
+        onNodeWithText("Save").performClick()
+        assertEquals("http://10.0.2.2:8000", AppContainer.currentBaseUrl)
+
+        // Click register button with external navigation callback
+        onNodeWithText("Need an account? Register").performClick()
+        assertTrue(navigatedToRegister)
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -104,7 +151,7 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithText("Login / Register").performClick()
 
         waitUntil(timeoutMillis = 15000) {
-            onAllNodes(androidx.compose.ui.test.hasText("Invalid username or password.", substring = true)).fetchSemanticsNodes().isNotEmpty()
+            onAllNodes(hasText("Invalid username or password.", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Invalid username or password.", substring = true).assertIsDisplayed()
     }
@@ -142,7 +189,6 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
         onRoot().printToLog("LoginScreenTest")
 
-        // After click, wait for the state to settle
         waitUntil(timeoutMillis = 15000) { successCalled }
 
         assertTrue(successCalled)

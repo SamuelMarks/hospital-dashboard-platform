@@ -139,7 +139,7 @@ export class AdminService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );
@@ -277,7 +277,7 @@ export class AdminService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );

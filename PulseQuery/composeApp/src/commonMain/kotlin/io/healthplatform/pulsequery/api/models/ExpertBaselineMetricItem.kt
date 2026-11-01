@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,25 +31,14 @@ import kotlinx.serialization.Serializable
  * @property improvementVsManualPct * @param expertAttainmentPct
  * @property lowerIsBetter */
 @Serializable
-
-data class ExpertBaselineMetricItem (
-
+data class ExpertBaselineMetricItem(
     @SerialName(value = "metric_key") @Required val metricKey: kotlin.String,
-
     @SerialName(value = "label") @Required val label: kotlin.String,
-
     @SerialName(value = "unit_label") @Required val unitLabel: kotlin.String,
-
     @SerialName(value = "manual_historical_value") @Required val manualHistoricalValue: kotlin.Double,
-
     @SerialName(value = "expert_baseline_value") @Required val expertBaselineValue: kotlin.Double,
-
     @SerialName(value = "llm_mpax_value") @Required val llmMpaxValue: kotlin.Double,
-
     @SerialName(value = "improvement_vs_manual_pct") @Required val improvementVsManualPct: kotlin.Double,
-
     @SerialName(value = "expert_attainment_pct") @Required val expertAttainmentPct: kotlin.Double,
-
     @SerialName(value = "lower_is_better") val lowerIsBetter: kotlin.Boolean? = true
-
 )

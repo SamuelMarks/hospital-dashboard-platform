@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -35,41 +34,25 @@ import kotlinx.serialization.Serializable
  * @property sqlSnippet * @param sqlHash
  */
 @Serializable
-
-data class LlmOutputAnalyticsRow (
-
+data class LlmOutputAnalyticsRow(
     @SerialName(value = "source") @Required val source: LlmOutputAnalyticsRow.Source,
-
     @SerialName(value = "candidate_id") @Required val candidateId: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "user_email") @Required val userEmail: kotlin.String,
-
     @SerialName(value = "llm") @Required val llm: kotlin.String,
-
     @SerialName(value = "is_selected") @Required val isSelected: kotlin.Boolean,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "assistant_message_id") val assistantMessageId: kotlin.String? = null,
-
     @SerialName(value = "conversation_id") val conversationId: kotlin.String? = null,
-
     @SerialName(value = "conversation_title") val conversationTitle: kotlin.String? = null,
-
     @SerialName(value = "query_text") val queryText: kotlin.String? = null,
-
     @SerialName(value = "prompt_strategy") val promptStrategy: kotlin.String? = null,
-
     @SerialName(value = "sql_snippet") val sqlSnippet: kotlin.String? = null,
-
     @SerialName(value = "sql_hash") val sqlHash: kotlin.String? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: chat,ai,optimization
      */
@@ -80,8 +63,6 @@ data class LlmOutputAnalyticsRow (
         /** Enumerated wire option. */
         @SerialName(value = "ai") ai("ai"),
         /** Enumerated wire option. */
-        @SerialName(value = "optimization") optimization("optimization");
+        @SerialName(value = "optimization") optimization("optimization")
     }
-
 }
-

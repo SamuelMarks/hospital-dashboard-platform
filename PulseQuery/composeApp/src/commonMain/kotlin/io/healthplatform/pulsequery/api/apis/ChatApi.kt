@@ -24,7 +24,6 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.ConversationCreate
 import io.healthplatform.pulsequery.api.models.ConversationDetail
@@ -36,12 +35,7 @@ import io.healthplatform.pulsequery.api.models.MessageVoteRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/chat` and `/api/v1/conversations` conversational SQL arena and candidate voting endpoints.
@@ -77,7 +71,7 @@ open class ChatApi : ApiClient {
     /**
      * Create Conversation
      * Create a new conversation and optionally seed the first message.
-     * @param conversationCreate
+     * @param conversationCreate Conversation creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationDetail
      */
@@ -111,7 +105,7 @@ open class ChatApi : ApiClient {
     /**
      * Create Conversation
      * Create a new conversation and optionally seed the first message.
-     * @param conversationCreate
+     * @param conversationCreate Conversation creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationDetail
      */
@@ -145,7 +139,7 @@ open class ChatApi : ApiClient {
     /**
      * Delete Conversation
      * Delete a conversation and its messages.
-     * @param conversationId
+     * @param conversationId Target conversation identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
@@ -180,7 +174,7 @@ open class ChatApi : ApiClient {
     /**
      * Delete Conversation
      * Delete a conversation and its messages.
-     * @param conversationId
+     * @param conversationId Target conversation identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
@@ -215,7 +209,7 @@ open class ChatApi : ApiClient {
     /**
      * Get Messages
      * Return the ordered message history for a conversation.
-     * @param conversationId
+     * @param conversationId Target conversation identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<MessageResponse>
      */
@@ -244,28 +238,13 @@ open class ChatApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetMessagesApiV1ChatConversationIdMessagesGetResponse>().map { value }
-    }
-
-    @Serializable(GetMessagesApiV1ChatConversationIdMessagesGetResponse.Companion::class)
-    private class GetMessagesApiV1ChatConversationIdMessagesGetResponse(val value: List<MessageResponse>) {
-        companion object : KSerializer<GetMessagesApiV1ChatConversationIdMessagesGetResponse> {
-            private val serializer: KSerializer<List<MessageResponse>> = serializer<List<MessageResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: GetMessagesApiV1ChatConversationIdMessagesGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = GetMessagesApiV1ChatConversationIdMessagesGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Get Messages
      * Return the ordered message history for a conversation.
-     * @param conversationId
+     * @param conversationId Target conversation identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<MessageResponse>
      */
@@ -294,29 +273,14 @@ open class ChatApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetMessagesApiV1ConversationsConversationIdMessagesGetResponse>().map { value }
-    }
-
-    @Serializable(GetMessagesApiV1ConversationsConversationIdMessagesGetResponse.Companion::class)
-    private class GetMessagesApiV1ConversationsConversationIdMessagesGetResponse(val value: List<MessageResponse>) {
-        companion object : KSerializer<GetMessagesApiV1ConversationsConversationIdMessagesGetResponse> {
-            private val serializer: KSerializer<List<MessageResponse>> = serializer<List<MessageResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: GetMessagesApiV1ConversationsConversationIdMessagesGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = GetMessagesApiV1ConversationsConversationIdMessagesGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * List Conversations
      * List recent conversations for the current user.
-     * @param limit  (optional, default to 50)
-     * @param offset  (optional, default to 0)
+     * @param limit Maximum number of conversations to return (optional, default to 50)
+     * @param offset Pagination record offset (optional, default to 0)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<ConversationResponse>
      */
@@ -348,27 +312,14 @@ open class ChatApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListConversationsApiV1ChatGetResponse>().map { value }
-    }
-
-    @Serializable(ListConversationsApiV1ChatGetResponse.Companion::class)
-    private class ListConversationsApiV1ChatGetResponse(val value: List<ConversationResponse>) {
-        companion object : KSerializer<ListConversationsApiV1ChatGetResponse> {
-            private val serializer: KSerializer<List<ConversationResponse>> = serializer<List<ConversationResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListConversationsApiV1ChatGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListConversationsApiV1ChatGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * List Conversations
      * List recent conversations for the current user.
-     * @param limit  (optional, default to 50)
-     * @param offset  (optional, default to 0)
+     * @param limit Maximum number of conversations to return (optional, default to 50)
+     * @param offset Pagination record offset (optional, default to 0)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<ConversationResponse>
      */
@@ -400,27 +351,14 @@ open class ChatApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListConversationsApiV1ConversationsGetResponse>().map { value }
-    }
-
-    @Serializable(ListConversationsApiV1ConversationsGetResponse.Companion::class)
-    private class ListConversationsApiV1ConversationsGetResponse(val value: List<ConversationResponse>) {
-        companion object : KSerializer<ListConversationsApiV1ConversationsGetResponse> {
-            private val serializer: KSerializer<List<ConversationResponse>> = serializer<List<ConversationResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListConversationsApiV1ConversationsGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListConversationsApiV1ConversationsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Send Message
      * Append a user message and generate assistant candidates.
-     * @param conversationId
-     * @param messageCreate
+     * @param conversationId Target conversation identifier.
+     * @param messageCreate Message creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
@@ -455,8 +393,8 @@ open class ChatApi : ApiClient {
     /**
      * Send Message
      * Append a user message and generate assistant candidates.
-     * @param conversationId
-     * @param messageCreate
+     * @param conversationId Target conversation identifier.
+     * @param messageCreate Message creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
@@ -491,8 +429,8 @@ open class ChatApi : ApiClient {
     /**
      * Stream Conversation Tokens
      * Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.  Args:     conversation_id (UUID): The conversation ID context.     db (AsyncSession): Database session.     current_user (User): Authenticated user owning the conversation.     model_id (Optional[str]): Targeted model ID.  Returns:     StreamingResponse: Text/event-stream containing incremental tokens.
-     * @param conversationId
-     * @param modelId  (optional)
+     * @param conversationId Target conversation identifier.
+     * @param modelId Optional targeted LLM model identifier (optional)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.String
      */
@@ -529,8 +467,8 @@ open class ChatApi : ApiClient {
     /**
      * Stream Conversation Tokens
      * Server-Sent Events (SSE) endpoint streaming real-time LLM token generation.  Args:     conversation_id (UUID): The conversation ID context.     db (AsyncSession): Database session.     current_user (User): Authenticated user owning the conversation.     model_id (Optional[str]): Targeted model ID.  Returns:     StreamingResponse: Text/event-stream containing incremental tokens.
-     * @param conversationId
-     * @param modelId  (optional)
+     * @param conversationId Target conversation identifier.
+     * @param modelId Optional targeted LLM model identifier (optional)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.String
      */
@@ -567,8 +505,8 @@ open class ChatApi : ApiClient {
     /**
      * Update Conversation
      * Update the title for an existing conversation.
-     * @param conversationId
-     * @param conversationUpdate
+     * @param conversationId Target conversation identifier.
+     * @param conversationUpdate Conversation title update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationResponse
      */
@@ -603,8 +541,8 @@ open class ChatApi : ApiClient {
     /**
      * Update Conversation
      * Update the title for an existing conversation.
-     * @param conversationId
-     * @param conversationUpdate
+     * @param conversationId Target conversation identifier.
+     * @param conversationUpdate Conversation title update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return ConversationResponse
      */
@@ -639,9 +577,9 @@ open class ChatApi : ApiClient {
     /**
      * Vote Candidate
      * Records a user&#39;s vote for a specific generated candidate.  This selects the chosen candidate by its ID (or matching SQL hash), sets its &#x60;is_selected&#x60; flag to True, and promotes its text and SQL contents to the parent Message object.
-     * @param conversationId
-     * @param messageId
-     * @param messageVoteRequest
+     * @param conversationId Target conversation identifier.
+     * @param messageId Target message identifier.
+     * @param messageVoteRequest Candidate vote selection payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */
@@ -677,9 +615,9 @@ open class ChatApi : ApiClient {
     /**
      * Vote Candidate
      * Records a user&#39;s vote for a specific generated candidate.  This selects the chosen candidate by its ID (or matching SQL hash), sets its &#x60;is_selected&#x60; flag to True, and promotes its text and SQL contents to the parent Message object.
-     * @param conversationId
-     * @param messageId
-     * @param messageVoteRequest
+     * @param conversationId Target conversation identifier.
+     * @param messageId Target message identifier.
+     * @param messageVoteRequest Candidate vote selection payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return MessageResponse
      */

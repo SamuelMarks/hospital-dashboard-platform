@@ -36,6 +36,7 @@ actual fun getDefaultLocalHost(): String = "http://localhost:8000"
  * @param mimeType Standard MIME type associated with the payload.
  * @param base64 Base64-encoded binary string representation of the payload.
  */
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
 @JsFun(
     """(filename, mimeType, base64) => {
         const byteCharacters = atob(base64);
@@ -63,12 +64,18 @@ private external fun triggerWasmBrowserDownload(filename: String, mimeType: Stri
  * @param filename Target file name including extension.
  * @param mimeType Standard MIME type associated with the payload.
  * @param bytes Binary payload of the file.
+ * @param bridge Invoker executing the underlying JS download routine.
  * @return [Result] containing download description or [PulseQueryError.Storage] on failure.
  */
-actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
+internal fun saveWasmFileWithBridge(
+    filename: String,
+    mimeType: String,
+    bytes: ByteArray,
+    bridge: (String, String, String) -> Unit = ::triggerWasmBrowserDownload
+): Result<String> {
     return runCatching {
         val base64 = bytes.toByteString().base64()
-        triggerWasmBrowserDownload(filename, mimeType, base64)
+        bridge(filename, mimeType, base64)
         "Downloaded $filename ($mimeType)"
     }.fold(
         onSuccess = { Result.success(it) },
@@ -76,4 +83,16 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
             Result.failure(PulseQueryError.Storage.WriteFailure(filename, "Wasm DOM", error))
         }
     )
+}
+
+/**
+ * Triggers a browser file download in WebAssembly using Base64 binary bridging to DOM.
+ *
+ * @param filename Target file name including extension.
+ * @param mimeType Standard MIME type associated with the payload.
+ * @param bytes Binary payload of the file.
+ * @return [Result] containing download description or [PulseQueryError.Storage] on failure.
+ */
+actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
+    return saveWasmFileWithBridge(filename, mimeType, bytes)
 }

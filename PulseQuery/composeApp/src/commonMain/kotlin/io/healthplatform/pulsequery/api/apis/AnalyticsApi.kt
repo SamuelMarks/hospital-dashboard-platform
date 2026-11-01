@@ -24,19 +24,13 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.BedCapacityAlert
 import io.healthplatform.pulsequery.api.models.LlmOutputAnalyticsRow
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/analytics` live bed capacity alerts and LLM candidate output telemetry endpoints.
@@ -99,27 +93,14 @@ open class AnalyticsApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetCapacityAlertsApiV1AnalyticsAlertsGetResponse>().map { value }
-    }
-
-    @Serializable(GetCapacityAlertsApiV1AnalyticsAlertsGetResponse.Companion::class)
-    private class GetCapacityAlertsApiV1AnalyticsAlertsGetResponse(val value: List<BedCapacityAlert>) {
-        companion object : KSerializer<GetCapacityAlertsApiV1AnalyticsAlertsGetResponse> {
-            private val serializer: KSerializer<List<BedCapacityAlert>> = serializer<List<BedCapacityAlert>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: GetCapacityAlertsApiV1AnalyticsAlertsGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = GetCapacityAlertsApiV1AnalyticsAlertsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * List Llm Outputs
      * Returns a flattened view of chat arena candidates, including: - user query (nearest prior user message) - LLM candidate output and SQL snippet - user selection (is_selected)
-     * @param limit  (optional, default to 500)
-     * @param offset  (optional, default to 0)
+     * @param limit Maximum number of candidate output rows to return (optional, default to 500)
+     * @param offset Pagination record offset (optional, default to 0)
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<LlmOutputAnalyticsRow>
      */
@@ -151,19 +132,6 @@ open class AnalyticsApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListLlmOutputsApiV1AnalyticsLlmGetResponse>().map { value }
-    }
-
-    @Serializable(ListLlmOutputsApiV1AnalyticsLlmGetResponse.Companion::class)
-    private class ListLlmOutputsApiV1AnalyticsLlmGetResponse(val value: List<LlmOutputAnalyticsRow>) {
-        companion object : KSerializer<ListLlmOutputsApiV1AnalyticsLlmGetResponse> {
-            private val serializer: KSerializer<List<LlmOutputAnalyticsRow>> = serializer<List<LlmOutputAnalyticsRow>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListLlmOutputsApiV1AnalyticsLlmGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListLlmOutputsApiV1AnalyticsLlmGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 }

@@ -4,9 +4,11 @@
  */
 package io.healthplatform.pulsequery.ui.screens.admin
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,9 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
@@ -69,6 +70,37 @@ import pulsequery.composeapp.generated.resources.user_role_label
 import pulsequery.composeapp.generated.resources.user_suspended
 
 /**
+ * Selectable clinical roles available for user assignment and filtering.
+ */
+internal val CLINICAL_ROLES: List<String> = listOf(
+    "ADMIN",
+    "PHYSICIAN",
+    "CHARGE_NURSE",
+    "ANALYST"
+)
+
+/**
+ * Computes the next role filter value when a role filter chip is clicked, toggling off if already selected.
+ *
+ * @param selectedRole Currently active role filter, or null.
+ * @param clickedRole Role identifier that was clicked.
+ * @return Next active role filter, or null for all roles.
+ */
+internal fun resolveNextRoleFilter(selectedRole: String?, clickedRole: String): String? {
+    return if (selectedRole == clickedRole) null else clickedRole
+}
+
+/**
+ * Normalizes a nullable user role string for display.
+ *
+ * @param role Nullable role string from [UserResponse].
+ * @return Non-null role label.
+ */
+internal fun resolveUserRoleDisplay(role: String?): String {
+    return role ?: ""
+}
+
+/**
  * Screen composable facilitating administrative user management in Compose Multiplatform.
  *
  * Provides live search, clinical role filtering, role modifications, and account status toggling.
@@ -94,67 +126,110 @@ fun UserManagementScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(Res.string.user_management),
-                        modifier = Modifier.semantics { heading() }
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(Res.string.navigate_back)
-                        )
-                    }
-                }
-            )
+            UserManagementTopBar(onNavigateBack = onNavigateBack)
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (val currentState = state) {
-                is UserManagementUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
+        UserManagementBody(
+            state = state,
+            paddingValues = paddingValues,
+            onRetry = { vm.loadUsers() },
+            onSearchChange = { vm.setSearchQuery(it) },
+            onRoleFilterSelect = { vm.setRoleFilter(it) },
+            onRoleChange = { id, role -> vm.updateRole(id, role) },
+            onStatusToggle = { id, status -> vm.toggleStatus(id, status) }
+        )
+    }
+}
+
+/**
+ * Renders the top app bar for [UserManagementScreen].
+ *
+ * @param onNavigateBack Callback executed when the back navigation icon is clicked.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun UserManagementTopBar(onNavigateBack: () -> Unit) {
+    TopAppBar(
+        title = {
+            Text(
+                stringResource(Res.string.user_management),
+                modifier = Modifier.semantics { heading() }
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(Res.string.navigate_back)
+                )
+            }
+        }
+    )
+}
+
+/**
+ * Renders the main body states (loading, error, or user list) for [UserManagementScreen].
+ *
+ * @param state Current [UserManagementUiState].
+ * @param paddingValues Scaffold inner padding.
+ * @param onRetry Callback invoked when retrying failed load.
+ * @param onSearchChange Callback when search query text changes.
+ * @param onRoleFilterSelect Callback when role filter chip is clicked.
+ * @param onRoleChange Callback when new role is chosen for a user.
+ * @param onStatusToggle Callback when active status toggle is switched.
+ */
+@Composable
+private fun UserManagementBody(
+    state: UserManagementUiState,
+    paddingValues: PaddingValues,
+    onRetry: () -> Unit,
+    onSearchChange: (String) -> Unit,
+    onRoleFilterSelect: (String?) -> Unit,
+    onRoleChange: (String, String) -> Unit,
+    onStatusToggle: (String, Boolean) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        when (state) {
+            is UserManagementUiState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
-                is UserManagementUiState.Error -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(24.dp)
-                            .semantics { liveRegion = LiveRegionMode.Assertive },
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = currentState.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { vm.loadUsers() }) {
-                            Text(stringResource(Res.string.retry))
-                        }
-                    }
-                }
-                is UserManagementUiState.Success -> {
-                    UserListContent(
-                        state = currentState,
-                        onSearchChange = { vm.setSearchQuery(it) },
-                        onRoleFilterSelect = { vm.setRoleFilter(it) },
-                        onRoleChange = { id, role -> vm.updateRole(id, role) },
-                        onStatusToggle = { id, status -> vm.toggleStatus(id, status) }
+            }
+            is UserManagementUiState.Error -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp)
+                        .semantics { liveRegion = LiveRegionMode.Assertive },
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = state.message,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyLarge
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onRetry) {
+                        Text(stringResource(Res.string.retry))
+                    }
                 }
+            }
+            is UserManagementUiState.Success -> {
+                UserListContent(
+                    state = state,
+                    onSearchChange = onSearchChange,
+                    onRoleFilterSelect = onRoleFilterSelect,
+                    onRoleChange = onRoleChange,
+                    onStatusToggle = onStatusToggle
+                )
             }
         }
     }
@@ -177,8 +252,6 @@ private fun UserListContent(
     onRoleChange: (String, String) -> Unit,
     onStatusToggle: (String, Boolean) -> Unit
 ) {
-    val roles = listOf("ADMIN", "PHYSICIAN", "CHARGE_NURSE", "ANALYST")
-
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(
             value = state.searchQuery,
@@ -191,21 +264,21 @@ private fun UserListContent(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyRow(
+        Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
         ) {
-            item {
-                FilterChip(
-                    selected = state.selectedRole == null,
-                    onClick = { onRoleFilterSelect(null) },
-                    label = { Text(stringResource(Res.string.all_roles)) }
-                )
-            }
-            items(roles) { role ->
+            FilterChip(
+                selected = state.selectedRole == null,
+                onClick = { onRoleFilterSelect(null) },
+                label = { Text(stringResource(Res.string.all_roles)) }
+            )
+            CLINICAL_ROLES.forEach { role ->
                 FilterChip(
                     selected = state.selectedRole == role,
-                    onClick = { onRoleFilterSelect(if (state.selectedRole == role) null else role) },
+                    onClick = { onRoleFilterSelect(resolveNextRoleFilter(state.selectedRole, role)) },
                     label = { Text(role) }
                 )
             }
@@ -225,14 +298,16 @@ private fun UserListContent(
                 )
             }
         } else {
-            LazyColumn(
+            Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
             ) {
-                items(state.users, key = { it.id }) { user ->
+                state.users.forEach { user ->
                     UserCard(
                         user = user,
-                        availableRoles = roles,
+                        availableRoles = CLINICAL_ROLES,
                         onRoleChange = { newRole -> onRoleChange(user.id, newRole) },
                         onStatusToggle = { newStatus -> onStatusToggle(user.id, newStatus) }
                     )
@@ -257,80 +332,103 @@ private fun UserCard(
     onRoleChange: (String) -> Unit,
     onStatusToggle: (Boolean) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = user.email,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(Res.string.user_id_label, user.id),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+        UserCardBody(
+            user = user,
+            availableRoles = availableRoles,
+            onRoleChange = onRoleChange,
+            onStatusToggle = onStatusToggle
+        )
+    }
+}
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (user.isActive) {
-                            stringResource(Res.string.user_active)
-                        } else {
-                            stringResource(Res.string.user_suspended)
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (user.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
-                        checked = user.isActive,
-                        onCheckedChange = onStatusToggle
-                    )
-                }
+/**
+ * Renders the interior content of [UserCard].
+ *
+ * @param user User profile entity.
+ * @param availableRoles Available selectable clinical roles.
+ * @param onRoleChange Callback when new role is selected.
+ * @param onStatusToggle Callback when status switch is toggled.
+ */
+@Composable
+private fun UserCardBody(
+    user: UserResponse,
+    availableRoles: List<String>,
+    onRoleChange: (String) -> Unit,
+    onStatusToggle: (Boolean) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = user.email,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.user_id_label, user.id),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = stringResource(Res.string.user_role_label, user.role ?: ""),
-                    style = MaterialTheme.typography.labelLarge
+                    text = if (user.isActive) {
+                        stringResource(Res.string.user_active)
+                    } else {
+                        stringResource(Res.string.user_suspended)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (user.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = user.isActive,
+                    onCheckedChange = onStatusToggle
+                )
+            }
+        }
 
-                Box {
-                    OutlinedButton(onClick = { expanded = true }) {
-                        Text(stringResource(Res.string.change_role))
-                    }
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(8.dp))
 
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        availableRoles.forEach { role ->
-                            DropdownMenuItem(
-                                text = { Text(role) },
-                                onClick = {
-                                    expanded = false
-                                    onRoleChange(role)
-                                }
-                            )
-                        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(Res.string.user_role_label, resolveUserRoleDisplay(user.role)),
+                style = MaterialTheme.typography.labelLarge
+            )
+
+            Box {
+                OutlinedButton(onClick = { expanded = true }) {
+                    Text(stringResource(Res.string.change_role))
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    availableRoles.forEach { role ->
+                        DropdownMenuItem(
+                            text = { Text(role) },
+                            onClick = {
+                                expanded = false
+                                onRoleChange(role)
+                            }
+                        )
                     }
                 }
             }

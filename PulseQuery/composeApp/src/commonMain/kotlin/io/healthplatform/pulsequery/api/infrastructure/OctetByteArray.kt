@@ -4,7 +4,6 @@
 package io.healthplatform.pulsequery.api.infrastructure
 
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -16,7 +15,6 @@ import kotlinx.serialization.encoding.Encoder
  *
  * @property value Underlying binary byte array content.
  */
-@Serializable(OctetByteArray.Companion::class)
 class OctetByteArray(val value: ByteArray) {
     /**
      * Custom [KSerializer] encoding [OctetByteArray] instances as lowercase hexadecimal strings.

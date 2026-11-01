@@ -1340,6 +1340,31 @@ def normalize_service_file(path: Path) -> None:
     r"localVarFormParams = this.appendFormParam(localVarFormParams, '\1', \2);",
     text,
   )
+  text = text.replace(
+    "...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),",
+    "transferCache: localVarTransferCache,",
+  )
+  text = re.sub(
+    r"let\s+localVarFormParams:\s*HttpParams\s*\|\s*FormData;\s*"
+    r"const\s+localVarUseForm\s*=\s*false;\s*"
+    r"const\s+localVarConvertFormParamsToString\s*=\s*false;\s*"
+    r"if\s*\(localVarUseForm\)\s*\{\s*"
+    r"localVarFormParams\s*=\s*new\s+FormData\(\);\s*"
+    r"\}\s*else\s*\{\s*"
+    r"localVarFormParams\s*=\s*new\s+HttpParams\(\{\s*encoder:\s*this\.encoder\s*\}\);\s*\}",
+    "let localVarFormParams: HttpParams | FormData = new HttpParams({ encoder: this.encoder });",
+    text,
+  )
+  text = text.replace(
+    "body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,",
+    "body: localVarFormParams,",
+  )
+  text = re.sub(
+    r"if\s*\((username|password)\s*!==\s*undefined\)\s*\{\s*"
+    r"(localVarFormParams\s*=\s*this\.appendFormParam\(localVarFormParams,\s*'\1',\s*\1\);)\s*\}",
+    r"\2",
+    text,
+  )
 
   text = text.replace("Observable<HttpResponse<any>>", "Observable<HttpResponse<unknown>>")
   text = text.replace("Observable<HttpEvent<any>>", "Observable<HttpEvent<unknown>>")

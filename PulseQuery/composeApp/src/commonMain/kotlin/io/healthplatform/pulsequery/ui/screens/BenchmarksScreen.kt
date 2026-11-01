@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -93,6 +94,41 @@ typealias MpaxBenchmarkScenario = ViewModelMpaxBenchmarkItem
 typealias BenchmarksUiState = ViewModelBenchmarksUiState
 
 /**
+ * Determines whether [BenchmarksScreen] should automatically trigger an initial benchmark load on mount.
+ *
+ * @param initialState Optional pre-populated state override.
+ * @param viewModel Optional injected [BenchmarksViewModel].
+ * @return True if no explicit state or ViewModel was supplied.
+ */
+internal fun shouldAutoLoadBenchmarks(
+    initialState: BenchmarksUiState?,
+    viewModel: BenchmarksViewModel?
+): Boolean {
+    return initialState == null && viewModel == null
+}
+
+/**
+ * Resolves the prompt text passed to the MPAX Arena simulator, preferring the scenario description when non-blank.
+ *
+ * @param item Target [MpaxBenchmarkItem].
+ * @return Non-blank prompt string.
+ */
+internal fun resolveMpaxSimulationPrompt(item: MpaxBenchmarkItem): String {
+    return item.description.ifBlank { item.title }
+}
+
+/**
+ * Resolves the display error message for [BenchmarksScreen], falling back to [fallbackError] when null.
+ *
+ * @param errorMessage Optional error message from [BenchmarksUiState].
+ * @param fallbackError Localized fallback error string.
+ * @return Non-null display error message.
+ */
+internal fun resolveBenchmarksErrorMessage(errorMessage: String?, fallbackError: String): String {
+    return errorMessage ?: fallbackError
+}
+
+/**
  * Screen rendering golden evaluation benchmarks for SQL generation and MPAX optimization.
  *
  * @param modifier Optional layout modifier.
@@ -118,7 +154,7 @@ fun BenchmarksScreen(
 
     val uiState by vm.state.collectAsState()
 
-    if (initialState == null && viewModel == null) {
+    if (shouldAutoLoadBenchmarks(initialState, viewModel)) {
         LaunchedEffect(vm) {
             vm.performLoadBenchmarks()
         }
@@ -126,107 +162,143 @@ fun BenchmarksScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(Res.string.ai_optimization_benchmarks),
-                        modifier = Modifier.semantics { heading() }
-                    )
-                },
-                actions = {
-                    IconButton(onClick = { vm.loadBenchmarks() }) {
-                        Icon(
-                            Icons.Filled.Refresh,
-                            contentDescription = stringResource(Res.string.refresh_benchmarks)
-                        )
-                    }
-                }
-            )
+            BenchmarksTopBar(onRefresh = { vm.loadBenchmarks() })
         },
         modifier = modifier.fillMaxSize()
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            PrimaryTabRow(selectedTabIndex = uiState.selectedTabIndex) {
-                Tab(
-                    selected = uiState.selectedTabIndex == 0,
-                    onClick = { vm.selectTab(0) },
-                    text = { Text(stringResource(Res.string.benchmark_tab_sql, uiState.sqlBenchmarks.size)) },
-                    modifier = Modifier.testTag("tab-sql")
-                )
-                Tab(
-                    selected = uiState.selectedTabIndex == 1,
-                    onClick = { vm.selectTab(1) },
-                    text = { Text(stringResource(Res.string.benchmark_tab_mpax, uiState.mpaxBenchmarks.size)) },
-                    modifier = Modifier.testTag("tab-mpax")
+        BenchmarksScreenBody(
+            uiState = uiState,
+            paddingValues = padding,
+            onSelectTab = { vm.selectTab(it) },
+            onRetry = { vm.loadBenchmarks() },
+            onSimulateMpax = onSimulateMpax
+        )
+    }
+}
+
+/**
+ * Renders the top app bar for [BenchmarksScreen].
+ *
+ * @param onRefresh Callback invoked when the Refresh icon button is clicked.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BenchmarksTopBar(onRefresh: () -> Unit) {
+    TopAppBar(
+        title = {
+            Text(
+                stringResource(Res.string.ai_optimization_benchmarks),
+                modifier = Modifier.semantics { heading() }
+            )
+        },
+        actions = {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = stringResource(Res.string.refresh_benchmarks)
                 )
             }
+        }
+    )
+}
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    uiState.isLoading -> {
-                        CircularProgressIndicator()
+/**
+ * Renders the tab bar and content area for [BenchmarksScreen].
+ *
+ * @param uiState Current [BenchmarksUiState].
+ * @param paddingValues Scaffold inner padding.
+ * @param onSelectTab Callback invoked when a tab index is selected.
+ * @param onRetry Callback invoked when retrying after an error.
+ * @param onSimulateMpax Callback invoked to launch an MPAX scenario in the arena.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BenchmarksScreenBody(
+    uiState: BenchmarksUiState,
+    paddingValues: PaddingValues,
+    onSelectTab: (Int) -> Unit,
+    onRetry: () -> Unit,
+    onSimulateMpax: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        PrimaryTabRow(selectedTabIndex = uiState.selectedTabIndex) {
+            BenchmarksTabRowContent(
+                selectedTabIndex = uiState.selectedTabIndex,
+                sqlCount = uiState.sqlBenchmarks.size,
+                mpaxCount = uiState.mpaxBenchmarks.size,
+                onSelectTab = onSelectTab
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator()
+                }
+                uiState.errorMessage != null -> {
+                    val errMsg = resolveBenchmarksErrorMessage(
+                        errorMessage = uiState.errorMessage,
+                        fallbackError = stringResource(Res.string.unknown_error)
+                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+                    ) {
+                        Text(
+                            text = errMsg,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = onRetry) {
+                            Text(stringResource(Res.string.retry))
+                        }
                     }
-                    uiState.errorMessage != null -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive }
+                }
+                uiState.selectedTabIndex == 0 -> {
+                    if (uiState.sqlBenchmarks.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.no_sql_benchmarks),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = uiState.errorMessage ?: stringResource(Res.string.unknown_error),
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Button(onClick = { vm.loadBenchmarks() }) {
-                                Text(stringResource(Res.string.retry))
+                            items(uiState.sqlBenchmarks) { item ->
+                                SqlBenchmarkCard(item = item)
                             }
                         }
                     }
-                    uiState.selectedTabIndex == 0 -> {
-                        if (uiState.sqlBenchmarks.isEmpty()) {
-                            Text(
-                                text = stringResource(Res.string.no_sql_benchmarks),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(uiState.sqlBenchmarks) { item ->
-                                    SqlBenchmarkCard(item = item)
-                                }
-                            }
-                        }
-                    }
-                    else -> {
-                        if (uiState.mpaxBenchmarks.isEmpty()) {
-                            Text(
-                                text = stringResource(Res.string.no_mpax_benchmarks),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(uiState.mpaxBenchmarks) { item ->
-                                    MpaxBenchmarkCard(
-                                        item = item,
-                                        onSimulateMpax = onSimulateMpax
-                                    )
-                                }
+                }
+                else -> {
+                    if (uiState.mpaxBenchmarks.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.no_mpax_benchmarks),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(uiState.mpaxBenchmarks) { item ->
+                                MpaxBenchmarkCard(
+                                    item = item,
+                                    onSimulateMpax = onSimulateMpax
+                                )
                             }
                         }
                     }
@@ -234,6 +306,35 @@ fun BenchmarksScreen(
             }
         }
     }
+}
+
+/**
+ * Renders the SQL and MPAX tabs inside the [PrimaryTabRow].
+ *
+ * @param selectedTabIndex Active tab index (`0` for SQL, `1` for MPAX).
+ * @param sqlCount Total number of SQL benchmark items.
+ * @param mpaxCount Total number of MPAX benchmark items.
+ * @param onSelectTab Callback invoked when a tab is clicked.
+ */
+@Composable
+private fun BenchmarksTabRowContent(
+    selectedTabIndex: Int,
+    sqlCount: Int,
+    mpaxCount: Int,
+    onSelectTab: (Int) -> Unit
+) {
+    Tab(
+        selected = selectedTabIndex == 0,
+        onClick = { onSelectTab(0) },
+        text = { Text(stringResource(Res.string.benchmark_tab_sql, sqlCount)) },
+        modifier = Modifier.testTag("tab-sql")
+    )
+    Tab(
+        selected = selectedTabIndex == 1,
+        onClick = { onSelectTab(1) },
+        text = { Text(stringResource(Res.string.benchmark_tab_mpax, mpaxCount)) },
+        modifier = Modifier.testTag("tab-mpax")
+    )
 }
 
 /**
@@ -252,49 +353,59 @@ fun SqlBenchmarkCard(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        SqlBenchmarkCardBody(item = item)
+    }
+}
+
+/**
+ * Renders the interior content of [SqlBenchmarkCard].
+ *
+ * @param item The SQL benchmark item to render.
+ */
+@Composable
+private fun SqlBenchmarkCardBody(item: SqlBenchmarkItem) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = item.theme,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics { heading() }
+            )
+            AssistChip(
+                onClick = {},
+                label = { Text(item.difficulty) }
+            )
+        }
+        if (item.description.isNotBlank()) {
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = item.description,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        if (item.sql.isNotBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(12.dp)
             ) {
                 Text(
-                    text = item.theme,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.semantics { heading() }
+                    text = item.sql,
+                    fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                AssistChip(
-                    onClick = {},
-                    label = { Text(item.difficulty) }
-                )
-            }
-            if (item.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            if (item.sql.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        text = item.sql,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
             }
         }
     }
@@ -318,44 +429,61 @@ fun MpaxBenchmarkCard(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.semantics { heading() }
-                )
-                AssistChip(
-                    onClick = {},
-                    label = { Text(item.difficulty) }
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+        MpaxBenchmarkCardBody(
+            item = item,
+            onSimulateMpax = onSimulateMpax
+        )
+    }
+}
+
+/**
+ * Renders the interior content of [MpaxBenchmarkCard].
+ *
+ * @param item The MPAX benchmark item to render.
+ * @param onSimulateMpax Callback when launching scenario into MPAX arena.
+ */
+@Composable
+private fun MpaxBenchmarkCardBody(
+    item: MpaxBenchmarkItem,
+    onSimulateMpax: (String) -> Unit
+) {
+    Column(modifier = Modifier.padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = stringResource(Res.string.benchmark_service_label, item.targetService),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary
+                text = item.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics { heading() }
             )
-            if (item.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = item.description,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            OutlinedButton(
-                onClick = { onSimulateMpax(item.description.ifBlank { item.title }) },
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text(stringResource(Res.string.simulate_in_arena))
-            }
+            AssistChip(
+                onClick = {},
+                label = { Text(item.difficulty) }
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(Res.string.benchmark_service_label, item.targetService),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.secondary
+        )
+        if (item.description.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = item.description,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = { onSimulateMpax(resolveMpaxSimulationPrompt(item)) },
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text(stringResource(Res.string.simulate_in_arena))
         }
     }
 }

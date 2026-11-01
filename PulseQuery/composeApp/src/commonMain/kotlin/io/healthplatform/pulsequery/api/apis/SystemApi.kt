@@ -130,7 +130,7 @@ open class SystemApi : ApiClient {
      * Trigger manual CSV re-ingestion into DuckDB
      * Forces reload of all CSV datasets from the data folder into DuckDB tables. Requires administrative privileges.  Args:     current_user (User): The authenticated administrative user.  Returns:     dict[str, Any]: ReingestResponse with updated table row counts.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return ReingestResponse
      */
     open suspend fun triggerReingestApiV1SystemReingestPost(

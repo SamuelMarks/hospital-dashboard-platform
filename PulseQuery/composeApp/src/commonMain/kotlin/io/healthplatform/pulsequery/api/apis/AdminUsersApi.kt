@@ -24,7 +24,6 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.UserResponse
 import io.healthplatform.pulsequery.api.models.UserRoleUpdate
@@ -32,12 +31,7 @@ import io.healthplatform.pulsequery.api.models.UserStatusUpdate
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/admin/users` clinical role and user status management endpoints.
@@ -73,12 +67,12 @@ open class AdminUsersApi : ApiClient {
     /**
      * List Users
      * Lists hospital platform users with optional role filtering and email search.  Args:     db (AsyncSession): PostgreSQL async database session.     current_user (User): Requesting administrator user.     limit (int): Pagination batch size limit (1 - 200). Defaults to 50.     offset (int): Pagination record offset. Defaults to 0.     role (str | None): Optional clinical role filter. Defaults to None.     search (str | None): Optional email search substring. Defaults to None.  Returns:     list[User]: Filtered list of registered user profiles.
-     * @param limit  (optional, default to 50)
-     * @param offset  (optional, default to 0)
-     * @param role  (optional)
-     * @param search  (optional)
+     * @param limit Pagination batch size limit (optional, default to 50)
+     * @param offset Pagination record offset (optional, default to 0)
+     * @param role Optional clinical role filter (optional)
+     * @param search Optional email search substring (optional)
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.collections.List<UserResponse>
      */
     open suspend fun listUsersApiV1AdminUsersGet(
@@ -115,31 +109,18 @@ open class AdminUsersApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListUsersApiV1AdminUsersGetResponse>().map { value }
-    }
-
-    @Serializable(ListUsersApiV1AdminUsersGetResponse.Companion::class)
-    private class ListUsersApiV1AdminUsersGetResponse(val value: List<UserResponse>) {
-        companion object : KSerializer<ListUsersApiV1AdminUsersGetResponse> {
-            private val serializer: KSerializer<List<UserResponse>> = serializer<List<UserResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListUsersApiV1AdminUsersGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListUsersApiV1AdminUsersGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * List Users
      * Lists hospital platform users with optional role filtering and email search.  Args:     db (AsyncSession): PostgreSQL async database session.     current_user (User): Requesting administrator user.     limit (int): Pagination batch size limit (1 - 200). Defaults to 50.     offset (int): Pagination record offset. Defaults to 0.     role (str | None): Optional clinical role filter. Defaults to None.     search (str | None): Optional email search substring. Defaults to None.  Returns:     list[User]: Filtered list of registered user profiles.
-     * @param limit  (optional, default to 50)
-     * @param offset  (optional, default to 0)
-     * @param role  (optional)
-     * @param search  (optional)
+     * @param limit Pagination batch size limit (optional, default to 50)
+     * @param offset Pagination record offset (optional, default to 0)
+     * @param role Optional clinical role filter (optional)
+     * @param search Optional email search substring (optional)
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.collections.List<UserResponse>
      */
     open suspend fun listUsersApiV1AdminUsersGet_0(
@@ -176,29 +157,16 @@ open class AdminUsersApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListUsersApiV1AdminUsersGet0Response>().map { value }
-    }
-
-    @Serializable(ListUsersApiV1AdminUsersGet0Response.Companion::class)
-    private class ListUsersApiV1AdminUsersGet0Response(val value: List<UserResponse>) {
-        companion object : KSerializer<ListUsersApiV1AdminUsersGet0Response> {
-            private val serializer: KSerializer<List<UserResponse>> = serializer<List<UserResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListUsersApiV1AdminUsersGet0Response
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListUsersApiV1AdminUsersGet0Response(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Update User Role
      * Updates the clinical or administrative role assignment for a target user.  Args:     user_id (UUID): Target user identifier.     payload (UserRoleUpdate): Desired new clinical role string.     db (AsyncSession): PostgreSQL async database session.     current_user (User): Requesting administrator user.  Returns:     User: The updated user profile entity.  Raises:     HTTPException: 400 if the role is invalid, 404 if the user is not found.
-     * @param userId
-     * @param userRoleUpdate
+     * @param userId Target user identifier.
+     * @param userRoleUpdate Desired clinical role update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return UserResponse
      */
     open suspend fun updateUserRoleApiV1AdminUsersUserIdRolePut(
@@ -234,10 +202,10 @@ open class AdminUsersApi : ApiClient {
     /**
      * Update User Status
      * Activates or suspends a hospital user platform account.  Prevents administrators from suspending their own active account.  Args:     user_id (UUID): Target user identifier.     payload (UserStatusUpdate): New active flag state.     db (AsyncSession): PostgreSQL async database session.     current_user (User): Requesting administrator user.  Returns:     User: The updated user profile entity.  Raises:     HTTPException: 400 if administrator attempts self-suspension, 404 if not found.
-     * @param userId
-     * @param userStatusUpdate
+     * @param userId Target user identifier.
+     * @param userStatusUpdate Account status update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return UserResponse
      */
     open suspend fun updateUserStatusApiV1AdminUsersUserIdStatusPut(

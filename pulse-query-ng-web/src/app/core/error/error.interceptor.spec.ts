@@ -188,7 +188,7 @@ describe('errorInterceptor', () => {
     const req = httpMock.expectOne('/api/test');
     req.flush('Server down', { status: 500, statusText: 'Server Error' });
 
-    const message = mockSnackBar.open.mock.calls[0][0] as string;
+    const message = mockSnackBar.open.mock.calls[0]?.[0] as string;
     expect(message).toContain('Http failure response');
   });
 

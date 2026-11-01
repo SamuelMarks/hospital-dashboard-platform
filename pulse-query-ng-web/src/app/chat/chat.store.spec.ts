@@ -600,10 +600,10 @@ data: {"no_event":true}
     });
 
     it('aborts an active in-flight stream when selectConversation or createNewChat is called', async () => {
-      let capturedSignal: AbortSignal | null | undefined = null;
+      let capturedSignal: AbortSignal | undefined;
       let resolveFetch!: (res: Response) => void;
       vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => {
-        capturedSignal = init?.signal;
+        capturedSignal = init?.signal ?? undefined;
         return new Promise<Response>((resolve) => {
           resolveFetch = resolve;
         });

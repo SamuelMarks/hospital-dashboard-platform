@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,33 +32,21 @@ import kotlinx.serialization.Serializable
  * @property createdAt * @param sessionId
  */
 @Serializable
-
-data class OptimizationSurveyResponse (
-
+data class OptimizationSurveyResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "use_case") @Required val useCase: OptimizationSurveyResponse.UseCase,
-
     @SerialName(value = "role_category") @Required val roleCategory: kotlin.String,
-
     @SerialName(value = "score_vs_manual_process") @Required val scoreVsManualProcess: kotlin.Int,
-
     @SerialName(value = "score_vs_other_workflow_tech") @Required val scoreVsOtherWorkflowTech: kotlin.Int,
-
     @SerialName(value = "interpretability_score") @Required val interpretabilityScore: kotlin.Int,
-
     @SerialName(value = "qualitative_feedback") @Required val qualitativeFeedback: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "session_id") val sessionId: kotlin.String? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -70,8 +57,6 @@ data class OptimizationSurveyResponse (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

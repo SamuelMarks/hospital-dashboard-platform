@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -30,26 +29,18 @@ import kotlinx.serialization.Serializable
  * @property unit * @param `value`
  * @property rationale */
 @Serializable
-
-data class ServiceUnitConstraint (
-
+data class ServiceUnitConstraint(
     @SerialName(value = "constraint_type") @Required val constraintType: ServiceUnitConstraint.ConstraintType,
-
     @SerialName(value = "service") val service: kotlin.String? = null,
-
     @SerialName(value = "unit") val unit: kotlin.String? = null,
-
     /** Numeric constraint value. */
 
-
     @SerialName(value = "value") val `value`: kotlin.Double? = 0.0,
-
     @SerialName(value = "rationale") val rationale: kotlin.String? = ""
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: lock_service_to_unit,prohibit_service_on_unit,unit_capacity_delta,unit_capacity_override,min_service_beds,max_service_beds
      */
@@ -66,8 +57,6 @@ data class ServiceUnitConstraint (
         /** Enumerated wire option. */
         @SerialName(value = "min_service_beds") min_service_beds("min_service_beds"),
         /** Enumerated wire option. */
-        @SerialName(value = "max_service_beds") max_service_beds("max_service_beds");
+        @SerialName(value = "max_service_beds") max_service_beds("max_service_beds")
     }
-
 }
-

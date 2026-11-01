@@ -54,8 +54,10 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.ui.screens.editor.EditorUiState
 import io.healthplatform.pulsequery.ui.screens.editor.EditorViewModel
 import io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDialog
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -71,6 +73,20 @@ import pulsequery.composeapp.generated.resources.sql_editor
 import pulsequery.composeapp.generated.resources.sql_error_msg
 
 /**
+ * Resolves the active [EditorViewModel], returning [viewModel] when provided or creating a scoped instance.
+ *
+ * @param viewModel Optional caller-supplied [EditorViewModel].
+ * @param scope CoroutineScope used when constructing a default [EditorViewModel].
+ * @return Active [EditorViewModel] instance.
+ */
+internal fun resolveEditorViewModel(
+    viewModel: EditorViewModel?,
+    scope: CoroutineScope
+): EditorViewModel {
+    return viewModel ?: EditorViewModel(scope = scope)
+}
+
+/**
  * Editor Screen for writing, previewing, and saving custom SQL queries.
  *
  * @param viewModel Optional [EditorViewModel] instance for state orchestration.
@@ -82,7 +98,7 @@ fun EditorScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val vm = remember(viewModel, coroutineScope) {
-        viewModel ?: EditorViewModel(scope = coroutineScope)
+        resolveEditorViewModel(viewModel, coroutineScope)
     }
 
     val uiState by vm.state.collectAsState()
@@ -94,139 +110,24 @@ fun EditorScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        stringResource(Res.string.sql_editor),
-                        modifier = Modifier.semantics { heading() }
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                actions = {
-                    IconButton(
-                        onClick = { showSaveDialog = true },
-                        enabled = uiState.sqlQuery.isNotBlank()
-                    ) {
-                        Icon(
-                            Icons.Filled.Save,
-                            contentDescription = stringResource(Res.string.save_query)
-                        )
-                    }
-                    TextButton(
-                        onClick = { vm.stageToCart() }
-                    ) {
-                        Text(stringResource(Res.string.add_to_cart))
-                    }
-                }
+            EditorTopBar(
+                isSaveEnabled = uiState.sqlQuery.isNotBlank(),
+                onSaveClick = { showSaveDialog = true },
+                onStageToCart = { vm.stageToCart() }
             )
         },
         floatingActionButton = {
-            val execDesc = stringResource(Res.string.execute)
-            ExtendedFloatingActionButton(
-                onClick = { vm.executeSql(errorPrefix = errExecFailed) },
-                modifier = Modifier.semantics { contentDescription = execDesc },
-                icon = {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                    }
-                },
-                text = { Text(execDesc) },
-                expanded = !uiState.isLoading
+            EditorExecuteFab(
+                isLoading = uiState.isLoading,
+                onExecute = { vm.executeSql(errorPrefix = errExecFailed) }
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = uiState.sqlQuery,
-                onValueChange = { vm.updateSqlQuery(it) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp),
-                textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-                placeholder = { Text(stringResource(Res.string.enter_sql_query_here)) },
-                label = { Text(stringResource(Res.string.query)) },
-                shape = MaterialTheme.shapes.medium
-            )
-
-            uiState.errorMessage?.let { err ->
-                ElevatedCard(
-                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { liveRegion = LiveRegionMode.Assertive }
-                ) {
-                    Text(
-                        text = err,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
-
-            uiState.result?.let { res ->
-                HorizontalDivider()
-
-                val sqlErr = res.error
-                if (sqlErr != null) {
-                    ElevatedCard(
-                        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics { liveRegion = LiveRegionMode.Assertive }
-                    ) {
-                        Text(
-                            text = stringResource(Res.string.sql_error_msg, sqlErr),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                } else {
-                    Text(
-                        text = pluralStringResource(Res.plurals.results_rows, res.data.size, res.data.size),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.semantics { heading() }
-                    )
-
-                    LazyColumn(
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
-                    ) {
-                        items(res.data) { row ->
-                            ElevatedCard(
-                                modifier = Modifier.fillMaxWidth(),
-                                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    row.entries.forEach { (key, value) ->
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text(
-                                                text = key,
-                                                style = MaterialTheme.typography.labelMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Text(
-                                                text = value.toString(),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        EditorContentBody(
+            uiState = uiState,
+            paddingValues = paddingValues,
+            onSqlQueryChange = { vm.updateSqlQuery(it) }
+        )
     }
 
     if (showSaveDialog) {
@@ -241,5 +142,189 @@ fun EditorScreen(
             },
             viewModel = vm
         )
+    }
+}
+
+/**
+ * Renders the top app bar for [EditorScreen].
+ *
+ * @param isSaveEnabled Whether the Save Query action button is enabled.
+ * @param onSaveClick Callback invoked when the Save Query button is clicked.
+ * @param onStageToCart Callback invoked when the Add to Cart button is clicked.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditorTopBar(
+    isSaveEnabled: Boolean,
+    onSaveClick: () -> Unit,
+    onStageToCart: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                stringResource(Res.string.sql_editor),
+                modifier = Modifier.semantics { heading() }
+            )
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        actions = {
+            IconButton(
+                onClick = onSaveClick,
+                enabled = isSaveEnabled
+            ) {
+                Icon(
+                    Icons.Filled.Save,
+                    contentDescription = stringResource(Res.string.save_query)
+                )
+            }
+            TextButton(onClick = onStageToCart) {
+                Text(stringResource(Res.string.add_to_cart))
+            }
+        }
+    )
+}
+
+/**
+ * Renders the floating action button for executing SQL in [EditorScreen].
+ *
+ * @param isLoading Whether a SQL query is currently executing.
+ * @param onExecute Callback invoked when the FAB is clicked.
+ */
+@Composable
+private fun EditorExecuteFab(
+    isLoading: Boolean,
+    onExecute: () -> Unit
+) {
+    val execDesc = stringResource(Res.string.execute)
+    ExtendedFloatingActionButton(
+        onClick = onExecute,
+        modifier = Modifier.semantics { contentDescription = execDesc },
+        icon = {
+            if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            } else {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+            }
+        },
+        text = { Text(execDesc) },
+        expanded = !isLoading
+    )
+}
+
+/**
+ * Renders the main SQL input, error banners, and tabular result rows for [EditorScreen].
+ *
+ * @param uiState Current [EditorUiState].
+ * @param paddingValues Scaffold inner padding.
+ * @param onSqlQueryChange Callback invoked when the SQL query text changes.
+ */
+@Composable
+private fun EditorContentBody(
+    uiState: EditorUiState,
+    paddingValues: PaddingValues,
+    onSqlQueryChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        OutlinedTextField(
+            value = uiState.sqlQuery,
+            onValueChange = onSqlQueryChange,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 250.dp),
+            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+            placeholder = { Text(stringResource(Res.string.enter_sql_query_here)) },
+            label = { Text(stringResource(Res.string.query)) },
+            shape = MaterialTheme.shapes.medium
+        )
+
+        uiState.errorMessage?.let { err ->
+            ElevatedCard(
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { liveRegion = LiveRegionMode.Assertive }
+            ) {
+                Text(
+                    text = err,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        uiState.result?.let { res ->
+            HorizontalDivider()
+
+            val sqlErr = res.error
+            if (sqlErr != null) {
+                ElevatedCard(
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
+                ) {
+                    Text(
+                        text = stringResource(Res.string.sql_error_msg, sqlErr),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            } else {
+                Text(
+                    text = pluralStringResource(Res.plurals.results_rows, res.data.size, res.data.size),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.semantics { heading() }
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(res.data) { row ->
+                        EditorResultRowCard(row = row)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders a single result row card inside [EditorScreen].
+ *
+ * @param row Key-value map representing a single SQL result row.
+ */
+@Composable
+private fun EditorResultRowCard(row: Map<String, Any?>) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            row.entries.forEach { (key, value) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = key,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = value.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
     }
 }

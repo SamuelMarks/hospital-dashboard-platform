@@ -18,10 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ServiceUnitConstraint
-import io.healthplatform.pulsequery.api.models.StaffingConstraint
-import io.healthplatform.pulsequery.api.models.SurgicalScheduleConstraint
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -34,27 +30,18 @@ import kotlinx.serialization.Serializable
  * @property surgicalConstraints * @param staffingConstraints
  * @property resetConstraints */
 @Serializable
-
-data class OptimizationIterationRequest (
-
+data class OptimizationIterationRequest(
     @SerialName(value = "prompt") @Required val prompt: kotlin.String,
-
     @SerialName(value = "quick_action_id") val quickActionId: OptimizationIterationRequest.QuickActionId? = null,
-
     @SerialName(value = "model_id") val modelId: kotlin.String? = "gemini-2.5-pro",
-
     @SerialName(value = "service_constraints") val serviceConstraints: kotlin.collections.List<ServiceUnitConstraint>? = null,
-
     @SerialName(value = "surgical_constraints") val surgicalConstraints: kotlin.collections.List<SurgicalScheduleConstraint>? = null,
-
     @SerialName(value = "staffing_constraints") val staffingConstraints: kotlin.collections.List<StaffingConstraint>? = null,
-
     @SerialName(value = "reset_constraints") val resetConstraints: kotlin.Boolean? = false
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: patient_days_by_unit,patient_days_by_service,combined_analysis,summary_statistics,optimize_service_units,smooth_surgical_schedule,optimize_nurse_staffing
      */
@@ -73,8 +60,6 @@ data class OptimizationIterationRequest (
         /** Enumerated wire option. */
         @SerialName(value = "smooth_surgical_schedule") smooth_surgical_schedule("smooth_surgical_schedule"),
         /** Enumerated wire option. */
-        @SerialName(value = "optimize_nurse_staffing") optimize_nurse_staffing("optimize_nurse_staffing");
+        @SerialName(value = "optimize_nurse_staffing") optimize_nurse_staffing("optimize_nurse_staffing")
     }
-
 }
-

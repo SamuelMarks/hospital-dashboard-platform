@@ -131,7 +131,7 @@ export class AnalyticsService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );
@@ -267,7 +267,7 @@ export class AnalyticsService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );

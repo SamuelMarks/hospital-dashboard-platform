@@ -47,12 +47,15 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.models.ExpertBaselineMetricItem
+import io.healthplatform.pulsequery.api.models.SystemHealthResponse
 import io.healthplatform.pulsequery.core.model.OptimizationUseCaseType
 import io.healthplatform.pulsequery.core.model.QuickActionId
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
 import io.healthplatform.pulsequery.ui.screens.optimization.OptimizationUiState
 import io.healthplatform.pulsequery.ui.screens.optimization.OptimizationViewModel
+import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.database_default_error
@@ -90,6 +93,75 @@ private val DEFAULT_QUICK_ACTION_CHIPS: List<Pair<String, String>> = listOf(
 )
 
 /**
+ * Resolves the active [OptimizationViewModel], returning [viewModel] when provided or constructing
+ * a new instance pre-populated with [initialPrompt] when non-blank.
+ *
+ * @param viewModel Optional caller-supplied [OptimizationViewModel].
+ * @param initialPrompt Optional initial prompt text.
+ * @param scope CoroutineScope used when constructing a default [OptimizationViewModel].
+ * @return Active [OptimizationViewModel] instance.
+ */
+internal fun resolveOptimizationViewModel(
+    viewModel: OptimizationViewModel?,
+    initialPrompt: String?,
+    scope: CoroutineScope
+): OptimizationViewModel {
+    if (viewModel != null) return viewModel
+    val initState = if (!initialPrompt.isNullOrBlank()) {
+        OptimizationUiState(prompt = initialPrompt)
+    } else {
+        OptimizationUiState()
+    }
+    return OptimizationViewModel(scope = scope, initialState = initState)
+}
+
+/**
+ * Determines whether the optimization workspace should auto-initialize when mounted.
+ *
+ * @param state Current [OptimizationUiState].
+ * @return True when no solution is loaded and no request is currently in flight.
+ */
+internal fun shouldInitializeOptimizationWorkspace(state: OptimizationUiState): Boolean {
+    return state.latestSolution == null && !state.isLoading
+}
+
+/**
+ * Resolves the diagnostic database error message from [SystemHealthResponse], falling back to [defaultError].
+ *
+ * @param healthState Optional system health payload.
+ * @param defaultError Localized fallback error string.
+ * @return Specific database error string or [defaultError].
+ */
+internal fun resolveOptimizationDatabaseErrorMessage(
+    healthState: SystemHealthResponse?,
+    defaultError: String
+): String {
+    if (healthState == null) return defaultError
+    return healthState.duckdb.error ?: healthState.postgres.error ?: defaultError
+}
+
+/**
+ * Extracts the list of [ExpertBaselineMetricItem] entries from [OptimizationUiState].
+ *
+ * @param state Current [OptimizationUiState].
+ * @return List of DES evaluation metrics, or empty list when no solution is present.
+ */
+internal fun extractDesMetrics(state: OptimizationUiState): List<ExpertBaselineMetricItem> {
+    val solution = state.latestSolution ?: return emptyList()
+    return solution.desEvaluation.metrics
+}
+
+/**
+ * Refreshes network/database health and re-initializes the optimization workspace.
+ *
+ * @param vm Target [OptimizationViewModel] instance.
+ */
+internal fun retryOptimizationDatabaseAndInitialize(vm: OptimizationViewModel) {
+    AppContainer.networkHealthRepository.refreshHealth()
+    vm.initializeWorkspace()
+}
+
+/**
  * Renders the Hospital Operations Optimization Copilot & Self-Service Workspace screen.
  *
  * @param initialPrompt Optional prompt pre-populated from the Benchmarks screen.
@@ -102,42 +174,21 @@ fun OptimizationScreen(
     viewModel: OptimizationViewModel? = null
 ) {
     val scope = rememberCoroutineScope()
-    val vm = remember(viewModel, initialPrompt) {
-        viewModel ?: OptimizationViewModel(
-            scope = scope,
-            initialState = if (!initialPrompt.isNullOrBlank()) {
-                OptimizationUiState(prompt = initialPrompt)
-            } else {
-                OptimizationUiState()
-            }
-        )
+    val vm = remember(viewModel, initialPrompt, scope) {
+        resolveOptimizationViewModel(viewModel, initialPrompt, scope)
     }
 
     val state by vm.state.collectAsState()
     val isDatabaseHealthy by AppContainer.networkHealthRepository.isDatabaseHealthy.collectAsState()
     val healthState by AppContainer.networkHealthRepository.healthState.collectAsState()
-    val dbMisconfigTitle = stringResource(Res.string.database_misconfiguration)
 
-    LaunchedEffect(vm) {
-        if (state.latestSolution == null && !state.isLoading) {
+    if (shouldInitializeOptimizationWorkspace(state)) {
+        LaunchedEffect(vm) {
             vm.initializeWorkspace()
         }
     }
 
-    val titleText = stringResource(Res.string.optimization_copilot_title)
-    val whatICanDoTitle = stringResource(Res.string.optimization_what_i_can_do)
-    val whatICanDoDesc = stringResource(Res.string.optimization_what_i_can_do_desc)
-    val quickActionsTitle = stringResource(Res.string.optimization_quick_actions)
-    val uc1Label = stringResource(Res.string.optimization_use_case_service_unit)
-    val uc2Label = stringResource(Res.string.optimization_use_case_surgical)
-    val uc3Label = stringResource(Res.string.optimization_use_case_staffing)
-    val promptLabel = stringResource(Res.string.optimization_prompt_label)
-    val solveButtonLabel = stringResource(Res.string.optimization_solve_button)
-    val hotLoadLabel = stringResource(Res.string.optimization_litert_hot_load)
-    val litertActiveLabel = stringResource(Res.string.optimization_litert_active)
-    val desBaselineTitle = stringResource(Res.string.optimization_des_baseline_title)
-    val surveyButtonLabel = stringResource(Res.string.optimization_survey_button)
-    val disclaimerText = stringResource(Res.string.optimization_disclaimer)
+    val desMetrics = extractDesMetrics(state)
 
     LazyColumn(
         modifier = Modifier
@@ -146,286 +197,438 @@ fun OptimizationScreen(
             .testTag("optimization-screen"),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (!isDatabaseHealthy) {
-            item {
-                val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error
-                    ?: stringResource(Res.string.database_default_error)
-                DatabaseErrorCard(
-                    title = dbMisconfigTitle,
-                    message = dbMsg,
-                    onRetry = {
-                        AppContainer.networkHealthRepository.refreshHealth()
-                        vm.initializeWorkspace()
-                    }
-                )
-            }
-        }
-
         item {
-            Text(
-                text = titleText,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .semantics { heading() }
-                    .testTag("optimization-title")
+            OptimizationDatabaseBannerSection(
+                isDatabaseHealthy = isDatabaseHealthy,
+                healthState = healthState,
+                onRetry = { retryOptimizationDatabaseAndInitialize(vm) }
             )
+            OptimizationTitleHeader()
         }
 
         // Use Case Selector Row
         item {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = state.selectedUseCase == OptimizationUseCaseType.SERVICE_UNIT,
-                    onClick = { vm.selectUseCase(OptimizationUseCaseType.SERVICE_UNIT) },
-                    label = { Text(uc1Label) },
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 48.dp)
-                        .testTag("chip-uc-service-unit")
-                )
-                FilterChip(
-                    selected = state.selectedUseCase == OptimizationUseCaseType.SURGICAL_SCHEDULING,
-                    onClick = { vm.selectUseCase(OptimizationUseCaseType.SURGICAL_SCHEDULING) },
-                    label = { Text(uc2Label) },
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 48.dp)
-                        .testTag("chip-uc-surgical")
-                )
-                FilterChip(
-                    selected = state.selectedUseCase == OptimizationUseCaseType.STAFFING_OPTIMIZATION,
-                    onClick = { vm.selectUseCase(OptimizationUseCaseType.STAFFING_OPTIMIZATION) },
-                    label = { Text(uc3Label) },
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 48.dp)
-                        .testTag("chip-uc-staffing")
-                )
-            }
+            OptimizationUseCaseSelectorRow(
+                selectedUseCase = state.selectedUseCase,
+                onSelectUseCase = { vm.selectUseCase(it) }
+            )
         }
 
         // On-Device ML (LiteRT) Hot-Loading Controls
         item {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { vm.hotLoadLiteRtModel("litert-medgemma-4b-int4") },
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 48.dp)
-                        .testTag("btn-litert-hot-load")
-                ) {
-                    Text(hotLoadLabel)
-                }
-                state.activeLiteRtModel?.let { activeOdml ->
-                    Text(
-                        text = "$litertActiveLabel: ${activeOdml.displayName}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .semantics { liveRegion = LiveRegionMode.Polite }
-                            .testTag("badge-litert-active")
-                    )
-                }
-            }
+            OptimizationLiteRtControlsRow(
+                state = state,
+                onHotLoad = { vm.hotLoadLiteRtModel("litert-medgemma-4b-int4") }
+            )
         }
 
         // Alpha Bed-Use Tool Card: "What I Can Do" & "Quick Actions"
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = whatICanDoTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = whatICanDoDesc,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = quickActionsTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.semantics { heading() }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        DEFAULT_QUICK_ACTION_CHIPS.forEach { (actionId, label) ->
-                            AssistChip(
-                                onClick = { vm.executeQuickAction(QuickActionId(actionId)) },
-                                label = { Text(label) },
-                                modifier = Modifier
-                                    .defaultMinSize(minHeight = 48.dp)
-                                    .semantics { contentDescription = label }
-                                    .testTag("qa-$actionId")
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = state.prompt,
-                        onValueChange = { vm.updatePrompt(it) },
-                        label = { Text(promptLabel) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input-optimization-prompt")
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            onClick = { vm.submitPrompt() },
-                            enabled = !state.isLoading && state.prompt.isNotBlank(),
-                            modifier = Modifier
-                                .defaultMinSize(minHeight = 48.dp)
-                                .testTag("btn-submit-optimization")
-                        ) {
-                            Text(solveButtonLabel)
-                        }
-                        OutlinedButton(
-                            onClick = { vm.submitSurvey() },
-                            modifier = Modifier
-                                .defaultMinSize(minHeight = 48.dp)
-                                .testTag("btn-submit-survey")
-                        ) {
-                            Text(surveyButtonLabel)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = disclaimerText,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            OptimizationCopilotCard(
+                state = state,
+                onQuickAction = { vm.executeQuickAction(QuickActionId(it)) },
+                onPromptChange = { vm.updatePrompt(it) },
+                onSubmitPrompt = { vm.submitPrompt() },
+                onSubmitSurvey = { vm.submitSurvey() }
+            )
         }
 
-        if (state.isLoading) {
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier
-                        .semantics { liveRegion = LiveRegionMode.Polite }
-                        .testTag("optimization-loading")
-                ) {
-                    CircularProgressIndicator()
-                    Text(stringResource(Res.string.optimization_solving_loading))
-                }
-            }
+        item {
+            OptimizationStatusAndSolutionHeaderSection(state = state)
         }
 
-        state.errorMessage?.let { errorMsg ->
-            item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { liveRegion = LiveRegionMode.Assertive }
-                        .testTag("optimization-error")
-                ) {
-                    Text(
-                        text = errorMsg,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
+        items(desMetrics) { metric ->
+            OptimizationDesMetricCard(metric = metric)
         }
+    }
+}
 
-        if (state.surveySubmitted) {
-            item {
-                Text(
-                    text = stringResource(Res.string.optimization_survey_recorded),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
+/**
+ * Renders the database error card when the backend database is unhealthy.
+ *
+ * @param isDatabaseHealthy Whether backend databases are healthy.
+ * @param healthState Optional [SystemHealthResponse] payload.
+ * @param onRetry Callback invoked when the user clicks retry.
+ */
+@Composable
+private fun OptimizationDatabaseBannerSection(
+    isDatabaseHealthy: Boolean,
+    healthState: SystemHealthResponse?,
+    onRetry: () -> Unit
+) {
+    if (!isDatabaseHealthy) {
+        val dbMsg = resolveOptimizationDatabaseErrorMessage(
+            healthState = healthState,
+            defaultError = stringResource(Res.string.database_default_error)
+        )
+        DatabaseErrorCard(
+            title = stringResource(Res.string.database_misconfiguration),
+            message = dbMsg,
+            onRetry = onRetry
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+/**
+ * Renders the main title heading for [OptimizationScreen].
+ */
+@Composable
+private fun OptimizationTitleHeader() {
+    Text(
+        text = stringResource(Res.string.optimization_copilot_title),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .semantics { heading() }
+            .testTag("optimization-title")
+    )
+}
+
+/**
+ * Renders the three MPAX optimization use case filter chips.
+ *
+ * @param selectedUseCase Currently selected [OptimizationUseCaseType].
+ * @param onSelectUseCase Callback invoked when a use case chip is selected.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OptimizationUseCaseSelectorRow(
+    selectedUseCase: OptimizationUseCaseType,
+    onSelectUseCase: (OptimizationUseCaseType) -> Unit
+) {
+    val uc1Label = stringResource(Res.string.optimization_use_case_service_unit)
+    val uc2Label = stringResource(Res.string.optimization_use_case_surgical)
+    val uc3Label = stringResource(Res.string.optimization_use_case_staffing)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = selectedUseCase == OptimizationUseCaseType.SERVICE_UNIT,
+            onClick = { onSelectUseCase(OptimizationUseCaseType.SERVICE_UNIT) },
+            label = { Text(uc1Label) },
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .testTag("chip-uc-service-unit")
+        )
+        FilterChip(
+            selected = selectedUseCase == OptimizationUseCaseType.SURGICAL_SCHEDULING,
+            onClick = { onSelectUseCase(OptimizationUseCaseType.SURGICAL_SCHEDULING) },
+            label = { Text(uc2Label) },
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .testTag("chip-uc-surgical")
+        )
+        FilterChip(
+            selected = selectedUseCase == OptimizationUseCaseType.STAFFING_OPTIMIZATION,
+            onClick = { onSelectUseCase(OptimizationUseCaseType.STAFFING_OPTIMIZATION) },
+            label = { Text(uc3Label) },
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .testTag("chip-uc-staffing")
+        )
+    }
+}
+
+/**
+ * Renders the On-Device ML (LiteRT) hot-loading button and active model badge.
+ *
+ * @param state Current [OptimizationUiState].
+ * @param onHotLoad Callback invoked to hot-load the default LiteRT model.
+ */
+@Composable
+private fun OptimizationLiteRtControlsRow(
+    state: OptimizationUiState,
+    onHotLoad: () -> Unit
+) {
+    val hotLoadLabel = stringResource(Res.string.optimization_litert_hot_load)
+    val litertActiveLabel = stringResource(Res.string.optimization_litert_active)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OutlinedButton(
+            onClick = onHotLoad,
+            modifier = Modifier
+                .defaultMinSize(minHeight = 48.dp)
+                .testTag("btn-litert-hot-load")
+        ) {
+            Text(hotLoadLabel)
+        }
+        state.activeLiteRtModel?.let { activeOdml ->
+            Text(
+                text = "$litertActiveLabel: ${activeOdml.displayName}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+                    .testTag("badge-litert-active")
+            )
+        }
+    }
+}
+
+/**
+ * Renders the main Optimization Copilot card with quick actions, prompt input, and solve/survey buttons.
+ *
+ * @param state Current [OptimizationUiState].
+ * @param onQuickAction Callback invoked when a quick action chip is clicked.
+ * @param onPromptChange Callback invoked when the prompt text changes.
+ * @param onSubmitPrompt Callback invoked when the Solve button is clicked.
+ * @param onSubmitSurvey Callback invoked when the Survey button is clicked.
+ */
+@Composable
+private fun OptimizationCopilotCard(
+    state: OptimizationUiState,
+    onQuickAction: (String) -> Unit,
+    onPromptChange: (String) -> Unit,
+    onSubmitPrompt: () -> Unit,
+    onSubmitSurvey: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        OptimizationCopilotCardContent(
+            state = state,
+            onQuickAction = onQuickAction,
+            onPromptChange = onPromptChange,
+            onSubmitPrompt = onSubmitPrompt,
+            onSubmitSurvey = onSubmitSurvey
+        )
+    }
+}
+
+/**
+ * Renders the interior content of [OptimizationCopilotCard].
+ *
+ * @param state Current [OptimizationUiState].
+ * @param onQuickAction Callback invoked when a quick action chip is clicked.
+ * @param onPromptChange Callback invoked when the prompt text changes.
+ * @param onSubmitPrompt Callback invoked when the Solve button is clicked.
+ * @param onSubmitSurvey Callback invoked when the Survey button is clicked.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OptimizationCopilotCardContent(
+    state: OptimizationUiState,
+    onQuickAction: (String) -> Unit,
+    onPromptChange: (String) -> Unit,
+    onSubmitPrompt: () -> Unit,
+    onSubmitSurvey: () -> Unit
+) {
+    val whatICanDoTitle = stringResource(Res.string.optimization_what_i_can_do)
+    val whatICanDoDesc = stringResource(Res.string.optimization_what_i_can_do_desc)
+    val quickActionsTitle = stringResource(Res.string.optimization_quick_actions)
+    val promptLabel = stringResource(Res.string.optimization_prompt_label)
+    val solveButtonLabel = stringResource(Res.string.optimization_solve_button)
+    val surveyButtonLabel = stringResource(Res.string.optimization_survey_button)
+    val disclaimerText = stringResource(Res.string.optimization_disclaimer)
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text(
+            text = whatICanDoTitle,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() }
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = whatICanDoDesc,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = quickActionsTitle,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.semantics { heading() }
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DEFAULT_QUICK_ACTION_CHIPS.forEach { (actionId, label) ->
+                AssistChip(
+                    onClick = { onQuickAction(actionId) },
+                    label = { Text(label) },
                     modifier = Modifier
-                        .semantics { liveRegion = LiveRegionMode.Polite }
-                        .testTag("survey-submitted-banner")
+                        .defaultMinSize(minHeight = 48.dp)
+                        .semantics { contentDescription = label }
+                        .testTag("qa-$actionId")
                 )
             }
         }
 
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = state.prompt,
+            onValueChange = onPromptChange,
+            label = { Text(promptLabel) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("input-optimization-prompt")
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = onSubmitPrompt,
+                enabled = !state.isLoading && state.prompt.isNotBlank(),
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 48.dp)
+                    .testTag("btn-submit-optimization")
+            ) {
+                Text(solveButtonLabel)
+            }
+            OutlinedButton(
+                onClick = onSubmitSurvey,
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 48.dp)
+                    .testTag("btn-submit-survey")
+            ) {
+                Text(surveyButtonLabel)
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = disclaimerText,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Renders loading progress, error cards, survey confirmation, quick action report, and DES baseline header.
+ *
+ * @param state Current [OptimizationUiState].
+ */
+@Composable
+private fun OptimizationStatusAndSolutionHeaderSection(state: OptimizationUiState) {
+    val desBaselineTitle = stringResource(Res.string.optimization_des_baseline_title)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (state.isLoading) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+                    .testTag("optimization-loading")
+            ) {
+                CircularProgressIndicator()
+                Text(stringResource(Res.string.optimization_solving_loading))
+            }
+        }
+
+        state.errorMessage?.let { errorMsg ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { liveRegion = LiveRegionMode.Assertive }
+                    .testTag("optimization-error")
+            ) {
+                Text(
+                    text = errorMsg,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
+        if (state.surveySubmitted) {
+            Text(
+                text = stringResource(Res.string.optimization_survey_recorded),
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .semantics { liveRegion = LiveRegionMode.Polite }
+                    .testTag("survey-submitted-banner")
+            )
+        }
+
         state.quickActionReport?.let { report ->
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("quick-action-report-card")
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = report.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = report.summaryMarkdown,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("quick-action-report-card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = report.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = report.summaryMarkdown,
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
 
         state.latestSolution?.let { sol ->
-            item {
-                Text(
-                    text = stringResource(
-                        Res.string.optimization_des_header_with_gap,
-                        desBaselineTitle,
-                        sol.desEvaluation.overallExpertGapPct.toString()
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .semantics { heading() }
-                        .testTag("des-baseline-header")
-                )
-            }
-            items(sol.desEvaluation.metrics) { metric ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("des-metric-${metric.metricKey}")
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = metric.label,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = stringResource(
-                                Res.string.optimization_metric_comparison_summary,
-                                metric.manualHistoricalValue.toString(),
-                                metric.expertBaselineValue.toString(),
-                                metric.llmMpaxValue.toString(),
-                                metric.improvementVsManualPct.toString()
-                            ),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
+            Text(
+                text = stringResource(
+                    Res.string.optimization_des_header_with_gap,
+                    desBaselineTitle,
+                    sol.desEvaluation.overallExpertGapPct.toString()
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .semantics { heading() }
+                    .testTag("des-baseline-header")
+            )
         }
+    }
+}
+
+/**
+ * Renders a single Discrete Event Simulation (DES) baseline comparison metric card.
+ *
+ * @param metric The [ExpertBaselineMetricItem] to display.
+ */
+@Composable
+private fun OptimizationDesMetricCard(metric: ExpertBaselineMetricItem) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("des-metric-${metric.metricKey}")
+    ) {
+        OptimizationDesMetricCardContent(metric = metric)
+    }
+}
+
+/**
+ * Renders the interior text of [OptimizationDesMetricCard].
+ *
+ * @param metric The [ExpertBaselineMetricItem] to display.
+ */
+@Composable
+private fun OptimizationDesMetricCardContent(metric: ExpertBaselineMetricItem) {
+    Column(modifier = Modifier.padding(12.dp)) {
+        Text(
+            text = metric.label,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = stringResource(
+                Res.string.optimization_metric_comparison_summary,
+                metric.manualHistoricalValue.toString(),
+                metric.expertBaselineValue.toString(),
+                metric.llmMpaxValue.toString(),
+                metric.improvementVsManualPct.toString()
+            ),
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }

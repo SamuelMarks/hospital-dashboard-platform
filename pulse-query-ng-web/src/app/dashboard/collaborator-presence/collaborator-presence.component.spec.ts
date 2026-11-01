@@ -62,6 +62,7 @@ describe('CollaboratorPresenceComponent', () => {
       component.getCollaboratorTooltip({
         user_id: 'u2',
         email: 'nurse@hospital.org',
+        role: '',
         connected_at: '',
       }),
     ).toBe('nurse@hospital.org (Collaborator)');

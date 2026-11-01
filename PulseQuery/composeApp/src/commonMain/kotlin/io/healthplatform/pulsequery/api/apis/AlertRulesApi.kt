@@ -24,7 +24,6 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.AlertRuleCreate
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
@@ -32,12 +31,7 @@ import io.healthplatform.pulsequery.api.models.AlertRuleUpdate
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/analytics/alert-rules` hospital bed occupancy threshold alert rule CRUD endpoints.
@@ -73,7 +67,7 @@ open class AlertRulesApi : ApiClient {
     /**
      * Create Alert Rule
      * Creates a new clinical alert rule with configured unit and occupancy threshold.  Args:     request (AlertRuleCreate): Creation payload with category, threshold, and severity.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The newly created and persisted alert rule.
-     * @param alertRuleCreate
+     * @param alertRuleCreate Alert rule creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
@@ -107,7 +101,7 @@ open class AlertRulesApi : ApiClient {
     /**
      * Create Alert Rule
      * Creates a new clinical alert rule with configured unit and occupancy threshold.  Args:     request (AlertRuleCreate): Creation payload with category, threshold, and severity.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The newly created and persisted alert rule.
-     * @param alertRuleCreate
+     * @param alertRuleCreate Alert rule creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
@@ -141,7 +135,7 @@ open class AlertRulesApi : ApiClient {
     /**
      * Delete Alert Rule
      * Deletes an existing clinical alert rule by UUID.  Args:     rule_id (UUID): Unique alert rule identifier to remove.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Raises:     HTTPException: 404 if the rule does not exist.
-     * @param ruleId
+     * @param ruleId Unique alert rule identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
@@ -176,7 +170,7 @@ open class AlertRulesApi : ApiClient {
     /**
      * Get Alert Rule
      * Retrieves a single clinical alert rule by its UUID.  Args:     rule_id (UUID): Unique alert rule identifier.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The requested alert rule entity.  Raises:     HTTPException: 404 if the rule does not exist.
-     * @param ruleId
+     * @param ruleId Unique alert rule identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */
@@ -238,20 +232,7 @@ open class AlertRulesApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListAlertRulesApiV1AnalyticsAlertRulesGetResponse>().map { value }
-    }
-
-    @Serializable(ListAlertRulesApiV1AnalyticsAlertRulesGetResponse.Companion::class)
-    private class ListAlertRulesApiV1AnalyticsAlertRulesGetResponse(val value: List<AlertRuleResponse>) {
-        companion object : KSerializer<ListAlertRulesApiV1AnalyticsAlertRulesGetResponse> {
-            private val serializer: KSerializer<List<AlertRuleResponse>> = serializer<List<AlertRuleResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListAlertRulesApiV1AnalyticsAlertRulesGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListAlertRulesApiV1AnalyticsAlertRulesGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -284,27 +265,14 @@ open class AlertRulesApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListAlertRulesApiV1AnalyticsAlertRulesGet0Response>().map { value }
-    }
-
-    @Serializable(ListAlertRulesApiV1AnalyticsAlertRulesGet0Response.Companion::class)
-    private class ListAlertRulesApiV1AnalyticsAlertRulesGet0Response(val value: List<AlertRuleResponse>) {
-        companion object : KSerializer<ListAlertRulesApiV1AnalyticsAlertRulesGet0Response> {
-            private val serializer: KSerializer<List<AlertRuleResponse>> = serializer<List<AlertRuleResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListAlertRulesApiV1AnalyticsAlertRulesGet0Response
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListAlertRulesApiV1AnalyticsAlertRulesGet0Response(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Update Alert Rule
      * Updates an existing clinical alert rule with partial attribute modifications.  Args:     rule_id (UUID): Unique alert rule identifier.     request (AlertRuleUpdate): Attributes to update.     current_user (User): Authenticated user.     db (AsyncSession): PostgreSQL async database session.  Returns:     AlertRule: The updated alert rule entity.  Raises:     HTTPException: 404 if the rule does not exist.
-     * @param ruleId
-     * @param alertRuleUpdate
+     * @param ruleId Unique alert rule identifier.
+     * @param alertRuleUpdate Partial alert rule update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return AlertRuleResponse
      */

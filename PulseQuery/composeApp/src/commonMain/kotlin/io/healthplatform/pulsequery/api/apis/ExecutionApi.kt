@@ -24,17 +24,11 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/dashboards/{id}/refresh` batch and single-widget query execution endpoints.
@@ -70,11 +64,11 @@ open class ExecutionApi : ApiClient {
     /**
      * Refresh Dashboard
      * Refreshes data for ALL widgets in a specific dashboard. Injects global_params into SQL queries before execution.  Args:     dashboard_id (UUID): ID of the target dashboard to refresh.     current_user (User): Authenticated user requesting the refresh.     db (AsyncSession): PostgreSQL async database session.     authorization (Optional[str]): Authorization header for token forwarding.     accept_language (Optional[str]): Preferred response language header.     global_params (dict[str, Any]): Global filter parameters for queries.  Returns:     dict[UUID, Any]: Map of widget UUID to execution results.  Raises:     HTTPException: 404 if dashboard not found or user lacks access.
-     * @param dashboardId
+     * @param dashboardId Target dashboard identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param authorization  (optional)
-     * @param acceptLanguage  (optional)
-     * @param requestBody  (optional)
+     * @param authorization Optional Authorization header for token forwarding (optional)
+     * @param acceptLanguage Preferred response language header (optional)
+     * @param requestBody Global filter parameters for SQL queries (optional)
      * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
      */
     open suspend fun refreshDashboardApiV1DashboardsDashboardIdRefreshPost(
@@ -86,9 +80,8 @@ open class ExecutionApi : ApiClient {
     ): HttpResponse<kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(
+        val localVariableBody =
             requestBody ?: emptyMap<kotlin.String, kotlinx.serialization.json.JsonElement>()
-        )
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
         token?.apply { localVariableQuery["token"] = listOf("$token") }
@@ -108,51 +101,18 @@ open class ExecutionApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse>().map { value }
-    }
-
-    @Serializable(RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest.Companion::class)
-    private class RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(
-        val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>
-    ) {
-        companion object : KSerializer<RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostRequest(serializer.deserialize(decoder))
-        }
-    }
-    @Serializable(RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse.Companion::class)
-    private class RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse(
-        val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>
-    ) {
-        companion object : KSerializer<RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = RefreshDashboardApiV1DashboardsDashboardIdRefreshPostResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Refresh Widget
      * Refreshes data for a SINGLE widget. Supports ?force_refresh=true to bypass cache, and optional natural_text and processor parameters.
-     * @param dashboardId
-     * @param widgetId
-     * @param forceRefresh  (optional, default to false)
+     * @param dashboardId Target dashboard identifier.
+     * @param widgetId Target widget identifier.
+     * @param forceRefresh Whether to bypass cached widget results (optional, default to false)
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param authorization  (optional)
-     * @param acceptLanguage  (optional)
+     * @param authorization Optional Authorization header for token forwarding (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @param naturalText Optional user-entered natural language prompt or raw SQL query (optional)
      * @param processor Optional processor override ('SQL', 'ollama:<model>', or '<provider>:<model>') (optional)
      * @return kotlin.collections.Map<kotlin.String, kotlinx.serialization.json.JsonElement>
@@ -193,23 +153,6 @@ open class ExecutionApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse>().map { value }
-    }
-
-    @Serializable(RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse.Companion::class)
-    private class RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse(
-        val value: Map<kotlin.String, kotlinx.serialization.json.JsonElement>
-    ) {
-        companion object : KSerializer<RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlinx.serialization.json.JsonElement>> = serializer<Map<String, kotlinx.serialization.json.JsonElement>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = RefreshWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdRefreshPostResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 }

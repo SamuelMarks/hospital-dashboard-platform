@@ -70,6 +70,45 @@ import pulsequery.composeapp.generated.resources.tv_wallboard
 import pulsequery.composeapp.generated.resources.use_dpad_to_select
 
 /**
+ * Resolves the TV wallboard header title, preferring the active dashboard name when available.
+ *
+ * @param dashboardName Active dashboard name, or null.
+ * @param defaultTitle Localized fallback wallboard title.
+ * @return Resolved wallboard header title.
+ */
+internal fun resolveTvWallboardTitle(dashboardName: String?, defaultTitle: String): String {
+    return dashboardName ?: defaultTitle
+}
+
+/**
+ * Builds the accessibility content description for a TV wallboard widget card.
+ *
+ * @param widgetTitle Title of the widget.
+ * @return Accessibility announcement string.
+ */
+internal fun buildTvCardAccessibilityDescription(widgetTitle: String): String {
+    return "TV Card: $widgetTitle"
+}
+
+/**
+ * Requests initial D-pad focus on a [FocusRequester] when [isFirst] is true, safely catching layout exceptions.
+ *
+ * @param isFirst Whether the card is the first item in the carousel.
+ * @param focusRequester Target [FocusRequester] instance.
+ * @return [Result] indicating whether focus was requested cleanly.
+ */
+internal fun requestInitialTvCardFocus(
+    isFirst: Boolean,
+    focusRequester: FocusRequester
+): Result<Unit> {
+    return runCatchingPulse {
+        if (isFirst) {
+            focusRequester.requestFocus()
+        }
+    }
+}
+
+/**
  * TV Wallboard dashboard screen optimized for passive 10-foot nursing station displays,
  * featuring large high-contrast KPI cards and D-pad directional navigation focus states.
  *
@@ -96,84 +135,105 @@ fun TvDashboardScreen(
         color = Color(0xFF0A0E14),
         modifier = Modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp)
+        TvDashboardContent(
+            uiState = uiState,
+            onExit = onExit
+        )
+    }
+}
+
+/**
+ * Renders the interior wallboard header and body content inside [TvDashboardScreen].
+ *
+ * @param uiState Current [TvDashboardUiState].
+ * @param onExit Callback invoked when exiting wallboard mode.
+ */
+@Composable
+private fun TvDashboardContent(
+    uiState: TvDashboardUiState,
+    onExit: () -> Unit
+) {
+    val headerTitle = resolveTvWallboardTitle(
+        dashboardName = uiState.activeDashboard?.name,
+        defaultTitle = stringResource(Res.string.clinical_status_wallboard)
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tv,
-                        contentDescription = stringResource(Res.string.tv_wallboard),
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Column {
-                        Text(
-                            text = uiState.activeDashboard?.name
-                                ?: stringResource(Res.string.clinical_status_wallboard),
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Color.White,
-                            modifier = Modifier.semantics { heading() }
-                        )
-                        Text(
-                            text = stringResource(Res.string.tv_live_view_subtitle),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color(0xFF90A4AE)
-                        )
-                    }
-                }
-                SuggestionChip(
-                    onClick = onExit,
-                    label = { Text(stringResource(Res.string.exit_wallboard), color = Color.White) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFF1E293B))
+                Icon(
+                    imageVector = Icons.Default.Tv,
+                    contentDescription = stringResource(Res.string.tv_wallboard),
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(40.dp)
                 )
+                Column {
+                    Text(
+                        text = headerTitle,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color.White,
+                        modifier = Modifier.semantics { heading() }
+                    )
+                    Text(
+                        text = stringResource(Res.string.tv_live_view_subtitle),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color(0xFF90A4AE)
+                    )
+                }
             }
+            SuggestionChip(
+                onClick = onExit,
+                label = { Text(stringResource(Res.string.exit_wallboard), color = Color.White) },
+                colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFF1E293B))
+            )
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-            when {
-                uiState.isLoading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
-                            DashboardGridSkeleton()
-                        }
+        when {
+            uiState.isLoading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
+                        DashboardGridSkeleton()
                     }
                 }
-                uiState.errorMessage != null -> {
+            }
+            uiState.errorMessage != null -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = uiState.errorMessage.orEmpty(),
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 24.sp
+                    )
+                }
+            }
+            else -> {
+                val widgets = uiState.activeDashboard?.widgets ?: emptyList()
+                if (widgets.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = uiState.errorMessage.orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
+                            stringResource(Res.string.no_telemetry_widgets),
+                            color = Color.White,
                             fontSize = 24.sp
                         )
                     }
-                }
-                else -> {
-                    val widgets = uiState.activeDashboard?.widgets ?: emptyList()
-                    if (widgets.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                stringResource(Res.string.no_telemetry_widgets),
-                                color = Color.White,
-                                fontSize = 24.sp
-                            )
-                        }
-                    } else {
-                        TvWidgetCarousel(widgets = widgets)
-                    }
+                } else {
+                    TvWidgetCarousel(widgets = widgets)
                 }
             }
         }
@@ -212,13 +272,10 @@ fun TvWidgetCarousel(widgets: List<WidgetResponse>) {
 fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
     var isFocused by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val cardDesc = buildTvCardAccessibilityDescription(widget.title)
 
-    LaunchedEffect(Unit) {
-        if (isFirst) {
-            runCatchingPulse {
-                focusRequester.requestFocus()
-            }
-        }
+    LaunchedEffect(isFirst) {
+        requestInitialTvCardFocus(isFirst, focusRequester)
     }
 
     Card(
@@ -238,73 +295,97 @@ fun TvCardItem(widget: WidgetResponse, isFirst: Boolean = false) {
                 shape = RoundedCornerShape(16.dp)
             )
             .semantics {
-                contentDescription = "TV Card: ${widget.title}"
+                contentDescription = cardDesc
             }
     ) {
-        Column(
+        TvCardItemBody(widget = widget, isFocused = isFocused)
+    }
+}
+
+/**
+ * Renders the interior content of [TvCardItem].
+ *
+ * @param widget The widget payload to display.
+ * @param isFocused Whether this card currently holds D-pad focus.
+ */
+@Composable
+private fun TvCardItemBody(
+    widget: WidgetResponse,
+    isFocused: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column {
+            Text(
+                text = widget.title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = Color.White,
+                maxLines = 1
+            )
+            extractWidgetSubtitle(widget)?.let { sub ->
+                Text(
+                    text = sub,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF94A3B8),
+                    maxLines = 2,
+                    modifier = Modifier.testTag("widget_subtitle_${widget.id}")
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            SuggestionChip(
+                onClick = {},
+                label = { TvVisualizationChipLabel(visualization = widget.visualization) },
+                colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFF1E3A2F))
+            )
+        }
+
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            verticalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
         ) {
-            Column {
-                Text(
-                    text = widget.title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = Color.White,
-                    maxLines = 1
-                )
-                extractWidgetSubtitle(widget)?.let { sub ->
-                    Text(
-                        text = sub,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF94A3B8),
-                        maxLines = 2,
-                        modifier = Modifier.testTag("widget_subtitle_${widget.id}")
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(widget.visualization.uppercase(), fontSize = 12.sp, color = Color(0xFF81C784)) },
-                    colors = SuggestionChipDefaults.suggestionChipColors(containerColor = Color(0xFF1E3A2F))
-                )
-            }
+            WidgetSkeletonPlaceholder(
+                visualization = VisualizationType.fromWire(widget.visualization)
+            )
+            Text(
+                text = stringResource(Res.string.live_telemetry_feed),
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color(0xFF64748B)
+            )
+        }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                WidgetSkeletonPlaceholder(
-                    visualization = VisualizationType.fromWire(widget.visualization)
-                )
-                Text(
-                    text = stringResource(Res.string.live_telemetry_feed),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFF64748B)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (isFocused) {
-                        stringResource(Res.string.press_ok_to_inspect)
-                    } else {
-                        stringResource(Res.string.use_dpad_to_select)
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isFocused) Color(0xFF4CAF50) else Color(0xFF475569)
-                )
-            }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (isFocused) {
+                    stringResource(Res.string.press_ok_to_inspect)
+                } else {
+                    stringResource(Res.string.use_dpad_to_select)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = if (isFocused) Color(0xFF4CAF50) else Color(0xFF475569)
+            )
         }
     }
+}
+
+/**
+ * Renders the uppercase visualization chip text inside [TvCardItemBody].
+ *
+ * @param visualization Raw visualization identifier string.
+ */
+@Composable
+private fun TvVisualizationChipLabel(visualization: String) {
+    Text(visualization.uppercase(), fontSize = 12.sp, color = Color(0xFF81C784))
 }

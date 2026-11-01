@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -30,26 +29,18 @@ import kotlinx.serialization.Serializable
  * @property providerRole * @param `value`
  * @property rationale */
 @Serializable
-
-data class StaffingConstraint (
-
+data class StaffingConstraint(
     @SerialName(value = "constraint_type") @Required val constraintType: StaffingConstraint.ConstraintType,
-
     @SerialName(value = "unit") val unit: kotlin.String? = null,
-
     @SerialName(value = "provider_role") val providerRole: StaffingConstraint.ProviderRole? = ProviderRole.RN,
-
     /** Numeric constraint value. */
 
-
     @SerialName(value = "value") val `value`: kotlin.Double? = 0.0,
-
     @SerialName(value = "rationale") val rationale: kotlin.String? = ""
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: max_overtime_shifts,max_a_days,min_nurse_to_patient_ratio,float_pool_cap,seasonality_surge_multiplier
      */
@@ -64,10 +55,10 @@ data class StaffingConstraint (
         /** Enumerated wire option. */
         @SerialName(value = "float_pool_cap") float_pool_cap("float_pool_cap"),
         /** Enumerated wire option. */
-        @SerialName(value = "seasonality_surge_multiplier") seasonality_surge_multiplier("seasonality_surge_multiplier");
+        @SerialName(value = "seasonality_surge_multiplier") seasonality_surge_multiplier("seasonality_surge_multiplier")
     }
     /**
-     * 
+     *
      *
      * Values: RN,MD,NP_PA,FLOAT_RN
      */
@@ -80,8 +71,6 @@ data class StaffingConstraint (
         /** Enumerated wire option. */
         @SerialName(value = "NP_PA") NP_PA("NP_PA"),
         /** Enumerated wire option. */
-        @SerialName(value = "FLOAT_RN") FLOAT_RN("FLOAT_RN");
+        @SerialName(value = "FLOAT_RN") FLOAT_RN("FLOAT_RN")
     }
-
 }
-

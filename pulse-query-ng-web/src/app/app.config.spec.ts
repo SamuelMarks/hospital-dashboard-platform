@@ -24,11 +24,11 @@ describe('AppConfig', () => {
   /**
    * Mock AuthService to verify APP_INITIALIZER integration.
    */
-  let mockAuthService: { initialize: ReturnType<typeof vi.fn> };
+  let mockAuthService: { initialize: ReturnType<typeof vi.fn<() => Promise<void>>> };
 
   beforeEach(() => {
     mockAuthService = {
-      initialize: vi.fn().mockResolvedValue(undefined),
+      initialize: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     };
 
     TestBed.configureTestingModule({

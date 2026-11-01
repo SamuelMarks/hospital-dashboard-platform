@@ -18,8 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -29,17 +27,13 @@ import kotlinx.serialization.Serializable
  * @property institutionId * @param useCase
  */
 @Serializable
-
-data class QuickActionExecutionRequest (
-
+data class QuickActionExecutionRequest(
     @SerialName(value = "institution_id") val institutionId: kotlin.String? = "stanford_childrens",
-
     @SerialName(value = "use_case") val useCase: QuickActionExecutionRequest.UseCase? = UseCase.service_unit
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -50,8 +44,6 @@ data class QuickActionExecutionRequest (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

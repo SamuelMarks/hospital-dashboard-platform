@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -31,25 +30,17 @@ import kotlinx.serialization.Serializable
  * @property supportsDifferentialPrivacy * @param supportsHotLoading
  */
 @Serializable
-
-data class ModelCompendiumEntrySchema (
-
+data class ModelCompendiumEntrySchema(
     @SerialName(value = "model_id") @Required val modelId: kotlin.String,
-
     @SerialName(value = "display_name") @Required val displayName: kotlin.String,
-
     @SerialName(value = "family") @Required val family: ModelCompendiumEntrySchema.Family,
-
     @SerialName(value = "deployment_target") @Required val deploymentTarget: ModelCompendiumEntrySchema.DeploymentTarget,
-
     @SerialName(value = "supports_differential_privacy") val supportsDifferentialPrivacy: kotlin.Boolean? = false,
-
     @SerialName(value = "supports_hot_loading") val supportsHotLoading: kotlin.Boolean? = false
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: gemini,gemma,medgemma,vaultgemma,deepseek,llama,litert_odml
      */
@@ -68,10 +59,10 @@ data class ModelCompendiumEntrySchema (
         /** Enumerated wire option. */
         @SerialName(value = "llama") llama("llama"),
         /** Enumerated wire option. */
-        @SerialName(value = "litert_odml") litert_odml("litert_odml");
+        @SerialName(value = "litert_odml") litert_odml("litert_odml")
     }
     /**
-     * 
+     *
      *
      * Values: gcp_cloud,tpu_fine_tuned,local_ollama,litert_on_device
      */
@@ -84,8 +75,6 @@ data class ModelCompendiumEntrySchema (
         /** Enumerated wire option. */
         @SerialName(value = "local_ollama") local_ollama("local_ollama"),
         /** Enumerated wire option. */
-        @SerialName(value = "litert_on_device") litert_on_device("litert_on_device");
+        @SerialName(value = "litert_on_device") litert_on_device("litert_on_device")
     }
-
 }
-

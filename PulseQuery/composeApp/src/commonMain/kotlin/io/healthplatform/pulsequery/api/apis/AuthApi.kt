@@ -72,7 +72,7 @@ open class AuthApi : ApiClient {
     /**
      * Forgot Password
      * Generates a secure password reset token and dispatches reset instructions.  Args:     payload (ForgotPasswordRequest): Email address of requesting user.     db (AsyncSession): PostgreSQL async database session.     email_service (EmailNotificationService): Transactional email service dependency.  Returns:     PasswordResetResponse: Confirmation message (reset token omitted from response).
-     * @param forgotPasswordRequest
+     * @param forgotPasswordRequest Password reset request payload.
      * @return PasswordResetResponse
      */
     open suspend fun forgotPasswordApiV1AuthForgotPasswordPost(
@@ -103,13 +103,13 @@ open class AuthApi : ApiClient {
     /**
      * Login Access Token
      * OAuth2 compatible token login, get an access token for future requests.  Args:     form_data (OAuth2PasswordRequestForm): Login credentials (username&#x3D;email).     db (AsyncSession): Database session.  Returns:     Token: Access token and type.
-     * @param username
-     * @param password
-     * @param acceptLanguage  (optional)
-     * @param grantType  (optional)
-     * @param scope  (optional, default to "")
-     * @param clientId  (optional)
-     * @param clientSecret  (optional)
+     * @param username User email address.
+     * @param password User account password.
+     * @param acceptLanguage Preferred response language header (optional)
+     * @param grantType OAuth2 grant type identifier (optional)
+     * @param scope OAuth2 requested permission scopes (optional, default to "")
+     * @param clientId OAuth2 client identifier (optional)
+     * @param clientSecret OAuth2 client secret (optional)
      * @return Token
      */
     open suspend fun loginAccessTokenApiV1AuthLoginPost(
@@ -126,8 +126,8 @@ open class AuthApi : ApiClient {
         val localVariableBody =
             ParametersBuilder().also {
                 grantType?.apply { it.append("grant_type", grantType.toString()) }
-                username?.apply { it.append("username", username.toString()) }
-                password?.apply { it.append("password", password.toString()) }
+                it.append("username", username)
+                it.append("password", password)
                 scope?.apply { it.append("scope", scope.toString()) }
                 clientId?.apply { it.append("client_id", clientId.toString()) }
                 clientSecret?.apply { it.append("client_secret", clientSecret.toString()) }
@@ -186,7 +186,7 @@ open class AuthApi : ApiClient {
     /**
      * Refresh Access Token
      * Rotates refresh token and issues a new access and refresh token pair.  Args:     payload (RefreshTokenRequest): Active refresh token.     db (AsyncSession): PostgreSQL async database session.  Returns:     Token: New rotated access and refresh tokens.  Raises:     HTTPException: 401 if refresh token is invalid, expired, or revoked.
-     * @param refreshTokenRequest
+     * @param refreshTokenRequest Refresh token rotation payload.
      * @return Token
      */
     open suspend fun refreshAccessTokenApiV1AuthRefreshPost(refreshTokenRequest: RefreshTokenRequest): HttpResponse<Token> {
@@ -215,8 +215,8 @@ open class AuthApi : ApiClient {
     /**
      * Register User
      * Register a new user in the system.  Steps: 1. Verify email uniqueness. 2. Create User record. 3. Flush session (to generate User ID). 4. Call Provisioning Service to create default dashboard/widgets. 5. Commit transaction.  Args:     user_in (UserCreate): The payload containing email and password.     db (AsyncSession): Database session.  Returns:     User: The newly created user object.  Raises:     HTTPException: If email already exists.
-     * @param userCreate
-     * @param acceptLanguage  (optional)
+     * @param userCreate User registration payload.
+     * @param acceptLanguage Preferred response language header (optional)
      * @return UserResponse
      */
     open suspend fun registerUserApiV1AuthRegisterPost(
@@ -249,7 +249,7 @@ open class AuthApi : ApiClient {
     /**
      * Reset Password
      * Resets user account password and revokes existing sessions.  Args:     payload (ResetPasswordRequest): Reset token and new password.     db (AsyncSession): PostgreSQL async database session.  Returns:     PasswordResetResponse: Success confirmation message.  Raises:     HTTPException: 400 if reset token is invalid or expired.     HTTPException: 404 if the user cannot be located.
-     * @param resetPasswordRequest
+     * @param resetPasswordRequest Password reset confirmation payload.
      * @return PasswordResetResponse
      */
     open suspend fun resetPasswordApiV1AuthResetPasswordPost(
@@ -280,7 +280,7 @@ open class AuthApi : ApiClient {
     /**
      * Revoke Session
      * Revokes an active refresh token session.  Args:     payload (RefreshTokenRequest): Refresh token to revoke.     db (AsyncSession): PostgreSQL async database session.
-     * @param refreshTokenRequest
+     * @param refreshTokenRequest Refresh token revocation payload.
      * @return void
      */
     open suspend fun revokeSessionApiV1AuthRevokePost(refreshTokenRequest: RefreshTokenRequest): HttpResponse<Unit> {

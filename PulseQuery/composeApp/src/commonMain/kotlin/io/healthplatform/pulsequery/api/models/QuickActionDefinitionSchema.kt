@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -31,25 +30,17 @@ import kotlinx.serialization.Serializable
  * @property useCase * @param defaultPrompt
  */
 @Serializable
-
-data class QuickActionDefinitionSchema (
-
+data class QuickActionDefinitionSchema(
     @SerialName(value = "action_id") @Required val actionId: QuickActionDefinitionSchema.ActionId,
-
     @SerialName(value = "label") @Required val label: kotlin.String,
-
     @SerialName(value = "icon") @Required val icon: kotlin.String,
-
     @SerialName(value = "description") @Required val description: kotlin.String,
-
     @SerialName(value = "use_case") @Required val useCase: QuickActionDefinitionSchema.UseCase,
-
     @SerialName(value = "default_prompt") @Required val defaultPrompt: kotlin.String
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: patient_days_by_unit,patient_days_by_service,combined_analysis,summary_statistics,optimize_service_units,smooth_surgical_schedule,optimize_nurse_staffing
      */
@@ -68,10 +59,10 @@ data class QuickActionDefinitionSchema (
         /** Enumerated wire option. */
         @SerialName(value = "smooth_surgical_schedule") smooth_surgical_schedule("smooth_surgical_schedule"),
         /** Enumerated wire option. */
-        @SerialName(value = "optimize_nurse_staffing") optimize_nurse_staffing("optimize_nurse_staffing");
+        @SerialName(value = "optimize_nurse_staffing") optimize_nurse_staffing("optimize_nurse_staffing")
     }
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -82,8 +73,6 @@ data class QuickActionDefinitionSchema (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

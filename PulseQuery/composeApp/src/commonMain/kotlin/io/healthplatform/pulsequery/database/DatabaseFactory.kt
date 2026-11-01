@@ -19,14 +19,14 @@ interface DatabaseDriverFactory {
      * @return Initialized [SqlDriver] instance.
      */
     fun createDriver(): SqlDriver
-
-    /**
-     * Safely creates and configures the SQLDelight driver wrapped in a [Result].
-     *
-     * @return [Result] containing the initialized [SqlDriver] or a [io.healthplatform.pulsequery.core.error.PulseQueryError].
-     */
-    fun createDriverResult(): Result<SqlDriver> = runCatchingPulse { createDriver() }
 }
+
+/**
+ * Safely creates and configures the SQLDelight driver wrapped in a [Result].
+ *
+ * @return [Result] containing the initialized [SqlDriver] or a [io.healthplatform.pulsequery.core.error.PulseQueryError].
+ */
+fun DatabaseDriverFactory.createDriverResult(): Result<SqlDriver> = runCatchingPulse { createDriver() }
 
 /**
  * Creates the database instance given a platform-specific driver.

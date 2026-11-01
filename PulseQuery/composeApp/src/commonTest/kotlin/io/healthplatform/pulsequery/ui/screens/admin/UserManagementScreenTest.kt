@@ -1,9 +1,15 @@
+/**
+ * UI and unit verification tests for [UserManagementScreen].
+ */
 package io.healthplatform.pulsequery.ui.screens.admin
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import io.healthplatform.pulsequery.di.AppContainer
@@ -19,10 +25,13 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * UI verification tests for [UserManagementScreen] verifying composable layout,
- * user listings, role chip controls, and error states.
+ * user listings, role chip controls, helpers, and error states.
  */
 class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
@@ -44,11 +53,19 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
             when {
                 !success -> respond("Internal Server Error", HttpStatusCode.InternalServerError)
                 request.url.encodedPath.contains("admin/users") -> {
-                    respond(
-                        usersJson,
-                        HttpStatusCode.OK,
-                        headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-                    )
+                    if (request.url.encodedPath.endsWith("/role") || request.url.encodedPath.endsWith("/status")) {
+                        respond(
+                            """{"id":"u1","email":"doctor@hospital.org","is_active":false,"is_admin":false,"role":"ADMIN"}""",
+                            HttpStatusCode.OK,
+                            headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        )
+                    } else {
+                        respond(
+                            usersJson,
+                            HttpStatusCode.OK,
+                            headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        )
+                    }
                 }
                 else -> respond("Not Found", HttpStatusCode.NotFound)
             }
@@ -62,9 +79,19 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
         AppContainer.setHttpClientForTest(client)
     }
 
+    @Test
+    fun testUserManagementPureHelpers() {
+        assertEquals(4, CLINICAL_ROLES.size)
+        assertEquals("PHYSICIAN", resolveNextRoleFilter(null, "PHYSICIAN"))
+        assertNull(resolveNextRoleFilter("PHYSICIAN", "PHYSICIAN"))
+        assertEquals("ADMIN", resolveNextRoleFilter("PHYSICIAN", "ADMIN"))
+        assertEquals("ANALYST", resolveUserRoleDisplay("ANALYST"))
+        assertEquals("", resolveUserRoleDisplay(null))
+    }
+
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testUserManagementScreenDisplaysUsers() = runComposeUiTest {
+    fun testUserManagementScreenDisplaysUsersAndFilters() = runComposeUiTest {
         setupMockEngine(success = true)
 
         setContent {
@@ -75,9 +102,16 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
 
         waitUntilAtLeastOneExists(hasText("All Roles"), timeoutMillis = 30000)
         onNodeWithText("User Management").assertExists()
-        onNodeWithText("All Roles").assertExists()
-        onNodeWithText("PHYSICIAN").assertExists()
-        onNodeWithText("CHARGE_NURSE").assertExists()
+        onNodeWithText("All Roles").performClick()
+        onNodeWithText("PHYSICIAN").performClick()
+        onNodeWithText("All Roles").performClick()
+
+        // Open Change Role dropdown and select a role
+        onAllNodes(hasText("Change Role"))[0].performClick()
+        onAllNodes(hasText("ADMIN"))[1].performClick()
+
+        // Search input
+        onNodeWithText("Search users by email...").performTextInput("doctor")
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -93,7 +127,7 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
 
         waitUntilAtLeastOneExists(hasText("Retry"), timeoutMillis = 30000)
         onNodeWithText("User Management").assertExists()
-        onNodeWithText("Retry").assertExists()
+        onNodeWithText("Retry").performClick()
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -110,6 +144,7 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
             }
         }
 
-        onNodeWithText("User Management").assertExists()
+        onNodeWithContentDescription("Navigate back").performClick()
+        assertTrue(navigatedBack)
     }
 }

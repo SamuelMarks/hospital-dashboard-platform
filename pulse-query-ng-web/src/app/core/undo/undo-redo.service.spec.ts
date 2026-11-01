@@ -272,7 +272,7 @@ describe('UndoRedoService', () => {
 
     const history = service.getUndoHistory();
     expect(history.length).toBe(1);
-    expect(history[0].id).toBe('test-1');
+    expect(history[0]?.id).toBe('test-1');
   });
 
   /**
@@ -292,7 +292,7 @@ describe('UndoRedoService', () => {
 
     const history = service.getRedoHistory();
     expect(history.length).toBe(1);
-    expect(history[0].id).toBe('test-1');
+    expect(history[0]?.id).toBe('test-1');
   });
 
   /**

@@ -7,8 +7,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.api.models.SystemHealthResponse
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -22,10 +25,11 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /**
  * Validates that [AnalyticsScreen] renders LLM Arena candidate rows, empty states,
- * and error banners accurately against a Ktor [MockEngine].
+ * helper functions, and error banners accurately against a Ktor [MockEngine].
  */
 class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
@@ -41,6 +45,21 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
     private fun setupAnalyticsMock(mode: String) {
         val mockEngine = MockEngine { request ->
             when {
+                request.url.encodedPath.contains("/system/health") -> {
+                    if (mode == "db_unhealthy") {
+                        respond(
+                            content = """{"overall_status":"degraded","timestamp":"2026-09-01T00:00:00Z","postgres":{"status":"error","error":"PG down"},"duckdb":{"status":"error","error":"DuckDB locked","total_tables":0,"tables":{}},"data":{"has_default_data":false,"fallback_generated":false,"missing_files":[],"row_counts":{}},"templates":{"templates_loaded":0,"has_templates":false,"missing_file":false},"llm":{"providers_count":0,"mock_mode":true,"models":[]},"warnings":[]}""",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        )
+                    } else {
+                        respond(
+                            content = """{"overall_status":"healthy","timestamp":"2026-09-01T00:00:00Z","postgres":{"status":"connected"},"duckdb":{"status":"ready","total_tables":1,"tables":{}},"data":{"has_default_data":true,"fallback_generated":false,"missing_files":[],"row_counts":{}},"templates":{"templates_loaded":1,"has_templates":true,"missing_file":false},"llm":{"providers_count":1,"mock_mode":false,"models":[]},"warnings":[]}""",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                        )
+                    }
+                }
                 request.url.encodedPath.contains("/api/v1/analytics/llm") -> {
                     when (mode) {
                         "records" -> respond(
@@ -93,6 +112,7 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
         val client = HttpClient(mockEngine) {
+            expectSuccess = true
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true; isLenient = true })
             }
@@ -100,17 +120,44 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
         AppContainer.setHttpClientForTest(client)
     }
 
+    @Test
+    fun testAnalyticsPureHelpers() {
+        assertEquals("SELECT 1", resolveAnalyticsQueryText("SELECT 1", "N/A"))
+        assertEquals("N/A", resolveAnalyticsQueryText(null, "N/A"))
+
+        assertEquals("Fallback DB Error", resolveAnalyticsDatabaseErrorMessage(null, "Fallback DB Error"))
+
+        val jsonParser = Json { ignoreUnknownKeys = true }
+        val baseHealth = jsonParser.decodeFromString<SystemHealthResponse>(
+            """{"overall_status":"degraded","timestamp":"2026-09-01T00:00:00Z","postgres":{"status":"error","error":"PG down"},"duckdb":{"status":"error","error":"DuckDB locked","total_tables":0,"tables":{}},"data":{"has_default_data":false,"fallback_generated":false,"missing_files":[],"row_counts":{}},"templates":{"templates_loaded":0,"has_templates":false,"missing_file":false},"llm":{"providers_count":0,"mock_mode":true,"models":[]},"warnings":[]}"""
+        )
+        assertEquals("DuckDB locked", resolveAnalyticsDatabaseErrorMessage(baseHealth, "Default"))
+
+        val pgOnlyError = baseHealth.copy(duckdb = baseHealth.duckdb.copy(error = null))
+        assertEquals("PG down", resolveAnalyticsDatabaseErrorMessage(pgOnlyError, "Default"))
+
+        val noSpecificError = pgOnlyError.copy(postgres = baseHealth.postgres.copy(error = null))
+        assertEquals("Default", resolveAnalyticsDatabaseErrorMessage(noSpecificError, "Default"))
+    }
+
     /**
-     * Verifies that [AnalyticsScreen] renders LLM candidate rows, model names, SQL snippets, and user emails.
+     * Verifies that [AnalyticsScreen] renders LLM candidate rows, model names, SQL snippets, user emails, and action buttons.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testAnalyticsScreenRendersRecordsAndMetrics() = runComposeUiTest {
         setupAnalyticsMock("records")
+        var alertNavCount = 0
+        val vm = io.healthplatform.pulsequery.ui.screens.analytics.AnalyticsViewModel(
+            scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        )
 
         setContent {
             MaterialTheme {
-                AnalyticsScreen()
+                AnalyticsScreen(
+                    onNavigateToAlertRules = { alertNavCount++ },
+                    viewModel = vm
+                )
             }
         }
 
@@ -119,6 +166,12 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
         }
         onNodeWithText("gemini-2.5-pro", substring = true).assertIsDisplayed()
         onNodeWithText("clinician@stanford.edu", substring = true).assertIsDisplayed()
+
+        // Click top bar Alert Rules, Refresh, and banner Configure
+        onNodeWithText("Alert Rules").performClick()
+        onNodeWithText("Configure").performClick()
+        onNodeWithContentDescription("Refresh").performClick()
+        assertEquals(2, alertNavCount)
     }
 
     /**
@@ -142,22 +195,51 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
     }
 
     /**
-     * Verifies that [AnalyticsScreen] renders the error state when the backend returns HTTP 500.
+     * Verifies that [AnalyticsScreen] renders the error state when the backend returns HTTP 500 and handles retry.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testAnalyticsScreenErrorAndRetryFlow() = runComposeUiTest {
         setupAnalyticsMock("error")
+        val vm = io.healthplatform.pulsequery.ui.screens.analytics.AnalyticsViewModel(
+            scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        )
 
         setContent {
             MaterialTheme {
-                AnalyticsScreen()
+                AnalyticsScreen(viewModel = vm)
             }
         }
 
         waitUntil(timeoutMillis = 30000) {
-            onAllNodesWithText("Analytics database offline", substring = true).fetchSemanticsNodes().isNotEmpty()
+            onAllNodesWithText("Retry", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        onNodeWithText("Analytics database offline", substring = true).assertIsDisplayed()
+        onNodeWithText("Retry", substring = true).assertIsDisplayed().performClick()
+    }
+
+    /**
+     * Verifies that [AnalyticsScreen] displays [DatabaseErrorCard] when database health is degraded and retries on click.
+     */
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testAnalyticsScreenDatabaseUnhealthyAndRetry() = runComposeUiTest {
+        setupAnalyticsMock("db_unhealthy")
+        kotlinx.coroutines.runBlocking {
+            AppContainer.networkHealthRepository.checkHealth()
+        }
+        val vm = io.healthplatform.pulsequery.ui.screens.analytics.AnalyticsViewModel(
+            scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        )
+
+        setContent {
+            MaterialTheme {
+                AnalyticsScreen(viewModel = vm)
+            }
+        }
+
+        waitUntil(timeoutMillis = 30000) {
+            onAllNodesWithText("Retry Query", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("Retry Query", substring = true).assertIsDisplayed().performClick()
     }
 }

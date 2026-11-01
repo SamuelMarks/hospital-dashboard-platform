@@ -1,3 +1,7 @@
+/**
+ * Unit tests for [ApiClient] authentication helpers, HTTP infrastructure abstractions,
+ * and binary serialization wrappers ([Base64ByteArray], [OctetByteArray]).
+ */
 package io.healthplatform.pulsequery.api
 
 import io.healthplatform.pulsequery.api.auth.ApiKeyAuth
@@ -29,10 +33,19 @@ import kotlin.test.assertTrue
 
 /**
  * Unit tests verifying that [ApiClient] configuration methods return idiomatic [Result]
- * instead of throwing raw exceptions.
+ * instead of throwing raw exceptions, and that all infrastructure serializers and request helpers
+ * cover every execution branch.
  */
 class ApiClientAuthTest {
 
+    /**
+     * Test double subclass of [ApiClient] exposing protected request helpers for testing.
+     *
+     * @property testAuths Configured authentication schemes keyed by name.
+     * @param baseUrl Base URL of the PulseQuery API server.
+     * @param engine Optional Ktor HTTP engine.
+     * @param config Optional Ktor HTTP client configuration callback.
+     */
     private class TestApiClient(
         baseUrl: String = "http://localhost:8000",
         val testAuths: Map<String, Authentication> = emptyMap(),
@@ -47,18 +60,42 @@ class ApiClientAuthTest {
         override val authentications: Map<String, Authentication>
             get() = testAuths
 
+        /**
+         * Delegates to protected [multipartFormRequest].
+         *
+         * @param requestConfig Request metadata configuration.
+         * @param body Optional multipart form parts.
+         * @param authNames Authentication scheme names.
+         * @return Wrapped [io.healthplatform.pulsequery.api.infrastructure.HttpResponse].
+         */
         suspend fun callMultipart(
             requestConfig: RequestConfig<Unit>,
             body: List<io.ktor.http.content.PartData>?,
             authNames: List<String>
         ) = multipartFormRequest(requestConfig, body, authNames)
 
+        /**
+         * Delegates to protected [urlEncodedFormRequest].
+         *
+         * @param requestConfig Request metadata configuration.
+         * @param body Optional form parameters.
+         * @param authNames Authentication scheme names.
+         * @return Wrapped [io.healthplatform.pulsequery.api.infrastructure.HttpResponse].
+         */
         suspend fun callUrlEncoded(
             requestConfig: RequestConfig<Unit>,
             body: io.ktor.http.Parameters?,
             authNames: List<String>
         ) = urlEncodedFormRequest(requestConfig, body, authNames)
 
+        /**
+         * Delegates to protected [request].
+         *
+         * @param requestConfig Request metadata configuration.
+         * @param body Optional request payload.
+         * @param authNames Authentication scheme names.
+         * @return Wrapped [io.healthplatform.pulsequery.api.infrastructure.HttpResponse].
+         */
         suspend fun callRawRequest(
             requestConfig: RequestConfig<Unit>,
             body: String?,
@@ -66,6 +103,7 @@ class ApiClientAuthTest {
         ) = request(requestConfig, body, authNames)
     }
 
+    /** Verifies [ApiClient.setUsername] and [ApiClient.setPassword] fail when no basic auth is configured. */
     @Test
     fun testBasicAuthUnconfiguredReturnsFailure() {
         val client = TestApiClient()
@@ -79,6 +117,7 @@ class ApiClientAuthTest {
         assertIs<PulseQueryError.Auth.Unconfigured>(passRes.exceptionOrNull())
     }
 
+    /** Verifies [ApiClient.setUsername] and [ApiClient.setPassword] succeed when [HttpBasicAuth] is registered. */
     @Test
     fun testBasicAuthSuccess() {
         val basicAuth = HttpBasicAuth()
@@ -93,6 +132,7 @@ class ApiClientAuthTest {
         assertEquals("securePassword123", basicAuth.password)
     }
 
+    /** Verifies [ApiClient.setApiKey] and [ApiClient.setApiKeyPrefix] fail when no API key auth is configured. */
     @Test
     fun testApiKeyUnconfiguredReturnsFailure() {
         val client = TestApiClient()
@@ -105,6 +145,7 @@ class ApiClientAuthTest {
         assertIs<PulseQueryError.Auth.Unconfigured>(prefixRes.exceptionOrNull())
     }
 
+    /** Verifies [ApiClient.setApiKey] and [ApiClient.setApiKeyPrefix] succeed and filter by parameter name. */
     @Test
     fun testApiKeySuccess() {
         val apiKeyAuth = ApiKeyAuth("header", "X-API-KEY")
@@ -133,6 +174,7 @@ class ApiClientAuthTest {
         assertTrue(prefixMismatchRes.isFailure)
     }
 
+    /** Verifies [ApiClient.setAccessToken] fails when no [OAuth] scheme is configured. */
     @Test
     fun testOAuthUnconfiguredReturnsFailure() {
         val client = TestApiClient()
@@ -141,6 +183,7 @@ class ApiClientAuthTest {
         assertIs<PulseQueryError.Auth.Unconfigured>(tokenRes.exceptionOrNull())
     }
 
+    /** Verifies [ApiClient.setAccessToken] updates the registered [OAuth] scheme. */
     @Test
     fun testOAuthSuccess() {
         val oauth = OAuth()
@@ -151,6 +194,7 @@ class ApiClientAuthTest {
         assertEquals("oauth-access-token", oauth.accessToken)
     }
 
+    /** Verifies [ApiClient.setBearerToken] fails when no [HttpBearerAuth] scheme is configured. */
     @Test
     fun testBearerUnconfiguredReturnsFailure() {
         val client = TestApiClient()
@@ -159,6 +203,7 @@ class ApiClientAuthTest {
         assertIs<PulseQueryError.Auth.Unconfigured>(bearerRes.exceptionOrNull())
     }
 
+    /** Verifies [ApiClient.setBearerToken] updates the registered [HttpBearerAuth] scheme. */
     @Test
     fun testBearerSuccess() {
         val bearer = HttpBearerAuth("Bearer")
@@ -169,6 +214,7 @@ class ApiClientAuthTest {
         assertEquals("hospital-bearer-token", bearer.bearerToken)
     }
 
+    /** Verifies header and query application across [HttpBearerAuth], [HttpBasicAuth], [ApiKeyAuth], and [OAuth]. */
     @Test
     fun testAuthSchemeApplyBranches() {
         val query = mutableMapOf<String, List<String>>()
@@ -237,6 +283,7 @@ class ApiClientAuthTest {
         assertEquals("Bearer oa1", headers["Authorization"])
     }
 
+    /** Verifies query collection delimiters, [OctetByteArray], [Base64ByteArray], [PartConfig], and [RequestConfig]. */
     @Test
     fun testApiAbstractionsAndByteArraysAndConfigs() {
         assertEquals(",", collectionDelimiter("csv"))
@@ -252,6 +299,8 @@ class ApiClientAuthTest {
         val octet1 = OctetByteArray(byteArrayOf(0x0a, 0x1b))
         val octet2 = OctetByteArray(byteArrayOf(0x0a, 0x1b))
         val octet3 = OctetByteArray(byteArrayOf(0x0f))
+        assertEquals(2, octet1.value.size)
+        assertEquals("OctetByteArray", OctetByteArray.descriptor.serialName)
         assertEquals(octet1, octet1)
         assertEquals(octet1, octet2)
         assertNotEquals(octet1, octet3)
@@ -259,16 +308,18 @@ class ApiClientAuthTest {
         assertFalse(octet1.equals("not octet"))
         assertEquals(octet1.hashCode(), octet2.hashCode())
         assertEquals("OctetByteArray(0a1b)", octet1.toString())
-        val encodedOctet = Json.encodeToString(octet1)
-        assertEquals(octet1, Json.decodeFromString<OctetByteArray>(encodedOctet))
+        val encodedOctet = Json.encodeToString(OctetByteArray.Companion, octet1)
+        assertEquals(octet1, Json.decodeFromString(OctetByteArray.Companion, encodedOctet))
         assertEquals(
             OctetByteArray("zz".encodeToByteArray()),
-            Json.decodeFromString<OctetByteArray>("\"zz\"")
+            Json.decodeFromString(OctetByteArray.Companion, "\"zz\"")
         )
 
         val b64a = Base64ByteArray("pulse".encodeToByteArray())
         val b64b = Base64ByteArray("pulse".encodeToByteArray())
         val b64c = Base64ByteArray("other".encodeToByteArray())
+        assertEquals(5, b64a.value.size)
+        assertEquals("Base64ByteArray", Base64ByteArray.descriptor.serialName)
         assertEquals(b64a, b64a)
         assertEquals(b64a, b64b)
         assertNotEquals(b64a, b64c)
@@ -276,8 +327,12 @@ class ApiClientAuthTest {
         assertFalse(b64a.equals("str"))
         assertEquals(b64a.hashCode(), b64b.hashCode())
         assertTrue(b64a.toString().startsWith("Base64ByteArray("))
-        val encodedB64 = Json.encodeToString(b64a)
-        assertEquals(b64a, Json.decodeFromString<Base64ByteArray>(encodedB64))
+        val encodedB64 = Json.encodeToString(Base64ByteArray.Companion, b64a)
+        assertEquals(b64a, Json.decodeFromString(Base64ByteArray.Companion, encodedB64))
+        assertEquals(
+            Base64ByteArray("!!!".encodeToByteArray()),
+            Json.decodeFromString(Base64ByteArray.Companion, "\"!!!\"")
+        )
 
         val partCfg = PartConfig(headers = mutableMapOf("X" to "1"), body = "payload")
         assertEquals("payload", partCfg.body)
@@ -293,6 +348,7 @@ class ApiClientAuthTest {
         assertEquals(7, RequestMethod.entries.size)
     }
 
+    /** Verifies [io.healthplatform.pulsequery.api.infrastructure.HttpResponse] body mapping and safe extraction. */
     @Test
     fun testHttpResponseSafeBodyAndMappedBody() = runTest {
         val dashApi = io.healthplatform.pulsequery.api.apis.DashboardsApi(
@@ -312,6 +368,7 @@ class ApiClientAuthTest {
         )
     }
 
+    /** Verifies [ApiClient] constructors, multipart/form requests, and all [RequestMethod] branches. */
     @Test
     fun testApiClientRequestsAndConstructors() = runTest {
         var configInvoked = false

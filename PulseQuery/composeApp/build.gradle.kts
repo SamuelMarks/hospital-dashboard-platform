@@ -244,27 +244,18 @@ kover {
                 classes(
                     "*.generated.resources.*",
                     "pulsequery.composeapp.generated.resources.*",
-                    "io.healthplatform.pulsequery.api.apis.**",
                     "io.healthplatform.pulsequery.api.models.**",
-                    "io.healthplatform.pulsequery.database.PulseQueryDatabaseImpl*",
-                    "io.healthplatform.pulsequery.database.AppDatabaseQueries*",
+                    "io.healthplatform.pulsequery.database.composeApp.*",
+                    "io.healthplatform.pulsequery.database.PulseQueryDatabase*",
                     "io.healthplatform.pulsequery.database.AppConfig*",
                     "io.healthplatform.pulsequery.database.CachedWidget*",
                     "io.healthplatform.pulsequery.database.PulseQueryDatabase*",
                     "io.healthplatform.pulsequery.database.composeApp.*",
-                    "io.healthplatform.pulsequery.database.*DriverFactory*",
                     "io.healthplatform.pulsequery.ComposableSingletons\$*",
                     "*ComposableSingletons*",
-                    "*\$serializer",
-                    "io.healthplatform.pulsequery.MainKt*",
-                    "io.healthplatform.pulsequery.MainActivity*",
-                    "io.healthplatform.pulsequery.Platform_*",
-                    "io.healthplatform.pulsequery.AndroidPlatform*",
-                    "io.healthplatform.pulsequery.JVMPlatform*",
-                    "io.healthplatform.pulsequery.ui.components.**",
-                    "io.healthplatform.pulsequery.ui.screens.*ScreenKt*",
-                    "io.healthplatform.pulsequery.ui.screens.**.*ScreenKt*",
-                    "io.healthplatform.pulsequery.ui.screens.**.*DialogKt*",
+                    "io.healthplatform.pulsequery.database.AppConfig*",
+                    "io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDialogKt*",
+                    "io.healthplatform.pulsequery.ui.screens.dashboard.DashboardShareDialogKt*"
                 )
             }
         }

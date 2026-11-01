@@ -6,11 +6,14 @@ package io.healthplatform.pulsequery.ui.screens
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -24,6 +27,7 @@ import kotlinx.serialization.json.Json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -88,9 +92,15 @@ class RegisterScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
         AppContainer.setHttpClientForTest(client)
     }
 
+    @Test
+    fun testResolvePasswordVisualTransformationHelper() {
+        assertEquals(VisualTransformation.None, resolvePasswordVisualTransformation(true))
+        assertEquals(PasswordVisualTransformation(), resolvePasswordVisualTransformation(false))
+    }
+
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testRegisterScreenValidationMismatchedPassword() = runComposeUiTest {
+    fun testRegisterScreenValidationMismatchedPasswordAndToggleVisibility() = runComposeUiTest {
         setupMockApi(shouldSucceed = true)
 
         setContent {
@@ -104,6 +114,8 @@ class RegisterScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
 
         onNodeWithText("Email Address").performTextInput("test@hospital.org")
         onNodeWithText("Password").performTextInput("secret123")
+        onNodeWithContentDescription("Show password").performClick()
+        onNodeWithContentDescription("Hide password").performClick()
         onNodeWithText("Confirm Password").performTextInput("different123")
         onNodeWithText("Register Account").performScrollTo().performClick()
 

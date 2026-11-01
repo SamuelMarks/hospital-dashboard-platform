@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -31,30 +30,20 @@ import kotlinx.serialization.Serializable
  * @property dayOfWeek * @param `value`
  * @property rationale */
 @Serializable
-
-data class SurgicalScheduleConstraint (
-
+data class SurgicalScheduleConstraint(
     @SerialName(value = "constraint_type") @Required val constraintType: SurgicalScheduleConstraint.ConstraintType,
-
     @SerialName(value = "program") val program: SurgicalScheduleConstraint.Program? = Program.ALL,
-
     @SerialName(value = "procedure_group") val procedureGroup: kotlin.String? = null,
-
     @SerialName(value = "recovery_unit") val recoveryUnit: kotlin.String? = null,
-
     @SerialName(value = "day_of_week") val dayOfWeek: SurgicalScheduleConstraint.DayOfWeek? = null,
-
     /** Numeric constraint value. */
 
-
     @SerialName(value = "value") val `value`: kotlin.Double? = 0.0,
-
     @SerialName(value = "rationale") val rationale: kotlin.String? = ""
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: max_daily_postop_admits,lock_procedure_day,prohibit_procedure_day,reserve_emergency_beds,surgeon_block_cap
      */
@@ -69,10 +58,10 @@ data class SurgicalScheduleConstraint (
         /** Enumerated wire option. */
         @SerialName(value = "reserve_emergency_beds") reserve_emergency_beds("reserve_emergency_beds"),
         /** Enumerated wire option. */
-        @SerialName(value = "surgeon_block_cap") surgeon_block_cap("surgeon_block_cap");
+        @SerialName(value = "surgeon_block_cap") surgeon_block_cap("surgeon_block_cap")
     }
     /**
-     * 
+     *
      *
      * Values: BEDS,POINTS,ALL
      */
@@ -83,10 +72,10 @@ data class SurgicalScheduleConstraint (
         /** Enumerated wire option. */
         @SerialName(value = "POINTS") POINTS("POINTS"),
         /** Enumerated wire option. */
-        @SerialName(value = "ALL") ALL("ALL");
+        @SerialName(value = "ALL") ALL("ALL")
     }
     /**
-     * 
+     *
      *
      * Values: Mon,Tue,Wed,Thu,Fri
      */
@@ -101,8 +90,6 @@ data class SurgicalScheduleConstraint (
         /** Enumerated wire option. */
         @SerialName(value = "Thu") Thu("Thu"),
         /** Enumerated wire option. */
-        @SerialName(value = "Fri") Fri("Fri");
+        @SerialName(value = "Fri") Fri("Fri")
     }
-
 }
-

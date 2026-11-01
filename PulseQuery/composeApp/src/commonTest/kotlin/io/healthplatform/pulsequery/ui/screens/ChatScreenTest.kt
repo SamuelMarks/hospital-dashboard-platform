@@ -4,12 +4,21 @@
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.api.models.ConversationResponse
+import io.healthplatform.pulsequery.api.models.MessageCandidateResponse
+import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.screens.chat.ChatViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -23,6 +32,9 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /**
  * Verifies [ChatScreen] conversation loading, message display, and error states.
@@ -90,11 +102,38 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
                             "content": "Here is the NICU census query.",
                             "sql_snippet": "SELECT * FROM nicu_census",
                             "created_at": "2026-09-01T00:01:00Z",
-                            "candidates": []
+                            "candidates": [
+                                {
+                                    "id": "cand-1",
+                                    "message_id": "msg-1",
+                                    "model_name": "MedGemma-27B",
+                                    "content": "SELECT * FROM nicu_census",
+                                    "sql_snippet": "SELECT * FROM nicu_census",
+                                    "is_selected": true
+                                },
+                                {
+                                    "id": "cand-2",
+                                    "message_id": "msg-1",
+                                    "model_name": "GPT-4o",
+                                    "content": "No SQL",
+                                    "sql_snippet": null,
+                                    "is_selected": false
+                                }
+                            ]
                         }]""",
                         status = HttpStatusCode.OK,
                         headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                     )
+                }
+                path.contains("/vote") && request.method == HttpMethod.Post -> {
+                    respond(
+                        content = """{"id":"cand-1","message_id":"msg-1","model_name":"MedGemma-27B","content":"SELECT * FROM nicu_census","sql_snippet":"SELECT * FROM nicu_census","is_selected":true}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+                request.method == HttpMethod.Delete -> {
+                    respond("", HttpStatusCode.NoContent)
                 }
                 else -> respond("Not Found", HttpStatusCode.NotFound)
             }
@@ -108,7 +147,8 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
     }
 
     /**
-     * Verifies that [ChatScreen] loads conversations and selects an initial conversation to display its messages.
+     * Verifies that [ChatScreen] loads conversations and selects an initial conversation to display its messages,
+     * candidates, history dialog, and composer interactions.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
@@ -125,6 +165,107 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
             onAllNodesWithText("Here is the NICU census query.", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Here is the NICU census query.", substring = true).assertIsDisplayed()
+
+        // Stage primary SQL snippet to cart
+        onNodeWithText("Stage to Cart").performSemanticsAction(SemanticsActions.OnClick)
+
+        // Expand candidate variations, stage candidate SQL, vote as best, and collapse
+        onNodeWithText("2 Model Variations").performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        onNodeWithText("Stage").performSemanticsAction(SemanticsActions.OnClick)
+        onAllNodesWithText("Vote as Best")[0].performSemanticsAction(SemanticsActions.OnClick)
+        onNodeWithText("Hide Variations").performSemanticsAction(SemanticsActions.OnClick)
+
+        // Open History dialog, select conversation, reopen, delete, and close
+        onNodeWithContentDescription("History").performClick()
+        onNodeWithText("Conversations History").assertIsDisplayed()
+        onAllNodesWithText("NICU Bed Utilization")[1].performClick()
+
+        onNodeWithContentDescription("History").performClick()
+        onNodeWithContentDescription("Delete").performClick()
+        onNodeWithText("Close").performClick()
+
+        // New conversation button & composer input/send
+        onNodeWithContentDescription("New Conversation").performClick()
+        onNodeWithText("Ask a query...").performTextInput("Show ICU beds")
+        onNodeWithContentDescription("Send").performClick()
+    }
+
+    /**
+     * Verifies standalone [ChatBubble] rendering for user messages and assistant messages without callbacks.
+     */
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testChatBubbleUserAndAssistantWithoutCallbacks() = runComposeUiTest {
+        val userMsg = MessageResponse(
+            id = "u-msg",
+            conversationId = "c-1",
+            role = "user",
+            content = "How many beds are available?",
+            createdAt = kotlin.time.Instant.parse("2026-09-01T00:00:00Z")
+        )
+        val assistantMsg = MessageResponse(
+            id = "a-msg",
+            conversationId = "c-1",
+            role = "assistant",
+            content = "There are 14 beds.",
+            sqlSnippet = "SELECT 14",
+            createdAt = kotlin.time.Instant.parse("2026-09-01T00:00:01Z"),
+            candidates = listOf(
+                MessageCandidateResponse(
+                    id = "c-1",
+                    modelName = "Claude",
+                    content = "SELECT 14",
+                    sqlSnippet = "SELECT 14",
+                    isSelected = false
+                )
+            )
+        )
+
+        setContent {
+            MaterialTheme {
+                androidx.compose.foundation.layout.Column {
+                    ChatBubble(message = userMsg, onVoteCandidate = null, onStageToCart = null)
+                    ChatBubble(message = assistantMsg, onVoteCandidate = null, onStageToCart = null)
+                    ChatStreamingPreviewSection(streamingText = "SELECT * FROM live_stream")
+                }
+            }
+        }
+
+        onNodeWithText("How many beds are available?").assertExists()
+        onNodeWithText("There are 14 beds.").assertExists()
+        onNodeWithText("SELECT * FROM live_stream").assertExists()
+        onNodeWithText("1 Model Variations").performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
+        onNodeWithText("Claude").assertExists()
+    }
+
+    /**
+     * Verifies pure helper functions in [ChatScreen.kt].
+     */
+    @Test
+    fun testChatScreenPureHelpers() {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val provided = ChatViewModel(scope = scope)
+        assertSame(provided, resolveChatViewModel(provided, "conv-1", scope))
+        val created = resolveChatViewModel(null, null, scope)
+        assertTrue(created !== provided)
+
+        val titledConv = ConversationResponse(
+            id = "c1",
+            userId = "u1",
+            title = "Pediatrics Census",
+            createdAt = kotlin.time.Instant.parse("2026-09-01T00:00:00Z"),
+            updatedAt = kotlin.time.Instant.parse("2026-09-01T00:00:00Z")
+        )
+        val untitledConv = titledConv.copy(title = null)
+
+        assertEquals("New Chat", resolveChatTopBarTitle(null, "New Chat"))
+        assertEquals("New Chat", resolveChatTopBarTitle(untitledConv, "New Chat"))
+        assertEquals("Pediatrics Census", resolveChatTopBarTitle(titledConv, "New Chat"))
+
+        assertEquals("Pediatrics Census", resolveConversationRowTitle(titledConv, "Untitled"))
+        assertEquals("Untitled", resolveConversationRowTitle(untitledConv, "Untitled"))
     }
 
     /**

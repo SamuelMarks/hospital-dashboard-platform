@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.apis.AiApi
 import io.healthplatform.pulsequery.api.apis.DashboardsApi
+import io.healthplatform.pulsequery.api.models.ModelInfo
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.api.models.WidgetUpdate
 import io.healthplatform.pulsequery.core.model.ProcessorId
@@ -81,6 +82,140 @@ val AVAILABLE_VISUALIZATIONS: List<String> = listOf(
 )
 
 /**
+ * Extracts the editable primary content string (SQL query, Markdown text, or HTTP URL) from a [WidgetResponse].
+ *
+ * @param widget Source widget response.
+ * @return Initial editable content string.
+ */
+internal fun extractInitialWidgetContent(widget: WidgetResponse): String {
+    return when (val parsed = parseTypedWidgetConfig(widget.type, widget.config)) {
+        is TypedWidgetConfig.Text -> parsed.content
+        is TypedWidgetConfig.Http -> parsed.url
+        is TypedWidgetConfig.Sql -> parsed.query
+    }
+}
+
+/**
+ * Maps discovered [ModelInfo] entries to [ProcessorSelectionOption] choices, ensuring [ProcessorSelectionOption.SQL_DEFAULT] is always present.
+ *
+ * @param models List of backend AI/SQL models.
+ * @return Complete list of selectable processor options.
+ */
+internal fun resolveAvailableProcessors(models: List<ModelInfo>): List<ProcessorSelectionOption> {
+    val mapped = models.map { mapModelInfoToProcessorSelection(it) }
+    return if (mapped.any { it.id == ProcessorId.SQL_NO_MODEL }) {
+        mapped
+    } else {
+        listOf(ProcessorSelectionOption.SQL_DEFAULT) + mapped
+    }
+}
+
+/**
+ * Resolves the human-readable processor display label for the currently selected [ProcessorId].
+ *
+ * @param availableProcessors Available processor options.
+ * @param selectedProcessor Currently selected processor identifier.
+ * @return Display name or raw wire identifier fallback.
+ */
+internal fun resolveProcessorDisplayName(
+    availableProcessors: List<ProcessorSelectionOption>,
+    selectedProcessor: ProcessorId
+): String {
+    val matched = availableProcessors.firstOrNull { it.id == selectedProcessor }
+    return if (matched != null) matched.displayName else selectedProcessor.value
+}
+
+/**
+ * Resolves the form field label for the primary widget content input based on widget type.
+ *
+ * @param widgetType Widget type string (`TEXT`, `HTTP`, or `SQL`).
+ * @return Input label text.
+ */
+internal fun resolveWidgetContentLabel(widgetType: String): String {
+    return when (widgetType.uppercase()) {
+        "TEXT" -> "Markdown Content"
+        "HTTP" -> "HTTP Endpoint URL"
+        else -> "SQL Query"
+    }
+}
+
+/**
+ * Builds the [WidgetUpdate] request payload from edited form state.
+ *
+ * @param widget Original widget being updated.
+ * @param title Updated widget title.
+ * @param subtitle Updated widget subtitle (blank clears subtitle).
+ * @param selectedViz Selected visualization identifier.
+ * @param sqlConfig Configured [TypedWidgetConfig.Sql] containing query/content, natural text toggle, processor, and prompt.
+ * @return Constructed [WidgetUpdate] payload.
+ */
+internal fun buildWidgetUpdatePayload(
+    widget: WidgetResponse,
+    title: String,
+    subtitle: String,
+    selectedViz: String,
+    sqlConfig: TypedWidgetConfig.Sql
+): WidgetUpdate {
+    val newConfigMap = widget.config.toMutableMap()
+    val queryOrContent = sqlConfig.query
+    when (widget.type.uppercase()) {
+        "TEXT" -> {
+            newConfigMap["content"] = JsonPrimitive(queryOrContent)
+        }
+        "HTTP" -> {
+            newConfigMap["url"] = JsonPrimitive(queryOrContent)
+        }
+        else -> {
+            newConfigMap["query"] = JsonPrimitive(queryOrContent)
+            if (
+                sqlConfig.allowNaturalText ||
+                sqlConfig.processor != ProcessorId.SQL_NO_MODEL ||
+                newConfigMap.containsKey("allow_natural_text")
+            ) {
+                newConfigMap["allow_natural_text"] = JsonPrimitive(sqlConfig.allowNaturalText)
+                newConfigMap["processor"] = JsonPrimitive(sqlConfig.processor.value)
+                if (sqlConfig.naturalTextPrompt.isNotBlank()) {
+                    newConfigMap["natural_text_prompt"] = JsonPrimitive(sqlConfig.naturalTextPrompt.trim())
+                }
+            }
+        }
+    }
+    val trimmedSub = subtitle.trim().takeIf { it.isNotEmpty() }
+    if (trimmedSub != null) {
+        newConfigMap["subtitle"] = JsonPrimitive(trimmedSub)
+    } else {
+        newConfigMap.remove("subtitle")
+    }
+    return WidgetUpdate(
+        title = title,
+        subtitle = trimmedSub,
+        visualization = selectedViz,
+        config = JsonObject(newConfigMap)
+    )
+}
+
+/**
+ * Submits a [WidgetUpdate] request to the backend [DashboardsApi] wrapped in a [Result].
+ *
+ * @param api Target [DashboardsApi] client.
+ * @param widgetId ID of the widget to update.
+ * @param updateReq Constructed [WidgetUpdate] payload.
+ * @return [Result] containing the updated [WidgetResponse] or error.
+ */
+internal suspend fun submitWidgetUpdate(
+    api: DashboardsApi,
+    widgetId: String,
+    updateReq: WidgetUpdate
+): Result<WidgetResponse> {
+    return runResultPulseAsync {
+        api.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
+            widgetId = widgetId,
+            widgetUpdate = updateReq
+        ).asResult()
+    }
+}
+
+/**
  * Dialog allowing clinicians and analysts to modify an existing dashboard widget's configuration.
  *
  * @param widget The target [WidgetResponse] to edit.
@@ -109,13 +244,7 @@ fun EditWidgetDialog(
     var naturalTextPrompt by remember { mutableStateOf(sqlConfig.naturalTextPrompt) }
     var showProcessorDropdown by remember { mutableStateOf(false) }
     var availableProcessors by remember { mutableStateOf(listOf(ProcessorSelectionOption.SQL_DEFAULT)) }
-
-    val initialContent = when (val parsed = parseTypedWidgetConfig(widget.type, widget.config)) {
-        is TypedWidgetConfig.Text -> parsed.content
-        is TypedWidgetConfig.Http -> parsed.url
-        is TypedWidgetConfig.Sql -> parsed.query
-    }
-    var queryOrContent by remember { mutableStateOf(initialContent) }
+    var queryOrContent by remember { mutableStateOf(extractInitialWidgetContent(widget)) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -124,15 +253,9 @@ fun EditWidgetDialog(
     LaunchedEffect(aiApi) {
         if (aiApi != null) {
             runResultPulseAsync {
-                aiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true)
-                    .asResult()
+                aiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true).asResult()
             }.onSuccess { models ->
-                val mapped = models.map { mapModelInfoToProcessorSelection(it) }
-                availableProcessors = if (mapped.any { it.id == ProcessorId.SQL_NO_MODEL }) {
-                    mapped
-                } else {
-                    listOf(ProcessorSelectionOption.SQL_DEFAULT) + mapped
-                }
+                availableProcessors = resolveAvailableProcessors(models)
             }
         }
     }
@@ -141,221 +264,314 @@ fun EditWidgetDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(Res.string.edit_widget_title_format, widget.title)) },
+        title = { EditWidgetDialogTitle(widgetTitle = widget.title) },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                errorMessage?.let { err ->
-                    Text(
-                        text = err,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    label = { Text(stringResource(Res.string.widget_title)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = subtitle,
-                    onValueChange = { subtitle = it },
-                    label = { Text(stringResource(Res.string.widget_subtitle_label)) },
-                    placeholder = { Text(stringResource(Res.string.widget_subtitle_placeholder)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = showVizDropdown,
-                    onExpandedChange = { showVizDropdown = it }
-                ) {
-                    OutlinedTextField(
-                        value = selectedViz,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(Res.string.visualization_type)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showVizDropdown) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = showVizDropdown,
-                        onDismissRequest = { showVizDropdown = false }
-                    ) {
-                        AVAILABLE_VISUALIZATIONS.forEach { viz ->
-                            DropdownMenuItem(
-                                text = { Text(viz.replaceFirstChar { it.uppercase() }) },
-                                onClick = {
-                                    selectedViz = viz
-                                    showVizDropdown = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                if (widget.type.equals("SQL", ignoreCase = true)) {
-                    val toggleLabel = stringResource(Res.string.allow_natural_text_label)
-                    val procDesc = stringResource(Res.string.select_processor_content_desc)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = toggleLabel, style = MaterialTheme.typography.bodyMedium)
-                        Switch(
-                            checked = allowNaturalText,
-                            onCheckedChange = { allowNaturalText = it },
-                            modifier = Modifier.semantics { contentDescription = toggleLabel }
-                        )
-                    }
-
-                    val procDisplay = availableProcessors.firstOrNull { it.id == selectedProcessor }?.displayName
-                        ?: selectedProcessor.value
-
-                    ExposedDropdownMenuBox(
-                        expanded = showProcessorDropdown,
-                        onExpandedChange = { showProcessorDropdown = it }
-                    ) {
-                        OutlinedTextField(
-                            value = procDisplay,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(Res.string.processor_label)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProcessorDropdown) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                                .semantics { contentDescription = procDesc }
-                        )
-                        ExposedDropdownMenu(
-                            expanded = showProcessorDropdown,
-                            onDismissRequest = { showProcessorDropdown = false }
-                        ) {
-                            availableProcessors.forEach { opt ->
-                                DropdownMenuItem(
-                                    text = { Text(opt.displayName) },
-                                    onClick = {
-                                        selectedProcessor = opt.id
-                                        showProcessorDropdown = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    if (allowNaturalText) {
-                        OutlinedTextField(
-                            value = naturalTextPrompt,
-                            onValueChange = { naturalTextPrompt = it },
-                            label = { Text(stringResource(Res.string.natural_text_prompt_label)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-                val labelText = when (widget.type.uppercase()) {
-                    "TEXT" -> "Markdown Content"
-                    "HTTP" -> "HTTP Endpoint URL"
-                    else -> "SQL Query"
-                }
-
-                OutlinedTextField(
-                    value = queryOrContent,
-                    onValueChange = { queryOrContent = it },
-                    label = { Text(labelText) },
-                    minLines = 3,
-                    maxLines = 8,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            EditWidgetDialogForm(
+                widgetType = widget.type,
+                title = title,
+                onTitleChange = { title = it },
+                subtitle = subtitle,
+                onSubtitleChange = { subtitle = it },
+                selectedViz = selectedViz,
+                onSelectViz = {
+                    selectedViz = it
+                    showVizDropdown = false
+                },
+                showVizDropdown = showVizDropdown,
+                onVizDropdownExpandedChange = { showVizDropdown = it },
+                allowNaturalText = allowNaturalText,
+                onAllowNaturalTextChange = { allowNaturalText = it },
+                selectedProcessor = selectedProcessor,
+                onSelectProcessor = {
+                    selectedProcessor = it
+                    showProcessorDropdown = false
+                },
+                showProcessorDropdown = showProcessorDropdown,
+                onProcessorDropdownExpandedChange = { showProcessorDropdown = it },
+                availableProcessors = availableProcessors,
+                naturalTextPrompt = naturalTextPrompt,
+                onNaturalTextPromptChange = { naturalTextPrompt = it },
+                queryOrContent = queryOrContent,
+                onQueryOrContentChange = { queryOrContent = it },
+                errorMessage = errorMessage
+            )
         },
         confirmButton = {
-            Button(
-                onClick = {
+            EditWidgetDialogConfirmButton(
+                isLoading = isLoading,
+                onConfirm = {
                     if (title.isBlank()) {
                         errorMessage = blankTitleError
-                        return@Button
-                    }
-                    scope.launch {
-                        isLoading = true
-                        errorMessage = null
-                        val api = dashboardsApi ?: AppContainer.dashboardsApi
-                        runResultPulseAsync {
-                            val newConfigMap = widget.config.toMutableMap()
-                            when (widget.type.uppercase()) {
-                                "TEXT" -> {
-                                    newConfigMap["content"] = JsonPrimitive(queryOrContent)
-                                }
-                                "HTTP" -> {
-                                    newConfigMap["url"] = JsonPrimitive(queryOrContent)
-                                }
-                                else -> {
-                                    newConfigMap["query"] = JsonPrimitive(queryOrContent)
-                                    if (allowNaturalText || selectedProcessor != ProcessorId.SQL_NO_MODEL || newConfigMap.containsKey("allow_natural_text")) {
-                                        newConfigMap["allow_natural_text"] = JsonPrimitive(allowNaturalText)
-                                        newConfigMap["processor"] = JsonPrimitive(selectedProcessor.value)
-                                        if (naturalTextPrompt.isNotBlank()) {
-                                            newConfigMap["natural_text_prompt"] = JsonPrimitive(naturalTextPrompt.trim())
-                                        }
-                                    }
-                                }
-                            }
-                            val trimmedSub = subtitle.trim().takeIf { it.isNotEmpty() }
-                            if (trimmedSub != null) {
-                                newConfigMap["subtitle"] = JsonPrimitive(trimmedSub)
-                            } else {
-                                newConfigMap.remove("subtitle")
-                            }
-                            val updateReq = WidgetUpdate(
+                    } else {
+                        scope.launch {
+                            isLoading = true
+                            errorMessage = null
+                            val api = dashboardsApi ?: AppContainer.dashboardsApi
+                            val updateReq = buildWidgetUpdatePayload(
+                                widget = widget,
                                 title = title,
-                                subtitle = trimmedSub,
-                                visualization = selectedViz,
-                                config = JsonObject(newConfigMap)
+                                subtitle = subtitle,
+                                selectedViz = selectedViz,
+                                sqlConfig = TypedWidgetConfig.Sql(
+                                    query = queryOrContent,
+                                    allowNaturalText = allowNaturalText,
+                                    processor = selectedProcessor,
+                                    naturalTextPrompt = naturalTextPrompt
+                                )
                             )
-                            api.updateWidgetApiV1DashboardsWidgetsWidgetIdPut(
-                                widgetId = widget.id,
-                                widgetUpdate = updateReq
-                            ).asResult()
-                        }.fold(
-                            onSuccess = { updated ->
-                                onWidgetUpdated(updated)
-                            },
-                            onFailure = { e ->
-                                errorMessage = e.messageOrDefault("Failed to update widget")
-                            }
-                        )
-                        isLoading = false
+                            submitWidgetUpdate(api, widget.id, updateReq).fold(
+                                onSuccess = { updated -> onWidgetUpdated(updated) },
+                                onFailure = { e -> errorMessage = e.messageOrDefault("Failed to update widget") }
+                            )
+                            isLoading = false
+                        }
                     }
-                },
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text(stringResource(Res.string.save_changes))
                 }
-            }
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) {
-                Text(stringResource(Res.string.cancel))
-            }
+            EditWidgetDialogDismissButton(isLoading = isLoading, onDismiss = onDismiss)
         }
     )
+}
+
+/**
+ * Renders the dialog title header for [EditWidgetDialog].
+ *
+ * @param widgetTitle Current widget title string.
+ */
+@Composable
+private fun EditWidgetDialogTitle(widgetTitle: String) {
+    Text(stringResource(Res.string.edit_widget_title_format, widgetTitle))
+}
+
+/**
+ * Renders the scrollable form fields inside [EditWidgetDialog].
+ *
+ * @param widgetType Widget type identifier (`SQL`, `TEXT`, or `HTTP`).
+ * @param title Current title field value.
+ * @param onTitleChange Callback invoked when title changes.
+ * @param subtitle Current subtitle field value.
+ * @param onSubtitleChange Callback invoked when subtitle changes.
+ * @param selectedViz Selected visualization identifier.
+ * @param onSelectViz Callback invoked when a visualization is chosen.
+ * @param showVizDropdown Whether the visualization dropdown is expanded.
+ * @param onVizDropdownExpandedChange Callback invoked when visualization dropdown expansion changes.
+ * @param allowNaturalText Whether natural-language prompt mode is enabled.
+ * @param onAllowNaturalTextChange Callback invoked when natural-language toggle changes.
+ * @param selectedProcessor Currently selected processor ID.
+ * @param onSelectProcessor Callback invoked when a processor option is selected.
+ * @param showProcessorDropdown Whether the processor dropdown is expanded.
+ * @param onProcessorDropdownExpandedChange Callback invoked when processor dropdown expansion changes.
+ * @param availableProcessors List of selectable processor options.
+ * @param naturalTextPrompt Current natural-language prompt text.
+ * @param onNaturalTextPromptChange Callback invoked when natural-language prompt changes.
+ * @param queryOrContent Current SQL query, Markdown text, or HTTP URL.
+ * @param onQueryOrContentChange Callback invoked when primary content changes.
+ * @param errorMessage Optional validation or submission error message.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditWidgetDialogForm(
+    widgetType: String,
+    title: String,
+    onTitleChange: (String) -> Unit,
+    subtitle: String,
+    onSubtitleChange: (String) -> Unit,
+    selectedViz: String,
+    onSelectViz: (String) -> Unit,
+    showVizDropdown: Boolean,
+    onVizDropdownExpandedChange: (Boolean) -> Unit,
+    allowNaturalText: Boolean,
+    onAllowNaturalTextChange: (Boolean) -> Unit,
+    selectedProcessor: ProcessorId,
+    onSelectProcessor: (ProcessorId) -> Unit,
+    showProcessorDropdown: Boolean,
+    onProcessorDropdownExpandedChange: (Boolean) -> Unit,
+    availableProcessors: List<ProcessorSelectionOption>,
+    naturalTextPrompt: String,
+    onNaturalTextPromptChange: (String) -> Unit,
+    queryOrContent: String,
+    onQueryOrContentChange: (String) -> Unit,
+    errorMessage: String?
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        errorMessage?.let { err ->
+            Text(
+                text = err,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        OutlinedTextField(
+            value = title,
+            onValueChange = onTitleChange,
+            label = { Text(stringResource(Res.string.widget_title)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = subtitle,
+            onValueChange = onSubtitleChange,
+            label = { Text(stringResource(Res.string.widget_subtitle_label)) },
+            placeholder = { Text(stringResource(Res.string.widget_subtitle_placeholder)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        ExposedDropdownMenuBox(
+            expanded = showVizDropdown,
+            onExpandedChange = onVizDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = selectedViz,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(Res.string.visualization_type)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showVizDropdown) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = showVizDropdown,
+                onDismissRequest = { onVizDropdownExpandedChange(false) }
+            ) {
+                AVAILABLE_VISUALIZATIONS.forEach { viz ->
+                    DropdownMenuItem(
+                        text = { Text(viz.replaceFirstChar { it.uppercase() }) },
+                        onClick = { onSelectViz(viz) }
+                    )
+                }
+            }
+        }
+
+        if (widgetType.equals("SQL", ignoreCase = true)) {
+            val toggleLabel = stringResource(Res.string.allow_natural_text_label)
+            val procDesc = stringResource(Res.string.select_processor_content_desc)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = toggleLabel, style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = allowNaturalText,
+                    onCheckedChange = onAllowNaturalTextChange,
+                    modifier = Modifier.semantics { contentDescription = toggleLabel }
+                )
+            }
+
+            val procDisplay = resolveProcessorDisplayName(availableProcessors, selectedProcessor)
+
+            ExposedDropdownMenuBox(
+                expanded = showProcessorDropdown,
+                onExpandedChange = onProcessorDropdownExpandedChange
+            ) {
+                OutlinedTextField(
+                    value = procDisplay,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(Res.string.processor_label)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showProcessorDropdown) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        .semantics { contentDescription = procDesc }
+                )
+                ExposedDropdownMenu(
+                    expanded = showProcessorDropdown,
+                    onDismissRequest = { onProcessorDropdownExpandedChange(false) }
+                ) {
+                    availableProcessors.forEach { opt ->
+                        DropdownMenuItem(
+                            text = { Text(opt.displayName) },
+                            onClick = { onSelectProcessor(opt.id) }
+                        )
+                    }
+                }
+            }
+
+            if (allowNaturalText) {
+                OutlinedTextField(
+                    value = naturalTextPrompt,
+                    onValueChange = onNaturalTextPromptChange,
+                    label = { Text(stringResource(Res.string.natural_text_prompt_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        val labelText = resolveWidgetContentLabel(widgetType)
+
+        OutlinedTextField(
+            value = queryOrContent,
+            onValueChange = onQueryOrContentChange,
+            label = { Text(labelText) },
+            minLines = 3,
+            maxLines = 8,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+/**
+ * Renders the primary Save Changes confirmation button for [EditWidgetDialog].
+ *
+ * @param isLoading Whether a save operation is currently in progress.
+ * @param onConfirm Callback invoked when the button is clicked.
+ */
+@Composable
+private fun EditWidgetDialogConfirmButton(
+    isLoading: Boolean,
+    onConfirm: () -> Unit
+) {
+    Button(
+        onClick = onConfirm,
+        enabled = !isLoading
+    ) {
+        EditWidgetConfirmButtonContent(isLoading = isLoading)
+    }
+}
+
+/**
+ * Renders the interior content of [EditWidgetDialogConfirmButton].
+ *
+ * @param isLoading Whether a save operation is currently in progress.
+ */
+@Composable
+private fun EditWidgetConfirmButtonContent(isLoading: Boolean) {
+    if (isLoading) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(16.dp),
+            strokeWidth = 2.dp,
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+    } else {
+        Text(stringResource(Res.string.save_changes))
+    }
+}
+
+/**
+ * Renders the Cancel dismissal button for [EditWidgetDialog].
+ *
+ * @param isLoading Whether a save operation is currently in progress.
+ * @param onDismiss Callback invoked when the button is clicked.
+ */
+@Composable
+private fun EditWidgetDialogDismissButton(
+    isLoading: Boolean,
+    onDismiss: () -> Unit
+) {
+    TextButton(onClick = onDismiss, enabled = !isLoading) {
+        Text(stringResource(Res.string.cancel))
+    }
 }

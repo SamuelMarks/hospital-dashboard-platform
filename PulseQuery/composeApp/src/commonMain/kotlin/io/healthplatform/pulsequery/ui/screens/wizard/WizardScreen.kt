@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +62,7 @@ import io.healthplatform.pulsequery.api.models.TemplateResponse
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
 import io.healthplatform.pulsequery.ui.components.TemplateListSkeleton
+import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
 import pulsequery.composeapp.generated.resources.all_categories
@@ -98,6 +100,67 @@ import pulsequery.composeapp.generated.resources.widget_subtitle_placeholder
 import pulsequery.composeapp.generated.resources.widget_title
 
 /**
+ * Resolves the active [WizardViewModel], returning [viewModel] when provided or creating a scoped instance.
+ *
+ * @param dashboardId Target dashboard ID.
+ * @param viewModel Optional caller-supplied [WizardViewModel].
+ * @param scope CoroutineScope used when constructing a default [WizardViewModel].
+ * @return Active [WizardViewModel] instance.
+ */
+internal fun resolveWizardViewModel(
+    dashboardId: String,
+    viewModel: WizardViewModel?,
+    scope: CoroutineScope
+): WizardViewModel {
+    return viewModel ?: WizardViewModel(dashboardId = dashboardId, scope = scope)
+}
+
+/**
+ * Handles top-bar back navigation in [WizardScreen], returning to the template marketplace when
+ * inside a configuration step or invoking [onBack] when already at the root step.
+ *
+ * @param state Current [WizardState].
+ * @param onBackToTemplates Callback to return to template selection.
+ * @param onBack Callback to exit the wizard.
+ */
+internal fun handleWizardNavigationBack(
+    state: WizardState,
+    onBackToTemplates: () -> Unit,
+    onBack: () -> Unit
+) {
+    if (state is WizardState.ParameterConfiguration || state is WizardState.CustomWidgetConfiguration) {
+        onBackToTemplates()
+    } else {
+        onBack()
+    }
+}
+
+/**
+ * Resolves the human-readable processor display label for the currently selected [ProcessorId].
+ *
+ * @param availableProcessors List of selectable [ProcessorSelectionOption] items.
+ * @param selectedProcessor Currently selected [ProcessorId].
+ * @return Display name or raw wire identifier fallback.
+ */
+internal fun resolveWizardProcessorDisplayName(
+    availableProcessors: List<ProcessorSelectionOption>,
+    selectedProcessor: ProcessorId
+): String {
+    val matched = availableProcessors.firstOrNull { it.id == selectedProcessor }
+    return if (matched != null) matched.displayName else selectedProcessor.value
+}
+
+/**
+ * Formats a snake_case visualization identifier into a capitalized label (e.g. `bar_chart` -> `Bar chart`).
+ *
+ * @param vis Raw visualization identifier.
+ * @return Formatted display label.
+ */
+internal fun formatWizardVisualizationLabel(vis: String): String {
+    return vis.replace('_', ' ').replaceFirstChar { it.uppercase() }
+}
+
+/**
  * Screen providing a guided wizard to browse template marketplace, configure parameters,
  * and instantiate new analytical widgets on a dashboard.
  *
@@ -115,7 +178,9 @@ fun WizardScreen(
     viewModel: WizardViewModel? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val vm = viewModel ?: remember(dashboardId) { WizardViewModel(dashboardId = dashboardId, scope = coroutineScope) }
+    val vm = remember(dashboardId, viewModel, coroutineScope) {
+        resolveWizardViewModel(dashboardId, viewModel, coroutineScope)
+    }
     val state by vm.state.collectAsState()
 
     val screenTitle = when (state) {
@@ -126,140 +191,179 @@ fun WizardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(screenTitle) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            if (state is WizardState.ParameterConfiguration || state is WizardState.CustomWidgetConfiguration) {
-                                vm.backToTemplates()
-                            } else {
-                                onBack()
-                            }
-                        }
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface
-                )
+            WizardTopBar(
+                screenTitle = screenTitle,
+                onNavigateBack = {
+                    handleWizardNavigationBack(
+                        state = vm.state.value,
+                        onBackToTemplates = { vm.backToTemplates() },
+                        onBack = onBack
+                    )
+                }
             )
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            when (val s = state) {
-                is WizardState.Loading -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        CircularProgressIndicator()
-                        Text(stringResource(Res.string.loading_templates))
-                        TemplateListSkeleton()
+        WizardStateBody(
+            state = state,
+            paddingValues = paddingValues,
+            vm = vm,
+            onComplete = onComplete
+        )
+    }
+}
+
+/**
+ * Renders the main state-dependent content body for [WizardScreen].
+ *
+ * @param state Current [WizardState].
+ * @param paddingValues Scaffold inner padding.
+ * @param vm Active [WizardViewModel].
+ * @param onComplete Callback invoked when widget creation completes.
+ */
+@Composable
+internal fun WizardStateBody(
+    state: WizardState,
+    paddingValues: PaddingValues,
+    vm: WizardViewModel,
+    onComplete: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentAlignment = Alignment.Center
+    ) {
+        when (val s = state) {
+            is WizardState.Loading -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CircularProgressIndicator()
+                    Text(stringResource(Res.string.loading_templates))
+                    TemplateListSkeleton()
+                }
+            }
+
+            is WizardState.TemplateSelection -> {
+                TemplateSelectionContent(
+                    state = s,
+                    onCategorySelected = { vm.selectCategory(it) },
+                    onSearchChanged = { vm.updateSearchQuery(it) },
+                    onTemplateSelected = { vm.selectTemplate(it) },
+                    onStartCustom = { vm.startCustomWidget(it) }
+                )
+            }
+
+            is WizardState.ParameterConfiguration -> {
+                ParameterConfigurationContent(
+                    state = s,
+                    onTitleChanged = { vm.updateWidgetTitle(it) },
+                    onSubtitleChanged = { vm.updateWidgetSubtitle(it) },
+                    onVisualizationChanged = { vm.updateVisualization(it) },
+                    onParameterChanged = { k, v -> vm.updateParameterValue(k, v) },
+                    onAllowNaturalTextChanged = { vm.updateAllowNaturalText(it) },
+                    onProcessorSelected = { vm.selectProcessor(it) },
+                    onNaturalTextPromptChanged = { vm.updateNaturalTextPrompt(it) },
+                    onSubmit = { vm.submitWidget { onComplete() } },
+                    onBack = { vm.backToTemplates() }
+                )
+            }
+
+            is WizardState.CustomWidgetConfiguration -> {
+                CustomWidgetConfigurationContent(
+                    state = s,
+                    onTitleChanged = { vm.updateCustomWidgetTitle(it) },
+                    onSubtitleChanged = { vm.updateWidgetSubtitle(it) },
+                    onContentChanged = { vm.updateCustomWidgetContent(it) },
+                    onVisualizationChanged = { vm.updateCustomWidgetViz(it) },
+                    onHttpMethodChanged = { vm.updateCustomWidgetHttpMethod(it) },
+                    onAllowNaturalTextChanged = { vm.updateAllowNaturalText(it) },
+                    onProcessorSelected = { vm.selectProcessor(it) },
+                    onNaturalTextPromptChanged = { vm.updateNaturalTextPrompt(it) },
+                    onSubmit = { vm.submitCustomWidget { onComplete() } },
+                    onBack = { vm.backToTemplates() }
+                )
+            }
+
+            is WizardState.Submitting -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text(stringResource(Res.string.creating_widget))
+                }
+            }
+
+            is WizardState.Success -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Text(
+                        text = stringResource(Res.string.widget_created_success),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Button(onClick = onComplete) {
+                        Text(stringResource(Res.string.ok))
                     }
                 }
+            }
 
-                is WizardState.TemplateSelection -> {
-                    TemplateSelectionContent(
-                        state = s,
-                        onCategorySelected = { vm.selectCategory(it) },
-                        onSearchChanged = { vm.updateSearchQuery(it) },
-                        onTemplateSelected = { vm.selectTemplate(it) },
-                        onStartCustom = { vm.startCustomWidget(it) }
+            is WizardState.Error -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text(
+                        text = s.message,
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center
                     )
-                }
-
-                is WizardState.ParameterConfiguration -> {
-                    ParameterConfigurationContent(
-                        state = s,
-                        onTitleChanged = { vm.updateWidgetTitle(it) },
-                        onSubtitleChanged = { vm.updateWidgetSubtitle(it) },
-                        onVisualizationChanged = { vm.updateVisualization(it) },
-                        onParameterChanged = { k, v -> vm.updateParameterValue(k, v) },
-                        onAllowNaturalTextChanged = { vm.updateAllowNaturalText(it) },
-                        onProcessorSelected = { vm.selectProcessor(it) },
-                        onNaturalTextPromptChanged = { vm.updateNaturalTextPrompt(it) },
-                        onSubmit = { vm.submitWidget { onComplete() } },
-                        onBack = { vm.backToTemplates() }
-                    )
-                }
-
-                is WizardState.CustomWidgetConfiguration -> {
-                    CustomWidgetConfigurationContent(
-                        state = s,
-                        onTitleChanged = { vm.updateCustomWidgetTitle(it) },
-                        onSubtitleChanged = { vm.updateWidgetSubtitle(it) },
-                        onContentChanged = { vm.updateCustomWidgetContent(it) },
-                        onVisualizationChanged = { vm.updateCustomWidgetViz(it) },
-                        onHttpMethodChanged = { vm.updateCustomWidgetHttpMethod(it) },
-                        onAllowNaturalTextChanged = { vm.updateAllowNaturalText(it) },
-                        onProcessorSelected = { vm.selectProcessor(it) },
-                        onNaturalTextPromptChanged = { vm.updateNaturalTextPrompt(it) },
-                        onSubmit = { vm.submitCustomWidget { onComplete() } },
-                        onBack = { vm.backToTemplates() }
-                    )
-                }
-
-                is WizardState.Submitting -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CircularProgressIndicator()
-                        Text(stringResource(Res.string.creating_widget))
-                    }
-                }
-
-                is WizardState.Success -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Text(
-                            text = stringResource(Res.string.widget_created_success),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Button(onClick = onComplete) {
-                            Text(stringResource(Res.string.ok))
-                        }
-                    }
-                }
-
-                is WizardState.Error -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Text(
-                            text = s.message,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                        Button(onClick = { vm.loadTemplates() }) {
-                            Text(stringResource(Res.string.retry))
-                        }
+                    Button(onClick = { vm.loadTemplates() }) {
+                        Text(stringResource(Res.string.retry))
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Renders the top app bar for [WizardScreen].
+ *
+ * @param screenTitle Current step title string.
+ * @param onNavigateBack Callback invoked when the back navigation icon is clicked.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WizardTopBar(
+    screenTitle: String,
+    onNavigateBack: () -> Unit
+) {
+    TopAppBar(
+        title = { Text(screenTitle) },
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(Res.string.back))
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    )
 }
 
 /**
@@ -286,40 +390,7 @@ fun TemplateSelectionContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text(
-                text = stringResource(Res.string.creation_source),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = true,
-                    onClick = {},
-                    label = { Text(stringResource(Res.string.source_templates)) }
-                )
-                FilterChip(
-                    selected = false,
-                    onClick = { onStartCustom("SQL") },
-                    label = { Text(stringResource(Res.string.source_custom_sql)) }
-                )
-                FilterChip(
-                    selected = false,
-                    onClick = { onStartCustom("HTTP") },
-                    label = { Text(stringResource(Res.string.source_custom_http)) }
-                )
-                FilterChip(
-                    selected = false,
-                    onClick = { onStartCustom("TEXT") },
-                    label = { Text(stringResource(Res.string.source_custom_text)) }
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+            TemplateCreationSourceRow(onStartCustom = onStartCustom)
         }
 
         item {
@@ -337,49 +408,122 @@ fun TemplateSelectionContent(
         }
 
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = state.selectedCategory == null,
-                    onClick = { onCategorySelected(null) },
-                    label = { Text(stringResource(Res.string.all_categories)) }
-                )
-                state.categories.forEach { category ->
-                    FilterChip(
-                        selected = state.selectedCategory.equals(category, ignoreCase = true),
-                        onClick = { onCategorySelected(category) },
-                        label = { Text(category) }
-                    )
-                }
-            }
+            TemplateCategoryChipsRow(
+                categories = state.categories,
+                selectedCategory = state.selectedCategory,
+                onCategorySelected = onCategorySelected
+            )
         }
 
-        if (state.filteredTemplates.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(Res.string.no_templates_found),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        } else {
-            items(state.filteredTemplates) { template ->
-                TemplateCard(
-                    template = template,
-                    onClick = { onTemplateSelected(template) }
-                )
-            }
+        item {
+            TemplateEmptyPlaceholderSection(isEmpty = state.filteredTemplates.isEmpty())
+        }
+
+        items(state.filteredTemplates) { template ->
+            TemplateCard(
+                template = template,
+                onClick = { onTemplateSelected(template) }
+            )
+        }
+    }
+}
+
+/**
+ * Renders the creation source filter chips row inside [TemplateSelectionContent].
+ *
+ * @param onStartCustom Callback invoked when a custom creation source chip is clicked.
+ */
+@Composable
+private fun TemplateCreationSourceRow(onStartCustom: (String) -> Unit) {
+    Text(
+        text = stringResource(Res.string.creation_source),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = true,
+            onClick = {},
+            label = { Text(stringResource(Res.string.source_templates)) }
+        )
+        FilterChip(
+            selected = false,
+            onClick = { onStartCustom("SQL") },
+            label = { Text(stringResource(Res.string.source_custom_sql)) }
+        )
+        FilterChip(
+            selected = false,
+            onClick = { onStartCustom("HTTP") },
+            label = { Text(stringResource(Res.string.source_custom_http)) }
+        )
+        FilterChip(
+            selected = false,
+            onClick = { onStartCustom("TEXT") },
+            label = { Text(stringResource(Res.string.source_custom_text)) }
+        )
+    }
+    Spacer(modifier = Modifier.height(8.dp))
+}
+
+/**
+ * Renders the category filter chips row inside [TemplateSelectionContent].
+ *
+ * @param categories Available template category names.
+ * @param selectedCategory Currently selected category or null for all.
+ * @param onCategorySelected Callback invoked when a category chip is clicked.
+ */
+@Composable
+private fun TemplateCategoryChipsRow(
+    categories: List<String>,
+    selectedCategory: String?,
+    onCategorySelected: (String?) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = selectedCategory == null,
+            onClick = { onCategorySelected(null) },
+            label = { Text(stringResource(Res.string.all_categories)) }
+        )
+        categories.forEach { category ->
+            FilterChip(
+                selected = selectedCategory.equals(category, ignoreCase = true),
+                onClick = { onCategorySelected(category) },
+                label = { Text(category) }
+            )
+        }
+    }
+}
+
+/**
+ * Renders the empty state box when no templates match the current search/category filter.
+ *
+ * @param isEmpty Whether the filtered template list is empty.
+ */
+@Composable
+private fun TemplateEmptyPlaceholderSection(isEmpty: Boolean) {
+    if (isEmpty) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = stringResource(Res.string.no_templates_found),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -404,32 +548,42 @@ fun TemplateCard(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        TemplateCardContent(template = template)
+    }
+}
+
+/**
+ * Renders the interior content of [TemplateCard].
+ *
+ * @param template The template item to render.
+ */
+@Composable
+private fun TemplateCardContent(template: TemplateResponse) {
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = template.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                SuggestionChip(
-                    onClick = {},
-                    label = { Text(template.category) }
-                )
-            }
-            if (!template.description.isNullOrBlank()) {
-                Text(
-                    text = template.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = template.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            SuggestionChip(
+                onClick = {},
+                label = { Text(template.category) }
+            )
+        }
+        if (!template.description.isNullOrBlank()) {
+            Text(
+                text = template.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -458,8 +612,8 @@ fun ProcessorNaturalTextSection(
     onNaturalTextPromptChanged: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedDisplay = availableProcessors.firstOrNull { it.id == selectedProcessor }?.displayName
-        ?: selectedProcessor.value
+    val closeMenu = { expanded = false }
+    val selectedDisplay = resolveWizardProcessorDisplayName(availableProcessors, selectedProcessor)
     val toggleLabel = stringResource(Res.string.allow_natural_text_label)
     val procDesc = stringResource(Res.string.select_processor_content_desc)
 
@@ -497,14 +651,14 @@ fun ProcessorNaturalTextSection(
             )
             ExposedDropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onDismissRequest = closeMenu
             ) {
                 availableProcessors.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option.displayName) },
                         onClick = {
                             onProcessorSelected(option.id)
-                            expanded = false
+                            closeMenu()
                         }
                     )
                 }
@@ -559,13 +713,10 @@ fun ParameterConfigurationContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            OutlinedTextField(
-                value = state.widgetTitle,
-                onValueChange = onTitleChanged,
-                label = { Text(stringResource(Res.string.widget_title)) },
-                isError = state.fieldErrors.containsKey("title"),
-                supportingText = state.fieldErrors["title"]?.let { { Text(it) } },
-                modifier = Modifier.fillMaxWidth()
+            WizardTitleField(
+                title = state.widgetTitle,
+                error = state.fieldErrors["title"],
+                onTitleChanged = onTitleChanged
             )
         }
 
@@ -593,76 +744,194 @@ fun ParameterConfigurationContent(
         }
 
         item {
-            Text(
-                text = stringResource(Res.string.visualization_type),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+            WizardVisualizationChipsRow(
+                headerText = stringResource(Res.string.visualization_type),
+                visualizations = visualizations,
+                selectedViz = state.visualization,
+                onVisualizationChanged = onVisualizationChanged
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                visualizations.forEach { vis ->
-                    FilterChip(
-                        selected = state.visualization.equals(vis, ignoreCase = true),
-                        onClick = { onVisualizationChanged(vis) },
-                        label = { Text(vis.replace('_', ' ').replaceFirstChar { it.uppercase() }) }
-                    )
-                }
-            }
-        }
-
-        if (state.parameterFields.isNotEmpty()) {
-            item {
-                Text(
-                    text = stringResource(Res.string.parameters),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.semantics { heading() }
-                )
-            }
-
-            items(state.parameterFields) { field ->
-                val error = state.fieldErrors[field.key]
-                OutlinedTextField(
-                    value = state.parameterValues[field.key] ?: "",
-                    onValueChange = { onParameterChanged(field.key, it) },
-                    label = { Text(if (field.isRequired) "${field.title} *" else field.title) },
-                    isError = error != null,
-                    supportingText = {
-                        if (error != null) {
-                            Text(error)
-                        } else if (field.defaultValue.isNotBlank()) {
-                            Text("Default: ${field.defaultValue}")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(Res.string.back))
-                }
+            ParameterFieldsListSection(
+                state = state,
+                onParameterChanged = onParameterChanged
+            )
+        }
 
-                Button(
-                    onClick = onSubmit,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(Res.string.create_widget_button))
-                }
+        item {
+            WizardActionFooterRow(onBack = onBack, onSubmit = onSubmit)
+        }
+    }
+}
+
+/**
+ * Renders the Parameters section heading and parameter input rows when parameter fields are present.
+ *
+ * @param state Active parameter configuration state.
+ * @param onParameterChanged Callback invoked when a parameter value is modified.
+ */
+@Composable
+private fun ParameterFieldsListSection(
+    state: WizardState.ParameterConfiguration,
+    onParameterChanged: (String, String) -> Unit
+) {
+    if (state.parameterFields.isNotEmpty()) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                text = stringResource(Res.string.parameters),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() }
+            )
+            state.parameterFields.forEach { field ->
+                WizardParameterFieldRow(
+                    field = field,
+                    currentValue = state.parameterValues[field.key].orEmpty(),
+                    error = state.fieldErrors[field.key],
+                    onValueChange = { onParameterChanged(field.key, it) }
+                )
             }
+        }
+    }
+}
+
+/**
+ * Renders the widget title input field with optional validation error text.
+ *
+ * @param title Current widget title value.
+ * @param error Optional field validation error string.
+ * @param onTitleChanged Callback invoked when title changes.
+ */
+@Composable
+private fun WizardTitleField(
+    title: String,
+    error: String?,
+    onTitleChanged: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = title,
+        onValueChange = onTitleChanged,
+        label = { Text(stringResource(Res.string.widget_title)) },
+        isError = error != null,
+        supportingText = if (error != null) {
+            { Text(error) }
+        } else {
+            null
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/**
+ * Renders the visualization filter chips row.
+ *
+ * @param headerText Section heading text.
+ * @param visualizations Selectable visualization identifiers.
+ * @param selectedViz Currently selected visualization identifier.
+ * @param onVisualizationChanged Callback invoked when a visualization chip is clicked.
+ */
+@Composable
+private fun WizardVisualizationChipsRow(
+    headerText: String,
+    visualizations: List<String>,
+    selectedViz: String,
+    onVisualizationChanged: (String) -> Unit
+) {
+    Text(
+        text = headerText,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.Bold
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        visualizations.forEach { vis ->
+            FilterChip(
+                selected = selectedViz.equals(vis, ignoreCase = true),
+                onClick = { onVisualizationChanged(vis) },
+                label = { Text(formatWizardVisualizationLabel(vis)) }
+            )
+        }
+    }
+}
+
+/**
+ * Renders a single template parameter input field row.
+ *
+ * @param field Parameter schema definition.
+ * @param currentValue Current parameter string value.
+ * @param error Optional validation error message.
+ * @param onValueChange Callback invoked when parameter text changes.
+ */
+@Composable
+private fun WizardParameterFieldRow(
+    field: ParameterField,
+    currentValue: String,
+    error: String?,
+    onValueChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = currentValue,
+        onValueChange = onValueChange,
+        label = { Text(if (field.isRequired) "${field.title} *" else field.title) },
+        isError = error != null,
+        supportingText = {
+            WizardParameterSupportingText(error = error, defaultValue = field.defaultValue)
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/**
+ * Renders the supporting text (validation error or default value hint) for [WizardParameterFieldRow].
+ *
+ * @param error Optional validation error message.
+ * @param defaultValue Default parameter value string.
+ */
+@Composable
+private fun WizardParameterSupportingText(
+    error: String?,
+    defaultValue: String
+) {
+    if (error != null) {
+        Text(error)
+    } else if (defaultValue.isNotBlank()) {
+        Text("Default: $defaultValue")
+    }
+}
+
+/**
+ * Renders the Back and Create Widget footer buttons.
+ *
+ * @param onBack Callback invoked when Back is clicked.
+ * @param onSubmit Callback invoked when Create Widget is clicked.
+ */
+@Composable
+private fun WizardActionFooterRow(
+    onBack: () -> Unit,
+    onSubmit: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        OutlinedButton(
+            onClick = onBack,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(stringResource(Res.string.back))
+        }
+
+        Button(
+            onClick = onSubmit,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(stringResource(Res.string.create_widget_button))
         }
     }
 }
@@ -697,7 +966,6 @@ fun CustomWidgetConfigurationContent(
     onNaturalTextPromptChanged: (String) -> Unit = {}
 ) {
     val visualizations = listOf("table", "bar_chart", "line_chart", "metric", "markdown")
-    val httpMethods = listOf("GET", "POST", "PUT")
 
     LazyColumn(
         modifier = Modifier
@@ -714,13 +982,10 @@ fun CustomWidgetConfigurationContent(
         }
 
         item {
-            OutlinedTextField(
-                value = state.widgetTitle,
-                onValueChange = onTitleChanged,
-                label = { Text(stringResource(Res.string.widget_title)) },
-                isError = state.fieldErrors.containsKey("title"),
-                supportingText = state.fieldErrors["title"]?.let { { Text(it) } },
-                modifier = Modifier.fillMaxWidth()
+            WizardTitleField(
+                title = state.widgetTitle,
+                error = state.fieldErrors["title"],
+                onTitleChanged = onTitleChanged
             )
         }
 
@@ -735,100 +1000,120 @@ fun CustomWidgetConfigurationContent(
             )
         }
 
-        if (state.creationType == "SQL") {
-            item {
-                ProcessorNaturalTextSection(
-                    availableProcessors = state.availableProcessors,
-                    allowNaturalText = state.allowNaturalText,
-                    selectedProcessor = state.selectedProcessor,
-                    naturalTextPrompt = state.naturalTextPrompt,
-                    onAllowNaturalTextChanged = onAllowNaturalTextChanged,
-                    onProcessorSelected = onProcessorSelected,
-                    onNaturalTextPromptChanged = onNaturalTextPromptChanged
-                )
-            }
-        }
-
-        if (state.creationType == "HTTP") {
-            item {
-                Text(
-                    text = stringResource(Res.string.http_verb),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    httpMethods.forEach { method ->
-                        FilterChip(
-                            selected = state.httpMethod.equals(method, ignoreCase = true),
-                            onClick = { onHttpMethodChanged(method) },
-                            label = { Text(method) }
-                        )
-                    }
-                }
-            }
-        }
-
         item {
-            val contentLabel = when (state.creationType) {
-                "HTTP" -> stringResource(Res.string.endpoint_url_label)
-                "TEXT" -> stringResource(Res.string.markdown_content_label)
-                else -> stringResource(Res.string.sql_query_label)
-            }
-            OutlinedTextField(
-                value = state.queryOrUrlOrContent,
-                onValueChange = onContentChanged,
-                label = { Text(contentLabel) },
-                minLines = 4,
-                maxLines = 10,
-                isError = state.fieldErrors.containsKey("content"),
-                supportingText = state.fieldErrors["content"]?.let { { Text(it) } },
-                modifier = Modifier.fillMaxWidth()
+            CustomWidgetTypeSpecificControls(
+                state = state,
+                onHttpMethodChanged = onHttpMethodChanged,
+                onAllowNaturalTextChanged = onAllowNaturalTextChanged,
+                onProcessorSelected = onProcessorSelected,
+                onNaturalTextPromptChanged = onNaturalTextPromptChanged
             )
         }
 
         item {
-            Text(
-                text = stringResource(Res.string.visualization_format),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
+            CustomWidgetContentField(
+                creationType = state.creationType,
+                content = state.queryOrUrlOrContent,
+                error = state.fieldErrors["content"],
+                onContentChanged = onContentChanged
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                visualizations.forEach { vis ->
-                    FilterChip(
-                        selected = state.visualization.equals(vis, ignoreCase = true),
-                        onClick = { onVisualizationChanged(vis) },
-                        label = { Text(vis.replace('_', ' ').replaceFirstChar { it.uppercase() }) }
-                    )
-                }
-            }
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(Res.string.back))
-                }
+            WizardVisualizationChipsRow(
+                headerText = stringResource(Res.string.visualization_format),
+                visualizations = visualizations,
+                selectedViz = state.visualization,
+                onVisualizationChanged = onVisualizationChanged
+            )
+        }
 
-                Button(
-                    onClick = onSubmit,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(Res.string.create_widget_button))
-                }
+        item {
+            WizardActionFooterRow(onBack = onBack, onSubmit = onSubmit)
+        }
+    }
+}
+
+/**
+ * Renders the SQL processor controls or HTTP verb selector based on [WizardState.CustomWidgetConfiguration.creationType].
+ *
+ * @param state Active custom widget configuration state.
+ * @param onHttpMethodChanged Callback invoked when an HTTP method chip is clicked.
+ * @param onAllowNaturalTextChanged Callback invoked when the natural-text switch changes.
+ * @param onProcessorSelected Callback invoked when a processor option is selected.
+ * @param onNaturalTextPromptChanged Callback invoked when the natural-text prompt changes.
+ */
+@Composable
+private fun CustomWidgetTypeSpecificControls(
+    state: WizardState.CustomWidgetConfiguration,
+    onHttpMethodChanged: (String) -> Unit,
+    onAllowNaturalTextChanged: (Boolean) -> Unit,
+    onProcessorSelected: (ProcessorId) -> Unit,
+    onNaturalTextPromptChanged: (String) -> Unit
+) {
+    val httpMethods = listOf("GET", "POST", "PUT")
+    if (state.creationType == "SQL") {
+        ProcessorNaturalTextSection(
+            availableProcessors = state.availableProcessors,
+            allowNaturalText = state.allowNaturalText,
+            selectedProcessor = state.selectedProcessor,
+            naturalTextPrompt = state.naturalTextPrompt,
+            onAllowNaturalTextChanged = onAllowNaturalTextChanged,
+            onProcessorSelected = onProcessorSelected,
+            onNaturalTextPromptChanged = onNaturalTextPromptChanged
+        )
+    }
+    if (state.creationType == "HTTP") {
+        Text(
+            text = stringResource(Res.string.http_verb),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            httpMethods.forEach { method ->
+                FilterChip(
+                    selected = state.httpMethod.equals(method, ignoreCase = true),
+                    onClick = { onHttpMethodChanged(method) },
+                    label = { Text(method) }
+                )
             }
         }
     }
+}
+
+/**
+ * Renders the primary content field (SQL query, HTTP endpoint URL, or Markdown text) for custom widgets.
+ *
+ * @param creationType Custom creation type (`SQL`, `HTTP`, or `TEXT`).
+ * @param content Current query/URL/content string.
+ * @param error Optional field validation error message.
+ * @param onContentChanged Callback invoked when content text changes.
+ */
+@Composable
+private fun CustomWidgetContentField(
+    creationType: String,
+    content: String,
+    error: String?,
+    onContentChanged: (String) -> Unit
+) {
+    val contentLabel = when (creationType) {
+        "HTTP" -> stringResource(Res.string.endpoint_url_label)
+        "TEXT" -> stringResource(Res.string.markdown_content_label)
+        else -> stringResource(Res.string.sql_query_label)
+    }
+    OutlinedTextField(
+        value = content,
+        onValueChange = onContentChanged,
+        label = { Text(contentLabel) },
+        minLines = 4,
+        maxLines = 10,
+        isError = error != null,
+        supportingText = if (error != null) {
+            { Text(error) }
+        } else {
+            null
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
 }

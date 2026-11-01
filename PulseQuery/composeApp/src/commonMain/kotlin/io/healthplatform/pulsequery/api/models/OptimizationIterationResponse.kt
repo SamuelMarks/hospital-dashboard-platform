@@ -18,8 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.OptimizationSolutionPayload
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -34,29 +32,16 @@ import kotlinx.serialization.Serializable
  * @property createdAt * @param quickActionId
  * @property followUpSuggestions */
 @Serializable
-
-data class OptimizationIterationResponse (
-
+data class OptimizationIterationResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "session_id") @Required val sessionId: kotlin.String,
-
     @SerialName(value = "turn_index") @Required val turnIndex: kotlin.Int,
-
     @SerialName(value = "user_prompt") @Required val userPrompt: kotlin.String,
-
     @SerialName(value = "model_id") @Required val modelId: kotlin.String,
-
     @SerialName(value = "assistant_explanation") @Required val assistantExplanation: kotlin.String,
-
     @SerialName(value = "solution") @Required val solution: OptimizationSolutionPayload,
-
     @SerialName(value = "latency_ms") @Required val latencyMs: kotlin.Int,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "quick_action_id") val quickActionId: kotlin.String? = null,
-
     @SerialName(value = "follow_up_suggestions") val followUpSuggestions: kotlin.collections.List<kotlin.String>? = null
-
 )

@@ -24,17 +24,11 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for root `/` health check endpoint.
@@ -93,16 +87,6 @@ open class DefaultApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<RootGetResponse>().map { value }
-    }
-
-    @Serializable(RootGetResponse.Companion::class)
-    private class RootGetResponse(val value: Map<kotlin.String, kotlin.String>) {
-        companion object : KSerializer<RootGetResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlin.String>> = serializer<Map<String, kotlin.String>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: RootGetResponse) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = RootGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 }

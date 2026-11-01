@@ -67,7 +67,7 @@ open class AdminApi : ApiClient {
      * Read Admin Settings
      * Get system-wide admin settings like API keys and visible models.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return AdminSettingsResponse
      */
     open suspend fun readAdminSettingsApiV1AdminSettingsGet(
@@ -102,9 +102,9 @@ open class AdminApi : ApiClient {
     /**
      * Write Admin Settings
      * Update system-wide admin settings like API keys and visible models.
-     * @param adminSettingsUpdateRequest
+     * @param adminSettingsUpdateRequest Updated administrative settings payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return AdminSettingsResponse
      */
     open suspend fun writeAdminSettingsApiV1AdminSettingsPut(

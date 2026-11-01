@@ -18,14 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.DesEvaluationSummary
-import io.healthplatform.pulsequery.api.models.ServiceUnitAssignmentRow
-import io.healthplatform.pulsequery.api.models.ServiceUnitConstraint
-import io.healthplatform.pulsequery.api.models.StaffingConstraint
-import io.healthplatform.pulsequery.api.models.StaffingShiftAssignmentRow
-import io.healthplatform.pulsequery.api.models.SurgicalBlockAssignmentRow
-import io.healthplatform.pulsequery.api.models.SurgicalScheduleConstraint
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,37 +33,23 @@ import kotlinx.serialization.Serializable
  * @property appliedSurgicalConstraints * @param appliedStaffingConstraints
  */
 @Serializable
-
-data class OptimizationSolutionPayload (
-
+data class OptimizationSolutionPayload(
     @SerialName(value = "use_case") @Required val useCase: OptimizationSolutionPayload.UseCase,
-
     @SerialName(value = "objective_value") @Required val objectiveValue: kotlin.Double,
-
     @SerialName(value = "solve_time_ms") @Required val solveTimeMs: kotlin.Double,
-
     @SerialName(value = "des_evaluation") @Required val desEvaluation: DesEvaluationSummary,
-
     @SerialName(value = "institution_id") val institutionId: kotlin.String? = "stanford_childrens",
-
     @SerialName(value = "solver_status") val solverStatus: OptimizationSolutionPayload.SolverStatus? = SolverStatus.OPTIMAL,
-
     @SerialName(value = "service_unit_assignments") val serviceUnitAssignments: kotlin.collections.List<ServiceUnitAssignmentRow>? = null,
-
     @SerialName(value = "surgical_schedule_assignments") val surgicalScheduleAssignments: kotlin.collections.List<SurgicalBlockAssignmentRow>? = null,
-
     @SerialName(value = "staffing_assignments") val staffingAssignments: kotlin.collections.List<StaffingShiftAssignmentRow>? = null,
-
     @SerialName(value = "applied_service_constraints") val appliedServiceConstraints: kotlin.collections.List<ServiceUnitConstraint>? = null,
-
     @SerialName(value = "applied_surgical_constraints") val appliedSurgicalConstraints: kotlin.collections.List<SurgicalScheduleConstraint>? = null,
-
     @SerialName(value = "applied_staffing_constraints") val appliedStaffingConstraints: kotlin.collections.List<StaffingConstraint>? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -82,10 +60,10 @@ data class OptimizationSolutionPayload (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
     /**
-     * 
+     *
      *
      * Values: OPTIMAL,FEASIBLE,INFEASIBLE
      */
@@ -96,8 +74,6 @@ data class OptimizationSolutionPayload (
         /** Enumerated wire option. */
         @SerialName(value = "FEASIBLE") FEASIBLE("FEASIBLE"),
         /** Enumerated wire option. */
-        @SerialName(value = "INFEASIBLE") INFEASIBLE("INFEASIBLE");
+        @SerialName(value = "INFEASIBLE") INFEASIBLE("INFEASIBLE")
     }
-
 }
-

@@ -24,7 +24,6 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.DashboardCreate
 import io.healthplatform.pulsequery.api.models.DashboardResponse
@@ -37,13 +36,8 @@ import io.healthplatform.pulsequery.api.models.WidgetUpdate
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/dashboards` dashboard CRUD, widget lifecycle, sharing, and export endpoints.
@@ -79,9 +73,9 @@ open class DashboardsApi : ApiClient {
     /**
      * Clone Dashboard
      * Creates a deep copy of an existing dashboard and all its widgets. The new dashboard will have the name \&quot;Copy of {original_name}\&quot;.  Args:     dashboard_id (UUID): The ID of the dashboard to clone.     current_user (User): Authenticated user (must have access to the dashboard).     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     DashboardResponse: The newly created dashboard populated with cloned widgets.
-     * @param dashboardId
+     * @param dashboardId Target dashboard identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return DashboardResponse
      */
     open suspend fun cloneDashboardApiV1DashboardsDashboardIdClonePost(
@@ -117,7 +111,7 @@ open class DashboardsApi : ApiClient {
     /**
      * Create Dashboard
      * Create a new empty dashboard.
-     * @param dashboardCreate
+     * @param dashboardCreate Dashboard creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return DashboardResponse
      */
@@ -151,10 +145,10 @@ open class DashboardsApi : ApiClient {
     /**
      * Create Widget
      * Add a widget to the dashboard with Dry-Run Validation.
-     * @param dashboardId
-     * @param widgetIn
+     * @param dashboardId Target dashboard identifier.
+     * @param widgetIn Widget creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return WidgetResponse
      */
     open suspend fun createWidgetApiV1DashboardsDashboardIdWidgetsPost(
@@ -190,9 +184,9 @@ open class DashboardsApi : ApiClient {
     /**
      * Delete Dashboard
      * Delete dashboard (and cascades to widgets and shares). Only owner can delete.
-     * @param dashboardId
+     * @param dashboardId Target dashboard identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return void
      */
     open suspend fun deleteDashboardApiV1DashboardsDashboardIdDelete(
@@ -228,10 +222,10 @@ open class DashboardsApi : ApiClient {
     /**
      * Delete Dashboard Share
      * Revokes a dashboard share. Only the dashboard owner can revoke shares.  Args:     dashboard_id (UUID): Target dashboard ID.     share_id (UUID): Specific share record ID to delete.     current_user (User): Authenticated owner.     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.
-     * @param dashboardId
-     * @param shareId
+     * @param dashboardId Target dashboard identifier.
+     * @param shareId Target share record identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return void
      */
     open suspend fun deleteDashboardShareApiV1DashboardsDashboardIdSharesShareIdDelete(
@@ -268,9 +262,9 @@ open class DashboardsApi : ApiClient {
     /**
      * Delete Widget
      * Delete a widget from a dashboard.
-     * @param widgetId
+     * @param widgetId Target widget identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return void
      */
     open suspend fun deleteWidgetApiV1DashboardsWidgetsWidgetIdDelete(
@@ -306,10 +300,10 @@ open class DashboardsApi : ApiClient {
     /**
      * Export Dashboard
      * Exports dashboard layout, configuration, and data snapshot in JSON or CSV format.  Args:     dashboard_id (UUID): Target dashboard ID.     current_user (User): Authenticated user requesting export.     db (AsyncSession): Database session.     format (str): Export format (&#39;json&#39; or &#39;csv&#39;).     accept_language (Optional[str]): Language preference header.  Returns:     Response: File download stream with appropriate media type.
-     * @param dashboardId
-     * @param format  (optional, default to "json")
+     * @param dashboardId Target dashboard identifier.
+     * @param format Export file format ('json' or 'csv') (optional, default to "json")
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.String
      */
     open suspend fun exportDashboardApiV1DashboardsDashboardIdExportGet(
@@ -347,9 +341,9 @@ open class DashboardsApi : ApiClient {
     /**
      * Export Dashboard Pdf
      * Exports dashboard layout, clinical metadata, and data snapshot formatted as a PDF report.  Args:     dashboard_id (UUID): Target dashboard ID.     current_user (User): Authenticated user requesting export.     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     Response: Binary stream formatted as an application/pdf document.
-     * @param dashboardId
+     * @param dashboardId Target dashboard identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.ByteArray
      */
     open suspend fun exportDashboardPdfApiV1DashboardsDashboardIdExportPdfGet(
@@ -385,11 +379,11 @@ open class DashboardsApi : ApiClient {
     /**
      * Export Widget
      * Exports an individual widget configuration and its analytical data snapshot.  Args:     dashboard_id (UUID): Target dashboard ID.     widget_id (UUID): Target widget ID within the dashboard.     current_user (User): Authenticated user requesting export.     db (AsyncSession): PostgreSQL async database session.     format (str): Export format (&#39;json&#39; or &#39;csv&#39;). Defaults to &#39;json&#39;.     accept_language (Optional[str]): Language preference header.  Returns:     Response: Streaming file download with appropriate MIME type and Content-Disposition.  Raises:     HTTPException: 404 if dashboard or widget not found or access denied.
-     * @param dashboardId
-     * @param widgetId
-     * @param format  (optional, default to "json")
+     * @param dashboardId Target dashboard identifier.
+     * @param widgetId Target widget identifier.
+     * @param format Export file format ('json' or 'csv') (optional, default to "json")
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.String
      */
     open suspend fun exportWidgetApiV1DashboardsDashboardIdWidgetsWidgetIdExportGet(
@@ -428,9 +422,9 @@ open class DashboardsApi : ApiClient {
     /**
      * Get Dashboard
      * Get a specific dashboard details.
-     * @param dashboardId
+     * @param dashboardId Target dashboard identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return DashboardResponse
      */
     open suspend fun getDashboardApiV1DashboardsDashboardIdGet(
@@ -466,9 +460,9 @@ open class DashboardsApi : ApiClient {
     /**
      * List Dashboard Shares
      * Lists all active shares on a dashboard. Accessible to owners and collaborators.  Args:     dashboard_id (UUID): Target dashboard ID.     current_user (User): Authenticated user with access.     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     List[DashboardShareResponse]: List of active shares.
-     * @param dashboardId
+     * @param dashboardId Target dashboard identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.collections.List<DashboardShareResponse>
      */
     open suspend fun listDashboardSharesApiV1DashboardsDashboardIdSharesGet(
@@ -498,22 +492,7 @@ open class DashboardsApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse>().map { value }
-    }
-
-    @Serializable(ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse.Companion::class)
-    private class ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse(val value: List<DashboardShareResponse>) {
-        companion object : KSerializer<ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse> {
-            private val serializer: KSerializer<List<DashboardShareResponse>> = serializer<List<DashboardShareResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = ListDashboardSharesApiV1DashboardsDashboardIdSharesGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -546,20 +525,7 @@ open class DashboardsApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListDashboardsApiV1DashboardsGetResponse>().map { value }
-    }
-
-    @Serializable(ListDashboardsApiV1DashboardsGetResponse.Companion::class)
-    private class ListDashboardsApiV1DashboardsGetResponse(val value: List<DashboardResponse>) {
-        companion object : KSerializer<ListDashboardsApiV1DashboardsGetResponse> {
-            private val serializer: KSerializer<List<DashboardResponse>> = serializer<List<DashboardResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListDashboardsApiV1DashboardsGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListDashboardsApiV1DashboardsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -592,29 +558,16 @@ open class DashboardsApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListDashboardsApiV1DashboardsGet0Response>().map { value }
-    }
-
-    @Serializable(ListDashboardsApiV1DashboardsGet0Response.Companion::class)
-    private class ListDashboardsApiV1DashboardsGet0Response(val value: List<DashboardResponse>) {
-        companion object : KSerializer<ListDashboardsApiV1DashboardsGet0Response> {
-            private val serializer: KSerializer<List<DashboardResponse>> = serializer<List<DashboardResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListDashboardsApiV1DashboardsGet0Response
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListDashboardsApiV1DashboardsGet0Response(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Reorder Widgets
      * Bulk update widget positions and groups. Used for Drag-and-Drop persistence.
-     * @param dashboardId
-     * @param widgetReorderRequest
+     * @param dashboardId Target dashboard identifier.
+     * @param widgetReorderRequest Widget reorder payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return kotlin.collections.Map<kotlin.String, JsonElement>
      */
     open suspend fun reorderWidgetsApiV1DashboardsDashboardIdReorderPost(
@@ -644,22 +597,7 @@ open class DashboardsApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse>().map { value }
-    }
-
-    @Serializable(ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse.Companion::class)
-    private class ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse(val value: Map<kotlin.String, JsonElement>) {
-        companion object : KSerializer<ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, JsonElement>> = serializer<Map<String, JsonElement>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(
-                decoder: Decoder
-            ) = ReorderWidgetsApiV1DashboardsDashboardIdReorderPostResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -698,10 +636,10 @@ open class DashboardsApi : ApiClient {
     /**
      * Share Dashboard
      * Shares a dashboard with another user by email. Only the dashboard owner can share.  Args:     dashboard_id (UUID): Target dashboard ID.     share_in (DashboardShareCreate): Email and permission level (&#39;VIEW&#39; or &#39;EDIT&#39;).     current_user (User): Authenticated user (must be owner).     db (AsyncSession): Database session.     accept_language (Optional[str]): Language preference header.  Returns:     DashboardShareResponse: Details of created or updated share.
-     * @param dashboardId
-     * @param dashboardShareCreate
+     * @param dashboardId Target dashboard identifier.
+     * @param dashboardShareCreate Dashboard share creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return DashboardShareResponse
      */
     open suspend fun shareDashboardApiV1DashboardsDashboardIdSharesPost(
@@ -737,10 +675,10 @@ open class DashboardsApi : ApiClient {
     /**
      * Update Dashboard
      * Rename a dashboard.
-     * @param dashboardId
-     * @param dashboardCreate
+     * @param dashboardId Target dashboard identifier.
+     * @param dashboardCreate Dashboard creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return DashboardResponse
      */
     open suspend fun updateDashboardApiV1DashboardsDashboardIdPut(
@@ -776,10 +714,10 @@ open class DashboardsApi : ApiClient {
     /**
      * Update Widget
      * Update widget configuration (e.g., resize, change query) with Dry-Run.
-     * @param widgetId
-     * @param widgetUpdate
+     * @param widgetId Target widget identifier.
+     * @param widgetUpdate Widget update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
-     * @param acceptLanguage  (optional)
+     * @param acceptLanguage Preferred response language header (optional)
      * @return WidgetResponse
      */
     open suspend fun updateWidgetApiV1DashboardsWidgetsWidgetIdPut(

@@ -54,4 +54,21 @@ class SystemErrorComponentsTest : BaseComposeTest() {
         onNodeWithText("Retry Query").assertIsDisplayed().performClick()
         assertTrue(queryRetried)
     }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testBackendOfflineBannerRetryingAndDatabaseErrorCardWithoutRetry() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                BackendOfflineBanner(
+                    onRetry = {},
+                    isRetrying = true
+                )
+                DatabaseErrorCard()
+            }
+        }
+
+        onNodeWithText("Backend Inaccessible").assertIsDisplayed()
+        onNodeWithText("Database Misconfiguration").assertIsDisplayed()
+    }
 }

@@ -62,6 +62,19 @@ export function onServerListen(port: string | number, error?: Error): void {
 }
 
 /**
+ * Minimal Express server listener contract required by `startServerIfNeeded`.
+ */
+export interface ExpressListener {
+  /**
+   * Binds and listens for connections on the specified port.
+   *
+   * @param port - Port number or string to bind.
+   * @param cb - Optional callback invoked once listening or on error.
+   */
+  listen(port: string | number, cb?: (error?: Error) => void): unknown;
+}
+
+/**
  * Starts the Express HTTP server when executed as the main module or under PM2.
  *
  * @param mainCheck - Whether the current file is the main entry module.
@@ -71,7 +84,7 @@ export function onServerListen(port: string | number, error?: Error): void {
 export function startServerIfNeeded(
   mainCheck: boolean = isMainModule(import.meta.url),
   env: NodeJS.ProcessEnv = process.env,
-  expressApp: Pick<Express, 'listen'> = app,
+  expressApp: ExpressListener = app,
 ): void {
   if (mainCheck || Boolean(env['pm_id'])) {
     const port = env['PORT'] || 4000;

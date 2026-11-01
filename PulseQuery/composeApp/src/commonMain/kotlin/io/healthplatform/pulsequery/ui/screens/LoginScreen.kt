@@ -56,6 +56,23 @@ import pulsequery.composeapp.generated.resources.settings_icon
 import pulsequery.composeapp.generated.resources.welcome_to_pulsequery
 
 /**
+ * Dispatches secondary auth action either to an external registration route or in-place register mode toggle.
+ *
+ * @param onNavigateToRegister Optional external navigation callback.
+ * @param vm Active [AuthViewModel] instance.
+ */
+internal fun handleRegisterNavigationOrToggle(
+    onNavigateToRegister: (() -> Unit)?,
+    vm: AuthViewModel
+) {
+    if (onNavigateToRegister != null) {
+        onNavigateToRegister()
+    } else {
+        vm.toggleRegisterMode()
+    }
+}
+
+/**
  * Authentication Screen.
  * Provides user login and registration utilizing Ktor API models and Compose MD3 layout.
  *
@@ -81,37 +98,10 @@ fun LoginScreen(
     val errAuthFailed = stringResource(Res.string.authentication_failed)
 
     if (uiState.showSettingsDialog) {
-        var tempUrl by remember { mutableStateOf(AppContainer.currentBaseUrl) }
-        AlertDialog(
-            onDismissRequest = { vm.setShowSettingsDialog(false) },
-            title = { Text(stringResource(Res.string.settings)) },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = tempUrl,
-                        onValueChange = { tempUrl = it },
-                        label = { Text(stringResource(Res.string.server_url)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = stringResource(Res.string.server_url_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { vm.saveBaseUrl(tempUrl) }) {
-                    Text(stringResource(Res.string.save))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { vm.setShowSettingsDialog(false) }) {
-                    Text(stringResource(Res.string.cancel))
-                }
-            }
+        LoginSettingsDialog(
+            initialUrl = AppContainer.currentBaseUrl,
+            onDismiss = { vm.setShowSettingsDialog(false) },
+            onSave = { vm.saveBaseUrl(it) }
         )
     }
 
@@ -175,30 +165,16 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 enabled = !uiState.isLoading
             ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                } else {
-                    Text(
-                        if (uiState.isRegisterMode) {
-                            stringResource(Res.string.register_button)
-                        } else {
-                            stringResource(Res.string.login_register)
-                        }
-                    )
-                }
+                LoginPrimaryButtonContent(
+                    isLoading = uiState.isLoading,
+                    isRegisterMode = uiState.isRegisterMode
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
             TextButton(
                 onClick = {
-                    if (onNavigateToRegister != null) {
-                        onNavigateToRegister()
-                    } else {
-                        vm.toggleRegisterMode()
-                    }
+                    handleRegisterNavigationOrToggle(onNavigateToRegister, vm)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -211,5 +187,96 @@ fun LoginScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * Renders the interior label or progress indicator for the primary button in [LoginScreen].
+ *
+ * @param isLoading Whether authentication is currently in progress.
+ * @param isRegisterMode Whether the form is in inline registration mode.
+ */
+@Composable
+private fun LoginPrimaryButtonContent(
+    isLoading: Boolean,
+    isRegisterMode: Boolean
+) {
+    if (isLoading) {
+        CircularProgressIndicator(
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.size(24.dp)
+        )
+    } else {
+        Text(
+            if (isRegisterMode) {
+                stringResource(Res.string.register_button)
+            } else {
+                stringResource(Res.string.login_register)
+            }
+        )
+    }
+}
+
+/**
+ * Dialog allowing users to configure the backend server URL from the login screen.
+ *
+ * @param initialUrl Initial server base URL value.
+ * @param onDismiss Callback invoked when the dialog is cancelled or dismissed.
+ * @param onSave Callback invoked with the updated URL string when saved.
+ */
+@Composable
+private fun LoginSettingsDialog(
+    initialUrl: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var tempUrl by remember { mutableStateOf(initialUrl) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.settings)) },
+        text = {
+            LoginSettingsDialogBody(
+                tempUrl = tempUrl,
+                onUrlChange = { tempUrl = it }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onSave(tempUrl) }) {
+                Text(stringResource(Res.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.cancel))
+            }
+        }
+    )
+}
+
+/**
+ * Renders the text field and hint inside [LoginSettingsDialog].
+ *
+ * @param tempUrl Current editable server URL text.
+ * @param onUrlChange Callback invoked when the server URL text changes.
+ */
+@Composable
+private fun LoginSettingsDialogBody(
+    tempUrl: String,
+    onUrlChange: (String) -> Unit
+) {
+    Column {
+        OutlinedTextField(
+            value = tempUrl,
+            onValueChange = onUrlChange,
+            label = { Text(stringResource(Res.string.server_url)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = stringResource(Res.string.server_url_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }

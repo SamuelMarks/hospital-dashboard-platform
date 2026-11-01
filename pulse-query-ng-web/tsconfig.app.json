@@ -7,7 +7,7 @@
     "types": ["node", "@angular/localize"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.spec.ts", "src/test-setup.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/test-setup.ts", "src/test-utils/**", "src/test-mocks/**"],
   "angularCompilerOptions": {
     "extendedDiagnostics": {
       "checks": {

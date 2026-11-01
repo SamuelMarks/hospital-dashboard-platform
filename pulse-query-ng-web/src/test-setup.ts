@@ -16,7 +16,7 @@ import { ResourceLoader } from '@angular/compiler';
 import { mkdirSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { vi } from 'vitest';
+import { beforeAll, beforeEach, vi } from 'vitest';
 import {
   resourceLoader,
   resolveComponentResourcesForTests,
@@ -41,31 +41,31 @@ vi.mock('@material/material-color-utilities', () => ({
  * Global Mock for `window.matchMedia`.
  * Fixes generic Material/CDK component instantiation.
  */
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    writable: true,
-    value: vi.fn().mockImplementation((query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    })),
-  });
-}
+Object.defineProperty(globalThis, 'matchMedia', {
+  configurable: true,
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 /**
  * Mock DOM Rect APIs for CodeMirror 6 in JSDOM.
+ *
+ * @returns Empty `DOMRectList` from a detached `div` element.
  */
 if (typeof Range !== 'undefined') {
   Range.prototype.getClientRects = (): DOMRectList =>
     document.createElement('div').getClientRects();
 
-  Range.prototype.getBoundingClientRect = () =>
+  Range.prototype.getBoundingClientRect = (): DOMRect =>
     ({
       x: 0,
       y: 0,
@@ -157,10 +157,10 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
     );
     let match: RegExpExecArray | null;
     while ((match = inputRegex.exec(src)) !== null) {
-      const propName = match[1];
-      const args = match[2] || '';
+      const propName = match[1] as string;
+      const args = match[2] as string;
       const aliasMatch = /alias\s*:\s*['"]([^'"]+)['"]/.exec(args);
-      if (propName && !baseMeta[propName]) {
+      if (!baseMeta[propName]) {
         baseMeta[propName] = [
           new Input({
             isSignal: true,
@@ -175,10 +175,10 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
       'gm',
     );
     while ((match = outputRegex.exec(src)) !== null) {
-      const propName = match[1];
-      const args = match[2] || '';
+      const propName = match[1] as string;
+      const args = match[2] as string;
       const aliasMatch = /alias\s*:\s*['"]([^'"]+)['"]/.exec(args);
-      if (propName && !baseMeta[propName]) {
+      if (!baseMeta[propName]) {
         baseMeta[propName] = [new Output(aliasMatch?.[1])];
       }
     }
@@ -188,9 +188,9 @@ Object.defineProperty(Function.prototype, 'propMetadata', {
       'gm',
     );
     while ((match = viewChildRegex.exec(src)) !== null) {
-      const propName = match[1];
-      const selector = match[2];
-      if (propName && selector && !baseMeta[propName]) {
+      const propName = match[1] as string;
+      const selector = match[2] as string;
+      if (!baseMeta[propName]) {
         baseMeta[propName] = [
           new ViewChild(selector, { isSignal: true } as Parameters<typeof ViewChild>[1]),
         ];
@@ -227,7 +227,6 @@ ComponentRef.prototype.setInput = function (name: string, value: unknown) {
           } else {
             signalSetFn(node as Parameters<typeof signalSetFn>[0], value);
           }
-          return;
         }
       } else {
         instance[name] = value;
@@ -258,30 +257,13 @@ const storageMock: Storage = (() => {
   };
 })();
 
-if (typeof window !== 'undefined') {
-  try {
-    Object.defineProperty(window, 'localStorage', {
-      value: storageMock,
-      writable: true,
-      configurable: true,
-    });
-    Object.defineProperty(window, 'sessionStorage', {
-      value: storageMock,
-      writable: true,
-      configurable: true,
-    });
-  } catch {}
-}
-
-try {
-  Object.defineProperty(globalThis, 'localStorage', {
-    value: storageMock,
-    writable: true,
-    configurable: true,
-  });
-  Object.defineProperty(globalThis, 'sessionStorage', {
-    value: storageMock,
-    writable: true,
-    configurable: true,
-  });
-} catch {}
+Object.defineProperty(globalThis, 'localStorage', {
+  value: storageMock,
+  writable: true,
+  configurable: true,
+});
+Object.defineProperty(globalThis, 'sessionStorage', {
+  value: storageMock,
+  writable: true,
+  configurable: true,
+});

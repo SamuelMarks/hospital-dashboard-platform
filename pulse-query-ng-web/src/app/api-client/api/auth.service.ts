@@ -132,7 +132,7 @@ export class AuthService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );
@@ -249,24 +249,13 @@ export class AuthService extends BaseService {
 
     void this.canConsumeForm(consumes);
 
-    let localVarFormParams: HttpParams | FormData;
-    const localVarUseForm = false;
-    const localVarConvertFormParamsToString = false;
-    if (localVarUseForm) {
-      localVarFormParams = new FormData();
-    } else {
-      localVarFormParams = new HttpParams({ encoder: this.encoder });
-    }
+    let localVarFormParams: HttpParams | FormData = new HttpParams({ encoder: this.encoder });
 
     if (grantType !== undefined) {
       localVarFormParams = this.appendFormParam(localVarFormParams, 'grant_type', grantType);
     }
-    if (username !== undefined) {
-      localVarFormParams = this.appendFormParam(localVarFormParams, 'username', username);
-    }
-    if (password !== undefined) {
-      localVarFormParams = this.appendFormParam(localVarFormParams, 'password', password);
-    }
+    localVarFormParams = this.appendFormParam(localVarFormParams, 'username', username);
+    localVarFormParams = this.appendFormParam(localVarFormParams, 'password', password);
     if (scope !== undefined) {
       localVarFormParams = this.appendFormParam(localVarFormParams, 'scope', scope);
     }
@@ -292,12 +281,12 @@ export class AuthService extends BaseService {
     const { basePath, withCredentials } = this.configuration;
     return this.executeRequest<Token>(this.httpClient, 'post', `${basePath}${localVarPath}`, {
       context: localVarHttpContext,
-      body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+      body: localVarFormParams,
       responseType: responseType_,
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      transferCache: localVarTransferCache,
       reportProgress: reportProgress,
     });
   }
@@ -402,7 +391,7 @@ export class AuthService extends BaseService {
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      transferCache: localVarTransferCache,
       reportProgress: reportProgress,
     });
   }
@@ -503,7 +492,7 @@ export class AuthService extends BaseService {
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      transferCache: localVarTransferCache,
       reportProgress: reportProgress,
     });
   }
@@ -616,7 +605,7 @@ export class AuthService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );
@@ -722,7 +711,7 @@ export class AuthService extends BaseService {
         ...(withCredentials ? { withCredentials } : {}),
         headers: localVarHeaders,
         observe: observe,
-        ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+        transferCache: localVarTransferCache,
         reportProgress: reportProgress,
       },
     );
@@ -824,7 +813,7 @@ export class AuthService extends BaseService {
       ...(withCredentials ? { withCredentials } : {}),
       headers: localVarHeaders,
       observe: observe,
-      ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+      transferCache: localVarTransferCache,
       reportProgress: reportProgress,
     });
   }

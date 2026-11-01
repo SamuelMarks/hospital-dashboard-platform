@@ -85,7 +85,10 @@ class HeatmapChartTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
     @Test
     fun testHeatmapChartMultiColumnLastIndexFallback() = runComposeUiTest {
         val extraCols = listOf("Service", "Hour", "Admits", "Discharges", "CustomScore")
-        val extraRows = listOf(listOf("Cardiology", "6", "100", "20", "55"))
+        val extraRows = listOf(
+            listOf("Cardiology", "6", "100", "20", "55"),
+            listOf("Neurology", "12", "80", "10", "not_a_number")
+        )
 
         setContent {
             MaterialTheme {
@@ -93,5 +96,7 @@ class HeatmapChartTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
             }
         }
         onNodeWithText("55").assertExists()
+        onNodeWithContentDescription("Cardiology, 12: 0.0").assertExists()
+        onNodeWithContentDescription("Neurology, 12: 0.0").assertExists()
     }
 }

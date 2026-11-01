@@ -7,11 +7,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -25,9 +27,12 @@ import kotlinx.serialization.json.Json
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
- * Compose UI tests verifying the display, tab switching, and error handling of BenchmarksScreen.
+ * Compose UI tests verifying the display, tab switching, helpers, and error handling of BenchmarksScreen.
  */
 class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
@@ -92,9 +97,36 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         AppContainer.setHttpClientForTest(client)
     }
 
+    @Test
+    fun testBenchmarksPureHelpers() {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val vm = BenchmarksViewModel(scope = scope)
+        assertTrue(shouldAutoLoadBenchmarks(initialState = null, viewModel = null))
+        assertFalse(shouldAutoLoadBenchmarks(initialState = BenchmarksUiState(), viewModel = null))
+        assertFalse(shouldAutoLoadBenchmarks(initialState = null, viewModel = vm))
+
+        val withDesc = MpaxBenchmarkItem(
+            title = "Title A",
+            difficulty = "Hard",
+            description = "Detailed Prompt",
+            targetService = "ICU"
+        )
+        val blankDesc = MpaxBenchmarkItem(
+            title = "Fallback Title",
+            difficulty = "Easy",
+            description = "   ",
+            targetService = "NICU"
+        )
+        assertEquals("Detailed Prompt", resolveMpaxSimulationPrompt(withDesc))
+        assertEquals("Fallback Title", resolveMpaxSimulationPrompt(blankDesc))
+        assertEquals("Custom Error", resolveBenchmarksErrorMessage("Custom Error", "Unknown"))
+        assertEquals("Unknown", resolveBenchmarksErrorMessage(null, "Unknown"))
+    }
+
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testBenchmarksScreenSuccessAndTabSwitch() = runComposeUiTest {
+        setupMockApi(shouldSucceed = true)
         val sqlItem = SqlBenchmarkItem(
             theme = "ICU Census",
             sql = "SELECT COUNT(*) FROM icu_admissions",
@@ -108,6 +140,8 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
             targetService = "Critical Care"
         )
 
+        var simulatedPrompt: String? = null
+
         setContent {
             MaterialTheme {
                 BenchmarksScreen(
@@ -115,7 +149,8 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
                         isLoading = false,
                         sqlBenchmarks = listOf(sqlItem),
                         mpaxBenchmarks = listOf(mpaxItem)
-                    )
+                    ),
+                    onSimulateMpax = { simulatedPrompt = it }
                 )
             }
         }
@@ -123,11 +158,17 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         onNodeWithText("ICU Census").assertIsDisplayed()
         onNodeWithText("Hard").assertIsDisplayed()
 
-        // Switch to MPAX Scenarios Tab
+        // Switch to MPAX Scenarios Tab and launch simulation
         onNodeWithTag("tab-mpax").performClick()
 
         onNodeWithText("Surge Response").assertIsDisplayed()
         onNodeWithText("Service: Critical Care").assertIsDisplayed()
+        onNodeWithText("Simulate in Arena").performClick()
+        assertEquals("Reallocate overflow beds to stepdown units.", simulatedPrompt)
+
+        // Switch back to SQL tab and click refresh
+        onNodeWithTag("tab-sql").performClick()
+        onNodeWithContentDescription("Refresh Benchmarks").performClick()
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -146,6 +187,8 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         }
 
         onNodeWithText("No SQL benchmarks available.").assertIsDisplayed()
+        onNodeWithTag("tab-mpax").performClick()
+        onNodeWithText("No MPAX benchmarks available.").assertIsDisplayed()
     }
 
     @OptIn(ExperimentalTestApi::class)
@@ -162,6 +205,6 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         waitUntil(timeoutMillis = 30000) {
             onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
         }
-        onNodeWithText("Retry").assertIsDisplayed()
+        onNodeWithText("Retry").assertIsDisplayed().performClick()
     }
 }

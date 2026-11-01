@@ -18,8 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
-import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -30,23 +28,16 @@ import kotlinx.serialization.Serializable
  * @property title * @param initialPrompt
  * @property modelId */
 @Serializable
-
-data class OptimizationSessionCreate (
-
+data class OptimizationSessionCreate(
     @SerialName(value = "use_case") val useCase: OptimizationSessionCreate.UseCase? = UseCase.service_unit,
-
     @SerialName(value = "institution_id") val institutionId: kotlin.String? = "stanford_childrens",
-
     @SerialName(value = "title") val title: kotlin.String? = null,
-
     @SerialName(value = "initial_prompt") val initialPrompt: kotlin.String? = null,
-
     @SerialName(value = "model_id") val modelId: kotlin.String? = "gemini-2.5-pro"
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -57,8 +48,6 @@ data class OptimizationSessionCreate (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

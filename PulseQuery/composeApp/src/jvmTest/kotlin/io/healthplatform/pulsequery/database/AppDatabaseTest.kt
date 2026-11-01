@@ -1,5 +1,9 @@
+/**
+ * Unit tests for [PulseQueryDatabase], [KeyValueStorage], and [WidgetCacheStorage] backed by JVM SQLite.
+ */
 package io.healthplatform.pulsequery.database
 
+import app.cash.sqldelight.Query
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -7,10 +11,16 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * Verifies SQLDelight schema creation, query execution, query listeners, and storage adapters.
+ */
 class AppDatabaseTest {
 
     private lateinit var database: PulseQueryDatabase
 
+    /**
+     * Initializes an in-memory JDBC SQLite database before each test.
+     */
     @BeforeTest
     fun setUp() {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
@@ -18,15 +28,27 @@ class AppDatabaseTest {
         database = PulseQueryDatabase(driver)
     }
 
+    /**
+     * Verifies inserting and retrieving a configuration entry along with query listener lifecycle.
+     */
     @Test
     fun testInsertAndGetConfig() {
         val queries = database.appDatabaseQueries
+        val configQuery = queries.getConfig("theme")
+        val listener = Query.Listener {}
+        configQuery.addListener(listener)
+        assertTrue(configQuery.toString().contains("getConfig"))
+
         queries.insertConfig("theme", "dark")
 
-        val result = queries.getConfig("theme").executeAsOneOrNull()
+        val result = configQuery.executeAsOneOrNull()
         assertEquals("dark", result)
+        configQuery.removeListener(listener)
     }
 
+    /**
+     * Verifies clearing a configuration key removes the stored value.
+     */
     @Test
     fun testClearConfig() {
         val queries = database.appDatabaseQueries
@@ -37,8 +59,17 @@ class AppDatabaseTest {
         assertNull(result)
     }
 
+    /**
+     * Verifies both SQLite-backed and in-memory fallback modes of [KeyValueStorage] and [WidgetCacheStorage].
+     */
     @Test
     fun testCachedWidgetQueriesAndBothStorageModes() {
+        val widgetQuery = database.appDatabaseQueries.getCachedWidgetsForDashboard("d1")
+        val listener = Query.Listener {}
+        widgetQuery.addListener(listener)
+        assertTrue(widgetQuery.toString().contains("getCachedWidgetsForDashboard"))
+        widgetQuery.removeListener(listener)
+
         // Test SQLite-backed and null-database fallback side by side
         val dbKv = KeyValueStorage(database)
         val fallbackKv = KeyValueStorage(null)

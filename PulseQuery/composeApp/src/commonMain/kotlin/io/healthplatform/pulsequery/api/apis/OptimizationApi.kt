@@ -20,7 +20,11 @@
 
 package io.healthplatform.pulsequery.api.apis
 
-import io.healthplatform.pulsequery.api.models.HTTPValidationError
+import io.healthplatform.pulsequery.api.infrastructure.ApiClient
+import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
+import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
+import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
+import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.InstitutionProfileSchema
 import io.healthplatform.pulsequery.api.models.ModelCompendiumEntrySchema
 import io.healthplatform.pulsequery.api.models.OptimizationEvaluationSummaryResponse
@@ -35,42 +39,16 @@ import io.healthplatform.pulsequery.api.models.OptimizationSurveyResponse
 import io.healthplatform.pulsequery.api.models.QuickActionDefinitionSchema
 import io.healthplatform.pulsequery.api.models.QuickActionExecutionRequest
 import io.healthplatform.pulsequery.api.models.QuickActionExecutionResponse
-
-import io.healthplatform.pulsequery.api.infrastructure.ApiClient
-import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
-import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
-import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
-import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.request.forms.formData
 import io.ktor.client.engine.HttpClientEngine
 import kotlinx.serialization.json.Json
-import io.ktor.http.ParametersBuilder
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.serializer
 
-/**
- * OpenAPI client for `/api/v1/optimization` Hospital Operations Optimization endpoints.
- */
 /**
  * OpenAPI client for `/api/v1/optimization` Hospital Operations Optimization endpoints.
  */
 open class OptimizationApi : ApiClient {
 
-    /**
-     * Constructs an [OptimizationApi] instance with an optional [HttpClientEngine] and [Json] serializer.
-     *
-     * @param baseUrl Base URL of the PulseQuery backend server.
-     * @param httpClientEngine Optional Ktor engine for HTTP requests.
-     * @param httpClientConfig Optional configuration block for the Ktor client.
-     * @param jsonSerializer Custom kotlinx.serialization [Json] instance.
-     */
     /**
      * Constructs an [OptimizationApi] instance with an optional [HttpClientEngine] and [Json] serializer.
      *
@@ -92,16 +70,10 @@ open class OptimizationApi : ApiClient {
      * @param baseUrl Base URL of the PulseQuery backend server.
      * @param httpClient Pre-configured Ktor [HttpClient] instance.
      */
-    /**
-     * Constructs an [OptimizationApi] instance backed by a pre-configured [HttpClient].
-     *
-     * @param baseUrl Base URL of the PulseQuery backend server.
-     * @param httpClient Pre-configured Ktor [HttpClient] instance.
-     */
     constructor(
         baseUrl: String,
         httpClient: HttpClient
-    ): super(baseUrl = baseUrl, httpClient = httpClient)
+    ) : super(baseUrl = baseUrl, httpClient = httpClient)
 
     /**
      * Create Optimization Session
@@ -110,8 +82,10 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return OptimizationSessionResponse
      */
-    open suspend fun createOptimizationSessionApiV1OptimizationSessionsPost(optimizationSessionCreate: OptimizationSessionCreate, token: kotlin.String? = null): HttpResponse<OptimizationSessionResponse> {
-
+    open suspend fun createOptimizationSessionApiV1OptimizationSessionsPost(
+        optimizationSessionCreate: OptimizationSessionCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<OptimizationSessionResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = optimizationSessionCreate
@@ -135,8 +109,6 @@ open class OptimizationApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Delete Optimization Session
      * Deletes an iterative Hospital Optimization session owned by the authenticated user.  Args:     session_id (str): Target session UUID string.     db (AsyncSession): Active PostgreSQL async session.     current_user (User): Authenticated hospital user.  Returns:     dict[str, str]: Deletion confirmation dictionary.
@@ -144,11 +116,13 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.Map<kotlin.String, kotlin.String>
      */
-    open suspend fun deleteOptimizationSessionApiV1OptimizationSessionsSessionIdDelete(sessionId: kotlin.String, token: kotlin.String? = null): HttpResponse<kotlin.collections.Map<kotlin.String, kotlin.String>> {
-
+    open suspend fun deleteOptimizationSessionApiV1OptimizationSessionsSessionIdDelete(
+        sessionId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.Map<kotlin.String, kotlin.String>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -167,17 +141,7 @@ open class OptimizationApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<DeleteOptimizationSessionApiV1OptimizationSessionsSessionIdDeleteResponse>().map { value }
-    }
-
-    @Serializable(DeleteOptimizationSessionApiV1OptimizationSessionsSessionIdDeleteResponse.Companion::class)
-    private class DeleteOptimizationSessionApiV1OptimizationSessionsSessionIdDeleteResponse(val value: Map<kotlin.String, kotlin.String>) {
-        companion object : KSerializer<DeleteOptimizationSessionApiV1OptimizationSessionsSessionIdDeleteResponse> {
-            private val serializer: KSerializer<Map<kotlin.String, kotlin.String>> = serializer<Map<String, kotlin.String>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(encoder: Encoder, value: DeleteOptimizationSessionApiV1OptimizationSessionsSessionIdDeleteResponse) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = DeleteOptimizationSessionApiV1OptimizationSessionsSessionIdDeleteResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -188,8 +152,11 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return QuickActionExecutionResponse
      */
-    open suspend fun executeOptimizationQuickActionApiV1OptimizationQuickActionsActionIdPost(actionId: kotlin.String, quickActionExecutionRequest: QuickActionExecutionRequest, token: kotlin.String? = null): HttpResponse<QuickActionExecutionResponse> {
-
+    open suspend fun executeOptimizationQuickActionApiV1OptimizationQuickActionsActionIdPost(
+        actionId: kotlin.String,
+        quickActionExecutionRequest: QuickActionExecutionRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<QuickActionExecutionResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = quickActionExecutionRequest
@@ -213,19 +180,18 @@ open class OptimizationApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Get Optimization Evaluation Summary
      * Returns aggregated quantitative (DES Expert Baseline gap) and qualitative (User Survey) evaluation metrics across all hospital optimization sessions.  Args:     db (AsyncSession): Active PostgreSQL async session.     current_user (User): Authenticated hospital user.  Returns:     OptimizationEvaluationSummaryResponse: Aggregated quantitative and qualitative metrics.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return OptimizationEvaluationSummaryResponse
      */
-    open suspend fun getOptimizationEvaluationSummaryApiV1OptimizationSurveysSummaryGet(token: kotlin.String? = null): HttpResponse<OptimizationEvaluationSummaryResponse> {
-
+    open suspend fun getOptimizationEvaluationSummaryApiV1OptimizationSurveysSummaryGet(
+        token: kotlin.String? = null
+    ): HttpResponse<OptimizationEvaluationSummaryResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -247,18 +213,18 @@ open class OptimizationApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Get Optimization Institutions
      * Lists all partner hospital institution profiles and their operational baseline parameters.  Args:     current_user (User): Authenticated hospital user.  Returns:     list[InstitutionProfileSchema]: Partner hospital profiles.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<InstitutionProfileSchema>
      */
-    open suspend fun getOptimizationInstitutionsApiV1OptimizationInstitutionsGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<InstitutionProfileSchema>> {
-
+    open suspend fun getOptimizationInstitutionsApiV1OptimizationInstitutionsGet(
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<InstitutionProfileSchema>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -277,26 +243,7 @@ open class OptimizationApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse>().map { value }
-    }
-
-    /**
-     * Internal serializable wrapper for a list of [InstitutionProfileSchema] items.
-     *
-     * @property value Deserialized list of [InstitutionProfileSchema] items.
-     */
-    @Serializable(GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse.Companion::class)
-    private class GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse(val value: List<InstitutionProfileSchema>) {
-        /** Custom [KSerializer] delegating to `List<InstitutionProfileSchema>`. */
-        companion object : KSerializer<GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse> {
-            private val serializer: KSerializer<List<InstitutionProfileSchema>> = serializer<List<InstitutionProfileSchema>>()
-            /** Serial descriptor for the list payload. */
-            override val descriptor: SerialDescriptor = serializer.descriptor
-            /** Serializes [value] into [encoder]. */
-            override fun serialize(encoder: Encoder, value: GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse) = serializer.serialize(encoder, value.value)
-            /** Deserializes a [GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse] from [decoder]. */
-            override fun deserialize(decoder: Decoder) = GetOptimizationInstitutionsApiV1OptimizationInstitutionsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -305,11 +252,12 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<ModelCompendiumEntrySchema>
      */
-    open suspend fun getOptimizationModelCompendiumApiV1OptimizationModelsGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<ModelCompendiumEntrySchema>> {
-
+    open suspend fun getOptimizationModelCompendiumApiV1OptimizationModelsGet(
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<ModelCompendiumEntrySchema>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -328,26 +276,7 @@ open class OptimizationApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse>().map { value }
-    }
-
-    /**
-     * Internal serializable wrapper for a list of [ModelCompendiumEntrySchema] items.
-     *
-     * @property value Deserialized list of [ModelCompendiumEntrySchema] items.
-     */
-    @Serializable(GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse.Companion::class)
-    private class GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse(val value: List<ModelCompendiumEntrySchema>) {
-        /** Custom [KSerializer] delegating to `List<ModelCompendiumEntrySchema>`. */
-        companion object : KSerializer<GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse> {
-            private val serializer: KSerializer<List<ModelCompendiumEntrySchema>> = serializer<List<ModelCompendiumEntrySchema>>()
-            /** Serial descriptor for the list payload. */
-            override val descriptor: SerialDescriptor = serializer.descriptor
-            /** Serializes [value] into [encoder]. */
-            override fun serialize(encoder: Encoder, value: GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse) = serializer.serialize(encoder, value.value)
-            /** Deserializes a [GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse] from [decoder]. */
-            override fun deserialize(decoder: Decoder) = GetOptimizationModelCompendiumApiV1OptimizationModelsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -357,11 +286,13 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<QuickActionDefinitionSchema>
      */
-    open suspend fun getOptimizationQuickActionsApiV1OptimizationQuickActionsGet(useCase: kotlin.String? = null, token: kotlin.String? = null): HttpResponse<kotlin.collections.List<QuickActionDefinitionSchema>> {
-
+    open suspend fun getOptimizationQuickActionsApiV1OptimizationQuickActionsGet(
+        useCase: kotlin.String? = null,
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<QuickActionDefinitionSchema>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -381,26 +312,7 @@ open class OptimizationApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse>().map { value }
-    }
-
-    /**
-     * Internal serializable wrapper for a list of [QuickActionDefinitionSchema] items.
-     *
-     * @property value Deserialized list of [QuickActionDefinitionSchema] items.
-     */
-    @Serializable(GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse.Companion::class)
-    private class GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse(val value: List<QuickActionDefinitionSchema>) {
-        /** Custom [KSerializer] delegating to `List<QuickActionDefinitionSchema>`. */
-        companion object : KSerializer<GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse> {
-            private val serializer: KSerializer<List<QuickActionDefinitionSchema>> = serializer<List<QuickActionDefinitionSchema>>()
-            /** Serial descriptor for the list payload. */
-            override val descriptor: SerialDescriptor = serializer.descriptor
-            /** Serializes [value] into [encoder]. */
-            override fun serialize(encoder: Encoder, value: GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse) = serializer.serialize(encoder, value.value)
-            /** Deserializes a [GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse] from [decoder]. */
-            override fun deserialize(decoder: Decoder) = GetOptimizationQuickActionsApiV1OptimizationQuickActionsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -410,11 +322,13 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return OptimizationSessionResponse
      */
-    open suspend fun getOptimizationSessionApiV1OptimizationSessionsSessionIdGet(sessionId: kotlin.String, token: kotlin.String? = null): HttpResponse<OptimizationSessionResponse> {
-
+    open suspend fun getOptimizationSessionApiV1OptimizationSessionsSessionIdGet(
+        sessionId: kotlin.String,
+        token: kotlin.String? = null
+    ): HttpResponse<OptimizationSessionResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -436,7 +350,6 @@ open class OptimizationApi : ApiClient {
         ).wrap()
     }
 
-
     /**
      * Iterate Optimization Session
      * Submits a natural-language prompt or constraint update to an active optimization session, solves the updated JAX/MPAX model, and returns the clinical explanation + DES comparison.  Args:     session_id (str): Target optimization session UUID string.     request (OptimizationIterationRequest): Conversational turn request.     db (AsyncSession): Active PostgreSQL async session.     current_user (User): Authenticated hospital user.  Returns:     OptimizationIterationResponse: Completed turn with updated MPAX solution and explanation.
@@ -445,8 +358,11 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return OptimizationIterationResponse
      */
-    open suspend fun iterateOptimizationSessionApiV1OptimizationSessionsSessionIdIteratePost(sessionId: kotlin.String, optimizationIterationRequest: OptimizationIterationRequest, token: kotlin.String? = null): HttpResponse<OptimizationIterationResponse> {
-
+    open suspend fun iterateOptimizationSessionApiV1OptimizationSessionsSessionIdIteratePost(
+        sessionId: kotlin.String,
+        optimizationIterationRequest: OptimizationIterationRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<OptimizationIterationResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = optimizationIterationRequest
@@ -470,19 +386,18 @@ open class OptimizationApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * List Optimization Sessions
      * Lists all iterative Hospital Optimization sessions owned by the authenticated user.  Args:     db (AsyncSession): Active PostgreSQL async session.     current_user (User): Authenticated hospital user.  Returns:     list[OptimizationSessionResponse]: User&#39;s optimization sessions.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return kotlin.collections.List<OptimizationSessionResponse>
      */
-    open suspend fun listOptimizationSessionsApiV1OptimizationSessionsGet(token: kotlin.String? = null): HttpResponse<kotlin.collections.List<OptimizationSessionResponse>> {
-
+    open suspend fun listOptimizationSessionsApiV1OptimizationSessionsGet(
+        token: kotlin.String? = null
+    ): HttpResponse<kotlin.collections.List<OptimizationSessionResponse>> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
-        val localVariableBody = 
+        val localVariableBody =
             io.ktor.client.utils.EmptyContent
 
         val localVariableQuery = mutableMapOf<String, List<String>>()
@@ -501,26 +416,7 @@ open class OptimizationApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListOptimizationSessionsApiV1OptimizationSessionsGetResponse>().map { value }
-    }
-
-    /**
-     * Internal serializable wrapper for a list of [OptimizationSessionResponse] items.
-     *
-     * @property value Deserialized list of [OptimizationSessionResponse] items.
-     */
-    @Serializable(ListOptimizationSessionsApiV1OptimizationSessionsGetResponse.Companion::class)
-    private class ListOptimizationSessionsApiV1OptimizationSessionsGetResponse(val value: List<OptimizationSessionResponse>) {
-        /** Custom [KSerializer] delegating to `List<OptimizationSessionResponse>`. */
-        companion object : KSerializer<ListOptimizationSessionsApiV1OptimizationSessionsGetResponse> {
-            private val serializer: KSerializer<List<OptimizationSessionResponse>> = serializer<List<OptimizationSessionResponse>>()
-            /** Serial descriptor for the list payload. */
-            override val descriptor: SerialDescriptor = serializer.descriptor
-            /** Serializes [value] into [encoder]. */
-            override fun serialize(encoder: Encoder, value: ListOptimizationSessionsApiV1OptimizationSessionsGetResponse) = serializer.serialize(encoder, value.value)
-            /** Deserializes a [ListOptimizationSessionsApiV1OptimizationSessionsGetResponse] from [decoder]. */
-            override fun deserialize(decoder: Decoder) = ListOptimizationSessionsApiV1OptimizationSessionsGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
@@ -530,8 +426,10 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return OptimizationSolutionPayload
      */
-    open suspend fun solveOptimizationStatelessApiV1OptimizationSolvePost(optimizationSolveRequest: OptimizationSolveRequest, token: kotlin.String? = null): HttpResponse<OptimizationSolutionPayload> {
-
+    open suspend fun solveOptimizationStatelessApiV1OptimizationSolvePost(
+        optimizationSolveRequest: OptimizationSolveRequest,
+        token: kotlin.String? = null
+    ): HttpResponse<OptimizationSolutionPayload> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = optimizationSolveRequest
@@ -555,8 +453,6 @@ open class OptimizationApi : ApiClient {
         ).wrap()
     }
 
-
-
     /**
      * Submit Optimization Survey
      * Submits a qualitative and quantitative UX evaluation survey comparing the self-service LLM-MPAX workflow against (A) the manual graduate-student email loop and (B) other hospital tech.  Args:     payload (OptimizationSurveyCreate): Survey submission payload.     db (AsyncSession): Active PostgreSQL async session.     current_user (User): Authenticated hospital user.  Returns:     OptimizationSurveyResponse: Persisted survey record.
@@ -564,8 +460,10 @@ open class OptimizationApi : ApiClient {
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return OptimizationSurveyResponse
      */
-    open suspend fun submitOptimizationSurveyApiV1OptimizationSurveysPost(optimizationSurveyCreate: OptimizationSurveyCreate, token: kotlin.String? = null): HttpResponse<OptimizationSurveyResponse> {
-
+    open suspend fun submitOptimizationSurveyApiV1OptimizationSurveysPost(
+        optimizationSurveyCreate: OptimizationSurveyCreate,
+        token: kotlin.String? = null
+    ): HttpResponse<OptimizationSurveyResponse> {
         val localVariableAuthNames = listOf<String>("OAuth2PasswordBearer")
 
         val localVariableBody = optimizationSurveyCreate
@@ -588,7 +486,4 @@ open class OptimizationApi : ApiClient {
             localVariableAuthNames
         ).wrap()
     }
-
-
-
 }

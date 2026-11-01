@@ -18,9 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.OptimizationSolutionPayload
-import io.healthplatform.pulsequery.api.models.SqlScalar
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,25 +30,17 @@ import kotlinx.serialization.Serializable
  * @property rows * @param optimizationSolution
  */
 @Serializable
-
-data class QuickActionExecutionResponse (
-
+data class QuickActionExecutionResponse(
     @SerialName(value = "action_id") @Required val actionId: QuickActionExecutionResponse.ActionId,
-
     @SerialName(value = "title") @Required val title: kotlin.String,
-
     @SerialName(value = "summary_markdown") @Required val summaryMarkdown: kotlin.String,
-
     @SerialName(value = "columns") @Required val columns: kotlin.collections.List<kotlin.String>,
-
     @SerialName(value = "rows") @Required val rows: kotlin.collections.List<kotlin.collections.Map<kotlin.String, SqlScalar>>,
-
     @SerialName(value = "optimization_solution") val optimizationSolution: OptimizationSolutionPayload? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: patient_days_by_unit,patient_days_by_service,combined_analysis,summary_statistics,optimize_service_units,smooth_surgical_schedule,optimize_nurse_staffing
      */
@@ -70,8 +59,6 @@ data class QuickActionExecutionResponse (
         /** Enumerated wire option. */
         @SerialName(value = "smooth_surgical_schedule") smooth_surgical_schedule("smooth_surgical_schedule"),
         /** Enumerated wire option. */
-        @SerialName(value = "optimize_nurse_staffing") optimize_nurse_staffing("optimize_nurse_staffing");
+        @SerialName(value = "optimize_nurse_staffing") optimize_nurse_staffing("optimize_nurse_staffing")
     }
-
 }
-

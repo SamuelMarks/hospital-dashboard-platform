@@ -130,54 +130,98 @@ fun HeatmapChart(
                 .horizontalScroll(hScroll)
         ) {
             items(yLabels) { y ->
-                Row(
-                    modifier = Modifier.padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Row label
-                    Box(
-                        modifier = Modifier.width(110.dp).padding(end = 6.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Text(
-                            text = y,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                    }
+                HeatmapMatrixRow(
+                    yLabel = y,
+                    xLabels = xLabels,
+                    valueMap = valueMap,
+                    minVal = minVal,
+                    range = range,
+                    baseColor = baseColor,
+                    targetColor = targetColor
+                )
+            }
+        }
+    }
+}
 
-                    // Matrix cells
-                    for (x in xLabels) {
-                        val valNum = valueMap[y to x] ?: 0f
-                        val fraction = ((valNum - minVal) / range).coerceIn(0f, 1f)
-                        val cellColor = lerp(baseColor, targetColor, fraction)
+/**
+ * Formats a numeric heatmap cell value, displaying integers without decimals and rounding fractional numbers to 1 decimal place.
+ *
+ * @param valNum Numeric cell value.
+ * @return Formatted cell text string.
+ */
+internal fun formatHeatmapCellValue(valNum: Float): String {
+    return if (valNum % 1f == 0f) {
+        valNum.toInt().toString()
+    } else {
+        ((valNum * 10).toInt() / 10f).toString()
+    }
+}
 
-                        Box(
-                            modifier = Modifier
-                                .width(68.dp)
-                                .height(42.dp)
-                                .padding(2.dp)
-                                .background(cellColor, RoundedCornerShape(4.dp))
-                                .border(
-                                    width = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(4.dp)
-                                )
-                                .semantics {
-                                    contentDescription = "$y, $x: $valNum"
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (valNum % 1f == 0f) valNum.toInt().toString() else ((valNum * 10).toInt() / 10f).toString(),
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (fraction > 0.6f) Color.White else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
+/**
+ * Renders a single horizontal row of heatmap cells for a given Y-axis category.
+ *
+ * @param yLabel Row category label on the Y-axis.
+ * @param xLabels Ordered column category labels on the X-axis.
+ * @param valueMap Lookup map of `(yLabel, xLabel)` pairs to numeric cell values.
+ * @param minVal Minimum value across the matrix for gradient normalization.
+ * @param range Value span (`maxVal - minVal`) for gradient normalization.
+ * @param baseColor Low-intensity cell background color.
+ * @param targetColor High-intensity cell background color.
+ */
+@Composable
+private fun HeatmapMatrixRow(
+    yLabel: String,
+    xLabels: List<String>,
+    valueMap: Map<Pair<String, String>, Float>,
+    minVal: Float,
+    range: Float,
+    baseColor: Color,
+    targetColor: Color
+) {
+    Row(
+        modifier = Modifier.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.width(110.dp).padding(end = 6.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(
+                text = yLabel,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1
+            )
+        }
+
+        for (x in xLabels) {
+            val valNum = valueMap[yLabel to x] ?: 0f
+            val fraction = ((valNum - minVal) / range).coerceIn(0f, 1f)
+            val cellColor = lerp(baseColor, targetColor, fraction)
+
+            Box(
+                modifier = Modifier
+                    .width(68.dp)
+                    .height(42.dp)
+                    .padding(2.dp)
+                    .background(cellColor, RoundedCornerShape(4.dp))
+                    .border(
+                        width = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(4.dp)
+                    )
+                    .semantics {
+                        contentDescription = "$yLabel, $x: $valNum"
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = formatHeatmapCellValue(valNum),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (fraction > 0.6f) Color.White else MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }

@@ -7,7 +7,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.api.apis.AlertRulesApi
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
@@ -22,10 +25,10 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -50,10 +53,21 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         AppContainer.currentBaseUrl = "http://localhost"
     }
 
-    private fun createAlertRulesClient(): HttpClient {
+    private fun createAlertRulesClient(mode: String = "normal"): HttpClient {
         val engine = MockEngine { request ->
+            val path = request.url.encodedPath
             when {
-                request.url.encodedPath.contains("/api/v1/analytics/alert-rules") -> respond(
+                mode == "error" -> respond(
+                    content = """{"detail":"Alert service offline"}""",
+                    status = HttpStatusCode.InternalServerError,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                mode == "empty" && request.method == HttpMethod.Get -> respond(
+                    content = "[]",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                path.contains("/api/v1/analytics/alert-rules") && request.method == HttpMethod.Get -> respond(
                     content = """[{
                         "id": "rule-uuid-1234",
                         "unit_category": "Pediatric ICU",
@@ -65,6 +79,22 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
                     status = HttpStatusCode.OK,
                     headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
                 )
+                path.contains("/api/v1/analytics/alert-rules") && (request.method == HttpMethod.Post || request.method == HttpMethod.Put) -> respond(
+                    content = """{
+                        "id": "rule-uuid-1234",
+                        "unit_category": "Cardiology ICU",
+                        "threshold_percentage": 88.0,
+                        "severity": "WARNING",
+                        "is_active": true,
+                        "created_at": "2026-09-01T00:00:00Z"
+                    }""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                path.contains("/api/v1/analytics/alert-rules") && request.method == HttpMethod.Delete -> respond(
+                    content = "",
+                    status = HttpStatusCode.NoContent
+                )
                 else -> respond("Not Found", HttpStatusCode.NotFound)
             }
         }
@@ -75,13 +105,91 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         }
     }
 
+    @Test
+    fun testAlertRulePureHelpers() {
+        val now = kotlin.time.Instant.fromEpochMilliseconds(1750000000000L)
+        val ruleWithDefaults = AlertRuleResponse(
+            id = "r-1",
+            unitCategory = "NICU",
+            thresholdPercentage = 85.0,
+            severity = null,
+            isActive = null,
+            createdAt = now
+        )
+        assertEquals("Threshold: 85.0% • Severity: WARNING", formatAlertRuleSummary(ruleWithDefaults))
+        assertEquals(0.85f, calculateAlertRuleProgress(85.0))
+        assertEquals(1.0f, calculateAlertRuleProgress(150.0))
+        assertEquals(0.0f, calculateAlertRuleProgress(-10.0))
+        assertEquals(AlertSeverity.WARNING, resolveInitialAlertSeverity(ruleWithDefaults))
+        assertTrue(resolveInitialAlertActive(ruleWithDefaults))
+
+        val explicitRule = ruleWithDefaults.copy(severity = AlertSeverity.CRITICAL, isActive = false)
+        assertEquals("Threshold: 85.0% • Severity: CRITICAL", formatAlertRuleSummary(explicitRule))
+        assertEquals(AlertSeverity.CRITICAL, resolveInitialAlertSeverity(explicitRule))
+        assertFalse(resolveInitialAlertActive(explicitRule))
+    }
+
     /**
-     * Verifies that [AlertRulesScreen] renders configured alert rules from the API.
+     * Verifies that [AlertRulesScreen] renders configured alert rules and supports edit, create, refresh, and delete actions.
      */
     @OptIn(ExperimentalTestApi::class)
     @Test
-    fun testAlertRulesScreenRendersRules() = runComposeUiTest {
-        AppContainer.setHttpClientForTest(createAlertRulesClient())
+    fun testAlertRulesScreenRendersRulesAndDialogs() = runComposeUiTest {
+        AppContainer.setHttpClientForTest(createAlertRulesClient("normal"))
+
+        setContent {
+            MaterialTheme {
+                AlertRulesScreen()
+            }
+        }
+
+        waitForIdle()
+        waitUntil(timeoutMillis = 30000) {
+            onAllNodesWithText("Pediatric ICU", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("Pediatric ICU", substring = true).assertIsDisplayed()
+
+        // Refresh rules
+        onNodeWithContentDescription("Refresh Rules").performClick()
+
+        // Open Edit Rule dialog, test severity filter chips and fields, save changes
+        onNodeWithContentDescription("Edit Rule").performClick()
+        onNodeWithText("Edit Alert Rule").assertIsDisplayed()
+        onNodeWithText("Info").performClick()
+        onNodeWithText("Warning").performClick()
+        onNodeWithText("Critical").performClick()
+        onNodeWithText("Unit Category").performTextReplacement("Cardiology ICU")
+        onNodeWithText("90.0").performTextReplacement("88")
+        onNodeWithText("Save Changes").performClick()
+
+        // Open Edit Rule dialog and cancel
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Edit Alert Rule").fetchSemanticsNodes().isEmpty()
+        }
+        onNodeWithContentDescription("Edit Rule").performClick()
+        onNodeWithText("Cancel").performClick()
+
+        // Open Create Rule dialog from top bar Add Rule icon, fill fields, save
+        onNodeWithContentDescription("Add Rule").performClick()
+        onNodeWithText("Create Alert Rule").assertIsDisplayed()
+        onNodeWithText("Unit Category").performTextReplacement("NICU")
+        onNodeWithText("85").performTextReplacement("92")
+        onNodeWithText("Save").performClick()
+
+        // Delete rule
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Create Alert Rule").fetchSemanticsNodes().isEmpty()
+        }
+        onNodeWithContentDescription("Delete Rule").performClick()
+    }
+
+    /**
+     * Verifies empty state and error state on [AlertRulesScreen].
+     */
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testAlertRulesScreenEmptyAndErrorStates() = runComposeUiTest {
+        AppContainer.setHttpClientForTest(createAlertRulesClient("empty"))
 
         setContent {
             MaterialTheme {
@@ -90,9 +198,41 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         }
 
         waitUntil(timeoutMillis = 15000) {
-            onAllNodesWithText("Pediatric ICU").fetchSemanticsNodes().isNotEmpty()
+            onAllNodesWithText("Create Rule").fetchSemanticsNodes().isNotEmpty()
         }
-        onNodeWithText("Pediatric ICU").assertIsDisplayed()
+        onNodeWithText("Create Rule").performClick()
+        onNodeWithText("Cancel").performClick()
+    }
+
+    /**
+     * Verifies direct rendering of [CreateAlertRuleDialog] and [EditAlertRuleDialog] with default viewModel parameter and error state.
+     */
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testStandaloneDialogsAndErrorState() = runComposeUiTest {
+        AppContainer.setHttpClientForTest(createAlertRulesClient("error"))
+
+        val sampleRule = AlertRuleResponse(
+            id = "r-1",
+            unitCategory = "PICU",
+            thresholdPercentage = 90.0,
+            severity = AlertSeverity.WARNING,
+            isActive = true,
+            createdAt = kotlin.time.Instant.fromEpochMilliseconds(1750000000000L)
+        )
+
+        setContent {
+            MaterialTheme {
+                AlertRulesScreen()
+                CreateAlertRuleDialog(onDismiss = {}, onCreated = {})
+                EditAlertRuleDialog(rule = sampleRule, onDismiss = {}, onUpdated = {})
+            }
+        }
+
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
+        }
+        onNodeWithText("Retry").performClick()
     }
 
     /**
@@ -132,16 +272,16 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
      * Verifies production [AlertRulesViewModel] validation bounds for occupancy thresholds and unit categories.
      */
     @Test
-    fun testAlertRulesViewModelValidationAndRoleChecks() = runTest {
+    fun testAlertRulesViewModelValidationAndRoleChecks() {
         val client = createAlertRulesClient()
         val api = AlertRulesApi(baseUrl = "http://localhost", httpClient = client)
-        val vm = AlertRulesViewModel(scope = this, alertRulesApi = api)
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val vm = AlertRulesViewModel(scope = scope, alertRulesApi = api)
 
         assertTrue(vm.canModifyRules(ClinicalRole.ADMIN))
         assertTrue(vm.canModifyRules(ClinicalRole.PHYSICIAN))
         assertFalse(vm.canModifyRules(ClinicalRole.CHARGE_NURSE))
 
-        // Blank unit category validation in production createRule & updateRule
         vm.createRule(unitCategory = "   ", thresholdText = "85")
         assertEquals("Unit category is required", vm.state.value.dialogError)
 
@@ -157,7 +297,6 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
         )
         assertEquals("Unit category is required", vm.state.value.dialogError)
 
-        // Invalid threshold bounds in production createRule & updateRule
         for (badThreshold in listOf("", "abc", "0", "0.9", "100.1", "150")) {
             vm.clearDialogError()
             vm.createRule(unitCategory = "PICU", thresholdText = badThreshold)
@@ -190,8 +329,8 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
             createdAt = now
         )
 
-        val jsonStr = kotlinx.serialization.json.Json.encodeToString(rule)
-        val decoded = kotlinx.serialization.json.Json.decodeFromString<AlertRuleResponse>(jsonStr)
+        val jsonStr = Json.encodeToString(rule)
+        val decoded = Json.decodeFromString<AlertRuleResponse>(jsonStr)
         assertEquals(rule, decoded)
         assertNotNull(decoded.createdAt)
         assertEquals("rule-uuid-1234", decoded.id)

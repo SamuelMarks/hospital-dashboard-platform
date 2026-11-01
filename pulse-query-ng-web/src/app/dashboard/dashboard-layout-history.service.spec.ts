@@ -2,6 +2,7 @@
  * @fileoverview Unit tests for `DashboardLayoutHistoryService`.
  */
 
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
@@ -36,7 +37,7 @@ describe('DashboardLayoutHistoryService', () => {
       updateWidgetApiV1DashboardsWidgetsWidgetIdPut: vi.fn().mockReturnValue(of({})),
     };
     mockStoreBridge = {
-      widgets: () => [makeWidget('w1', 0), makeWidget('w2', 1)],
+      widgets: signal([makeWidget('w1', 0), makeWidget('w2', 1)]),
       setWidgets: vi.fn(),
       optimisticRemoveWidget: vi.fn(),
       optimisticRestoreWidget: vi.fn(),

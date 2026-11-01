@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,23 +31,13 @@ import kotlinx.serialization.Serializable
  * @property allocatedBeds * @param deltaPatientDays
  */
 @Serializable
-
-data class ServiceUnitAssignmentRow (
-
+data class ServiceUnitAssignmentRow(
     @SerialName(value = "service") @Required val service: kotlin.String,
-
     @SerialName(value = "unit") @Required val unit: kotlin.String,
-
     @SerialName(value = "is_home_unit") @Required val isHomeUnit: kotlin.Boolean,
-
     @SerialName(value = "baseline_patient_days") @Required val baselinePatientDays: kotlin.Double,
-
     @SerialName(value = "expert_baseline_patient_days") @Required val expertBaselinePatientDays: kotlin.Double,
-
     @SerialName(value = "optimized_patient_days") @Required val optimizedPatientDays: kotlin.Double,
-
     @SerialName(value = "allocated_beds") @Required val allocatedBeds: kotlin.Int,
-
     @SerialName(value = "delta_patient_days") @Required val deltaPatientDays: kotlin.Double
-
 )

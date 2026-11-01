@@ -42,6 +42,94 @@ actual fun getPlatform(): Platform = IOSPlatform()
 actual fun getDefaultLocalHost(): String = "http://localhost:8000"
 
 /**
+ * Resolves the writable target directory for iOS file exports, preferring [baseDir] when it
+ * exists or can be created via [createDir], and falling back to [tempDirProvider].
+ *
+ * @param baseDir Optional Documents directory path.
+ * @param dirExists Predicate checking whether a directory path already exists.
+ * @param createDir Function attempting to create the directory path, returning true on success.
+ * @param tempDirProvider Supplier returning the fallback temporary directory path.
+ * @return Resolved target directory path string.
+ */
+internal fun resolveIosTargetDir(
+    baseDir: String?,
+    dirExists: (String) -> Boolean,
+    createDir: (String) -> Boolean,
+    tempDirProvider: () -> String = { NSTemporaryDirectory() }
+): String {
+    return if (baseDir != null) {
+        if (!dirExists(baseDir)) {
+            if (createDir(baseDir)) baseDir else tempDirProvider()
+        } else {
+            baseDir
+        }
+    } else {
+        tempDirProvider()
+    }
+}
+
+/**
+ * Converts a [ByteArray] into an iOS [NSData] buffer.
+ *
+ * @param bytes Binary payload to wrap.
+ * @return Constructed [NSData] instance.
+ */
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+internal fun ByteArray.toNsData(): NSData {
+    return if (isNotEmpty()) {
+        usePinned { pinned ->
+            NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
+        }
+    } else {
+        NSData()
+    }
+}
+
+/**
+ * Executes the iOS file write workflow with automatic fallback to [tempDir] when the primary
+ * destination fails to write.
+ *
+ * @param filename Target file name including extension.
+ * @param targetDir Primary target directory path.
+ * @param tempDir Fallback temporary directory path.
+ * @param writer Function writing to a resolved file path and returning true on success.
+ * @return [Result] containing the final written path on success, or [PulseQueryError.Storage.WriteFailure] on failure.
+ */
+internal fun writeIosPayloadWithFallback(
+    filename: String,
+    targetDir: String,
+    tempDir: String = NSTemporaryDirectory(),
+    writer: (String) -> Boolean
+): Result<String> {
+    val targetDirPath = targetDir.trimEnd('/')
+    val fullPath = "$targetDirPath/$filename"
+
+    return runCatching {
+        var writeSuccess = writer(fullPath)
+        var finalPath = fullPath
+        val normalizedTempDir = tempDir.trimEnd('/')
+        if (!writeSuccess && targetDirPath != normalizedTempDir) {
+            val fallbackPath = "$normalizedTempDir/$filename"
+            writeSuccess = writer(fallbackPath)
+            if (writeSuccess) {
+                finalPath = fallbackPath
+            }
+        }
+
+        if (writeSuccess) {
+            Result.success(finalPath)
+        } else {
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, finalPath))
+        }
+    }.fold(
+        onSuccess = { it },
+        onFailure = { error ->
+            Result.failure(PulseQueryError.Storage.WriteFailure(filename, fullPath, error))
+        }
+    )
+}
+
+/**
  * Persists a binary file payload into the iOS app's standard Documents directory.
  *
  * Ensures intermediate directories are created if the destination directory does not yet exist.
@@ -59,54 +147,23 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
     val docUrl = urls.firstOrNull() as? NSURL
     val baseDir = docUrl?.path
 
-    val targetDir = if (baseDir != null) {
-        if (!fileManager.fileExistsAtPath(baseDir)) {
-            val created = fileManager.createDirectoryAtPath(
-                path = baseDir,
+    val targetDir = resolveIosTargetDir(
+        baseDir = baseDir,
+        dirExists = { fileManager.fileExistsAtPath(it) },
+        createDir = {
+            fileManager.createDirectoryAtPath(
+                path = it,
                 withIntermediateDirectories = true,
                 attributes = null,
                 error = null
             )
-            if (created) baseDir else NSTemporaryDirectory()
-        } else {
-            baseDir
         }
-    } else {
-        NSTemporaryDirectory()
-    }
+    )
 
-    val targetDirPath = targetDir.trimEnd('/')
-    val fullPath = "$targetDirPath/$filename"
-
-    return runCatching {
-        val nsData = if (bytes.isNotEmpty()) {
-            bytes.usePinned { pinned ->
-                NSData.create(bytes = pinned.addressOf(0), length = bytes.size.toULong())
-            }
-        } else {
-            NSData()
-        }
-
-        var writeSuccess = nsData.writeToFile(fullPath, atomically = true)
-        var finalPath = fullPath
-        val tempDir = NSTemporaryDirectory().trimEnd('/')
-        if (!writeSuccess && targetDirPath != tempDir) {
-            val fallbackPath = "$tempDir/$filename"
-            writeSuccess = nsData.writeToFile(fallbackPath, atomically = true)
-            if (writeSuccess) {
-                finalPath = fallbackPath
-            }
-        }
-
-        if (writeSuccess) {
-            Result.success(finalPath)
-        } else {
-            Result.failure(PulseQueryError.Storage.WriteFailure(filename, finalPath))
-        }
-    }.fold(
-        onSuccess = { it },
-        onFailure = { error ->
-            Result.failure(PulseQueryError.Storage.WriteFailure(filename, fullPath, error))
-        }
+    val nsData = bytes.toNsData()
+    return writeIosPayloadWithFallback(
+        filename = filename,
+        targetDir = targetDir,
+        writer = { path -> nsData.writeToFile(path, atomically = true) }
     )
 }

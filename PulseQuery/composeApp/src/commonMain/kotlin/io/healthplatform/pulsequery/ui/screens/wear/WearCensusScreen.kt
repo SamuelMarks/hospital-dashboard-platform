@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Watch
@@ -64,6 +64,26 @@ import pulsequery.composeapp.generated.resources.wear_open_beds
 import pulsequery.composeapp.generated.resources.wearable_header
 
 /**
+ * Builds the accessibility content description for a wearable alert card.
+ *
+ * @param unitCategory Clinical unit category name.
+ * @return Accessibility announcement string.
+ */
+internal fun buildWearAlertAccessibilityDescription(unitCategory: String): String {
+    return "Alert: $unitCategory"
+}
+
+/**
+ * Checks whether the wearable census state contains any active capacity alerts.
+ *
+ * @param alerts List of [AlertRuleResponse] items.
+ * @return True if at least one alert rule is present.
+ */
+internal fun hasActiveWearAlerts(alerts: List<AlertRuleResponse>): Boolean {
+    return alerts.isNotEmpty()
+}
+
+/**
  * Wearable companion screen optimized for round and compact smartwatches,
  * presenting hospital census metrics and high-priority bed capacity alerts.
  *
@@ -95,129 +115,183 @@ fun WearCensusScreen(
         color = Color.Black,
         modifier = Modifier.fillMaxSize()
     ) {
-        LazyColumn(
+        WearCensusContent(
+            uiState = uiState,
+            censusDesc = censusDesc,
+            onRefresh = { vm.loadWearData() },
+            onExit = onExit
+        )
+    }
+}
+
+/**
+ * Renders the scrollable wearable census and alert tiles inside [WearCensusScreen].
+ *
+ * @param uiState Current [WearCensusUiState].
+ * @param censusDesc Localized accessibility description for the census summary card.
+ * @param onRefresh Callback invoked when refreshing wearable data.
+ * @param onExit Callback invoked to exit wearable view mode.
+ */
+@Composable
+private fun WearCensusContent(
+    uiState: WearCensusUiState,
+    censusDesc: String,
+    onRefresh: () -> Unit,
+    onExit: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        WearHeaderRow()
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .fillMaxWidth()
+                .semantics { contentDescription = censusDesc }
         ) {
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Watch,
-                        contentDescription = stringResource(Res.string.wearable_header),
-                        tint = Color(0xFF64B5F6),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(Res.string.pulse_watch),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF90CAF9),
-                        modifier = Modifier.semantics { heading() }
-                    )
-                }
-            }
+            WearCensusSummaryBody(
+                occupancyPercent = uiState.occupancyPercent,
+                openBeds = uiState.openBeds
+            )
+        }
 
-            item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { contentDescription = censusDesc }
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            stringResource(Res.string.hospital_census_upper),
-                            fontSize = 10.sp,
-                            color = Color.Gray,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(Res.string.wear_occupancy_percent, uiState.occupancyPercent),
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFFFFB74D)
-                        )
-                        Text(
-                            stringResource(Res.string.wear_open_beds, uiState.openBeds),
-                            fontSize = 11.sp,
-                            color = Color(0xFF81C784)
-                        )
-                    }
-                }
-            }
+        WearAlertsHeaderRow(
+            alertCount = uiState.alerts.size,
+            onRefresh = onRefresh
+        )
 
-            item {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = stringResource(Res.string.wear_active_alerts, uiState.alerts.size),
-                        fontSize = 10.sp,
-                        color = Color(0xFFE57373),
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(
-                        onClick = { vm.loadWearData() },
-                        modifier = Modifier.size(20.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = stringResource(Res.string.refresh_wear_data),
-                            tint = Color.Gray,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
+        if (uiState.isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+                color = Color(0xFF64B5F6)
+            )
+        } else if (!hasActiveWearAlerts(uiState.alerts)) {
+            Text(
+                text = stringResource(Res.string.all_units_nominal),
+                fontSize = 11.sp,
+                color = Color(0xFF81C784),
+                textAlign = TextAlign.Center
+            )
+        } else {
+            uiState.alerts.forEach { alert ->
+                WearAlertCard(alert = alert)
             }
+        }
 
-            if (uiState.isLoading) {
-                item {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                        color = Color(0xFF64B5F6)
-                    )
-                }
-            } else if (uiState.alerts.isEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(Res.string.all_units_nominal),
-                        fontSize = 11.sp,
-                        color = Color(0xFF81C784),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                items(uiState.alerts) { alert ->
-                    WearAlertCard(alert = alert)
-                }
-            }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onExit,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+            modifier = Modifier.height(32.dp)
+        ) {
+            Text(stringResource(Res.string.exit_button), fontSize = 11.sp)
+        }
+    }
+}
 
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = onExit,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Text(stringResource(Res.string.exit_button), fontSize = 11.sp)
-                }
-            }
+/**
+ * Renders the top watch icon and title row for [WearCensusScreen].
+ */
+@Composable
+private fun WearHeaderRow() {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(top = 8.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Watch,
+            contentDescription = stringResource(Res.string.wearable_header),
+            tint = Color(0xFF64B5F6),
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = stringResource(Res.string.pulse_watch),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF90CAF9),
+            modifier = Modifier.semantics { heading() }
+        )
+    }
+}
+
+/**
+ * Renders the occupancy percentage and open bed count inside the census card.
+ *
+ * @param occupancyPercent Current hospital occupancy percentage.
+ * @param openBeds Current number of open beds.
+ */
+@Composable
+private fun WearCensusSummaryBody(
+    occupancyPercent: Int,
+    openBeds: Int
+) {
+    Column(
+        modifier = Modifier.padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            stringResource(Res.string.hospital_census_upper),
+            fontSize = 10.sp,
+            color = Color.Gray,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(Res.string.wear_occupancy_percent, occupancyPercent),
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFFFFB74D)
+        )
+        Text(
+            stringResource(Res.string.wear_open_beds, openBeds),
+            fontSize = 11.sp,
+            color = Color(0xFF81C784)
+        )
+    }
+}
+
+/**
+ * Renders the active alerts count label and refresh button row.
+ *
+ * @param alertCount Number of active alerts.
+ * @param onRefresh Callback invoked when the refresh icon button is clicked.
+ */
+@Composable
+private fun WearAlertsHeaderRow(
+    alertCount: Int,
+    onRefresh: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = stringResource(Res.string.wear_active_alerts, alertCount),
+            fontSize = 10.sp,
+            color = Color(0xFFE57373),
+            fontWeight = FontWeight.Bold
+        )
+        IconButton(
+            onClick = onRefresh,
+            modifier = Modifier.size(20.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = stringResource(Res.string.refresh_wear_data),
+                tint = Color.Gray,
+                modifier = Modifier.size(14.dp)
+            )
         }
     }
 }
@@ -229,37 +303,48 @@ fun WearCensusScreen(
  */
 @Composable
 fun WearAlertCard(alert: AlertRuleResponse) {
+    val alertDesc = buildWearAlertAccessibilityDescription(alert.unitCategory)
     Card(
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF241414)),
         modifier = Modifier
             .fillMaxWidth()
-            .semantics { contentDescription = "Alert: ${alert.unitCategory}" }
+            .semantics { contentDescription = alertDesc }
     ) {
-        Row(
-            modifier = Modifier.padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(Color(0xFFE53935), CircleShape)
+        WearAlertCardBody(alert = alert)
+    }
+}
+
+/**
+ * Renders the interior row of [WearAlertCard].
+ *
+ * @param alert The [AlertRuleResponse] alerting configuration to display.
+ */
+@Composable
+private fun WearAlertCardBody(alert: AlertRuleResponse) {
+    Row(
+        modifier = Modifier.padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(Color(0xFFE53935), CircleShape)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = alert.unitCategory,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1
             )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = alert.unitCategory,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1
-                )
-                Text(
-                    text = stringResource(Res.string.wear_alert_threshold_label, alert.thresholdPercentage.toInt()),
-                    fontSize = 9.sp,
-                    color = Color(0xFFEF9A9A)
-                )
-            }
+            Text(
+                text = stringResource(Res.string.wear_alert_threshold_label, alert.thresholdPercentage.toInt()),
+                fontSize = 9.sp,
+                color = Color(0xFFEF9A9A)
+            )
         }
     }
 }

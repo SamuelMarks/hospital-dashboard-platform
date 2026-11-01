@@ -13,6 +13,13 @@ interface Platform {
 }
 
 /**
+ * Formats a diagnostic description of this [Platform].
+ *
+ * @return Formatted platform description string.
+ */
+fun Platform.description(): String = "Running on $name"
+
+/**
  * Returns the current platform instance.
  *
  * @return Platform instance for the current target.

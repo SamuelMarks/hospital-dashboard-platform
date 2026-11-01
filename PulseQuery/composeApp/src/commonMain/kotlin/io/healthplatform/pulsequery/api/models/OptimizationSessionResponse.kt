@@ -18,9 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.OptimizationIterationResponse
-import io.healthplatform.pulsequery.api.models.OptimizationSolutionPayload
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -34,31 +31,20 @@ import kotlinx.serialization.Serializable
  * @property updatedAt * @param latestSolution
  * @property iterations */
 @Serializable
-
-data class OptimizationSessionResponse (
-
+data class OptimizationSessionResponse(
     @SerialName(value = "id") @Required val id: kotlin.String,
-
     @SerialName(value = "user_id") @Required val userId: kotlin.String,
-
     @SerialName(value = "use_case") @Required val useCase: OptimizationSessionResponse.UseCase,
-
     @SerialName(value = "institution_id") @Required val institutionId: kotlin.String,
-
     @SerialName(value = "title") @Required val title: kotlin.String,
-
     @SerialName(value = "created_at") @Required val createdAt: kotlin.time.Instant,
-
     @SerialName(value = "updated_at") @Required val updatedAt: kotlin.time.Instant,
-
     @SerialName(value = "latest_solution") val latestSolution: OptimizationSolutionPayload? = null,
-
     @SerialName(value = "iterations") val iterations: kotlin.collections.List<OptimizationIterationResponse>? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -69,8 +55,6 @@ data class OptimizationSessionResponse (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

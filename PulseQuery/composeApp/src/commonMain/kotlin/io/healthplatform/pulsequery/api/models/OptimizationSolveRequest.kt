@@ -18,11 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ServiceUnitConstraint
-import io.healthplatform.pulsequery.api.models.StaffingConstraint
-import io.healthplatform.pulsequery.api.models.SurgicalScheduleConstraint
-
-import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -34,27 +29,18 @@ import kotlinx.serialization.Serializable
  * @property serviceConstraints * @param surgicalConstraints
  * @property staffingConstraints */
 @Serializable
-
-data class OptimizationSolveRequest (
-
+data class OptimizationSolveRequest(
     @SerialName(value = "use_case") val useCase: OptimizationSolveRequest.UseCase? = UseCase.service_unit,
-
     @SerialName(value = "institution_id") val institutionId: kotlin.String? = "stanford_childrens",
-
     @SerialName(value = "prompt") val prompt: kotlin.String? = null,
-
     @SerialName(value = "model_id") val modelId: kotlin.String? = "gemini-2.5-pro",
-
     @SerialName(value = "service_constraints") val serviceConstraints: kotlin.collections.List<ServiceUnitConstraint>? = null,
-
     @SerialName(value = "surgical_constraints") val surgicalConstraints: kotlin.collections.List<SurgicalScheduleConstraint>? = null,
-
     @SerialName(value = "staffing_constraints") val staffingConstraints: kotlin.collections.List<StaffingConstraint>? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -65,8 +51,6 @@ data class OptimizationSolveRequest (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

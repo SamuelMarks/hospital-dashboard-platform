@@ -148,4 +148,38 @@ class ChartSemanticsTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
         onNodeWithText("CCU").assertExists()
         onNodeWithText("8.5").assertExists()
     }
+
+    @OptIn(ExperimentalTestApi::class)
+    @Test
+    fun testPieChartZeroTotalAndMultiColumnTableAndMarkdownWidget() = runComposeUiTest {
+        kotlin.test.assertEquals("42", formatMetricValue(42f))
+        kotlin.test.assertEquals("42.5", formatMetricValue(42.5f))
+        kotlin.test.assertEquals("Metric ICU: 42", buildMetricAccessibilityDescription("ICU", "42"))
+        kotlin.test.assertEquals("", normalizeMarkdownContent("   "))
+        kotlin.test.assertEquals("Line1\nLine2", normalizeMarkdownContent("  Line1\r\nLine2  "))
+        kotlin.test.assertEquals("10", formatHeatmapCellValue(10f))
+        kotlin.test.assertEquals("10.5", formatHeatmapCellValue(10.56f))
+
+        setContent {
+            MaterialTheme {
+                PieChart(data = listOf("ZeroA" to 0f, "ZeroB" to 0f))
+                MultiColumnTableView(
+                    columns = listOf("unit_name", "patient_days"),
+                    rows = listOf(listOf("ICU", "14.567"), listOf("WARD", "20"))
+                )
+                MultiColumnTableView(
+                    columns = listOf("empty_col"),
+                    rows = emptyList()
+                )
+                TextMarkdownWidget(content = "  # Clinical Note\r\nCheck ICU capacity  ")
+                TextMarkdownWidget(content = "   ")
+            }
+        }
+
+        onNodeWithContentDescription("Pie chart with 2 slices: ZeroA: 0.0, ZeroB: 0.0").assertExists()
+        onNodeWithText("unit name").assertExists()
+        onNodeWithText("14.57").assertExists()
+        onNodeWithText("No matching records for the active filters.").assertExists()
+        onNodeWithContentDescription("# Clinical Note\nCheck ICU capacity").assertExists()
+    }
 }

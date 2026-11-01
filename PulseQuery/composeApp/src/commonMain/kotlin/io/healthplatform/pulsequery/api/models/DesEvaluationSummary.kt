@@ -18,9 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.ExpertBaselineMetricItem
-import io.healthplatform.pulsequery.api.models.PropensityLosImpactSchema
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,27 +30,18 @@ import kotlinx.serialization.Serializable
  * @property horizonDays * @param propensityLosImpact
  * @property postopMeanToMedianRatio */
 @Serializable
-
-data class DesEvaluationSummary (
-
+data class DesEvaluationSummary(
     @SerialName(value = "use_case") @Required val useCase: DesEvaluationSummary.UseCase,
-
     @SerialName(value = "overall_expert_gap_pct") @Required val overallExpertGapPct: kotlin.Double,
-
     @SerialName(value = "metrics") @Required val metrics: kotlin.collections.List<ExpertBaselineMetricItem>,
-
     @SerialName(value = "replications") val replications: kotlin.Int? = 128,
-
     @SerialName(value = "horizon_days") val horizonDays: kotlin.Int? = 180,
-
     @SerialName(value = "propensity_los_impact") val propensityLosImpact: PropensityLosImpactSchema? = null,
-
     @SerialName(value = "postop_mean_to_median_ratio") val postopMeanToMedianRatio: kotlin.Double? = null
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: service_unit,surgical_scheduling,staffing_optimization
      */
@@ -64,8 +52,6 @@ data class DesEvaluationSummary (
         /** Enumerated wire option. */
         @SerialName(value = "surgical_scheduling") surgical_scheduling("surgical_scheduling"),
         /** Enumerated wire option. */
-        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization");
+        @SerialName(value = "staffing_optimization") staffing_optimization("staffing_optimization")
     }
-
 }
-

@@ -40,20 +40,27 @@ actual fun getDefaultLocalHost(): String = "http://localhost:8000"
  * @param filename Target file name including extension.
  * @param mimeType Standard MIME type associated with the payload.
  * @param bytes Binary payload of the file.
+ * @param elementFactory Factory creating the DOM element for the download anchor.
  * @return [Result] containing download description or [PulseQueryError.Storage] on failure.
  */
-actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
+internal fun saveJsFileToDeviceWithFactory(
+    filename: String,
+    mimeType: String,
+    bytes: ByteArray,
+    elementFactory: () -> org.w3c.dom.Element = { document.createElement("a") }
+): Result<String> {
     return runCatching {
         val int8Array = Int8Array(bytes.toTypedArray())
         val blob = Blob(arrayOf(int8Array), BlobPropertyBag(type = mimeType))
         val objectUrl = URL.createObjectURL(blob)
-        val anchor = document.createElement("a") as? HTMLAnchorElement
+        val anchor = elementFactory() as? HTMLAnchorElement
             ?: error("Failed to create HTMLAnchorElement")
         anchor.href = objectUrl
         anchor.download = filename
-        document.body?.appendChild(anchor)
+        val body = document.body
+        body?.appendChild(anchor)
         anchor.click()
-        document.body?.removeChild(anchor)
+        body?.removeChild(anchor)
         URL.revokeObjectURL(objectUrl)
         "Downloaded $filename ($mimeType)"
     }.fold(
@@ -62,4 +69,16 @@ actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray
             Result.failure(PulseQueryError.Storage.WriteFailure(filename, "DOM Blob", error))
         }
     )
+}
+
+/**
+ * Triggers a browser file download using DOM Blob construction and an anchor click dispatch.
+ *
+ * @param filename Target file name including extension.
+ * @param mimeType Standard MIME type associated with the payload.
+ * @param bytes Binary payload of the file.
+ * @return [Result] containing download description or [PulseQueryError.Storage] on failure.
+ */
+actual fun saveFileToDevice(filename: String, mimeType: String, bytes: ByteArray): Result<String> {
+    return saveJsFileToDeviceWithFactory(filename, mimeType, bytes)
 }

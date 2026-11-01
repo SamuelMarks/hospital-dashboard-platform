@@ -397,8 +397,8 @@ describe('WidgetComponent', () => {
 
   it('should trigger template click handlers for focus and refresh', () => {
     const buttons = fixture.debugElement.queryAll(By.css('button[mat-icon-button]'));
-    buttons[0].triggerEventHandler('click', null);
-    buttons[buttons.length - 1].triggerEventHandler('click', null);
+    buttons[0]?.triggerEventHandler('click', null);
+    buttons[buttons.length - 1]?.triggerEventHandler('click', null);
     expect(mockStore.setFocusedWidget).toHaveBeenCalled();
     expect(mockStore.refreshWidget).toHaveBeenCalledWith('w1');
   });

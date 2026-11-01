@@ -24,7 +24,6 @@ import io.healthplatform.pulsequery.api.infrastructure.ApiClient
 import io.healthplatform.pulsequery.api.infrastructure.HttpResponse
 import io.healthplatform.pulsequery.api.infrastructure.RequestConfig
 import io.healthplatform.pulsequery.api.infrastructure.RequestMethod
-import io.healthplatform.pulsequery.api.infrastructure.map
 import io.healthplatform.pulsequery.api.infrastructure.wrap
 import io.healthplatform.pulsequery.api.models.TemplateCreate
 import io.healthplatform.pulsequery.api.models.TemplateResponse
@@ -32,12 +31,7 @@ import io.healthplatform.pulsequery.api.models.TemplateUpdate
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngine
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
  * REST client for `/api/v1/templates` reusable clinical SQL widget template CRUD endpoints.
@@ -73,7 +67,7 @@ open class TemplatesApi : ApiClient {
     /**
      * Create Template
      * Register a new analytics template in the system.  Args:     template_in (TemplateCreate): Validated template payload.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The persisted template object.
-     * @param templateCreate
+     * @param templateCreate Template creation payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
@@ -107,7 +101,7 @@ open class TemplatesApi : ApiClient {
     /**
      * Delete Template
      * Hard delete a template from the registry.  Args:     template_id (UUID): The unique ID of the template.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Raises:     HTTPException: 404 if not found.
-     * @param templateId
+     * @param templateId Unique template identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return void
      */
@@ -142,7 +136,7 @@ open class TemplatesApi : ApiClient {
     /**
      * Get Template
      * Retrieve details for a specific template.  Args:     template_id (UUID): The unique ID of the template.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The requested template.  Raises:     HTTPException: 404 if not found.
-     * @param templateId
+     * @param templateId Unique template identifier.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */
@@ -213,27 +207,14 @@ open class TemplatesApi : ApiClient {
             localVariableConfig,
             localVariableBody,
             localVariableAuthNames
-        ).wrap<ListTemplatesApiV1TemplatesGetResponse>().map { value }
-    }
-
-    @Serializable(ListTemplatesApiV1TemplatesGetResponse.Companion::class)
-    private class ListTemplatesApiV1TemplatesGetResponse(val value: List<TemplateResponse>) {
-        companion object : KSerializer<ListTemplatesApiV1TemplatesGetResponse> {
-            private val serializer: KSerializer<List<TemplateResponse>> = serializer<List<TemplateResponse>>()
-            override val descriptor = serializer.descriptor
-            override fun serialize(
-                encoder: Encoder,
-                value: ListTemplatesApiV1TemplatesGetResponse
-            ) = serializer.serialize(encoder, value.value)
-            override fun deserialize(decoder: Decoder) = ListTemplatesApiV1TemplatesGetResponse(serializer.deserialize(decoder))
-        }
+        ).wrap()
     }
 
     /**
      * Update Template
      * Update an existing template&#39;s definition.  Args:     template_id (UUID): The unique ID of the template.     template_in (TemplateUpdate): Partial update payload.     db (AsyncSession): Database session.     current_user (User): Authenticated user.  Returns:     WidgetTemplate: The updated template.  Raises:     HTTPException: 404 if not found.
-     * @param templateId
-     * @param templateUpdate
+     * @param templateId Unique template identifier.
+     * @param templateUpdate Partial template update payload.
      * @param token JWT token query parameter for direct browser downloads (optional)
      * @return TemplateResponse
      */

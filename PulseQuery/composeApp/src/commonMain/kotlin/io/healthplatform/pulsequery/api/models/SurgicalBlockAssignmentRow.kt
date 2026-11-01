@@ -18,7 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -32,31 +31,20 @@ import kotlinx.serialization.Serializable
  * @property expectedPostopLosDays * @param expectedUnitOccupancy
  * @property unitCapacity */
 @Serializable
-
-data class SurgicalBlockAssignmentRow (
-
+data class SurgicalBlockAssignmentRow(
     @SerialName(value = "program") @Required val program: SurgicalBlockAssignmentRow.Program,
-
     @SerialName(value = "procedure_group") @Required val procedureGroup: kotlin.String,
-
     @SerialName(value = "recovery_unit") @Required val recoveryUnit: kotlin.String,
-
     @SerialName(value = "day_of_week") @Required val dayOfWeek: SurgicalBlockAssignmentRow.DayOfWeek,
-
     @SerialName(value = "baseline_cases") @Required val baselineCases: kotlin.Double,
-
     @SerialName(value = "optimized_cases") @Required val optimizedCases: kotlin.Double,
-
     @SerialName(value = "expected_postop_los_days") @Required val expectedPostopLosDays: kotlin.Double,
-
     @SerialName(value = "expected_unit_occupancy") @Required val expectedUnitOccupancy: kotlin.Double,
-
     @SerialName(value = "unit_capacity") @Required val unitCapacity: kotlin.Int
-
 ) {
 
     /**
-     * 
+     *
      *
      * Values: BEDS,POINTS
      */
@@ -65,10 +53,10 @@ data class SurgicalBlockAssignmentRow (
         /** Enumerated wire option. */
         @SerialName(value = "BEDS") BEDS("BEDS"),
         /** Enumerated wire option. */
-        @SerialName(value = "POINTS") POINTS("POINTS");
+        @SerialName(value = "POINTS") POINTS("POINTS")
     }
     /**
-     * 
+     *
      *
      * Values: Mon,Tue,Wed,Thu,Fri
      */
@@ -83,8 +71,6 @@ data class SurgicalBlockAssignmentRow (
         /** Enumerated wire option. */
         @SerialName(value = "Thu") Thu("Thu"),
         /** Enumerated wire option. */
-        @SerialName(value = "Fri") Fri("Fri");
+        @SerialName(value = "Fri") Fri("Fri")
     }
-
 }
-

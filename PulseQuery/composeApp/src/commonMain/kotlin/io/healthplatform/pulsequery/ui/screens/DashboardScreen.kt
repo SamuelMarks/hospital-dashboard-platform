@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -73,10 +73,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.healthplatform.pulsequery.api.models.DashboardResponse
+import io.healthplatform.pulsequery.api.models.SystemHealthResponse
 import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.core.model.VisualizationType
 import io.healthplatform.pulsequery.core.model.extractWidgetSqlConfig
 import io.healthplatform.pulsequery.di.AppContainer
+import io.healthplatform.pulsequery.network.CollaboratorPresence
 import io.healthplatform.pulsequery.saveFileToDevice
 import io.healthplatform.pulsequery.ui.components.DashboardGridSkeleton
 import io.healthplatform.pulsequery.ui.components.DatabaseErrorCard
@@ -93,10 +96,12 @@ import io.healthplatform.pulsequery.ui.components.charts.TableView
 import io.healthplatform.pulsequery.ui.components.charts.TextMarkdownWidget
 import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardExportHelper
 import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardShareDialog
+import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardUiState
 import io.healthplatform.pulsequery.ui.screens.dashboard.DashboardViewModel
 import io.healthplatform.pulsequery.ui.screens.dashboard.EditWidgetDialog
 import io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState
 import io.healthplatform.pulsequery.ui.screens.dashboard.extractWidgetSubtitle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pulsequery.composeapp.generated.resources.Res
@@ -147,6 +152,218 @@ import pulsequery.composeapp.generated.resources.sql_input_placeholder_default
 import pulsequery.composeapp.generated.resources.undo
 
 /**
+ * Resolves the active [DashboardViewModel], returning [viewModel] when provided or creating a scoped instance.
+ *
+ * @param viewModel Optional caller-supplied [DashboardViewModel].
+ * @param scope CoroutineScope used when constructing a default [DashboardViewModel].
+ * @return Active [DashboardViewModel] instance.
+ */
+internal fun resolveDashboardViewModel(
+    viewModel: DashboardViewModel?,
+    scope: CoroutineScope
+): DashboardViewModel {
+    return viewModel ?: DashboardViewModel(scope = scope)
+}
+
+/**
+ * Resolves the diagnostic database error message from [SystemHealthResponse], falling back to [defaultError].
+ *
+ * @param healthState Optional system health payload.
+ * @param defaultError Localized fallback error string.
+ * @return Specific database error string or [defaultError].
+ */
+internal fun resolveDashboardDatabaseErrorMessage(
+    healthState: SystemHealthResponse?,
+    defaultError: String
+): String {
+    if (healthState == null) return defaultError
+    return healthState.duckdb.error ?: healthState.postgres.error ?: defaultError
+}
+
+/**
+ * Invokes [onAddWidget] with [dashboardId] when the callback is non-null.
+ *
+ * @param onAddWidget Optional callback for navigating to the widget creation wizard.
+ * @param dashboardId Active dashboard ID.
+ */
+internal fun invokeAddWidgetCallback(
+    onAddWidget: ((String) -> Unit)?,
+    dashboardId: String
+) {
+    if (onAddWidget != null) {
+        onAddWidget(dashboardId)
+    }
+}
+
+/**
+ * Submits a dashboard creation request to [vm] when [newName] is non-blank.
+ *
+ * @param newName Candidate dashboard name.
+ * @param vm Target [DashboardViewModel].
+ * @param errorPrefix Localized error message prefix.
+ */
+internal fun submitCreateDashboardIfValid(
+    newName: String,
+    vm: DashboardViewModel,
+    errorPrefix: String
+) {
+    if (newName.isNotBlank()) {
+        vm.createDashboard(newName, errorPrefix)
+    }
+}
+
+/**
+ * Resolves the initial natural-text prompt for a widget card, preferring [renderPrompt] when non-blank.
+ *
+ * @param renderPrompt Active render state prompt.
+ * @param configPrompt Fallback prompt stored in widget configuration.
+ * @return Initial prompt string.
+ */
+internal fun resolveWidgetNaturalTextInitialPrompt(
+    renderPrompt: String,
+    configPrompt: String
+): String {
+    return renderPrompt.ifBlank { configPrompt }
+}
+
+/**
+ * Looks up the [WidgetRenderState] for [widgetId] in [widgetDataMap], falling back to a default instance.
+ *
+ * @param widgetDataMap Map of widget IDs to [WidgetRenderState].
+ * @param widgetId Target widget ID.
+ * @return Resolved [WidgetRenderState].
+ */
+internal fun resolveWidgetRenderState(
+    widgetDataMap: Map<String, WidgetRenderState>,
+    widgetId: String
+): WidgetRenderState {
+    return widgetDataMap[widgetId] ?: WidgetRenderState()
+}
+
+/**
+ * Formats key-value float pairs into a semicolon-delimited markdown summary string.
+ *
+ * @param data List of `(label, value)` pairs.
+ * @return Formatted string.
+ */
+internal fun formatMarkdownPairsContent(data: List<Pair<String, Float>>): String {
+    return data.joinToString("; ") { "${it.first}: ${it.second}" }
+}
+
+/**
+ * Resolves the export failure message, falling back to [fallbackErrorMsg] when [errorMessage] is null.
+ *
+ * @param errorMessage Exception message or null.
+ * @param fallbackErrorMsg Localized fallback error string.
+ * @return Non-null error message string.
+ */
+internal fun resolveExportErrorMessage(
+    errorMessage: String?,
+    fallbackErrorMsg: String
+): String {
+    return errorMessage ?: fallbackErrorMsg
+}
+
+/**
+ * Immutable presentation model bundling a [WidgetResponse], its [WidgetRenderState], and callbacks
+ * for rendering inside [LazyVerticalGrid] without capturing outer scope state in the grid item lambda.
+ *
+ * @property widget Target [WidgetResponse].
+ * @property renderState Parsed [WidgetRenderState].
+ * @property canMoveUp Whether the widget can move earlier in display order.
+ * @property canMoveDown Whether the widget can move later in display order.
+ * @property onMoveUp Callback to move the widget up.
+ * @property onMoveDown Callback to move the widget down.
+ * @property onEdit Callback to open the edit dialog for the widget.
+ * @property onDelete Callback to delete the widget.
+ * @property onExecuteNaturalText Callback to execute natural text or SQL for the widget.
+ */
+internal data class DashboardGridWidgetItemModel(
+    val widget: WidgetResponse,
+    val renderState: WidgetRenderState,
+    val canMoveUp: Boolean,
+    val canMoveDown: Boolean,
+    val onMoveUp: () -> Unit,
+    val onMoveDown: () -> Unit,
+    val onEdit: () -> Unit,
+    val onDelete: () -> Unit,
+    val onExecuteNaturalText: (String) -> Unit
+)
+
+/**
+ * Maps an ordered list of [WidgetResponse] models into [DashboardGridWidgetItemModel] items for [LazyVerticalGrid].
+ *
+ * @param widgetDataMap Map of widget IDs to [WidgetRenderState].
+ * @param onReorderWidget Callback invoked with `(fromIndex, toIndex)`.
+ * @param onEditWidget Callback invoked to edit a widget.
+ * @param onDeleteWidget Callback invoked to delete a widget.
+ * @param onExecuteWidgetNaturalText Callback invoked with `(widgetId, text)`.
+ * @return Ordered list of [DashboardGridWidgetItemModel] instances.
+ */
+internal fun List<WidgetResponse>.toDashboardGridWidgetItems(
+    widgetDataMap: Map<String, WidgetRenderState>,
+    onReorderWidget: (Int, Int) -> Unit,
+    onEditWidget: (WidgetResponse) -> Unit,
+    onDeleteWidget: (WidgetResponse) -> Unit,
+    onExecuteWidgetNaturalText: (String, String) -> Unit
+): List<DashboardGridWidgetItemModel> {
+    return mapIndexed { index, widget ->
+        DashboardGridWidgetItemModel(
+            widget = widget,
+            renderState = resolveWidgetRenderState(widgetDataMap, widget.id),
+            canMoveUp = index > 0,
+            canMoveDown = index < size - 1,
+            onMoveUp = { onReorderWidget(index, index - 1) },
+            onMoveDown = { onReorderWidget(index, index + 1) },
+            onEdit = { onEditWidget(widget) },
+            onDelete = { onDeleteWidget(widget) },
+            onExecuteNaturalText = { text -> onExecuteWidgetNaturalText(widget.id, text) }
+        )
+    }
+}
+
+/**
+ * Executes a dashboard export format (`pdf`, `csv`, or `json`), persists the exported artifact
+ * locally and to device storage via [deviceSaver], and returns the resulting snackbar status message.
+ *
+ * @param dashboardId Target dashboard ID.
+ * @param format Export format (`pdf`, `csv`, or `json`).
+ * @param fallbackErrorMsg Localized fallback error string when export fails without a message.
+ * @param deviceSaver Function persisting bytes to the device file system.
+ * @return Status message to display in the snackbar.
+ */
+internal suspend fun performDashboardExportAction(
+    dashboardId: String,
+    format: String,
+    fallbackErrorMsg: String,
+    deviceSaver: (String, String, ByteArray) -> Result<String> = ::saveFileToDevice
+): String {
+    val label = format.uppercase()
+    val isPdf = format.equals("pdf", ignoreCase = true)
+    val exportResult = if (isPdf) {
+        DashboardExportHelper.exportDashboardPdf(dashboardId)
+    } else {
+        DashboardExportHelper.exportDashboard(dashboardId, format)
+    }
+    return exportResult.fold(
+        onSuccess = { artifact ->
+            val cachePayload = if (isPdf) "binary_pdf_cached" else artifact.content
+            DashboardExportHelper.saveExportedFile(artifact.filename, cachePayload)
+            val saveRes = deviceSaver(artifact.filename, artifact.mimeType, artifact.bytes)
+            val prefix = if (isPdf) "Report" else label
+            if (saveRes.isSuccess) {
+                "$prefix saved to ${artifact.filename}"
+            } else {
+                "$prefix exported locally: ${artifact.filename}"
+            }
+        },
+        onFailure = { err ->
+            resolveExportErrorMessage(err.message, fallbackErrorMsg)
+        }
+    )
+}
+
+/**
  * Main application dashboard screen delegating all state and network operations to [DashboardViewModel].
  *
  * @param onAddWidget Optional callback invoked with the active dashboard ID to navigate to the widget creation wizard.
@@ -159,7 +376,9 @@ fun DashboardScreen(
     viewModel: DashboardViewModel? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val vm = remember(viewModel) { viewModel ?: DashboardViewModel(scope = coroutineScope) }
+    val vm = remember(viewModel, coroutineScope) {
+        resolveDashboardViewModel(viewModel, coroutineScope)
+    }
 
     val uiState by vm.state.collectAsState()
     val collaborators by vm.collaborators.collectAsState()
@@ -195,352 +414,612 @@ fun DashboardScreen(
     }
 
     val activeDashboard = uiState.activeDashboard
+    val closeDashboardMenu = { showDashboardMenu = false }
+    val closeExportMenu = { showExportMenu = false }
+    val closeCreateDialog = { showCreateDashboardDialog = false }
+    val closeShareDialog = { showShareDialog = false }
+    val closeCartSheet = { showCartSheet = false }
+
+    val launchExport: (String, String, String) -> Unit = { dashId, fmt, fallbackErr ->
+        closeExportMenu()
+        coroutineScope.launch {
+            val msg = performDashboardExportAction(dashId, fmt, fallbackErr)
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(activeDashboard?.name ?: stringResource(Res.string.dashboards))
-                        if (uiState.dashboards.isNotEmpty()) {
-                            IconButton(onClick = { showDashboardMenu = true }) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(Res.string.select_dashboard))
-                            }
-                            DropdownMenu(expanded = showDashboardMenu, onDismissRequest = { showDashboardMenu = false }) {
-                                uiState.dashboards.forEach { db ->
-                                    DropdownMenuItem(
-                                        text = { Text(db.name) },
-                                        onClick = {
-                                            vm.selectDashboard(db)
-                                            showDashboardMenu = false
-                                        }
-                                    )
-                                }
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.create_new_dashboard)) },
-                                    onClick = {
-                                        showCreateDashboardDialog = true
-                                        showDashboardMenu = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+            DashboardTopBar(
+                activeDashboard = activeDashboard,
+                dashboards = uiState.dashboards,
+                showDashboardMenu = showDashboardMenu,
+                onOpenDashboardMenu = { showDashboardMenu = true },
+                onCloseDashboardMenu = closeDashboardMenu,
+                onSelectDashboard = { db ->
+                    vm.selectDashboard(db)
+                    closeDashboardMenu()
                 },
-                actions = {
-                    if (activeDashboard != null) {
-                        if (collaborators.isNotEmpty()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                collaborators.take(3).forEach { user ->
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        modifier = Modifier.size(22.dp)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Text(
-                                                text = user.email.take(1).uppercase(),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        IconButton(
-                            onClick = { vm.undo() },
-                            enabled = canUndo
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(Res.string.undo))
-                        }
-                        IconButton(
-                            onClick = { vm.redo() },
-                            enabled = canRedo
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = stringResource(Res.string.redo))
-                        }
-                        IconButton(onClick = { showCartSheet = true }) {
-                            BadgedBox(
-                                badge = {
-                                    if (cartItems.isNotEmpty()) {
-                                        Badge { Text(cartItems.size.toString()) }
-                                    }
-                                }
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(Res.string.query_cart))
-                            }
-                        }
-                        IconButton(onClick = { showShareDialog = true }) {
-                            Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.share_dashboard))
-                        }
-                        Box {
-                            val errExportPdf = stringResource(Res.string.export_pdf_failed)
-                            val errExportCsv = stringResource(Res.string.export_csv_failed)
-                            val errExportJson = stringResource(Res.string.export_json_failed)
-                            IconButton(onClick = { showExportMenu = true }) {
-                                Icon(Icons.Filled.FileDownload, contentDescription = stringResource(Res.string.export_dashboard))
-                            }
-                            DropdownMenu(
-                                expanded = showExportMenu,
-                                onDismissRequest = { showExportMenu = false }
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.export_pdf_report)) },
-                                    onClick = {
-                                        showExportMenu = false
-                                        coroutineScope.launch {
-                                            DashboardExportHelper.exportDashboardPdf(activeDashboard.id).fold(
-                                                onSuccess = { artifact ->
-                                                    DashboardExportHelper.saveExportedFile(artifact.filename, "binary_pdf_cached")
-                                                    val saveRes = saveFileToDevice(artifact.filename, artifact.mimeType, artifact.bytes)
-                                                    if (saveRes.isSuccess) {
-                                                        snackbarHostState.showSnackbar("Report saved to ${artifact.filename}")
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("Report exported locally: ${artifact.filename}")
-                                                    }
-                                                },
-                                                onFailure = { err ->
-                                                    snackbarHostState.showSnackbar(err.message ?: errExportPdf)
-                                                }
-                                            )
-                                        }
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.export_csv_snapshot)) },
-                                    onClick = {
-                                        showExportMenu = false
-                                        coroutineScope.launch {
-                                            DashboardExportHelper.exportDashboard(activeDashboard.id, "csv").fold(
-                                                onSuccess = { artifact ->
-                                                    DashboardExportHelper.saveExportedFile(artifact.filename, artifact.content)
-                                                    val saveRes = saveFileToDevice(artifact.filename, artifact.mimeType, artifact.bytes)
-                                                    if (saveRes.isSuccess) {
-                                                        snackbarHostState.showSnackbar("CSV saved to ${artifact.filename}")
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("CSV exported locally: ${artifact.filename}")
-                                                    }
-                                                },
-                                                onFailure = { err ->
-                                                    snackbarHostState.showSnackbar(err.message ?: errExportCsv)
-                                                }
-                                            )
-                                        }
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(Res.string.export_json_snapshot)) },
-                                    onClick = {
-                                        showExportMenu = false
-                                        coroutineScope.launch {
-                                            DashboardExportHelper.exportDashboard(activeDashboard.id, "json").fold(
-                                                onSuccess = { artifact ->
-                                                    DashboardExportHelper.saveExportedFile(artifact.filename, artifact.content)
-                                                    val saveRes = saveFileToDevice(artifact.filename, artifact.mimeType, artifact.bytes)
-                                                    if (saveRes.isSuccess) {
-                                                        snackbarHostState.showSnackbar("JSON saved to ${artifact.filename}")
-                                                    } else {
-                                                        snackbarHostState.showSnackbar("JSON exported locally: ${artifact.filename}")
-                                                    }
-                                                },
-                                                onFailure = { err ->
-                                                    snackbarHostState.showSnackbar(err.message ?: errExportJson)
-                                                }
-                                            )
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                        IconButton(onClick = { vm.deleteDashboard(activeDashboard.id, errDeleteDb) }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.delete_dashboard))
-                        }
-                    }
-                }
+                onOpenCreateDashboard = {
+                    showCreateDashboardDialog = true
+                    closeDashboardMenu()
+                },
+                collaborators = collaborators,
+                canUndo = canUndo,
+                canRedo = canRedo,
+                cartItemCount = cartItems.size,
+                showExportMenu = showExportMenu,
+                onOpenExportMenu = { showExportMenu = true },
+                onCloseExportMenu = closeExportMenu,
+                onUndo = { vm.undo() },
+                onRedo = { vm.redo() },
+                onOpenCart = { showCartSheet = true },
+                onOpenShare = { showShareDialog = true },
+                onExportFormat = launchExport,
+                onDeleteDashboard = { dashId -> vm.deleteDashboard(dashId, errDeleteDb) }
             )
         },
         floatingActionButton = {
-            if (activeDashboard != null) {
-                val addWidgetDesc = stringResource(Res.string.add_widget)
-                FloatingActionButton(
-                    onClick = { onAddWidget?.invoke(activeDashboard.id) },
-                    modifier = Modifier.semantics { contentDescription = addWidgetDesc }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                }
-            }
+            DashboardAddWidgetFab(
+                activeDashboard = activeDashboard,
+                onAddWidget = onAddWidget
+            )
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-            val currentError = uiState.errorMessage
-            when {
-                uiState.isLoading -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        DashboardGridSkeleton()
+        DashboardScreenBody(
+            uiState = uiState,
+            isDatabaseHealthy = isDatabaseHealthy,
+            healthState = healthState,
+            paddingValues = paddingValues,
+            onRetryDatabase = { vm.retryHealthAndLoad() },
+            onRetryLoadDashboards = { vm.loadDashboards(errLoadDb) },
+            onOpenCreateDashboard = { showCreateDashboardDialog = true },
+            onFiltersChanged = { dept, tr -> vm.updateFilters(dept, tr) },
+            onResetFilters = { vm.resetFilters() },
+            onAddWidget = onAddWidget,
+            onReorderWidget = { fromIdx, toIdx -> vm.reorderWidget(fromIdx, toIdx) },
+            onEditWidget = { widgetToEdit = it },
+            onDeleteWidget = { vm.deleteWidgetWithUndo(it, errDeleteWidget) },
+            onExecuteWidgetNaturalText = { wid, text -> vm.executeWidgetNaturalText(wid, text) }
+        )
+    }
+
+    DashboardDialogsSection(
+        showCreateDashboardDialog = showCreateDashboardDialog,
+        onCloseCreateDialog = closeCreateDialog,
+        onCreateDashboard = { newName ->
+            submitCreateDashboardIfValid(newName, vm, errCreateDb)
+            closeCreateDialog()
+        },
+        showShareDialog = showShareDialog,
+        activeDashboard = activeDashboard,
+        onCloseShareDialog = closeShareDialog,
+        showCartSheet = showCartSheet,
+        onCloseCartSheet = closeCartSheet,
+        onReloadDashboards = { vm.loadDashboards(errLoadDb) },
+        widgetToEdit = widgetToEdit,
+        onDismissEditWidget = { widgetToEdit = null },
+        onWidgetUpdated = {
+            widgetToEdit = null
+            vm.loadDashboards(errLoadDb)
+        }
+    )
+}
+
+/**
+ * Renders the modal dialogs and bottom sheets associated with [DashboardScreen].
+ *
+ * @param showCreateDashboardDialog Whether the Create Dashboard dialog is visible.
+ * @param onCloseCreateDialog Callback to dismiss the Create Dashboard dialog.
+ * @param onCreateDashboard Callback invoked with the new dashboard name.
+ * @param showShareDialog Whether the Share Dashboard dialog is visible.
+ * @param activeDashboard Active [DashboardResponse] or null.
+ * @param onCloseShareDialog Callback to dismiss the Share Dashboard dialog.
+ * @param showCartSheet Whether the Query Cart bottom sheet is visible.
+ * @param onCloseCartSheet Callback to dismiss the Query Cart bottom sheet.
+ * @param onReloadDashboards Callback to reload dashboards after cart deployment.
+ * @param widgetToEdit Currently selected [WidgetResponse] for editing, or null.
+ * @param onDismissEditWidget Callback to dismiss the Edit Widget dialog.
+ * @param onWidgetUpdated Callback invoked after a widget edit is saved.
+ */
+@Composable
+private fun DashboardDialogsSection(
+    showCreateDashboardDialog: Boolean,
+    onCloseCreateDialog: () -> Unit,
+    onCreateDashboard: (String) -> Unit,
+    showShareDialog: Boolean,
+    activeDashboard: DashboardResponse?,
+    onCloseShareDialog: () -> Unit,
+    showCartSheet: Boolean,
+    onCloseCartSheet: () -> Unit,
+    onReloadDashboards: () -> Unit,
+    widgetToEdit: WidgetResponse?,
+    onDismissEditWidget: () -> Unit,
+    onWidgetUpdated: (WidgetResponse) -> Unit
+) {
+    if (showCreateDashboardDialog) {
+        CreateDashboardAlertDialog(
+            onDismiss = onCloseCreateDialog,
+            onCreate = onCreateDashboard
+        )
+    }
+
+    if (showShareDialog && activeDashboard != null) {
+        DashboardShareDialog(
+            dashboardId = activeDashboard.id,
+            onDismiss = onCloseShareDialog
+        )
+    }
+
+    if (showCartSheet) {
+        QueryCartBottomSheet(
+            activeDashboardId = activeDashboard?.id,
+            onDismiss = onCloseCartSheet,
+            onQueriesDeployed = onReloadDashboards
+        )
+    }
+
+    if (widgetToEdit != null) {
+        EditWidgetDialog(
+            widget = widgetToEdit,
+            onDismiss = onDismissEditWidget,
+            onWidgetUpdated = onWidgetUpdated
+        )
+    }
+}
+
+/**
+ * Renders the top app bar for [DashboardScreen].
+ *
+ * @param activeDashboard Active [DashboardResponse] or null.
+ * @param dashboards Available dashboards list.
+ * @param showDashboardMenu Whether the dashboard selector dropdown is expanded.
+ * @param onOpenDashboardMenu Callback to expand the dashboard selector menu.
+ * @param onCloseDashboardMenu Callback to collapse the dashboard selector menu.
+ * @param onSelectDashboard Callback invoked when a dashboard is chosen.
+ * @param onOpenCreateDashboard Callback invoked to open the Create Dashboard dialog.
+ * @param collaborators Active collaborator list.
+ * @param canUndo Whether Undo is available.
+ * @param canRedo Whether Redo is available.
+ * @param cartItemCount Number of queries staged in the cart.
+ * @param showExportMenu Whether the export menu is expanded.
+ * @param onOpenExportMenu Callback to expand the export menu.
+ * @param onCloseExportMenu Callback to collapse the export menu.
+ * @param onUndo Callback invoked when Undo is clicked.
+ * @param onRedo Callback invoked when Redo is clicked.
+ * @param onOpenCart Callback invoked when Query Cart is clicked.
+ * @param onOpenShare Callback invoked when Share Dashboard is clicked.
+ * @param onExportFormat Callback invoked with `(dashboardId, format, fallbackError)` when an export item is clicked.
+ * @param onDeleteDashboard Callback invoked with `dashboardId` when Delete Dashboard is clicked.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DashboardTopBar(
+    activeDashboard: DashboardResponse?,
+    dashboards: List<DashboardResponse>,
+    showDashboardMenu: Boolean,
+    onOpenDashboardMenu: () -> Unit,
+    onCloseDashboardMenu: () -> Unit,
+    onSelectDashboard: (DashboardResponse) -> Unit,
+    onOpenCreateDashboard: () -> Unit,
+    collaborators: List<CollaboratorPresence>,
+    canUndo: Boolean,
+    canRedo: Boolean,
+    cartItemCount: Int,
+    showExportMenu: Boolean,
+    onOpenExportMenu: () -> Unit,
+    onCloseExportMenu: () -> Unit,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onOpenCart: () -> Unit,
+    onOpenShare: () -> Unit,
+    onExportFormat: (String, String, String) -> Unit,
+    onDeleteDashboard: (String) -> Unit
+) {
+    TopAppBar(
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(activeDashboard?.name ?: stringResource(Res.string.dashboards))
+                if (dashboards.isNotEmpty()) {
+                    IconButton(onClick = onOpenDashboardMenu) {
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = stringResource(Res.string.select_dashboard))
                     }
-                }
-                !isDatabaseHealthy -> {
-                    val dbMsg = healthState?.duckdb?.error ?: healthState?.postgres?.error ?: stringResource(Res.string.database_default_error)
-                    DatabaseErrorCard(
-                        title = stringResource(Res.string.database_misconfiguration),
-                        message = dbMsg,
-                        onRetry = { vm.retryHealthAndLoad() },
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                currentError != null -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = currentError, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-                        Button(onClick = { vm.loadDashboards(errLoadDb) }) { Text(stringResource(Res.string.retry)) }
-                    }
-                }
-                uiState.dashboards.isEmpty() -> {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(stringResource(Res.string.no_dashboards_found), style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { showCreateDashboardDialog = true }) {
-                            Text(stringResource(Res.string.create_dashboard))
+                    DropdownMenu(expanded = showDashboardMenu, onDismissRequest = onCloseDashboardMenu) {
+                        dashboards.forEach { db ->
+                            DropdownMenuItem(
+                                text = { Text(db.name) },
+                                onClick = { onSelectDashboard(db) }
+                            )
                         }
-                    }
-                }
-                activeDashboard != null -> {
-                    val widgets = activeDashboard.widgets ?: emptyList()
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        FilterRibbon(
-                            activeDepartment = uiState.filterDepartment,
-                            activeTimeRange = uiState.filterTimeRange,
-                            onFiltersChanged = { dept, tr ->
-                                vm.updateFilters(dept, tr)
-                            },
-                            onResetFilters = {
-                                vm.resetFilters()
-                            }
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(Res.string.create_new_dashboard)) },
+                            onClick = onOpenCreateDashboard
                         )
+                    }
+                }
+            }
+        },
+        actions = {
+            DashboardTopBarActions(
+                activeDashboard = activeDashboard,
+                collaborators = collaborators,
+                canUndo = canUndo,
+                canRedo = canRedo,
+                cartItemCount = cartItemCount,
+                showExportMenu = showExportMenu,
+                onOpenExportMenu = onOpenExportMenu,
+                onCloseExportMenu = onCloseExportMenu,
+                onUndo = onUndo,
+                onRedo = onRedo,
+                onOpenCart = onOpenCart,
+                onOpenShare = onOpenShare,
+                onExportFormat = onExportFormat,
+                onDeleteDashboard = onDeleteDashboard
+            )
+        }
+    )
+}
 
-                        if (uiState.isOfflineSnapshot) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(Res.string.offline_snapshot_mode),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
+/**
+ * Renders the action icons and collaborator presence avatars inside [DashboardTopBar].
+ *
+ * @param activeDashboard Active [DashboardResponse] or null.
+ * @param collaborators Active collaborator list.
+ * @param canUndo Whether Undo is available.
+ * @param canRedo Whether Redo is available.
+ * @param cartItemCount Number of queries staged in the cart.
+ * @param showExportMenu Whether the export menu is expanded.
+ * @param onOpenExportMenu Callback to expand the export menu.
+ * @param onCloseExportMenu Callback to collapse the export menu.
+ * @param onUndo Callback invoked when Undo is clicked.
+ * @param onRedo Callback invoked when Redo is clicked.
+ * @param onOpenCart Callback invoked when Query Cart is clicked.
+ * @param onOpenShare Callback invoked when Share Dashboard is clicked.
+ * @param onExportFormat Callback invoked with `(dashboardId, format, fallbackError)` when an export item is clicked.
+ * @param onDeleteDashboard Callback invoked with `dashboardId` when Delete Dashboard is clicked.
+ */
+@Composable
+internal fun DashboardTopBarActions(
+    activeDashboard: DashboardResponse?,
+    collaborators: List<CollaboratorPresence>,
+    canUndo: Boolean,
+    canRedo: Boolean,
+    cartItemCount: Int,
+    showExportMenu: Boolean,
+    onOpenExportMenu: () -> Unit,
+    onCloseExportMenu: () -> Unit,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onOpenCart: () -> Unit,
+    onOpenShare: () -> Unit,
+    onExportFormat: (String, String, String) -> Unit,
+    onDeleteDashboard: (String) -> Unit
+) {
+    if (activeDashboard != null) {
+        if (collaborators.isNotEmpty()) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(end = 4.dp)
+            ) {
+                collaborators.take(3).forEach { user ->
+                    CollaboratorPresenceAvatar(user = user)
+                }
+            }
+        }
+        IconButton(onClick = onUndo, enabled = canUndo) {
+            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(Res.string.undo))
+        }
+        IconButton(onClick = onRedo, enabled = canRedo) {
+            Icon(Icons.AutoMirrored.Filled.Redo, contentDescription = stringResource(Res.string.redo))
+        }
+        IconButton(onClick = onOpenCart) {
+            BadgedBox(
+                badge = {
+                    if (cartItemCount > 0) {
+                        Badge { Text(cartItemCount.toString()) }
+                    }
+                }
+            ) {
+                Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(Res.string.query_cart))
+            }
+        }
+        IconButton(onClick = onOpenShare) {
+            Icon(Icons.Filled.Share, contentDescription = stringResource(Res.string.share_dashboard))
+        }
+        Box {
+            val errExportPdf = stringResource(Res.string.export_pdf_failed)
+            val errExportCsv = stringResource(Res.string.export_csv_failed)
+            val errExportJson = stringResource(Res.string.export_json_failed)
+            IconButton(onClick = onOpenExportMenu) {
+                Icon(Icons.Filled.FileDownload, contentDescription = stringResource(Res.string.export_dashboard))
+            }
+            DropdownMenu(
+                expanded = showExportMenu,
+                onDismissRequest = onCloseExportMenu
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.export_pdf_report)) },
+                    onClick = { onExportFormat(activeDashboard.id, "pdf", errExportPdf) }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.export_csv_snapshot)) },
+                    onClick = { onExportFormat(activeDashboard.id, "csv", errExportCsv) }
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(Res.string.export_json_snapshot)) },
+                    onClick = { onExportFormat(activeDashboard.id, "json", errExportJson) }
+                )
+            }
+        }
+        IconButton(onClick = { onDeleteDashboard(activeDashboard.id) }) {
+            Icon(Icons.Default.Delete, contentDescription = stringResource(Res.string.delete_dashboard))
+        }
+    }
+}
+
+/**
+ * Renders a circular collaborator avatar badge inside [DashboardTopBarActions].
+ *
+ * @param user Collaborator presence entry.
+ */
+@Composable
+private fun CollaboratorPresenceAvatar(user: CollaboratorPresence) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.size(22.dp)
+    ) {
+        CollaboratorAvatarInitial(email = user.email)
+    }
+}
+
+/**
+ * Renders the centered uppercase initial inside [CollaboratorPresenceAvatar].
+ *
+ * @param email Collaborator email address.
+ */
+@Composable
+private fun CollaboratorAvatarInitial(email: String) {
+    Box(contentAlignment = Alignment.Center) {
+        Text(
+            text = email.take(1).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+    }
+}
+
+/**
+ * Renders the Add Widget floating action button when an active dashboard is present.
+ *
+ * @param activeDashboard Active [DashboardResponse] or null.
+ * @param onAddWidget Optional callback invoked with the active dashboard ID.
+ */
+@Composable
+private fun DashboardAddWidgetFab(
+    activeDashboard: DashboardResponse?,
+    onAddWidget: ((String) -> Unit)?
+) {
+    if (activeDashboard != null) {
+        val addWidgetDesc = stringResource(Res.string.add_widget)
+        FloatingActionButton(
+            onClick = { invokeAddWidgetCallback(onAddWidget, activeDashboard.id) },
+            modifier = Modifier.semantics { contentDescription = addWidgetDesc }
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+        }
+    }
+}
+
+/**
+ * Renders the main body of [DashboardScreen].
+ *
+ * @param uiState Current [DashboardUiState].
+ * @param isDatabaseHealthy Whether backend databases are healthy.
+ * @param healthState Optional [SystemHealthResponse].
+ * @param paddingValues Scaffold inner padding.
+ * @param onRetryDatabase Callback invoked when retrying from the database error banner.
+ * @param onRetryLoadDashboards Callback invoked when retrying after a dashboard load failure.
+ * @param onOpenCreateDashboard Callback invoked to open the Create Dashboard dialog.
+ * @param onFiltersChanged Callback invoked when global filters change.
+ * @param onResetFilters Callback invoked when global filters are reset.
+ * @param onAddWidget Optional callback invoked to add a widget.
+ * @param onReorderWidget Callback invoked with `(fromIndex, toIndex)` to reorder widgets.
+ * @param onEditWidget Callback invoked to edit a widget.
+ * @param onDeleteWidget Callback invoked to delete a widget.
+ * @param onExecuteWidgetNaturalText Callback invoked with `(widgetId, text)` to run natural text on a widget.
+ */
+@Composable
+private fun DashboardScreenBody(
+    uiState: DashboardUiState,
+    isDatabaseHealthy: Boolean,
+    healthState: SystemHealthResponse?,
+    paddingValues: PaddingValues,
+    onRetryDatabase: () -> Unit,
+    onRetryLoadDashboards: () -> Unit,
+    onOpenCreateDashboard: () -> Unit,
+    onFiltersChanged: (String?, String?) -> Unit,
+    onResetFilters: () -> Unit,
+    onAddWidget: ((String) -> Unit)?,
+    onReorderWidget: (Int, Int) -> Unit,
+    onEditWidget: (WidgetResponse) -> Unit,
+    onDeleteWidget: (WidgetResponse) -> Unit,
+    onExecuteWidgetNaturalText: (String, String) -> Unit
+) {
+    val activeDashboard = uiState.activeDashboard
+    Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+        val currentError = uiState.errorMessage
+        when {
+            uiState.isLoading -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    DashboardGridSkeleton()
+                }
+            }
+            !isDatabaseHealthy -> {
+                val dbMsg = resolveDashboardDatabaseErrorMessage(
+                    healthState = healthState,
+                    defaultError = stringResource(Res.string.database_default_error)
+                )
+                DatabaseErrorCard(
+                    title = stringResource(Res.string.database_misconfiguration),
+                    message = dbMsg,
+                    onRetry = onRetryDatabase,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            currentError != null -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = currentError, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                    Button(onClick = onRetryLoadDashboards) { Text(stringResource(Res.string.retry)) }
+                }
+            }
+            uiState.dashboards.isEmpty() -> {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(Res.string.no_dashboards_found), style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onOpenCreateDashboard) {
+                        Text(stringResource(Res.string.create_dashboard))
+                    }
+                }
+            }
+            activeDashboard != null -> {
+                val widgets = activeDashboard.widgets ?: emptyList()
+                Column(modifier = Modifier.fillMaxSize()) {
+                    FilterRibbon(
+                        activeDepartment = uiState.filterDepartment,
+                        activeTimeRange = uiState.filterTimeRange,
+                        onFiltersChanged = onFiltersChanged,
+                        onResetFilters = onResetFilters
+                    )
+
+                    if (uiState.isOfflineSnapshot) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = stringResource(Res.string.offline_snapshot_mode),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(8.dp)
+                            )
                         }
+                    }
 
-                        if (widgets.isEmpty()) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
-                            ) {
-                                Text(stringResource(Res.string.dashboard_is_empty))
-                                AddWidgetPromptCard(
-                                    onAddWidget = { onAddWidget?.invoke(activeDashboard.id) }
-                                )
+                    if (widgets.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+                        ) {
+                            Text(stringResource(Res.string.dashboard_is_empty))
+                            AddWidgetPromptCard(
+                                onAddWidget = { invokeAddWidgetCallback(onAddWidget, activeDashboard.id) }
+                            )
+                        }
+                    } else {
+                        val gridItems = widgets.toDashboardGridWidgetItems(
+                            widgetDataMap = uiState.widgetDataMap,
+                            onReorderWidget = onReorderWidget,
+                            onEditWidget = onEditWidget,
+                            onDeleteWidget = onDeleteWidget,
+                            onExecuteWidgetNaturalText = onExecuteWidgetNaturalText
+                        )
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 300.dp),
+                            contentPadding = PaddingValues(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize().testTag("dashboard_grid")
+                        ) {
+                            items(gridItems) { item ->
+                                DashboardGridWidgetCardItem(item = item)
                             }
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 300.dp),
-                                contentPadding = PaddingValues(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxSize().testTag("dashboard_grid")
-                            ) {
-                                itemsIndexed(widgets) { index, widget ->
-                                    val renderState = uiState.widgetDataMap[widget.id] ?: WidgetRenderState()
-                                    WidgetElevatedCard(
-                                        widget = widget,
-                                        renderState = renderState,
-                                        canMoveUp = index > 0,
-                                        canMoveDown = index < widgets.size - 1,
-                                        onMoveUp = { vm.reorderWidget(index, index - 1) },
-                                        onMoveDown = { vm.reorderWidget(index, index + 1) },
-                                        onEdit = { widgetToEdit = widget },
-                                        onDelete = { vm.deleteWidgetWithUndo(widget, errDeleteWidget) },
-                                        onExecuteNaturalText = { text ->
-                                            vm.executeWidgetNaturalText(widget.id, text)
-                                        }
-                                    )
-                                }
-                                if (widgets.size < 2) {
-                                    item {
-                                        AddWidgetPromptCard(
-                                            onAddWidget = { onAddWidget?.invoke(activeDashboard.id) }
-                                        )
-                                    }
-                                }
+                            item {
+                                DashboardTrailingAddWidgetCtaSection(
+                                    showCta = widgets.size < 2,
+                                    onAddWidget = { invokeAddWidgetCallback(onAddWidget, activeDashboard.id) }
+                                )
                             }
                         }
                     }
                 }
             }
         }
-
-        if (showCreateDashboardDialog) {
-            var newName by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { showCreateDashboardDialog = false },
-                title = { Text(stringResource(Res.string.create_dashboard)) },
-                text = {
-                    OutlinedTextField(
-                        value = newName,
-                        onValueChange = { newName = it },
-                        label = { Text(stringResource(Res.string.dashboard_name)) }
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        if (newName.isNotBlank()) vm.createDashboard(newName, errCreateDb)
-                        showCreateDashboardDialog = false
-                    }) { Text(stringResource(Res.string.create)) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCreateDashboardDialog = false }) { Text(stringResource(Res.string.cancel)) }
-                }
-            )
-        }
-
-        if (showShareDialog && activeDashboard != null) {
-            DashboardShareDialog(
-                dashboardId = activeDashboard.id,
-                onDismiss = { showShareDialog = false }
-            )
-        }
-
-        if (showCartSheet) {
-            QueryCartBottomSheet(
-                activeDashboardId = activeDashboard?.id,
-                onDismiss = { showCartSheet = false },
-                onQueriesDeployed = { vm.loadDashboards(errLoadDb) }
-            )
-        }
-
-        val currentEditTarget = widgetToEdit
-        if (currentEditTarget != null) {
-            EditWidgetDialog(
-                widget = currentEditTarget,
-                onDismiss = { widgetToEdit = null },
-                onWidgetUpdated = {
-                    widgetToEdit = null
-                    vm.loadDashboards(errLoadDb)
-                }
-            )
-        }
     }
+}
+
+/**
+ * Renders a single [DashboardGridWidgetItemModel] inside [LazyVerticalGrid].
+ *
+ * @param item Bundled widget item model.
+ */
+@Composable
+private fun DashboardGridWidgetCardItem(item: DashboardGridWidgetItemModel) {
+    WidgetElevatedCard(
+        widget = item.widget,
+        renderState = item.renderState,
+        canMoveUp = item.canMoveUp,
+        canMoveDown = item.canMoveDown,
+        onMoveUp = item.onMoveUp,
+        onMoveDown = item.onMoveDown,
+        onEdit = item.onEdit,
+        onDelete = item.onDelete,
+        onExecuteNaturalText = item.onExecuteNaturalText
+    )
+}
+
+/**
+ * Renders the trailing [AddWidgetPromptCard] inside the dashboard grid when fewer than 2 widgets exist.
+ *
+ * @param showCta Whether the CTA card should be shown.
+ * @param onAddWidget Callback invoked when the user clicks to add a widget.
+ */
+@Composable
+private fun DashboardTrailingAddWidgetCtaSection(
+    showCta: Boolean,
+    onAddWidget: () -> Unit
+) {
+    if (showCta) {
+        AddWidgetPromptCard(onAddWidget = onAddWidget)
+    }
+}
+
+/**
+ * Renders the dialog for creating a new dashboard.
+ *
+ * @param onDismiss Callback invoked when the dialog is dismissed or cancelled.
+ * @param onCreate Callback invoked with the entered dashboard name when Create is clicked.
+ */
+@Composable
+private fun CreateDashboardAlertDialog(
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit
+) {
+    var newName by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(Res.string.create_dashboard)) },
+        text = {
+            OutlinedTextField(
+                value = newName,
+                onValueChange = { newName = it },
+                label = { Text(stringResource(Res.string.dashboard_name)) }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(newName) }) { Text(stringResource(Res.string.create)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(Res.string.cancel)) }
+        }
+    )
 }
 
 /**
@@ -648,7 +1127,7 @@ fun WidgetElevatedCard(
     val cfgPrompt = sqlCfg.naturalTextPrompt
     val subtitle = extractWidgetSubtitle(widget)
     var naturalInput by remember(widget.id, renderState.naturalTextPrompt, cfgPrompt) {
-        mutableStateOf(renderState.naturalTextPrompt.ifBlank { cfgPrompt })
+        mutableStateOf(resolveWidgetNaturalTextInitialPrompt(renderState.naturalTextPrompt, cfgPrompt))
     }
 
     ElevatedCard(
@@ -736,9 +1215,10 @@ fun WidgetElevatedCard(
                         Text(stringResource(Res.string.run_natural_text_button))
                     }
                 }
-                renderState.generatedSql?.takeIf { it.isNotBlank() }?.let { sql ->
+                val generatedSql = renderState.generatedSql
+                if (!generatedSql.isNullOrBlank()) {
                     Text(
-                        text = stringResource(Res.string.generated_sql_label, sql),
+                        text = stringResource(Res.string.generated_sql_label, generatedSql),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -800,7 +1280,7 @@ fun WidgetContent(
                     "pie", "donut" -> PieChart(data = data)
                     "metric", "scalar" -> MetricCard(data = data)
                     "heatmap", "matrix" -> HeatmapChart(columns = tableColumns, rows = tableRows)
-                    "markdown", "text", "note" -> TextMarkdownWidget(content = data.joinToString("; ") { "${it.first}: ${it.second}" })
+                    "markdown", "text", "note" -> TextMarkdownWidget(content = formatMarkdownPairsContent(data))
                     else -> {
                         if (tableColumns.size > 2) {
                             MultiColumnTableView(columns = tableColumns, rows = tableRows)

@@ -18,8 +18,6 @@
 
 package io.healthplatform.pulsequery.api.models
 
-import io.healthplatform.pulsequery.api.models.OptimizationSurveyResponse
-
 import kotlinx.serialization.Required
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -33,23 +31,13 @@ import kotlinx.serialization.Serializable
  * @property meanInterpretabilityScore * @param recentSurveys
  */
 @Serializable
-
-data class OptimizationEvaluationSummaryResponse (
-
+data class OptimizationEvaluationSummaryResponse(
     @SerialName(value = "total_sessions") @Required val totalSessions: kotlin.Int,
-
     @SerialName(value = "total_iterations") @Required val totalIterations: kotlin.Int,
-
     @SerialName(value = "mean_expert_baseline_gap_pct") @Required val meanExpertBaselineGapPct: kotlin.Double,
-
     @SerialName(value = "survey_count") @Required val surveyCount: kotlin.Int,
-
     @SerialName(value = "mean_score_vs_manual_process") @Required val meanScoreVsManualProcess: kotlin.Double,
-
     @SerialName(value = "mean_score_vs_other_workflow_tech") @Required val meanScoreVsOtherWorkflowTech: kotlin.Double,
-
     @SerialName(value = "mean_interpretability_score") @Required val meanInterpretabilityScore: kotlin.Double,
-
     @SerialName(value = "recent_surveys") val recentSurveys: kotlin.collections.List<OptimizationSurveyResponse>? = null
-
 )
