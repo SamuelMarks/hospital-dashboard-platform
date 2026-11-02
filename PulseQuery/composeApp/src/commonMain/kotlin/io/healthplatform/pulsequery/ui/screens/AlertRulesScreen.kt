@@ -146,7 +146,7 @@ fun AlertRulesScreen(
     var ruleToEdit by remember { mutableStateOf<AlertRuleResponse?>(null) }
 
     LaunchedEffect(vm) {
-        vm.loadRules()
+        vm.performLoadRules()
     }
 
     Scaffold(

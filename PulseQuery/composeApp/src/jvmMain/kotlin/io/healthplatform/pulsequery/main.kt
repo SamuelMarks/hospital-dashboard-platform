@@ -22,20 +22,23 @@ fun initializeDesktopApplication(driverFactory: DatabaseDriverFactory = JvmDatab
 }
 
 /**
- * Renders the root desktop [Window] inside a Compose [ApplicationScope].
+ * Renders the root desktop [Window] inside a Compose [ApplicationScope], or exits immediately
+ * when running in a headless environment or under the `pulsequery.headless.test` harness property.
  */
 @Composable
 fun ApplicationScope.DesktopWindowContent() {
-    val exitImmediately = System.getProperty("pulsequery.headless.test") == "true"
+    if (System.getProperty("pulsequery.headless.test") == "true" ||
+        java.awt.GraphicsEnvironment.isHeadless()
+    ) {
+        LaunchedEffect(Unit) {
+            exitApplication()
+        }
+        return
+    }
     Window(
         onCloseRequest = ::exitApplication,
         title = "PulseQuery",
     ) {
-        LaunchedEffect(exitImmediately) {
-            if (exitImmediately) {
-                exitApplication()
-            }
-        }
         App()
     }
 }

@@ -91,38 +91,45 @@ class ChatViewModel(
     val notifications: SharedFlow<String> = _notifications.asSharedFlow()
 
     /**
-     * Loads the user's conversation history from the backend.
+     * Loads the user's conversation history from the backend on [scope].
      */
     fun loadConversations() {
         scope.launch {
-            runResultPulseAsync {
-                currentChatApi.listConversationsApiV1ConversationsGet().asResult()
-            }.fold(
-                onSuccess = { list ->
-                    val currentActive = _state.value.activeConversation
-                    val resolvedActive = if (currentActive == null && initialConversationId != null) {
-                        list.find { it.id == initialConversationId }
-                    } else {
-                        currentActive
-                    }
-                    _state.update {
-                        it.copy(
-                            conversations = list,
-                            activeConversation = resolvedActive,
-                            errorMessage = null
-                        )
-                    }
-                    if (resolvedActive != null && currentActive == null) {
-                        loadMessages()
-                    }
-                },
-                onFailure = { e ->
-                    val msg = "Failed to load conversations: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
-                    _state.update { it.copy(errorMessage = msg) }
-                    _notifications.tryEmit(msg)
-                }
-            )
+            performLoadConversations()
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of the user's conversation history from the backend.
+     */
+    suspend fun performLoadConversations() {
+        runResultPulseAsync {
+            currentChatApi.listConversationsApiV1ConversationsGet().asResult()
+        }.fold(
+            onSuccess = { list ->
+                val currentActive = _state.value.activeConversation
+                val resolvedActive = if (currentActive == null && initialConversationId != null) {
+                    list.find { it.id == initialConversationId }
+                } else {
+                    currentActive
+                }
+                _state.update {
+                    it.copy(
+                        conversations = list,
+                        activeConversation = resolvedActive,
+                        errorMessage = null
+                    )
+                }
+                if (resolvedActive != null && currentActive == null) {
+                    performLoadMessagesForConversation(resolvedActive.id)
+                }
+            },
+            onFailure = { e ->
+                val msg = "Failed to load conversations: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
+                _state.update { it.copy(errorMessage = msg) }
+                _notifications.tryEmit(msg)
+            }
+        )
     }
 
     /**
@@ -144,7 +151,7 @@ class ChatViewModel(
     }
 
     /**
-     * Loads all messages for the currently active conversation.
+     * Loads all messages for the currently active conversation on [scope].
      */
     fun loadMessages() {
         val active = _state.value.activeConversation ?: run {
@@ -152,23 +159,32 @@ class ChatViewModel(
             return
         }
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentChatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
-                    conversationId = active.id
-                ).asResult()
-            }.fold(
-                onSuccess = { msgs ->
-                    _state.update { it.copy(messages = msgs, errorMessage = null) }
-                },
-                onFailure = { e ->
-                    val msg = "Failed to load messages: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
-                    _state.update { it.copy(errorMessage = msg) }
-                    _notifications.tryEmit(msg)
-                }
-            )
-            _state.update { it.copy(isLoading = false) }
+            performLoadMessagesForConversation(active.id)
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of all messages for the given [conversationId].
+     *
+     * @param conversationId UUID of the conversation whose messages should be fetched.
+     */
+    suspend fun performLoadMessagesForConversation(conversationId: String) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentChatApi.getMessagesApiV1ConversationsConversationIdMessagesGet(
+                conversationId = conversationId
+            ).asResult()
+        }.fold(
+            onSuccess = { msgs ->
+                _state.update { it.copy(messages = msgs, errorMessage = null) }
+            },
+            onFailure = { e ->
+                val msg = "Failed to load messages: ${e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)}"
+                _state.update { it.copy(errorMessage = msg) }
+                _notifications.tryEmit(msg)
+            }
+        )
+        _state.update { it.copy(isLoading = false) }
     }
 
     /**

@@ -59,27 +59,34 @@ class AlertRulesViewModel(
     val state: StateFlow<AlertRulesUiState> = _state.asStateFlow()
 
     /**
-     * Loads all configured alert rules from the backend.
+     * Loads all configured alert rules from the backend on [scope].
      */
     fun loadRules() {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult()
-            }.fold(
-                onSuccess = { list ->
-                    _state.update { it.copy(rules = list, isLoading = false, errorMessage = null) }
-                },
-                onFailure = { e ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.messageOrDefault(UiErrorKey.LOAD_ALERT_RULES)
-                        )
-                    }
-                }
-            )
+            performLoadRules()
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of all configured alert rules from the backend.
+     */
+    suspend fun performLoadRules() {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult()
+        }.fold(
+            onSuccess = { list ->
+                _state.update { it.copy(rules = list, isLoading = false, errorMessage = null) }
+            },
+            onFailure = { e ->
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.messageOrDefault(UiErrorKey.LOAD_ALERT_RULES)
+                    )
+                }
+            }
+        )
     }
 
     /**
@@ -93,7 +100,7 @@ class AlertRulesViewModel(
                 currentAlertRulesApi.deleteAlertRuleApiV1AnalyticsAlertRulesRuleIdDelete(ruleId).asResult()
             }.fold(
                 onSuccess = {
-                    loadRules()
+                    performLoadRules()
                 },
                 onFailure = { e ->
                     _state.update { it.copy(errorMessage = e.messageOrDefault(UiErrorKey.DELETE_ALERT_RULE)) }
@@ -166,7 +173,7 @@ class AlertRulesViewModel(
                 onSuccess = {
                     _state.update { it.copy(isSaving = false, dialogError = null) }
                     onSuccess()
-                    loadRules()
+                    performLoadRules()
                 },
                 onFailure = { e ->
                     _state.update {
@@ -224,7 +231,7 @@ class AlertRulesViewModel(
                 onSuccess = {
                     _state.update { it.copy(isSaving = false, dialogError = null) }
                     onSuccess()
-                    loadRules()
+                    performLoadRules()
                 },
                 onFailure = { e ->
                     _state.update {

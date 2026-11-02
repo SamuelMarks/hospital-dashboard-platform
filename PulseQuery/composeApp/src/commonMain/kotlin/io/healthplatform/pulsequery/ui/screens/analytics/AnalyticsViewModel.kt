@@ -49,28 +49,37 @@ class AnalyticsViewModel(
     val state: StateFlow<AnalyticsUiState> = _state.asStateFlow()
 
     /**
-     * Fetches the latest LLM output analytics records from the backend.
+     * Fetches the latest LLM output analytics records from the backend on [scope].
      *
      * @param fallbackError Default error message if the exception has no message.
      */
     fun loadAnalytics(fallbackError: String = UiErrorKey.UNKNOWN_ERROR.fallbackMessage) {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).asResult()
-            }.fold(
-                onSuccess = { rows ->
-                    _state.update { it.copy(records = rows, isLoading = false, errorMessage = null) }
-                },
-                onFailure = { e ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.messageOrDefault(fallbackError)
-                        )
-                    }
-                }
-            )
+            performLoadAnalytics(fallbackError)
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of LLM output analytics records from the backend.
+     *
+     * @param fallbackError Default error message if the exception has no message.
+     */
+    suspend fun performLoadAnalytics(fallbackError: String) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentAnalyticsApi.listLlmOutputsApiV1AnalyticsLlmGet(limit = 100).asResult()
+        }.fold(
+            onSuccess = { rows ->
+                _state.update { it.copy(records = rows, isLoading = false, errorMessage = null) }
+            },
+            onFailure = { e ->
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.messageOrDefault(fallbackError)
+                    )
+                }
+            }
+        )
     }
 }

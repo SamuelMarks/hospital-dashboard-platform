@@ -75,27 +75,35 @@ class UserManagementViewModel(
     }
 
     /**
-     * Fetches registered hospital users from the backend administrative API.
+     * Fetches registered hospital users from the backend administrative API on [scope].
      */
     fun loadUsers() {
         _state.value = UserManagementUiState.Loading
         scope.launch {
-            runResultPulseAsync {
-                currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100).asResult()
-            }.fold(
-                onSuccess = { users ->
-                    _state.value = UserManagementUiState.Success(
-                        users = users,
-                        allUsers = users,
-                        searchQuery = "",
-                        selectedRole = null
-                    )
-                },
-                onFailure = { e ->
-                    _state.value = UserManagementUiState.Error(e.messageOrDefault(UiErrorKey.LOAD_USERS))
-                }
-            )
+            performLoadUsers()
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of registered hospital users from the backend administrative API.
+     */
+    suspend fun performLoadUsers() {
+        _state.value = UserManagementUiState.Loading
+        runResultPulseAsync {
+            currentAdminUsersApi.listUsersApiV1AdminUsersGet(limit = 100).asResult()
+        }.fold(
+            onSuccess = { users ->
+                _state.value = UserManagementUiState.Success(
+                    users = users,
+                    allUsers = users,
+                    searchQuery = "",
+                    selectedRole = null
+                )
+            },
+            onFailure = { e ->
+                _state.value = UserManagementUiState.Error(e.messageOrDefault(UiErrorKey.LOAD_USERS))
+            }
+        )
     }
 
     /**

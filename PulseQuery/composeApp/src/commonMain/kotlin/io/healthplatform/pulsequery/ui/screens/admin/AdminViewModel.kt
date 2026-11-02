@@ -60,36 +60,45 @@ class AdminViewModel(
     val notifications: SharedFlow<String> = _notifications.asSharedFlow()
 
     /**
-     * Loads the current administrative settings from the backend.
+     * Loads the current administrative settings from the backend on [scope].
      *
      * @param errorPrefix Prefix prepended to the error message if loading fails.
      */
     fun loadSettings(errorPrefix: String = "Failed to load admin settings: ") {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().asResult()
-            }.fold(
-                onSuccess = { settings ->
-                    _state.update {
-                        it.copy(
-                            apiKeys = settings.apiKeys.toMap(),
-                            visibleModels = settings.visibleModels.toList(),
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                    }
-                },
-                onFailure = { e ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)
-                        )
-                    }
-                }
-            )
+            performLoadSettings(errorPrefix)
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of the current administrative settings from the backend.
+     *
+     * @param errorPrefix Prefix prepended to the error message if loading fails.
+     */
+    suspend fun performLoadSettings(errorPrefix: String) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentAdminApi.readAdminSettingsApiV1AdminSettingsGet().asResult()
+        }.fold(
+            onSuccess = { settings ->
+                _state.update {
+                    it.copy(
+                        apiKeys = settings.apiKeys.toMap(),
+                        visibleModels = settings.visibleModels.toList(),
+                        isLoading = false,
+                        errorMessage = null
+                    )
+                }
+            },
+            onFailure = { e ->
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = errorPrefix + e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)
+                    )
+                }
+            }
+        )
     }
 
     /**

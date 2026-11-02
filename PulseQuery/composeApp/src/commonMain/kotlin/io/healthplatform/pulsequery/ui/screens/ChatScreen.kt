@@ -158,7 +158,7 @@ fun ChatScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(vm) {
-        vm.loadConversations()
+        vm.performLoadConversations()
     }
 
     Scaffold(

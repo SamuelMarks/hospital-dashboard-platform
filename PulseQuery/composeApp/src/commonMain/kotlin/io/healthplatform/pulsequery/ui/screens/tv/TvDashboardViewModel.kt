@@ -50,32 +50,39 @@ class TvDashboardViewModel(
     val state: StateFlow<TvDashboardUiState> = _state.asStateFlow()
 
     /**
-     * Loads the primary dashboard for the TV wallboard display.
+     * Loads the primary dashboard for the TV wallboard display on [scope].
      */
     fun loadDashboard() {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResultMap { it.firstOrNull() }
-            }.fold(
-                onSuccess = { db ->
-                    _state.update {
-                        it.copy(
-                            activeDashboard = db,
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                    }
-                },
-                onFailure = { e ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.messageOrDefault(UiErrorKey.LOAD_TV_DASHBOARD)
-                        )
-                    }
-                }
-            )
+            performLoadDashboard()
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of the primary dashboard for the TV wallboard display.
+     */
+    suspend fun performLoadDashboard() {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResultMap { it.firstOrNull() }
+        }.fold(
+            onSuccess = { db ->
+                _state.update {
+                    it.copy(
+                        activeDashboard = db,
+                        isLoading = false,
+                        errorMessage = null
+                    )
+                }
+            },
+            onFailure = { e ->
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.messageOrDefault(UiErrorKey.LOAD_TV_DASHBOARD)
+                    )
+                }
+            }
+        )
     }
 }

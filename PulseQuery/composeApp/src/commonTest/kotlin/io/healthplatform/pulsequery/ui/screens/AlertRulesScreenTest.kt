@@ -151,6 +151,9 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
 
         // Refresh rules
         onNodeWithContentDescription("Refresh Rules").performClick()
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Pediatric ICU", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
 
         // Open Edit Rule dialog, test severity filter chips and fields, save changes
         onNodeWithContentDescription("Edit Rule").performClick()
@@ -164,7 +167,8 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
 
         // Open Edit Rule dialog and cancel
         waitUntil(timeoutMillis = 15000) {
-            onAllNodesWithText("Edit Alert Rule").fetchSemanticsNodes().isEmpty()
+            onAllNodesWithText("Edit Alert Rule").fetchSemanticsNodes().isEmpty() &&
+                onAllNodesWithText("Pediatric ICU", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithContentDescription("Edit Rule").performClick()
         onNodeWithText("Cancel").performClick()
@@ -178,7 +182,8 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
 
         // Delete rule
         waitUntil(timeoutMillis = 15000) {
-            onAllNodesWithText("Create Alert Rule").fetchSemanticsNodes().isEmpty()
+            onAllNodesWithText("Create Alert Rule").fetchSemanticsNodes().isEmpty() &&
+                onAllNodesWithText("Pediatric ICU", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithContentDescription("Delete Rule").performClick()
     }
@@ -221,11 +226,16 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
             createdAt = kotlin.time.Instant.fromEpochMilliseconds(1750000000000L)
         )
 
+        val showDialogs = androidx.compose.runtime.mutableStateOf(false)
+
         setContent {
             MaterialTheme {
-                AlertRulesScreen()
-                CreateAlertRuleDialog(onDismiss = {}, onCreated = {})
-                EditAlertRuleDialog(rule = sampleRule, onDismiss = {}, onUpdated = {})
+                if (!showDialogs.value) {
+                    AlertRulesScreen()
+                } else {
+                    CreateAlertRuleDialog(onDismiss = {}, onCreated = {})
+                    EditAlertRuleDialog(rule = sampleRule, onDismiss = {}, onUpdated = {})
+                }
             }
         }
 
@@ -233,6 +243,10 @@ class AlertRulesScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
             onAllNodesWithText("Retry").fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Retry").performClick()
+
+        showDialogs.value = true
+        waitForIdle()
+        onNodeWithText("Create Alert Rule").assertExists()
     }
 
     /**

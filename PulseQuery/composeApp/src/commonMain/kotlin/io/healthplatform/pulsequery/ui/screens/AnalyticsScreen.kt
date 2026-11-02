@@ -137,7 +137,7 @@ fun AnalyticsScreen(
     val unknownErrorMsg = stringResource(Res.string.unknown_error)
 
     LaunchedEffect(vm) {
-        vm.loadAnalytics(fallbackError = unknownErrorMsg)
+        vm.performLoadAnalytics(fallbackError = unknownErrorMsg)
     }
 
     Scaffold(
@@ -221,7 +221,6 @@ private fun AnalyticsScreenBody(
 ) {
     Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
         when {
-            uiState.isLoading -> CircularProgressIndicator()
             !isDatabaseHealthy -> {
                 val dbMsg = resolveAnalyticsDatabaseErrorMessage(
                     healthState = healthState,
@@ -234,6 +233,7 @@ private fun AnalyticsScreenBody(
                     modifier = Modifier.padding(16.dp)
                 )
             }
+            uiState.isLoading -> CircularProgressIndicator()
             uiState.errorMessage != null -> {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,

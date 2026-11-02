@@ -108,7 +108,7 @@ fun WearCensusScreen(
     )
 
     LaunchedEffect(vm) {
-        vm.loadWearData()
+        vm.performLoadWearData()
     }
 
     Surface(

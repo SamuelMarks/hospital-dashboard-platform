@@ -410,7 +410,7 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(vm) {
-        vm.loadDashboards(errLoadDb)
+        vm.performLoadDashboards(errLoadDb)
     }
 
     val activeDashboard = uiState.activeDashboard

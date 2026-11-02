@@ -128,7 +128,7 @@ fun TvDashboardScreen(
     val uiState by vm.state.collectAsState()
 
     LaunchedEffect(vm) {
-        vm.loadDashboard()
+        vm.performLoadDashboard()
     }
 
     Surface(

@@ -121,7 +121,7 @@ fun UserManagementScreen(
     val state by vm.state.collectAsState()
 
     LaunchedEffect(vm) {
-        vm.loadUsers()
+        vm.performLoadUsers()
     }
 
     Scaffold(

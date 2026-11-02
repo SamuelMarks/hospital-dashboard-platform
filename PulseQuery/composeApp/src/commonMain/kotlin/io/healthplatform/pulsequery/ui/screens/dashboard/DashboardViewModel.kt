@@ -152,22 +152,31 @@ class DashboardViewModel(
     }
 
     /**
-     * Loads the user's dashboards and executes a single batch refresh for the active dashboard.
+     * Loads the user's dashboards and executes a single batch refresh for the active dashboard on [scope].
      * Falls back to cached widget execution results from [WidgetCacheStorage] when offline.
      *
      * @param errorPrefix Optional prefix for load error messages.
      */
     fun loadDashboards(errorPrefix: String = "Failed to load dashboards: ") {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult()
-            }.fold(
-                onSuccess = { fetched -> onDashboardsLoaded(fetched) },
-                onFailure = { e -> onDashboardsLoadFailed(e, errorPrefix) }
-            )
-            _state.update { it.copy(isLoading = false) }
+            performLoadDashboards(errorPrefix)
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of the user's dashboards and refreshes the active dashboard.
+     *
+     * @param errorPrefix Prefix for load error messages.
+     */
+    suspend fun performLoadDashboards(errorPrefix: String) {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentDashboardsApi.listDashboardsApiV1DashboardsGet().asResult()
+        }.fold(
+            onSuccess = { fetched -> onDashboardsLoaded(fetched) },
+            onFailure = { e -> onDashboardsLoadFailed(e, errorPrefix) }
+        )
+        _state.update { it.copy(isLoading = false) }
     }
 
     /**

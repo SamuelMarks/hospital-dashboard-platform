@@ -54,32 +54,39 @@ class WearCensusViewModel(
     val state: StateFlow<WearCensusUiState> = _state.asStateFlow()
 
     /**
-     * Loads active hospital capacity alert rules for the wearable display.
+     * Loads active hospital capacity alerts for wearable display on [scope].
      */
     fun loadWearData() {
         scope.launch {
-            _state.update { it.copy(isLoading = true, errorMessage = null) }
-            runResultPulseAsync {
-                currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult()
-            }.fold(
-                onSuccess = { fetchedAlerts ->
-                    _state.update {
-                        it.copy(
-                            alerts = fetchedAlerts,
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                    }
-                },
-                onFailure = { e ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.messageOrDefault(UiErrorKey.LOAD_WEAR_ALERTS)
-                        )
-                    }
-                }
-            )
+            performLoadWearData()
         }
+    }
+
+    /**
+     * Executes the suspending retrieval of active hospital capacity alerts for wearable display.
+     */
+    suspend fun performLoadWearData() {
+        _state.update { it.copy(isLoading = true, errorMessage = null) }
+        runResultPulseAsync {
+            currentAlertRulesApi.listAlertRulesApiV1AnalyticsAlertRulesGet().asResult()
+        }.fold(
+            onSuccess = { rules ->
+                _state.update {
+                    it.copy(
+                        alerts = rules,
+                        isLoading = false,
+                        errorMessage = null
+                    )
+                }
+            },
+            onFailure = { e ->
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.messageOrDefault(UiErrorKey.LOAD_WEAR_ALERTS)
+                    )
+                }
+            }
+        )
     }
 }

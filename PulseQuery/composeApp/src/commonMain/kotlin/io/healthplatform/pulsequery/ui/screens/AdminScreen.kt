@@ -135,7 +135,7 @@ fun AdminScreen(
     val saveSuccessMsg = stringResource(Res.string.settings_saved_successfully)
 
     LaunchedEffect(vm) {
-        vm.loadSettings(errorPrefix = errorLoadBase)
+        vm.performLoadSettings(errorPrefix = errorLoadBase)
     }
 
     Scaffold(

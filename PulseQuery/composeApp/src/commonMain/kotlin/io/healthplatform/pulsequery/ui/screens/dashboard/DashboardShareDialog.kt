@@ -123,22 +123,20 @@ fun DashboardShareContent(
     /**
      * Loads the existing shares for this dashboard.
      */
-    fun loadShares() {
-        coroutineScope.launch {
-            state = state.copy(isLoading = true, errorMessage = null)
-            runResultPulseAsync {
-                AppContainer.dashboardsApi
-                    .listDashboardSharesApiV1DashboardsDashboardIdSharesGet(dashboardId)
-                    .asResult()
-            }.fold(
-                onSuccess = { shares ->
-                    state = state.copy(isLoading = false, shares = shares)
-                },
-                onFailure = { e ->
-                    state = state.copy(isLoading = false, errorMessage = e.messageOrDefault("Failed to load shares"))
-                }
-            )
-        }
+    suspend fun loadShares() {
+        state = state.copy(isLoading = true, errorMessage = null)
+        runResultPulseAsync {
+            AppContainer.dashboardsApi
+                .listDashboardSharesApiV1DashboardsDashboardIdSharesGet(dashboardId)
+                .asResult()
+        }.fold(
+            onSuccess = { shares ->
+                state = state.copy(isLoading = false, shares = shares)
+            },
+            onFailure = { e ->
+                state = state.copy(isLoading = false, errorMessage = e.messageOrDefault("Failed to load shares"))
+            }
+        )
     }
 
     /**

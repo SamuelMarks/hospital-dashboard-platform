@@ -112,7 +112,6 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             }
         }
         val client = HttpClient(mockEngine) {
-            expectSuccess = true
             install(ContentNegotiation) {
                 json(Json { ignoreUnknownKeys = true; isLenient = true })
             }
@@ -138,6 +137,12 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
 
         val noSpecificError = pgOnlyError.copy(postgres = baseHealth.postgres.copy(error = null))
         assertEquals("Default", resolveAnalyticsDatabaseErrorMessage(noSpecificError, "Default"))
+
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        val existingVm = io.healthplatform.pulsequery.ui.screens.analytics.AnalyticsViewModel(scope = scope)
+        setupAnalyticsMock("records")
+        retryDatabaseAndLoadAnalytics(existingVm, "Fallback")
+        AppContainer.resetForTest()
     }
 
     /**
@@ -180,13 +185,39 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testAnalyticsScreenEmptyState() = runComposeUiTest {
-        setupAnalyticsMock("empty")
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val mockEngine = MockEngine { request ->
+            if (request.url.encodedPath.contains("/api/v1/analytics/llm")) {
+                gate.await()
+                respond(
+                    content = "[]",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            } else {
+                respond(
+                    content = """{"overall_status":"healthy","timestamp":"2026-09-01T00:00:00Z","postgres":{"status":"connected"},"duckdb":{"status":"ready","total_tables":1,"tables":{}},"data":{"has_default_data":true,"fallback_generated":false,"missing_files":[],"row_counts":{}},"templates":{"templates_loaded":1,"has_templates":true,"missing_file":false},"llm":{"providers_count":1,"mock_mode":false,"models":[]},"warnings":[]}""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+        }
+        AppContainer.setHttpClientForTest(
+            HttpClient(mockEngine) {
+                install(ContentNegotiation) {
+                    json(Json { ignoreUnknownKeys = true; isLenient = true })
+                }
+            }
+        )
 
         setContent {
             MaterialTheme {
                 AnalyticsScreen()
             }
         }
+
+        waitForIdle()
+        gate.complete(Unit)
 
         waitUntil(timeoutMillis = 30000) {
             onAllNodesWithText("No analytics data", substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -241,5 +272,6 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
             onAllNodesWithText("Retry Query", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         onNodeWithText("Retry Query", substring = true).assertIsDisplayed().performClick()
+        AppContainer.resetForTest()
     }
 }

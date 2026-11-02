@@ -272,16 +272,33 @@ class DashboardScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
         var executedPrompt: String? = null
         setContent {
             MaterialTheme {
-                WidgetElevatedCard(
-                    widget = nlWidget,
-                    renderState = io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState(
-                        allowNaturalText = true,
-                        processor = io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3"),
-                        naturalTextPrompt = "Count patients",
-                        generatedSql = "SELECT COUNT(*) FROM patients"
-                    ),
-                    onExecuteNaturalText = { executedPrompt = it }
-                )
+                androidx.compose.foundation.layout.Column {
+                    WidgetElevatedCard(
+                        widget = nlWidget,
+                        renderState = io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState(
+                            allowNaturalText = true,
+                            processor = io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3"),
+                            naturalTextPrompt = "Count patients",
+                            generatedSql = "SELECT COUNT(*) FROM patients"
+                        ),
+                        onExecuteNaturalText = { executedPrompt = it }
+                    )
+                    WidgetElevatedCard(
+                        widget = nlWidget.copy(
+                            id = "w-nl-busy",
+                            title = "Busy NL Widget",
+                            subtitle = null,
+                            config = kotlinx.serialization.json.buildJsonObject {
+                                put("allow_natural_text", kotlinx.serialization.json.JsonPrimitive(true))
+                            }
+                        ),
+                        renderState = io.healthplatform.pulsequery.ui.screens.dashboard.WidgetRenderState(
+                            allowNaturalText = true,
+                            isExecutingNaturalText = true,
+                            naturalTextPrompt = "Busy"
+                        )
+                    )
+                }
             }
         }
         waitForIdle()

@@ -184,7 +184,7 @@ fun OptimizationScreen(
 
     if (shouldInitializeOptimizationWorkspace(state)) {
         LaunchedEffect(vm) {
-            vm.initializeWorkspace()
+            vm.performInitializeWorkspace()
         }
     }
 
