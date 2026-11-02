@@ -9,6 +9,7 @@ import io.healthplatform.pulsequery.di.AppContainer
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -97,7 +98,8 @@ class JvmPlatformAndMainTest {
     }
 
     /**
-     * Verifies [initializeDesktopApplication] and [main] in headless test mode.
+     * Verifies [initializeDesktopApplication], [isHeadlessDesktopEnvironment], [launchDesktopApplication],
+     * and [main] in headless test mode.
      */
     @Test
     fun testDesktopMainAndInit() {
@@ -105,9 +107,27 @@ class JvmPlatformAndMainTest {
         AppContainer.setHttpClientForTest(createMockClient())
         initializeDesktopApplication()
         assertNotNull(AppContainer.keyValueStorage)
+        initializeDesktopApplication(JvmDatabaseDriverFactory(null))
+        assertNotNull(AppContainer.keyValueStorage)
+
+        assertTrue(isHeadlessDesktopEnvironment(headlessProperty = "true", awtHeadless = false))
+        assertTrue(isHeadlessDesktopEnvironment(headlessProperty = "false", awtHeadless = true))
+        assertFalse(isHeadlessDesktopEnvironment(headlessProperty = "false", awtHeadless = false))
+        assertFalse(isHeadlessDesktopEnvironment(headlessProperty = null, awtHeadless = false))
+
+        var launchedExitProcess: Boolean? = null
+        launchDesktopApplication(
+            headless = false,
+            driverFactory = JvmDatabaseDriverFactory(null),
+            windowLauncher = { exitOnExit, _ ->
+                launchedExitProcess = exitOnExit
+            }
+        )
+        assertEquals(false, launchedExitProcess)
 
         System.setProperty("pulsequery.headless.test", "true")
         try {
+            assertTrue(isHeadlessDesktopEnvironment())
             main()
         } finally {
             System.clearProperty("pulsequery.headless.test")

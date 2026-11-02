@@ -6,6 +6,8 @@ import io.healthplatform.pulsequery.api.models.DashboardResponse
 import io.healthplatform.pulsequery.api.models.HttpConfig
 import io.healthplatform.pulsequery.api.models.WidgetIn
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.awaitIdle
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.database.WidgetCacheStorage
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.DashboardWebSocketRepository
@@ -140,7 +142,7 @@ class DashboardViewModelTest {
     fun testLoadDashboardsRefreshFiltersAndCollaborators() = kotlinx.coroutines.runBlocking {
         val cache = WidgetCacheStorage()
         var lastRefreshBody: String? = null
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             when {
                 req.url.encodedPath.endsWith("/refresh") -> {
                     lastRefreshBody = req.body.toString()
@@ -165,7 +167,7 @@ class DashboardViewModelTest {
         assertTrue(vm.cartItems.value.isEmpty())
 
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(1, vm.state.value.dashboards.size)
         assertEquals("d-1", vm.state.value.activeDashboard?.id)
         assertEquals("Hello markdown", vm.state.value.widgetDataMap["w-text"]?.textContent)
@@ -174,28 +176,28 @@ class DashboardViewModelTest {
 
         // Reloading when activeDashboard is already set preserves activeDashboard
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("d-1", vm.state.value.activeDashboard?.id)
 
         // updateFilters & resetFilters
         vm.updateFilters("Cardiology", "24h")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Cardiology", vm.state.value.filterDepartment)
         assertEquals("24h", vm.state.value.filterTimeRange)
         assertNotNull(lastRefreshBody)
 
         vm.updateFilters("  ", "  ")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         vm.resetFilters()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vm.state.value.filterDepartment)
         assertNull(vm.state.value.filterTimeRange)
 
         // selectDashboard
         val active = assertNotNull(vm.state.value.activeDashboard)
         vm.selectDashboard(active)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         vm.onCleared()
     }
@@ -231,7 +233,7 @@ class DashboardViewModelTest {
             ]
         """.trimIndent()
 
-        val engine = MockEngine {
+        val engine = createUnconfinedMockEngine {
             respond(
                 content = if (returnEmptyList) "[]" else textOnlyDashboardJson,
                 status = HttpStatusCode.OK,
@@ -247,16 +249,16 @@ class DashboardViewModelTest {
 
         // Empty dashboard list -> activeDashboard is null, updateFilters is no-op
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vm.state.value.activeDashboard)
         assertTrue(vm.state.value.widgetDataMap.isEmpty())
         vm.updateFilters("ICU", "7d")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Text-only dashboard -> skips execution API call and populates textMap
         returnEmptyList = false
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Fallback text field", vm.state.value.widgetDataMap["w-t1"]?.textContent)
         assertEquals("", vm.state.value.widgetDataMap["w-t2"]?.textContent)
     }
@@ -266,7 +268,7 @@ class DashboardViewModelTest {
         val cache = WidgetCacheStorage()
         var failList = false
         var failRefresh = false
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             if (req.url.encodedPath.endsWith("/refresh")) {
                 if (failRefresh) throw IllegalStateException("Refresh failed")
                 respond(
@@ -293,26 +295,26 @@ class DashboardViewModelTest {
 
         // First load when payloadMap has no entry for w-sql -> returns empty WidgetRenderState()
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(WidgetRenderState(), vm.state.value.widgetDataMap["w-sql"])
 
         // Select a dashboard whose widgets list is null
         vm.selectDashboard(DashboardResponse(id = "d-null-widgets", name = "NullW", ownerId = "u-1", widgets = null))
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Restore d-1 as active dashboard
         failRefresh = false
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Refresh failure when cache is empty -> populates errorMessage on WidgetRenderState
         failRefresh = true
         vm.selectDashboard(assertNotNull(vm.state.value.activeDashboard))
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Refresh failed", vm.state.value.widgetDataMap["w-sql"]?.errorMessage)
 
         // Refresh failure with null exception message when cache is empty
-        val engineRefreshNull = MockEngine { req ->
+        val engineRefreshNull = createUnconfinedMockEngine { req ->
             if (req.url.encodedPath.endsWith("/refresh")) throw RuntimeException()
             respond(
                 content = dashboardJson,
@@ -328,46 +330,46 @@ class DashboardViewModelTest {
             widgetCacheProvider = { null }
         )
         vmNull.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to load data", vmNull.state.value.widgetDataMap["w-sql"]?.errorMessage)
 
         // Now populate cache (including valid JSON, invalid JSON, and another widget so cached list is non-empty when w-sql is absent)
         cache.cacheWidget("w-sql", "d-1", """{"data":[{"dept":"ER","cnt":5}]}""")
         vm.selectDashboard(assertNotNull(vm.state.value.activeDashboard))
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertTrue(vm.state.value.isOfflineSnapshot)
         assertEquals(listOf("ER" to 5f), vm.state.value.widgetDataMap["w-sql"]?.data)
 
         // List failure when activeDashboard is set and cache is non-empty -> restores from cache
         failList = true
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertTrue(vm.state.value.isOfflineSnapshot)
         assertNull(vm.state.value.errorMessage)
 
         // List failure when activeDashboard has widgets = null and cache is non-empty
         vm.selectDashboard(DashboardResponse(id = "d-1", name = "Exec", ownerId = "u-1", widgets = null))
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertTrue(vm.state.value.isOfflineSnapshot)
 
         // Restore activeDashboard with widgets, then test invalid JSON in cache and missing widget in cache
         failList = false
         failRefresh = false
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         failList = true
         cache.cacheWidget("w-sql", "d-1", "NOT_JSON")
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(WidgetRenderState(), vm.state.value.widgetDataMap["w-sql"])
 
         // When cache has a different widget ID for d-1 so cached is non-empty, but w-sql is absent from cachedJsonByWidgetId
         cache.clearDashboardWidgets("d-1")
         cache.cacheWidget("w-other", "d-1", """{"data":[]}""")
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(WidgetRenderState(), vm.state.value.widgetDataMap["w-sql"])
 
         // List failure when widgetCacheProvider returns null while activeDashboard is non-null
@@ -379,33 +381,34 @@ class DashboardViewModelTest {
         )
         failList = false
         vmNullCacheWithActive.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         failList = true
         vmNullCacheWithActive.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to load dashboards: List failed", vmNullCacheWithActive.state.value.errorMessage)
         // Also call retryHealthAndLoad on vmNullCacheWithActive (uses default AppContainer.networkHealthRepository)
         vmNullCacheWithActive.retryHealthAndLoad()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // List failure when cache is empty -> sets top-level errorMessage
         cache.clearDashboardWidgets("d-1")
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to load dashboards: List failed", vm.state.value.errorMessage)
 
         // List failure when activeDashboard is null and error.message is null
         vmNull.selectDashboard(DashboardResponse(id = "d-none", name = "N", ownerId = "u-1", widgets = null))
+        awaitIdle()
         val vmNoActive = DashboardViewModel(
             scope = this,
             dashboardsApi = DashboardsApi(
                 baseUrl = "http://localhost",
-                httpClient = createClient(MockEngine { throw RuntimeException() })
+                httpClient = createClient(createUnconfinedMockEngine { throw RuntimeException() })
             ),
             widgetCacheProvider = { null }
         )
         vmNoActive.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to load dashboards: Unknown error", vmNoActive.state.value.errorMessage)
     }
 
@@ -484,7 +487,7 @@ class DashboardViewModelTest {
         var failDeleteWidget = false
         var failCreateWidget = false
         var failReorder = false
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             when {
                 req.method == HttpMethod.Post && req.url.encodedPath.trimEnd('/').endsWith("/dashboards") -> respond(
                     content = """{"id":"d-2","name":"New","owner_id":"u-1","widgets":[]}""",
@@ -541,18 +544,20 @@ class DashboardViewModelTest {
 
         // observeRemoteWidgetUpdates triggers loadDashboards
         val obsJob = launch { vm.observeRemoteWidgetUpdates() }
+        kotlinx.coroutines.yield()
         wsRepo.onRemoteWidgetUpdate("w-sql")
-        kotlinx.coroutines.delay(50)
+        kotlinx.coroutines.yield()
+        awaitIdle(excludeJob = obsJob)
         assertEquals("d-1", vm.state.value.activeDashboard?.id)
 
         // createDashboard blank and valid
         vm.createDashboard("   ")
         vm.createDashboard("New Dashboard")
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
 
         // deleteDashboard
         vm.deleteDashboard("d-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
 
         // buildWidgetInFromResponse for TEXT, HTTP, and SQL variants (including non-JsonPrimitive config entries)
         val textW1 = WidgetResponse("T", "TEXT", "markdown", buildJsonObject { put("content", JsonPrimitive("c")) }, "w1", "d1")
@@ -600,22 +605,22 @@ class DashboardViewModelTest {
 
         // deleteWidgetWithUndo, undo, redo
         vm.deleteWidgetWithUndo(sqlW1)
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
         vm.undo()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
         vm.redo()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
 
         // Undo failure
         failCreateWidget = true
         vm.undo()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
         assertEquals("Failed to restore widget: Restore widget err", vm.state.value.errorMessage)
 
         // Delete widget failure (with message and null message)
         failDeleteWidget = true
         vm.deleteWidgetWithUndo(sqlW1)
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
         assertEquals("Failed to delete widget: Delete widget err", vm.state.value.errorMessage)
 
         // reorderWidget: valid indices, out-of-bounds indices, and failure
@@ -624,54 +629,55 @@ class DashboardViewModelTest {
         vm.reorderWidget(0, -1)
         vm.reorderWidget(0, 99)
         vm.reorderWidget(0, 1)
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
 
         failReorder = true
         vm.reorderWidget(0, 1)
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
         assertEquals("Failed to persist widget order: Reorder failed", vm.state.value.errorMessage)
 
         // reorderWidget when activeDashboard is null or widgets is null
         vm.selectDashboard(DashboardResponse(id = "d-null-w", name = "NoW", ownerId = "u-1", widgets = null))
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
         vm.reorderWidget(0, 1)
 
         // retryHealthAndLoad
         vm.retryHealthAndLoad()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = obsJob)
 
         obsJob.cancel()
+        wsRepo.disconnect()
     }
 
     @Test
     fun testCreateAndDeleteDashboardAndWidgetFailures() = kotlinx.coroutines.runBlocking {
         var errMsg: String? = "Server error"
-        val failClient = createClient(MockEngine { throw RuntimeException(errMsg) })
+        val failClient = createClient(createUnconfinedMockEngine { throw RuntimeException(errMsg) })
         val vm = DashboardViewModel(
             scope = this,
             dashboardsApi = DashboardsApi(baseUrl = "http://localhost", httpClient = failClient)
         )
 
         vm.createDashboard("D1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to create dashboard: Server error", vm.state.value.errorMessage)
 
         vm.deleteDashboard("d-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to delete dashboard: Server error", vm.state.value.errorMessage)
 
         errMsg = null
         vm.createDashboard("D1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to create dashboard: Unknown error", vm.state.value.errorMessage)
 
         vm.deleteDashboard("d-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to delete dashboard: Unknown error", vm.state.value.errorMessage)
 
         val w = WidgetResponse("S", "SQL", "table", JsonObject(emptyMap()), "w1", "d1")
         vm.deleteWidgetWithUndo(w)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to delete widget: Unknown error", vm.state.value.errorMessage)
 
         vm.reorderWidget(0, 1)
@@ -681,7 +687,7 @@ class DashboardViewModelTest {
     fun testExecuteWidgetNaturalTextBranches() = kotlinx.coroutines.runBlocking {
         var failRefreshWidget = false
         var omitWidgetPayload = false
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             when {
                 req.url.encodedPath.contains("/widgets/") && req.url.encodedPath.endsWith("/refresh") -> {
                     if (failRefreshWidget) throw IllegalStateException("LLM error")
@@ -720,11 +726,11 @@ class DashboardViewModelTest {
 
         // Guard when activeDashboard has widgets = null
         vm.selectDashboard(DashboardResponse(id = "d-nw", name = "NW", ownerId = "u-1", widgets = null))
-        kotlinx.coroutines.delay(20)
+        awaitIdle()
         vm.executeWidgetNaturalText("w-sql", "Show ICU")
 
         vm.loadDashboards()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Guard when widgetId not found or blank text
         vm.executeWidgetNaturalText("missing-id", "Show ICU")
@@ -754,7 +760,7 @@ class DashboardViewModelTest {
             "Show ICU",
             io.healthplatform.pulsequery.core.model.ProcessorId("ollama:llama3")
         )
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         val stateAfterOk = assertNotNull(vm.state.value.widgetDataMap["w-sql"])
         assertEquals("SELECT 'ICU' AS dept, 99 AS cnt", stateAfterOk.generatedSql)
         assertEquals("ollama:llama3", stateAfterOk.processor.value)
@@ -764,7 +770,7 @@ class DashboardViewModelTest {
         // Success when payload omits widget key
         omitWidgetPayload = true
         vm.executeWidgetNaturalText("w-sql", "Show ICU")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertFalse(assertNotNull(vm.state.value.widgetDataMap["w-sql"]).isExecutingNaturalText)
 
         // Failure path (and when widgetDataMap does not contain the target widget ID)
@@ -780,7 +786,7 @@ class DashboardViewModelTest {
             )
         )
         vm.executeWidgetNaturalText("w-unmapped", "Show ICU")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("LLM error", assertNotNull(vm.state.value.widgetDataMap["w-unmapped"]).errorMessage)
 
         // Verify extractWidgetSubtitle branches

@@ -14,10 +14,10 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.auth.AuthViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -44,7 +44,7 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
     }
 
     private fun setupMockApi(shouldFail: Boolean = false) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             if (shouldFail) {
                 respond("Unauthorized", HttpStatusCode.Unauthorized)
             } else {
@@ -189,7 +189,10 @@ class LoginScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
         onRoot().printToLog("LoginScreenTest")
 
-        waitUntil(timeoutMillis = 15000) { successCalled }
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodes(hasText("Login / Register", substring = true)).fetchSemanticsNodes()
+            successCalled
+        }
 
         assertTrue(successCalled)
     }

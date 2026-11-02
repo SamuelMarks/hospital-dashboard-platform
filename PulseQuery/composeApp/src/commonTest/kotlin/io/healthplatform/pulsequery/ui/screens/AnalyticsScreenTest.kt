@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.api.models.SystemHealthResponse
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -43,7 +44,7 @@ class AnalyticsScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest
     }
 
     private fun setupAnalyticsMock(mode: String) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             when {
                 request.url.encodedPath.contains("/system/health") -> {
                     if (mode == "db_unhealthy") {

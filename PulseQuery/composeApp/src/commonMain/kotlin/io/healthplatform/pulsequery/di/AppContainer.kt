@@ -427,6 +427,7 @@ object AppContainer : AppDependencies, SessionConfigProvider {
      * Resets all cached HTTP clients, tokens, storage, and API services for test isolation.
      */
     fun resetForTest() {
+        _registryFlow.value.dashboardWebSocketRepository.disconnect()
         sessionManager.clear(null)
         _keyValueStorage = null
         widgetCacheStorage = null

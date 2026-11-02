@@ -11,9 +11,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
@@ -52,7 +52,7 @@ class DashboardShareDialogTest : io.healthplatform.pulsequery.testing.BaseCompos
             """{"id":"s-1","dashboard_id":"dash-1","user_id":"u-2","user_email":"doctor@hospital.org","permission_level":"VIEW"}"""
         )
 
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath
             when {
                 path.contains("system/health") -> {

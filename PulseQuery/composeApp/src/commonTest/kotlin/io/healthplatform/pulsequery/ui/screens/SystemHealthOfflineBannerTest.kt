@@ -11,9 +11,9 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import androidx.compose.ui.test.waitUntilDoesNotExist
 import io.healthplatform.pulsequery.App
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -62,7 +62,7 @@ class SystemHealthOfflineBannerTest : io.healthplatform.pulsequery.testing.BaseC
     private var mockSystemJson = healthySystemResponse
 
     private fun setupMockEngine() {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             when {
                 request.url.encodedPath.contains("system/health") -> {
                     if (mockSystemStatus == HttpStatusCode.OK) {

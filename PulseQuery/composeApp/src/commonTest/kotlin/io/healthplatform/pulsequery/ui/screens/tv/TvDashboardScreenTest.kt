@@ -11,10 +11,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.api.models.WidgetResponse
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.testing.BaseComposeTest
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -55,7 +55,7 @@ class TvDashboardScreenTest : BaseComposeTest() {
 
     @Test
     fun testTvDashboardScreenRendersWidgetsAndCarousel() = runComposeUiTest {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath.removeSuffix("/")
             when {
                 path.endsWith("/api/v1/dashboards") -> respond(

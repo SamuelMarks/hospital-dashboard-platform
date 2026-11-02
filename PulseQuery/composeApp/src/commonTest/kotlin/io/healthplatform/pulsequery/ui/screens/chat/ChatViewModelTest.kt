@@ -2,6 +2,8 @@ package io.healthplatform.pulsequery.ui.screens.chat
 
 import io.healthplatform.pulsequery.api.apis.ChatApi
 import io.healthplatform.pulsequery.api.models.ConversationResponse
+import io.healthplatform.pulsequery.awaitIdle
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.ChatStreamingRepository
 import io.healthplatform.pulsequery.network.QueryCartRepository
@@ -95,7 +97,7 @@ class ChatViewModelTest {
 
     @Test
     fun testLoadConversationsWithAndWithoutInitialConversationId() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             when {
                 req.url.encodedPath.endsWith("/messages") -> respond(
                     content = "[$msg1Json]",
@@ -114,45 +116,46 @@ class ChatViewModelTest {
         // With matching initialConversationId -> resolves activeConversation and loads messages
         val vmWithInitial = ChatViewModel(initialConversationId = "c-1", scope = this)
         vmWithInitial.loadConversations()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("c-1", vmWithInitial.state.value.activeConversation?.id)
         assertEquals(1, vmWithInitial.state.value.messages.size)
 
         // Reloading when activeConversation is already set keeps currentActive
         vmWithInitial.loadConversations()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("c-1", vmWithInitial.state.value.activeConversation?.id)
 
         // With non-matching initialConversationId
         val vmUnmatched = ChatViewModel(initialConversationId = "missing", scope = this)
         vmUnmatched.loadConversations()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vmUnmatched.state.value.activeConversation)
 
         // Without initialConversationId
         val vmNoInitial = ChatViewModel(scope = this)
         vmNoInitial.loadConversations()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vmNoInitial.state.value.activeConversation)
     }
 
     @Test
     fun testLoadConversationsAndLoadMessagesFailures() = kotlinx.coroutines.runBlocking {
         var throwMsg: String? = "Network down"
-        val engineFail = MockEngine { throw RuntimeException(throwMsg) }
+        val engineFail = createUnconfinedMockEngine { throw RuntimeException(throwMsg) }
         val apiFail = ChatApi(baseUrl = "http://localhost", httpClient = createClient(engineFail))
         val vm = ChatViewModel(scope = this, chatApi = apiFail)
 
         val notifications = mutableListOf<String>()
         val job = launch { vm.notifications.collect { notifications.add(it) } }
+        kotlinx.coroutines.yield()
 
         vm.loadConversations()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
         assertEquals("Failed to load conversations: Network down", vm.state.value.errorMessage)
 
         throwMsg = null
         vm.loadConversations()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
         assertEquals("Failed to load conversations: Unknown error", vm.state.value.errorMessage)
 
         // loadMessages when activeConversation is null
@@ -169,12 +172,12 @@ class ChatViewModelTest {
         )
         throwMsg = "Messages timeout"
         vm.selectConversation(conv)
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
         assertEquals("Failed to load messages: Messages timeout", vm.state.value.errorMessage)
 
         throwMsg = null
         vm.loadMessages()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
         assertEquals("Failed to load messages: Unknown error", vm.state.value.errorMessage)
 
         // selectConversation(null) clears activeConversation and messages
@@ -187,7 +190,7 @@ class ChatViewModelTest {
 
     @Test
     fun testDeleteConversationActiveInactiveAndFailure() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             if (req.method == HttpMethod.Delete) {
                 respond(content = "", status = HttpStatusCode.NoContent)
             } else {
@@ -202,7 +205,7 @@ class ChatViewModelTest {
         val vm = ChatViewModel(scope = this, chatApi = api)
         // Delete when activeConversation is null
         vm.deleteConversation("c-other")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         val conv = ConversationResponse(
             id = "c-1",
@@ -212,32 +215,32 @@ class ChatViewModelTest {
             title = "ICU"
         )
         vm.selectConversation(conv)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Delete non-active conversation
         vm.deleteConversation("c-other")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("c-1", vm.state.value.activeConversation?.id)
 
         // Delete active conversation resets activeConversation
         vm.deleteConversation("c-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vm.state.value.activeConversation)
 
         // Delete failure with message and null message
         var errMsg: String? = "Delete forbidden"
         val failApi = ChatApi(
             baseUrl = "http://localhost",
-            httpClient = createClient(MockEngine { throw RuntimeException(errMsg) })
+            httpClient = createClient(createUnconfinedMockEngine { throw RuntimeException(errMsg) })
         )
         val vmFail = ChatViewModel(scope = this, chatApi = failApi)
         vmFail.deleteConversation("c-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to delete conversation: Delete forbidden", vmFail.state.value.errorMessage)
 
         errMsg = null
         vmFail.deleteConversation("c-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to delete conversation: Unknown error", vmFail.state.value.errorMessage)
     }
 
@@ -252,7 +255,7 @@ class ChatViewModelTest {
             data: {"event":"done","message_id":"m-1","content":"SELECT 1;","sql_snippet":"SELECT 1;"}
         """.trimIndent()
 
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             when {
                 req.url.encodedPath.contains("/chat/stream/") -> respond(
                     content = ssePayload,
@@ -301,12 +304,13 @@ class ChatViewModelTest {
         // Blank input does nothing
         vm.updateInputText("   ")
         vm.sendMessage()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vm.state.value.activeConversation)
 
         // First message creates conversation (with non-null messages) and streams tokens
         vm.updateInputText("Show ICU occupancy over the past 30 days")
         vm.sendMessage()
+        awaitIdle()
         vm.state.first { !it.isLoading }
         assertNull(vm.state.value.errorMessage, "Unexpected error: ${vm.state.value.errorMessage}")
         assertEquals("c-1", vm.state.value.activeConversation?.id)
@@ -317,6 +321,7 @@ class ChatViewModelTest {
         AppContainer.currentToken = ""
         vm.updateInputText("Follow up question")
         vm.sendMessage()
+        awaitIdle()
         vm.state.first { !it.isLoading }
         assertEquals("c-1", vm.state.value.activeConversation?.id)
 
@@ -326,6 +331,7 @@ class ChatViewModelTest {
         AppContainer.currentToken = null
         vm.updateInputText("Another new chat")
         vm.sendMessage()
+        awaitIdle()
         vm.state.first { !it.isLoading }
         assertEquals("c-1", vm.state.value.activeConversation?.id)
 
@@ -342,6 +348,7 @@ class ChatViewModelTest {
         )
         vmStreamCrash.updateInputText("Test stream crash")
         vmStreamCrash.sendMessage()
+        awaitIdle()
         vmStreamCrash.state.first { !it.isLoading }
         assertNull(vmStreamCrash.state.value.streamingCandidateText)
 
@@ -349,24 +356,26 @@ class ChatViewModelTest {
         var errMsg: String? = "LLM down"
         val failApi = ChatApi(
             baseUrl = "http://localhost",
-            httpClient = createClient(MockEngine { throw RuntimeException(errMsg) })
+            httpClient = createClient(createUnconfinedMockEngine { throw RuntimeException(errMsg) })
         )
         val vmFail = ChatViewModel(scope = this, chatApi = failApi)
         vmFail.updateInputText("Hello")
         vmFail.sendMessage()
+        awaitIdle()
         vmFail.state.first { !it.isLoading }
         assertEquals("Failed to send message: LLM down", vmFail.state.value.errorMessage)
 
         errMsg = null
         vmFail.updateInputText("Hello")
         vmFail.sendMessage()
+        awaitIdle()
         vmFail.state.first { !it.isLoading }
         assertEquals("Failed to send message: Unknown error", vmFail.state.value.errorMessage)
     }
 
     @Test
     fun testVoteCandidateAndStageToCart() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine {
+        val engine = createUnconfinedMockEngine {
             respond(
                 content = msg1Json,
                 status = HttpStatusCode.OK,
@@ -384,7 +393,7 @@ class ChatViewModelTest {
         vm.voteCandidate("m-1", "cand-1")
         vm.selectConversation(null)
         vm.voteCandidate("m-1", "cand-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Select conversation and vote successfully
         val conv = ConversationResponse(
@@ -394,7 +403,7 @@ class ChatViewModelTest {
             updatedAt = Instant.parse("2026-01-01T00:00:00Z"),
             title = "ICU"
         )
-        val engineListAndVote = MockEngine { req ->
+        val engineListAndVote = createUnconfinedMockEngine { req ->
             when {
                 req.method == HttpMethod.Post -> respond(
                     content = msg1Json,
@@ -419,7 +428,7 @@ class ChatViewModelTest {
             queryCartRepository = cart
         )
         vmVote.selectConversation(conv)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(
             1,
             vmVote.messagesByRole(io.healthplatform.pulsequery.core.model.MessageAuthorRole.ASSISTANT).size
@@ -432,26 +441,26 @@ class ChatViewModelTest {
             io.healthplatform.pulsequery.core.model.MessageId("m-1"),
             io.healthplatform.pulsequery.core.model.CandidateId("cand-1")
         )
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vmVote.state.value.errorMessage)
         vmVote.deleteConversation(io.healthplatform.pulsequery.core.model.ConversationId("c-1"))
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
 
         // Vote failure with message and null message
         var errMsg: String? = "Vote failed"
         val vmVoteFail = ChatViewModel(
             scope = this,
-            chatApi = ChatApi(baseUrl = "http://localhost", httpClient = createClient(MockEngine { throw RuntimeException(errMsg) }))
+            chatApi = ChatApi(baseUrl = "http://localhost", httpClient = createClient(createUnconfinedMockEngine { throw RuntimeException(errMsg) }))
         )
         vmVoteFail.selectConversation(conv)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         vmVoteFail.voteCandidate("m-1", "cand-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Vote failed", vmVoteFail.state.value.errorMessage)
 
         errMsg = null
         vmVoteFail.voteCandidate("m-1", "cand-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to record vote", vmVoteFail.state.value.errorMessage)
 
         // Stage to cart

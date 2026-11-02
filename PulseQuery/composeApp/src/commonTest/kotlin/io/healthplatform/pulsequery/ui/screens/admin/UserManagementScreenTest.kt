@@ -12,9 +12,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -49,7 +49,7 @@ class UserManagementScreenTest : io.healthplatform.pulsequery.testing.BaseCompos
             ]
         """.trimIndent()
 
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             when {
                 !success -> respond("Internal Server Error", HttpStatusCode.InternalServerError)
                 request.url.encodedPath.contains("admin/users") -> {

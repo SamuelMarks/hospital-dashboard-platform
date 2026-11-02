@@ -17,10 +17,10 @@ import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCandidateResponse
 import io.healthplatform.pulsequery.api.models.MessageResponse
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.chat.ChatViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -51,7 +51,7 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
     }
 
     private fun setupMockApi(successLoad: Boolean = true, successCreate: Boolean = true) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath.removeSuffix("/")
             when {
                 path.endsWith("/api/v1/conversations") && request.method == HttpMethod.Get -> {
@@ -189,6 +189,7 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onNodeWithContentDescription("New Conversation").performClick()
         onNodeWithText("Ask a query...").performTextInput("Show ICU beds")
         onNodeWithContentDescription("Send").performClick()
+        waitForIdle()
     }
 
     /**

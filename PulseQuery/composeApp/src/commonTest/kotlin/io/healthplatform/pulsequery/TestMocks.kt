@@ -2,10 +2,13 @@ package io.healthplatform.pulsequery
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockEngineConfig
+import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.request.HttpRequestData
+import io.ktor.client.request.HttpResponseData
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.header
 import io.ktor.http.ContentType
@@ -15,7 +18,45 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.serialization.json.Json
+
+/**
+ * Creates a deterministic [MockEngine] executing handlers on [Dispatchers.Unconfined] so
+ * Compose UI tests and ViewModel tests complete mock HTTP round-trips synchronously without
+ * hopping to background `Dispatchers.IO` threads.
+ *
+ * @param handler Request handler block returning a mocked [HttpResponseData].
+ * @return Configured [MockEngine] instance.
+ */
+fun createUnconfinedMockEngine(
+    handler: suspend MockRequestHandleScope.(HttpRequestData) -> HttpResponseData
+): MockEngine = MockEngine(
+    MockEngineConfig().apply {
+        dispatcher = Dispatchers.Unconfined
+        addHandler(handler)
+    }
+)
+
+/**
+ * Suspends until all active child coroutines in this [CoroutineScope] (excluding [excludeJob])
+ * have completed, including any follow-up child coroutines launched during their execution.
+ *
+ * @param excludeJob Optional long-running observer [Job] to exclude from joining.
+ */
+suspend fun CoroutineScope.awaitIdle(excludeJob: Job? = null) {
+    while (true) {
+        val activeChildren = coroutineContext[Job]
+            ?.children
+            ?.filter { it !== excludeJob && it.isActive }
+            ?.toList()
+            .orEmpty()
+        if (activeChildren.isEmpty()) break
+        activeChildren.forEach { it.join() }
+    }
+}
 
 /**
  * Extracts a UTF-8 string representation from a Ktor [OutgoingContent] request body for test assertions.
@@ -37,14 +78,14 @@ fun createInspectingMockEngine(
 ): MockEngine {
     var activeUserEmail = "test@test.com"
     val jsonParser = Json { ignoreUnknownKeys = true; isLenient = true }
-    return MockEngine { request ->
+    return createUnconfinedMockEngine { request ->
         recordedRequests?.add(request)
 
         val statusOverride = forcedStatus
             ?: request.headers["X-Force-Status"]?.toIntOrNull()?.let { HttpStatusCode.fromValue(it) }
 
         if (statusOverride != null) {
-            return@MockEngine respond(
+            return@createUnconfinedMockEngine respond(
                 content = forcedErrorBody,
                 status = statusOverride,
                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())

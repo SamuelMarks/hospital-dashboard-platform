@@ -11,10 +11,10 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
 import io.healthplatform.pulsequery.api.models.AlertRuleResponse
 import io.healthplatform.pulsequery.api.models.AlertSeverity
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.testing.BaseComposeTest
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -60,7 +60,7 @@ class WearCensusScreenTest : BaseComposeTest() {
 
     @Test
     fun testWearCensusScreenRendersGlanceableKPIsAndAlerts() = runComposeUiTest {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             if (request.url.encodedPath.contains("/analytics/alert-rules")) {
                 respond(
                     content = """[{"id":"r-1","unit_category":"Pediatric ICU","threshold_percentage":90.0,"severity":"CRITICAL","is_active":true,"created_at":"2026-09-01T00:00:00Z"}]""",

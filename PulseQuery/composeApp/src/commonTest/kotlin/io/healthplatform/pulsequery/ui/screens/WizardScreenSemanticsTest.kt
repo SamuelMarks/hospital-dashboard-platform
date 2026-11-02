@@ -19,6 +19,7 @@ import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.test.waitUntilAtLeastOneExists
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.wizard.CustomWidgetConfigurationContent
 import io.healthplatform.pulsequery.ui.screens.wizard.ParameterConfigurationContent
@@ -32,7 +33,6 @@ import io.healthplatform.pulsequery.ui.screens.wizard.handleWizardNavigationBack
 import io.healthplatform.pulsequery.ui.screens.wizard.resolveWizardProcessorDisplayName
 import io.healthplatform.pulsequery.ui.screens.wizard.resolveWizardViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -94,7 +94,7 @@ class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseCompo
     fun setUp() {
         AppContainer.resetForTest()
         AppContainer.currentBaseUrl = "http://localhost"
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             when {
                 request.url.encodedPath.contains("system/health") -> {
                     respond(
@@ -295,7 +295,7 @@ class WizardScreenSemanticsTest : io.healthplatform.pulsequery.testing.BaseCompo
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testWizardErrorRetry() = runComposeUiTest {
-        val failEngine = MockEngine {
+        val failEngine = createUnconfinedMockEngine {
             respond("Error", HttpStatusCode.InternalServerError)
         }
         AppContainer.setHttpClientForTest(HttpClient(failEngine))

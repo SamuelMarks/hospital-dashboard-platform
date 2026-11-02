@@ -14,9 +14,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -47,7 +47,7 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
     }
 
     private fun setupMockApi(successLoad: Boolean = true, successSave: Boolean = true) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath.removeSuffix("/")
             when {
                 path.endsWith("/api/v1/admin/settings") && request.method == HttpMethod.Get -> {
@@ -130,8 +130,8 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         }
 
         waitUntil(timeoutMillis = 15000) {
-            loadedKeyCount == 1 &&
-                onAllNodesWithText("API Keys", substring = true).fetchSemanticsNodes().isNotEmpty()
+            onAllNodesWithText("API Keys", substring = true).fetchSemanticsNodes().isNotEmpty() &&
+                loadedKeyCount == 1
         }
         onNodeWithText("API Keys", substring = true).assertIsDisplayed()
 
@@ -158,6 +158,7 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         onAllNodes(androidx.compose.ui.test.hasContentDescription("Delete Model"))[0].performClick()
 
         onNodeWithText("Save Settings", useUnmergedTree = true).performClick()
+        waitForIdle()
     }
 
     /**
@@ -179,6 +180,7 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         }
         onNodeWithText("Admin settings unavailable", substring = true).assertIsDisplayed()
         onNodeWithText("Retry").performClick()
+        waitForIdle()
     }
 
     /**
@@ -205,12 +207,14 @@ class AdminScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         }
 
         waitUntil(timeoutMillis = 15000) {
-            loadedKeyCount == 1
+            onAllNodesWithText("API Keys", substring = true).fetchSemanticsNodes().isNotEmpty() &&
+                loadedKeyCount == 1
         }
         onNodeWithText("Save Settings", useUnmergedTree = true).performClick()
 
         waitUntil(timeoutMillis = 15000) {
-            capturedError?.contains("Failed to write admin settings") == true
+            onAllNodesWithText("API Keys", substring = true).fetchSemanticsNodes().isNotEmpty() &&
+                capturedError?.contains("Failed to write admin settings") == true
         }
         assertTrue(capturedError?.contains("Failed to write admin settings") == true)
     }

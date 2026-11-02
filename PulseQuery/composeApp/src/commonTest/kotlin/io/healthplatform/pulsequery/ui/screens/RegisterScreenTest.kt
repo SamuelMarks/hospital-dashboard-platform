@@ -14,9 +14,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
@@ -53,7 +53,7 @@ class RegisterScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
      * @param emailExists Whether registration fails due to duplicate email.
      */
     private fun setupMockApi(shouldSucceed: Boolean = true, emailExists: Boolean = false) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath
             when {
                 path.contains("system/health") -> {
@@ -164,7 +164,10 @@ class RegisterScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest(
         onNodeWithText("Confirm Password").performTextInput("validPassword123")
         onNodeWithText("Register Account").performScrollTo().performClick()
 
-        waitUntil(timeoutMillis = 15000) { registered }
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Register Account", substring = true).fetchSemanticsNodes()
+            registered
+        }
         assertTrue(registered)
     }
 

@@ -2,6 +2,8 @@ package io.healthplatform.pulsequery.ui.screens.alertrules
 
 import io.healthplatform.pulsequery.api.apis.AlertRulesApi
 import io.healthplatform.pulsequery.api.models.AlertSeverity
+import io.healthplatform.pulsequery.awaitIdle
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -75,7 +77,7 @@ class AlertRulesViewModelTest {
 
     @Test
     fun testLoadRulesSuccessAndFailure() = kotlinx.coroutines.runBlocking {
-        val engineSuccess = MockEngine {
+        val engineSuccess = createUnconfinedMockEngine {
             respond(
                 content = "[$sampleRuleJson]",
                 status = HttpStatusCode.OK,
@@ -86,37 +88,37 @@ class AlertRulesViewModelTest {
 
         val vmDefault = AlertRulesViewModel(scope = this)
         vmDefault.loadRules()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(1, vmDefault.state.value.rules.size)
         assertEquals("ICU", vmDefault.state.value.rules[0].unitCategory)
         assertFalse(vmDefault.state.value.isLoading)
         assertNull(vmDefault.state.value.errorMessage)
 
         // Failure with message
-        val engineFailMsg = MockEngine { throw IllegalStateException("DB down") }
+        val engineFailMsg = createUnconfinedMockEngine { throw IllegalStateException("DB down") }
         val vmFailMsg = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailMsg))
         )
         vmFailMsg.loadRules()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("DB down", vmFailMsg.state.value.errorMessage)
 
         // Failure with null message
-        val engineFailNull = MockEngine { throw RuntimeException(null as String?) }
+        val engineFailNull = createUnconfinedMockEngine { throw RuntimeException(null as String?) }
         val vmFailNull = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailNull))
         )
         vmFailNull.loadRules()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to load alert rules", vmFailNull.state.value.errorMessage)
     }
 
     @Test
     fun testDeleteRuleSuccessAndFailure() = kotlinx.coroutines.runBlocking {
         var deleteCount = 0
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             if (req.method == HttpMethod.Delete) {
                 deleteCount++
                 respond(content = "", status = HttpStatusCode.NoContent)
@@ -136,34 +138,34 @@ class AlertRulesViewModelTest {
         assertTrue(vm.canModifyRules(io.healthplatform.pulsequery.core.model.ClinicalRole.PHYSICIAN))
         assertFalse(vm.canModifyRules(io.healthplatform.pulsequery.core.model.ClinicalRole.ANALYST))
         vm.deleteRule(io.healthplatform.pulsequery.core.model.AlertRuleId("r-1"))
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(1, deleteCount)
         assertTrue(vm.state.value.rules.isEmpty())
 
         // Delete failure with message
-        val engineFailMsg = MockEngine { throw IllegalStateException("Cannot delete") }
+        val engineFailMsg = createUnconfinedMockEngine { throw IllegalStateException("Cannot delete") }
         val vmFail1 = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailMsg))
         )
         vmFail1.deleteRule("r-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Cannot delete", vmFail1.state.value.errorMessage)
 
         // Delete failure with null message
-        val engineFailNull = MockEngine { throw RuntimeException(null as String?) }
+        val engineFailNull = createUnconfinedMockEngine { throw RuntimeException(null as String?) }
         val vmFail2 = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailNull))
         )
         vmFail2.deleteRule("r-1")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to delete rule", vmFail2.state.value.errorMessage)
     }
 
     @Test
     fun testCreateRuleValidationSuccessAndFailure() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             if (req.method == HttpMethod.Post) {
                 respond(
                     content = sampleRuleJson,
@@ -200,7 +202,7 @@ class AlertRulesViewModelTest {
 
         // Success with default severity & onSuccess
         vm.createRule(unitCategory = " ICU ", thresholdText = "85")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vm.state.value.dialogError)
         assertFalse(vm.state.value.isSaving)
 
@@ -212,33 +214,33 @@ class AlertRulesViewModelTest {
             severity = AlertSeverity.CRITICAL,
             onSuccess = { callbackInvoked = true }
         )
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertTrue(callbackInvoked)
 
         // Failure with message
-        val engineFailMsg = MockEngine { throw IllegalStateException("Duplicate rule") }
+        val engineFailMsg = createUnconfinedMockEngine { throw IllegalStateException("Duplicate rule") }
         val vmFail1 = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailMsg))
         )
         vmFail1.createRule(unitCategory = "ICU", thresholdText = "85")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Duplicate rule", vmFail1.state.value.dialogError)
 
         // Failure with null message
-        val engineFailNull = MockEngine { throw RuntimeException(null as String?) }
+        val engineFailNull = createUnconfinedMockEngine { throw RuntimeException(null as String?) }
         val vmFail2 = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailNull))
         )
         vmFail2.createRule(unitCategory = "ICU", thresholdText = "85")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Creation failed", vmFail2.state.value.dialogError)
     }
 
     @Test
     fun testUpdateRuleValidationSuccessAndFailure() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine { req ->
+        val engine = createUnconfinedMockEngine { req ->
             if (req.method == HttpMethod.Put) {
                 respond(
                     content = sampleRuleJson,
@@ -273,7 +275,7 @@ class AlertRulesViewModelTest {
 
         // Success with default callback
         vm.updateRule("r-1", " ICU ", "80", AlertSeverity.WARNING, false)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertNull(vm.state.value.dialogError)
 
         // Success with explicit callback
@@ -281,27 +283,27 @@ class AlertRulesViewModelTest {
         vm.updateRule("r-1", "ICU", "95", AlertSeverity.CRITICAL, true) {
             updatedCallback = true
         }
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertTrue(updatedCallback)
 
         // Failure with message
-        val engineFailMsg = MockEngine { throw IllegalStateException("Update rejected") }
+        val engineFailMsg = createUnconfinedMockEngine { throw IllegalStateException("Update rejected") }
         val vmFail1 = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailMsg))
         )
         vmFail1.updateRule("r-1", "ICU", "80", AlertSeverity.WARNING, true)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Update rejected", vmFail1.state.value.dialogError)
 
         // Failure with null message
-        val engineFailNull = MockEngine { throw RuntimeException(null as String?) }
+        val engineFailNull = createUnconfinedMockEngine { throw RuntimeException(null as String?) }
         val vmFail2 = AlertRulesViewModel(
             scope = this,
             alertRulesApi = AlertRulesApi(baseUrl = "http://localhost", httpClient = createClient(engineFailNull))
         )
         vmFail2.updateRule("r-1", "ICU", "80", AlertSeverity.WARNING, true)
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Update failed", vmFail2.state.value.dialogError)
     }
 }

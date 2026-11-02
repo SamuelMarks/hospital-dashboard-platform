@@ -202,16 +202,24 @@ private fun EditorExecuteFab(
     ExtendedFloatingActionButton(
         onClick = onExecute,
         modifier = Modifier.semantics { contentDescription = execDesc },
-        icon = {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            } else {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-            }
-        },
+        icon = { EditorFabIcon(isLoading = isLoading) },
         text = { Text(execDesc) },
         expanded = !isLoading
     )
+}
+
+/**
+ * Renders the leading icon or loading spinner inside [EditorExecuteFab].
+ *
+ * @param isLoading Whether a SQL query is currently executing.
+ */
+@Composable
+internal fun EditorFabIcon(isLoading: Boolean) {
+    if (isLoading) {
+        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+    } else {
+        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+    }
 }
 
 /**

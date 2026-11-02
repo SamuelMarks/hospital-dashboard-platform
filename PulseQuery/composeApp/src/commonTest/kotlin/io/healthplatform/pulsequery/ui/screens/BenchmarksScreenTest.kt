@@ -12,10 +12,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.benchmarks.BenchmarksViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -54,7 +54,7 @@ class BenchmarksScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTes
      * @param isEmpty Whether benchmarks lists should be empty.
      */
     private fun setupMockApi(shouldSucceed: Boolean = true, isEmpty: Boolean = false) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath.removeSuffix("/")
             if (path.contains("system/health")) {
                 respond(

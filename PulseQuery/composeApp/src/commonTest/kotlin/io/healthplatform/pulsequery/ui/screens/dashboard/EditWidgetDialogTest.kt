@@ -20,10 +20,10 @@ import io.healthplatform.pulsequery.api.models.WidgetResponse
 import io.healthplatform.pulsequery.core.model.ProcessorId
 import io.healthplatform.pulsequery.core.model.ProcessorSelectionOption
 import io.healthplatform.pulsequery.core.model.TypedWidgetConfig
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.testing.BaseComposeTest
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -210,7 +210,7 @@ class EditWidgetDialogTest : BaseComposeTest() {
 
     @Test
     fun testEditWidgetDialogUiInteractionsAndSave() = runComposeUiTest {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath
             when {
                 path.contains("/ai/models") -> respond(
@@ -285,7 +285,10 @@ class EditWidgetDialogTest : BaseComposeTest() {
 
         // Save Changes
         onNodeWithText("Save Changes").performClick()
-        waitUntil(timeoutMillis = 15000) { updatedWidget != null }
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Save Changes", substring = true).fetchSemanticsNodes()
+            updatedWidget != null
+        }
         assertEquals("Updated ICU Title", updatedWidget?.title)
 
         // Dismiss button
@@ -295,7 +298,7 @@ class EditWidgetDialogTest : BaseComposeTest() {
 
     @Test
     fun testEditWidgetDialogSaveErrorAndDefaultApi() = runComposeUiTest {
-        val failEngine = MockEngine {
+        val failEngine = createUnconfinedMockEngine {
             respond(
                 content = """{"detail":"Database write rejected"}""",
                 status = HttpStatusCode.InternalServerError,

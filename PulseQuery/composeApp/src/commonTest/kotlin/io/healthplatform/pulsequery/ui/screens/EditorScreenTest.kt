@@ -12,11 +12,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDestination
 import io.healthplatform.pulsequery.ui.screens.editor.SaveQueryDialog
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -45,7 +45,7 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
     }
 
     private fun setupMockApi(success: Boolean = true, returnErrorMsg: Boolean = false) {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             when {
                 request.url.encodedPath.contains("ai/execute") -> {
                     if (!success) {
@@ -190,6 +190,8 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
 
         setContent {
             MaterialTheme {
+                EditorFabIcon(isLoading = true)
+                EditorFabIcon(isLoading = false)
                 EditorScreen(viewModel = customVm)
             }
         }
@@ -255,7 +257,10 @@ class EditorScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() 
         onNodeWithText("Title").performTextInput("Admissions Count")
         onNodeWithText("Save").performClick()
 
-        waitUntil(timeoutMillis = 15000) { savedMessage.isNotEmpty() }
+        waitUntil(timeoutMillis = 15000) {
+            onAllNodesWithText("Save", substring = true).fetchSemanticsNodes()
+            savedMessage.isNotEmpty()
+        }
         assertEquals("Template successfully registered in library", savedMessage)
     }
 

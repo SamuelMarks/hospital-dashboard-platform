@@ -6,10 +6,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.runComposeUiTest
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.StagedQuery
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
@@ -42,7 +42,7 @@ class QueryCartBottomSheetTest : io.healthplatform.pulsequery.testing.BaseCompos
     }
 
     private fun installMockClient(status: HttpStatusCode, body: String) {
-        val mockEngine = MockEngine {
+        val mockEngine = createUnconfinedMockEngine {
             respond(
                 content = body,
                 status = status,

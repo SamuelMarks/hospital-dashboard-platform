@@ -1,6 +1,8 @@
 package io.healthplatform.pulsequery.ui.screens.admin
 
 import io.healthplatform.pulsequery.api.apis.AdminApi
+import io.healthplatform.pulsequery.awaitIdle
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -68,7 +70,7 @@ class AdminViewModelTest {
 
     @Test
     fun testLoadSettingsAndLocalMutations() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine {
+        val engine = createUnconfinedMockEngine {
             respond(
                 content = settingsJson,
                 status = HttpStatusCode.OK,
@@ -79,7 +81,7 @@ class AdminViewModelTest {
 
         val vm = AdminViewModel(scope = this)
         vm.loadSettings()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(mapOf("openai" to "sk-123"), vm.state.value.apiKeys)
         assertEquals(listOf("gpt-4o"), vm.state.value.visibleModels)
         assertFalse(vm.state.value.isLoading)
@@ -110,28 +112,28 @@ class AdminViewModelTest {
 
     @Test
     fun testLoadSettingsFailures() = kotlinx.coroutines.runBlocking {
-        val engineMsg = MockEngine { throw IllegalStateException("Unauthorized") }
+        val engineMsg = createUnconfinedMockEngine { throw IllegalStateException("Unauthorized") }
         val vm1 = AdminViewModel(
             scope = this,
             adminApi = AdminApi(baseUrl = "http://localhost", httpClient = createClient(engineMsg))
         )
         vm1.loadSettings("Custom prefix: ")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Custom prefix: Unauthorized", vm1.state.value.errorMessage)
 
-        val engineNull = MockEngine { throw RuntimeException(null as String?) }
+        val engineNull = createUnconfinedMockEngine { throw RuntimeException(null as String?) }
         val vm2 = AdminViewModel(
             scope = this,
             adminApi = AdminApi(baseUrl = "http://localhost", httpClient = createClient(engineNull))
         )
         vm2.loadSettings()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Failed to load admin settings: Unknown error", vm2.state.value.errorMessage)
     }
 
     @Test
     fun testSaveSettingsSuccessAndFailures() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine {
+        val engine = createUnconfinedMockEngine {
             respond(
                 content = settingsJson,
                 status = HttpStatusCode.OK,
@@ -146,30 +148,32 @@ class AdminViewModelTest {
         val job = launch {
             vm.notifications.collect { notifications.add(it) }
         }
+        kotlinx.coroutines.yield()
 
         vm.saveSettings()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
+        kotlinx.coroutines.yield()
         assertNull(vm.state.value.errorMessage)
         assertTrue(notifications.contains("Settings saved successfully"))
 
         // Save failure with message
-        val engineFailMsg = MockEngine { throw IllegalStateException("Write error") }
+        val engineFailMsg = createUnconfinedMockEngine { throw IllegalStateException("Write error") }
         val vmFail1 = AdminViewModel(
             scope = this,
             adminApi = AdminApi(baseUrl = "http://localhost", httpClient = createClient(engineFailMsg))
         )
         vmFail1.saveSettings(successMessage = "Saved", errorPrefix = "Save err: ")
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
         assertEquals("Save err: Write error", vmFail1.state.value.errorMessage)
 
         // Save failure with null message
-        val engineFailNull = MockEngine { throw RuntimeException(null as String?) }
+        val engineFailNull = createUnconfinedMockEngine { throw RuntimeException(null as String?) }
         val vmFail2 = AdminViewModel(
             scope = this,
             adminApi = AdminApi(baseUrl = "http://localhost", httpClient = createClient(engineFailNull))
         )
         vmFail2.saveSettings()
-        kotlinx.coroutines.delay(50)
+        awaitIdle(excludeJob = job)
         assertEquals("Failed to save admin settings: Unknown error", vmFail2.state.value.errorMessage)
 
         job.cancel()

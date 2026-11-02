@@ -23,13 +23,13 @@ import io.healthplatform.pulsequery.api.models.PostgresHealthSchema
 import io.healthplatform.pulsequery.api.models.QuickActionExecutionResponse
 import io.healthplatform.pulsequery.api.models.SystemHealthResponse
 import io.healthplatform.pulsequery.api.models.TemplateHealthSchema
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.ml.LiteRtRuntimeState
 import io.healthplatform.pulsequery.testing.BaseComposeTest
 import io.healthplatform.pulsequery.ui.screens.optimization.OptimizationUiState
 import io.healthplatform.pulsequery.ui.screens.optimization.OptimizationViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.ContentType
@@ -58,7 +58,7 @@ class OptimizationScreenTest : BaseComposeTest() {
     fun setUp() {
         AppContainer.resetForTest()
         AppContainer.currentBaseUrl = "http://localhost"
-        val mockEngine = MockEngine {
+        val mockEngine = createUnconfinedMockEngine {
             respond(
                 content = "[]",
                 status = HttpStatusCode.OK,
@@ -157,7 +157,7 @@ class OptimizationScreenTest : BaseComposeTest() {
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun testOptimizationScreenAutoInitAndUnhealthyDatabaseRetry() = runComposeUiTest {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = createUnconfinedMockEngine { request ->
             if (request.url.encodedPath.contains("health")) {
                 respond(
                     content = """{"overall_status":"degraded","timestamp":"2026-09-14T12:00:00Z","postgres":{"status":"error","error":"PG Down"},"duckdb":{"status":"ready","total_tables":1,"tables":{}},"data":{"has_default_data":false,"fallback_generated":false,"missing_files":[],"row_counts":{}},"templates":{"templates_loaded":0,"has_templates":false,"missing_file":false},"llm":{"providers_count":0,"mock_mode":false,"models":[]},"warnings":[]}""",

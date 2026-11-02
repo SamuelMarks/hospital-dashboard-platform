@@ -1,6 +1,8 @@
 package io.healthplatform.pulsequery.ui.screens.editor
 
 import io.healthplatform.pulsequery.api.apis.AiApi
+import io.healthplatform.pulsequery.awaitIdle
+import io.healthplatform.pulsequery.createUnconfinedMockEngine
 import io.healthplatform.pulsequery.di.AppContainer
 import io.healthplatform.pulsequery.network.QueryCartRepository
 import io.ktor.client.HttpClient
@@ -87,7 +89,7 @@ class EditorViewModelTest {
             }
         """.trimIndent()
         var callCount = 0
-        val engine = MockEngine {
+        val engine = createUnconfinedMockEngine {
             callCount++
             respond(
                 content = responseJson,
@@ -102,17 +104,13 @@ class EditorViewModelTest {
         // Blank query is ignored
         vmDefault.updateSqlQuery("   ")
         vmDefault.executeSql()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals(0, callCount)
 
         // Non-blank query succeeds using default AppContainer.aiApi
         vmDefault.updateSqlQuery("SELECT count(*) AS cnt FROM admissions;")
         vmDefault.executeSql()
-        kotlinx.coroutines.withTimeout(5000) {
-            while (vmDefault.state.value.result == null) {
-                kotlinx.coroutines.delay(10)
-            }
-        }
+        awaitIdle()
         assertEquals(1, callCount)
         assertNotNull(vmDefault.state.value.result)
         assertEquals(listOf("cnt"), vmDefault.state.value.result?.columns)
@@ -123,40 +121,36 @@ class EditorViewModelTest {
         val explicitApi = AiApi(baseUrl = "http://localhost", httpClient = client)
         val vmExplicit = EditorViewModel(scope = this, aiApi = explicitApi)
         vmExplicit.executeSql()
-        kotlinx.coroutines.withTimeout(5000) {
-            while (vmExplicit.state.value.result == null) {
-                kotlinx.coroutines.delay(10)
-            }
-        }
+        awaitIdle()
         assertEquals(2, callCount)
         assertNotNull(vmExplicit.state.value.result)
     }
 
     @Test
     fun testExecuteSqlFailureWithAndWithoutMessage() = kotlinx.coroutines.runBlocking {
-        val engineWithMsg = MockEngine {
+        val engineWithMsg = createUnconfinedMockEngine {
             throw IllegalStateException("DuckDB syntax error")
         }
         val api1 = AiApi(baseUrl = "http://localhost", httpClient = createClient(engineWithMsg))
         val vm1 = EditorViewModel(scope = this, aiApi = api1)
         vm1.executeSql("SQL Error: ")
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("SQL Error: DuckDB syntax error", vm1.state.value.errorMessage)
         assertFalse(vm1.state.value.isLoading)
 
-        val engineNullMsg = MockEngine {
+        val engineNullMsg = createUnconfinedMockEngine {
             throw RuntimeException(null as String?)
         }
         val api2 = AiApi(baseUrl = "http://localhost", httpClient = createClient(engineNullMsg))
         val vm2 = EditorViewModel(scope = this, aiApi = api2)
         vm2.executeSql()
-        kotlinx.coroutines.delay(50)
+        awaitIdle()
         assertEquals("Execution failed: Unknown error", vm2.state.value.errorMessage)
     }
 
     @Test
     fun testLoadAvailableDashboardsAndSaveQuery() = kotlinx.coroutines.runBlocking {
-        val engine = MockEngine { request ->
+        val engine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath
             when {
                 path.endsWith("/dashboards") -> respond(
@@ -234,7 +228,7 @@ class EditorViewModelTest {
         )
         assertTrue(saveFallbackTemplate.isSuccess)
 
-        val failEngine = MockEngine { throw IllegalStateException("Network down") }
+        val failEngine = createUnconfinedMockEngine { throw IllegalStateException("Network down") }
         val failClient = createClient(failEngine)
         val vmFail = EditorViewModel(
             scope = this,
