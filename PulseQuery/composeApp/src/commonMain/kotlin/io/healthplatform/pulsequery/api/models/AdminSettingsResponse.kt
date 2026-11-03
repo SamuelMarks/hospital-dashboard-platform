@@ -29,11 +29,19 @@ import kotlinx.serialization.Serializable
  * @property visibleModels List of visible model IDs.
  * @property configuredModels Additional `any-llm` model identifiers.
  * @property ollamaApiBase Optional custom Ollama base URL override.
+ * @property gemma4SqlEnabled Whether the `gemma-4-sql` text-to-SQL engine is enabled.
+ * @property gemma4SqlBackend Selected `gemma-4-sql` backend (`'mlx'`, `'jax'`, `'pytorch'`, `'keras'`, `'maxtext'`, `'api'`).
+ * @property gemma4SqlModelName Target `gemma-4-sql` model identifier.
+ * @property gemma4SqlApiBase Optional `gemma-4-sql serve` HTTP endpoint URL.
  */
 @Serializable
 data class AdminSettingsResponse(
     @SerialName(value = "api_keys") @Required val apiKeys: kotlin.collections.Map<kotlin.String, kotlin.String>,
     @SerialName(value = "visible_models") @Required val visibleModels: kotlin.collections.List<kotlin.String>,
     @SerialName(value = "configured_models") val configuredModels: kotlin.collections.List<kotlin.String> = emptyList(),
-    @SerialName(value = "ollama_api_base") val ollamaApiBase: kotlin.String? = null
+    @SerialName(value = "ollama_api_base") val ollamaApiBase: kotlin.String? = null,
+    @SerialName(value = "gemma4_sql_enabled") val gemma4SqlEnabled: kotlin.Boolean = true,
+    @SerialName(value = "gemma4_sql_backend") val gemma4SqlBackend: kotlin.String = "mlx",
+    @SerialName(value = "gemma4_sql_model_name") val gemma4SqlModelName: kotlin.String = "google/gemma-4-sql-9b",
+    @SerialName(value = "gemma4_sql_api_base") val gemma4SqlApiBase: kotlin.String? = null
 )

@@ -33,7 +33,10 @@ describe('ChatStore', () => {
     deleteConversationApiV1ConversationsConversationIdDelete: ReturnType<typeof vi.fn>;
     updateConversationApiV1ConversationsConversationIdPut: ReturnType<typeof vi.fn>;
   };
-  let mockAiApi: { listAvailableModelsApiV1AiModelsGet: ReturnType<typeof vi.fn> };
+  let mockAiApi: {
+    listAvailableModelsApiV1AiModelsGet: ReturnType<typeof vi.fn>;
+    getLlmHealthApiV1AiHealthGet?: ReturnType<typeof vi.fn>;
+  };
 
   const MOCK_CONV: ConversationResponse = createMockConversation({
     id: 'c1',
@@ -73,6 +76,9 @@ describe('ChatStore', () => {
     };
     mockAiApi = {
       listAvailableModelsApiV1AiModelsGet: vi.fn().mockReturnValue(of([])),
+      getLlmHealthApiV1AiHealthGet: vi
+        .fn()
+        .mockReturnValue(of({ overall_status: 'connected', providers: [] })),
     };
 
     TestBed.configureTestingModule({
@@ -97,8 +103,30 @@ describe('ChatStore', () => {
       store.loadHistory();
 
       expect(store.conversations().length).toBe(1);
-      expect(store.availableModels().length).toBe(1);
+      expect(store.availableModels().length).toBe(2);
+      expect(store.availableModels()[0]?.id).toBe('SQL');
       expect(store.error()).toBeNull();
+
+      // Also test when backend already includes SQL and when models is non-array
+      mockAiApi.listAvailableModelsApiV1AiModelsGet?.mockReturnValue(
+        of([
+          {
+            id: 'SQL',
+            name: 'SQL [no model]',
+            provider: 'sql',
+            is_local: true,
+            processor_type: 'SQL',
+          },
+          { id: 'm-1', name: 'M1', provider: 'openai', is_local: false },
+        ]),
+      );
+      store.loadHistory();
+      expect(store.availableModels().length).toBe(2);
+
+      mockAiApi.listAvailableModelsApiV1AiModelsGet?.mockReturnValue(of(null as never));
+      store.loadHistory();
+      expect(store.availableModels().length).toBe(1);
+      expect(store.availableModels()[0]?.id).toBe('SQL');
 
       expect(store.isDataLoading()).toBe(false);
       expect(store.activeConversationId()).toBeNull();
@@ -619,6 +647,65 @@ data: {"no_event":true}
 
       resolveFetch(new Response('Aborted', { status: 500 }));
       await pendingStream;
+    });
+  });
+
+  describe('verifyModelConnections', () => {
+    it('enriches availableModels with live health probe statuses and handles unmatched models', () => {
+      store.patch({
+        availableModels: [
+          { id: 'ollama:llama3', name: 'Ollama Llama 3', provider: 'ollama', is_local: true },
+          { id: 'gemini:gemini-2.5-flash', name: 'Gemini', provider: 'gemini', is_local: false },
+          { id: 'unmatched/model', name: 'Unmatched', provider: 'openai', is_local: false },
+        ],
+      });
+      mockAiApi.getLlmHealthApiV1AiHealthGet?.mockReturnValue(
+        of({
+          overall_status: 'crashed',
+          providers: [
+            {
+              provider: 'ollama',
+              model_id: 'ollama/llama3',
+              display_name: 'Ollama Llama 3',
+              status: 'crashed',
+              latency_ms: 15,
+              message: 'llama-server process has terminated: signal: segmentation fault',
+              remediation: 'Restart Ollama',
+            },
+            {
+              provider: 'gemini',
+              model_id: 'gemini:gemini-2.5-flash',
+              display_name: 'Gemini',
+            },
+          ],
+        }),
+      );
+
+      store.verifyModelConnections(true);
+
+      expect(store.isCheckingHealth()).toBe(false);
+      expect(store.llmHealthSummary()?.overall_status).toBe('crashed');
+      expect(store.availableModels()[0]?.status).toBe('crashed');
+      expect(store.availableModels()[0]?.remediation).toBe('Restart Ollama');
+      expect(store.availableModels()[1]?.status).toBe('connected');
+      expect(store.availableModels()[2]?.id).toBe('unmatched/model');
+    });
+
+    it('handles undefined providers array, API errors, and missing getLlmHealthApiV1AiHealthGet method', () => {
+      mockAiApi.getLlmHealthApiV1AiHealthGet?.mockReturnValue(of({ overall_status: 'connected' }));
+      store.verifyModelConnections();
+      expect(store.llmHealthSummary()?.overall_status).toBe('connected');
+
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      mockAiApi.getLlmHealthApiV1AiHealthGet?.mockReturnValue(
+        throwError(() => new Error('Probe failed')),
+      );
+      store.verifyModelConnections();
+      expect(errSpy).toHaveBeenCalled();
+      errSpy.mockRestore();
+
+      delete mockAiApi.getLlmHealthApiV1AiHealthGet;
+      store.verifyModelConnections();
     });
   });
 });

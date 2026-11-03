@@ -21,6 +21,22 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import kotlin.math.max
+import kotlin.math.roundToInt
+
+/**
+ * Formats a bar chart numeric value into a compact badge string (e.g. `110.8` or `76`).
+ *
+ * @param value Numeric value of the bar.
+ * @return Compact display string for the bar value badge.
+ */
+internal fun formatBarValueBadge(value: Float): String {
+    val roundedTenths = (value * 10f).roundToInt() / 10f
+    return if (roundedTenths == roundedTenths.toInt().toFloat()) {
+        roundedTenths.toInt().toString()
+    } else {
+        roundedTenths.toString()
+    }
+}
 
 /**
  * A natively drawn Material 3 Bar Chart component.
@@ -53,18 +69,21 @@ fun BarChart(
         val canvasWidth = size.width
         val canvasHeight = size.height
 
-        val barSpacing = 16.dp.toPx()
-        val barWidth = (canvasWidth - (barSpacing * (data.size - 1))) / data.size
+        val barSpacing = 12.dp.toPx()
+        val barWidth = max((canvasWidth - (barSpacing * (data.size - 1))) / data.size, 4.dp.toPx())
+        val topReserve = 18.dp.toPx()
+        val bottomReserve = 28.dp.toPx()
+        val usableHeight = max(canvasHeight - topReserve - bottomReserve, 1f)
 
         data.forEachIndexed { index, pair ->
             val label = pair.first
             val value = pair.second
 
             // Calculate height proportional to max value
-            val barHeight = (value / maxValue) * (canvasHeight - 30.dp.toPx()) // Reserve bottom 30dp for label
+            val barHeight = (value / maxValue) * usableHeight
 
             val startX = index * (barWidth + barSpacing)
-            val startY = canvasHeight - 30.dp.toPx() - barHeight
+            val startY = canvasHeight - bottomReserve - barHeight
 
             // Draw Bar
             drawRoundRect(
@@ -72,6 +91,16 @@ fun BarChart(
                 topLeft = Offset(startX, startY),
                 size = Size(barWidth, barHeight),
                 cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+            )
+
+            // Draw Value Badge above Bar
+            val valueBadgeResult = textMeasurer.measure(formatBarValueBadge(value), textStyle)
+            val valueX = startX + (barWidth / 2) - (valueBadgeResult.size.width / 2)
+            val valueY = max(0f, startY - valueBadgeResult.size.height - 2.dp.toPx())
+            drawText(
+                textLayoutResult = valueBadgeResult,
+                color = labelColor,
+                topLeft = Offset(valueX, valueY)
             )
 
             // Draw Label

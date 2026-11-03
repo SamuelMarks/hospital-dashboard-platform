@@ -22,6 +22,10 @@ import { VizChartComponent } from '../shared/visualizations/viz-chart/viz-chart.
 import { VizPieComponent } from '../shared/visualizations/viz-pie/viz-pie.component';
 import { VizHeatmapComponent } from '../shared/visualizations/viz-heatmap/viz-heatmap.component';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
+import {
+  ProcessorCatalogService,
+  SQL_NO_MODEL_OPTION,
+} from '../shared/services/processor-catalog.service';
 import { VizScalarComponent } from '../shared/visualizations/viz-scalar/viz-scalar.component';
 import { VizMarkdownComponent } from '../shared/visualizations/viz-markdown/viz-markdown.component';
 import { ErrorBoundaryDirective } from '../core/error/error-boundary.directive';
@@ -181,6 +185,10 @@ describe('WidgetComponent', () => {
         { provide: MatDialog, useValue: mockDialog },
         { provide: Router, useValue: mockRouter },
         { provide: ConnectionStatusService, useValue: mockConnectionService },
+        {
+          provide: ProcessorCatalogService,
+          useValue: { processors: signal([SQL_NO_MODEL_OPTION]) },
+        },
       ],
     })
       .overrideComponent(WidgetComponent, {
@@ -610,6 +618,14 @@ describe('WidgetComponent', () => {
 
     const inputEl = fixture.debugElement.query(By.css('[data-testid="widget-natural-text-input"]'));
     expect(inputEl).toBeTruthy();
+    expect(component.availableProcessors().length).toBeGreaterThanOrEqual(1);
+
+    component.updateActiveProcessor(createMockInputEvent('SQL'));
+    expect(component.activeProcessor()).toBe('SQL');
+    component.updateActiveProcessor(createMockInputEvent('   '));
+    expect(component.activeProcessor()).toBe('SQL');
+    component.updateActiveProcessor(createMockInputEvent('ollama:llama3'));
+    expect(component.activeProcessor()).toBe('ollama:llama3');
 
     component.updateNaturalTextInput(createMockInputEvent('Show ICU beds'));
     expect(component.naturalTextInput()).toBe('Show ICU beds');

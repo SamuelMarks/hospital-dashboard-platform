@@ -201,7 +201,7 @@ class SQLGeneratorService:
       )
 
     clean_proc = (processor or "SQL").strip()
-    if clean_proc.upper() == "SQL":
+    if not clean_proc or clean_proc.lower() in {"sql", "sql [no model]", "sql/duckdb", "sql:duckdb"}:
       return Ok(extract_sql_from_markdown(clean_prompt))
 
     strategy_impl = self._get_strategy_implementation(strategy)
@@ -397,7 +397,7 @@ class SQLGeneratorService:
     self,
     request: SQLExecutionRequest,
     olap_conn: DuckDBReadableConnectionProtocol | None = None,
-    conn_factory: ConnFactoryPreviewFn = duckdb_manager.get_readonly_connection,
+    conn_factory: ConnFactoryPreviewFn = duckdb_manager.get_pooled_readonly_connection,
     sql_runner_fn: SqlRunnerPreviewFn = run_sql_widget,
   ) -> AppResult[SQLExecutionResponse]:
     """

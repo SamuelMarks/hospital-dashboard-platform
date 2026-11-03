@@ -163,9 +163,10 @@ class WizardViewModel(
     fun selectTemplate(template: TemplateResponse) {
         val fields = extractParameterFields(template.parametersSchema)
         val initialValues = fields.associate { it.key to it.defaultValue }
-        val defaultVis = when (template.category.lowercase()) {
-            "census", "availability" -> VisualizationType.BAR_CHART.wireValue
-            "bottlenecks", "utilization" -> VisualizationType.LINE_CHART.wireValue
+        val defaultVis = when {
+            template.category.lowercase() in setOf("census", "availability", "flow") -> VisualizationType.BAR_CHART.wireValue
+            template.title.lowercase().contains("turnover") -> VisualizationType.BAR_CHART.wireValue
+            template.category.lowercase() in setOf("bottlenecks", "utilization") -> VisualizationType.LINE_CHART.wireValue
             else -> VisualizationType.TABLE.wireValue
         }
 

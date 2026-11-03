@@ -13,7 +13,10 @@ from app.core.result import AppError, AppResult, Err, ErrorCode, Ok, unwrap_or_r
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.admin import AdminSettingsResponse, AdminSettingsUpdateRequest
+from app.schemas.ai import LlmConnectionTestRequest, LlmProviderHealthResponse
 from app.services.admin import admin_service
+from app.services.llm.health_probe import probe_connection_request_result
+from app.services.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -134,3 +137,32 @@ async def write_admin_settings(
   """
   logger.debug(f"Updating admin settings for admin={current_user.id}")
   return unwrap_or_raise_http(await admin_service.update_admin_settings_result(db, request))
+
+
+@router.post("/llm/test-connection", response_model=LlmProviderHealthResponse)
+async def test_llm_connection(
+  request: LlmConnectionTestRequest,
+  db: Annotated[AsyncSession, Depends(get_db)],
+  current_user: Annotated[User, Depends(require_admin)],
+) -> LlmProviderHealthResponse:
+  """
+  Tests connectivity and optional 1-token smoke inference for an LLM provider or model configuration.
+
+  Args:
+      request (LlmConnectionTestRequest): Provider, model, and optional override credentials.
+      db (AsyncSession): Active PostgreSQL session.
+      current_user (User): Authenticated administrator.
+
+  Returns:
+      LlmProviderHealthResponse: Connection health status, latency, and remediation steps.
+  """
+  logger.debug(f"Admin testing LLM connection provider={request.provider} admin={current_user.id}")
+  admin_settings_res = await admin_service.get_admin_settings_result(db)
+  admin_settings = admin_settings_res.value if isinstance(admin_settings_res, Ok) else None
+  return unwrap_or_raise_http(
+    await probe_connection_request_result(
+      request=request,
+      admin_settings=admin_settings,
+      arena_client=llm_client,
+    )
+  )

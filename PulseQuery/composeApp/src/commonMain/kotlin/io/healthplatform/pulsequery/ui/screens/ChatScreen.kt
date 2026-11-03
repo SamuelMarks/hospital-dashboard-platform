@@ -1,11 +1,13 @@
 /**
  * Component for rendering the ChatScreen.
- * Provides the main user interface for conversational SQL generation and model arena evaluation,
+ * Provides the main user interface for conversational SQL generation, model selection (`any-llm`,
+ * Ollama, `gemma-4-sql`, Gemini, Direct SQL), inline read-only DuckDB execution, and model arena evaluation,
  * delegating all state and SSE streaming to [ChatViewModel].
  */
 package io.healthplatform.pulsequery.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -32,6 +35,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -65,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCandidateResponse
 import io.healthplatform.pulsequery.api.models.MessageResponse
+import io.healthplatform.pulsequery.api.models.ModelInfo
+import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
 import io.healthplatform.pulsequery.ui.screens.chat.ChatUiState
 import io.healthplatform.pulsequery.ui.screens.chat.ChatViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -75,8 +81,13 @@ import pulsequery.composeapp.generated.resources.assistant_streaming
 import pulsequery.composeapp.generated.resources.chat_candidate_selected_state
 import pulsequery.composeapp.generated.resources.chat_candidate_sql_title
 import pulsequery.composeapp.generated.resources.chat_candidate_unselected_state
+import pulsequery.composeapp.generated.resources.chat_model_status_fmt
 import pulsequery.composeapp.generated.resources.chat_model_variations_count
 import pulsequery.composeapp.generated.resources.chat_query_default_title
+import pulsequery.composeapp.generated.resources.chat_run_on_duckdb
+import pulsequery.composeapp.generated.resources.chat_sql_preview_error_fmt
+import pulsequery.composeapp.generated.resources.chat_sql_preview_rows_fmt
+import pulsequery.composeapp.generated.resources.chat_verify_connections
 import pulsequery.composeapp.generated.resources.close
 import pulsequery.composeapp.generated.resources.conversations_history
 import pulsequery.composeapp.generated.resources.delete
@@ -137,7 +148,7 @@ internal fun resolveConversationRowTitle(
 }
 
 /**
- * Main chat interface for querying the system using natural language.
+ * Main chat interface for querying the system using natural language or direct SQL.
  *
  * @param conversationId Optional existing conversation ID to load. If null, starts a new conversation.
  * @param viewModel Optional [ChatViewModel] instance for state orchestration.
@@ -159,6 +170,7 @@ fun ChatScreen(
 
     LaunchedEffect(vm) {
         vm.performLoadConversations()
+        vm.performLoadAvailableModels()
     }
 
     Scaffold(
@@ -176,6 +188,9 @@ fun ChatScreen(
             paddingValues = paddingValues,
             onVoteCandidate = { msgId, candidateId -> vm.voteCandidate(msgId, candidateId) },
             onStageToCart = { title, sql -> vm.stageToCart(title, sql) },
+            onExecuteSql = { key, sql -> vm.executeSqlSnippet(key, sql) },
+            onToggleModel = { modelId -> vm.toggleModelSelection(modelId) },
+            onVerifyModels = { vm.loadAvailableModels() },
             onInputTextChange = { vm.updateInputText(it) },
             onSendMessage = { vm.sendMessage() }
         )
@@ -228,12 +243,15 @@ private fun ChatTopBar(
 }
 
 /**
- * Renders the main message stream, streaming candidate preview, and composer input for [ChatScreen].
+ * Renders the main message stream, streaming candidate preview, model selector bar, and composer input for [ChatScreen].
  *
  * @param uiState Current [ChatUiState].
  * @param paddingValues Scaffold inner padding.
  * @param onVoteCandidate Callback invoked with `(messageId, candidateId)` when voting for a candidate.
  * @param onStageToCart Callback invoked with `(title, sql)` when staging SQL to the query cart.
+ * @param onExecuteSql Callback invoked with `(key, sql)` when running SQL on read-only DuckDB.
+ * @param onToggleModel Callback invoked with `modelId` when toggling a target model chip.
+ * @param onVerifyModels Callback invoked when verifying model connections.
  * @param onInputTextChange Callback invoked when the composer text changes.
  * @param onSendMessage Callback invoked when the Send button is clicked.
  */
@@ -243,6 +261,9 @@ private fun ChatScreenBody(
     paddingValues: PaddingValues,
     onVoteCandidate: (String, String) -> Unit,
     onStageToCart: (String, String) -> Unit,
+    onExecuteSql: (String, String) -> Unit,
+    onToggleModel: (String) -> Unit,
+    onVerifyModels: () -> Unit,
     onInputTextChange: (String) -> Unit,
     onSendMessage: () -> Unit
 ) {
@@ -278,10 +299,12 @@ private fun ChatScreenBody(
             items(uiState.messages) { message ->
                 ChatBubble(
                     message = message,
+                    sqlExecutionResults = uiState.sqlExecutionResults,
                     onVoteCandidate = { candidateId ->
                         onVoteCandidate(message.id, candidateId)
                     },
-                    onStageToCart = onStageToCart
+                    onStageToCart = onStageToCart,
+                    onExecuteSql = onExecuteSql
                 )
             }
             item {
@@ -293,12 +316,66 @@ private fun ChatScreenBody(
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
 
+        ChatModelSelectorRow(
+            availableModels = uiState.availableModels,
+            selectedModelIds = uiState.selectedModelIds,
+            onToggleModel = onToggleModel,
+            onVerifyModels = onVerifyModels
+        )
+
         ChatComposerRow(
             inputText = uiState.inputText,
             isLoading = uiState.isLoading,
             onInputTextChange = onInputTextChange,
             onSendMessage = onSendMessage
         )
+    }
+}
+
+/**
+ * Renders the horizontal model selector chip bar with connection status badges and a Verify Connections action.
+ *
+ * @param availableModels List of configured/discovered [ModelInfo] processors.
+ * @param selectedModelIds Set of currently selected model identifiers.
+ * @param onToggleModel Callback invoked when a model chip is clicked.
+ * @param onVerifyModels Callback invoked when the Verify Connections button is clicked.
+ */
+@Composable
+internal fun ChatModelSelectorRow(
+    availableModels: List<ModelInfo>,
+    selectedModelIds: Set<String>,
+    onToggleModel: (String) -> Unit,
+    onVerifyModels: () -> Unit
+) {
+    if (availableModels.isNotEmpty()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            availableModels.forEach { model ->
+                val isSelected = selectedModelIds.contains(model.id)
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onToggleModel(model.id) },
+                    label = {
+                        Text(
+                            stringResource(
+                                Res.string.chat_model_status_fmt,
+                                model.name,
+                                model.status
+                            )
+                        )
+                    }
+                )
+            }
+            TextButton(onClick = onVerifyModels) {
+                Text(stringResource(Res.string.chat_verify_connections))
+            }
+        }
     }
 }
 
@@ -388,7 +465,7 @@ private fun ChatComposerRow(
         OutlinedTextField(
             value = inputText,
             onValueChange = onInputTextChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.fillMaxWidth(),
             placeholder = { Text(stringResource(Res.string.ask_a_query)) },
             shape = RoundedCornerShape(24.dp),
             maxLines = 4,
@@ -481,17 +558,22 @@ private fun ChatConversationHistoryRow(
 }
 
 /**
- * A single message bubble displaying the content and any competing model candidate variations.
+ * A single message bubble displaying the content, inline read-only DuckDB SQL execution preview,
+ * and any competing model candidate variations.
  *
  * @param message The chat message entity.
+ * @param sqlExecutionResults Map of message/candidate IDs to read-only DuckDB [SQLExecutionResponse] previews.
  * @param onVoteCandidate Optional callback when voting for a model candidate.
  * @param onStageToCart Optional callback when staging generated SQL to the query cart.
+ * @param onExecuteSql Optional callback when running a SQL snippet on read-only DuckDB.
  */
 @Composable
 fun ChatBubble(
     message: MessageResponse,
+    sqlExecutionResults: Map<String, SQLExecutionResponse> = emptyMap(),
     onVoteCandidate: ((candidateId: String) -> Unit)? = null,
-    onStageToCart: ((title: String, sql: String) -> Unit)? = null
+    onStageToCart: ((title: String, sql: String) -> Unit)? = null,
+    onExecuteSql: ((key: String, sql: String) -> Unit)? = null
 ) {
     val isUser = message.role == "user"
     var showCandidates by remember { mutableStateOf(false) }
@@ -527,8 +609,11 @@ fun ChatBubble(
                 val snippet = message.sqlSnippet
                 if (!snippet.isNullOrBlank()) {
                     ChatPrimarySqlSnippetSection(
+                        messageId = message.id,
                         snippet = snippet,
-                        onStageToCart = onStageToCart
+                        sqlPreview = sqlExecutionResults[message.id],
+                        onStageToCart = onStageToCart,
+                        onExecuteSql = onExecuteSql
                     )
                 }
 
@@ -536,10 +621,12 @@ fun ChatBubble(
                 if (!candidateList.isNullOrEmpty()) {
                     ChatCandidateVariationsSection(
                         candidateList = candidateList,
+                        sqlExecutionResults = sqlExecutionResults,
                         showCandidates = showCandidates,
                         onToggleShowCandidates = { showCandidates = !showCandidates },
                         onVoteCandidate = onVoteCandidate,
-                        onStageToCart = onStageToCart
+                        onStageToCart = onStageToCart,
+                        onExecuteSql = onExecuteSql
                     )
                 }
             }
@@ -548,15 +635,49 @@ fun ChatBubble(
 }
 
 /**
- * Renders the primary SQL snippet and optional stage-to-cart button inside [ChatBubble].
+ * Renders an inline read-only DuckDB execution preview or error message inside a chat bubble.
  *
+ * @param preview [SQLExecutionResponse] returned by `/api/v1/ai/execute`, or null if not yet run.
+ */
+@Composable
+internal fun ChatSqlPreviewBox(preview: SQLExecutionResponse?) {
+    if (preview != null) {
+        Spacer(modifier = Modifier.height(4.dp))
+        val err = preview.error
+        if (!err.isNullOrBlank()) {
+            Text(
+                text = stringResource(Res.string.chat_sql_preview_error_fmt, err),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        } else {
+            Text(
+                text = stringResource(Res.string.chat_sql_preview_rows_fmt, preview.data.size),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+        }
+    }
+}
+
+/**
+ * Renders the primary SQL snippet, optional Run on DuckDB button, and optional stage-to-cart button inside [ChatBubble].
+ *
+ * @param messageId Parent message UUID used as the preview key.
  * @param snippet Non-blank SQL snippet string.
+ * @param sqlPreview Optional [SQLExecutionResponse] preview for this message.
  * @param onStageToCart Optional callback invoked with `(title, sql)` when staging to the query cart.
+ * @param onExecuteSql Optional callback invoked with `(key, sql)` when executing on read-only DuckDB.
  */
 @Composable
 private fun ColumnScope.ChatPrimarySqlSnippetSection(
+    messageId: String,
     snippet: String,
-    onStageToCart: ((title: String, sql: String) -> Unit)?
+    sqlPreview: SQLExecutionResponse?,
+    onStageToCart: ((title: String, sql: String) -> Unit)?,
+    onExecuteSql: ((key: String, sql: String) -> Unit)?
 ) {
     Spacer(modifier = Modifier.height(8.dp))
     Box(
@@ -574,14 +695,21 @@ private fun ColumnScope.ChatPrimarySqlSnippetSection(
             style = MaterialTheme.typography.bodySmall
         )
     }
-    if (onStageToCart != null) {
-        val defaultChatQueryTitle = stringResource(Res.string.chat_query_default_title)
-        Spacer(modifier = Modifier.height(4.dp))
-        TextButton(
-            onClick = { onStageToCart(defaultChatQueryTitle, snippet) },
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Text(stringResource(Res.string.stage_to_cart))
+    ChatSqlPreviewBox(sqlPreview)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        if (onExecuteSql != null) {
+            TextButton(onClick = { onExecuteSql(messageId, snippet) }) {
+                Text(stringResource(Res.string.chat_run_on_duckdb))
+            }
+        }
+        if (onStageToCart != null) {
+            val defaultChatQueryTitle = stringResource(Res.string.chat_query_default_title)
+            TextButton(onClick = { onStageToCart(defaultChatQueryTitle, snippet) }) {
+                Text(stringResource(Res.string.stage_to_cart))
+            }
         }
     }
 }
@@ -590,18 +718,22 @@ private fun ColumnScope.ChatPrimarySqlSnippetSection(
  * Renders the expandable model variations toggle and candidate cards inside [ChatBubble].
  *
  * @param candidateList Non-empty list of [MessageCandidateResponse] entries.
+ * @param sqlExecutionResults Map of candidate IDs to read-only DuckDB [SQLExecutionResponse] previews.
  * @param showCandidates Whether the candidate cards are currently expanded.
  * @param onToggleShowCandidates Callback invoked to toggle candidate expansion.
  * @param onVoteCandidate Optional callback invoked when voting for a candidate.
  * @param onStageToCart Optional callback invoked when staging a candidate's SQL to the query cart.
+ * @param onExecuteSql Optional callback invoked when executing a candidate's SQL on read-only DuckDB.
  */
 @Composable
 private fun ChatCandidateVariationsSection(
     candidateList: List<MessageCandidateResponse>,
+    sqlExecutionResults: Map<String, SQLExecutionResponse>,
     showCandidates: Boolean,
     onToggleShowCandidates: () -> Unit,
     onVoteCandidate: ((candidateId: String) -> Unit)?,
-    onStageToCart: ((title: String, sql: String) -> Unit)?
+    onStageToCart: ((title: String, sql: String) -> Unit)?,
+    onExecuteSql: ((key: String, sql: String) -> Unit)?
 ) {
     Spacer(modifier = Modifier.height(8.dp))
     TextButton(onClick = onToggleShowCandidates) {
@@ -624,8 +756,10 @@ private fun ChatCandidateVariationsSection(
             candidateList.forEach { candidate ->
                 ChatCandidateCard(
                     candidate = candidate,
+                    sqlPreview = sqlExecutionResults[candidate.id],
                     onVoteCandidate = onVoteCandidate,
-                    onStageToCart = onStageToCart
+                    onStageToCart = onStageToCart,
+                    onExecuteSql = onExecuteSql
                 )
             }
         }
@@ -636,14 +770,18 @@ private fun ChatCandidateVariationsSection(
  * Renders a single competing model candidate card inside [ChatCandidateVariationsSection].
  *
  * @param candidate The [MessageCandidateResponse] item to display.
+ * @param sqlPreview Optional [SQLExecutionResponse] preview for this candidate.
  * @param onVoteCandidate Optional callback invoked with `candidate.id` when voting as best.
  * @param onStageToCart Optional callback invoked with `(title, sql)` when staging candidate SQL.
+ * @param onExecuteSql Optional callback invoked with `(candidate.id, sql)` when executing on read-only DuckDB.
  */
 @Composable
 private fun ChatCandidateCard(
     candidate: MessageCandidateResponse,
+    sqlPreview: SQLExecutionResponse?,
     onVoteCandidate: ((candidateId: String) -> Unit)?,
-    onStageToCart: ((title: String, sql: String) -> Unit)?
+    onStageToCart: ((title: String, sql: String) -> Unit)?,
+    onExecuteSql: ((key: String, sql: String) -> Unit)?
 ) {
     val candStateDesc = if (candidate.isSelected) {
         stringResource(Res.string.chat_candidate_selected_state)
@@ -685,11 +823,17 @@ private fun ChatCandidateCard(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+            ChatSqlPreviewBox(sqlPreview)
             Spacer(modifier = Modifier.height(6.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                if (!candSql.isNullOrBlank() && onExecuteSql != null) {
+                    TextButton(onClick = { onExecuteSql(candidate.id, candSql) }) {
+                        Text(stringResource(Res.string.chat_run_on_duckdb))
+                    }
+                }
                 if (!candSql.isNullOrBlank() && onStageToCart != null) {
                     val candTitle = stringResource(Res.string.chat_candidate_sql_title, candidate.modelName)
                     TextButton(onClick = { onStageToCart(candTitle, candSql) }) {

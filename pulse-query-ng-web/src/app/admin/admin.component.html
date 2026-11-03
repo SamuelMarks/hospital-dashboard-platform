@@ -47,6 +47,27 @@
           </mat-form-field>
         </div>
 
+        <div class="diag-actions">
+          <button
+            i18n
+            mat-stroked-button
+            type="button"
+            data-testid="btn-test-ollama"
+            (click)="testProviderConnection('ollama')"
+          >
+            Test Ollama Connection
+          </button>
+          <button
+            i18n
+            mat-stroked-button
+            type="button"
+            data-testid="btn-test-gemma4sql"
+            (click)="testProviderConnection('gemma4sql', gemma4SqlModelName())"
+          >
+            Test gemma-4-sql Engine
+          </button>
+        </div>
+
         <h4 i18n class="text-sm font-semibold mt-4 mb-2">Additional Mozilla any-llm Providers</h4>
         <div class="flex gap-2 mb-2">
           <input

@@ -144,13 +144,15 @@ class DataIngestionService:
   def generate_synthetic_sample_data(filepath: str, rows: int = 1000) -> None:
     """
     Generates dummy synthetic hospital data matching the clinical schema if missing.
+    Includes sequential bed turnover admissions within 30-180 minutes of prior unit
+    discharges so bed turnover analytics return realistic non-null metrics.
 
     Args:
         filepath (str): Target path to write the CSV.
         rows (int): Number of rows to generate.
     """
     services = ["Cardiology", "Gen_Peds", "Neurology", "Orthopedics", "General Medicine"]
-    locations = ["ICU_A", "ICU_B", "PCU_A", "PCU_B", "Ward_1", "Ward_2"]
+    locations = ["ICU_Cardiology_B", "ICU_A", "ICU_B", "PCU_Nursery_A", "PCU_Mixed_A", "Ward_1"]
     entry_points = ["Emergency", "Direct Admit", "Transfer In", "Newborn Inside In Hospital"]
     visit_types = ["Inpatient", "Emergency", "Newborn"]
     care_levels = ["Intensive Care", "Step Down", "Acute Care", "Well Infant Care"]
@@ -177,17 +179,24 @@ class DataIngestionService:
           ]
         )
         base_dt = datetime.now() - timedelta(days=60)
+        last_discharge_by_loc: dict[str, datetime] = {}
         for i in range(rows):
           pic_sn = f"3.1415{10000 + i}"
-          admit = base_dt + timedelta(days=random.randint(0, 50), hours=random.randint(0, 23))
-          los = random.randint(1, 10)
+          loc = locations[i % len(locations)]
+          prev_discharge = last_discharge_by_loc.get(loc)
+          if prev_discharge is not None and i % 2 == 1:
+            admit = prev_discharge + timedelta(minutes=random.randint(30, 180))
+          else:
+            admit = base_dt + timedelta(days=random.randint(0, 50), hours=random.randint(0, 23))
+          los = random.randint(1, 5)
           discharge = admit + timedelta(days=los, hours=random.randint(1, 12))
+          last_discharge_by_loc[loc] = discharge
           census_dt = (admit + timedelta(days=1)).strftime("%Y-%m-%d 23:59:00")
 
           writer.writerow(
             [
               pic_sn,
-              random.choice(locations),
+              loc,
               random.choice(services),
               random.choice(entry_points),
               random.choice(visit_types),
@@ -289,6 +298,9 @@ class DataIngestionService:
             "SELECT Clinical_Service AS service, Location AS unit, COUNT(*) AS count "
             'FROM "synthetic_hospital_data" WHERE Clinical_Service IS NOT NULL GROUP BY 1, 2'
           )
+      from app.database.duckdb_init import create_hospital_macros
+
+      create_hospital_macros(conn)
     except (duckdb.Error, OSError, RuntimeError, ValueError, TypeError) as view_err:
       logger.warning(f"Could not create compatibility alias view: {view_err}")
 

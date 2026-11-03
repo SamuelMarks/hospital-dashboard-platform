@@ -47,6 +47,10 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) ->
     "visible_models": [],
     "configured_models": [],
     "ollama_api_base": None,
+    "gemma4_sql_enabled": True,
+    "gemma4_sql_backend": "mlx",
+    "gemma4_sql_model_name": "google/gemma-4-sql-9b",
+    "gemma4_sql_api_base": None,
   }
 
   # Test update
@@ -55,6 +59,10 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) ->
     "visible_models": ["openai/gpt-4o"],
     "configured_models": ["groq:llama3-70b"],
     "ollama_api_base": "http://localhost:11434",
+    "gemma4_sql_enabled": True,
+    "gemma4_sql_backend": "mlx",
+    "gemma4_sql_model_name": "google/gemma-4-sql-9b",
+    "gemma4_sql_api_base": "http://localhost:8090",
   }
   res = await client.put("/api/v1/admin/settings", headers=admin_headers, json=payload)
   assert res.status_code == 200
@@ -71,10 +79,25 @@ async def test_admin_endpoints(client: AsyncClient, db_session: AsyncSession) ->
     "visible_models": ["anthropic/claude"],
     "configured_models": ["mistral:mistral-large"],
     "ollama_api_base": "http://ollama.local:11434",
+    "gemma4_sql_enabled": False,
+    "gemma4_sql_backend": "jax",
+    "gemma4_sql_model_name": "google/gemma-4-sql-2b",
+    "gemma4_sql_api_base": "",
   }
   res = await client.put("/api/v1/admin/settings", headers=admin_headers, json=payload2)
   assert res.status_code == 200
-  assert res.json() == payload2
+  expected2 = dict(payload2)
+  expected2["gemma4_sql_api_base"] = None
+  assert res.json() == expected2
+
+  # Test POST /api/v1/admin/llm/test-connection endpoint
+  test_conn_res = await client.post(
+    "/api/v1/admin/llm/test-connection",
+    headers=admin_headers,
+    json={"provider": "gemma4sql", "gemma4_sql_backend": "mlx", "run_inference_smoke_test": True},
+  )
+  assert test_conn_res.status_code == 200
+  assert test_conn_res.json()["status"] == "connected"
 
 
 def test_admin_setting_repr() -> None:

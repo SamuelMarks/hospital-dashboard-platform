@@ -1,6 +1,6 @@
 /**
  * @fileoverview Conversation thread component rendering chat messages, multi-model
- * arena candidate comparisons, inline SQL execution previews, and message composition.
+ * arena candidate comparisons, inline SQL execution previews, model connection health, and message composition.
  */
 import {
   Component,
@@ -35,7 +35,7 @@ import { AskDataService } from '../../global/ask-data.service';
 import { QueryCartService } from '../../global/query-cart.service';
 import { VizMarkdownComponent } from '../../shared/visualizations/viz-markdown/viz-markdown.component';
 import { SqlSnippetComponent } from './sql-snippet.component';
-import { MessageResponse, MessageCandidateResponse } from '../../api-client';
+import { MessageResponse, MessageCandidateResponse, ModelInfo } from '../../api-client';
 import {
   VizTableComponent,
   TableDataSet,
@@ -240,6 +240,27 @@ import { ArenaSqlService } from '../arena-sql.service';
       }
       .model-selector {
         padding-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+      .status-dot.connected {
+        background-color: #2e7d32;
+      }
+      .status-dot.degraded {
+        background-color: #ef6c00;
+      }
+      .status-dot.error {
+        background-color: #c62828;
       }
     `,
   ],
@@ -271,11 +292,11 @@ export class ConversationComponent {
     disabled(f, () => this.store.isGenerating());
   });
 
-  /** Signal map for candidate results. */
+  /** Signal map for candidate and message SQL preview results. */
   readonly candidateResults = signal<Record<string, TableDataSet | null>>({});
-  /** Signal map for candidate errors. */
+  /** Signal map for candidate and message SQL execution errors. */
   readonly candidateErrors = signal<Record<string, string | null>>({});
-  /** Signal map for candidate loading states. */
+  /** Signal map for candidate and message SQL loading states. */
   readonly candidateLoading = signal<Record<string, boolean>>({});
 
   /** Initializes reactive auto-scroll effect when new messages arrive in the store. */
@@ -289,6 +310,33 @@ export class ConversationComponent {
         clearTimeout(this.scrollTimerId);
       }
     });
+  }
+
+  /**
+   * Returns a CSS class (`'connected'`, `'degraded'`, or `'error'`) for a model's connection status dot.
+   *
+   * @param model - The `ModelInfo` item to inspect.
+   * @returns CSS class name for the status indicator.
+   */
+  modelStatusClass(model: ModelInfo): string {
+    const st = model.status || 'connected';
+    if (st === 'connected') return 'connected';
+    if (st === 'degraded' || st === 'unconfigured') return 'degraded';
+    return 'error';
+  }
+
+  /**
+   * Builds a localized tooltip string describing a model's provider type, connection status, latency, and remediation.
+   *
+   * @param model - The `ModelInfo` item to describe.
+   * @returns Tooltip text for the model chip.
+   */
+  modelStatusTooltip(model: ModelInfo): string {
+    const status = model.status || 'connected';
+    const latency = model.latency_ms != null ? ` (${model.latency_ms}ms)` : '';
+    const err = model.error_message ? ` — ${model.error_message}` : '';
+    const rem = model.remediation ? ` | Fix: ${model.remediation}` : '';
+    return `${model.provider.toUpperCase()}: ${status}${latency}${err}${rem}`;
   }
 
   /**
@@ -336,12 +384,20 @@ export class ConversationComponent {
   }
 
   /**
-   * Opens the global scratchpad drawer to run a SQL query.
+   * Opens the global scratchpad drawer pre-populated with a SQL query, and optionally executes inline on DuckDB.
    *
-   * @param _sql - The SQL query string to inspect.
+   * @param sql - The SQL query string to inspect.
+   * @param msgId - Optional message ID to also execute an inline read-only DuckDB preview.
    */
-  runQuery(_sql: string): void {
-    this.scratchpadService.open();
+  runQuery(sql: string, msgId?: string): void {
+    if (msgId) {
+      this.executeSqlByKey(msgId, sql);
+    }
+    if (this.scratchpadService.openWithSql) {
+      this.scratchpadService.openWithSql(sql);
+    } else {
+      this.scratchpadService.open();
+    }
   }
 
   /**
@@ -366,15 +422,14 @@ export class ConversationComponent {
   }
 
   /**
-   * Runs a specific candidate's SQL query with automatic retry logic.
+   * Executes a read-only DuckDB SQL preview for a given tracking key (`candidate.id` or `msg.id`).
    *
-   * @param candidate - The model candidate response containing the SQL snippet to execute.
+   * @param id - Tracking key (`candidate.id` or `msg.id`).
+   * @param rawSql - Raw SQL query string to execute.
    */
-  runCandidateQuery(candidate: MessageCandidateResponse): void {
-    const sql = (candidate.sql_snippet || '').trim();
+  executeSqlByKey(id: string, rawSql: string | null | undefined): void {
+    const sql = (rawSql || '').trim();
     if (!sql) return;
-
-    const id = candidate.id;
     if (this.candidateLoading()[id]) return;
 
     this.candidateLoading.update((state) => ({ ...state, [id]: true }));
@@ -382,7 +437,7 @@ export class ConversationComponent {
 
     this.arenaSql
       .execute({ sql, max_rows: 200 })
-      .pipe(retry(2)) /* Retry applied here */
+      .pipe(retry(2))
       .subscribe({
         next: (res) => {
           if (res.error) {
@@ -397,7 +452,6 @@ export class ConversationComponent {
           }
         },
         error: (err: HttpErrorResponse) => {
-          // Enhanced Error Extraction (Handles status 0/undefined detail)
           let msg = err?.message || $localize`Unknown error`;
           const errBody: unknown = err.error;
           if (err.status === 0) {
@@ -419,6 +473,15 @@ export class ConversationComponent {
           this.candidateLoading.update((state) => ({ ...state, [id]: false }));
         },
       });
+  }
+
+  /**
+   * Runs a specific candidate's SQL query with automatic retry logic.
+   *
+   * @param candidate - The model candidate response containing the SQL snippet to execute.
+   */
+  runCandidateQuery(candidate: MessageCandidateResponse): void {
+    this.executeSqlByKey(candidate.id, candidate.sql_snippet);
   }
 
   /**

@@ -7,6 +7,7 @@ storage diagnostics, and configuration warnings.
 
 from pydantic import BaseModel, Field
 
+from app.schemas.ai import LlmProviderHealthResponse
 from app.schemas.json_types import JsonObject
 
 
@@ -67,6 +68,10 @@ class LlmHealthSchema(BaseModel):
   providers_count: int = Field(description="Number of configured LLM providers.")
   mock_mode: bool = Field(description="True if running in mock/fallback AI mode.")
   models: list[str] = Field(default_factory=list, description="List of active model display names.")
+  provider_statuses: list[LlmProviderHealthResponse] = Field(
+    default_factory=list,
+    description="Live connection statuses for configured LLM providers.",
+  )
 
 
 class DatabaseSummarySchema(BaseModel):

@@ -49,7 +49,7 @@ class ProvisioningService:
     "Cohort Isolation": "Daily census comparison between Emergency Room and Physician Referral admission pathways.",
     "Discharge Efficiency": "Average delay in minutes after 8:00 AM until the first bed is vacated on full-capacity days.",
     "Weekend Discharge Lag": "Probability of exceeding target Length of Stay for weekend versus weekday discharges.",
-    "Bed Turnover Time": "Average turnaround time in minutes between a unit discharge and the subsequent admission.",
+    "Bed Turnover Time": "Average turnaround time in minutes between a unit discharge and the subsequent admission across hospital units.",
     "Step-Down Availability": "Likelihood that PCU step-down beds are open when the ICU reaches maximum capacity.",
     "Step-Down Flow": "Average hours patients spend in the ICU prior to step-down transfer to a PCU ward.",
     "Midnight vs. Noon": "Comparison of official Midnight Census against active 12:00 PM Noon patient load.",
@@ -232,7 +232,7 @@ class ProvisioningService:
       return "pie"
 
     # 4. Comparisons -> Bar Chart
-    if "compare" in title_lower or "versus" in title_lower:
+    if "compare" in title_lower or "versus" in title_lower or ("turnover" in title_lower and "group by" in sql_lower):
       return "bar_chart"
 
     return "table"
@@ -249,11 +249,25 @@ class ProvisioningService:
     """
     return self.determine_visual_type(template)
 
+  DEFAULT_WIDGET_CHART_CONFIGS: dict[str, JsonObject] = {
+    "Bed Turnover Time": {
+      "xKey": "unit",
+      "yKey": "avg_turnover_minutes",
+      "referenceLines": [
+        {
+          "y": 180,
+          "label": "Target SLA (180m)",
+          "style": "dashed",
+        }
+      ],
+    },
+  }
+
   def _build_config(self, template: WidgetTemplate, viz_type: str) -> JsonObject:
     """
     Constructs the widget configuration dictionary.
     Injects default parameter values into the SQL to ensure it executes without user input,
-    and attaches a descriptive subtitle/caption when available.
+    and attaches a descriptive subtitle/caption and chart metadata when available.
 
     Args:
         template (WidgetTemplate): The source template.
@@ -274,6 +288,10 @@ class ProvisioningService:
     if subtitle:
       config["subtitle"] = subtitle
       config["description"] = subtitle
+    chart_cfg = self.DEFAULT_WIDGET_CHART_CONFIGS.get(template.title)
+    if chart_cfg:
+      for k, v in chart_cfg.items():
+        config[k] = v
     return config
 
 

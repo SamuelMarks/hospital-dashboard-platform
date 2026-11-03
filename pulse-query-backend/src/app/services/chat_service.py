@@ -3,7 +3,8 @@ Chat Domain Service Module.
 
 Encapsulates SQL extraction/validation from Markdown chat responses,
 system prompt assembly using `SchemaService`, conversation/message persistence,
-candidate voting, and multi-LLM Arena candidate generation for conversational analytics.
+candidate voting, direct read-only DuckDB SQL execution, and multi-LLM Arena candidate
+generation for conversational analytics.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from datetime import UTC, datetime
 import json
 import logging
 import re
+import time
 from uuid import UUID
 
 import httpx
@@ -27,15 +29,26 @@ from app.core.result import AppError, AppResult, Err, ErrorCode, Ok
 from app.models.chat import Conversation, Message, MessageCandidate
 from app.models.user import User
 from app.schemas.admin import AdminSettingsResponse
-from app.schemas.chat import ConversationCreate, ConversationUpdate, MessageCreate, MessageVoteRequest
+from app.schemas.ai import SQLExecutionRequest
+from app.schemas.chat import (
+  ConversationCreate,
+  ConversationUpdate,
+  MessageCreate,
+  MessageVoteRequest,
+  SqlPreviewPayload,
+)
 from app.services.admin import get_admin_settings
+from app.services.llm.error_classifier import classify_llm_error, format_classified_error_markdown
 from app.services.llm_client import ArenaResponse, LLMArenaClient, llm_client
 from app.services.schema import SchemaService, schema_service
+from app.services.sql_generator import sql_generator
 from app.services.sql_utils import sql_fingerprint
 
 logger = logging.getLogger(__name__)
 
 AdminSettingsFn = Callable[[AsyncSession], Awaitable[AdminSettingsResponse]]
+
+_DIRECT_SQL_MODEL_IDS: frozenset[str] = frozenset({"sql", "sql [no model]", "sql/duckdb", "sql:duckdb"})
 
 
 def _is_valid_sql_block(candidate_sql: str) -> bool:
@@ -54,11 +67,11 @@ def _is_valid_sql_block(candidate_sql: str) -> bool:
 
 def extract_and_validate_chat_sql(text: str | None) -> str | None:
   """
-  Scans text for Markdown SQL blocks, extracts the first valid statement,
-  and performs a syntax check using `sqlglot`.
+  Scans text for Markdown SQL blocks (or raw SQL if the text itself is a SQL statement),
+  extracts the first valid statement, and performs a syntax check using `sqlglot`.
 
   Args:
-      text (str | None): Raw LLM response text.
+      text (str | None): Raw LLM response text or raw SQL input.
 
   Returns:
       str | None: Valid SQL query string if found, otherwise None.
@@ -89,6 +102,44 @@ def extract_and_validate_chat_sql(text: str | None) -> str | None:
   return None
 
 
+async def execute_readonly_duckdb_preview(
+  sql: str,
+  max_rows: int = 50,
+) -> SqlPreviewPayload:
+  """
+  Executes a validated SQL query against the read-only DuckDB analytical engine
+  and returns a bounded `SqlPreviewPayload`.
+
+  Args:
+      sql (str): Read-only SQL query string to execute.
+      max_rows (int): Maximum number of rows to return in the preview.
+
+  Returns:
+      SqlPreviewPayload: Tabular preview data, columns, latency, and optional error string.
+  """
+  start = time.perf_counter()
+  res = await sql_generator.execute_sql_preview_result(SQLExecutionRequest(sql=sql, max_rows=max_rows))
+  elapsed_ms = round((time.perf_counter() - start) * 1000.0, 2)
+  if isinstance(res, Err):
+    return SqlPreviewPayload(
+      columns=[],
+      data=[],
+      row_count=0,
+      execution_time_ms=elapsed_ms,
+      truncated=False,
+      error=res.error.message,
+    )
+  val = res.value
+  return SqlPreviewPayload(
+    columns=val.columns,
+    data=val.data,
+    row_count=len(val.data),
+    execution_time_ms=elapsed_ms,
+    truncated=len(val.data) >= max_rows,
+    error=val.error,
+  )
+
+
 def build_chat_system_prompt(schema_context: str) -> str:
   """
   Constructs the system prompt for the Hospital Analytics Chat Assistant.
@@ -112,8 +163,48 @@ def build_chat_system_prompt(schema_context: str) -> str:
 class ChatService:
   """
   Domain service orchestrating conversational persistence, candidate voting,
-  and LLM Arena candidate generation.
+  direct read-only DuckDB execution, and LLM Arena candidate generation.
   """
+
+  async def _build_direct_sql_arena_response(
+    self,
+    messages_payload: list[dict[str, str]],
+  ) -> ArenaResponse:
+    """
+    Executes raw user SQL directly against read-only DuckDB when the `'SQL'` (`SQL [no model]`)
+    processor is selected.
+
+    Args:
+        messages_payload (list[dict[str, str]]): Conversation messages ending with the user's SQL query.
+
+    Returns:
+        ArenaResponse: Direct SQL candidate containing the formatted SQL block and execution summary.
+    """
+    start = time.perf_counter()
+    user_msgs = [m.get("content", "") for m in messages_payload if m.get("role") == "user"]
+    raw_input = (user_msgs[-1] if user_msgs else "").strip()
+    extracted = extract_and_validate_chat_sql(raw_input) or raw_input
+    preview = await execute_readonly_duckdb_preview(extracted, max_rows=50)
+    duration_ms = int((time.perf_counter() - start) * 1000)
+    nl = chr(10)
+    if preview.error:
+      return ArenaResponse(
+        provider_name="SQL [no model]",
+        model_identifier="SQL",
+        content=f"```sql{nl}{extracted}{nl}```{nl}{nl}**DuckDB Validation Error:** {preview.error}",
+        latency_ms=duration_ms,
+        error=None,
+      )
+    return ArenaResponse(
+      provider_name="SQL [no model]",
+      model_identifier="SQL",
+      content=(
+        f"```sql{nl}{extracted}{nl}```{nl}{nl}"
+        f"Executed directly on read-only DuckDB ({preview.row_count} rows returned in {preview.execution_time_ms}ms)."
+      ),
+      latency_ms=duration_ms,
+      error=None,
+    )
 
   async def _collect_arena_responses(
     self,
@@ -123,7 +214,8 @@ class ChatService:
     arena_client: LLMArenaClient,
   ) -> list[ArenaResponse]:
     """
-    Collects candidate responses from the LLM Arena with retry padding up to `target_count`.
+    Collects candidate responses from the LLM Arena (and/or direct DuckDB SQL processor)
+    with retry padding up to `target_count`.
 
     Args:
         messages_payload (list[dict[str, str]]): OpenAI-formatted conversation history.
@@ -135,13 +227,29 @@ class ChatService:
         list[ArenaResponse]: Non-empty list of candidate responses.
     """
     try:
-      responses: list[ArenaResponse] = await arena_client.generate_arena_competition(
+      direct_sql_requested = bool(
+        target_models and any(t.strip().lower() in _DIRECT_SQL_MODEL_IDS for t in target_models)
+      )
+      llm_targets = (
+        [t for t in target_models if t.strip().lower() not in _DIRECT_SQL_MODEL_IDS]
+        if target_models is not None
+        else None
+      )
+
+      responses: list[ArenaResponse] = []
+      if direct_sql_requested:
+        responses.append(await self._build_direct_sql_arena_response(messages_payload))
+        if not llm_targets:
+          return responses
+
+      arena_res = await arena_client.generate_arena_competition(
         messages=messages_payload,
         temperature=0.7,
         max_tokens=1000,
-        target_model_ids=target_models,
+        target_model_ids=llm_targets,
         admin_settings=admin_settings,
       )
+      responses.extend(arena_res)
 
       target_count = len(target_models) if (target_models and len(target_models) < 3) else 3
       attempts = 0
@@ -153,7 +261,7 @@ class ChatService:
           messages=messages_payload,
           temperature=0.7 + (attempts * 0.1),
           max_tokens=1000,
-          target_model_ids=target_models,
+          target_model_ids=llm_targets,
           admin_settings=admin_settings,
         )
         if more:
@@ -177,11 +285,11 @@ class ChatService:
         responses (list[ArenaResponse]): Arena responses to persist.
     """
     used_names: set[str] = set()
-    nl = chr(10)
     for idx, res in enumerate(responses):
       content_to_save = res.content
       if not content_to_save and res.error:
-        content_to_save = f"**Generation Failed**{nl}Error: {res.error}"
+        classified = classify_llm_error(res.provider_name, res.model_identifier, res.error)
+        content_to_save = format_classified_error_markdown(classified)
       elif not content_to_save:
         content_to_save = "(Empty Response)"
 
@@ -712,17 +820,33 @@ class ChatService:
 
     accumulated: list[str] = []
     try:
-      async for token in arena_client.stream_tokens(
-        messages=messages_payload,
-        model_id=model_id,
-        admin_settings=admin_settings,
-      ):
-        accumulated.append(token)
-        payload = json.dumps({"event": "token", "token": token})
-        yield f"data: {payload}{nl}{nl}"
+      if model_id and model_id.strip().lower() in _DIRECT_SQL_MODEL_IDS:
+        direct_res = await self._build_direct_sql_arena_response(messages_payload)
+        for word in direct_res.content.split(" "):
+          token_str = word + " "
+          accumulated.append(token_str)
+          payload = json.dumps({"event": "token", "token": token_str})
+          yield f"data: {payload}{nl}{nl}"
+      else:
+        async for token in arena_client.stream_tokens(
+          messages=messages_payload,
+          model_id=model_id,
+          admin_settings=admin_settings,
+        ):
+          accumulated.append(token)
+          payload = json.dumps({"event": "token", "token": token})
+          yield f"data: {payload}{nl}{nl}"
     except (httpx.HTTPError, SQLAlchemyError, RuntimeError, ValueError, TypeError, OSError) as exc:
       logger.error(f"SSE token streaming failed for conversation {conversation_id}: {exc}")
-      err_payload = json.dumps({"event": "error", "error": str(exc)})
+      classified = classify_llm_error(provider=model_id or "llm", model=model_id or "default", raw_error=exc)
+      err_payload = json.dumps(
+        {
+          "event": "error",
+          "error": str(exc),
+          "code": str(classified.code),
+          "remediation": str(classified.details.get("remediation") or ""),
+        }
+      )
       yield f"data: {err_payload}{nl}{nl}"
       return
 

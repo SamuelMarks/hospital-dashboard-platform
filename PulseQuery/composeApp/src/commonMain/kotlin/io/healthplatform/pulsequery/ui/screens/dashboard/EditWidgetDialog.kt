@@ -251,12 +251,11 @@ fun EditWidgetDialog(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(aiApi) {
-        if (aiApi != null) {
-            runResultPulseAsync {
-                aiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true).asResult()
-            }.onSuccess { models ->
-                availableProcessors = resolveAvailableProcessors(models)
-            }
+        val resolvedAiApi = aiApi ?: AppContainer.aiApi
+        runResultPulseAsync {
+            resolvedAiApi.listAvailableModelsApiV1AiModelsGet(includeSql = true, discoverOllama = true).asResult()
+        }.onSuccess { models ->
+            availableProcessors = resolveAvailableProcessors(models)
         }
     }
 

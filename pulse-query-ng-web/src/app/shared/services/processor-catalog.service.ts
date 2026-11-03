@@ -1,6 +1,6 @@
 /**
  * @fileoverview Centralized catalog service for resolving selectable widget processors
- * (`SQL [no model]`, dynamically discovered local Ollama models, and configured Mozilla `any-llm` models).
+ * (`SQL [no model]`, default choice & dynamically discovered local Ollama models, `gemma-4-sql`, and configured Mozilla `any-llm` models).
  */
 
 import { Service, inject, signal, computed } from '@angular/core';
@@ -15,7 +15,7 @@ export interface ProcessorOption {
   id: string;
   /** Human-readable display label. */
   name: string;
-  /** Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'anthropic'`, etc.). */
+  /** Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'anthropic'`, `'gemini'`, `'gemma4sql'`, etc.). */
   provider: string;
   /** Whether the processor executes locally. */
   isLocal: boolean;
@@ -24,7 +24,7 @@ export interface ProcessorOption {
 }
 
 /**
- * Built-in fallback option representing direct DuckDB SQL execution (`SQL [no model]`).
+ * Built-in fallback option representing direct read-only pooled DuckDB SQL execution (`SQL [no model]`).
  */
 export const SQL_NO_MODEL_OPTION: ProcessorOption = {
   id: 'SQL',
@@ -57,9 +57,12 @@ export function mapModelInfoToProcessorOption(model: ModelInfo): ProcessorOption
 
   if (
     rawType === 'OLLAMA' ||
+    rawType === 'GEMMA_4_SQL' ||
     prov === 'ollama' ||
+    prov === 'gemma4sql' ||
     idLower.startsWith('ollama:') ||
     idLower.startsWith('ollama/') ||
+    idLower.startsWith('gemma4sql:') ||
     model.is_local
   ) {
     return {
@@ -81,7 +84,7 @@ export function mapModelInfoToProcessorOption(model: ModelInfo): ProcessorOption
 }
 
 /**
- * Service managing the reactive catalog of available widget processors (`SQL [no model]`, Ollama, and `any-llm`).
+ * Service managing the reactive catalog of available widget processors (`SQL [no model]`, Ollama, `gemma-4-sql`, and `any-llm`).
  */
 @Service()
 export class ProcessorCatalogService {
@@ -99,18 +102,18 @@ export class ProcessorCatalogService {
     this.optionsSignal().filter((opt) => opt.category === 'SQL'),
   );
 
-  /** Computed list of discovered/configured local Ollama model options. */
+  /** Computed list of discovered/configured local Ollama and `gemma-4-sql` model options. */
   readonly ollamaProcessors = computed(() =>
     this.optionsSignal().filter((opt) => opt.category === 'OLLAMA'),
   );
 
-  /** Computed list of configured Mozilla `any-llm` model options. */
+  /** Computed list of configured Mozilla `any-llm` and cloud model options. */
   readonly anyLlmProcessors = computed(() =>
     this.optionsSignal().filter((opt) => opt.category === 'ANY_LLM'),
   );
 
   /**
-   * Fetches available models from the backend (including `SQL [no model]` and discovered Ollama models)
+   * Fetches available models from the backend (including `SQL [no model]`, default choice models, and discovered Ollama models)
    * and updates the reactive processor catalog.
    */
   loadProcessors(): void {

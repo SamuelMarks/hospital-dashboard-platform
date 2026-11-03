@@ -18,6 +18,10 @@ import { DashboardStore } from '../dashboard/dashboard.store';
 import { WidgetResponse } from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
 import {
+  ProcessorCatalogService,
+  ProcessorOption,
+} from '../shared/services/processor-catalog.service';
+import {
   SkeletonLoaderComponent,
   SkeletonVariant,
 } from '../shared/components/skeleton-loader.component';
@@ -100,6 +104,8 @@ export class WidgetComponent {
   private readonly router = inject(Router);
   /** Injected DOM document reference. */
   private readonly document = inject(DOCUMENT);
+  /** Processor catalog service providing `SQL [no model]`, Ollama, and `any-llm` options. */
+  readonly processorCatalog = inject(ProcessorCatalogService);
   /** Service monitoring backend and database connection health. */
   readonly connectionService = inject(ConnectionStatusService);
 
@@ -203,6 +209,23 @@ export class WidgetComponent {
 
   /** Active processor identifier bound to the widget's interactive execution bar. */
   readonly activeProcessor = linkedSignal<string>(() => this.configuredProcessor());
+
+  /** Selectable processor options for the interactive widget bar (always includes `SQL [no model]`). */
+  readonly availableProcessors = computed<ProcessorOption[]>(() =>
+    this.processorCatalog.processors(),
+  );
+
+  /**
+   * Updates `activeProcessor` from the widget processor selector dropdown.
+   *
+   * @param event - DOM change event from the processor `<select>` element.
+   */
+  updateActiveProcessor(event: Event): void {
+    const val = extractEventInputValue(event).trim();
+    if (val) {
+      this.activeProcessor.set(val);
+    }
+  }
 
   /** Current user-entered natural text (or SQL) inside the widget input bar. */
   readonly naturalTextInput = linkedSignal<string>(() => this.sqlConfig().naturalTextPrompt);

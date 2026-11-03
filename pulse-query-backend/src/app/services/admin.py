@@ -2,8 +2,8 @@
 Admin Configuration Domain Service Module.
 
 Encapsulates reading and updating system-wide administrative settings
-(`api_keys` and `visible_models`) using explicit `AppResult[AdminSettingsResponse]`
-return values and hot-reloading the LLM Arena swarm.
+(`api_keys`, `visible_models`, `configured_models`, `ollama_api_base`, and `gemma-4-sql` settings)
+using explicit `AppResult[AdminSettingsResponse]` return values and hot-reloading the LLM Arena swarm.
 """
 
 from __future__ import annotations
@@ -20,6 +20,17 @@ from app.schemas.json_types import JsonValue
 from app.services.llm_client import llm_client
 
 logger = logging.getLogger(__name__)
+
+_ADMIN_SETTING_KEYS: tuple[str, ...] = (
+  "api_keys",
+  "visible_models",
+  "configured_models",
+  "ollama_api_base",
+  "gemma4_sql_enabled",
+  "gemma4_sql_backend",
+  "gemma4_sql_model_name",
+  "gemma4_sql_api_base",
+)
 
 
 class AdminService:
@@ -39,29 +50,40 @@ class AdminService:
 
     Returns:
         AppResult[AdminSettingsResponse]: `Ok(AdminSettingsResponse)` containing `api_keys`, `visible_models`,
-            `configured_models`, and `ollama_api_base`.
+            `configured_models`, `ollama_api_base`, and `gemma-4-sql` settings.
     """
-    stmt = select(AdminSetting).where(
-      AdminSetting.setting_key.in_(["api_keys", "visible_models", "configured_models", "ollama_api_base"])
-    )
+    stmt = select(AdminSetting).where(AdminSetting.setting_key.in_(_ADMIN_SETTING_KEYS))
     result = await db.execute(stmt)
-    settings = result.scalars().all()
+    settings_rows = result.scalars().all()
 
     api_keys: dict[str, str] = {}
     visible_models: list[str] = []
     configured_models: list[str] = []
     ollama_api_base: str | None = None
+    gemma4_sql_enabled = True
+    gemma4_sql_backend = "mlx"
+    gemma4_sql_model_name = "google/gemma-4-sql-9b"
+    gemma4_sql_api_base: str | None = None
 
-    for setting in settings:
+    for setting in settings_rows:
       raw_val = setting.setting_value
-      if setting.setting_key == "api_keys":
+      key = setting.setting_key
+      if key == "api_keys":
         api_keys = {str(k): str(v) for k, v in raw_val.items()} if isinstance(raw_val, dict) else {}
-      elif setting.setting_key == "visible_models":
+      elif key == "visible_models":
         visible_models = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
-      elif setting.setting_key == "configured_models":
+      elif key == "configured_models":
         configured_models = [str(item) for item in raw_val] if isinstance(raw_val, list) else []
-      else:
+      elif key == "ollama_api_base":
         ollama_api_base = str(raw_val) if isinstance(raw_val, str) and raw_val.strip() else None
+      elif key == "gemma4_sql_enabled":
+        gemma4_sql_enabled = bool(raw_val)
+      elif key == "gemma4_sql_backend":
+        gemma4_sql_backend = str(raw_val) if isinstance(raw_val, str) and raw_val.strip() else "mlx"
+      elif key == "gemma4_sql_model_name":
+        gemma4_sql_model_name = str(raw_val) if isinstance(raw_val, str) and raw_val.strip() else "google/gemma-4-sql-9b"
+      else:
+        gemma4_sql_api_base = str(raw_val) if isinstance(raw_val, str) and raw_val.strip() else None
 
     return Ok(
       AdminSettingsResponse(
@@ -69,6 +91,10 @@ class AdminService:
         visible_models=visible_models,
         configured_models=configured_models,
         ollama_api_base=ollama_api_base,
+        gemma4_sql_enabled=gemma4_sql_enabled,
+        gemma4_sql_backend=gemma4_sql_backend,
+        gemma4_sql_model_name=gemma4_sql_model_name,
+        gemma4_sql_api_base=gemma4_sql_api_base,
       )
     )
 
@@ -99,7 +125,8 @@ class AdminService:
 
     Args:
         db (AsyncSession): Active database session.
-        request (AdminSettingsUpdateRequest): Updated `api_keys`, `visible_models`, `configured_models`, and `ollama_api_base`.
+        request (AdminSettingsUpdateRequest): Updated `api_keys`, `visible_models`, `configured_models`,
+            `ollama_api_base`, and `gemma-4-sql` configuration.
 
     Returns:
         AppResult[AdminSettingsResponse]: `Ok(AdminSettingsResponse)` containing updated state.
@@ -113,6 +140,14 @@ class AdminService:
       await self._upsert_setting(db, "configured_models", configured_val)
     if request.ollama_api_base is not None:
       await self._upsert_setting(db, "ollama_api_base", request.ollama_api_base)
+    if request.gemma4_sql_enabled is not None:
+      await self._upsert_setting(db, "gemma4_sql_enabled", request.gemma4_sql_enabled)
+    if request.gemma4_sql_backend is not None:
+      await self._upsert_setting(db, "gemma4_sql_backend", request.gemma4_sql_backend)
+    if request.gemma4_sql_model_name is not None:
+      await self._upsert_setting(db, "gemma4_sql_model_name", request.gemma4_sql_model_name)
+    if request.gemma4_sql_api_base is not None:
+      await self._upsert_setting(db, "gemma4_sql_api_base", request.gemma4_sql_api_base)
 
     await db.commit()
     new_settings_res = await self.get_admin_settings_result(db)

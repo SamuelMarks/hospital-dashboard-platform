@@ -90,7 +90,7 @@
     <app-sql-builder
       [dashboardId]="ids.dashboardId"
       [widgetId]="ids.widgetId"
-      [initialSql]="'SELECT * FROM hospital_data LIMIT 5'"
+      [initialSql]="vis.pendingSql() || 'SELECT * FROM hospital_data LIMIT 5'"
       [initialTab]="1"
       [enableCart]="true"
       (saveToCart)="handleSaveToCart($event)"

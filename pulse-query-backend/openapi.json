@@ -2204,6 +2204,136 @@
         }
       }
     },
+    "/api/v1/ai/health": {
+      "get": {
+        "tags": ["ai"],
+        "summary": "Get Llm Health",
+        "description": "Probes connection validity across all configured LLM models (`any-llm`, Ollama, `gemma-4-sql`, Gemini)\nand verifies read-only DuckDB analytical readiness.\n\nArgs:\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n    run_smoke_test (bool): Whether to run a 1-token smoke completion against each model.\n\nReturns:\n    LlmHealthSummaryResponse: Aggregated connection status and per-provider telemetry.",
+        "operationId": "get_llm_health_api_v1_ai_health_get",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "run_smoke_test",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Run Smoke Test"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmHealthSummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/models/verify": {
+      "post": {
+        "tags": ["ai"],
+        "summary": "Verify Model Connection",
+        "description": "Verifies connection validity and optional 1-token smoke inference for a specific LLM model or provider.\n\nArgs:\n    request (LlmConnectionTestRequest): Provider and model verification parameters.\n    current_user (User): Authenticated user session.\n    db (AsyncSession): Active database session.\n\nReturns:\n    LlmProviderHealthResponse: Detailed connection status, latency, and remediation guidance.",
+        "operationId": "verify_model_connection_api_v1_ai_models_verify_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmConnectionTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmProviderHealthResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ai/generate": {
       "post": {
         "tags": ["ai"],
@@ -5437,7 +5567,7 @@
       "get": {
         "tags": ["admin"],
         "summary": "Read Admin Settings",
-        "description": "Get system-wide admin settings like API keys and visible models.",
+        "description": "Get system-wide admin settings like API keys and visible models.\n\nArgs:\n    db (AsyncSession): Active PostgreSQL session.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    AdminSettingsResponse: Current admin settings state.",
         "operationId": "read_admin_settings_api_v1_admin_settings_get",
         "security": [
           {
@@ -5506,7 +5636,7 @@
       "put": {
         "tags": ["admin"],
         "summary": "Write Admin Settings",
-        "description": "Update system-wide admin settings like API keys and visible models.",
+        "description": "Update system-wide admin settings like API keys and visible models.\n\nArgs:\n    request (AdminSettingsUpdateRequest): Updated admin settings payload.\n    db (AsyncSession): Active PostgreSQL session.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    AdminSettingsResponse: Updated admin settings state.",
         "operationId": "write_admin_settings_api_v1_admin_settings_put",
         "security": [
           {
@@ -5566,6 +5696,87 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminSettingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/llm/test-connection": {
+      "post": {
+        "tags": ["admin"],
+        "summary": "Test Llm Connection",
+        "description": "Tests connectivity and optional 1-token smoke inference for an LLM provider or model configuration.\n\nArgs:\n    request (LlmConnectionTestRequest): Provider, model, and optional override credentials.\n    db (AsyncSession): Active PostgreSQL session.\n    current_user (User): Authenticated administrator.\n\nReturns:\n    LlmProviderHealthResponse: Connection health status, latency, and remediation steps.",
+        "operationId": "test_llm_connection_api_v1_admin_llm_test_connection_post",
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "JWT token query parameter for direct browser downloads",
+              "title": "Token"
+            },
+            "description": "JWT token query parameter for direct browser downloads"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Accept-Language"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmConnectionTestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmProviderHealthResponse"
                 }
               }
             }
@@ -6421,11 +6632,37 @@
               }
             ],
             "title": "Ollama Api Base"
+          },
+          "gemma4_sql_enabled": {
+            "type": "boolean",
+            "title": "Gemma4 Sql Enabled",
+            "default": true
+          },
+          "gemma4_sql_backend": {
+            "type": "string",
+            "title": "Gemma4 Sql Backend",
+            "default": "mlx"
+          },
+          "gemma4_sql_model_name": {
+            "type": "string",
+            "title": "Gemma4 Sql Model Name",
+            "default": "google/gemma-4-sql-9b"
+          },
+          "gemma4_sql_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Api Base"
           }
         },
         "type": "object",
         "title": "AdminSettingsResponse",
-        "description": "Response schema containing the currently configured admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str]): Additional `provider/model` or `provider:model` entries registered for `any-llm`.\n    ollama_api_base (str | None): Optional custom Ollama base URL override."
+        "description": "Response schema containing the currently configured admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str]): Additional `provider/model` or `provider:model` entries registered for `any-llm`.\n    ollama_api_base (str | None): Optional custom Ollama base URL override.\n    gemma4_sql_enabled (bool): Whether the `gemma-4-sql` text-to-SQL engine is enabled.\n    gemma4_sql_backend (str): Selected `gemma-4-sql` backend (`'mlx'`, `'jax'`, `'pytorch'`, `'keras'`, `'maxtext'`, `'api'`).\n    gemma4_sql_model_name (str): Target `gemma-4-sql` model identifier.\n    gemma4_sql_api_base (str | None): Optional `gemma-4-sql serve` HTTP endpoint URL."
       },
       "AdminSettingsUpdateRequest": {
         "properties": {
@@ -6467,11 +6704,55 @@
               }
             ],
             "title": "Ollama Api Base"
+          },
+          "gemma4_sql_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Enabled"
+          },
+          "gemma4_sql_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Backend"
+          },
+          "gemma4_sql_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Model Name"
+          },
+          "gemma4_sql_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Api Base"
           }
         },
         "type": "object",
         "title": "AdminSettingsUpdateRequest",
-        "description": "Request schema for updating admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str] | None): Optional list of `any-llm` model identifiers (`provider/model`).\n    ollama_api_base (str | None): Optional custom Ollama base URL override."
+        "description": "Request schema for updating admin settings.\n\nAttributes:\n    api_keys (dict[str, str]): Map of provider slugs to configured API keys.\n    visible_models (list[str]): List of visible model IDs.\n    configured_models (list[str] | None): Optional list of `any-llm` model identifiers (`provider/model`).\n    ollama_api_base (str | None): Optional custom Ollama base URL override.\n    gemma4_sql_enabled (bool | None): Optional toggle for `gemma-4-sql`.\n    gemma4_sql_backend (str | None): Optional `gemma-4-sql` backend override.\n    gemma4_sql_model_name (str | None): Optional `gemma-4-sql` model identifier override.\n    gemma4_sql_api_base (str | None): Optional `gemma-4-sql serve` endpoint override."
       },
       "AlertRuleCreate": {
         "properties": {
@@ -7034,6 +7315,12 @@
             ],
             "title": "Target Models",
             "description": "Optional list of model IDs to query."
+          },
+          "auto_execute_sql": {
+            "type": "boolean",
+            "title": "Auto Execute Sql",
+            "description": "Whether to automatically execute generated SQL against read-only DuckDB.",
+            "default": true
           }
         },
         "type": "object",
@@ -8145,6 +8432,67 @@
           }
         ]
       },
+      "LlmConnectionTestRequest": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Base"
+          },
+          "gemma4_sql_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemma4 Sql Backend"
+          },
+          "run_inference_smoke_test": {
+            "type": "boolean",
+            "title": "Run Inference Smoke Test",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["provider"],
+        "title": "LlmConnectionTestRequest",
+        "description": "Request payload to verify connectivity and optional 1-token inference for an LLM provider/model.\n\nAttributes:\n    provider (str): Provider slug (`'ollama'`, `'gemini'`, `'gemma4sql'`, `'openai'`, etc.).\n    model_id (str | None): Target model identifier to verify.\n    api_key (str | None): Optional API key override to test before saving.\n    api_base (str | None): Optional custom API base URL override to test.\n    gemma4_sql_backend (str | None): Optional `gemma-4-sql` backend engine (`'mlx'`, `'jax'`, `'pytorch'`, `'api'`).\n    run_inference_smoke_test (bool): If True, executes a minimal 1-token/SQL smoke generation to detect crashes."
+      },
       "LlmHealthSchema": {
         "properties": {
           "providers_count": {
@@ -8164,12 +8512,73 @@
             "type": "array",
             "title": "Models",
             "description": "List of active model display names."
+          },
+          "provider_statuses": {
+            "items": {
+              "$ref": "#/components/schemas/LlmProviderHealthResponse"
+            },
+            "type": "array",
+            "title": "Provider Statuses",
+            "description": "Live connection statuses for configured LLM providers."
           }
         },
         "type": "object",
         "required": ["providers_count", "mock_mode"],
         "title": "LlmHealthSchema",
         "description": "Schema for LLM swarm configuration and readiness."
+      },
+      "LlmHealthSummaryResponse": {
+        "properties": {
+          "overall_status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "offline",
+              "unconfigured",
+              "auth_error",
+              "crashed",
+              "error"
+            ],
+            "title": "Overall Status",
+            "default": "connected"
+          },
+          "active_count": {
+            "type": "integer",
+            "title": "Active Count",
+            "default": 0
+          },
+          "healthy_count": {
+            "type": "integer",
+            "title": "Healthy Count",
+            "default": 0
+          },
+          "unhealthy_count": {
+            "type": "integer",
+            "title": "Unhealthy Count",
+            "default": 0
+          },
+          "mock_mode": {
+            "type": "boolean",
+            "title": "Mock Mode",
+            "default": false
+          },
+          "duckdb_readonly_ready": {
+            "type": "boolean",
+            "title": "Duckdb Readonly Ready",
+            "default": true
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/LlmProviderHealthResponse"
+            },
+            "type": "array",
+            "title": "Providers"
+          }
+        },
+        "type": "object",
+        "title": "LlmHealthSummaryResponse",
+        "description": "Aggregated connection health summary across all configured LLM models and read-only DuckDB.\n\nAttributes:\n    overall_status (LlmConnectionStatus): Aggregate status across configured models.\n    active_count (int): Total number of configured/discovered models evaluated.\n    healthy_count (int): Number of models with `'connected'` status.\n    unhealthy_count (int): Number of models with offline, auth, or crash errors.\n    mock_mode (bool): True if no real LLM providers are configured and fallback mock is active.\n    duckdb_readonly_ready (bool): True if the read-only DuckDB analytics connection is healthy.\n    providers (list[LlmProviderHealthResponse]): Per-model connection probe results."
       },
       "LlmOutputAnalyticsRow": {
         "properties": {
@@ -8298,6 +8707,94 @@
         "title": "LlmOutputAnalyticsRow",
         "description": "Flattened analytics row representing a single LLM candidate response or optimization iteration."
       },
+      "LlmProviderHealthResponse": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "processor_type": {
+            "type": "string",
+            "enum": ["SQL", "OLLAMA", "ANY_LLM", "GEMMA_4_SQL", "GEMINI"],
+            "title": "Processor Type",
+            "default": "ANY_LLM"
+          },
+          "is_local": {
+            "type": "boolean",
+            "title": "Is Local",
+            "default": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "offline",
+              "unconfigured",
+              "auth_error",
+              "crashed",
+              "error"
+            ],
+            "title": "Status",
+            "default": "connected"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Connection healthy"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "remediation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remediation"
+          },
+          "checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": ["provider", "model_id", "display_name"],
+        "title": "LlmProviderHealthResponse",
+        "description": "Live connection validation result for a single LLM provider or model combatant.\n\nAttributes:\n    provider (str): Provider slug (`'ollama'`, `'gemini'`, `'gemma4sql'`, `'openai'`, etc.).\n    model_id (str): Canonical model identifier (`'ollama:llama3'`, `'gemma4sql:google/gemma-4-sql-9b'`).\n    display_name (str): Human-friendly display name.\n    processor_type (ProcessorType): Processor classification category.\n    is_local (bool): True if hosted locally.\n    status (LlmConnectionStatus): Connection validity status (`'connected'`, `'offline'`, `'auth_error'`, `'crashed'`, etc.).\n    latency_ms (float | None): Round-trip probe latency in milliseconds.\n    message (str): Human-readable status summary.\n    error_code (str | None): Canonical `ErrorCode` string if probe failed.\n    remediation (str | None): Recommended fix command or configuration guidance.\n    checked_at (datetime): UTC timestamp when the health probe completed."
+      },
       "MessageCandidateResponse": {
         "properties": {
           "id": {
@@ -8338,6 +8835,16 @@
           "is_selected": {
             "type": "boolean",
             "title": "Is Selected"
+          },
+          "sql_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SqlPreviewPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8365,6 +8872,12 @@
             ],
             "title": "Target Models",
             "description": "Optional list of model IDs to query."
+          },
+          "auto_execute_sql": {
+            "type": "boolean",
+            "title": "Auto Execute Sql",
+            "description": "Whether to automatically execute extracted SQL against read-only DuckDB and attach a preview.",
+            "default": true
           }
         },
         "type": "object",
@@ -8415,6 +8928,16 @@
             "type": "array",
             "title": "Candidates",
             "default": []
+          },
+          "sql_preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SqlPreviewPayload"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -8585,15 +9108,83 @@
           },
           "processor_type": {
             "type": "string",
-            "enum": ["SQL", "OLLAMA", "ANY_LLM"],
+            "enum": ["SQL", "OLLAMA", "ANY_LLM", "GEMMA_4_SQL", "GEMINI"],
             "title": "Processor Type",
             "default": "ANY_LLM"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "degraded",
+              "offline",
+              "unconfigured",
+              "auth_error",
+              "crashed",
+              "error"
+            ],
+            "title": "Status",
+            "default": "connected"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "remediation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remediation"
+          },
+          "supports_sql_generation": {
+            "type": "boolean",
+            "title": "Supports Sql Generation",
+            "default": true
+          },
+          "supports_streaming": {
+            "type": "boolean",
+            "title": "Supports Streaming",
+            "default": true
+          },
+          "backend_engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Engine"
           }
         },
         "type": "object",
         "required": ["id", "name", "provider", "is_local"],
         "title": "ModelInfo",
-        "description": "Information about a configured LLM or SQL processor in the platform.\n\nAttributes:\n    id (str): Unique processor identifier (e.g. `'SQL'`, `'ollama/llama3'`, `'openai/gpt-4o'`).\n    name (str): Human-readable display label (e.g. `'SQL [no model]'`, `'GPT-4o'`).\n    provider (str): Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'anthropic'`, etc.).\n    is_local (bool): True if the processor executes locally (DuckDB SQL or local Ollama).\n    processor_type (ProcessorType): High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`)."
+        "description": "Information about a configured LLM or SQL processor in the platform.\n\nAttributes:\n    id (str): Unique processor identifier (e.g. `'SQL'`, `'ollama/llama3'`, `'openai/gpt-4o'`).\n    name (str): Human-readable display label (e.g. `'SQL [no model]'`, `'GPT-4o'`).\n    provider (str): Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'gemini'`, `'gemma4sql'`, etc.).\n    is_local (bool): True if the processor executes locally (DuckDB SQL, `gemma-4-sql`, or local Ollama).\n    processor_type (ProcessorType): High-level processor category (`'SQL'`, `'OLLAMA'`, `'ANY_LLM'`, `'GEMMA_4_SQL'`, or `'GEMINI'`).\n    status (LlmConnectionStatus): Current connection health status of the model/provider.\n    latency_ms (float | None): Last measured probe or generation latency in milliseconds.\n    error_message (str | None): Diagnostic error message when status is unhealthy.\n    remediation (str | None): Actionable remediation advice when status is unhealthy.\n    supports_sql_generation (bool): True if the processor converts natural language into SQL.\n    supports_streaming (bool): True if the processor supports token streaming.\n    backend_engine (str | None): Underlying execution engine (e.g. `'duckdb'`, `'mlx'`, `'jax'`, `'any-llm'`)."
       },
       "OptimizationEvaluationSummaryResponse": {
         "properties": {
@@ -9891,6 +10482,53 @@
         "type": "object",
         "title": "SqlExecutionPayload",
         "description": "Strongly typed Pydantic model for a SQL widget execution payload.\n\nAttributes:\n    kind (Literal[\"sql\"]): Discriminator tag identifying a SQL widget execution payload.\n    data (list[SqlRow | JsonValue]): List of row dictionaries returned by DuckDB.\n    columns (list[str]): Ordered list of column names.\n    error (str | None): Error message if SQL execution failed, else None.\n    generated_sql (str | None): Optional generated or executed SQL string.\n    processor_used (str | None): Optional processor identifier used.\n    natural_text (str | None): Optional natural language input processed."
+      },
+      "SqlPreviewPayload": {
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SqlRow"
+            },
+            "type": "array",
+            "title": "Data"
+          },
+          "row_count": {
+            "type": "integer",
+            "title": "Row Count",
+            "default": 0
+          },
+          "execution_time_ms": {
+            "type": "number",
+            "title": "Execution Time Ms",
+            "default": 0.0
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "title": "SqlPreviewPayload",
+        "description": "Inline read-only DuckDB execution preview attached to a chat message or arena candidate.\n\nAttributes:\n    columns (list[str]): Ordered column names returned by the read-only DuckDB query.\n    data (list[SqlRow]): Bounded preview rows (up to `max_rows`).\n    row_count (int): Number of rows returned in `data`.\n    execution_time_ms (float): Query execution duration in milliseconds.\n    truncated (bool): True if the result set reached the preview row cap.\n    error (str | None): Validation or DuckDB execution error message if execution failed."
       },
       "SqlRow": {
         "additionalProperties": {

@@ -41,6 +41,7 @@ class MacroCoTStrategy(PromptStrategy):
     "- SHIFT_CHANGE(timestamp, start_hr, end_hr) -> bool: Returns TRUE if time falls within shift change window.\n"
     "- CONSECUTIVE_OVERLOAD(v1, v2, v3, cap) -> bool: Returns TRUE if three consecutive values exceed capacity.\n"
     "- GENERATE_DATES(start, end) -> TABLE: Generates a date spine for filling sparse data gaps.\n"
+    "- BED_TURNOVER_EVENTS(max_hours) -> TABLE: Deduplicates inpatient stays and pairs each unit discharge with the chronologically next admission in the same unit within max_hours.\n"
   )
 
   def get_strategy_name(self) -> str:

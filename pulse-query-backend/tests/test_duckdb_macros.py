@@ -118,3 +118,32 @@ def test_macro_generate_dates(db_conn: duckdb.DuckDBPyConnection) -> None:
   assert d1.year == 2023
   assert d1.month == 1
   assert d1.day == 1
+
+
+def test_macro_bed_turnover_events(db_conn: duckdb.DuckDBPyConnection) -> None:
+  """Verifies `BED_TURNOVER_EVENTS` deduplicates daily census snapshots and pairs each discharge with the next admit."""
+  db_conn.execute("""
+    CREATE TABLE synthetic_hospital_data (
+      PiCSN VARCHAR,
+      Location VARCHAR,
+      Clinical_Service VARCHAR,
+      Midnight_Census_DateTime TIMESTAMP,
+      Admit_DT TIMESTAMP,
+      Discharge_DT TIMESTAMP
+    )
+  """)
+  # Patient 1 stays 2 days (2 daily census rows), discharged at 2026-01-03 10:00:00
+  # Patient 2 was already admitted earlier (2026-01-02 08:00:00) and discharged 2026-01-04 12:00:00
+  # Patient 3 is admitted after Patient 1's discharge at 2026-01-03 11:30:00 (90 min turnover)
+  db_conn.execute("""
+    INSERT INTO synthetic_hospital_data VALUES
+      ('CSN-1', 'ICU_Cardiology_B', 'Cardiology', '2026-01-01 23:59:00', '2026-01-01 09:00:00', '2026-01-03 10:00:00'),
+      ('CSN-1', 'ICU_Cardiology_B', 'Cardiology', '2026-01-02 23:59:00', '2026-01-01 09:00:00', '2026-01-03 10:00:00'),
+      ('CSN-2', 'ICU_Cardiology_B', 'Cardiology', '2026-01-02 23:59:00', '2026-01-02 08:00:00', '2026-01-04 12:00:00'),
+      ('CSN-3', 'ICU_Cardiology_B', 'Cardiology', '2026-01-03 23:59:00', '2026-01-03 11:30:00', '2026-01-05 14:00:00')
+  """)
+  create_hospital_macros(db_conn)
+  rows = db_conn.execute("SELECT Location, turnover_minutes FROM BED_TURNOVER_EVENTS(24)").fetchall()
+  assert len(rows) == 1
+  assert rows[0][0] == "ICU_Cardiology_B"
+  assert rows[0][1] == 90

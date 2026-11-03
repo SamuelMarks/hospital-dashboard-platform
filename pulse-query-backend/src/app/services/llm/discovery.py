@@ -1,5 +1,5 @@
 """
-Ollama and local model auto-discovery utilities and processor metadata helpers.
+Ollama, `gemma-4-sql`, Gemini, and `any-llm` model discovery utilities and processor metadata helpers.
 """
 
 from collections.abc import Mapping, Sequence
@@ -18,6 +18,40 @@ SQL_NO_MODEL_INFO = ModelInfo(
   provider="sql",
   is_local=True,
   processor_type="SQL",
+  status="connected",
+  supports_sql_generation=False,
+  supports_streaming=False,
+  backend_engine="duckdb",
+)
+
+DEFAULT_CHOICE_OLLAMA_MODELS: tuple[ModelInfo, ...] = (
+  ModelInfo(
+    id="ollama:hf.co/google/gemma-4-E4B",
+    name="Gemma 4 E4B (google/gemma-4-E4B)",
+    provider="ollama",
+    is_local=True,
+    processor_type="OLLAMA",
+    status="connected",
+    backend_engine="ollama",
+  ),
+  ModelInfo(
+    id="ollama:hf.co/microsoft/Phi-4-mini-flash-reasoning",
+    name="Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning)",
+    provider="ollama",
+    is_local=True,
+    processor_type="OLLAMA",
+    status="connected",
+    backend_engine="ollama",
+  ),
+  ModelInfo(
+    id="ollama:hf.co/meta-llama/Llama-3.2-1B",
+    name="Llama 3.2 1B (meta-llama/Llama-3.2-1B)",
+    provider="ollama",
+    is_local=True,
+    processor_type="OLLAMA",
+    status="connected",
+    backend_engine="ollama",
+  ),
 )
 
 
@@ -54,14 +88,26 @@ def _parse_configured_model_entry(entry: str) -> tuple[str, str, str] | None:
   if "|" in cleaned:
     cleaned, display_override = [part.strip() for part in cleaned.split("|", 1)]
 
-  sep = ":" if ":" in cleaned else ("/" if "/" in cleaned else "")
-  if not sep:
+  colon_idx = cleaned.find(":")
+  slash_idx = cleaned.find("/")
+  if colon_idx > 0 and (slash_idx == -1 or colon_idx < slash_idx):
+    sep = ":"
+  elif slash_idx > 0:
+    sep = "/"
+  else:
     return None
+
   provider, model_name = [part.strip() for part in cleaned.split(sep, 1)]
   if not provider or not model_name:
     return None
-  display_name = display_override if display_override else f"{model_name} ({provider})"
-  return provider.lower(), model_name, display_name
+  prov_lower = provider.lower()
+  if prov_lower in {"gemma-4-sql", "gemma_4_sql", "gemma4sql"}:
+    prov_lower = "gemma4sql"
+  elif prov_lower == "google":
+    prov_lower = "gemini"
+
+  display_name = display_override if display_override else f"{model_name} ({prov_lower})"
+  return prov_lower, model_name, display_name
 
 
 def _infer_processor_type(provider: str, model_id: str, is_local: bool) -> ProcessorType:
@@ -74,13 +120,52 @@ def _infer_processor_type(provider: str, model_id: str, is_local: bool) -> Proce
       is_local (bool): Whether the model is marked as local.
 
   Returns:
-      ProcessorType: `'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`.
+      ProcessorType: `'SQL'`, `'OLLAMA'`, `'GEMMA_4_SQL'`, `'GEMINI'`, or `'ANY_LLM'`.
   """
-  if model_id.upper() == "SQL" or provider.lower() == "sql":
+  prov_lower = provider.lower()
+  mod_lower = model_id.lower()
+  if model_id.upper() == "SQL" or prov_lower == "sql":
     return "SQL"
-  if provider.lower() == "ollama" or model_id.lower().startswith(("ollama/", "ollama:")) or is_local:
+  if prov_lower in {"gemma4sql", "gemma-4-sql", "gemma_4_sql"} or "gemma-4-sql" in mod_lower:
+    return "GEMMA_4_SQL"
+  if prov_lower in {"gemini", "google"} or mod_lower.startswith(("gemini/", "gemini:", "google/")):
+    return "GEMINI"
+  if prov_lower == "ollama" or mod_lower.startswith(("ollama/", "ollama:")) or is_local:
     return "OLLAMA"
   return "ANY_LLM"
+
+
+def build_gemma4_sql_model_info(admin_settings: AdminSettingsResponse | None = None) -> ModelInfo:
+  """
+  Constructs a `ModelInfo` entry for the configured `gemma-4-sql` processor.
+
+  Args:
+      admin_settings (AdminSettingsResponse | None): Optional admin configuration overrides.
+
+  Returns:
+      ModelInfo: Descriptor for the `gemma-4-sql` processor.
+  """
+  backend = (
+    admin_settings.gemma4_sql_backend
+    if admin_settings and admin_settings.gemma4_sql_backend
+    else settings.GEMMA4_SQL_BACKEND
+  )
+  model_name = (
+    admin_settings.gemma4_sql_model_name
+    if admin_settings and admin_settings.gemma4_sql_model_name
+    else settings.GEMMA4_SQL_MODEL_NAME
+  )
+  return ModelInfo(
+    id=f"gemma4sql:{model_name}",
+    name=f"Gemma-4-SQL ({backend.upper()})",
+    provider="gemma4sql",
+    is_local=True,
+    processor_type="GEMMA_4_SQL",
+    status="connected",
+    supports_sql_generation=True,
+    supports_streaming=True,
+    backend_engine=backend,
+  )
 
 
 async def discover_ollama_models_result(
@@ -126,6 +211,8 @@ async def discover_ollama_models_result(
             provider="ollama",
             is_local=True,
             processor_type="OLLAMA",
+            status="connected",
+            backend_engine="ollama",
           )
         )
     return Ok(discovered)
@@ -140,6 +227,31 @@ async def discover_ollama_models_result(
   finally:
     if owns_client:
       await client.aclose()
+
+
+def _append_unique_models(
+  target: list[ModelInfo],
+  seen: set[str],
+  candidates: Sequence[ModelInfo],
+  visible_filter: set[str] | None = None,
+) -> None:
+  """
+  Appends `candidates` to `target` while deduplicating normalized IDs (`:` vs `/`) and applying `visible_filter`.
+
+  Args:
+      target (list[ModelInfo]): Destination list of `ModelInfo` items.
+      seen (set[str]): Set of already-included raw and normalized model identifiers.
+      candidates (Sequence[ModelInfo]): Candidate `ModelInfo` items to append.
+      visible_filter (set[str] | None): Optional visibility whitelist.
+  """
+  for model in candidates:
+    if visible_filter and model.id not in visible_filter:
+      continue
+    norm_key = model.id.replace(":", "/")
+    if model.id not in seen and norm_key not in seen:
+      target.append(model)
+      seen.add(model.id)
+      seen.add(norm_key)
 
 
 def assemble_available_models(
@@ -167,17 +279,20 @@ def assemble_available_models(
       provider=str(m["provider"]),
       is_local=bool(m.get("is_local", False)),
       processor_type=_infer_processor_type(str(m["provider"]), str(m["id"]), bool(m.get("is_local", False))),
+      status="connected",
+      backend_engine=str(m["provider"]),
     )
     for m in swarm_entries
   ]
-  if admin_settings and admin_settings.visible_models:
-    swarm_models = [m for m in swarm_models if m.id in admin_settings.visible_models]
+  visible_set = set(admin_settings.visible_models) if admin_settings and admin_settings.visible_models else None
+  if visible_set:
+    swarm_models = [m for m in swarm_models if m.id in visible_set]
 
   for extra_entry in admin_settings.configured_models if admin_settings and admin_settings.configured_models else []:
     parsed = _parse_configured_model_entry(extra_entry)
     if parsed is not None:
       prov, mod_name, disp_name = parsed
-      is_loc = prov == "ollama"
+      is_loc = prov in {"ollama", "gemma4sql", "llamacpp"}
       cand_id = f"{prov}:{mod_name}"
       if all(existing.id not in {cand_id, f"{prov}/{mod_name}"} for existing in swarm_models):
         swarm_models.append(
@@ -187,6 +302,8 @@ def assemble_available_models(
             provider=prov,
             is_local=is_loc,
             processor_type=_infer_processor_type(prov, cand_id, is_loc),
+            status="connected",
+            backend_engine=prov,
           )
         )
 
@@ -197,18 +314,9 @@ def assemble_available_models(
     combined.append(SQL_NO_MODEL_INFO)
     seen.add(SQL_NO_MODEL_INFO.id)
 
-  for ollama_model in discovered_ollama or []:
-    norm_key = ollama_model.id.replace(":", "/")
-    if ollama_model.id not in seen and norm_key not in seen:
-      combined.append(ollama_model)
-      seen.add(ollama_model.id)
-      seen.add(norm_key)
-
-  for model in swarm_models:
-    norm_key = model.id.replace(":", "/")
-    if model.id not in seen and norm_key not in seen:
-      combined.append(model)
-      seen.add(model.id)
-      seen.add(norm_key)
+  _append_unique_models(combined, seen, discovered_ollama or [])
+  if include_sql:
+    _append_unique_models(combined, seen, DEFAULT_CHOICE_OLLAMA_MODELS, visible_filter=visible_set)
+  _append_unique_models(combined, seen, swarm_models)
 
   return combined

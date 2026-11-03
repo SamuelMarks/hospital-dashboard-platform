@@ -68,6 +68,9 @@ describe('TemplateConfigurationService', () => {
       service.inferVisualization({ title: 'Daily Trend', sql_template: 'SELECT 1 GROUP BY d' }),
     ).toBe('bar_chart');
     expect(
+      service.inferVisualization({ title: 'Bed Turnover Time', sql_template: 'SELECT 1' }),
+    ).toBe('bar_chart');
+    expect(
       service.inferVisualization({ title: 'Readmission Risk', sql_template: 'SELECT 1' }),
     ).toBe('scalar');
     expect(service.inferVisualization({ title: 'Admission Lag', sql_template: 'SELECT 1' })).toBe(

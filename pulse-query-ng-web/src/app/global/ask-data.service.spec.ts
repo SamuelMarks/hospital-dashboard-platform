@@ -61,6 +61,17 @@ describe('AskDataService', () => {
     service.close();
     activeSpy.mockRestore();
 
+    // openWithSql with non-empty and whitespace-only SQL
+    expect(service.pendingSql()).toBeNull();
+    service.openWithSql('  SELECT * FROM hospital_data LIMIT 10;  ', btn);
+    expect(service.pendingSql()).toBe('SELECT * FROM hospital_data LIMIT 10;');
+    expect(service.isOpen()).toBe(true);
+    service.close();
+
+    service.openWithSql('   ');
+    expect(service.pendingSql()).toBe('SELECT * FROM hospital_data LIMIT 10;');
+    service.close();
+
     document.body.removeChild(btn);
   });
 });

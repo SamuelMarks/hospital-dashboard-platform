@@ -27,9 +27,16 @@ import kotlinx.serialization.Serializable
  *
  * @property id Unique processor identifier (e.g. `'SQL'`, `'ollama:llama3'`, `'openai/gpt-4o'`).
  * @property name Human-readable display label.
- * @property provider Provider slug (`'sql'`, `'ollama'`, `'openai'`, etc.).
+ * @property provider Provider slug (`'sql'`, `'ollama'`, `'openai'`, `'gemini'`, `'gemma4sql'`, etc.).
  * @property isLocal True if the processor executes locally.
- * @property processorType High-level processor category (`'SQL'`, `'OLLAMA'`, or `'ANY_LLM'`).
+ * @property processorType High-level processor category (`'SQL'`, `'OLLAMA'`, `'ANY_LLM'`, `'GEMMA_4_SQL'`, or `'GEMINI'`).
+ * @property status Current connection health status (`'connected'`, `'degraded'`, `'offline'`, `'crashed'`, etc.).
+ * @property latencyMs Last measured probe latency in milliseconds.
+ * @property errorMessage Diagnostic error message when unhealthy.
+ * @property remediation Actionable remediation advice when unhealthy.
+ * @property supportsSqlGeneration True if the processor converts natural language into SQL.
+ * @property supportsStreaming True if the processor supports token streaming.
+ * @property backendEngine Underlying execution engine (`'duckdb'`, `'mlx'`, `'jax'`, `'any-llm'`).
  */
 @Serializable
 data class ModelInfo(
@@ -37,5 +44,12 @@ data class ModelInfo(
     @SerialName(value = "name") @Required val name: kotlin.String,
     @SerialName(value = "provider") @Required val provider: kotlin.String,
     @SerialName(value = "is_local") @Required val isLocal: kotlin.Boolean,
-    @SerialName(value = "processor_type") val processorType: kotlin.String = "ANY_LLM"
+    @SerialName(value = "processor_type") val processorType: kotlin.String = "ANY_LLM",
+    @SerialName(value = "status") val status: kotlin.String = "connected",
+    @SerialName(value = "latency_ms") val latencyMs: kotlin.Double? = null,
+    @SerialName(value = "error_message") val errorMessage: kotlin.String? = null,
+    @SerialName(value = "remediation") val remediation: kotlin.String? = null,
+    @SerialName(value = "supports_sql_generation") val supportsSqlGeneration: kotlin.Boolean = true,
+    @SerialName(value = "supports_streaming") val supportsStreaming: kotlin.Boolean = true,
+    @SerialName(value = "backend_engine") val backendEngine: kotlin.String? = null
 )

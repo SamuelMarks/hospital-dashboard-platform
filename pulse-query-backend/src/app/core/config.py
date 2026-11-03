@@ -50,13 +50,19 @@ class SwarmConfigDict(TypedDict):
 
 # Provider-specific display name rules mapped by (provider_or_none, substring_match) -> display_name
 _KNOWN_DISPLAY_NAMES: tuple[tuple[str | None, str, str], ...] = (
+  (None, "gemma-4-e4b", "Gemma 4 E4B (google/gemma-4-E4B)"),
+  (None, "phi-4-mini-flash-reasoning", "Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning)"),
+  (None, "llama-3.2-1b", "Llama 3.2 1B (meta-llama/Llama-3.2-1B)"),
   (None, "deepseek-r1", "DeepSeek R1"),
   (None, "deepseek-coder", "DeepSeek Coder"),
   (None, "qwen2.5-coder", "Qwen 2.5 Coder"),
   ("openai", "gpt-4o", "GPT-4o"),
   ("mistral", "mistral-large", "Mistral Large"),
   ("anthropic", "claude-3-opus", "Claude 3 Opus"),
+  ("gemini", "gemini-2.5-pro", "Gemini 2.5 Pro"),
+  ("gemini", "gemini-2.5-flash", "Gemini 2.5 Flash"),
   ("gemini", "gemini-1.5-pro", "Gemini 1.5 Pro"),
+  ("gemma4sql", "gemma-4-sql", "Gemma-4-SQL (9B)"),
 )
 
 
@@ -189,6 +195,18 @@ class Settings(BaseSettings):
   # Ollama auto-detected endpoint settings
   OLLAMA_HOST: str = "http://localhost:11434/v1"
   OLLAMA_MODELS: str = ""
+  OLLAMA_MAX_CONCURRENT_REQUESTS: int = 1
+  OLLAMA_AUTO_FANOUT_ALL_TAGS: bool = False
+
+  # gemma-4-sql integration settings
+  GEMMA4_SQL_ENABLED: bool = False
+  GEMMA4_SQL_BACKEND: str = "mlx"
+  GEMMA4_SQL_MODEL_NAME: str = "google/gemma-4-sql-9b"
+  GEMMA4_SQL_API_BASE: str | None = None
+  GEMMA4_SQL_BEAM_WIDTH: int = 3
+  GEMMA4_SQL_MAX_LENGTH: int = 256
+  GEMMA4_SQL_SHOW_CONFIDENCE: bool = True
+  GEMMA4_SQL_ENABLE_DUCKDB_UDF: bool = True
 
   # Cloud Providers
   OPENAI_API_KEY: str | None = None
@@ -301,6 +319,15 @@ class Settings(BaseSettings):
         None,
         False,
       ),
+      (
+        bool(self.GEMMA4_SQL_ENABLED),
+        "gemma4sql",
+        self.GEMMA4_SQL_MODEL_NAME,
+        ["google/gemma-4-sql-9b"],
+        self.GEMMA4_SQL_BACKEND,
+        self.GEMMA4_SQL_API_BASE,
+        True,
+      ),
     ]
 
     for enabled, provider, raw_models, fallback, api_key, api_base, is_local in provider_specs:
@@ -309,6 +336,26 @@ class Settings(BaseSettings):
         self._append_swarm_group(swarm, provider, models, api_key, api_base, local=is_local)
 
     return swarm
+
+  def get_provider_api_key(self, provider: str) -> str | None:
+    """
+    Returns the configured environment API key for a provider slug (`'openai'`, `'gemini'`, `'anthropic'`, `'mistral'`).
+
+    Args:
+        provider (str): Provider slug name.
+
+    Returns:
+        str | None: Configured API key or None.
+    """
+    prov_lower = provider.lower().strip()
+    key_map: dict[str, str | None] = {
+      "openai": self.OPENAI_API_KEY,
+      "gemini": self.GEMINI_API_KEY or self.GOOGLE_API_KEY,
+      "google": self.GOOGLE_API_KEY or self.GEMINI_API_KEY,
+      "anthropic": self.ANTHROPIC_API_KEY,
+      "mistral": self.MISTRAL_API_KEY,
+    }
+    return key_map.get(prov_lower)
 
   model_config = SettingsConfigDict(
     env_file=(

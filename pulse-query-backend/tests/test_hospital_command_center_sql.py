@@ -50,6 +50,7 @@ def populated_duckdb_conn() -> duckdb.DuckDBPyConnection:
     "SELECT Clinical_Service AS service, Location AS unit, COUNT(*) AS count "
     'FROM "synthetic_hospital_data" WHERE Clinical_Service IS NOT NULL GROUP BY 1, 2;'
   )
+  create_hospital_macros(conn)
   return conn
 
 
@@ -155,17 +156,29 @@ async def test_hospital_command_center_end_to_end_provisioning_and_sync(
   widgets = list((await db_session.execute(widgets_stmt)).scalars().all())
   assert len(widgets) == 30
 
-  # Corrupt one widget query to verify TemplateSeeder._sync_command_center_widgets repairs it
+  # Corrupt one widget query and Bed Turnover Time config/viz to verify TemplateSeeder._sync_command_center_widgets repairs them
   target_widget = widgets[0]
   target_widget.config = {**target_widget.config, "query": "SELECT 'stale_broken_query'"}
+  turnover_widget = next(w for w in widgets if w.title == "Bed Turnover Time")
+  turnover_widget.visualization = "table"
+  turnover_cfg = dict(turnover_widget.config)
+  turnover_cfg.pop("xKey", None)
+  turnover_widget.config = turnover_cfg
   await db_session.commit()
 
   await TemplateSeeder.seed_defaults(db=db_session)
   await db_session.refresh(target_widget)
+  await db_session.refresh(turnover_widget)
   assert target_widget.config["query"] != "SELECT 'stale_broken_query'"
+  assert turnover_widget.visualization == "bar_chart"
+  assert turnover_widget.config.get("xKey") == "unit"
 
-  # Also test _sync_command_center_widgets early return when no valid title/sql_template exists
+  # Also test _sync_command_center_widgets early return and dict entry branch
   await TemplateSeeder._sync_command_center_widgets(db_session, [{"invalid": 123}])
+  await TemplateSeeder._sync_command_center_widgets(
+    db_session,
+    [{"title": "NonExistentWidget", "sql_template": "SELECT 1", "parameters_schema": {"properties": {}}}],
+  )
 
   # Execute all 30 widgets via ExecutionService using a non-closing cursor wrapper
   class _SharedConnProxy:

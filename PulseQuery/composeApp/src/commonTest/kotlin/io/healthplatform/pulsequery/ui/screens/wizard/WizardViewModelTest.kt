@@ -533,13 +533,19 @@ class WizardViewModelTest {
             sqlTemplate = "SELECT 1",
             parametersSchema = null
         )
-        // Select templates of all category types: census, bottlenecks, utilization, other
+        // Select templates of all category types: census, flow, turnover title, bottlenecks, utilization, other
         val tplCensus = tplWithNullDesc.copy(category = "census")
+        val tplFlow = tplWithNullDesc.copy(category = "flow")
+        val tplTurnoverTitle = tplWithNullDesc.copy(title = "Bed Turnover Time", category = "general")
         val tplBottlenecks = tplWithNullDesc.copy(category = "bottlenecks")
         val tplUtilization = tplWithNullDesc.copy(category = "utilization")
         val tplOther = tplWithNullDesc.copy(category = "general")
 
         vm.selectTemplate(tplCensus)
+        assertEquals("bar_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+        vm.selectTemplate(tplFlow)
+        assertEquals("bar_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
+        vm.selectTemplate(tplTurnoverTitle)
         assertEquals("bar_chart", (vm.state.value as WizardState.ParameterConfiguration).visualization)
         vm.updateWidgetSubtitle("  Custom Template Subtitle  ")
         assertEquals("  Custom Template Subtitle  ", (vm.state.value as WizardState.ParameterConfiguration).widgetSubtitle)

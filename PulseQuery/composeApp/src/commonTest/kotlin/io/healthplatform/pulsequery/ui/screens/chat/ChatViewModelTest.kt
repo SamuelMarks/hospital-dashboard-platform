@@ -467,4 +467,100 @@ class ChatViewModelTest {
         vm.stageToCart("ICU Query", "SELECT * FROM icu")
         assertEquals(1, cart.stagedQueries.value.size)
     }
+
+    @Test
+    fun testLoadAvailableModelsToggleModelAndExecuteSqlSnippet() = kotlinx.coroutines.runBlocking {
+        val modelsJson = """
+            [
+                {"id":"SQL","name":"SQL [no model]","provider":"sql","is_local":true,"processor_type":"SQL","status":"connected"},
+                {"id":"gemma4sql:google/gemma-4-sql-9b","name":"Gemma-4-SQL (MLX)","provider":"gemma4sql","is_local":true,"processor_type":"GEMMA_4_SQL","status":"connected"}
+            ]
+        """.trimIndent()
+        val execRespJson = """{"columns":["cnt"],"data":[{"cnt":10}],"error":null}"""
+
+        val engine = createUnconfinedMockEngine { req ->
+            when {
+                req.url.encodedPath.endsWith("/api/v1/ai/models") -> respond(
+                    content = modelsJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                req.url.encodedPath.endsWith("/api/v1/ai/execute") -> respond(
+                    content = execRespJson,
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                req.method == HttpMethod.Post && req.url.encodedPath.trimEnd('/').endsWith("/conversations") -> respond(
+                    content = """{"id":"c-1","user_id":"u-1","title":"New","created_at":"2026-01-01T00:00:00Z","updated_at":"2026-01-01T00:00:00Z","messages":[$msg1Json]}""",
+                    status = HttpStatusCode.Created,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+                else -> respond(
+                    content = "[$conv1Json]",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            }
+        }
+        val client = createClient(engine)
+        AppContainer.setHttpClientForTest(client)
+
+        val vm = ChatViewModel(
+            scope = this,
+            chatApi = ChatApi(baseUrl = "http://localhost", httpClient = client),
+            aiApi = null
+        )
+        vm.loadAvailableModels()
+        awaitIdle()
+        assertEquals(2, vm.state.value.availableModels.size)
+        assertEquals("GEMMA_4_SQL", vm.state.value.availableModels[1].processorType)
+
+        // Toggle model selection on and off
+        vm.toggleModelSelection("SQL")
+        assertTrue(vm.state.value.selectedModelIds.contains("SQL"))
+        vm.updateInputText("SELECT 10 AS cnt")
+        vm.sendMessage()
+        awaitIdle()
+        vm.toggleModelSelection("SQL")
+        assertFalse(vm.state.value.selectedModelIds.contains("SQL"))
+
+        // Execute SQL snippet: blank vs non-blank success
+        vm.executeSqlSnippet("m-1", "   ")
+        awaitIdle()
+        assertTrue(vm.state.value.sqlExecutionResults.isEmpty())
+
+        vm.executeSqlSnippet("m-1", "SELECT 10 AS cnt")
+        awaitIdle()
+        assertEquals(1, vm.state.value.sqlExecutionResults["m-1"]?.data?.size)
+
+        // Failure branches for loadAvailableModels and executeSqlSnippet with explicit AiApi
+        val failAiApi = io.healthplatform.pulsequery.api.apis.AiApi(
+            baseUrl = "http://localhost",
+            httpClient = createClient(createUnconfinedMockEngine { throw RuntimeException("DuckDB error") })
+        )
+        val vmFail = ChatViewModel(scope = this, aiApi = failAiApi)
+        vmFail.loadAvailableModels()
+        awaitIdle()
+        assertEquals("SQL", vmFail.state.value.availableModels.first().id)
+        vmFail.executeSqlSnippet("m-err", "SELECT 1")
+        awaitIdle()
+        assertEquals("DuckDB error", vmFail.state.value.sqlExecutionResults["m-err"]?.error)
+
+        // When backend returns models without SQL, DEFAULT_SQL_MODEL_INFO is prepended
+        val noSqlAiApi = io.healthplatform.pulsequery.api.apis.AiApi(
+            baseUrl = "http://localhost",
+            httpClient = createClient(createUnconfinedMockEngine {
+                respond(
+                    content = """[{"id":"ollama:hf.co/google/gemma-4-E4B","name":"Gemma 4 E4B","provider":"ollama","is_local":true,"processor_type":"OLLAMA"}]""",
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                )
+            })
+        )
+        val vmNoSql = ChatViewModel(scope = this, aiApi = noSqlAiApi)
+        vmNoSql.loadAvailableModels()
+        awaitIdle()
+        assertEquals(2, vmNoSql.state.value.availableModels.size)
+        assertEquals("SQL", vmNoSql.state.value.availableModels[0].id)
+    }
 }

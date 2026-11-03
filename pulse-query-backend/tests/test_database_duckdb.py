@@ -187,3 +187,56 @@ async def test_duckdb_udf_available_across_multiple_readonly_connections_and_thr
   assert len(results) == 2
   assert len(results[0]) > 0
   assert len(results[1]) > 0
+
+
+def test_pooled_readonly_connection_lifecycle_and_overflow(tmp_path: Path) -> None:
+  """Verifies `PooledReadOnlyDuckDBConnectionProxy`, pool checkout/return, capacity overflow, and pool draining."""
+  from app.database.duckdb import PooledReadOnlyDuckDBConnectionProxy
+
+  # 1. File-backed pool with pool_size=1
+  db_file = str(tmp_path / "pooled_ro.duckdb")
+  mgr = DuckDBManager(db_file, pool_size=1)
+  rw = mgr.get_connection()
+  rw.execute("CREATE TABLE items (v INT); INSERT INTO items VALUES (42);")
+  rw.close()
+
+  pooled1 = mgr.get_pooled_readonly_connection()
+  assert isinstance(pooled1, PooledReadOnlyDuckDBConnectionProxy)
+  assert pooled1.inner is not None
+  cur = pooled1.cursor()
+  assert cur.execute("SELECT v FROM items").fetchone() == (42,)
+  assert pooled1.execute("SELECT v FROM items").fetchone() == (42,)
+
+  # Acquire a second pooled connection while first is checked out
+  pooled2 = mgr.get_pooled_readonly_connection()
+  assert isinstance(pooled2, PooledReadOnlyDuckDBConnectionProxy)
+
+  # Return first connection -> goes into pool (size=1)
+  pooled1.close()
+  # Second close on pooled1 is idempotent no-op
+  pooled1.close()
+  # Return second connection -> pool is full (maxsize=1), so it closes immediately
+  pooled2.close()
+
+  # Next checkout reuses the pooled connection from _readonly_pool
+  reused = mgr.get_pooled_readonly_connection()
+  assert isinstance(reused, PooledReadOnlyDuckDBConnectionProxy)
+  assert reused.inner is pooled1.inner
+  reused.close()
+
+  # Opening a write connection drains the read-only pool first
+  closed_cnt = mgr.close_readonly_pool()
+  assert closed_cnt == 1
+  assert mgr.close_readonly_pool() == 0
+
+  # 2. In-memory pooled connection and pool_size=0 (disabled pool)
+  mem_mgr = DuckDBManager(":memory:", pool_size=1)
+  mem_pooled = mem_mgr.get_pooled_readonly_connection()
+  assert isinstance(mem_pooled, PooledReadOnlyDuckDBConnectionProxy)
+  mem_pooled.close()
+  mem_mgr.close_readonly_pool()
+
+  no_pool_mgr = DuckDBManager(":memory:", pool_size=0)
+  unpooled = no_pool_mgr.get_pooled_readonly_connection()
+  assert not isinstance(unpooled, PooledReadOnlyDuckDBConnectionProxy)
+  no_pool_mgr._release_readonly_connection(unpooled)

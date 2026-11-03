@@ -106,12 +106,33 @@
           @else {
             <viz-markdown [content]="cleanContent(msg)"></viz-markdown>
             @if (msg.sql_snippet) {
+              @if (candidateError(msg.id)) {
+                <div class="error-container mt-2" role="alert">
+                  <mat-icon aria-hidden="true" class="icon-small">warning</mat-icon>
+                  <span>{{ candidateError(msg.id) }}</span>
+                </div>
+              }
+
               <app-sql-snippet
                 [sql]="msg.sql_snippet"
-                (run)="runQuery($event)"
+                (run)="runQuery($event, msg.id)"
                 (addToCart)="saveToCart($event)"
                 (simulate)="simulateQuery($event)"
               ></app-sql-snippet>
+
+              @if (isCandidateLoading(msg.id)) {
+                <mat-progress-bar
+                  mode="indeterminate"
+                  i18n-aria-label
+                  aria-label="Running SQL query on read-only DuckDB"
+                ></mat-progress-bar>
+              }
+
+              @if (candidateResult(msg.id)) {
+                <div class="table-preview mat-elevation-z1" data-testid="message-sql-preview">
+                  <viz-table [dataSet]="candidateResult(msg.id)"></viz-table>
+                </div>
+              }
             }
           }
         </mat-card-content>
@@ -156,19 +177,33 @@
 </div>
 
 <div class="composer-container mat-elevation-z4">
-  <!-- Model Selection Chips -->
+  <!-- Model Selection Chips & Live Connection Health -->
   @if (store.availableModels().length > 0) {
     <div class="model-selector">
       <mat-chip-listbox multiple i18n-aria-label aria-label="Select Models to Query">
         @for (model of store.availableModels(); track model.id) {
           <mat-chip-option
             [selected]="store.selectedModelIds().includes(model.id)"
+            [matTooltip]="modelStatusTooltip(model)"
             (click)="store.toggleModelSelection(model.id)"
           >
+            <span class="status-dot" [class]="modelStatusClass(model)" aria-hidden="true"></span>
             {{ model.name }}
           </mat-chip-option>
         }
       </mat-chip-listbox>
+
+      <button
+        type="button"
+        mat-stroked-button
+        data-testid="btn-verify-models"
+        (click)="store.verifyModelConnections(true)"
+        i18n-aria-label
+        aria-label="Verify LLM and DuckDB connections"
+      >
+        <mat-icon aria-hidden="true">sync</mat-icon>
+        <span i18n>Verify Connections</span>
+      </button>
     </div>
   }
 

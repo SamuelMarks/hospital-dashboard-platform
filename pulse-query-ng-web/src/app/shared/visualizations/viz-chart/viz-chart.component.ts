@@ -37,6 +37,22 @@ export interface ChartConfig {
 }
 
 /**
+ * Normalized reference line item ready for DOM rendering.
+ */
+export interface ProcessedReferenceLine {
+  /** Y-axis value of the threshold line. */
+  y: number;
+  /** CSS bottom percentage string relative to the plot area. */
+  bottomPct: string;
+  /** Formatted text label displayed on the threshold line. */
+  label: string;
+  /** CSS color string for the line and badge. */
+  color: string;
+  /** Border stroke style (`solid`, `dashed`, or `dotted`). */
+  style: 'solid' | 'dashed' | 'dotted';
+}
+
+/**
  * Internal representation for chart rendering logic.
  */
 interface ChartItem {
@@ -56,6 +72,8 @@ interface ChartItem {
   heightPct: string;
   /** CSS bottom offset percentage string relative to the zero baseline. */
   bottomPct: string;
+  /** CSS bottom offset percentage string for the top of the bar (used by value badges). */
+  topPct: string;
   /** Whether the bar represents a negative numeric value. */
   isNegative: boolean;
   /** Whether the bar is composed of multiple stacked segments. */
@@ -187,6 +205,37 @@ interface ChartItem {
       .col-wrapper:focus-within .tooltip {
         visibility: visible;
       }
+
+      .reference-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top-width: 1.5px;
+        z-index: 15;
+        pointer-events: none;
+      }
+      .reference-label {
+        position: absolute;
+        right: 4px;
+        bottom: 2px;
+        font-size: 9px;
+        font-weight: 600;
+        padding: 1px 4px;
+        border-radius: 3px;
+        background: var(--sys-surface-border);
+        color: var(--sys-text-primary);
+      }
+      .bar-value-badge {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--sys-text-secondary);
+        white-space: nowrap;
+        pointer-events: none;
+        margin-bottom: 2px;
+      }
     `,
   ],
   templateUrl: './viz-chart.component.html',
@@ -312,6 +361,48 @@ export class VizChartComponent {
   }
 
   /**
+   * Computes normalized horizontal reference lines positioned relative to the active Y-axis scale.
+   */
+  readonly processedReferenceLines = computed<ProcessedReferenceLine[]>(() => {
+    const lines = this.config()?.referenceLines;
+    const ds = this.dataSet();
+    const { x, y, stack } = this.axisKeys();
+    if (!lines || lines.length === 0 || !ds || !x || !y) {
+      return [];
+    }
+
+    let min = 0;
+    let max = this.getRefMax();
+    if (stack) {
+      const totals: Record<string, number> = {};
+      ds.data.forEach((r) => {
+        const xVal = String(r[x]);
+        const yVal = Math.max(0, Number(r[y]) || 0);
+        totals[xVal] = (totals[xVal] || 0) + yVal;
+      });
+      Object.values(totals).forEach((t) => {
+        if (t > max) max = t;
+      });
+    } else {
+      const values = ds.data.map((r) => Number(r[y]) || 0);
+      min = Math.min(...values, 0);
+      max = Math.max(...values, 0, max);
+    }
+    const range = max - min || 10;
+
+    return lines.map((line) => {
+      const pct = Math.max(0, Math.min(100, ((line.y - min) / range) * 100));
+      return {
+        y: line.y,
+        bottomPct: `${pct}%`,
+        label: line.label || `${line.y}`,
+        color: line.color || 'var(--chart-neg, #ba1a1a)',
+        style: line.style || 'dashed',
+      };
+    });
+  });
+
+  /**
    * Processing Strategy for Standard Bar Charts.
    *
    * @param rows - Array of data records to transform into bar items.
@@ -339,12 +430,14 @@ export class VizChartComponent {
 
       // If negative, bottom starts at (zeroPct - height). If positive, starts at zeroPct.
       const bPct = isNeg ? zeroPct - hPct : zeroPct;
+      const tPct = isNeg ? zeroPct : Math.min(92, bPct + hPct);
 
       return {
         label: String(row[xKey]),
         value: val,
         heightPct: `${hPct}%`,
         bottomPct: `${bPct}%`,
+        topPct: `${tPct}%`,
         isNegative: isNeg,
         isStacked: false,
       };
@@ -408,11 +501,14 @@ export class VizChartComponent {
         return segment;
       });
 
+      const totalTopPct = Math.min(92, (currentBottom / scale) * 100);
+
       return {
         label: xLabel,
         value: currentBottom,
         heightPct: '',
         bottomPct: '',
+        topPct: `${totalTopPct}%`,
         isNegative: false,
         isStacked: true,
         segments: segments.reverse(),

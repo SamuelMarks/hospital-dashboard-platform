@@ -11,8 +11,10 @@ class ChartsTest {
 
     @Test
     fun testBarChartLogic() {
-        val data = listOf("A" to 10f, "B" to 20f)
+        val data = listOf("A" to 10f, "B" to 20.5f)
         assertTrue(data.isNotEmpty(), "Bar chart data should be verifiable.")
+        assertEquals("10", formatBarValueBadge(10.0f))
+        assertEquals("20.5", formatBarValueBadge(20.54f))
     }
 
     @Test

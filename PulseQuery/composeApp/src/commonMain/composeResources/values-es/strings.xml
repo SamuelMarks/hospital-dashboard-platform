@@ -373,8 +373,13 @@
     <string name="optimization_metric_comparison_summary">Manual: %1$s | Experto: %2$s | LLM+MPAX: %3$s (%4$s%% de mejora)</string>
     <string name="optimization_des_header_with_gap">%1$s (Brecha: %2$s%%)</string>
     <string name="chat_candidate_selected_state">Ganador seleccionado</string>
-    <string name="chat_candidate_unselected_state">Variación candidata</string>
+    <string name="chat_candidate_unselected_state">Variación de candidato</string>
     <string name="chat_stream_network_error">Error de red durante la transmisión de tokens</string>
     <string name="chat_stream_http_error">El servidor devolvió %1$s</string>
     <string name="chat_stream_failed">Error en la transmisión</string>
-</resources>
+    <string name="chat_run_on_duckdb">Ejecutar en DuckDB</string>
+    <string name="chat_verify_connections">Verificar conexiones</string>
+    <string name="chat_model_status_fmt">%1$s (%2$s)</string>
+    <string name="chat_sql_preview_rows_fmt">Resultado de DuckDB (%1$d filas)</string>
+    <string name="chat_sql_preview_error_fmt">Error de DuckDB: %1$s</string>
+    </resources>

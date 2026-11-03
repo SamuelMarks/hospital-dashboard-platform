@@ -1,6 +1,6 @@
 /**
  * @fileoverview Administrative configuration component for managing LLM API keys,
- * model visibility, and database/dataset diagnostics.
+ * `gemma-4-sql` backend settings, model visibility, live connection testing, and database diagnostics.
  */
 import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
 import { form, FormRoot, FormField } from '@angular/forms/signals';
@@ -9,7 +9,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
-import { AdminService, AdminSettingsUpdateRequest, AiService, ModelInfo } from '../api-client';
+import {
+  AdminService,
+  AdminSettingsUpdateRequest,
+  AiService,
+  LlmProviderHealthResponse,
+  ModelInfo,
+} from '../api-client';
 import { ConnectionStatusService } from '../core/health/connection-status.service';
 import { extractEventInputValue } from '../shared/utils/dom-event.utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,7 +23,7 @@ import { forkJoin, Subject, timer } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 /**
- * Component providing the administration interface for API keys, model selection, and system diagnostics.
+ * Component providing the administration interface for API keys, `gemma-4-sql`, model selection, and system diagnostics.
  */
 @Component({
   selector: 'app-admin',
@@ -115,6 +121,12 @@ export class AdminComponent implements OnInit {
   configuredModels = signal<string[]>([]);
   /** Optional custom Ollama base URL override. */
   ollamaApiBase = signal<string>('');
+  /** Selected `gemma-4-sql` backend engine (`mlx`, `jax`, `pytorch`, `keras`, `maxtext`, `api`). */
+  gemma4SqlBackend = signal<string>('mlx');
+  /** Target `gemma-4-sql` model identifier. */
+  gemma4SqlModelName = signal<string>('google/gemma-4-sql-9b');
+  /** Live LLM connection test result from `/api/v1/admin/llm/test-connection`. */
+  lastConnectionTestResult = signal<LlmProviderHealthResponse | null>(null);
   /** New custom `any-llm` provider slug input. */
   newProviderSlug = signal<string>('');
   /** New custom `any-llm` provider API key input. */
@@ -179,6 +191,36 @@ export class AdminComponent implements OnInit {
    */
   removeConfiguredModel(spec: string): void {
     this.configuredModels.update((curr) => curr.filter((m) => m !== spec));
+  }
+
+  /**
+   * Tests live connectivity and 1-token smoke inference for an LLM provider via `/api/v1/admin/llm/test-connection`.
+   *
+   * @param provider - Provider slug (`'ollama'`, `'gemma4sql'`, `'gemini'`, `'openai'`, etc.).
+   * @param modelId - Optional target model identifier.
+   */
+  testProviderConnection(provider: string, modelId?: string): void {
+    if (!this.adminService.testLlmConnectionApiV1AdminLlmTestConnectionPost) return;
+    this.adminService
+      .testLlmConnectionApiV1AdminLlmTestConnectionPost({
+        provider,
+        model_id: modelId || null,
+        api_base: provider === 'ollama' ? this.ollamaApiBase().trim() || null : null,
+        gemma4_sql_backend: provider === 'gemma4sql' ? this.gemma4SqlBackend().trim() : null,
+        run_inference_smoke_test: true,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res: LlmProviderHealthResponse) => {
+          this.lastConnectionTestResult.set(res);
+          this.showTransientMessage(
+            `${res.display_name}: ${res.status || 'connected'} — ${res.message || ''}`,
+          );
+        },
+        error: () => {
+          this.showTransientMessage($localize`Connection test failed.`);
+        },
+      });
   }
 
   /** Reactive signal model backing the admin settings form. */
@@ -264,6 +306,12 @@ export class AdminComponent implements OnInit {
         this.customProviderKeys.set(extraKeys);
         this.configuredModels.set(settings.configured_models || []);
         this.ollamaApiBase.set(settings.ollama_api_base || '');
+        if (settings.gemma4_sql_backend) {
+          this.gemma4SqlBackend.set(settings.gemma4_sql_backend);
+        }
+        if (settings.gemma4_sql_model_name) {
+          this.gemma4SqlModelName.set(settings.gemma4_sql_model_name);
+        }
 
         this.formModel.set({
           openai: rawKeys['openai'] || '',

@@ -18,6 +18,7 @@ describe('AdminComponent', () => {
   let adminServiceMock: {
     readAdminSettingsApiV1AdminSettingsGet: ReturnType<typeof vi.fn>;
     writeAdminSettingsApiV1AdminSettingsPut: ReturnType<typeof vi.fn>;
+    testLlmConnectionApiV1AdminLlmTestConnectionPost?: ReturnType<typeof vi.fn>;
   };
   let aiServiceMock: {
     listAvailableModelsApiV1AiModelsGet: ReturnType<typeof vi.fn>;
@@ -38,6 +39,15 @@ describe('AdminComponent', () => {
         .mockReturnValue(
           of({ api_keys: { openai: 'test-key' }, visible_models: ['model-1', 'model-2'] }),
         ),
+      testLlmConnectionApiV1AdminLlmTestConnectionPost: vi.fn().mockReturnValue(
+        of({
+          provider: 'ollama',
+          model_id: 'ollama:llama3',
+          display_name: 'Ollama Llama 3',
+          status: 'connected',
+          message: 'Healthy',
+        }),
+      ),
     };
 
     aiServiceMock = {
@@ -272,12 +282,41 @@ describe('AdminComponent', () => {
           visible_models: ['model-1'],
           configured_models: ['ollama:llama3'],
           ollama_api_base: 'http://localhost:11434',
+          gemma4_sql_backend: 'jax',
+          gemma4_sql_model_name: 'google/gemma-4-sql-2b',
         }),
       );
       component.ngOnInit();
       expect(component.customProviderKeys()).toEqual({ groq: 'g-123' });
       expect(component.configuredModels()).toEqual(['ollama:llama3']);
       expect(component.ollamaApiBase()).toBe('http://localhost:11434');
+      expect(component.gemma4SqlBackend()).toBe('jax');
+      expect(component.gemma4SqlModelName()).toBe('google/gemma-4-sql-2b');
+
+      // Test testProviderConnection for ollama, gemma4sql, fallback fields, error, and undefined service method
+      component.testProviderConnection('ollama');
+      expect(component.lastConnectionTestResult()?.status).toBe('connected');
+      expect(component.message()).toContain('Ollama Llama 3: connected');
+
+      component.ollamaApiBase.set('   ');
+      adminServiceMock.testLlmConnectionApiV1AdminLlmTestConnectionPost?.mockReturnValueOnce(
+        of({
+          provider: 'gemma4sql',
+          model_id: 'gemma4sql:google/gemma-4-sql-2b',
+          display_name: 'Gemma-4-SQL',
+        }),
+      );
+      component.testProviderConnection('gemma4sql', 'google/gemma-4-sql-2b');
+      expect(component.message()).toContain('Gemma-4-SQL: connected');
+
+      adminServiceMock.testLlmConnectionApiV1AdminLlmTestConnectionPost?.mockReturnValueOnce(
+        throwError(() => new Error('Failed')),
+      );
+      component.testProviderConnection('ollama');
+      expect(component.message()).toBe('Connection test failed.');
+
+      delete adminServiceMock.testLlmConnectionApiV1AdminLlmTestConnectionPost;
+      component.testProviderConnection('ollama');
 
       // Add and remove custom provider key
       component.newProviderSlug.set('  ');

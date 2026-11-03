@@ -2,7 +2,7 @@
 AI API Router (Arena Edition).
 
 Exposes endpoints for generating SQL, recording experiment feedback votes,
-and executing read-only SQL previews.
+executing read-only SQL previews, and probing live LLM/DuckDB connection health.
 """
 
 import logging
@@ -19,6 +19,9 @@ from app.database.duckdb import duckdb_manager
 from app.database.postgres import get_db
 from app.models.user import User
 from app.schemas.ai import (
+  LlmConnectionTestRequest,
+  LlmHealthSummaryResponse,
+  LlmProviderHealthResponse,
   ModelInfo,
   SQLExecutionRequest,
   SQLExecutionResponse,
@@ -26,6 +29,10 @@ from app.schemas.ai import (
 )
 from app.schemas.feedback import ExperimentResponse, FeedbackUpdate
 from app.services.admin import get_admin_settings
+from app.services.llm.health_probe import (
+  probe_all_configured_models_result,
+  probe_connection_request_result,
+)
 from app.services.llm_client import llm_client
 from app.services.runners.sql import run_sql_widget
 from app.services.sql_generator import sql_generator
@@ -64,6 +71,61 @@ async def list_available_models(
       discover_ollama=discover_ollama,
     )
   return llm_client.get_available_models(admin_settings)
+
+
+@router.get("/health", response_model=LlmHealthSummaryResponse)
+async def get_llm_health(
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+  run_smoke_test: bool = False,
+) -> LlmHealthSummaryResponse:
+  """
+  Probes connection validity across all configured LLM models (`any-llm`, Ollama, `gemma-4-sql`, Gemini)
+  and verifies read-only DuckDB analytical readiness.
+
+  Args:
+      current_user (User): Authenticated user session.
+      db (AsyncSession): Active database session.
+      run_smoke_test (bool): Whether to run a 1-token smoke completion against each model.
+
+  Returns:
+      LlmHealthSummaryResponse: Aggregated connection status and per-provider telemetry.
+  """
+  logger.debug(f"Checking LLM health for user={current_user.id}")
+  admin_settings = await get_admin_settings(db)
+  res = await probe_all_configured_models_result(
+    admin_settings=admin_settings,
+    run_smoke_test=run_smoke_test,
+    arena_client=llm_client,
+  )
+  return unwrap_or_raise_http(res)
+
+
+@router.post("/models/verify", response_model=LlmProviderHealthResponse)
+async def verify_model_connection(
+  request: LlmConnectionTestRequest,
+  current_user: Annotated[User, Depends(deps.get_current_user)],
+  db: Annotated[AsyncSession, Depends(get_db)],
+) -> LlmProviderHealthResponse:
+  """
+  Verifies connection validity and optional 1-token smoke inference for a specific LLM model or provider.
+
+  Args:
+      request (LlmConnectionTestRequest): Provider and model verification parameters.
+      current_user (User): Authenticated user session.
+      db (AsyncSession): Active database session.
+
+  Returns:
+      LlmProviderHealthResponse: Detailed connection status, latency, and remediation guidance.
+  """
+  logger.debug(f"Verifying LLM connection provider={request.provider} model={request.model_id} user={current_user.id}")
+  admin_settings = await get_admin_settings(db)
+  res = await probe_connection_request_result(
+    request=request,
+    admin_settings=admin_settings,
+    arena_client=llm_client,
+  )
+  return unwrap_or_raise_http(res)
 
 
 @router.post("/generate", response_model=ExperimentResponse)
@@ -153,7 +215,7 @@ async def execute_sql_preview(
   res = await sql_generator.execute_sql_preview_result(
     request=request,
     olap_conn=olap_conn,
-    conn_factory=duckdb_manager.get_readonly_connection,
+    conn_factory=duckdb_manager.get_pooled_readonly_connection,
     sql_runner_fn=run_sql_widget,
   )
   return unwrap_or_raise_http(res)

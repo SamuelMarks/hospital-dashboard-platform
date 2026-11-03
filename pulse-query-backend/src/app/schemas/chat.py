@@ -3,13 +3,37 @@ Chat Domain Schemas.
 
 This module defines the Pydantic Data Transfer Objects (DTOs) for the
 Chat/Conversation feature. It handles validation for creating messages,
-listing conversations, and serializing history for the frontend.
+listing conversations, inline read-only DuckDB SQL previews, and serializing
+history for the frontend.
 """
 
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.json_types import SqlRow
+
+
+class SqlPreviewPayload(BaseModel):
+  """
+  Inline read-only DuckDB execution preview attached to a chat message or arena candidate.
+
+  Attributes:
+      columns (list[str]): Ordered column names returned by the read-only DuckDB query.
+      data (list[SqlRow]): Bounded preview rows (up to `max_rows`).
+      row_count (int): Number of rows returned in `data`.
+      execution_time_ms (float): Query execution duration in milliseconds.
+      truncated (bool): True if the result set reached the preview row cap.
+      error (str | None): Validation or DuckDB execution error message if execution failed.
+  """
+
+  columns: list[str] = Field(default_factory=list)
+  data: list[SqlRow] = Field(default_factory=list)
+  row_count: int = 0
+  execution_time_ms: float = 0.0
+  truncated: bool = False
+  error: str | None = None
 
 
 class MessageBase(BaseModel):
@@ -27,6 +51,10 @@ class MessageCreate(MessageBase):
   """
 
   target_models: list[str] | None = Field(default=None, description="Optional list of model IDs to query.")
+  auto_execute_sql: bool = Field(
+    default=True,
+    description="Whether to automatically execute extracted SQL against read-only DuckDB and attach a preview.",
+  )
 
 
 class MessageCandidateResponse(BaseModel):
@@ -40,6 +68,7 @@ class MessageCandidateResponse(BaseModel):
   sql_snippet: str | None = None
   sql_hash: str | None = None
   is_selected: bool
+  sql_preview: SqlPreviewPayload | None = None
 
   model_config = ConfigDict(from_attributes=True)
 
@@ -55,6 +84,7 @@ class MessageResponse(MessageBase):
   sql_snippet: str | None = None
   created_at: datetime
   candidates: list[MessageCandidateResponse] = []
+  sql_preview: SqlPreviewPayload | None = None
 
   # Allow reading from SQLAlchemy ORM models
   model_config = ConfigDict(from_attributes=True)
@@ -84,6 +114,10 @@ class ConversationCreate(ConversationBase):
 
   message: str | None = Field(None, description="Initial message to kickstart the chat.")
   target_models: list[str] | None = Field(None, description="Optional list of model IDs to query.")
+  auto_execute_sql: bool = Field(
+    default=True,
+    description="Whether to automatically execute generated SQL against read-only DuckDB.",
+  )
 
 
 class ConversationUpdate(BaseModel):

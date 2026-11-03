@@ -1,12 +1,12 @@
 /**
- * @fileoverview Service managing the open/close visibility state of the global Ask Data sidebar.
+ * @fileoverview Service managing the open/close visibility state and pending SQL handoff of the global Ask Data sidebar.
  */
 import { DOCUMENT } from '@angular/common';
 import { Service, inject, signal } from '@angular/core';
 
 /**
  * Service to manage the visibility state of the Global "Ask Data" sidebar.
- * This acts as a bridge between the Toolbar (trigger) and the Sidebar Component (display).
+ * This acts as a bridge between the Toolbar or Chat interface (trigger) and the Sidebar Component (display).
  */
 @Service()
 export class AskDataService {
@@ -16,9 +16,13 @@ export class AskDataService {
   private triggerElement: HTMLElement | null = null;
   /** Private mutable signal for open/close state. */
   private _isOpen = signal(false);
+  /** Private mutable signal holding a SQL query string handed off from Chat or external callers. */
+  private _pendingSql = signal<string | null>(null);
 
   /** Public read-only signal for UI binding. */
   public isOpen = this._isOpen.asReadonly();
+  /** Public read-only signal exposing the pending SQL query string for the scratchpad builder. */
+  public readonly pendingSql = this._pendingSql.asReadonly();
 
   /**
    * Toggles the visibility state of the sidebar, capturing or restoring trigger focus.
@@ -52,6 +56,20 @@ export class AskDataService {
       this.triggerElement = active instanceof HTMLElement ? active : null;
     }
     this._isOpen.set(true);
+  }
+
+  /**
+   * Opens the Ask Data scratchpad drawer pre-populated with a specific SQL query.
+   *
+   * @param sql - The SQL query string to load into the scratchpad SQL editor.
+   * @param trigger - Optional trigger element for focus restoration.
+   */
+  openWithSql(sql: string, trigger?: HTMLElement | null): void {
+    const trimmed = sql.trim();
+    if (trimmed) {
+      this._pendingSql.set(trimmed);
+    }
+    this.open(trigger);
   }
 
   /**

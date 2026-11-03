@@ -280,6 +280,28 @@ class TemplateSeeder:
     await TemplateSeeder._sync_command_center_widgets(db, data_list)
 
   @staticmethod
+  def _apply_widget_template_sync(widget: Widget, new_sql: str, chart_cfg: JsonObject | None) -> None:
+    """
+    Synchronizes a single `Widget` instance's query, chart config, and visualization type.
+
+    Args:
+        widget (Widget): Target widget ORM record.
+        new_sql (str): Latest interpolated SQL query for the template.
+        chart_cfg (JsonObject | None): Optional default chart metadata for the template.
+    """
+    updated_cfg = dict(widget.config)
+    changed = updated_cfg.get("query") != new_sql
+    updated_cfg["query"] = new_sql
+    if chart_cfg:
+      for k, v in chart_cfg.items():
+        if updated_cfg.get(k) != v:
+          updated_cfg[k] = v
+          changed = True
+      widget.visualization = "bar_chart"
+    if changed:
+      widget.config = updated_cfg
+
+  @staticmethod
   async def _sync_command_center_widgets(db: AsyncSession, data_list: Sequence[TemplateSeedSchema | JsonObject]) -> None:
     """
     Updates existing 'Hospital Command Center' SQL widgets whose titles match seeded templates
@@ -305,6 +327,8 @@ class TemplateSeeder:
     if not interpolated_by_title:
       return
 
+    from app.services.provisioning import provisioning_service
+
     stmt = (
       select(Widget)
       .join(Dashboard, Widget.dashboard_id == Dashboard.id)
@@ -315,13 +339,10 @@ class TemplateSeeder:
       )
     )
     res = await db.execute(stmt)
-    widgets = list(res.scalars().all())
-    for widget in widgets:
-      new_sql = interpolated_by_title.get(widget.title)
-      if new_sql and isinstance(widget.config, dict) and widget.config.get("query") != new_sql:
-        updated_cfg = dict(widget.config)
-        updated_cfg["query"] = new_sql
-        widget.config = updated_cfg
+    for widget in res.scalars().all():
+      new_sql = interpolated_by_title[widget.title]
+      chart_cfg = provisioning_service.DEFAULT_WIDGET_CHART_CONFIGS.get(widget.title)
+      TemplateSeeder._apply_widget_template_sync(widget, new_sql, chart_cfg)
 
   @staticmethod
   async def _upsert_template(db: AsyncSession, data: TemplateSeedSchema | JsonObject) -> None:

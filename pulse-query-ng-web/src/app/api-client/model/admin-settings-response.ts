@@ -20,4 +20,12 @@ export interface AdminSettingsResponse {
   configured_models?: string[];
   /** Property `ollama_api_base`. */
   ollama_api_base?: string | null;
+  /** Property `gemma4_sql_enabled`. */
+  gemma4_sql_enabled?: boolean;
+  /** Property `gemma4_sql_backend`. */
+  gemma4_sql_backend?: string;
+  /** Property `gemma4_sql_model_name`. */
+  gemma4_sql_model_name?: string;
+  /** Property `gemma4_sql_api_base`. */
+  gemma4_sql_api_base?: string | null;
 }

@@ -146,6 +146,23 @@
       data-testid="widget-natural-text-bar"
     >
       <div class="flex items-center gap-2">
+        <select
+          data-testid="widget-processor-select"
+          class="px-2 py-1 text-xs rounded border"
+          style="
+            background-color: var(--sys-surface);
+            color: var(--sys-text-primary);
+            border-color: var(--sys-surface-border);
+          "
+          [value]="activeProcessor()"
+          (change)="updateActiveProcessor($event)"
+          i18n-aria-label
+          aria-label="Select query processor or model"
+        >
+          @for (proc of availableProcessors(); track proc.id) {
+            <option [value]="proc.id">{{ proc.name }}</option>
+          }
+        </select>
         <input
           type="text"
           data-testid="widget-natural-text-input"

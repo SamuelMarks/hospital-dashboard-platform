@@ -6,7 +6,7 @@
  * - Active Message Stream.
  * - Loading States (isGenerating).
  * - Optimistic UI updates.
- * - **Target Model Selection**.
+ * - **Target Model Selection & Live LLM Connection Health**.
  */
 
 import { DATE_NOW } from '../core/time.token';
@@ -27,6 +27,8 @@ import {
   MessageCreate,
   ConversationCreate,
   ModelInfo,
+  LlmHealthSummaryResponse,
+  LlmProviderHealthResponse,
 } from '../api-client';
 
 /** Reactive state shape for the conversational AI assistant store. */
@@ -53,7 +55,22 @@ export interface ChatState {
   streamingMessageContent: string | null;
   /** Whether currently consuming real-time token stream. */
   isStreaming: boolean;
+
+  /** Live connection health summary across configured LLM models and read-only DuckDB. */
+  llmHealthSummary: LlmHealthSummaryResponse | null;
+  /** Whether a model connection health check is currently running. */
+  isCheckingHealth: boolean;
 }
+
+/** Default direct SQL processor option (`SQL [no model]`) executing on read-only pooled DuckDB. */
+export const DEFAULT_CHAT_SQL_MODEL: ModelInfo = {
+  id: 'SQL',
+  name: 'SQL [no model]',
+  provider: 'sql',
+  is_local: true,
+  processor_type: 'SQL',
+  status: 'connected',
+};
 
 /** Initial default state snapshot for the conversational AI store. */
 const initialState: ChatState = {
@@ -63,13 +80,15 @@ const initialState: ChatState = {
   isLoadingList: false,
   isGenerating: false,
   error: null,
-  availableModels: [],
+  availableModels: [DEFAULT_CHAT_SQL_MODEL],
   selectedModelIds: [],
   streamingMessageContent: null,
   isStreaming: false,
+  llmHealthSummary: null,
+  isCheckingHealth: false,
 };
 
-/** Centralized reactive state store managing chat conversations, multi-model arena candidates, and SSE streaming. */
+/** Centralized reactive state store managing chat conversations, multi-model arena candidates, connection health, and SSE streaming. */
 @Service()
 export class ChatStore implements OnDestroy {
   /** Injected clock provider returning the current Date instance. */
@@ -114,6 +133,10 @@ export class ChatStore implements OnDestroy {
   readonly isStreaming = computed(() => this._state().isStreaming);
   /** Computed signal returning the accumulated text content of an in-progress SSE stream. */
   readonly streamingMessageContent = computed(() => this._state().streamingMessageContent);
+  /** Computed signal returning the latest LLM & read-only DuckDB health summary. */
+  readonly llmHealthSummary = computed(() => this._state().llmHealthSummary);
+  /** Computed signal indicating whether a model connection check is in flight. */
+  readonly isCheckingHealth = computed(() => this._state().isCheckingHealth);
 
   /** Completes active RxJS streams and aborts any active SSE connection when the store is destroyed. */
   ngOnDestroy(): void {
@@ -138,11 +161,59 @@ export class ChatStore implements OnDestroy {
       });
 
     this.aiApi
-      .listAvailableModelsApiV1AiModelsGet()
+      .listAvailableModelsApiV1AiModelsGet(false, undefined, 'body', false, {
+        includeSql: true,
+        discoverOllama: true,
+      })
       .pipe(retry(2), takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (models: ModelInfo[]) => this.patch({ availableModels: models }),
+        next: (models: ModelInfo[]) => {
+          const list = Array.isArray(models) ? models : [];
+          const hasSql = list.some((m) => m.id === 'SQL' || m.processor_type === 'SQL');
+          this.patch({
+            availableModels: hasSql ? list : [DEFAULT_CHAT_SQL_MODEL, ...list],
+          });
+        },
         error: (err: unknown) => this.logger.error('Failed to load models', err),
+      });
+  }
+
+  /**
+   * Probes live connection validity across all configured LLM models and read-only DuckDB,
+   * enriching `availableModels` with status, latency, and remediation details.
+   *
+   * @param runSmokeTest - Whether to execute a 1-token smoke completion against each model.
+   */
+  verifyModelConnections(runSmokeTest = false): void {
+    if (!this.aiApi.getLlmHealthApiV1AiHealthGet) return;
+    this.patch({ isCheckingHealth: true });
+    this.aiApi
+      .getLlmHealthApiV1AiHealthGet(runSmokeTest)
+      .pipe(
+        finalize(() => this.patch({ isCheckingHealth: false })),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (summary: LlmHealthSummaryResponse) => {
+          const providerMap = new Map<string, LlmProviderHealthResponse>();
+          for (const p of summary.providers || []) {
+            providerMap.set(p.model_id, p);
+            providerMap.set(p.model_id.replace(':', '/'), p);
+          }
+          const updatedModels: ModelInfo[] = this.availableModels().map((m) => {
+            const match = providerMap.get(m.id) || providerMap.get(m.id.replace(':', '/'));
+            if (!match) return m;
+            return {
+              ...m,
+              status: match.status ?? 'connected',
+              latency_ms: match.latency_ms ?? null,
+              error_message: match.message ?? null,
+              remediation: match.remediation ?? null,
+            };
+          });
+          this.patch({ llmHealthSummary: summary, availableModels: updatedModels });
+        },
+        error: (err: unknown) => this.logger.error('Failed to verify model connections', err),
       });
   }
 

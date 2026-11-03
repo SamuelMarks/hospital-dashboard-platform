@@ -32,11 +32,15 @@ describe('ConversationComponent', () => {
     availableModels: WritableSignal<unknown[]>;
     selectedModelIds: WritableSignal<string[]>;
     toggleModelSelection: ReturnType<typeof vi.fn>;
+    verifyModelConnections: ReturnType<typeof vi.fn>;
     sendMessage: ReturnType<typeof vi.fn>;
     streamResponse: ReturnType<typeof vi.fn>;
     voteCandidate: ReturnType<typeof vi.fn>;
   };
-  let mockScratchpad: { open: ReturnType<typeof vi.fn> };
+  let mockScratchpad: {
+    open: ReturnType<typeof vi.fn>;
+    openWithSql?: ReturnType<typeof vi.fn>;
+  };
   let mockArenaSql: { execute: ReturnType<typeof vi.fn> };
   let mockCart: { add: ReturnType<typeof vi.fn> };
   let mockSnackBar: { open: ReturnType<typeof vi.fn> };
@@ -54,11 +58,12 @@ describe('ConversationComponent', () => {
       availableModels: signal([]),
       selectedModelIds: signal([]),
       toggleModelSelection: vi.fn(),
+      verifyModelConnections: vi.fn(),
       sendMessage: vi.fn(),
       streamResponse: vi.fn(),
       voteCandidate: vi.fn(),
     };
-    mockScratchpad = { open: vi.fn() };
+    mockScratchpad = { open: vi.fn(), openWithSql: vi.fn() };
     mockArenaSql = { execute: vi.fn().mockReturnValue(of({ data: [], columns: [] })) };
     mockCart = { add: vi.fn() };
     mockSnackBar = { open: vi.fn() };
@@ -232,10 +237,64 @@ describe('ConversationComponent', () => {
     });
   });
 
-  describe('runQuery', () => {
-    it('should open scratchpad', () => {
-      component.runQuery('SELECT');
+  describe('runQuery and model status helpers', () => {
+    it('should execute inline DuckDB preview when msgId is provided and open scratchpad with SQL', () => {
+      component.runQuery('SELECT 1', 'm1');
+      expect(mockArenaSql.execute).toHaveBeenCalledWith({ sql: 'SELECT 1', max_rows: 200 });
+      expect(mockScratchpad.openWithSql).toHaveBeenCalledWith('SELECT 1');
+
+      delete mockScratchpad.openWithSql;
+      component.runQuery('SELECT 2');
       expect(mockScratchpad.open).toHaveBeenCalled();
+    });
+
+    it('should compute modelStatusClass and modelStatusTooltip for all statuses', () => {
+      expect(
+        component.modelStatusClass({
+          id: 'm1',
+          name: 'M1',
+          provider: 'gemini',
+          is_local: false,
+        }),
+      ).toBe('connected');
+      expect(
+        component.modelStatusClass({
+          id: 'm2',
+          name: 'M2',
+          provider: 'ollama',
+          is_local: true,
+          status: 'degraded',
+        }),
+      ).toBe('degraded');
+      expect(
+        component.modelStatusClass({
+          id: 'm3',
+          name: 'M3',
+          provider: 'ollama',
+          is_local: true,
+          status: 'crashed',
+        }),
+      ).toBe('error');
+
+      const tipFull = component.modelStatusTooltip({
+        id: 'ollama:llama3',
+        name: 'Llama 3',
+        provider: 'ollama',
+        is_local: true,
+        status: 'crashed',
+        latency_ms: 12,
+        error_message: 'SIGSEGV',
+        remediation: 'Restart',
+      });
+      expect(tipFull).toContain('OLLAMA: crashed (12ms) — SIGSEGV | Fix: Restart');
+
+      const tipMin = component.modelStatusTooltip({
+        id: 'sql',
+        name: 'SQL',
+        provider: 'sql',
+        is_local: true,
+      });
+      expect(tipMin).toBe('SQL: connected');
     });
   });
 

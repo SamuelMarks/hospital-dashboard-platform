@@ -529,6 +529,12 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert "duckdb" in db_names
   assert "nginx" in server_names
   assert "ollama" in server_names
+  ollama_server = next(s for s in required.get("servers", []) if s["name"] == "ollama")
+  assert ollama_server.get("models") == [
+    "hf.co/google/gemma-4-E4B",
+    "hf.co/microsoft/Phi-4-mini-flash-reasoning",
+    "hf.co/meta-llama/Llama-3.2-1B",
+  ]
   assert "nodejs" in toolchain_names
   assert "python" in toolchain_names
   assert "uv" in toolchain_names
@@ -563,12 +569,31 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert svc["health_check"]["expect_status"] == 200
   assert '.datasets.status == "ready"' in svc["health_check"]["expect_json"]
   assert ".templates.template_count >= 10" in svc["health_check"]["expect_json"]
-  for hook_phase in ("pre_install", "install", "post_install", "build", "db_migrate", "pre_start", "health"):
+  for hook_phase in (
+    "pre_install",
+    "install",
+    "post_install",
+    "build",
+    "db_migrate",
+    "pre_start",
+    "before_start",
+    "health",
+  ):
     assert hook_phase in config["hooks"]
     assert hook_phase in config["infrastructure"]["hooks"]
     for hook in config["hooks"][hook_phase]:
       assert "name" in hook
       assert "command" in hook
+
+  before_start_hooks = {h["name"]: h for h in config["hooks"]["before_start"]}
+  assert "pull-default-ollama-choice-models" in before_start_hooks
+  for choice_model in (
+    "hf.co/google/gemma-4-E4B",
+    "hf.co/microsoft/Phi-4-mini-flash-reasoning",
+    "hf.co/meta-llama/Llama-3.2-1B",
+  ):
+    assert choice_model in before_start_hooks["pull-default-ollama-choice-models"]["command"]
+    assert choice_model in svc["env"]["OLLAMA_MODELS"]
 
   # Verify working_dir and cmd_windows on cross-platform hooks
   install_hooks = {h["name"]: h for h in config["hooks"]["install"]}

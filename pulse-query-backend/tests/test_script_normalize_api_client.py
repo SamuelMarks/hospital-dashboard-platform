@@ -38,7 +38,11 @@ def test_normalize_model_and_service_files(tmp_path: Path) -> None:
   api_dir.mkdir(parents=True)
 
   (client_dir / "index.ts").write_text(f"export * from './api/api';{nl}", encoding="utf-8")
-  (model_dir / "models.ts").write_text(f"export * from './sample';{nl}", encoding="utf-8")
+  (model_dir / "models.ts").write_text(
+    f"export * from './sample';{nl}export * from './json-value-input';{nl}",
+    encoding="utf-8",
+  )
+  (model_dir / "json-value-input.ts").write_text("export interface JsonValueInput {}\n", encoding="utf-8")
   (api_dir / "api.ts").write_text(f"export * from './sample.service';{nl}", encoding="utf-8")
 
   # Model file with Hospital Analytics Platform header, unused import, undocumented interface/type/prop, and ValidationErrorLocInner

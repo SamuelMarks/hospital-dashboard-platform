@@ -377,4 +377,9 @@
     <string name="chat_stream_network_error">Network error during token streaming</string>
     <string name="chat_stream_http_error">Server returned %1$s</string>
     <string name="chat_stream_failed">Streaming failed</string>
+    <string name="chat_run_on_duckdb">Run on DuckDB</string>
+    <string name="chat_verify_connections">Verify Connections</string>
+    <string name="chat_model_status_fmt">%1$s (%2$s)</string>
+    <string name="chat_sql_preview_rows_fmt">DuckDB Result (%1$d rows)</string>
+    <string name="chat_sql_preview_error_fmt">DuckDB Error: %1$s</string>
 </resources>

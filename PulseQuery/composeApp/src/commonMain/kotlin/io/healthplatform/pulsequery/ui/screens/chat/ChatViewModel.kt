@@ -1,9 +1,12 @@
 /**
  * Chat ViewModel module orchestrating conversation history, message sending,
- * real-time SSE token streaming via [ChatStreamingRepository], candidate voting, and query cart staging.
+ * model selection (`any-llm`, Ollama, `gemma-4-sql`, Gemini, Direct SQL),
+ * inline read-only DuckDB SQL execution, real-time SSE token streaming via [ChatStreamingRepository],
+ * candidate voting, and query cart staging.
  */
 package io.healthplatform.pulsequery.ui.screens.chat
 
+import io.healthplatform.pulsequery.api.apis.AiApi
 import io.healthplatform.pulsequery.api.apis.ChatApi
 import io.healthplatform.pulsequery.api.models.ConversationCreate
 import io.healthplatform.pulsequery.api.models.ConversationDetail
@@ -11,6 +14,9 @@ import io.healthplatform.pulsequery.api.models.ConversationResponse
 import io.healthplatform.pulsequery.api.models.MessageCreate
 import io.healthplatform.pulsequery.api.models.MessageResponse
 import io.healthplatform.pulsequery.api.models.MessageVoteRequest
+import io.healthplatform.pulsequery.api.models.ModelInfo
+import io.healthplatform.pulsequery.api.models.SQLExecutionRequest
+import io.healthplatform.pulsequery.api.models.SQLExecutionResponse
 import io.healthplatform.pulsequery.core.error.UiErrorKey
 import io.healthplatform.pulsequery.core.model.CandidateId
 import io.healthplatform.pulsequery.core.model.ConversationId
@@ -36,6 +42,21 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
+ * Default processor entry representing direct read-only pooled DuckDB SQL execution (`SQL [no model]`).
+ */
+val DEFAULT_SQL_MODEL_INFO = ModelInfo(
+    id = "SQL",
+    name = "SQL [no model]",
+    provider = "sql",
+    isLocal = true,
+    processorType = "SQL",
+    status = "connected",
+    supportsSqlGeneration = false,
+    supportsStreaming = false,
+    backendEngine = "duckdb"
+)
+
+/**
  * Immutable UI state for [io.healthplatform.pulsequery.ui.screens.ChatScreen].
  *
  * @property activeConversation Currently selected conversation, or null for a new chat.
@@ -45,6 +66,9 @@ import kotlinx.coroutines.launch
  * @property streamingCandidateText Live SSE token stream buffer while an assistant response is streaming.
  * @property inputText Current user input text in the chat composer.
  * @property errorMessage User-visible error message if an operation fails.
+ * @property availableModels Discovered and configured LLM models and SQL processors (always includes `SQL [no model]`).
+ * @property selectedModelIds Currently selected target model IDs for Arena queries.
+ * @property sqlExecutionResults Map of message or candidate IDs to read-only DuckDB [SQLExecutionResponse] previews.
  */
 data class ChatUiState(
     val activeConversation: ConversationResponse? = null,
@@ -53,7 +77,10 @@ data class ChatUiState(
     val isLoading: Boolean = false,
     val streamingCandidateText: String? = null,
     val inputText: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val availableModels: List<ModelInfo> = listOf(DEFAULT_SQL_MODEL_INFO),
+    val selectedModelIds: Set<String> = emptySet(),
+    val sqlExecutionResults: Map<String, SQLExecutionResponse> = emptyMap()
 )
 
 /**
@@ -62,6 +89,7 @@ data class ChatUiState(
  * @property initialConversationId Optional initial conversation UUID to select upon loading.
  * @property scope Coroutine scope used for asynchronous API and SSE streaming calls.
  * @property chatApi Optional explicit [ChatApi] client for conversation and message endpoints.
+ * @property aiApi Optional explicit [AiApi] client for model discovery and read-only DuckDB SQL execution.
  * @property streamingRepository Optional explicit [ChatStreamingRepository] for live SSE token streaming.
  * @property queryCartRepository Repository for staging SQL snippets to the query cart.
  * @property tokenProvider Provider returning the active JWT token for SSE streaming.
@@ -70,12 +98,16 @@ class ChatViewModel(
     private val initialConversationId: String? = null,
     private val scope: CoroutineScope,
     private val chatApi: ChatApi? = null,
+    private val aiApi: AiApi? = null,
     private val streamingRepository: ChatStreamingRepository? = null,
     private val queryCartRepository: QueryCartRepository = AppContainer.queryCartRepository,
     private val tokenProvider: () -> String? = { AppContainer.currentToken }
 ) {
     private val currentChatApi: ChatApi
         get() = chatApi ?: AppContainer.chatApi
+
+    private val currentAiApi: AiApi
+        get() = aiApi ?: AppContainer.aiApi
 
     private val currentStreamingRepository: ChatStreamingRepository
         get() = streamingRepository ?: AppContainer.chatStreamingRepository
@@ -96,6 +128,86 @@ class ChatViewModel(
     fun loadConversations() {
         scope.launch {
             performLoadConversations()
+        }
+    }
+
+    /**
+     * Loads available LLM models (`any-llm`, Ollama, `gemma-4-sql`, Gemini, and `SQL [no model]`) on [scope].
+     */
+    fun loadAvailableModels() {
+        scope.launch {
+            performLoadAvailableModels()
+        }
+    }
+
+    /**
+     * Executes the suspending retrieval of available LLM models and processors from `/api/v1/ai/models`.
+     */
+    suspend fun performLoadAvailableModels() {
+        runResultPulseAsync {
+            currentAiApi.listAvailableModelsApiV1AiModelsGet(
+                showAll = false,
+                includeSql = true,
+                discoverOllama = true
+            ).asResult()
+        }.fold(
+            onSuccess = { models ->
+                val hasSql = models.any { it.id.equals("SQL", ignoreCase = true) }
+                val resolved = if (hasSql) models else listOf(DEFAULT_SQL_MODEL_INFO) + models
+                _state.update { it.copy(availableModels = resolved) }
+            },
+            onFailure = {
+                _notifications.tryEmit("Failed to refresh model connections")
+            }
+        )
+    }
+
+    /**
+     * Toggles selection of a target [modelId] for multi-model Arena queries.
+     *
+     * @param modelId Model identifier to toggle (`'SQL'`, `'ollama:llama3'`, `'gemma4sql:google/gemma-4-sql-9b'`, etc.).
+     */
+    fun toggleModelSelection(modelId: String) {
+        _state.update { current ->
+            val updated = if (current.selectedModelIds.contains(modelId)) {
+                current.selectedModelIds - modelId
+            } else {
+                current.selectedModelIds + modelId
+            }
+            current.copy(selectedModelIds = updated)
+        }
+    }
+
+    /**
+     * Executes a read-only DuckDB SQL preview for [key] (`message.id` or `candidate.id`) and stores the result.
+     *
+     * @param key Unique tracking key (`message.id` or `candidate.id`).
+     * @param sql Raw SQL query string to execute against read-only DuckDB.
+     */
+    fun executeSqlSnippet(key: String, sql: String) {
+        if (sql.isBlank()) return
+        scope.launch {
+            runResultPulseAsync {
+                currentAiApi.executeSqlPreviewApiV1AiExecutePost(
+                    SQLExecutionRequest(sql = sql.trim(), maxRows = 100)
+                ).asResult()
+            }.fold(
+                onSuccess = { res ->
+                    _state.update { current ->
+                        current.copy(sqlExecutionResults = current.sqlExecutionResults + (key to res))
+                    }
+                },
+                onFailure = { e ->
+                    val errResp = SQLExecutionResponse(
+                        data = emptyList(),
+                        columns = emptyList(),
+                        error = e.messageOrDefault(UiErrorKey.UNKNOWN_ERROR)
+                    )
+                    _state.update { current ->
+                        current.copy(sqlExecutionResults = current.sqlExecutionResults + (key to errResp))
+                    }
+                }
+            )
         }
     }
 
@@ -229,6 +341,7 @@ class ChatViewModel(
         val rawInput = _state.value.inputText
         if (rawInput.isBlank()) return
         val textToSend = rawInput.trim()
+        val targets = _state.value.selectedModelIds.toList().ifEmpty { null }
         _state.update { it.copy(inputText = "", isLoading = true, errorMessage = null) }
 
         scope.launch {
@@ -238,7 +351,8 @@ class ChatViewModel(
                     currentChatApi.createConversationApiV1ConversationsPost(
                         ConversationCreate(
                             title = textToSend.take(20),
-                            message = textToSend
+                            message = textToSend,
+                            targetModels = targets
                         )
                     ).asResultMap { detail: ConversationDetail ->
                         val created = ConversationResponse(
@@ -260,7 +374,7 @@ class ChatViewModel(
                 } else {
                     currentChatApi.sendMessageApiV1ConversationsConversationIdMessagesPost(
                         conversationId = active.id,
-                        messageCreate = MessageCreate(content = textToSend)
+                        messageCreate = MessageCreate(content = textToSend, targetModels = targets)
                     ).asResultMap { active }
                 }
             }

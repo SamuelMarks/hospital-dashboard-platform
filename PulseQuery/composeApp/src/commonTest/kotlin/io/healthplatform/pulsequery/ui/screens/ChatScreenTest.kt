@@ -54,6 +54,23 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         val mockEngine = createUnconfinedMockEngine { request ->
             val path = request.url.encodedPath.removeSuffix("/")
             when {
+                path.endsWith("/api/v1/ai/models") && request.method == HttpMethod.Get -> {
+                    respond(
+                        content = """[
+                            {"id":"SQL","name":"SQL [no model]","provider":"sql","is_local":true,"processor_type":"SQL","status":"connected"},
+                            {"id":"gemma4sql:google/gemma-4-sql-9b","name":"Gemma-4-SQL (MLX)","provider":"gemma4sql","is_local":true,"processor_type":"GEMMA_4_SQL","status":"connected"}
+                        ]""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
+                path.endsWith("/api/v1/ai/execute") && request.method == HttpMethod.Post -> {
+                    respond(
+                        content = """{"columns":["beds"],"data":[{"beds":14}],"error":null}""",
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                    )
+                }
                 path.endsWith("/api/v1/conversations") && request.method == HttpMethod.Get -> {
                     if (!successLoad) {
                         respond(
@@ -166,12 +183,20 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         }
         onNodeWithText("Here is the NICU census query.", substring = true).assertIsDisplayed()
 
-        // Stage primary SQL snippet to cart
+        // Stage primary SQL snippet to cart & run on DuckDB
         onNodeWithText("Stage to Cart").performSemanticsAction(SemanticsActions.OnClick)
+        onAllNodesWithText("Run on DuckDB")[0].performSemanticsAction(SemanticsActions.OnClick)
+        waitForIdle()
 
-        // Expand candidate variations, stage candidate SQL, vote as best, and collapse
+        // Toggle model chip and click Verify Connections
+        onNodeWithText("Gemma-4-SQL (MLX) (connected)").performClick()
+        onNodeWithText("Verify Connections").performClick()
+        waitForIdle()
+
+        // Expand candidate variations, stage candidate SQL, run candidate on DuckDB, vote as best, and collapse
         onNodeWithText("2 Model Variations").performSemanticsAction(SemanticsActions.OnClick)
         waitForIdle()
+        onAllNodesWithText("Run on DuckDB")[1].performSemanticsAction(SemanticsActions.OnClick)
         onNodeWithText("Stage").performSemanticsAction(SemanticsActions.OnClick)
         onAllNodesWithText("Vote as Best")[0].performSemanticsAction(SemanticsActions.OnClick)
         onNodeWithText("Hide Variations").performSemanticsAction(SemanticsActions.OnClick)
@@ -226,8 +251,20 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
         setContent {
             MaterialTheme {
                 androidx.compose.foundation.layout.Column {
-                    ChatBubble(message = userMsg, onVoteCandidate = null, onStageToCart = null)
-                    ChatBubble(message = assistantMsg, onVoteCandidate = null, onStageToCart = null)
+                    ChatBubble(message = userMsg, onVoteCandidate = null, onStageToCart = null, onExecuteSql = null)
+                    ChatBubble(
+                        message = assistantMsg,
+                        sqlExecutionResults = mapOf(
+                            "a-msg" to io.healthplatform.pulsequery.api.models.SQLExecutionResponse(
+                                data = emptyList(),
+                                columns = emptyList(),
+                                error = "Binder Error"
+                            )
+                        ),
+                        onVoteCandidate = null,
+                        onStageToCart = null,
+                        onExecuteSql = null
+                    )
                     ChatStreamingPreviewSection(streamingText = "SELECT * FROM live_stream")
                 }
             }
@@ -235,6 +272,7 @@ class ChatScreenTest : io.healthplatform.pulsequery.testing.BaseComposeTest() {
 
         onNodeWithText("How many beds are available?").assertExists()
         onNodeWithText("There are 14 beds.").assertExists()
+        onNodeWithText("DuckDB Error: Binder Error").assertExists()
         onNodeWithText("SELECT * FROM live_stream").assertExists()
         onNodeWithText("1 Model Variations").performSemanticsAction(SemanticsActions.OnClick)
         waitForIdle()

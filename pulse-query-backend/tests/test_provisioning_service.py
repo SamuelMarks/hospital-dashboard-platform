@@ -262,6 +262,17 @@ async def test_provisioning_edge_branches(db_session: AsyncSession) -> None:
     "subtitle": "Explains patient flow",
     "description": "Explains patient flow",
   }
+  t_turnover = WidgetTemplate(
+    title="Bed Turnover Time",
+    description="Turnover desc",
+    sql_template="SELECT Location AS unit, AVG(turnover_minutes) AS avg_turnover_minutes FROM BED_TURNOVER_EVENTS(24) GROUP BY 1",
+    parameters_schema={},
+  )
+  assert svc._determine_visual_type(t_turnover) == "bar_chart"
+  turnover_cfg = svc._build_config(t_turnover, "bar_chart")
+  assert turnover_cfg["xKey"] == "unit"
+  assert turnover_cfg["yKey"] == "avg_turnover_minutes"
+  assert isinstance(turnover_cfg.get("referenceLines"), list)
 
 
 def test_widget_model_subtitle_property_and_setter() -> None:

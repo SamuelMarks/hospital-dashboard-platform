@@ -29,11 +29,19 @@ import kotlinx.serialization.Serializable
  * @property visibleModels List of visible model IDs.
  * @property configuredModels Optional list of `any-llm` model identifiers.
  * @property ollamaApiBase Optional custom Ollama base URL override.
+ * @property gemma4SqlEnabled Optional toggle for `gemma-4-sql`.
+ * @property gemma4SqlBackend Optional `gemma-4-sql` backend override.
+ * @property gemma4SqlModelName Optional `gemma-4-sql` model identifier override.
+ * @property gemma4SqlApiBase Optional `gemma-4-sql serve` endpoint override.
  */
 @Serializable
 data class AdminSettingsUpdateRequest(
     @SerialName(value = "api_keys") @Required val apiKeys: kotlin.collections.Map<kotlin.String, kotlin.String>,
     @SerialName(value = "visible_models") @Required val visibleModels: kotlin.collections.List<kotlin.String>,
     @SerialName(value = "configured_models") val configuredModels: kotlin.collections.List<kotlin.String>? = null,
-    @SerialName(value = "ollama_api_base") val ollamaApiBase: kotlin.String? = null
+    @SerialName(value = "ollama_api_base") val ollamaApiBase: kotlin.String? = null,
+    @SerialName(value = "gemma4_sql_enabled") val gemma4SqlEnabled: kotlin.Boolean? = null,
+    @SerialName(value = "gemma4_sql_backend") val gemma4SqlBackend: kotlin.String? = null,
+    @SerialName(value = "gemma4_sql_model_name") val gemma4SqlModelName: kotlin.String? = null,
+    @SerialName(value = "gemma4_sql_api_base") val gemma4SqlApiBase: kotlin.String? = null
 )

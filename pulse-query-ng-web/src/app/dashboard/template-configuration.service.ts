@@ -99,7 +99,12 @@ export class TemplateConfigurationService {
     if (title.includes('breakdown') || title.includes('share') || title.includes('mix')) {
       return 'pie';
     }
-    if (title.includes('trend') || title.includes('over time') || sql.includes('group by')) {
+    if (
+      title.includes('trend') ||
+      title.includes('over time') ||
+      title.includes('turnover') ||
+      sql.includes('group by')
+    ) {
       return 'bar_chart';
     }
     if (title.includes('probability') || title.includes('rate') || title.includes('risk')) {

@@ -69,6 +69,7 @@ describe('AskDataComponent', () => {
   let mockAskService: {
     close: ReturnType<typeof vi.fn>;
     isOpen: WritableSignal<boolean>;
+    pendingSql: WritableSignal<string | null>;
   };
   let mockAuthService: {
     isAuthenticated: WritableSignal<boolean>;
@@ -92,6 +93,7 @@ describe('AskDataComponent', () => {
     mockAskService = {
       close: vi.fn(),
       isOpen: signal(true),
+      pendingSql: signal(null),
     };
     mockCartService = {
       add: vi.fn(),
@@ -388,7 +390,7 @@ describe('AskDataComponent - Platform Server', () => {
       providers: [
         { provide: DashboardsService, useValue: mockDashApi },
         { provide: AuthService, useValue: { isAuthenticated: signal(true) } },
-        { provide: AskDataService, useValue: { isOpen: signal(true) } },
+        { provide: AskDataService, useValue: { isOpen: signal(true), pendingSql: signal(null) } },
         { provide: QueryCartService, useValue: { count: signal(0) } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: PLATFORM_ID, useValue: 'server' }, // Set platform to server

@@ -373,8 +373,13 @@
     <string name="optimization_metric_comparison_summary">Manuel : %1$s | Expert : %2$s | LLM+MPAX : %3$s (%4$s%% d’amélioration)</string>
     <string name="optimization_des_header_with_gap">%1$s (Écart : %2$s%%)</string>
     <string name="chat_candidate_selected_state">Gagnant sélectionné</string>
-    <string name="chat_candidate_unselected_state">Variation candidate</string>
-    <string name="chat_stream_network_error">Erreur réseau lors de la diffusion de jetons</string>
+    <string name="chat_candidate_unselected_state">Variante de candidat</string>
+    <string name="chat_stream_network_error">Erreur réseau pendant la diffusion des jetons</string>
     <string name="chat_stream_http_error">Le serveur a renvoyé %1$s</string>
     <string name="chat_stream_failed">Échec de la diffusion</string>
-</resources>
+    <string name="chat_run_on_duckdb">Exécuter sur DuckDB</string>
+    <string name="chat_verify_connections">Vérifier les connexions</string>
+    <string name="chat_model_status_fmt">%1$s (%2$s)</string>
+    <string name="chat_sql_preview_rows_fmt">Résultat DuckDB (%1$d lignes)</string>
+    <string name="chat_sql_preview_error_fmt">Erreur DuckDB : %1$s</string>
+    </resources>

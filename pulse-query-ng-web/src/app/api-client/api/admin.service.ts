@@ -8,6 +8,7 @@ import { Observable } from 'rxjs';
 
 import { AdminSettingsResponse } from '../model/admin-settings-response';
 import { AdminSettingsUpdateRequest } from '../model/admin-settings-update-request';
+import { LlmConnectionTestRequest, LlmProviderHealthResponse } from '../model/model-info';
 
 import { BASE_PATH } from '../variables';
 import { Configuration } from '../configuration';
@@ -272,6 +273,131 @@ export class AdminService extends BaseService {
       {
         context: localVarHttpContext,
         body: adminSettingsUpdateRequest,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        transferCache: localVarTransferCache,
+        reportProgress: reportProgress,
+      },
+    );
+  }
+
+  /**
+   * Test Llm Connection
+   * Tests connectivity and optional 1-token smoke inference for an LLM provider or model configuration.
+   * @endpoint post /api/v1/admin/llm/test-connection
+   * @param llmConnectionTestRequest Parameter `llmConnectionTestRequest`.
+   * @param token JWT token query parameter for direct browser downloads
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   * @returns Observable emitting the API response.
+   */
+  public testLlmConnectionApiV1AdminLlmTestConnectionPost(
+    llmConnectionTestRequest: LlmConnectionTestRequest,
+    token?: string,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<LlmProviderHealthResponse>;
+  public testLlmConnectionApiV1AdminLlmTestConnectionPost(
+    llmConnectionTestRequest: LlmConnectionTestRequest,
+    token?: string,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<LlmProviderHealthResponse>>;
+  public testLlmConnectionApiV1AdminLlmTestConnectionPost(
+    llmConnectionTestRequest: LlmConnectionTestRequest,
+    token?: string,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<LlmProviderHealthResponse>>;
+  public testLlmConnectionApiV1AdminLlmTestConnectionPost(
+    llmConnectionTestRequest: LlmConnectionTestRequest,
+    token?: string,
+    observe: 'body' | 'events' | 'response' = 'body',
+    reportProgress = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<unknown> {
+    if (llmConnectionTestRequest === null || llmConnectionTestRequest === undefined) {
+      throw new Error(
+        'Required parameter llmConnectionTestRequest was null or undefined when calling testLlmConnectionApiV1AdminLlmTestConnectionPost.',
+      );
+    }
+
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      token,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    let localVarHeaders = this.defaultHeaders;
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    const consumes: string[] = ['application/json'];
+    const httpContentTypeSelected: string | undefined =
+      this.configuration.selectHeaderContentType(consumes);
+    if (httpContentTypeSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+    }
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    const localVarPath = `/api/v1/admin/llm/test-connection`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.executeRequest<LlmProviderHealthResponse>(
+      this.httpClient,
+      'post',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        body: llmConnectionTestRequest,
         params: localVarQueryParameters.toHttpParams(),
         responseType: responseType_,
         ...(withCredentials ? { withCredentials } : {}),

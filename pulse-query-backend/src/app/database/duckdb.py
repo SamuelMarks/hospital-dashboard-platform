@@ -10,6 +10,7 @@ from collections.abc import Callable, Generator, Sequence
 import contextlib
 import logging
 import os
+import queue
 import threading
 import time
 from typing import ParamSpec, Protocol, TypeVar, runtime_checkable
@@ -324,22 +325,112 @@ async def run_in_duckdb_thread(func: Callable[P, T], *args: P.args, **kwargs: P.
   return await asyncio.to_thread(func, *args, **kwargs)
 
 
+class PooledReadOnlyDuckDBConnectionProxy:
+  """
+  Read-only connection proxy that returns the underlying connection back to a
+  `DuckDBManager` connection pool upon `.close()` instead of destroying it.
+  """
+
+  def __init__(
+    self,
+    inner: DuckDBReadableConnectionProtocol,
+    release_fn: Callable[[DuckDBReadableConnectionProtocol], None],
+  ) -> None:
+    """
+    Initializes the pooled read-only connection proxy.
+
+    Args:
+        inner (DuckDBReadableConnectionProtocol): Underlying read-only DuckDB connection.
+        release_fn (Callable[[DuckDBReadableConnectionProtocol], None]): Callback invoked on `.close()`.
+    """
+    self._inner = inner
+    self._release_fn = release_fn
+    self._closed = False
+
+  @property
+  def inner(self) -> DuckDBReadableConnectionProtocol:
+    """Returns the underlying read-only DuckDB connection."""
+    return self._inner
+
+  def cursor(self) -> DuckDBCursorProtocol:
+    """Returns a cursor from the underlying read-only DuckDB connection."""
+    return self._inner.cursor()
+
+  def execute(self, query: str) -> DuckDBFetchableProtocol:
+    """
+    Executes a read-only SQL query on the underlying connection.
+
+    Args:
+        query (str): SQL query string to execute.
+
+    Returns:
+        DuckDBFetchableProtocol: Query result handle.
+    """
+    return self._inner.execute(query)
+
+  def close(self) -> None:
+    """Returns the underlying connection to the pool (idempotent)."""
+    if not self._closed:
+      self._closed = True
+      self._release_fn(self._inner)
+
+
 class DuckDBManager:
   """
-  Wrapper for DuckDB connection management.
+  Wrapper for DuckDB connection management with thread-safe Read-Only connection pooling.
   Ensures consistent configuration for accessing the analytics data.
   Provides distinction between Read-Write (Ingestion) and Read-Only (Analytics) modes.
   """
 
-  def __init__(self, db_path: str) -> None:
+  def __init__(self, db_path: str, pool_size: int = 8) -> None:
     """
-    Initialize the manager with a file path.
+    Initialize the manager with a file path and optional read-only pool capacity.
 
     Args:
         db_path (str): Path to the .duckdb file.
+        pool_size (int): Maximum number of idle read-only connections retained in the pool.
     """
     self.db_path = db_path
+    self.pool_size = max(0, pool_size)
     self._write_lock = threading.RLock()
+    self._readonly_pool: queue.LifoQueue[DuckDBReadableConnectionProtocol] = queue.LifoQueue(
+      maxsize=max(1, self.pool_size)
+    )
+
+  def close_readonly_pool(self) -> int:
+    """
+    Drains and closes all idle read-only connections currently held in the pool.
+    Must be called before acquiring a read-write connection on file-backed DuckDB databases
+    so pooled read-only handles do not conflict with write locks.
+
+    Returns:
+        int: Number of pooled connections closed.
+    """
+    closed_count = 0
+    while True:
+      try:
+        conn = self._readonly_pool.get_nowait()
+      except queue.Empty:
+        break
+      with contextlib.suppress(Exception):
+        conn.close()
+      closed_count += 1
+    return closed_count
+
+  def _release_readonly_connection(self, conn: DuckDBReadableConnectionProtocol) -> None:
+    """
+    Returns an active read-only connection to `_readonly_pool`, or closes it if the pool is full or disabled.
+
+    Args:
+        conn (DuckDBReadableConnectionProtocol): Underlying read-only connection to return.
+    """
+    if self.pool_size <= 0:
+      conn.close()
+      return
+    try:
+      self._readonly_pool.put_nowait(conn)
+    except queue.Full:
+      conn.close()
 
   @contextlib.contextmanager
   def read_write_lock(self) -> Generator[None, None, None]:
@@ -476,6 +567,7 @@ class DuckDBManager:
     Raises:
         Exception: If connection fails.
     """
+    self.close_readonly_pool()
     for attempt in range(max_retries):
       try:
         conn = duckdb.connect(database=self.db_path, read_only=False)
@@ -494,13 +586,20 @@ class DuckDBManager:
         raise e
     raise duckdb.IOException(f"Failed to open DuckDB connection after {max_retries} retries.")
 
-  def get_readonly_connection(self, max_retries: int = 3) -> DuckDBReadableConnectionProtocol:
+  def get_readonly_connection(
+    self,
+    max_retries: int = 3,
+    use_pool: bool = False,
+  ) -> DuckDBReadableConnectionProtocol:
     """
-    Opens a restricted Read-Only connection with retry logic for transient file locks.
-    Used exclusively for Analytics Execution (User SQL Widgets).
+    Opens a restricted Read-Only connection (optionally backed by the thread-safe read-only connection pool)
+    with retry logic for transient file locks.
+    Used exclusively for Analytics Execution (User SQL Widgets & Ad-Hoc Chat SQL).
 
     Args:
         max_retries (int): Maximum retry attempts for transient file lock contention.
+        use_pool (bool): If True, checks out a reusable connection from `_readonly_pool` wrapped in
+            `PooledReadOnlyDuckDBConnectionProxy`.
 
     Returns:
         DuckDBReadableConnectionProtocol: A secured read-only database connection.
@@ -508,15 +607,31 @@ class DuckDBManager:
     Raises:
         Exception: If connection fails after retries.
     """
+    if use_pool and max_retries > 0 and self.pool_size > 0:
+      try:
+        pooled_inner = self._readonly_pool.get_nowait()
+        return PooledReadOnlyDuckDBConnectionProxy(pooled_inner, self._release_readonly_connection)
+      except queue.Empty:
+        pass
+
     for attempt in range(max_retries):
       try:
         if self.db_path == ":memory:":
           raw_conn = duckdb.connect(database=":memory:", read_only=False, config={"enable_external_access": "false"})
           register_duckdb_udfs(raw_conn)
-          return ReadOnlyDuckDBConnectionProxy(raw_conn)
+          mem_proxy: DuckDBReadableConnectionProtocol = ReadOnlyDuckDBConnectionProxy(raw_conn)
+          return (
+            PooledReadOnlyDuckDBConnectionProxy(mem_proxy, self._release_readonly_connection)
+            if use_pool and self.pool_size > 0
+            else mem_proxy
+          )
         conn = duckdb.connect(database=self.db_path, read_only=True, config={"enable_external_access": "false"})
         register_duckdb_udfs(conn)
-        return conn
+        return (
+          PooledReadOnlyDuckDBConnectionProxy(conn, self._release_readonly_connection)
+          if use_pool and self.pool_size > 0
+          else conn
+        )
       except (duckdb.IOException, duckdb.ConnectionException) as e:
         err_lower = str(e).lower()
         if ("lock" in err_lower or "different configuration" in err_lower) and attempt < max_retries - 1:
@@ -529,6 +644,19 @@ class DuckDBManager:
         logger.error(f"Failed to open Read-Only DuckDB connection: {e}")
         raise e
     raise duckdb.IOException(f"Failed to open DuckDB connection after {max_retries} retries.")
+
+  def get_pooled_readonly_connection(self, max_retries: int = 3) -> DuckDBReadableConnectionProtocol:
+    """
+    Acquires a restricted Read-Only connection from the thread-safe connection pool,
+    opening a new connection if the pool is currently empty.
+
+    Args:
+        max_retries (int): Maximum retry attempts for transient file lock contention.
+
+    Returns:
+        DuckDBReadableConnectionProtocol: Pooled read-only DuckDB connection proxy.
+    """
+    return self.get_readonly_connection(max_retries=max_retries, use_pool=True)
 
   def get_connection_result(self, max_retries: int = 5) -> AppResult[duckdb.DuckDBPyConnection]:
     """

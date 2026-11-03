@@ -139,17 +139,59 @@ describe('VizChartComponent', () => {
     expect(neg).toBeTruthy();
   });
 
-  it('should incorporate reference lines into scaling', () => {
+  it('should incorporate reference lines into scaling and render reference lines in simple and stacked charts', () => {
     const data = {
       columns: ['label', 'value'],
       data: [{ label: 'A', value: 1 }],
     };
     fixture.componentRef.setInput('dataSet', data);
-    fixture.componentRef.setInput('config', { referenceLines: [{ y: 100 }] });
+    fixture.componentRef.setInput('config', {
+      referenceLines: [
+        { y: 100 },
+        { y: 50, label: 'Target SLA', color: '#ff0000', style: 'solid' },
+      ],
+    });
     fixture.detectChanges();
 
     const items = component.processedData();
     expect(items[0]?.heightPct).toContain('%');
+    const refLines = component.processedReferenceLines();
+    expect(refLines.length).toBe(2);
+    expect(refLines[0]?.label).toBe('100');
+    expect(refLines[1]?.label).toBe('Target SLA');
+    expect(refLines[1]?.color).toBe('#ff0000');
+    expect(refLines[1]?.style).toBe('solid');
+
+    // Also test stacked chart with referenceLines and zero-range reference line
+    const stackedData = {
+      columns: ['cat', 'stack', 'val'],
+      data: [
+        { cat: 'A', stack: 'S1', val: 120 },
+        { cat: 'A', stack: 'S2', val: 80 },
+        { cat: 'B', stack: 'S1', val: undefined },
+      ],
+    };
+    fixture.componentRef.setInput('dataSet', stackedData);
+    fixture.componentRef.setInput('config', {
+      stackBy: 'stack',
+      referenceLines: [{ y: 150, label: 'Cap' }],
+    });
+    fixture.detectChanges();
+
+    const stackedRef = component.processedReferenceLines();
+    expect(stackedRef.length).toBe(1);
+    expect(stackedRef[0]?.bottomPct).toBe('75%');
+
+    // Zero range fallback in processedReferenceLines
+    fixture.componentRef.setInput('dataSet', {
+      columns: ['label', 'value'],
+      data: [{ label: 'A', value: undefined }],
+    });
+    fixture.componentRef.setInput('config', {
+      referenceLines: [{ y: 0 }],
+    });
+    fixture.detectChanges();
+    expect(component.processedReferenceLines()[0]?.bottomPct).toBe('0%');
   });
 
   it('should handle stacked data with zero totals', () => {

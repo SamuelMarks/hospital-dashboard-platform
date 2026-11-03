@@ -12,17 +12,18 @@ without repeating complex mathematical formulas (e.g., Z-Scores or Window overla
 from collections.abc import Callable
 import contextlib
 import logging
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 import duckdb
 import duckdb.sqltypes as sqltypes
 
-from app.database.duckdb import DuckDBFetchableProtocol, duckdb_manager
+from app.database.duckdb import DuckDBConnectionProtocol, DuckDBFetchableProtocol, duckdb_manager
 from app.services.optimization.service_unit_solver import optimize_service_unit_beds_udf
 
 logger = logging.getLogger(__name__)
 
 
+@runtime_checkable
 class DuckDBMacroConnProtocol(Protocol):
   """
   Structural protocol for a DuckDB connection supporting macro `execute` and UDF `create_function`.
@@ -63,7 +64,9 @@ class DuckDBMacroConnProtocol(Protocol):
     """
 
 
-def create_hospital_macros(conn: DuckDBMacroConnProtocol | duckdb.DuckDBPyConnection) -> None:
+def create_hospital_macros(
+  conn: DuckDBMacroConnProtocol | DuckDBConnectionProtocol | duckdb.DuckDBPyConnection,
+) -> None:
   """
   Registers reusable SQL Macros and Python UDFs on the active DuckDB connection.
 
@@ -88,9 +91,12 @@ def create_hospital_macros(conn: DuckDBMacroConnProtocol | duckdb.DuckDBPyConnec
   --- Data Engineering ---
   13. GENERATE_DATES(start_date, end_date): Table Macro. Creates a contiguous list of dates
       (Date Spine) used to fill gaps in sparse CSV data via LEFT JOINS.
+  14. BED_TURNOVER_EVENTS(max_hours): Table Macro. Deduplicates inpatient unit stays from
+      `synthetic_hospital_data` and pairs each unit discharge with the chronologically next
+      admission into the same unit within `max_hours` hours.
 
   --- Python UDFs ---
-  14. OPTIMIZE_ASSIGNMENTS: JAX/MPAX Solver Bridge.
+  15. OPTIMIZE_ASSIGNMENTS: JAX/MPAX Solver Bridge.
 
   Args:
       conn (duckdb.DuckDBPyConnection): The active database connection.
@@ -173,50 +179,106 @@ def create_hospital_macros(conn: DuckDBMacroConnProtocol | duckdb.DuckDBPyConnec
             SELECT unnest(generate_series(CAST(start_dt AS TIMESTAMP), CAST(end_dt AS TIMESTAMP), INTERVAL 1 DAY)) AS spine_date
         """)
 
+    # --- Bed Turnover Event Pairing Macro ---
+    with contextlib.suppress(duckdb.Error):
+      conn.execute("""
+              CREATE OR REPLACE MACRO BED_TURNOVER_EVENTS(max_hours := 24) AS TABLE
+              WITH unit_stays AS (
+                  SELECT DISTINCT
+                      PiCSN,
+                      Location,
+                      Clinical_Service,
+                      Admit_DT,
+                      Discharge_DT
+                  FROM synthetic_hospital_data
+                  WHERE Admit_DT IS NOT NULL AND Discharge_DT IS NOT NULL
+              ),
+              turnover_events AS (
+                  SELECT
+                      Location,
+                      Clinical_Service,
+                      Discharge_DT AS event_dt,
+                      'DISCHARGE' AS event_type
+                  FROM unit_stays
+                  UNION ALL
+                  SELECT
+                      Location,
+                      Clinical_Service,
+                      Admit_DT AS event_dt,
+                      'ADMIT' AS event_type
+                  FROM unit_stays
+              ),
+              paired AS (
+                  SELECT
+                      Location,
+                      Clinical_Service,
+                      event_dt AS discharge_dt,
+                      event_type,
+                      MIN(CASE WHEN event_type = 'ADMIT' THEN event_dt END) OVER (
+                          PARTITION BY Location
+                          ORDER BY event_dt
+                          ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING
+                      ) AS next_admit_dt
+                  FROM turnover_events
+              )
+              SELECT
+                  Location,
+                  Clinical_Service,
+                  discharge_dt,
+                  next_admit_dt,
+                  date_diff('minute', discharge_dt, next_admit_dt) AS turnover_minutes
+              FROM paired
+              WHERE event_type = 'DISCHARGE'
+                AND next_admit_dt > discharge_dt
+                AND date_diff('hour', discharge_dt, next_admit_dt) < max_hours
+          """)
+
     # --- Bed-Use Census Quick Action Table Macros ---
-    conn.execute("""
-            CREATE OR REPLACE MACRO CENSUS_PATIENT_DAYS_BY_UNIT() AS TABLE
-            SELECT Location AS Unit, COUNT(*) AS Patient_Days
-            FROM synthetic_hospital_data
-            GROUP BY Location
-            ORDER BY Patient_Days DESC
-        """)
+    with contextlib.suppress(duckdb.Error):
+      conn.execute("""
+              CREATE OR REPLACE MACRO CENSUS_PATIENT_DAYS_BY_UNIT() AS TABLE
+              SELECT Location AS Unit, COUNT(*) AS Patient_Days
+              FROM synthetic_hospital_data
+              GROUP BY Location
+              ORDER BY Patient_Days DESC
+          """)
 
-    conn.execute("""
-            CREATE OR REPLACE MACRO CENSUS_PATIENT_DAYS_BY_SERVICE() AS TABLE
-            SELECT Clinical_Service, COUNT(*) AS Patient_Days
-            FROM synthetic_hospital_data
-            GROUP BY Clinical_Service
-            ORDER BY Patient_Days DESC
-        """)
+      conn.execute("""
+              CREATE OR REPLACE MACRO CENSUS_PATIENT_DAYS_BY_SERVICE() AS TABLE
+              SELECT Clinical_Service, COUNT(*) AS Patient_Days
+              FROM synthetic_hospital_data
+              GROUP BY Clinical_Service
+              ORDER BY Patient_Days DESC
+          """)
 
-    conn.execute("""
-            CREATE OR REPLACE MACRO CENSUS_COMBINED_BREAKDOWN() AS TABLE
-            SELECT Clinical_Service, Location AS Unit, COUNT(*) AS Patient_Days
-            FROM synthetic_hospital_data
-            GROUP BY Clinical_Service, Location
-            ORDER BY Patient_Days DESC
-        """)
+      conn.execute("""
+              CREATE OR REPLACE MACRO CENSUS_COMBINED_BREAKDOWN() AS TABLE
+              SELECT Clinical_Service, Location AS Unit, COUNT(*) AS Patient_Days
+              FROM synthetic_hospital_data
+              GROUP BY Clinical_Service, Location
+              ORDER BY Patient_Days DESC
+          """)
 
-    conn.execute("""
-            CREATE OR REPLACE MACRO CENSUS_SUMMARY_STATISTICS() AS TABLE
-            SELECT
-                COUNT(*) AS Total_Patient_Days,
-                COUNT(DISTINCT Location) AS Distinct_Units,
-                COUNT(DISTINCT Clinical_Service) AS Distinct_Services
-            FROM synthetic_hospital_data
-        """)
+      conn.execute("""
+              CREATE OR REPLACE MACRO CENSUS_SUMMARY_STATISTICS() AS TABLE
+              SELECT
+                  COUNT(*) AS Total_Patient_Days,
+                  COUNT(DISTINCT Location) AS Distinct_Units,
+                  COUNT(DISTINCT Clinical_Service) AS Distinct_Services
+              FROM synthetic_hospital_data
+          """)
 
     # --- UDFs (Python Bridges) ---
 
-    with contextlib.suppress(duckdb.Error):
-      conn.create_function(
-        "OPTIMIZE_SERVICE_UNIT_BEDS",
-        optimize_service_unit_beds_udf,
-        parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR],
-        return_type=sqltypes.VARCHAR,
-        side_effects=True,
-      )
+    if isinstance(conn, (DuckDBMacroConnProtocol, duckdb.DuckDBPyConnection)):
+      with contextlib.suppress(duckdb.Error):
+        conn.create_function(
+          "OPTIMIZE_SERVICE_UNIT_BEDS",
+          optimize_service_unit_beds_udf,
+          parameters=[sqltypes.VARCHAR, sqltypes.VARCHAR],
+          return_type=sqltypes.VARCHAR,
+          side_effects=True,
+        )
 
     logger.info("✅ DuckDB Statistical Macros & JAX/MPAX Service-Unit Optimization UDF registered successfully.")
 

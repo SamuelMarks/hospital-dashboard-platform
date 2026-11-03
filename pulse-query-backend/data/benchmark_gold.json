@@ -111,7 +111,7 @@
     "theme": "Bed Turnover Time",
     "question": "What is the average time between discharge and the next admission in 'ICU_Cardiology_B'?",
     "complexity": "High",
-    "gold_sql": "WITH flow AS (\n  SELECT \n    Location, \n    Discharge_DT, \n    LEAD(Admit_DT) OVER (PARTITION BY Location ORDER BY Admit_DT) as next_admit\n  FROM synthetic_hospital_data \n  WHERE Location = 'ICU_Cardiology_B'\n)\nSELECT \n  ROUND(AVG(date_diff('minute', Discharge_DT, next_admit)), 1) as avg_turnover_minutes\nFROM flow \nWHERE next_admit > Discharge_DT \n  AND date_diff('hour', Discharge_DT, next_admit) < 24;"
+    "gold_sql": "SELECT \n  Location AS unit, \n  ROUND(AVG(turnover_minutes), 1) AS avg_turnover_minutes, \n  ROUND(MEDIAN(turnover_minutes), 1) AS median_turnover_minutes, \n  COUNT(*) AS turnover_events\nFROM BED_TURNOVER_EVENTS(24)\nWHERE Location = 'ICU_Cardiology_B'\nGROUP BY 1;"
   },
   {
     "theme": "Clinical Service 'Rent'",

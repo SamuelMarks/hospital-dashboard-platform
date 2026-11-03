@@ -9,6 +9,17 @@
  */
 
 /**
+ * Connection health status literal for an LLM provider or model combatant.
+ */
+export type LlmConnectionStatus =
+  'connected' | 'degraded' | 'offline' | 'unconfigured' | 'auth_error' | 'crashed' | 'error';
+
+/**
+ * High-level processor classification category.
+ */
+export type ProcessorType = 'SQL' | 'OLLAMA' | 'ANY_LLM' | 'GEMMA_4_SQL' | 'GEMINI';
+
+/**
  * Information about a configured LLM or SQL processor in the platform.
  */
 export interface ModelInfo {
@@ -21,5 +32,85 @@ export interface ModelInfo {
   /** Property `is_local`. */
   is_local: boolean;
   /** Property `processor_type`. */
-  processor_type?: 'SQL' | 'OLLAMA' | 'ANY_LLM';
+  processor_type?: ProcessorType;
+  /** Property `status`. */
+  status?: LlmConnectionStatus;
+  /** Property `latency_ms`. */
+  latency_ms?: number | null;
+  /** Property `error_message`. */
+  error_message?: string | null;
+  /** Property `remediation`. */
+  remediation?: string | null;
+  /** Property `supports_sql_generation`. */
+  supports_sql_generation?: boolean;
+  /** Property `supports_streaming`. */
+  supports_streaming?: boolean;
+  /** Property `backend_engine`. */
+  backend_engine?: string | null;
+}
+
+/**
+ * Live connection validation result for a single LLM provider or model combatant.
+ */
+export interface LlmProviderHealthResponse {
+  /** Property `provider`. */
+  provider: string;
+  /** Property `model_id`. */
+  model_id: string;
+  /** Property `display_name`. */
+  display_name: string;
+  /** Property `processor_type`. */
+  processor_type?: ProcessorType;
+  /** Property `is_local`. */
+  is_local?: boolean;
+  /** Property `status`. */
+  status?: LlmConnectionStatus;
+  /** Property `latency_ms`. */
+  latency_ms?: number | null;
+  /** Property `message`. */
+  message?: string;
+  /** Property `error_code`. */
+  error_code?: string | null;
+  /** Property `remediation`. */
+  remediation?: string | null;
+  /** Property `checked_at`. */
+  checked_at?: string;
+}
+
+/**
+ * Request payload to verify connectivity and optional 1-token inference for an LLM provider/model.
+ */
+export interface LlmConnectionTestRequest {
+  /** Property `provider`. */
+  provider: string;
+  /** Property `model_id`. */
+  model_id?: string | null;
+  /** Property `api_key`. */
+  api_key?: string | null;
+  /** Property `api_base`. */
+  api_base?: string | null;
+  /** Property `gemma4_sql_backend`. */
+  gemma4_sql_backend?: string | null;
+  /** Property `run_inference_smoke_test`. */
+  run_inference_smoke_test?: boolean;
+}
+
+/**
+ * Aggregated connection health summary across all configured LLM models and read-only DuckDB.
+ */
+export interface LlmHealthSummaryResponse {
+  /** Property `overall_status`. */
+  overall_status?: LlmConnectionStatus;
+  /** Property `active_count`. */
+  active_count?: number;
+  /** Property `healthy_count`. */
+  healthy_count?: number;
+  /** Property `unhealthy_count`. */
+  unhealthy_count?: number;
+  /** Property `mock_mode`. */
+  mock_mode?: boolean;
+  /** Property `duckdb_readonly_ready`. */
+  duckdb_readonly_ready?: boolean;
+  /** Property `providers`. */
+  providers?: LlmProviderHealthResponse[];
 }

@@ -5,6 +5,16 @@
   </div>
 
   <div class="plot-area">
+    @for (refLine of processedReferenceLines(); track refLine.label) {
+      <div
+        class="reference-line"
+        [style.bottom]="refLine.bottomPct"
+        [style.border-top-style]="refLine.style"
+        [style.border-top-color]="refLine.color"
+      >
+        <span class="reference-label">{{ refLine.label }}</span>
+      </div>
+    }
     <div class="bars-container">
       @for (item of processedData(); track item.label) {
         <div class="col-wrapper" tabindex="0" [attr.aria-label]="item.label + ': ' + item.value">
@@ -17,6 +27,7 @@
                 [style.bottom]="seg.bottomPct"
               ></div>
             }
+            <span class="bar-value-badge" [style.bottom]="item.topPct">{{ item.value }}</span>
             <div class="tooltip">
               <strong>{{ item.label }}</strong>
               @for (seg of item.segments; track seg.label) {
@@ -31,6 +42,7 @@
               [style.height]="item.heightPct"
               [style.bottom]="item.bottomPct"
             ></div>
+            <span class="bar-value-badge" [style.bottom]="item.topPct">{{ item.value }}</span>
             <div class="tooltip" [style.bottom]="item.isNegative ? '-25px' : '100%'">
               <strong>{{ item.label }}</strong
               >: {{ item.value }}

@@ -216,13 +216,17 @@
   },
   {
     "title": "Bed Turnover Time",
-    "description": "Average time difference (minutes) between one patient's Discharge and the next patient's Admit in the same unit.",
+    "description": "Compare average and median turnaround time (minutes) between a unit discharge and the chronologically next admission into the same unit across hospital units.",
     "category": "Flow",
-    "sql_template": "WITH flow AS (\n  SELECT \n    Location, \n    Discharge_DT, \n    LEAD(Admit_DT) OVER (PARTITION BY Location ORDER BY Admit_DT) as next_admit\n  FROM synthetic_hospital_data \n  WHERE Location = '{{unit_name}}'\n)\nSELECT \n  ROUND(AVG(date_diff('minute', Discharge_DT, next_admit)), 1) as avg_turnover_minutes\nFROM flow \nWHERE next_admit > Discharge_DT \n  AND date_diff('hour', Discharge_DT, next_admit) < 24;",
+    "sql_template": "SELECT \n  Location AS unit, \n  ROUND(AVG(turnover_minutes), 1) AS avg_turnover_minutes, \n  ROUND(MEDIAN(turnover_minutes), 1) AS median_turnover_minutes, \n  COUNT(*) AS turnover_events\nFROM BED_TURNOVER_EVENTS(24)\nWHERE ('{{unit_name}}' IN ('All', 'All Units', '') OR Location = '{{unit_name}}')\nGROUP BY 1\nORDER BY avg_turnover_minutes ASC\nLIMIT 12;",
     "parameters_schema": {
       "type": "object",
       "properties": {
-        "unit_name": { "type": "string", "default": "ICU_Cardiology_B" }
+        "unit_name": {
+          "type": "string",
+          "default": "All",
+          "description": "Specific unit (e.g., ICU_Cardiology_B) or 'All' to compare hospital units"
+        }
       },
       "required": ["unit_name"]
     }

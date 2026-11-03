@@ -87,7 +87,12 @@
         },
         {
           "name": "ollama",
-          "version": "latest"
+          "version": "latest",
+          "models": [
+            "hf.co/google/gemma-4-E4B",
+            "hf.co/microsoft/Phi-4-mini-flash-reasoning",
+            "hf.co/meta-llama/Llama-3.2-1B"
+          ]
         }
       ],
       "toolchains": [
@@ -197,7 +202,7 @@
         "POSTGRES_PORT": "5432",
         "DUCKDB_PATH": "${DUCKDB_PATH}",
         "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-        "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+        "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
       },
       "environment": {
         "PYTHONUNBUFFERED": "1",
@@ -209,7 +214,7 @@
         "POSTGRES_PORT": "5432",
         "DUCKDB_PATH": "${DUCKDB_PATH}",
         "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-        "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+        "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
       }
     }
   ],
@@ -304,6 +309,20 @@
         "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if [ -d \"$DATA_DIR\" ] && id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" \"$DATA_DIR\" && sudo chmod -R u+rwX,go+rX \"$DATA_DIR\"; fi",
         "cmd_windows": "rem Data directory permissions managed by Windows ACLs",
         "description": "Ensure configured service user owns data directory before starting backend service"
+      },
+      {
+        "name": "pull-default-ollama-choice-models",
+        "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
+        "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
+        "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
+      }
+    ],
+    "before_start": [
+      {
+        "name": "pull-default-ollama-choice-models",
+        "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
+        "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
+        "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
       }
     ],
     "health": [
@@ -529,7 +548,7 @@
           "POSTGRES_PORT": "5432",
           "DUCKDB_PATH": "${DUCKDB_PATH}",
           "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-          "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+          "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
         },
         "environment": {
           "PYTHONUNBUFFERED": "1",
@@ -541,7 +560,7 @@
           "POSTGRES_PORT": "5432",
           "DUCKDB_PATH": "${DUCKDB_PATH}",
           "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-          "OLLAMA_MODELS": "gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+          "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
         }
       }
     ],
@@ -636,6 +655,20 @@
           "command": "if [ -f .env ]; then set -a; . ./.env; set +a; fi; if [ -f .env.secrets ]; then set -a; . ./.env.secrets; set +a; fi; DATA_DIR=\"${DATA_MOUNT_DIR:-./data}\"; TARGET_USER=\"${SERVICE_USER:-$(whoami)}\"; TARGET_GROUP=\"${SERVICE_GROUP:-$TARGET_USER}\"; if [ -d \"$DATA_DIR\" ] && id \"$TARGET_USER\" >/dev/null 2>&1; then sudo chown -R \"${TARGET_USER}:${TARGET_GROUP}\" \"$DATA_DIR\" && sudo chmod -R u+rwX,go+rX \"$DATA_DIR\"; fi",
           "cmd_windows": "rem Data directory permissions managed by Windows ACLs",
           "description": "Ensure configured service user owns data directory before starting backend service"
+        },
+        {
+          "name": "pull-default-ollama-choice-models",
+          "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
+          "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
+          "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
+        }
+      ],
+      "before_start": [
+        {
+          "name": "pull-default-ollama-choice-models",
+          "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
+          "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
+          "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
         }
       ],
       "health": [
@@ -671,7 +704,12 @@
         },
         {
           "name": "ollama",
-          "version": "latest"
+          "version": "latest",
+          "models": [
+            "hf.co/google/gemma-4-E4B",
+            "hf.co/microsoft/Phi-4-mini-flash-reasoning",
+            "hf.co/meta-llama/Llama-3.2-1B"
+          ]
         }
       ],
       "toolchains": [

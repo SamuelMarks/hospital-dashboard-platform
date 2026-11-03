@@ -1138,8 +1138,13 @@ def normalize_model_file(path: Path) -> None:
   Args:
       path (Path): Path to the `.ts` model file.
   """
+  if path.name in {"json-value-input.ts", "json-value-output.ts"}:
+    path.unlink(missing_ok=True)
+    return
+
   text = path.read_text(encoding="utf-8")
   if path.name == "models.ts":
+    text = re.sub(r"export\s+\*\s+from\s+'\.\/json-value-(?:input|output)';\s*", "", text)
     if "@fileoverview" not in text:
       text = f"/**{NL} * @fileoverview Barrel export for generated OpenAPI model interfaces.{NL} */{NL}" + text
     path.write_text(text, encoding="utf-8")
@@ -1156,7 +1161,10 @@ def normalize_model_file(path: Path) -> None:
       text = f"/**{NL} * @fileoverview Generated OpenAPI model definition.{NL} */{NL}" + text
 
   text = text.replace(f"// @ts-ignore{NL}", "")
-  text = text.replace("JsonValueOutput", "unknown").replace("JsonValueInput", "unknown")
+  text = re.sub(r"import\s+\{\s*JsonValue(?:Input|Output)\s*\}\s+from\s+'[^']+';\s*", "", text)
+  text = re.sub(r"export\s+interface\s+JsonValueInput\s*\{\s*\}", "export type JsonValueInput = unknown;", text)
+  text = re.sub(r"export\s+interface\s+JsonValueOutput\s*\{\s*\}", "export type JsonValueOutput = unknown;", text)
+  text = re.sub(r"\bJsonValue(?:Input|Output)\b", "unknown", text)
   text = re.sub(r"\[\s*key:\s*string\s*\]:\s*any(?:\s*\|\s*any)?\s*;?", "[key: string]: unknown;", text)
   text = _normalize_indexed_objects(text)
   text = _replace_array_syntax(text)

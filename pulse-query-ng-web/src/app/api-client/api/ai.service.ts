@@ -7,7 +7,7 @@ import { HttpClient, HttpResponse, HttpEvent, HttpContext } from '@angular/commo
 import { Observable } from 'rxjs';
 
 import { ExperimentResponse } from '../model/experiment-response';
-import { ModelInfo } from '../model/model-info';
+import { LlmHealthSummaryResponse, ModelInfo } from '../model/model-info';
 import { SQLExecutionRequest } from '../model/sql-execution-request';
 import { SQLExecutionResponse } from '../model/sql-execution-response';
 import { SQLGenerationRequest } from '../model/sql-generation-request';
@@ -430,5 +430,123 @@ export class AiService extends BaseService {
       transferCache: localVarTransferCache,
       reportProgress: reportProgress,
     });
+  }
+
+  /**
+   * Get Llm Health
+   * Probes connection validity across all configured LLM models and read-only DuckDB.
+   * @endpoint get /api/v1/ai/health
+   * @param runSmokeTest Parameter `runSmokeTest`.
+   * @param token JWT token query parameter for direct browser downloads
+   * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+   * @param reportProgress flag to report request and response progress.
+   * @param options additional options
+   * @returns Observable emitting the API response.
+   */
+  public getLlmHealthApiV1AiHealthGet(
+    runSmokeTest?: boolean,
+    token?: string,
+    observe?: 'body',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<LlmHealthSummaryResponse>;
+  public getLlmHealthApiV1AiHealthGet(
+    runSmokeTest?: boolean,
+    token?: string,
+    observe?: 'response',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpResponse<LlmHealthSummaryResponse>>;
+  public getLlmHealthApiV1AiHealthGet(
+    runSmokeTest?: boolean,
+    token?: string,
+    observe?: 'events',
+    reportProgress?: boolean,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<HttpEvent<LlmHealthSummaryResponse>>;
+  public getLlmHealthApiV1AiHealthGet(
+    runSmokeTest?: boolean,
+    token?: string,
+    observe: 'body' | 'events' | 'response' = 'body',
+    reportProgress = false,
+    options?: {
+      httpHeaderAccept?: 'application/json';
+      context?: HttpContext;
+      transferCache?: boolean;
+    },
+  ): Observable<unknown> {
+    let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'run_smoke_test',
+      runSmokeTest,
+      QueryParamStyle.Form,
+      true,
+    );
+    localVarQueryParameters = this.addToHttpParams(
+      localVarQueryParameters,
+      'token',
+      token,
+      QueryParamStyle.Form,
+      true,
+    );
+
+    let localVarHeaders = this.defaultHeaders;
+    localVarHeaders = this.configuration.addCredentialToHeaders(
+      'OAuth2PasswordBearer',
+      'Authorization',
+      localVarHeaders,
+      'Bearer ',
+    );
+
+    const localVarHttpHeaderAcceptSelected: string | undefined =
+      options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept(['application/json']);
+    if (localVarHttpHeaderAcceptSelected !== undefined) {
+      localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+    }
+
+    const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+    const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+    let responseType_: 'text' | 'json' | 'blob' = 'json';
+    if (localVarHttpHeaderAcceptSelected) {
+      if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+        responseType_ = 'text';
+      } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+        responseType_ = 'json';
+      } else {
+        responseType_ = 'blob';
+      }
+    }
+
+    const localVarPath = `/api/v1/ai/health`;
+    const { basePath, withCredentials } = this.configuration;
+    return this.executeRequest<LlmHealthSummaryResponse>(
+      this.httpClient,
+      'get',
+      `${basePath}${localVarPath}`,
+      {
+        context: localVarHttpContext,
+        params: localVarQueryParameters.toHttpParams(),
+        responseType: responseType_,
+        ...(withCredentials ? { withCredentials } : {}),
+        headers: localVarHeaders,
+        observe: observe,
+        transferCache: localVarTransferCache,
+        reportProgress: reportProgress,
+      },
+    );
   }
 }
