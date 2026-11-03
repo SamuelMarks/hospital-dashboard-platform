@@ -1,63 +1,73 @@
 repos:
   - repo: local
     hooks:
+      - id: libscript-audit-standards
+        name: LibScript Audit Standards
+        entry: /bin/sh -c 'if [ -x ../../../libscript/devtools/audit/audit_standards.sh ]; then ../../../libscript/devtools/audit/audit_standards.sh libscript.json make.sh make.bat test.sh test.cmd generate_client.sh generate_client.cmd; elif [ -x ../../libscript/devtools/audit/audit_standards.sh ]; then ../../libscript/devtools/audit/audit_standards.sh libscript.json make.sh make.bat test.sh test.cmd generate_client.sh generate_client.cmd; fi'
+        language: system
+        pass_filenames: false
+      - id: libscript-doc-coverage
+        name: LibScript Documentation Coverage
+        entry: /bin/sh -c 'if [ -x ../../../libscript/devtools/audit/doc_coverage.sh ]; then ../../../libscript/devtools/audit/doc_coverage.sh --repo-root . --strict; elif [ -x ../../libscript/devtools/audit/doc_coverage.sh ]; then ../../libscript/devtools/audit/doc_coverage.sh --repo-root . --strict; fi'
+        language: system
+        pass_filenames: false
       - id: auto-format
         name: Auto Format
-        entry: bash -c "uv run --project pulse-query-backend ruff format . && npx --prefix pulse-query-ng-web prettier --write ."
+        entry: /bin/sh -c "uv run --project pulse-query-backend ruff format . && npx --prefix pulse-query-ng-web prettier --write ."
         language: system
         pass_filenames: false
       - id: backend-sqlite-setup
         name: Backend SQLite Setup
-        entry: bash -c "cd pulse-query-backend && uv sync --all-extras && USE_SQLITE_ALEMBIC=1 uv run alembic upgrade head"
+        entry: /bin/sh -c "cd pulse-query-backend && uv sync --all-extras && USE_SQLITE_ALEMBIC=1 uv run alembic upgrade head"
         language: system
         pass_filenames: false
       - id: backend-lint
         name: Backend Lint
-        entry: bash -c "cd pulse-query-backend && uv run ruff check ."
+        entry: /bin/sh -c "cd pulse-query-backend && uv run ruff check ."
         language: system
         pass_filenames: false
       - id: backend-format
         name: Backend Format
-        entry: bash -c "cd pulse-query-backend && uv run ruff format --check ."
+        entry: /bin/sh -c "cd pulse-query-backend && uv run ruff format --check ."
         language: system
         pass_filenames: false
       - id: backend-mypy
         name: Backend Mypy
-        entry: bash -c "uv run --project pulse-query-backend mypy --config-file pulse-query-backend/pyproject.toml pulse-query-backend/src/app pulse-query-backend/tests pulse-query-backend/scripts"
+        entry: /bin/sh -c "uv run --project pulse-query-backend mypy --config-file pulse-query-backend/pyproject.toml pulse-query-backend/src/app pulse-query-backend/tests pulse-query-backend/scripts"
         language: system
         pass_filenames: false
       - id: backend-test
         name: Backend Tests
-        entry: bash -c "cd pulse-query-backend && uv run pytest"
+        entry: /bin/sh -c "cd pulse-query-backend && uv run pytest"
         language: system
         pass_filenames: false
       - id: frontend-lint
         name: Frontend Lint
-        entry: bash -c "cd pulse-query-ng-web && npm install --legacy-peer-deps && npm run lint"
+        entry: /bin/sh -c "cd pulse-query-ng-web && npm install --legacy-peer-deps && npm run lint"
         language: system
         pass_filenames: false
       - id: frontend-format
         name: Frontend Format
-        entry: bash -c "cd pulse-query-ng-web && npm run format"
+        entry: /bin/sh -c "cd pulse-query-ng-web && npm run format"
         language: system
         pass_filenames: false
       - id: frontend-test
         name: Frontend Tests
-        entry: bash -c "cd pulse-query-ng-web && npm run test:coverage && npm run docs:coverage"
+        entry: /bin/sh -c "cd pulse-query-ng-web && npm run test:coverage && npm run docs:coverage"
         language: system
         pass_filenames: false
       - id: kmp-detekt-and-kover
         name: KMP Detekt and Kover
-        entry: bash -c "cd PulseQuery && ./gradlew detekt testDebugUnitTest jvmTest koverVerify --no-daemon"
+        entry: /bin/sh -c "cd PulseQuery && ./gradlew detekt testDebugUnitTest jvmTest koverVerify --no-daemon"
         language: system
         pass_filenames: false
       - id: e2e-test
         name: E2E Tests
-        entry: bash -c "cd e2e && npm install --legacy-peer-deps && npx playwright test"
+        entry: /bin/sh -c "cd e2e && npm install --legacy-peer-deps && npx playwright test"
         language: system
         pass_filenames: false
       - id: update-coverage-badges
         name: Update Coverage Badges
-        entry: bash -c "uv run --project pulse-query-backend python3 scripts/update_coverage_badges.py --stage"
+        entry: /bin/sh -c "uv run --project pulse-query-backend python3 scripts/update_coverage_badges.py --stage"
         language: system
         pass_filenames: false

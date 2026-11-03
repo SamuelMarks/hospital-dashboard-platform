@@ -70,6 +70,23 @@ export function isCollaborationMessage(val: unknown): val is CollaborationMessag
 }
 
 /**
+ * Resolves the target WebSocket `host:port` authority from the current browser location.
+ *
+ * Maps standard local development origins (`:4200` or portless loopback) to `:8000`,
+ * isolated E2E test origins (`:4217`) to `:8017`, and preserves `loc.host` for all other origins.
+ *
+ * @param loc - Browser location descriptor.
+ * @returns Target `host[:port]` authority string for WebSocket connection.
+ */
+export function resolveWebSocketHost(loc: BrowserLocationLike): string {
+  if (loc.hostname === 'localhost' || loc.hostname === '127.0.0.1') {
+    const port = loc.host.endsWith(':4217') ? '8017' : '8000';
+    return `${loc.hostname}:${port}`;
+  }
+  return loc.host;
+}
+
+/**
  * Service managing real-time WebSocket connection to a specific dashboard.
  */
 @Service()
@@ -182,10 +199,7 @@ export class DashboardCollaborationService implements OnDestroy {
 
     const loc = this.browserLocation;
     const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host =
-      loc.hostname === 'localhost' || loc.hostname === '127.0.0.1'
-        ? `${loc.hostname}:8000`
-        : loc.host;
+    const host = resolveWebSocketHost(loc);
     const url = `${protocol}//${host}/api/v1/ws/dashboards/${this.currentDashboardId}?token=${encodeURIComponent(token)}`;
 
     try {

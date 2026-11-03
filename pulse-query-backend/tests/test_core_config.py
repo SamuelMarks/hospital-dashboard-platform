@@ -116,9 +116,19 @@ def test_llm_swarm_mixed_provider_mapping() -> None:
 
 
 def test_llm_swarm_auto_ollama_fallback() -> None:
-  """Verify that OLLAMA_MODELS field is picked up independently."""
+  """Verify that OLLAMA_MODELS and OLLAMA_MODEL_LIST fields are picked up while ignoring filesystem paths."""
+  from app.core.config import _is_filesystem_path, _parse_model_entries
+
+  assert _is_filesystem_path("") is False
+  assert _is_filesystem_path("/mnt/data/ollama_models") is True
+  assert _is_filesystem_path("\\mnt\\data\\ollama_models") is True
+  assert _is_filesystem_path("C:\\ollama_models") is True
+  assert _is_filesystem_path("gemma:2b") is False
+  assert _parse_model_entries("/mnt/data/ollama_models, |ignored, qwen2:0.5b|Qwen Tiny") == [("qwen2:0.5b", "Qwen Tiny")]
+
   settings = Settings(
-    OLLAMA_MODELS="qwen2:0.5b|Qwen Tiny",
+    OLLAMA_MODEL_LIST="",
+    OLLAMA_MODELS="/mnt/data/ollama_models, qwen2:0.5b|Qwen Tiny",
     OPENAI_API_KEY=None,
     MISTRAL_API_KEY=None,
     ANTHROPIC_API_KEY=None,

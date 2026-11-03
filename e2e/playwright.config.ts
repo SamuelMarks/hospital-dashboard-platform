@@ -1,7 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const frontendPort = process.env["E2E_FRONTEND_PORT"] ?? "4217";
+const backendPort = process.env["E2E_BACKEND_PORT"] ?? "8017";
 const frontendUrl = `http://localhost:${frontendPort}`;
+const backendUrl = `http://127.0.0.1:${backendPort}`;
+process.env["E2E_BACKEND_URL"] ??= `${backendUrl}/api/v1`;
 
 /**
  * Playwright Configuration.
@@ -48,9 +51,8 @@ export default defineConfig({
   /* Run local dev servers before starting the tests */
   webServer: [
     {
-      command:
-        "cd ../pulse-query-backend && uv run --active alembic upgrade head && uv run --active uvicorn --app-dir src app.main:app --port 8000",
-      url: "http://127.0.0.1:8000/api/v1/openapi.json",
+      command: `cd ../pulse-query-backend && uv run --active alembic upgrade head && uv run --active uvicorn --app-dir src app.main:app --port ${backendPort}`,
+      url: `${backendUrl}/api/v1/openapi.json`,
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,
       env: {
@@ -61,7 +63,7 @@ export default defineConfig({
       },
     },
     {
-      command: `cd ../pulse-query-ng-web && npm start -- --port ${frontendPort}`,
+      command: `cd ../pulse-query-ng-web && npm run start:e2e -- --port ${frontendPort}`,
       url: frontendUrl,
       reuseExistingServer: !process.env["CI"],
       timeout: 120000,

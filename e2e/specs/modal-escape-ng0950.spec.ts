@@ -9,7 +9,8 @@
 import { test, expect, Page } from "@playwright/test";
 
 /** Backend API base URL for seeding test users and default dashboards. */
-const BACKEND_URL = "http://localhost:8000/api/v1";
+const BACKEND_URL =
+  process.env["E2E_BACKEND_URL"] ?? "http://127.0.0.1:8017/api/v1";
 
 /**
  * Attaches console error and snackbar watchers to ensure `NG0950` never occurs on `page`.

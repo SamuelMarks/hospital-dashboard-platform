@@ -8,7 +8,8 @@ import { test, expect } from "@playwright/test";
  * Constants for the backend API URL.
  * Needed for seeding data directly via API before the frontend test runs.
  */
-const BACKEND_URL = "http://localhost:8000/api/v1";
+const BACKEND_URL =
+  process.env["E2E_BACKEND_URL"] ?? "http://127.0.0.1:8017/api/v1";
 
 /**
  * Hospital Analytics Global Flow Test Suite.

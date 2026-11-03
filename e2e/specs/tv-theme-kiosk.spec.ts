@@ -6,7 +6,8 @@
 import { test, expect } from "@playwright/test";
 
 /** Backend API base URL for seeding test users and dashboards. */
-const BACKEND_URL = "http://localhost:8000/api/v1";
+const BACKEND_URL =
+  process.env["E2E_BACKEND_URL"] ?? "http://127.0.0.1:8017/api/v1";
 
 test.describe("TV Kiosk Mode, Theme Picker & Dark/Light Mode Flows", () => {
   test.describe.configure({ mode: "serial" });

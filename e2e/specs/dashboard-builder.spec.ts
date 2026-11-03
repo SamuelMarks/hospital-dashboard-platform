@@ -7,7 +7,8 @@ import { test, expect } from "@playwright/test";
 /**
  * Backend API URL for seeding or interacting directly with the API.
  */
-const BACKEND_URL = "http://localhost:8000/api/v1";
+const BACKEND_URL =
+  process.env["E2E_BACKEND_URL"] ?? "http://127.0.0.1:8017/api/v1";
 
 /**
  * Dashboard Builder Workflow Test Suite.

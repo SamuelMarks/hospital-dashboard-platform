@@ -50,8 +50,12 @@ class SwarmConfigDict(TypedDict):
 
 # Provider-specific display name rules mapped by (provider_or_none, substring_match) -> display_name
 _KNOWN_DISPLAY_NAMES: tuple[tuple[str | None, str, str], ...] = (
+  (None, "gemma:2b", "Gemma 2B (google/gemma-2b)"),
   (None, "gemma-4-e4b", "Gemma 4 E4B (google/gemma-4-E4B)"),
+  (None, "gemma4:e4b", "Gemma 4 E4B (google/gemma-4-E4B)"),
+  (None, "phi4-mini", "Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning)"),
   (None, "phi-4-mini-flash-reasoning", "Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning)"),
+  (None, "llama3.2:1b", "Llama 3.2 1B (meta-llama/Llama-3.2-1B)"),
   (None, "llama-3.2-1b", "Llama 3.2 1B (meta-llama/Llama-3.2-1B)"),
   (None, "deepseek-r1", "DeepSeek R1"),
   (None, "deepseek-coder", "DeepSeek Coder"),
@@ -66,9 +70,29 @@ _KNOWN_DISPLAY_NAMES: tuple[tuple[str | None, str, str], ...] = (
 )
 
 
+def _is_filesystem_path(candidate: str) -> bool:
+  """
+  Checks whether a raw model configuration token is a filesystem directory path
+  (such as `/mnt/data/ollama_models` or `C:/ollama_models`) rather than a model identifier.
+
+  Args:
+      candidate (str): Raw model string to inspect.
+
+  Returns:
+      bool: True if `candidate` looks like a filesystem path.
+  """
+  trimmed = candidate.strip()
+  if not trimmed:
+    return False
+  if trimmed.startswith(("/", "\\", "./", "../", ".\\", "..\\")):
+    return True
+  return len(trimmed) >= 3 and trimmed[1] == ":" and trimmed[2] in {"/", "\\"}
+
+
 def _parse_model_entries(raw_csv: str, fallback: list[str] | None = None) -> list[tuple[str, str]]:
   """
-  Parses comma-separated model identifiers and optional display names (`id|label`).
+  Parses comma-separated model identifiers and optional display names (`id|label`),
+  ignoring accidental filesystem path entries (e.g. `OLLAMA_MODELS=/mnt/data/ollama_models`).
 
   Args:
       raw_csv (str): Comma-separated string of model definitions.
@@ -87,10 +111,12 @@ def _parse_model_entries(raw_csv: str, fallback: list[str] | None = None) -> lis
     if not clean:
       continue
     if "|" in clean:
-      mid, name = clean.split("|", 1)
-      parsed.append((mid.strip(), name.strip()))
+      mid, name = [seg.strip() for seg in clean.split("|", 1)]
     else:
-      parsed.append((clean, clean))
+      mid, name = clean, clean
+    if not mid or _is_filesystem_path(mid):
+      continue
+    parsed.append((mid, name))
   return parsed
 
 
@@ -194,6 +220,8 @@ class Settings(BaseSettings):
 
   # Ollama auto-detected endpoint settings
   OLLAMA_HOST: str = "http://localhost:11434/v1"
+  DEFAULT_OLLAMA_MODEL: str = "gemma:2b"
+  OLLAMA_MODEL_LIST: str = ""
   OLLAMA_MODELS: str = ""
   OLLAMA_MAX_CONCURRENT_REQUESTS: int = 1
   OLLAMA_AUTO_FANOUT_ALL_TAGS: bool = False
@@ -300,7 +328,15 @@ class Settings(BaseSettings):
         self.GOOGLE_GEMINI_BASE_URL,
         False,
       ),
-      (bool(self.OLLAMA_MODELS.strip()), "openai", self.OLLAMA_MODELS, [], "ollama", self.OLLAMA_HOST, True),
+      (
+        bool((self.OLLAMA_MODEL_LIST or self.OLLAMA_MODELS).strip()),
+        "openai",
+        self.OLLAMA_MODEL_LIST.strip() or self.OLLAMA_MODELS,
+        [],
+        "ollama",
+        self.OLLAMA_HOST,
+        True,
+      ),
       (
         bool(self.MISTRAL_API_KEY),
         "mistral",

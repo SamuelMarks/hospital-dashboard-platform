@@ -12,13 +12,13 @@ setlocal EnableDelayedExpansion
 set "THIS_FILE=%~f0"
 
 if defined STACK (
-    echo !STACK! | findstr /C:":%THIS_FILE%:" >nul 2>&1
+    echo "!STACK!" | findstr /I /C:":!THIS_FILE!:" >nul 2>&1
     if not errorlevel 1 (
-        echo [STOP] processing "%THIS_FILE%" >&2
+        echo [STOP] processing "!THIS_FILE!" >&2
         exit /b 0
     )
 )
-set "STACK=%STACK%:%THIS_FILE%:"
+set "STACK=%STACK%:!THIS_FILE!:"
 
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
@@ -89,6 +89,7 @@ if not exist "%FRONTEND_DEST%" mkdir "%FRONTEND_DEST%"
 echo Step 3: Generating Angular TypeScript Client...
 call npx -y @openapitools/openapi-generator-cli generate -i "%SCHEMA_FILE%" -g typescript-angular -o "%FRONTEND_DEST%" --additional-properties=ngVersion=17.0.0,fileNaming=kebab-case --skip-validate-spec
 if errorlevel 1 exit /b 1
+if exist "%FRONTEND_DEST%\git_push.sh" del /F /Q "%FRONTEND_DEST%\git_push.sh"
 
 echo Step 4: Generating Kotlin Multiplatform (KMP) Client...
 if exist "%TMP_KMP_DIR%" rmdir /S /Q "%TMP_KMP_DIR%"

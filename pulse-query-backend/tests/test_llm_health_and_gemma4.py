@@ -116,20 +116,64 @@ def test_discovery_and_config_gemma4_sql_branches() -> None:
   assert _infer_processor_type("gemma4sql", "gemma4sql:google/gemma-4-sql-9b", True) == "GEMMA_4_SQL"
   assert _infer_processor_type("gemini", "gemini:gemini-2.5-pro", False) == "GEMINI"
 
-  from app.services.llm.discovery import DEFAULT_CHOICE_OLLAMA_MODELS, assemble_available_models
+  from app.schemas.ai import ModelInfo
+  from app.services.llm.discovery import (
+    DEFAULT_CHOICE_OLLAMA_MODELS,
+    _matches_visible_filter,
+    _ollama_model_sort_key,
+    assemble_available_models,
+    normalize_ollama_tag_key,
+    resolve_ollama_model_alias,
+  )
 
-  # Choice models included when include_sql=True, and deduplicated when already in discovered_ollama
+  assert resolve_ollama_model_alias("ollama:hf.co/google/gemma-4-E4B") == "gemma:2b"
+  assert resolve_ollama_model_alias("hf.co/microsoft/Phi-4-mini-flash-reasoning") == "phi4-mini"
+  assert resolve_ollama_model_alias("hf.co/meta-llama/Llama-3.2-1B") == "llama3.2:1b"
+  assert normalize_ollama_tag_key("ollama:gemma4:latest") == "gemma4"
+  assert _parse_configured_model_entry("/mnt/data/ollama_models") is None
+  assert _parse_configured_model_entry("ollama:/mnt/data/ollama_models") is None
+  assert _parse_configured_model_entry("ollama:hf.co/google/gemma-4-E4B|Gemma 4 E4B") == (
+    "ollama",
+    "gemma:2b",
+    "Gemma 4 E4B",
+  )
+
+  heavy_model = ModelInfo(id="ollama:gemma2:27b", name="Gemma 27B", provider="ollama", is_local=True)
+  std_model = ModelInfo(id="ollama:llama3:8b", name="Llama 8B", provider="ollama", is_local=True)
+  light_model = ModelInfo(id="ollama:gemma:2b", name="Gemma 2B", provider="ollama", is_local=True)
+  assert _ollama_model_sort_key(light_model) < _ollama_model_sort_key(std_model) < _ollama_model_sort_key(heavy_model)
+
+  assert _matches_visible_filter("ollama:gemma:2b", {"ollama:hf.co/google/gemma-4-E4B"}) is True
+  assert _matches_visible_filter("ollama:phi4-mini", {"ollama:hf.co/google/gemma-4-E4B"}) is False
+
+  # When discovered_ollama is non-empty, unpulled choice models are filtered out and lightweight models sort before 27B
   models_with_choice = assemble_available_models(
+    swarm_entries=[
+      {"id": "/mnt/data/ollama_models", "name": "Invalid Path", "provider": "ollama", "is_local": True},
+      {"id": "ollama:hf.co/google/gemma-4-E4B", "name": "Legacy Alias", "provider": "ollama", "is_local": True},
+      {"id": "openai:gpt-4o", "name": "GPT-4o", "provider": "openai", "is_local": False},
+    ],
+    admin_settings=None,
+    include_sql=True,
+    discovered_ollama=[heavy_model, DEFAULT_CHOICE_OLLAMA_MODELS[0], std_model],
+  )
+  ids = [m.id for m in models_with_choice]
+  assert ids[0] == "SQL"
+  assert ids[1] == "ollama:gemma:2b"
+  assert "ollama:phi4-mini" not in ids
+  assert ids.index("ollama:gemma:2b") < ids.index("ollama:llama3:8b") < ids.index("ollama:gemma2:27b")
+
+  # When discovered_ollama is empty/None, all DEFAULT_CHOICE_OLLAMA_MODELS are included as default catalog
+  models_default_catalog = assemble_available_models(
     swarm_entries=[],
     admin_settings=None,
     include_sql=True,
-    discovered_ollama=[DEFAULT_CHOICE_OLLAMA_MODELS[0]],
+    discovered_ollama=None,
   )
-  ids = [m.id for m in models_with_choice]
-  assert "SQL" in ids
-  assert "ollama:hf.co/google/gemma-4-E4B" in ids
-  assert "ollama:hf.co/microsoft/Phi-4-mini-flash-reasoning" in ids
-  assert "ollama:hf.co/meta-llama/Llama-3.2-1B" in ids
+  default_ids = [m.id for m in models_default_catalog]
+  assert "ollama:gemma:2b" in default_ids
+  assert "ollama:phi4-mini" in default_ids
+  assert "ollama:llama3.2:1b" in default_ids
 
   # Choice models filtered when admin_settings.visible_models excludes them
   models_filtered = assemble_available_models(
@@ -360,7 +404,7 @@ async def test_health_probe_and_llm_client_gemma4_branches(monkeypatch: pytest.M
   assert isinstance(res_missing, Ok)
   assert res_missing.value.status == "degraded"
 
-  resp_tags.json.return_value = {"models": [{"name": "llama3:latest"}]}
+  resp_tags.json.return_value = {"models": [{"name": "llama3:latest"}, {"name": "gemma4"}, {"name": "gemma:2b"}]}
   res_no_smoke_ok = await probe_ollama_health_result(
     model_name="llama3",
     run_smoke_test=False,
@@ -368,6 +412,38 @@ async def test_health_probe_and_llm_client_gemma4_branches(monkeypatch: pytest.M
   )
   assert isinstance(res_no_smoke_ok, Ok)
   assert res_no_smoke_ok.value.status == "connected"
+
+  res_latest_norm = await probe_ollama_health_result(
+    model_name="gemma4:latest",
+    run_smoke_test=False,
+    http_client=mock_http,
+  )
+  assert isinstance(res_latest_norm, Ok)
+  assert res_latest_norm.value.status == "connected"
+
+  res_slash_norm = await probe_ollama_health_result(
+    model_name="ollama/gemma:2b",
+    run_smoke_test=False,
+    http_client=mock_http,
+  )
+  assert isinstance(res_slash_norm, Ok)
+  assert res_slash_norm.value.status == "connected"
+
+  from app.services.llm.discovery import discover_ollama_models_result
+
+  resp_tags_with_path = MagicMock(status_code=200)
+  resp_tags_with_path.json.return_value = {
+    "models": [
+      {"name": "/mnt/data/ollama_models"},
+      {"name": "gemma2:27b"},
+      {"name": "gemma:2b"},
+    ]
+  }
+  mock_http.get.return_value = resp_tags_with_path
+  disc_res = await discover_ollama_models_result(http_client=mock_http)
+  assert isinstance(disc_res, Ok)
+  assert [m.id for m in disc_res.value] == ["ollama:gemma:2b", "ollama:gemma2:27b"]
+  mock_http.get.return_value = resp_tags
 
   mock_http.post.return_value = MagicMock(status_code=200, text="{}")
   res_smoke_ok = await probe_ollama_health_result(

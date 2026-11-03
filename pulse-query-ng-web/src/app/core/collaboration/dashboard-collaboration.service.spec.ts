@@ -143,6 +143,30 @@ describe('DashboardCollaborationService', () => {
     localService.disconnect();
   });
 
+  it('constructs ws://localhost:8017 URL when host is on isolated E2E port :4217', () => {
+    const e2eLoc: BrowserLocationLike = {
+      protocol: 'http:',
+      hostname: 'localhost',
+      host: 'localhost:4217',
+    };
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        DashboardCollaborationService,
+        { provide: AuthService, useValue: authServiceMock },
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: BROWSER_LOCATION, useValue: e2eLoc },
+      ],
+    });
+
+    const e2eService = TestBed.inject(DashboardCollaborationService);
+    e2eService.connect('dash-e2e');
+    expect(MockWebSocket.instances[0]?.url).toBe(
+      'ws://localhost:8017/api/v1/ws/dashboards/dash-e2e?token=mock-jwt-token',
+    );
+    e2eService.disconnect();
+  });
+
   it('should ignore connect in non-browser environment', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({

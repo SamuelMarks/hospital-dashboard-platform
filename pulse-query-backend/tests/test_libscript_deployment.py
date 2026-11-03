@@ -531,9 +531,9 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert "ollama" in server_names
   ollama_server = next(s for s in required.get("servers", []) if s["name"] == "ollama")
   assert ollama_server.get("models") == [
-    "hf.co/google/gemma-4-E4B",
-    "hf.co/microsoft/Phi-4-mini-flash-reasoning",
-    "hf.co/meta-llama/Llama-3.2-1B",
+    "gemma:2b",
+    "phi4-mini",
+    "llama3.2:1b",
   ]
   assert "nodejs" in toolchain_names
   assert "python" in toolchain_names
@@ -558,6 +558,8 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert config["deps"]["python"] == "3.12"
   assert config["deps"]["nodejs"] == "22"
   assert config["deps"]["postgres"] == "18"
+  assert config["vars"]["DEFAULT_OLLAMA_MODEL"] == "gemma:2b"
+  assert "gemma:2b" in config["vars"]["OLLAMA_MODEL_LIST"]
   assert len(config["services"]) == 1
   svc = config["services"][0]
   assert svc["name"] == "pulse-query-backend"
@@ -565,6 +567,8 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
   assert svc["port"] == 8000
   assert svc["user"] == "${SERVICE_USER}"
   assert svc["env"] == svc["environment"]
+  assert svc["env"]["DEFAULT_OLLAMA_MODEL"] == "gemma:2b"
+  assert "OLLAMA_MODELS" not in svc["env"]
   assert svc["health_check"]["url"] == "http://127.0.0.1:8000/api/v1/system/health"
   assert svc["health_check"]["expect_status"] == 200
   assert '.datasets.status == "ready"' in svc["health_check"]["expect_json"]
@@ -586,14 +590,22 @@ def test_env_isolation_and_libscript_config_consistency() -> None:
       assert "command" in hook
 
   before_start_hooks = {h["name"]: h for h in config["hooks"]["before_start"]}
-  assert "pull-default-ollama-choice-models" in before_start_hooks
+  assert "ensure-default-choice-ollama-models" in before_start_hooks
+  hook_cmd = before_start_hooks["ensure-default-choice-ollama-models"]["command"]
+  assert "http://127.0.0.1:11434/api/tags" in hook_cmd
+  assert "gemma2:27b" in hook_cmd
+  assert "gemma4:26b" in hook_cmd
   for choice_model in (
-    "hf.co/google/gemma-4-E4B",
-    "hf.co/microsoft/Phi-4-mini-flash-reasoning",
-    "hf.co/meta-llama/Llama-3.2-1B",
+    "gemma:2b",
+    "phi4-mini",
+    "llama3.2:1b",
   ):
-    assert choice_model in before_start_hooks["pull-default-ollama-choice-models"]["command"]
-    assert choice_model in svc["env"]["OLLAMA_MODELS"]
+    assert choice_model in hook_cmd
+    assert choice_model in svc["env"]["OLLAMA_MODEL_LIST"]
+
+  health_hooks = {h["name"]: h for h in config["hooks"]["health"]}
+  assert "verify-ollama-models-ready" in health_hooks
+  assert "(.models | length) >= 1" in health_hooks["verify-ollama-models-ready"]["command"]
 
   # Verify working_dir and cmd_windows on cross-platform hooks
   install_hooks = {h["name"]: h for h in config["hooks"]["install"]}

@@ -6,7 +6,8 @@
 import { test, expect } from "@playwright/test";
 
 /** Backend API base URL for seeding test users. */
-const BACKEND_URL = "http://localhost:8000/api/v1";
+const BACKEND_URL =
+  process.env["E2E_BACKEND_URL"] ?? "http://127.0.0.1:8017/api/v1";
 
 test.describe("Alert Rules Management & Benchmark Scenarios Flows", () => {
   test.describe.configure({ mode: "serial" });

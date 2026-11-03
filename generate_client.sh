@@ -1,10 +1,7 @@
 #!/bin/sh
-# # generate_client.sh
-#
 # ## Overview
 # Generates both the Angular TypeScript client and Kotlin Multiplatform (KMP)
 # client from the Backend OpenAPI schema using POSIX /bin/sh.
-#
 # ## Usage
 # ./generate_client.sh
 
@@ -94,6 +91,8 @@ npx -y @openapitools/openapi-generator-cli generate \
   -o "$FRONTEND_DEST" \
   --additional-properties=ngVersion=17.0.0,fileNaming=kebab-case \
   --skip-validate-spec
+
+rm -f "$FRONTEND_DEST/git_push.sh"
 
 set +f
 for _ts_f in "$FRONTEND_DEST/model/"*.ts; do

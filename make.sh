@@ -1,10 +1,7 @@
 #!/bin/sh
-# # make.sh
-#
 # ## Overview
 # POSIX /bin/sh build, database provisioning, dependency installation, stack orchestration,
 # and test runner for Hospital Dashboard Platform (delegating to Makefile targets).
-#
 # ## Usage
 # ./make.sh [target]
 
@@ -15,7 +12,6 @@ if [ "${SCRIPT_NAME-}" ]; then
 elif [ "${BASH_SOURCE-}" ]; then
   THIS_FILE="${BASH_SOURCE}"
 elif [ "${ZSH_VERSION-}" ]; then
-  # libscript-allow-eval
   # shellcheck disable=SC2296
   THIS_FILE="${(%):-%x}"
 else

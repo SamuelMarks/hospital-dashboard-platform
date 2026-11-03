@@ -26,6 +26,8 @@ from app.schemas.ai import (
 from app.services.llm.discovery import (
   _infer_processor_type,
   _normalize_ollama_root_url,
+  normalize_ollama_tag_key,
+  resolve_ollama_model_alias,
 )
 from app.services.llm.error_classifier import classify_llm_error
 from app.services.llm.gemma4_sql_provider import Gemma4SqlProvider
@@ -92,7 +94,10 @@ async def probe_ollama_health_result(
       AppResult[LlmProviderHealthResponse]: `Ok(LlmProviderHealthResponse)` describing connection validity.
   """
   root_url = _normalize_ollama_root_url(api_base)
-  clean_model = (model_name or "llama3").removeprefix("ollama:").removeprefix("ollama/").strip() or "llama3"
+  raw_model = (model_name or settings.DEFAULT_OLLAMA_MODEL or "gemma:2b").removeprefix("ollama:").removeprefix(
+    "ollama/"
+  ).strip() or "gemma:2b"
+  clean_model = resolve_ollama_model_alias(raw_model)
   model_id = f"ollama:{clean_model}"
   owns_client = http_client is None
   client = http_client if http_client is not None else httpx.AsyncClient(timeout=3.0)
@@ -126,8 +131,16 @@ async def probe_ollama_health_result(
       for item in raw_models
       if isinstance(item, dict) and str(item.get("name") or "").strip()
     }
-    base_names = {tag.split(":", 1)[0] for tag in available_tags}
-    if available_tags and clean_model not in available_tags and clean_model.split(":", 1)[0] not in base_names:
+    normalized_available = {normalize_ollama_tag_key(tag) for tag in available_tags}
+    target_norm = normalize_ollama_tag_key(clean_model)
+    base_names = {tag.split(":", 1)[0].lower() for tag in available_tags}
+    target_has_explicit_non_latest_tag = ":" in clean_model and not clean_model.lower().endswith(":latest")
+    is_matched = (
+      clean_model in available_tags
+      or target_norm in normalized_available
+      or (not target_has_explicit_non_latest_tag and target_norm.split(":", 1)[0] in base_names)
+    )
+    if available_tags and not is_matched:
       return Ok(
         LlmProviderHealthResponse(
           provider="ollama",

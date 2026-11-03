@@ -10,6 +10,10 @@
   "version": "0.0.1",
   "domain": "pulse-query.healthplatform.io",
   "legacy_service_names": ["pulse-backend", "pulse-web"],
+  "vars": {
+    "DEFAULT_OLLAMA_MODEL": "gemma:2b",
+    "OLLAMA_MODEL_LIST": "gemma:2b|Gemma 2B (google/gemma-2b), gemma4:e4b|Gemma 4 E4B (google/gemma-4-E4B), phi4-mini|Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning), llama3.2:1b|Llama 3.2 1B (meta-llama/Llama-3.2-1B), gemma:latest|Gemma (7b)"
+  },
   "deps": {
     "python": "3.12",
     "nodejs": "22",
@@ -88,11 +92,7 @@
         {
           "name": "ollama",
           "version": "latest",
-          "models": [
-            "hf.co/google/gemma-4-E4B",
-            "hf.co/microsoft/Phi-4-mini-flash-reasoning",
-            "hf.co/meta-llama/Llama-3.2-1B"
-          ]
+          "models": ["gemma:2b", "phi4-mini", "llama3.2:1b"]
         }
       ],
       "toolchains": [
@@ -202,7 +202,8 @@
         "POSTGRES_PORT": "5432",
         "DUCKDB_PATH": "${DUCKDB_PATH}",
         "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-        "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+        "DEFAULT_OLLAMA_MODEL": "gemma:2b",
+        "OLLAMA_MODEL_LIST": "gemma:2b|Gemma 2B (google/gemma-2b), gemma4:e4b|Gemma 4 E4B (google/gemma-4-E4B), phi4-mini|Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning), llama3.2:1b|Llama 3.2 1B (meta-llama/Llama-3.2-1B), gemma:latest|Gemma (7b)"
       },
       "environment": {
         "PYTHONUNBUFFERED": "1",
@@ -214,7 +215,8 @@
         "POSTGRES_PORT": "5432",
         "DUCKDB_PATH": "${DUCKDB_PATH}",
         "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-        "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+        "DEFAULT_OLLAMA_MODEL": "gemma:2b",
+        "OLLAMA_MODEL_LIST": "gemma:2b|Gemma 2B (google/gemma-2b), gemma4:e4b|Gemma 4 E4B (google/gemma-4-E4B), phi4-mini|Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning), llama3.2:1b|Llama 3.2 1B (meta-llama/Llama-3.2-1B), gemma:latest|Gemma (7b)"
       }
     }
   ],
@@ -311,24 +313,28 @@
         "description": "Ensure configured service user owns data directory before starting backend service"
       },
       {
-        "name": "pull-default-ollama-choice-models",
-        "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
-        "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
-        "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
+        "name": "ensure-default-choice-ollama-models",
+        "command": "if command -v ollama >/dev/null 2>&1; then _i=0; while [ \"$_i\" -lt 30 ]; do curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && break; _i=$((_i + 1)); sleep 1; done; if ! command -v nvidia-smi >/dev/null 2>&1; then for _big in gemma2:27b gemma4:26b; do if ollama list 2>/dev/null | grep -Fq \"$_big\"; then ollama rm \"$_big\" || true; fi; done; fi; for _m in gemma:2b phi4-mini llama3.2:1b; do if ollama list 2>/dev/null | grep -Fq \"$_m\"; then printf '[REUSE] Model %s already present\\n' \"$_m\"; else ollama pull \"$_m\" || true; fi; done; fi",
+        "cmd_windows": "where ollama >nul 2>nul && (where nvidia-smi >nul 2>nul || (ollama list 2>nul | findstr /I /C:\"gemma2:27b\" >nul && ollama rm gemma2:27b & ollama list 2>nul | findstr /I /C:\"gemma4:26b\" >nul && ollama rm gemma4:26b)) && (for %M in (gemma:2b phi4-mini llama3.2:1b) do @(ollama list 2>nul | findstr /I /C:\"%M\" >nul && echo [REUSE] Model %M already present || ollama pull %M))",
+        "description": "Ensure choice models (gemma:2b, phi4-mini, llama3.2:1b) are installed with Ollama before start and prune oversized 26B/27B models on CPU-only nodes"
       }
     ],
     "before_start": [
       {
-        "name": "pull-default-ollama-choice-models",
-        "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
-        "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
-        "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
+        "name": "ensure-default-choice-ollama-models",
+        "command": "if command -v ollama >/dev/null 2>&1; then _i=0; while [ \"$_i\" -lt 30 ]; do curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && break; _i=$((_i + 1)); sleep 1; done; if ! command -v nvidia-smi >/dev/null 2>&1; then for _big in gemma2:27b gemma4:26b; do if ollama list 2>/dev/null | grep -Fq \"$_big\"; then ollama rm \"$_big\" || true; fi; done; fi; for _m in gemma:2b phi4-mini llama3.2:1b; do if ollama list 2>/dev/null | grep -Fq \"$_m\"; then printf '[REUSE] Model %s already present\\n' \"$_m\"; else ollama pull \"$_m\" || true; fi; done; fi",
+        "cmd_windows": "where ollama >nul 2>nul && (where nvidia-smi >nul 2>nul || (ollama list 2>nul | findstr /I /C:\"gemma2:27b\" >nul && ollama rm gemma2:27b & ollama list 2>nul | findstr /I /C:\"gemma4:26b\" >nul && ollama rm gemma4:26b)) && (for %M in (gemma:2b phi4-mini llama3.2:1b) do @(ollama list 2>nul | findstr /I /C:\"%M\" >nul && echo [REUSE] Model %M already present || ollama pull %M))",
+        "description": "Ensure choice models (gemma:2b, phi4-mini, llama3.2:1b) are installed with Ollama before start and prune oversized 26B/27B models on CPU-only nodes"
       }
     ],
     "health": [
       {
         "name": "verify-system-health-payload",
         "command": "curl -sf http://127.0.0.1:8000/api/v1/system/health | jq -e '.status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10'"
+      },
+      {
+        "name": "verify-ollama-models-ready",
+        "command": "curl -sf http://127.0.0.1:11434/api/tags | jq -e '(.models | length) >= 1'"
       }
     ]
   },
@@ -548,7 +554,8 @@
           "POSTGRES_PORT": "5432",
           "DUCKDB_PATH": "${DUCKDB_PATH}",
           "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-          "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+          "DEFAULT_OLLAMA_MODEL": "gemma:2b",
+          "OLLAMA_MODEL_LIST": "gemma:2b|Gemma 2B (google/gemma-2b), gemma4:e4b|Gemma 4 E4B (google/gemma-4-E4B), phi4-mini|Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning), llama3.2:1b|Llama 3.2 1B (meta-llama/Llama-3.2-1B), gemma:latest|Gemma (7b)"
         },
         "environment": {
           "PYTHONUNBUFFERED": "1",
@@ -560,7 +567,8 @@
           "POSTGRES_PORT": "5432",
           "DUCKDB_PATH": "${DUCKDB_PATH}",
           "OLLAMA_HOST": "http://127.0.0.1:11434/v1",
-          "OLLAMA_MODELS": "hf.co/google/gemma-4-E4B|Gemma 4 E4B, hf.co/microsoft/Phi-4-mini-flash-reasoning|Phi-4 Mini Flash Reasoning, hf.co/meta-llama/Llama-3.2-1B|Llama 3.2 1B, gemma4:26b|Gemma4 (26b), gemma2:27b|Gemma2 (27b), gemma:latest|Gemma (7b), gemma:2b|Gemma (2b)"
+          "DEFAULT_OLLAMA_MODEL": "gemma:2b",
+          "OLLAMA_MODEL_LIST": "gemma:2b|Gemma 2B (google/gemma-2b), gemma4:e4b|Gemma 4 E4B (google/gemma-4-E4B), phi4-mini|Phi-4 Mini Flash Reasoning (microsoft/Phi-4-mini-flash-reasoning), llama3.2:1b|Llama 3.2 1B (meta-llama/Llama-3.2-1B), gemma:latest|Gemma (7b)"
         }
       }
     ],
@@ -657,24 +665,28 @@
           "description": "Ensure configured service user owns data directory before starting backend service"
         },
         {
-          "name": "pull-default-ollama-choice-models",
-          "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
-          "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
-          "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
+          "name": "ensure-default-choice-ollama-models",
+          "command": "if command -v ollama >/dev/null 2>&1; then _i=0; while [ \"$_i\" -lt 30 ]; do curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && break; _i=$((_i + 1)); sleep 1; done; if ! command -v nvidia-smi >/dev/null 2>&1; then for _big in gemma2:27b gemma4:26b; do if ollama list 2>/dev/null | grep -Fq \"$_big\"; then ollama rm \"$_big\" || true; fi; done; fi; for _m in gemma:2b phi4-mini llama3.2:1b; do if ollama list 2>/dev/null | grep -Fq \"$_m\"; then printf '[REUSE] Model %s already present\\n' \"$_m\"; else ollama pull \"$_m\" || true; fi; done; fi",
+          "cmd_windows": "where ollama >nul 2>nul && (where nvidia-smi >nul 2>nul || (ollama list 2>nul | findstr /I /C:\"gemma2:27b\" >nul && ollama rm gemma2:27b & ollama list 2>nul | findstr /I /C:\"gemma4:26b\" >nul && ollama rm gemma4:26b)) && (for %M in (gemma:2b phi4-mini llama3.2:1b) do @(ollama list 2>nul | findstr /I /C:\"%M\" >nul && echo [REUSE] Model %M already present || ollama pull %M))",
+          "description": "Ensure choice models (gemma:2b, phi4-mini, llama3.2:1b) are installed with Ollama before start and prune oversized 26B/27B models on CPU-only nodes"
         }
       ],
       "before_start": [
         {
-          "name": "pull-default-ollama-choice-models",
-          "command": "if command -v ollama >/dev/null 2>&1; then for _m in hf.co/google/gemma-4-E4B hf.co/microsoft/Phi-4-mini-flash-reasoning hf.co/meta-llama/Llama-3.2-1B; do ollama list 2>/dev/null | grep -Fq \"$_m\" || ollama pull \"$_m\" || true; done; fi",
-          "cmd_windows": "where ollama >nul 2>nul && (ollama pull hf.co/google/gemma-4-E4B & ollama pull hf.co/microsoft/Phi-4-mini-flash-reasoning & ollama pull hf.co/meta-llama/Llama-3.2-1B)",
-          "description": "Ensure choice models (google/gemma-4-E4B, microsoft/Phi-4-mini-flash-reasoning, meta-llama/Llama-3.2-1B) are installed with Ollama before start"
+          "name": "ensure-default-choice-ollama-models",
+          "command": "if command -v ollama >/dev/null 2>&1; then _i=0; while [ \"$_i\" -lt 30 ]; do curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && break; _i=$((_i + 1)); sleep 1; done; if ! command -v nvidia-smi >/dev/null 2>&1; then for _big in gemma2:27b gemma4:26b; do if ollama list 2>/dev/null | grep -Fq \"$_big\"; then ollama rm \"$_big\" || true; fi; done; fi; for _m in gemma:2b phi4-mini llama3.2:1b; do if ollama list 2>/dev/null | grep -Fq \"$_m\"; then printf '[REUSE] Model %s already present\\n' \"$_m\"; else ollama pull \"$_m\" || true; fi; done; fi",
+          "cmd_windows": "where ollama >nul 2>nul && (where nvidia-smi >nul 2>nul || (ollama list 2>nul | findstr /I /C:\"gemma2:27b\" >nul && ollama rm gemma2:27b & ollama list 2>nul | findstr /I /C:\"gemma4:26b\" >nul && ollama rm gemma4:26b)) && (for %M in (gemma:2b phi4-mini llama3.2:1b) do @(ollama list 2>nul | findstr /I /C:\"%M\" >nul && echo [REUSE] Model %M already present || ollama pull %M))",
+          "description": "Ensure choice models (gemma:2b, phi4-mini, llama3.2:1b) are installed with Ollama before start and prune oversized 26B/27B models on CPU-only nodes"
         }
       ],
       "health": [
         {
           "name": "verify-system-health-payload",
           "command": "curl -sf http://127.0.0.1:8000/api/v1/system/health | jq -e '.status == \"healthy\" and .datasets.status == \"ready\" and .datasets.table_count >= 2 and (.datasets.row_counts.hospital_data // 0) > 0 and .templates.status == \"ready\" and .templates.template_count >= 10'"
+        },
+        {
+          "name": "verify-ollama-models-ready",
+          "command": "curl -sf http://127.0.0.1:11434/api/tags | jq -e '(.models | length) >= 1'"
         }
       ]
     },
@@ -705,11 +717,7 @@
         {
           "name": "ollama",
           "version": "latest",
-          "models": [
-            "hf.co/google/gemma-4-E4B",
-            "hf.co/microsoft/Phi-4-mini-flash-reasoning",
-            "hf.co/meta-llama/Llama-3.2-1B"
-          ]
+          "models": ["gemma:2b", "phi4-mini", "llama3.2:1b"]
         }
       ],
       "toolchains": [

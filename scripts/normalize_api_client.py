@@ -1405,6 +1405,18 @@ def normalize_angular_client(client_dir: Path = ANGULAR_CLIENT_DIR) -> None:
   Args:
       client_dir (Path): Root directory of the Angular OpenAPI client.
   """
+  git_push_sh = client_dir / "git_push.sh"
+  if git_push_sh.exists():
+    git_push_sh.unlink()
+
+  ignore_file = client_dir / ".openapi-generator-ignore"
+  if ignore_file.exists():
+    ignore_text = ignore_file.read_text(encoding="utf-8")
+    if "git_push.sh" not in ignore_text.splitlines():
+      ignore_file.write_text(ignore_text.rstrip() + f"{NL}git_push.sh{NL}", encoding="utf-8")
+  else:
+    ignore_file.write_text(f"# OpenAPI Generator Ignore{NL}git_push.sh{NL}", encoding="utf-8")
+
   (client_dir / "encoder.ts").write_text(ENCODER_TS, encoding="utf-8")
   (client_dir / "param.ts").write_text(PARAM_TS, encoding="utf-8")
   (client_dir / "variables.ts").write_text(VARIABLES_TS, encoding="utf-8")
